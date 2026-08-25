@@ -496,6 +496,38 @@ public sealed class DateInputTests
         control.IsOpen.ShouldBeFalse();
     }
 
+    /// <summary>Verifies the repeat report from the Alt+Down opening gesture is consumed instead
+    /// of being reinterpreted as calendar navigation after the popup opens.</summary>
+    [Fact]
+    public void Dispatch_WhenAltDownOpeningGestureRepeats_DoesNotMoveTheCalendarSelection()
+    {
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 3, 15),
+            Culture = CultureInfo.InvariantCulture
+        };
+
+        _ = Router.Route(control, Events.Key, KeyEvent(Code.Down, Modifiers.Alt));
+        _ = Router.Route(control, Events.Key, KeyEvent(Code.Down, Modifiers.Alt, KeyAction.Repeat));
+        _ = Router.Route(control, Events.Key, KeyEvent(Code.Enter));
+
+        control.Value.ShouldBe(new DateOnly(2026, 3, 15));
+    }
+
+    /// <summary>Verifies repeat reports cannot originate the Alt+Down or F4 opening transition
+    /// without an initial key down accepted by the control.</summary>
+    [Theory]
+    [InlineData(Code.Down, Modifiers.Alt)]
+    [InlineData(Code.F4, Modifiers.None)]
+    public void Dispatch_WhenOpeningGestureIsRepeatOnly_DoesNotOpen(Code code, Modifiers modifiers)
+    {
+        using var control = new DateInput();
+
+        _ = Router.Route(control, Events.Key, KeyEvent(code, modifiers, KeyAction.Repeat));
+
+        control.IsOpen.ShouldBeFalse();
+    }
+
     /// <summary>Verifies PopupChrome applies to the owned Calendar popup without leaking it, and
     /// ResetPopupChrome returns it to the PopupChrome appearance.</summary>
     [Fact]
@@ -1236,12 +1268,15 @@ public sealed class DateInputTests
         return result.ToString();
     }
 
-    private static KeyEventArgs KeyEvent(Code code, Modifiers modifiers = Modifiers.None) => new(new Stroke(
+    private static KeyEventArgs KeyEvent(
+        Code code,
+        Modifiers modifiers = Modifiers.None,
+        KeyAction action = KeyAction.Press) => new(new Stroke(
         code,
         default,
         nativeCode: 0,
         modifiers,
-        KeyAction.Press));
+        action));
 
     #endregion
 }

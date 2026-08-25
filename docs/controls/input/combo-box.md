@@ -145,7 +145,9 @@ the ComboBox plane closes the drop-down and is consumed.
 The popup and the inner ListView never enter sequential traversal. Tab closes or
 commits the popup and then continues once through application traversal. The
 arrow keys (Up/Down/Left/Right), Home, End, Page Up, and Page Down move between
-items through the ListView's own keyboard handler.
+items through the ListView's own keyboard handler. Initial and repeated key-down
+input share that path, so holding a navigation key continues moving the current
+row and keeps it visible while the ComboBox retains focus.
 
 Printable Unicode scalars provide basic case-insensitive type-to-select. The
 search starts after the current item, wraps around once, and falls back to the

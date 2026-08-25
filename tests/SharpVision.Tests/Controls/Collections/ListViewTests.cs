@@ -823,6 +823,212 @@ public sealed class ListViewTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies direct selection uses the same active-row and minimal-visibility
+    /// transaction as keyboard navigation.</summary>
+    [Fact]
+    public void SelectedIndex_WhenTargetIsBeyondViewport_SynchronizesActiveRowAndBringsItIntoView()
+    {
+        // Arrange
+        var control = new UiListView
+        {
+            Items = Enumerable.Range(0, 8).Select(value => (object?) $"Item {value}").ToArray()
+        };
+        new LayoutEngine().Layout(control, new Size(8, 3));
+
+        // Act
+        control.SelectedIndex = 5;
+
+        // Assert
+        control.SelectedIndex.ShouldBe(5);
+        control.ActiveIndex.ShouldBe(5);
+        control.VerticalOffset.ShouldBe(3);
+    }
+
+    /// <summary>Verifies selection assigned before the first layout is revealed once the viewport
+    /// exists instead of losing the visibility request against zero-sized geometry.</summary>
+    [Fact]
+    public void SelectedIndex_WhenAssignedBeforeLayout_RevealsTargetAfterViewportCommits()
+    {
+        // Arrange
+        var control = new UiListView
+        {
+            Items = Enumerable.Range(0, 8).Select(value => (object?) $"Item {value}").ToArray(),
+            SelectedIndex = 5
+        };
+
+        // Act
+        new LayoutEngine().Layout(control, new Size(8, 3));
+
+        // Assert
+        control.SelectedIndex.ShouldBe(5);
+        control.ActiveIndex.ShouldBe(5);
+        control.VerticalOffset.ShouldBe(3);
+    }
+
+    /// <summary>Verifies the additive selection method uses the same active-row visibility
+    /// transaction as the exclusive SelectedIndex property.</summary>
+    [Fact]
+    public void SetSelected_WhenTargetIsBeyondViewport_SynchronizesActiveRowAndBringsItIntoView()
+    {
+        // Arrange
+        var control = new UiListView
+        {
+            Items = Enumerable.Range(0, 8).Select(value => (object?) $"Item {value}").ToArray(),
+            SelectionMode = ListSelectionMode.Multiple
+        };
+        new LayoutEngine().Layout(control, new Size(8, 3));
+
+        // Act
+        control.SetSelected(5, selected: true).ShouldBeTrue();
+
+        // Assert
+        control.SelectedIndex.ShouldBe(5);
+        control.ActiveIndex.ShouldBe(5);
+        control.VerticalOffset.ShouldBe(3);
+    }
+
+    /// <summary>Verifies a cancelled exclusive assignment to an already-selected member does not
+    /// move the active row or viewport independently of the rejected selection transaction.</summary>
+    [Fact]
+    public void SelectedIndex_WhenExclusiveAssignmentIsCancelled_PreservesActiveRowAndViewport()
+    {
+        var control = new UiListView
+        {
+            Items = Enumerable.Range(0, 8).Select(value => (object?) $"Item {value}").ToArray(),
+            SelectionMode = ListSelectionMode.Multiple
+        };
+        new LayoutEngine().Layout(control, new Size(8, 3));
+        _ = control.SetSelected(0, selected: true);
+        _ = control.SetSelected(5, selected: true);
+        control.SelectionChanging += (_, eventArgs) => eventArgs.Cancel = true;
+
+        control.SelectedIndex = 0;
+
+        control.SelectedItems.ShouldBe(new object?[] { "Item 0", "Item 5" });
+        control.ActiveIndex.ShouldBe(5);
+        control.VerticalOffset.ShouldBe(3);
+    }
+
+    /// <summary>Verifies a reentrant selection change wins the complete active-row and visibility
+    /// transaction instead of letting the outer assignment reveal its now-unselected target.</summary>
+    [Fact]
+    public void SelectedIndex_WhenSelectionChangedReenters_PreservesTheFinalSelectionTarget()
+    {
+        var control = new UiListView
+        {
+            Items = Enumerable.Range(0, 8).Select(value => (object?) $"Item {value}").ToArray()
+        };
+        new LayoutEngine().Layout(control, new Size(8, 3));
+        control.SelectionChanged += (_, _) =>
+        {
+            if (control.SelectedIndex != 6)
+            {
+                control.SelectedIndex = 6;
+            }
+        };
+
+        control.SelectedIndex = 5;
+
+        control.SelectedIndex.ShouldBe(6);
+        control.ActiveIndex.ShouldBe(6);
+        control.VerticalOffset.ShouldBe(4);
+    }
+
+    /// <summary>Verifies additive selection also refuses to activate a stale target removed by a
+    /// reentrant exclusive selection transaction.</summary>
+    [Fact]
+    public void SetSelected_WhenSelectionChangedReenters_PreservesTheFinalSelectionTarget()
+    {
+        var control = new UiListView
+        {
+            Items = Enumerable.Range(0, 8).Select(value => (object?) $"Item {value}").ToArray(),
+            SelectionMode = ListSelectionMode.Multiple
+        };
+        new LayoutEngine().Layout(control, new Size(8, 3));
+        control.SelectionChanged += (_, _) =>
+        {
+            if (control.SelectedIndex != 6)
+            {
+                control.SelectedIndex = 6;
+            }
+        };
+
+        _ = control.SetSelected(5, selected: true);
+
+        control.SelectedIndex.ShouldBe(6);
+        control.ActiveIndex.ShouldBe(6);
+        control.VerticalOffset.ShouldBe(4);
+    }
+
+    /// <summary>Verifies an outer clear cannot discard the deferred reveal established by a
+    /// reentrant pre-layout selection.</summary>
+    [Fact]
+    public void SelectedIndex_WhenClearReentersBeforeLayout_RevealsTheFinalSelectionTarget()
+    {
+        var control = new UiListView
+        {
+            Items = Enumerable.Range(0, 8).Select(value => (object?) $"Item {value}").ToArray(),
+            SelectedIndex = 5
+        };
+        control.SelectionChanged += (_, _) =>
+        {
+            if (control.SelectedIndex < 0)
+            {
+                control.SelectedIndex = 6;
+            }
+        };
+
+        control.SelectedIndex = -1;
+        new LayoutEngine().Layout(control, new Size(8, 3));
+
+        control.SelectedIndex.ShouldBe(6);
+        control.ActiveIndex.ShouldBe(6);
+        control.VerticalOffset.ShouldBe(4);
+    }
+
+    /// <summary>Verifies an outer additive selection cannot override the active target committed
+    /// by a reentrant additive selection merely because both targets remain selected.</summary>
+    [Fact]
+    public void SetSelected_WhenAdditiveSelectionReenters_PreservesTheReentrantActiveTarget()
+    {
+        var control = new UiListView
+        {
+            Items = Enumerable.Range(0, 8).Select(value => (object?) $"Item {value}").ToArray(),
+            SelectionMode = ListSelectionMode.Multiple
+        };
+        new LayoutEngine().Layout(control, new Size(8, 3));
+        control.SelectionChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.AddedIndexes.Span.Contains(5) && !control.SelectedItems.Contains("Item 6"))
+            {
+                _ = control.SetSelected(6, selected: true);
+            }
+        };
+
+        _ = control.SetSelected(5, selected: true);
+
+        control.SelectedItems.ShouldBe(new object?[] { "Item 5", "Item 6" });
+        control.ActiveIndex.ShouldBe(6);
+        control.VerticalOffset.ShouldBe(4);
+    }
+
+    /// <summary>Verifies an explicit repeated directional key is the same repeatable navigation
+    /// command as an initial key down.</summary>
+    [Fact]
+    public void Dispatch_WhenDirectionalKeyRepeats_ContinuesNavigation()
+    {
+        // Arrange
+        var control = Create("A", "B", "C");
+        control.SelectedIndex = 0;
+
+        // Act
+        Key(control, Code.Down, action: KeyAction.Repeat);
+
+        // Assert
+        control.SelectedIndex.ShouldBe(1);
+        control.ActiveIndex.ShouldBe(1);
+    }
+
     /// <summary>Verifies SelectedItem setter selects the matching item by value.</summary>
     [Fact]
     public void SelectedItem_WhenSetToValue_SelectsMatchingIndex()
@@ -865,7 +1071,11 @@ public sealed class ListViewTests
 
     private static string Join(ReadOnlyMemory<int> values) => string.Join(',', values.ToArray());
 
-    private static void Key(ControlBase target, Code code, Rune? character = null) =>
+    private static void Key(
+        ControlBase target,
+        Code code,
+        Rune? character = null,
+        KeyAction action = KeyAction.Press) =>
         _ = Router.Route(
             target,
             Events.Key,
@@ -874,7 +1084,7 @@ public sealed class ListViewTests
                 character,
                 nativeCode: 0,
                 Modifiers.None,
-                KeyAction.Press)));
+                action)));
 
     private static KeyEventArgs KeyWithModifiers(ControlBase target, Code code, Modifiers modifiers)
     {
@@ -1421,6 +1631,25 @@ public sealed class ListViewTests
 
         control.SelectedIndex.ShouldBe(2);
         control.Items[control.SelectedIndex].ShouldBe("B");
+    }
+
+    /// <summary>Verifies collection mutation remaps a deferred pre-layout reveal with its selected
+    /// item instead of discarding the visibility request at the old logical index.</summary>
+    [Fact]
+    public void InsertItem_WhenPreLayoutSelectionShifts_RevealsTheShiftedSelectionAfterLayout()
+    {
+        var control = new UiListView
+        {
+            Items = Enumerable.Range(0, 8).Select(value => (object?) $"Item {value}").ToArray(),
+            SelectedIndex = 5
+        };
+
+        control.InsertItem(0, "Inserted");
+        new LayoutEngine().Layout(control, new Size(8, 3));
+
+        control.SelectedIndex.ShouldBe(6);
+        control.ActiveIndex.ShouldBe(6);
+        control.VerticalOffset.ShouldBe(4);
     }
 
     /// <summary>Verifies inserting before the active index shifts it correctly.</summary>

@@ -910,6 +910,35 @@ public sealed class TextInputTests
         submitted.Text.ShouldBe("value");
     }
 
+    /// <summary>Verifies a held Enter cannot submit the same single-line value repeatedly.</summary>
+    [Fact]
+    public void Dispatch_WhenEnterRepeats_RaisesSubmittedOnlyForTheInitialKeyDown()
+    {
+        var control = new TextInput { Text = "value" };
+        var submissions = 0;
+        control.Submitted += (_, _) => submissions++;
+
+        Key(control, Code.Enter, Modifiers.None);
+        Key(control, Code.Enter, Modifiers.None, KeyAction.Repeat);
+
+        submissions.ShouldBe(1);
+    }
+
+    /// <summary>Verifies held shortcut reports do not consume multiple undo history entries.</summary>
+    [Fact]
+    public void Dispatch_WhenUndoShortcutRepeats_UndoesOnlyTheInitialKeyDown()
+    {
+        var control = new TextInput { AcceptsReturn = true };
+        Route(control, new TextEventArgs(new TerminalText(new Rune('a'))), Events.Text);
+        Key(control, Code.Enter, Modifiers.None);
+        Route(control, new TextEventArgs(new TerminalText(new Rune('b'))), Events.Text);
+
+        CharacterKey(control, new Rune('z'), Modifiers.Control);
+        CharacterKey(control, new Rune('z'), Modifiers.Control, KeyAction.Repeat);
+
+        control.Text.ShouldBe("a\n");
+    }
+
     /// <summary>Verifies password rendering masks every cluster and focused caret reaches the frame.</summary>
     [Fact]
     public void Render_WhenPasswordIsFocused_MasksSourceAndSetsVisibleCursor()
@@ -1690,7 +1719,11 @@ public sealed class TextInputTests
         _ = Should.Throw<ObjectDisposedException>(() => control.Redo());
     }
 
-    private static void Key(TextInput control, Code code, Modifiers modifiers) =>
+    private static void Key(
+        TextInput control,
+        Code code,
+        Modifiers modifiers,
+        KeyAction action = KeyAction.Press) =>
         Route(
             control,
             new KeyEventArgs(new Stroke(
@@ -1698,10 +1731,14 @@ public sealed class TextInputTests
                 character: null,
                 nativeCode: 0,
                 modifiers,
-                KeyAction.Press)),
+                action)),
             Events.Key);
 
-    private static void CharacterKey(TextInput control, Rune character, Modifiers modifiers) =>
+    private static void CharacterKey(
+        TextInput control,
+        Rune character,
+        Modifiers modifiers,
+        KeyAction action = KeyAction.Press) =>
         Route(
             control,
             new KeyEventArgs(new Stroke(
@@ -1709,7 +1746,7 @@ public sealed class TextInputTests
                 character,
                 nativeCode: 0,
                 modifiers,
-                KeyAction.Press)),
+                action)),
             Events.Key);
 
     private static void Route<T>(TextInput control, T eventArgs, Event<T> routedEvent)

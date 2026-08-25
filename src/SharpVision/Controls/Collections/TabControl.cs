@@ -240,12 +240,12 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             return;
         }
 
-        if (eventArgs is not KeyEventArgs { Stroke.Action: KeyAction.Press } key)
+        if (eventArgs is not KeyEventArgs { IsKeyDown: true } key)
         {
             return;
         }
 
-        eventArgs.IsHandled = key.Stroke.Code == Code.Delete
+        eventArgs.IsHandled = key.IsInitialKeyDown && key.Stroke.Code == Code.Delete
             ? _selectedIndex >= 0 && RequestClose(ItemAt(_selectedIndex))
             : TryNavigate(key.Stroke.Code);
     }

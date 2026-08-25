@@ -443,6 +443,36 @@ public sealed class DateTimeInputTests
         control.IsOpen.ShouldBeFalse();
     }
 
+    /// <summary>Verifies the repeat report from the Alt+Down opening gesture is consumed instead
+    /// of becoming calendar navigation after the popup opens.</summary>
+    [Fact]
+    public void Dispatch_WhenAltDownOpeningGestureRepeats_DoesNotMoveTheCalendarSelection()
+    {
+        using var control = new DateTimeInput
+        {
+            Value = new DateTime(2026, 7, 19, 14, 30, 0, DateTimeKind.Utc)
+        };
+
+        _ = Router.Route(control, Events.Key, Key(Code.Down, Modifiers.Alt));
+        _ = Router.Route(control, Events.Key, Key(Code.Down, Modifiers.Alt, KeyAction.Repeat));
+        _ = Router.Route(control, Events.Key, Key(Code.Enter));
+
+        _ = control.Value.ShouldNotBeNull();
+        control.Value.Value.Date.ShouldBe(new DateTime(2026, 7, 19));
+    }
+
+    /// <summary>Verifies a repeat report cannot originate the Alt+Down opening transition without
+    /// an initial key down accepted by the control.</summary>
+    [Fact]
+    public void Dispatch_WhenAltDownOpeningGestureIsRepeatOnly_DoesNotOpen()
+    {
+        using var control = new DateTimeInput();
+
+        _ = Router.Route(control, Events.Key, Key(Code.Down, Modifiers.Alt, KeyAction.Repeat));
+
+        control.IsOpen.ShouldBeFalse();
+    }
+
     /// <summary>Verifies selecting a date from the popup preserves the value's time-zone interpretation.</summary>
     [Fact]
     public void Popup_WhenDateIsSelected_PreservesDateTimeKind()
@@ -825,12 +855,15 @@ public sealed class DateTimeInputTests
         return result.ToString();
     }
 
-    private static KeyEventArgs Key(Code code, Modifiers modifiers = Modifiers.None) => new(new Stroke(
+    private static KeyEventArgs Key(
+        Code code,
+        Modifiers modifiers = Modifiers.None,
+        KeyAction action = KeyAction.Press) => new(new Stroke(
         code,
         default,
         nativeCode: 0,
         modifiers,
-        KeyAction.Press));
+        action));
 
     private static KeyEventArgs CharacterKey(char character) => new(new Stroke(
         Code.Character,

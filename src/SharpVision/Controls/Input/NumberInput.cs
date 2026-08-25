@@ -357,7 +357,7 @@ public sealed class NumberInput: InputBase
     {
         var stroke = eventArgs.Stroke;
 
-        if (stroke.Action is not (KeyAction.Press or KeyAction.Repeat))
+        if (!eventArgs.IsKeyDown)
         {
             return;
         }

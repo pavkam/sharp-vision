@@ -862,7 +862,7 @@ public abstract partial class ControlBase: ISelectableTextSource
             !EffectiveIsEnabled ||
             !EffectiveIsVisible ||
             !IsNearestTextSelectionOwner(eventArgs.OriginalSource) ||
-            eventArgs.Stroke.Action is not (KeyAction.Press or KeyAction.Repeat))
+            !eventArgs.IsKeyDown)
         {
             return;
         }

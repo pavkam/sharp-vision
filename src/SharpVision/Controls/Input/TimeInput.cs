@@ -326,7 +326,7 @@ public sealed class TimeInput: InputBase
     {
         var stroke = eventArgs.Stroke;
 
-        if (stroke.Action is not (KeyAction.Press or KeyAction.Repeat))
+        if (!eventArgs.IsKeyDown)
         {
             return;
         }

@@ -707,14 +707,14 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     {
         _ = sender;
 
-        if (eventArgs.Phase != RoutingPhase.Bubble || eventArgs.Stroke.Action != KeyAction.Press)
+        if (eventArgs.Phase != RoutingPhase.Bubble || !eventArgs.IsKeyDown)
         {
             return;
         }
 
         // Enter retries a failed load on the current item, or otherwise activates it. Space is a
         // selection/check action.
-        if (eventArgs.Stroke.Code == Code.Enter)
+        if (eventArgs.IsInitialKeyDown && eventArgs.Stroke.Code == Code.Enter)
         {
             if (_navigator.Current is TreeViewItem { ChildState: TreeViewChildState.LoadFailed } failed)
             {
@@ -731,7 +731,9 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
             return;
         }
 
-        if (eventArgs.Stroke.Code == Code.Character && eventArgs.Stroke.Character == new Rune(' '))
+        if (eventArgs.IsInitialKeyDown &&
+            eventArgs.Stroke.Code == Code.Character &&
+            eventArgs.Stroke.Character == new Rune(' '))
         {
             if (_navigator.Current is TreeViewItem { IsCheckable: true } checkable)
             {
@@ -749,7 +751,8 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
             }
         }
 
-        if (eventArgs.Stroke.Code == Code.Character &&
+        if (eventArgs.IsInitialKeyDown &&
+            eventArgs.Stroke.Code == Code.Character &&
             eventArgs.Stroke.Character == new Rune('a') &&
             (eventArgs.Stroke.Modifiers & Modifiers.Control) != 0 &&
             SelectionMode == TreeSelectionMode.Multiple)

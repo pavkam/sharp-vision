@@ -465,7 +465,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
     {
         var stroke = eventArgs.Stroke;
 
-        if (stroke.Action is not (KeyAction.Press or KeyAction.Repeat))
+        if (!eventArgs.IsKeyDown)
         {
             return;
         }
@@ -481,8 +481,9 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
             Code.End => MoveToWeekEdge(end: true),
             Code.PageUp => MoveByMonth(-1),
             Code.PageDown => MoveByMonth(1),
-            Code.Enter => stroke.Modifiers.IsActivationEligible() && ActivateDate(ActiveDate),
-            Code.Character when stroke.Character == new Rune(' ') =>
+            Code.Enter => eventArgs.IsInitialKeyDown &&
+                stroke.Modifiers.IsActivationEligible() && ActivateDate(ActiveDate),
+            Code.Character when eventArgs.IsInitialKeyDown && stroke.Character == new Rune(' ') =>
                 stroke.Modifiers.IsActivationEligible() && ActivateDate(ActiveDate),
             _ => false
         };

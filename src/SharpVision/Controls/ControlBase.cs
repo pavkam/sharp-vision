@@ -1861,10 +1861,10 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         if (!eventArgs.IsHandled &&
             eventArgs is KeyEventArgs
             {
+                IsInitialKeyDown: true,
                 Stroke:
                 {
                     Code: Code.Tab,
-                    Action: KeyAction.Press,
                     Modifiers: var modifiers
                 }
             } &&
@@ -2193,17 +2193,13 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
                 break;
             case KeyEventArgs key:
-                switch (key.Stroke.Action)
+                if (key.IsKeyDown)
                 {
-                    case KeyAction.Press:
-                    case KeyAction.Repeat:
-                        KeyDown?.Invoke(this, key);
-                        break;
-                    case KeyAction.Release:
-                        KeyUp?.Invoke(this, key);
-                        break;
-                    default:
-                        break;
+                    KeyDown?.Invoke(this, key);
+                }
+                else if (key.IsKeyUp)
+                {
+                    KeyUp?.Invoke(this, key);
                 }
 
                 break;

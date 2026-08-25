@@ -39,34 +39,34 @@ classDiagram
 
 ## API
 
-| Member                         | Type                                           | Default                  | Description                                                                                                                               |
-| ------------------------------ | ---------------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `Items`                        | `IReadOnlyList<object?>`                       | Empty snapshot           | Copies the borrowed source before realizing controls; rejects null.                                                                       |
-| `ItemTemplate`                 | `ItemTemplate`                                 | Invariant-culture `Text` | Detached-control factory; must return one unique, detached, undisposed, non-null control per item.                                        |
-| `RowHeight`                    | `int?`                                         | `null`                   | Fixed per-row cell height that opts into windowed (virtualized) realization; rejects zero or negative.                                    |
-| `SelectionMode`                | `ListSelectionMode`                            | `Single`                 | Allows no, one, or multiple selected indexes; rejects an undefined value.                                                                 |
-| `ItemInvocation`               | `ListItemInvocation`                           | `SingleClick`            | Chooses whether every pointer activation, or only a plain multi-click, raises `ItemInvoked`.                                              |
-| `SelectedIndex`                | `int`                                          | `-1`                     | Lowest selected index; setting replaces the exclusive selection. Rejects a value outside `Items`, or a non-negative value in `None` mode. |
-| `SelectedItem`                 | `object?`                                      | `null`                   | Lowest selected item by value; setting selects its first matching index.                                                                  |
-| `SelectedItems`                | `IReadOnlyList<object?>`                       | Empty                    | Read-only, stable, ascending-index view of the committed selection.                                                                       |
-| `ActiveIndex`                  | `int`                                          | `-1`                     | Read-only; the row keyboard navigation and invocation act on.                                                                             |
-| `ScrollBars`                   | `ScrollBars`                                   | `Vertical`               | Axes exposed by the composed overflow host.                                                                                               |
-| `ShowScrollBars`               | `ShowScrollBars`                               | `WhenNeeded`             | Visibility policy for the generated scrollbar.                                                                                            |
-| `ScrollBarStyle`               | `ScrollBarStyle?`                              | `null`                   | Local override for the generated scrollbar's presentation.                                                                                |
-| `ActualScrollBarStyle`         | `ScrollBarStyle`                               | Resolved                 | Read-only; the local, theme-owned, or code-owned generated-scrollbar style.                                                               |
-| `Extent`                       | `Size`                                         | Layout-dependent         | Read-only; the committed content extent of the composed scroll container.                                                                 |
-| `Viewport`                     | `Size`                                         | Layout-dependent         | Read-only; the committed visible extent of the composed scroll container.                                                                 |
-| `HorizontalOffset`             | `int`                                          | `0`                      | Composed horizontal scroll offset; rejects a value outside `Extent`.                                                                      |
-| `VerticalOffset`               | `int`                                          | `0`                      | Composed vertical scroll offset; rejects a value outside `Extent`.                                                                        |
-| `LineSize`                     | `int`                                          | `1`                      | Non-negative wheel-scroll increment forwarded to the composed viewport.                                                                   |
-| `PageOverlap`                  | `int`                                          | `0`                      | Non-negative cells of context retained between page commands.                                                                             |
-| `ScrollBy(x, y, cause)`        | `bool`                                         | —                        | Applies signed cell deltas with saturation and endpoint clamping.                                                                         |
-| `BringIntoView(index)`         | `bool`                                         | —                        | Scrolls minimally to expose the item at a valid index.                                                                                    |
-| `SetSelected(index, selected)` | `bool`                                         | —                        | Changes one index without replacing the rest of a `Multiple` selection.                                                                   |
-| `SelectionChanging`            | `EventHandler<ListSelectionChangingEventArgs>` | No subscribers           | Raised before a changed selection commits; cancellable.                                                                                   |
-| `SelectionChanged`             | `EventHandler<ListSelectionChangedEventArgs>`  | No subscribers           | Raised after a changed selection commits.                                                                                                 |
-| `ItemInvoked`                  | `EventHandler<ItemInvokedEventArgs>`           | No subscribers           | Raised after Enter or an eligible pointer invocation.                                                                                     |
-| `ScrollChanged`                | `EventHandler<ScrollChangedEventArgs>`         | No subscribers           | Forwards the composed scroll container's committed offset changes.                                                                        |
+| Member                         | Type                                           | Default                  | Description                                                                                                                                                                                 |
+| ------------------------------ | ---------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Items`                        | `IReadOnlyList<object?>`                       | Empty snapshot           | Copies the borrowed source before realizing controls; rejects null.                                                                                                                         |
+| `ItemTemplate`                 | `ItemTemplate`                                 | Invariant-culture `Text` | Detached-control factory; must return one unique, detached, undisposed, non-null control per item.                                                                                          |
+| `RowHeight`                    | `int?`                                         | `null`                   | Fixed per-row cell height that opts into windowed (virtualized) realization; rejects zero or negative.                                                                                      |
+| `SelectionMode`                | `ListSelectionMode`                            | `Single`                 | Allows no, one, or multiple selected indexes; rejects an undefined value.                                                                                                                   |
+| `ItemInvocation`               | `ListItemInvocation`                           | `SingleClick`            | Chooses whether every pointer activation, or only a plain multi-click, raises `ItemInvoked`.                                                                                                |
+| `SelectedIndex`                | `int`                                          | `-1`                     | Lowest selected index; setting replaces the exclusive selection, makes that row current, and minimally reveals it. Rejects a value outside `Items`, or a non-negative value in `None` mode. |
+| `SelectedItem`                 | `object?`                                      | `null`                   | Lowest selected item by value; setting selects its first matching index.                                                                                                                    |
+| `SelectedItems`                | `IReadOnlyList<object?>`                       | Empty                    | Read-only, stable, ascending-index view of the committed selection.                                                                                                                         |
+| `ActiveIndex`                  | `int`                                          | `-1`                     | Read-only; the row keyboard navigation and invocation act on.                                                                                                                               |
+| `ScrollBars`                   | `ScrollBars`                                   | `Vertical`               | Axes exposed by the composed overflow host.                                                                                                                                                 |
+| `ShowScrollBars`               | `ShowScrollBars`                               | `WhenNeeded`             | Visibility policy for the generated scrollbar.                                                                                                                                              |
+| `ScrollBarStyle`               | `ScrollBarStyle?`                              | `null`                   | Local override for the generated scrollbar's presentation.                                                                                                                                  |
+| `ActualScrollBarStyle`         | `ScrollBarStyle`                               | Resolved                 | Read-only; the local, theme-owned, or code-owned generated-scrollbar style.                                                                                                                 |
+| `Extent`                       | `Size`                                         | Layout-dependent         | Read-only; the committed content extent of the composed scroll container.                                                                                                                   |
+| `Viewport`                     | `Size`                                         | Layout-dependent         | Read-only; the committed visible extent of the composed scroll container.                                                                                                                   |
+| `HorizontalOffset`             | `int`                                          | `0`                      | Composed horizontal scroll offset; rejects a value outside `Extent`.                                                                                                                        |
+| `VerticalOffset`               | `int`                                          | `0`                      | Composed vertical scroll offset; rejects a value outside `Extent`.                                                                                                                          |
+| `LineSize`                     | `int`                                          | `1`                      | Non-negative wheel-scroll increment forwarded to the composed viewport.                                                                                                                     |
+| `PageOverlap`                  | `int`                                          | `0`                      | Non-negative cells of context retained between page commands.                                                                                                                               |
+| `ScrollBy(x, y, cause)`        | `bool`                                         | —                        | Applies signed cell deltas with saturation and endpoint clamping.                                                                                                                           |
+| `BringIntoView(index)`         | `bool`                                         | —                        | Scrolls minimally to expose the item at a valid index.                                                                                                                                      |
+| `SetSelected(index, selected)` | `bool`                                         | —                        | Changes one index without replacing the rest of a `Multiple` selection; selecting makes that row current and minimally reveals it.                                                          |
+| `SelectionChanging`            | `EventHandler<ListSelectionChangingEventArgs>` | No subscribers           | Raised before a changed selection commits; cancellable.                                                                                                                                     |
+| `SelectionChanged`             | `EventHandler<ListSelectionChangedEventArgs>`  | No subscribers           | Raised after a changed selection commits.                                                                                                                                                   |
+| `ItemInvoked`                  | `EventHandler<ItemInvokedEventArgs>`           | No subscribers           | Raised after Enter or an eligible pointer invocation.                                                                                                                                       |
+| `ScrollChanged`                | `EventHandler<ScrollChangedEventArgs>`         | No subscribers           | Forwards the composed scroll container's committed offset changes.                                                                                                                          |
 
 ## Behavior
 
@@ -114,6 +114,14 @@ cannot overwrite them. Mode or item-realization changes invalidate pending
 proposals even when the selected index set was already empty, and a reentrant
 change to `None` mode rejects any pending non-empty proposal.
 
+A successfully committed non-negative `SelectedIndex`, or a selected index
+committed through `SetSelected`, also becomes `ActiveIndex` and is minimally
+brought into the composed viewport. This is one selection invariant for direct
+assignment, `SelectedItem`, binding, additive selection, and list-backed
+controls. A selection assigned before first layout is revealed after the first
+non-empty viewport commits. Clearing, rejecting, or cancelling selection leaves
+the viewport unchanged.
+
 `ItemInvoked` reports the index, the borrowed item, and the `ActivationCause`
 for Enter or an eligible primary pointer invocation; every pointer activation
 still applies selection, and whether it also raises `ItemInvoked` depends on
@@ -140,18 +148,19 @@ Control or Shift only toggles or extends the selection and never raises
 | Shift click (`Multiple` mode)   | Selects the inclusive range from the stable anchor, skipping unavailable rows.                                                           |
 | Unmodified click                | Replaces the selection in `Single` and `Multiple` modes; `None` mode still permits navigation and invocation without selecting.          |
 
-In `Single` and `Multiple` modes, every arrow-key move also replaces the
-selection with the active row; when a `SelectionChanging` transaction is
-cancelled, both values stay unchanged. `None` mode moves only the active index.
-PageUp and PageDown accumulate each realized row's own height in eager mode
-rather than treating the viewport's cell height as an item count, so rows taller
-than one cell are never skipped; in windowed mode the identical distance becomes
-pure arithmetic against the fixed `RowHeight`, requiring no realized row. A
-navigation target outside the current window is realized (and scrolled into
-view) on demand, and every successful move uses the composed `BringIntoView`
-path. Keyboard Up and Down always move by exactly one item regardless of
-`RowHeight` or `LineSize`; an application wanting the wheel to step by whole
-rows in windowed mode can set `LineSize` to the same value as `RowHeight`.
+In `Single` and `Multiple` modes, every initial or repeated arrow-key move also
+replaces the selection with the active row; when a `SelectionChanging`
+transaction is cancelled, both values stay unchanged. `None` mode moves only the
+active index. PageUp and PageDown accumulate each realized row's own height in
+eager mode rather than treating the viewport's cell height as an item count, so
+rows taller than one cell are never skipped; in windowed mode the identical
+distance becomes pure arithmetic against the fixed `RowHeight`, requiring no
+realized row. A navigation target outside the current window is realized (and
+scrolled into view) on demand, and every successful move uses the composed
+`BringIntoView` path. Keyboard Up and Down always move by exactly one item
+regardless of `RowHeight` or `LineSize`; an application wanting the wheel to
+step by whole rows in windowed mode can set `LineSize` to the same value as
+`RowHeight`.
 
 Pointer hit testing targets the pressable item wrapper rather than letting its
 display child swallow the activation, so capture, focus loss, disable, detach,

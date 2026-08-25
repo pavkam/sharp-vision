@@ -661,15 +661,16 @@ public sealed class NavigationView: CompositeControlBase
     {
         _ = sender;
 
-        if (eventArgs.Phase != RoutingPhase.Bubble || eventArgs.Stroke.Action != KeyAction.Press)
+        if (eventArgs.Phase != RoutingPhase.Bubble || !eventArgs.IsKeyDown)
         {
             return;
         }
 
         int direction;
 
-        if (eventArgs.Stroke.Code == Code.Enter ||
-            (eventArgs.Stroke.Code == Code.Character && eventArgs.Stroke.Character == new Rune(' ')))
+        if (eventArgs.IsInitialKeyDown &&
+            (eventArgs.Stroke.Code == Code.Enter ||
+             (eventArgs.Stroke.Code == Code.Character && eventArgs.Stroke.Character == new Rune(' '))))
         {
             if (!eventArgs.Stroke.Modifiers.IsActivationEligible())
             {
