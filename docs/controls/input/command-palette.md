@@ -65,9 +65,9 @@ only when the failing request is still current.
    `ResultsChanged`, and opens the popup when results are non-empty.
 3. A cancelled or stale completion has no observable effect.
 4. Opening non-empty results selects the first available row and makes that same
-   row the list's current item while focus stays in the editor. Down and Up
-   press or repeat actions move selection and current item through the
-   `ListView` navigation transaction, which scrolls the result viewport
+   row the list's current item while focus stays in the editor. Initial and
+   repeated Down or Up key-down input moves selection and current item through
+   the `ListView` navigation transaction, which scrolls the result viewport
    minimally to keep the row visible. Enter invokes the selected current result;
    pointer activation uses the same `ItemInvoked` contract. Escape closes
    results.

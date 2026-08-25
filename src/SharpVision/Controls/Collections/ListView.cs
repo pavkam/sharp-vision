@@ -37,6 +37,7 @@ public sealed class ListView: ItemsControl
     // as optimistically eligible, since FindEligible already tolerates skipping into unavailable
     // rows without crashing.
     private readonly List<bool?> _availability = [];
+    private int _pendingSelectionReveal = -1;
     private int _selectionVersion;
     private int _selectionAnchor = -1;
 
@@ -238,7 +239,8 @@ public sealed class ListView: ItemsControl
         }
     } = ListItemInvocation.SingleClick;
 
-    /// <summary>Gets the lowest selected index, or sets one exclusive index; -1 clears selection.</summary>
+    /// <summary>Gets the lowest selected index, or sets, activates, and minimally reveals one
+    /// exclusive index; -1 clears selection without moving the viewport.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is less than -1 or outside Items.</exception>
     /// <exception cref="InvalidOperationException">A non-negative value is assigned in None mode.</exception>
     /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
@@ -266,12 +268,15 @@ public sealed class ListView: ItemsControl
             }
 
             HashSet<int> next = value < 0 ? [] : [value];
-            _ = ApplySelection(next, cancellable: true);
+            var accepted = ApplySelection(next, cancellable: true) || _selection.SetEquals(next);
 
-            if (value >= 0 && _selection.Contains(value))
+            if (accepted && _selection.SetEquals(next) && value >= 0)
             {
-                SetActiveIndex(value);
-                _selectionAnchor = value;
+                CommitProgrammaticSelectionTarget(value);
+            }
+            else if (accepted && _selection.SetEquals(next) && value < 0)
+            {
+                _pendingSelectionReveal = -1;
             }
         }
     }
@@ -466,7 +471,8 @@ public sealed class ListView: ItemsControl
     /// <summary>Gets the resolved generated-scrollbar style.</summary>
     public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
 
-    /// <summary>Changes one programmatic index without replacing other Multiple selections.</summary>
+    /// <summary>Changes one programmatic index without replacing other Multiple selections;
+    /// selecting also activates and minimally reveals that index.</summary>
     /// <param name="index">The contained item index.</param>
     /// <param name="selected">Whether the index should be selected.</param>
     /// <returns>True when a changed selection committed.</returns>
@@ -507,10 +513,9 @@ public sealed class ListView: ItemsControl
 
         var changed = ApplySelection(next, cancellable: true);
 
-        if (changed && selected)
+        if (changed && selected && _selection.SetEquals(next))
         {
-            SetActiveIndex(index);
-            _selectionAnchor = index;
+            CommitProgrammaticSelectionTarget(index);
         }
 
         return changed;
@@ -540,6 +545,7 @@ public sealed class ListView: ItemsControl
         // interactive scroll (first layout, resize, RowHeight/Items churn while off-window),
         // without ever mutating _stack.Children while _stack.IsArranging is still true.
         Rewindow();
+        RevealPendingSelection();
     }
 
     /// <inheritdoc/>
@@ -770,6 +776,7 @@ public sealed class ListView: ItemsControl
 
         _selection.Clear();
         _selection.UnionWith(normalized);
+        RemapPendingSelectionReveal(nextActiveIndex);
         ActiveIndex = nextActiveIndex;
         _selectionAnchor = nextAnchor;
         RefreshSelectedItems();
@@ -1556,18 +1563,24 @@ public sealed class ListView: ItemsControl
     {
         _ = sender;
 
-        if (eventArgs.Phase != RoutingPhase.Bubble || eventArgs.Stroke.Action != KeyAction.Press)
+        if (eventArgs.Phase != RoutingPhase.Bubble)
         {
             return;
         }
 
-        if (eventArgs.Stroke.Code == Code.Enter ||
-            (eventArgs.Stroke.Code == Code.Character && eventArgs.Stroke.Character == new Rune(' ')))
+        if (eventArgs.IsInitialKeyDown &&
+            (eventArgs.Stroke.Code == Code.Enter ||
+             (eventArgs.Stroke.Code == Code.Character && eventArgs.Stroke.Character == new Rune(' '))))
         {
             eventArgs.IsHandled = ActivateCurrent(
                 ActivationCause.Keyboard,
                 eventArgs.Stroke.Code,
                 eventArgs.Stroke.Modifiers);
+            return;
+        }
+
+        if (!eventArgs.IsKeyDown)
+        {
             return;
         }
 
@@ -1634,6 +1647,42 @@ public sealed class ListView: ItemsControl
         _ = _stack.BringIntoView(target);
     }
 
+    /// <summary>Synchronizes active, anchor, and deferred visibility state after a programmatic
+    /// selection target commits.</summary>
+    /// <param name="index">The committed selected index.</param>
+    private void CommitProgrammaticSelectionTarget(int index)
+    {
+        SetActiveIndex(index);
+        _selectionAnchor = index;
+        _pendingSelectionReveal = index;
+        RevealPendingSelection();
+    }
+
+    /// <summary>Completes a programmatic selection's visibility request once a non-empty viewport
+    /// exists; selection may be assigned before the first layout transaction.</summary>
+    private void RevealPendingSelection()
+    {
+        if (_pendingSelectionReveal < 0)
+        {
+            return;
+        }
+
+        if (_pendingSelectionReveal >= Items.Count || !_selection.Contains(_pendingSelectionReveal))
+        {
+            _pendingSelectionReveal = -1;
+            return;
+        }
+
+        if (Viewport.Height == 0)
+        {
+            return;
+        }
+
+        var index = _pendingSelectionReveal;
+        _pendingSelectionReveal = -1;
+        _ = BringIntoView(index);
+    }
+
     private ListItem? ResolveNavigation(int currentIndex, Code code)
     {
         var target = code is Code.Up or Code.Left
@@ -1680,6 +1729,8 @@ public sealed class ListView: ItemsControl
 
     private void SetActiveIndex(int value)
     {
+        RemapPendingSelectionReveal(value);
+
         if (ActiveIndex == value)
         {
             ItemAt(value)?.SetCurrentState(true);
@@ -1690,6 +1741,19 @@ public sealed class ListView: ItemsControl
         ActiveIndex = value;
         ItemAt(ActiveIndex)?.SetCurrentState(true);
         NotifyPropertyChanged(nameof(ActiveIndex), InvalidationImpact.Render);
+    }
+
+    /// <summary>Moves a deferred visibility request with its selected active item while collection
+    /// mutations remap logical indexes before the first non-empty layout.</summary>
+    /// <param name="activeIndex">The active index after the collection transaction.</param>
+    private void RemapPendingSelectionReveal(int activeIndex)
+    {
+        if (_pendingSelectionReveal >= 0)
+        {
+            _pendingSelectionReveal = activeIndex >= 0 && _selection.Contains(activeIndex)
+                ? activeIndex
+                : -1;
+        }
     }
 
     /// <summary>Gets the realized row for a logical index, or null when the index is unrealized -

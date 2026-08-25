@@ -103,7 +103,7 @@ internal sealed class PressBehavior
         var space = stroke.Code == Code.Character && stroke.Character == new Rune(' ');
         if (space)
         {
-            if (stroke.Action == KeyAction.Press && !_spaceHeld)
+            if (eventArgs.IsInitialKeyDown && !_spaceHeld)
             {
                 // An incidental modifier (Ctrl, Alt, Super, Hyper, Meta) rides the same key and
                 // must not silently commit an activation the user did not intend. Leave the
@@ -137,7 +137,7 @@ internal sealed class PressBehavior
                 return;
             }
 
-            if (stroke.Action == KeyAction.Release)
+            if (eventArgs.IsKeyUp)
             {
                 if (!_spaceHeld)
                 {
@@ -182,7 +182,7 @@ internal sealed class PressBehavior
             }
 
             eventArgs.IsHandled = true;
-            if (stroke.Action == KeyAction.Press)
+            if (eventArgs.IsInitialKeyDown)
             {
                 // The pressed-frame pulse must fully resolve before activation runs, since
                 // activation can synchronously dispose the control this behavior is composed

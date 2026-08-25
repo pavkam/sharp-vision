@@ -227,7 +227,7 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
         base.OnEvent(eventArgs);
         HandlePressActivation(eventArgs);
 
-        if (eventArgs.IsHandled || eventArgs is not KeyEventArgs { Stroke.Action: KeyAction.Press } key)
+        if (eventArgs.IsHandled || eventArgs is not KeyEventArgs { IsKeyDown: true } key)
         {
             return;
         }

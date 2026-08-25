@@ -1391,7 +1391,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
 
     private void Handle(KeyEventArgs eventArgs)
     {
-        if (eventArgs.Stroke.Action is not (KeyAction.Press or KeyAction.Repeat))
+        if (!eventArgs.IsKeyDown)
         {
             return;
         }
@@ -1404,14 +1404,22 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
 
             if (value == new Rune('z'))
             {
-                _ = Undo();
+                if (eventArgs.IsInitialKeyDown)
+                {
+                    _ = Undo();
+                }
+
                 eventArgs.IsHandled = true;
                 return;
             }
 
             if (value == new Rune('y'))
             {
-                _ = Redo();
+                if (eventArgs.IsInitialKeyDown)
+                {
+                    _ = Redo();
+                }
+
                 eventArgs.IsHandled = true;
                 return;
             }
@@ -1443,7 +1451,10 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
             }
             else
             {
-                Submitted?.Invoke(this, new SubmittedEventArgs(Text));
+                if (eventArgs.IsInitialKeyDown)
+                {
+                    Submitted?.Invoke(this, new SubmittedEventArgs(Text));
+                }
             }
 
             eventArgs.IsHandled = true;

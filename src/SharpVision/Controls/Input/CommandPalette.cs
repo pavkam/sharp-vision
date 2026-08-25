@@ -447,14 +447,14 @@ public sealed class CommandPalette: CompositeControlBase
             return;
         }
 
-        if (eventArgs.Stroke is { Action: KeyAction.Press, Code: Code.Escape })
+        if (eventArgs.IsInitialKeyDown && eventArgs.Stroke.Code == Code.Escape)
         {
             Close();
             eventArgs.IsHandled = true;
             return;
         }
 
-        if (eventArgs.Stroke is { Action: KeyAction.Press, Code: Code.Enter })
+        if (eventArgs.IsInitialKeyDown && eventArgs.Stroke.Code == Code.Enter)
         {
             eventArgs.IsHandled = _list.ActivateCurrent(
                 ActivationCause.Keyboard,
@@ -463,7 +463,7 @@ public sealed class CommandPalette: CompositeControlBase
             return;
         }
 
-        if (eventArgs.Stroke.Action is KeyAction.Press or KeyAction.Repeat &&
+        if (eventArgs.IsKeyDown &&
             eventArgs.Stroke.Code is Code.Up or Code.Down)
         {
             eventArgs.IsHandled = _list.MoveSelection(eventArgs.Stroke.Code);

@@ -483,7 +483,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
         _ = sender;
 
         if (eventArgs.Phase == RoutingPhase.Bubble &&
-            eventArgs.Stroke.Action == KeyAction.Press &&
+            eventArgs.IsInitialKeyDown &&
             eventArgs.Stroke.Code == Code.Escape)
         {
             eventArgs.IsHandled = Cancel();

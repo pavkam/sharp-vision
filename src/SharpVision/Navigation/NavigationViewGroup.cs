@@ -251,7 +251,8 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
 
         var keyboard = eventArgs is KeyEventArgs
         {
-            Stroke: { Action: KeyAction.Press, Code: Code.Enter, Modifiers: var enterModifiers }
+            IsInitialKeyDown: true,
+            Stroke: { Code: Code.Enter, Modifiers: var enterModifiers }
         } && enterModifiers.IsActivationEligible();
         var pointer = eventArgs is PointerEventArgs
         {

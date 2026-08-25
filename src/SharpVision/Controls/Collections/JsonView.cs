@@ -989,14 +989,16 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     {
         _ = sender;
 
-        if (eventArgs.Phase != RoutingPhase.Bubble || eventArgs.Stroke.Action != KeyAction.Press)
+        if (eventArgs.Phase != RoutingPhase.Bubble || !eventArgs.IsKeyDown)
         {
             return;
         }
 
         var code = eventArgs.Stroke.Code;
 
-        if (code == Code.Character && eventArgs.Stroke.Character == new Rune(' '))
+        if (eventArgs.IsInitialKeyDown &&
+            code == Code.Character &&
+            eventArgs.Stroke.Character == new Rune(' '))
         {
             code = Code.Enter;
         }
@@ -1033,7 +1035,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
         {
             eventArgs.IsHandled = NavigateRight();
         }
-        else if (code == Code.Enter)
+        else if (eventArgs.IsInitialKeyDown && code == Code.Enter)
         {
             eventArgs.IsHandled = eventArgs.Stroke.Modifiers.IsActivationEligible() && ToggleSelected();
         }

@@ -2829,6 +2829,10 @@ namespace SharpVision.Input
     public sealed class KeyEventArgs : SharpVision.Input.RoutedEventArgs
     {
         public KeyEventArgs(SharpVision.Terminal.Input.Stroke stroke) { }
+        public bool IsInitialKeyDown { get; }
+        public bool IsKeyDown { get; }
+        public bool IsKeyUp { get; }
+        public bool IsRepeat { get; }
         public SharpVision.Terminal.Input.Stroke Stroke { get; }
     }
     public readonly struct KeyGesture : System.IEquatable<SharpVision.Input.KeyGesture>

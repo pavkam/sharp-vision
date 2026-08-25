@@ -489,30 +489,39 @@ public sealed class DateTimeInput: InputBase
             return;
         }
 
-        if (IsOpen && eventArgs is KeyEventArgs { Stroke: { Action: KeyAction.Press } stroke })
+        if (IsOpen && eventArgs is KeyEventArgs openKey)
         {
-            if (stroke.Code == Code.Escape)
+            var stroke = openKey.Stroke;
+
+            if (openKey.IsInitialKeyDown && stroke.Code == Code.Escape)
             {
                 IsOpen = false;
                 eventArgs.IsHandled = true;
                 return;
             }
 
-            if (stroke.Code == Code.Tab)
+            if (openKey.IsInitialKeyDown && stroke.Code == Code.Tab)
             {
                 IsOpen = false;
                 return;
             }
 
-            if (stroke.Code is Code.Up or Code.Down or Code.Left or Code.Right
+            if (openKey.IsRepeat && stroke.Code == Code.Down && (stroke.Modifiers & Modifiers.Alt) != 0)
+            {
+                eventArgs.IsHandled = true;
+                return;
+            }
+
+            if (openKey.IsKeyDown && stroke.Code is Code.Up or Code.Down or Code.Left or Code.Right
                 or Code.PageUp or Code.PageDown or Code.Home or Code.End)
             {
                 _calendar.InvokeDefault(eventArgs);
                 return;
             }
 
-            if (stroke.Code == Code.Enter ||
-                (stroke.Code == Code.Character && stroke.Character == new Rune(' ')))
+            if (openKey.IsInitialKeyDown &&
+                (stroke.Code == Code.Enter ||
+                 (stroke.Code == Code.Character && stroke.Character == new Rune(' '))))
             {
                 _calendar.InvokeDefault(eventArgs);
                 return;
@@ -587,12 +596,14 @@ public sealed class DateTimeInput: InputBase
     {
         var stroke = eventArgs.Stroke;
 
-        if (stroke.Action is not (KeyAction.Press or KeyAction.Repeat))
+        if (!eventArgs.IsKeyDown)
         {
             return;
         }
 
-        if (stroke.Code == Code.Down && (stroke.Modifiers & Modifiers.Alt) != 0)
+        if (eventArgs.IsInitialKeyDown &&
+            stroke.Code == Code.Down &&
+            (stroke.Modifiers & Modifiers.Alt) != 0)
         {
             IsOpen = true;
             eventArgs.IsHandled = true;

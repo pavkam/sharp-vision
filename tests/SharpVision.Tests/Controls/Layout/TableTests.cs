@@ -1436,6 +1436,23 @@ public sealed class TableTests
         invoked.ShouldBe([row]);
     }
 
+    /// <summary>Verifies held Enter does not invoke the active row more than once.</summary>
+    [Fact]
+    public void Dispatch_WhenEnterRepeats_InvokesOnlyForTheInitialKeyDown()
+    {
+        var row = new TableRow([new ControlText("value")]);
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(row);
+        var invoked = new List<TableRow>();
+        table.RowInvoked += (_, args) => invoked.Add(args.Row);
+
+        _ = Key(table, Code.Enter);
+        _ = Key(table, Code.Enter, action: KeyAction.Repeat);
+
+        invoked.ShouldBe([row]);
+    }
+
     /// <summary>Verifies Shift-held Enter (a common terminal chord) still activates the current row.</summary>
     [Fact]
     public void Dispatch_WhenEnterHasShiftModifier_StillActivates()
@@ -1480,9 +1497,13 @@ public sealed class TableTests
             Events.Key,
             new KeyEventArgs(new Stroke(code, null, nativeCode: 0, Modifiers.None, KeyAction.Press)));
 
-    private static KeyEventArgs Key(Table table, Code code, Modifiers modifiers = Modifiers.None)
+    private static KeyEventArgs Key(
+        Table table,
+        Code code,
+        Modifiers modifiers = Modifiers.None,
+        KeyAction action = KeyAction.Press)
     {
-        var eventArgs = new KeyEventArgs(new Stroke(code, null, nativeCode: 0, modifiers, KeyAction.Press));
+        var eventArgs = new KeyEventArgs(new Stroke(code, null, nativeCode: 0, modifiers, action));
         _ = Router.Route(table, Events.Key, eventArgs);
         return eventArgs;
     }

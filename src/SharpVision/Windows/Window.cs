@@ -621,7 +621,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             return;
         }
 
-        if (eventArgs is KeyEventArgs { Stroke.Action: KeyAction.Press } key)
+        if (eventArgs is KeyEventArgs { IsInitialKeyDown: true } key)
         {
             var button = key.Stroke.Code == Code.Enter
                 ? FindButton(this, static candidate => candidate.IsDefault)

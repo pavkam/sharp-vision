@@ -448,11 +448,8 @@ public abstract class Dialog<TResult>: Window
 
         if (eventArgs is KeyEventArgs
             {
-                Stroke:
-                {
-                    Action: KeyAction.Press,
-                    Code: Code.Escape
-                }
+                IsInitialKeyDown: true,
+                Stroke.Code: Code.Escape
             } && IsModeless())
         {
             return;

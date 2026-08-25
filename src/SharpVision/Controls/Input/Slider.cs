@@ -274,7 +274,7 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
 
     private void Handle(KeyEventArgs eventArgs)
     {
-        if (eventArgs.Stroke.Action is not (KeyAction.Press or KeyAction.Repeat))
+        if (!eventArgs.IsKeyDown)
         {
             return;
         }

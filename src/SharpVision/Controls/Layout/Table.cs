@@ -1168,7 +1168,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     {
         _ = sender;
 
-        if (eventArgs.Phase != RoutingPhase.Preview || eventArgs.Stroke.Action is not (KeyAction.Press or KeyAction.Repeat))
+        if (eventArgs.Phase != RoutingPhase.Preview || !eventArgs.IsKeyDown)
         {
             return;
         }
@@ -1179,22 +1179,35 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         {
             if (stroke.Code == TerminalInput.Code.Enter)
             {
-                _ = CommitEdit();
+                if (eventArgs.IsInitialKeyDown)
+                {
+                    _ = CommitEdit();
+                }
+
                 eventArgs.IsHandled = true;
                 return;
             }
 
             if (stroke.Code == TerminalInput.Code.Escape)
             {
-                _ = CancelEdit();
+                if (eventArgs.IsInitialKeyDown)
+                {
+                    _ = CancelEdit();
+                }
+
                 eventArgs.IsHandled = true;
                 return;
             }
 
             if (stroke.Code == TerminalInput.Code.Tab)
             {
-                _ = CommitEdit();
-                eventArgs.IsHandled = MoveActive(0, (stroke.Modifiers & TerminalInput.Modifiers.Shift) != 0 ? -1 : 1);
+                if (eventArgs.IsInitialKeyDown)
+                {
+                    _ = CommitEdit();
+                    _ = MoveActive(0, (stroke.Modifiers & TerminalInput.Modifiers.Shift) != 0 ? -1 : 1);
+                }
+
+                eventArgs.IsHandled = true;
             }
 
             return;
@@ -1202,7 +1215,8 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
 
         if (stroke.Code == TerminalInput.Code.F2)
         {
-            eventArgs.IsHandled = ActiveCell is { } cell && BeginEdit(cell.Row, cell.ColumnIndex);
+            eventArgs.IsHandled = !eventArgs.IsInitialKeyDown ||
+                (ActiveCell is { } cell && BeginEdit(cell.Row, cell.ColumnIndex));
             return;
         }
 
@@ -1211,14 +1225,19 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             (stroke.Modifiers & TerminalInput.Modifiers.Control) != 0 &&
             Rune.ToLowerInvariant(character) == new Rune('a'))
         {
-            SelectAll();
+            if (eventArgs.IsInitialKeyDown)
+            {
+                SelectAll();
+            }
+
             eventArgs.IsHandled = true;
             return;
         }
 
         if (IsProgressive)
         {
-            eventArgs.IsHandled = HandleProgressiveKey(stroke.Code, stroke.Modifiers);
+            eventArgs.IsHandled = (stroke.Code == TerminalInput.Code.Enter && !eventArgs.IsInitialKeyDown) ||
+                HandleProgressiveKey(stroke.Code, stroke.Modifiers);
             return;
         }
 
@@ -1228,7 +1247,8 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         {
             if (stroke.Code == TerminalInput.Code.Enter)
             {
-                eventArgs.IsHandled = stroke.Modifiers.IsActivationEligible() && ActivateCurrent();
+                eventArgs.IsHandled = !eventArgs.IsInitialKeyDown ||
+                    (stroke.Modifiers.IsActivationEligible() && ActivateCurrent());
             }
 
             return;

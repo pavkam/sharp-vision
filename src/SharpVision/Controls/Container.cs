@@ -714,7 +714,7 @@ public abstract class Container: ControlBase
 
     private void Handle(KeyEventArgs eventArgs)
     {
-        if (eventArgs.Stroke.Action is not (KeyAction.Press or KeyAction.Repeat))
+        if (!eventArgs.IsKeyDown)
         {
             return;
         }

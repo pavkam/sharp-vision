@@ -223,18 +223,20 @@ public sealed class Menu: ItemsControl
             SelectPointerTarget(pointer);
         }
 
-        if (eventArgs.IsHandled || eventArgs is not KeyEventArgs { Stroke.Action: KeyAction.Press } key)
+        if (eventArgs.IsHandled || eventArgs is not KeyEventArgs key)
         {
-            if (!eventArgs.IsHandled && eventArgs is KeyEventArgs releasedKey)
-            {
-                HandleSpace(releasedKey);
-            }
+            return;
+        }
 
+        if (!key.IsKeyDown)
+        {
+            HandleSpace(key);
             return;
         }
 
         var sessionOwner = FindSessionOwner();
-        if (key.Stroke.Code == Code.Escape &&
+        if (key.IsInitialKeyDown &&
+            key.Stroke.Code == Code.Escape &&
             ReferenceEquals(sessionOwner, this) &&
             sessionOwner.IsSessionArmed)
         {
@@ -264,7 +266,10 @@ public sealed class Menu: ItemsControl
             return;
         }
 
-        if (key.Stroke.Code == Code.Enter && key.Stroke.Modifiers.IsActivationEligible() && ActivateSelected())
+        if (key.IsInitialKeyDown &&
+            key.Stroke.Code == Code.Enter &&
+            key.Stroke.Modifiers.IsActivationEligible() &&
+            ActivateSelected())
         {
             eventArgs.IsHandled = true;
             return;
@@ -1453,7 +1458,7 @@ public sealed class Menu: ItemsControl
             return;
         }
 
-        if (stroke.Action == KeyAction.Press && _spacePressedItem is null)
+        if (eventArgs.IsInitialKeyDown && _spacePressedItem is null)
         {
             // An incidental modifier must not silently arm the pressed frame - move the gate
             // ahead of IsHandled so a modified Space still bubbles for a shortcut to see.
@@ -1476,7 +1481,7 @@ public sealed class Menu: ItemsControl
             return;
         }
 
-        if (stroke.Action == KeyAction.Release)
+        if (eventArgs.IsKeyUp)
         {
             if (_spacePressedItem is not { } held)
             {

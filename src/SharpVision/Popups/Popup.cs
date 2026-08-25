@@ -537,7 +537,8 @@ public class Popup: FloatingSurfaceBase
 
         if (IsOpen && CloseOnEscape && eventArgs is KeyEventArgs
             {
-                Stroke.Code: Code.Escape, Stroke.Action: KeyAction.Press
+                IsInitialKeyDown: true,
+                Stroke.Code: Code.Escape
             })
         {
             IsOpen = false;

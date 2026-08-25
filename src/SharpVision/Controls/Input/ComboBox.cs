@@ -403,40 +403,42 @@ public sealed class ComboBox: InputBase
             return;
         }
 
-        if (IsOpen && eventArgs is KeyEventArgs { Stroke: { Action: KeyAction.Press } stroke })
+        if (IsOpen && eventArgs is KeyEventArgs keyEventArgs)
         {
-            if (stroke.Code == Code.Escape)
+            var stroke = keyEventArgs.Stroke;
+
+            if (keyEventArgs.IsInitialKeyDown && stroke.Code == Code.Escape)
             {
                 IsOpen = false;
                 eventArgs.IsHandled = true;
                 return;
             }
 
-            if (stroke.Code == Code.Enter)
+            if (keyEventArgs.IsInitialKeyDown && stroke.Code == Code.Enter)
             {
                 eventArgs.IsHandled = _list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, stroke.Modifiers);
                 return;
             }
 
-            if (stroke.Code is Code.Delete or Code.Backspace)
+            if (keyEventArgs.IsKeyDown && stroke.Code is Code.Delete or Code.Backspace)
             {
                 eventArgs.IsHandled = ClearSelection();
                 return;
             }
 
-            if (stroke.Code == Code.Character && stroke.Character is { } character)
+            if (keyEventArgs.IsKeyDown && stroke.Code == Code.Character && stroke.Character is { } character)
             {
                 eventArgs.IsHandled = SelectTypeAhead(character);
                 return;
             }
 
-            if (stroke.Code != Code.Tab && _list.MoveCurrent(stroke.Code))
+            if (keyEventArgs.IsKeyDown && stroke.Code != Code.Tab && _list.MoveCurrent(stroke.Code))
             {
                 eventArgs.IsHandled = true;
                 return;
             }
 
-            if (stroke.Code == Code.Tab)
+            if (keyEventArgs.IsInitialKeyDown && stroke.Code == Code.Tab)
             {
                 IsOpen = false;
                 return;
@@ -445,8 +447,8 @@ public sealed class ComboBox: InputBase
 
         HandlePressActivation(eventArgs);
 
-        if (!eventArgs.IsHandled && eventArgs is KeyEventArgs { Stroke: { Action: KeyAction.Press } key }
-            && key.Code is Code.Delete or Code.Backspace)
+        if (!eventArgs.IsHandled && eventArgs is KeyEventArgs { IsKeyDown: true } keyEvent
+            && keyEvent.Stroke.Code is Code.Delete or Code.Backspace)
         {
             eventArgs.IsHandled = ClearSelection();
         }

@@ -156,7 +156,7 @@ internal sealed class ListItem: ContentControl
     /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
-        if (eventArgs is KeyEventArgs { Stroke.Action: KeyAction.Press } key)
+        if (eventArgs is KeyEventArgs { IsInitialKeyDown: true } key)
         {
             LastModifiers = key.Stroke.Modifiers;
             LastKey = key.Stroke.Code;

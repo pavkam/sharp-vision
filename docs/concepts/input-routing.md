@@ -24,6 +24,16 @@ actually reach text emission; a byte a pending SS3 or X10 mouse continuation
 consumes instead never arms it, so the Escape itself is recovered rather than
 leaving Alt attached to an unrelated later keystroke.
 
+`SharpVision.Input.KeyEventArgs` is the protocol-independent routed-control
+boundary over a decoded `Stroke`. `IsInitialKeyDown` identifies the start of a
+hold, `IsKeyDown` includes both initial and repeated down input, `IsRepeat`
+identifies a repeated down event, and `IsKeyUp` identifies the end of a hold.
+Controls use inclusive key down for repeatable navigation, scrolling, and
+editing, while activation, dismissal, access keys, and shortcuts use initial key
+down. A legacy terminal that reports a held key as repeated presses and an
+enhanced terminal that distinguishes repeat actions therefore drive the same
+control commands without exposing protocol identity to the control layer.
+
 The decoder retains at most three incomplete UTF-8 bytes and replaces malformed
 subsequences minimally with U+FFFD. It maps Enter, Tab, Backspace, cursor keys,
 Home/End, Insert/Delete, Page Up/Down, Begin, F1-F63, Shift-Tab, described CSI
