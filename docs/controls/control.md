@@ -103,18 +103,20 @@ owning role explicitly exposes them through the selectable-child seam.
 
 A primary click collapses the range without stealing the child's click. Moving
 one cell with the primary button held crosses the shared drag threshold,
-transfers capture to the nearest enabled selection owner, and extends across
-child boundaries. Ctrl+A selects all; Shift+Left/Right moves by grapheme;
-Shift+Up/Down preserves a visual column; Shift+Home/End uses the current visual
-row; and Shift+Page Up/Page Down uses visible height and container page overlap.
-Selection is painted as a final subtree adornment with `SelectedText` on
-`SelectedControl`, so borders and non-semantic chrome remain untouched.
+transfers capture to the resolved enabled selection owner, and extends across
+child boundaries. Ctrl+A selects all; Left/Right moves by grapheme or by word
+with Ctrl; Up/Down preserves a visual column; Home/End uses the current visual
+row; and Page Up/Page Down uses visible height and page overlap. Shift extends
+any navigation command from the established anchor. Selection is painted as a
+final subtree adornment with `SelectedText` on `SelectedControl`, so borders and
+non-semantic chrome remain untouched.
 
 Replacing a contributing source, even with equal text, changes projection
 identity and clears a stale range once. Reflow and clipping that preserve the
-ordered sources and text preserve the range. Nested enabled owners arbitrate by
-proximity to the routed original source; an outer owner never competes for the
-same gesture.
+ordered sources and text preserve the range. Nested enabled owners normally
+arbitrate by proximity to the routed original source. An authoritative aggregate
+projection owns descendant drags when its range must cross child boundaries,
+while stationary presses remain ordinary child clicks.
 
 Application Ctrl+C walks from focus toward the active route boundary, preferring
 the nearest enabled text-selection owner before another `IClipboardCopySource`.

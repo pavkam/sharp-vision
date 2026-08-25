@@ -5,11 +5,13 @@
         public CodeView() { }
         public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
         public SharpVision.Controls.SyntaxHighlighting.CodeViewStyle ActualStyle { get; }
+        protected override bool CaptureTextSelectionOnPress { get; }
         public SharpVision.SyntaxHighlighting.SyntaxDefinitionCatalog Catalog { get; set; }
         public System.Action<string>? ClipboardWriter { get; set; }
         public string Code { get; set; }
         public SharpVision.Terminal.Geometry.Size Extent { get; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxFoldRange> FoldRanges { get; }
+        protected override bool HasAuthoritativeTextSelectionProjection { get; }
         public int HorizontalOffset { get; set; }
         public bool IsFoldingEnabled { get; set; }
         public string? Language { get; set; }
@@ -22,36 +24,32 @@
         public SharpVision.Text.Selection Selection { get; }
         public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
         public SharpVision.Controls.SyntaxHighlighting.CodeViewStyle? Style { get; set; }
-        public override SharpVision.Text.Selection TextSelection { get; }
-        protected override bool UsesTextSelectionController { get; }
         public int VerticalOffset { get; set; }
         public SharpVision.Terminal.Geometry.Size Viewport { get; }
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         public event System.EventHandler<System.EventArgs>? SelectionChanged;
+        protected override SharpVision.Terminal.Rendering.CellStyle ApplyTextSelectionStyle(SharpVision.Terminal.Rendering.CellStyle current) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public void ClearSelection() { }
-        public override void ClearTextSelection() { }
         public void CollapseAll() { }
-        public override string CopySelectedText() { }
         public string CopySelection() { }
         public void ExpandAll() { }
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
+        protected override SharpVision.Terminal.Geometry.Rect GetTextSelectionAdornmentBounds(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override SharpVision.Text.SelectableTextSnapshot GetTextSelectionProjection() { }
+        protected override int HitTestTextSelectionCore(SharpVision.Terminal.Geometry.Point cells) { }
         public bool IsFoldStart(int line) { }
         public bool IsFolded(int line) { }
-        protected override void OnAttached() { }
-        protected override void OnDetached() { }
-        protected override void OnDisposing() { }
+        protected override bool IsTextSelectionPointerTarget(SharpVision.Controls.ControlBase? originalSource, SharpVision.Terminal.Geometry.Point cells) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
-        protected override void OnTextSelectionEnabledChanged(bool enabled) { }
+        protected override void OnTextSelectionCommitted(SharpVision.Input.TextSelectionChangedEventArgs eventArgs) { }
         public bool RevealSelectableTextOffset(int offset) { }
         public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
         public bool ScrollSelectableTextViewport(int horizontal, int vertical) { }
         public void SelectAll() { }
-        public override void SelectAllText() { }
         public bool SetFolded(int line, bool folded) { }
         public void SetSelection(SharpVision.Text.Selection selection) { }
-        public override void SetTextSelection(SharpVision.Text.Selection selection) { }
+        protected override int TextSelectionPageDistance() { }
         public bool ToggleFold(int line) { }
     }
     public sealed class CodeViewContextMenu : SharpVision.Menus.ContextMenu

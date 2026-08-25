@@ -11,7 +11,6 @@ using SharpVision.Scrolling;
 using SharpVision.SyntaxHighlighting;
 using SharpVision.Terminal.Input;
 
-using KeyCode = Code;
 using LayoutStack = Layout.Stack;
 using TextEdit = Edit;
 using TextSelection = Selection;
@@ -28,7 +27,7 @@ using TextSelection = Selection;
 /// </para>
 /// <para>
 /// <see cref="Code"/> is tokenized with its line endings normalized to <c>\n</c>; every offset
-/// this control exposes (<see cref="Selection"/>, <see cref="SelectedText"/>) is relative to that
+/// this control exposes (<see cref="Selection"/>, <see cref="ControlBase.SelectedText"/>) is relative to that
 /// normalized text, not to whatever line-ending bytes the assigned string happened to contain.
 /// </para>
 /// <para>
@@ -57,11 +56,6 @@ public sealed class CodeView:
 {
     private const int _foldGutterWidth = 2;
 
-    /// <summary>The interval between auto-scroll steps while a captured drag holds past the
-    /// content's edge. Matches the cadence a moving pointer would otherwise supply through its own
-    /// motion events, so a held-still drag makes the same steady forward progress.</summary>
-    private static readonly TimeSpan _autoScrollInterval = TimeSpan.FromMilliseconds(60);
-
     private readonly CodeViewContent _content;
     private readonly LayoutStack _stack;
     private readonly StyleSlot<CodeViewStyle> _style;
@@ -74,11 +68,6 @@ public sealed class CodeView:
     private readonly HashSet<int> _foldedStartLines = [];
     private Dictionary<int, SyntaxFoldRange> _foldStartRanges = [];
     private int _extentWidth;
-    private int _pointerAnchor;
-    private bool _pointerSelecting;
-    private Point _lastDragCells;
-    private DispatcherTimer? _autoScrollTimer;
-    private int? _desiredColumn;
     private int? _pendingRevealOffset;
     private List<int>? _pendingRevealProjection;
     private bool _pendingRevealPosted;
@@ -108,7 +97,6 @@ public sealed class CodeView:
         TabNavigation = TabNavigation.None;
         ContextMenu = new CodeViewContextMenu(this);
         RebuildProjection();
-        _ = AddHandler(Events.Key, OnKeyRouted);
         IsTextSelectionEnabled = true;
     }
 
@@ -496,13 +484,12 @@ public sealed class CodeView:
     }
 
     /// <summary>Gets the current directional selection over the normalized <see cref="Code"/> text.</summary>
-    public TextSelection Selection { get; private set; }
+    public TextSelection Selection => CommittedTextSelection;
 
     /// <inheritdoc/>
-    public override TextSelection TextSelection => Selection;
-
-    /// <summary>Gets the selected substring of the normalized <see cref="Code"/> text, or an empty string.</summary>
-    public override string SelectedText => Selection.IsEmpty ? string.Empty : NormalizedCode.Substring(Selection.Start, Selection.Length);
+    public override string SelectedText => CommittedTextSelection.IsEmpty
+        ? string.Empty
+        : NormalizedCode.Substring(CommittedTextSelection.Start, CommittedTextSelection.Length);
 
     /// <summary>Raised after the committed selection changes.</summary>
     public event EventHandler<EventArgs>? SelectionChanged;
@@ -513,51 +500,17 @@ public sealed class CodeView:
     /// <exception cref="ArgumentException">An endpoint splits a grapheme cluster.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public void SetSelection(TextSelection selection)
-    {
-        VerifyMutable();
-        TextEdit.Validate(NormalizedCode, selection);
-        CommitSelection(selection, resetDesiredColumn: true);
-    }
-
-    /// <inheritdoc/>
-    public override void SetTextSelection(TextSelection selection)
-    {
-        VerifyTextSelectionEnabled();
-        SetSelection(selection);
-    }
+    public void SetSelection(TextSelection selection) => SetTextSelection(selection);
 
     /// <summary>Selects the entire normalized <see cref="Code"/> text.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public void SelectAll()
-    {
-        VerifyMutable();
-        CommitSelection(new TextSelection(0, NormalizedCode.Length), resetDesiredColumn: true);
-    }
-
-    /// <inheritdoc/>
-    public override void SelectAllText()
-    {
-        VerifyTextSelectionEnabled();
-        SelectAll();
-    }
+    public void SelectAll() => SelectAllText();
 
     /// <summary>Collapses the selection to an empty range at its current caret.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public void ClearSelection()
-    {
-        VerifyMutable();
-        CommitSelection(new TextSelection(Selection.Caret, Selection.Caret), resetDesiredColumn: true);
-    }
-
-    /// <inheritdoc/>
-    public override void ClearTextSelection()
-    {
-        VerifyTextSelectionEnabled();
-        ClearSelection();
-    }
+    public void ClearSelection() => ClearTextSelection();
 
     /// <summary>
     /// Returns the currently selected text without touching any clipboard. Mirrors
@@ -567,22 +520,6 @@ public sealed class CodeView:
     /// <returns>The selected substring, or an empty string when nothing is selected.</returns>
     [Pure]
     public string CopySelection() => SelectedText;
-
-    /// <inheritdoc/>
-    [Pure]
-    public override string CopySelectedText() => CopySelection();
-
-    /// <inheritdoc/>
-    protected override bool UsesTextSelectionController => false;
-
-    /// <inheritdoc/>
-    protected override void OnTextSelectionEnabledChanged(bool enabled)
-    {
-        if (!enabled && Selection != default)
-        {
-            ClearSelection();
-        }
-    }
 
     /// <summary>
     /// Gets or sets the delegate <see cref="RequestClipboardCopy"/> forwards <see cref="CopySelection"/>'s
@@ -606,29 +543,85 @@ public sealed class CodeView:
     /// <summary>Invokes <see cref="ClipboardWriter"/>, if any, with the current <see cref="CopySelection"/> result.</summary>
     internal void RequestClipboardCopy() => ClipboardWriter?.Invoke(CopySelection());
 
-    private void CommitSelection(TextSelection selection, bool resetDesiredColumn)
+    /// <inheritdoc/>
+    protected override void OnTextSelectionCommitted(TextSelectionChangedEventArgs eventArgs)
     {
-        Debug.Assert(
-            selection.Start >= 0 && selection.End <= NormalizedCode.Length,
-            "Every call site (SetSelection via TextEdit.Validate, or a computed offset already clamped to a line's own bounds) provides endpoints within the normalized text.");
-
-        if (Selection == selection)
-        {
-            return;
-        }
-
-        var previous = Selection;
-        Selection = selection;
-
-        if (resetDesiredColumn)
-        {
-            _desiredColumn = null;
-        }
-
-        _content.RequestInvalidate(InvalidationImpact.Render);
+        _ = eventArgs;
         SelectionChanged?.Invoke(this, EventArgs.Empty);
-        PublishTextSelectionChanged(previous, selection);
     }
+
+    /// <inheritdoc/>
+    protected override TerminalStyle ApplyTextSelectionStyle(TerminalStyle current) => new(
+        ResolveColor(ActualStyle.SelectedTextColor, Theme),
+        ResolveColor(ActualStyle.SelectedBackground, Theme),
+        current.Attributes,
+        current.Hyperlink,
+        current.Underline,
+        current.UnderlineColor);
+
+    /// <inheritdoc/>
+    protected override bool HasAuthoritativeTextSelectionProjection => true;
+
+    /// <inheritdoc/>
+    protected override bool CaptureTextSelectionOnPress => true;
+
+    /// <inheritdoc/>
+    protected override bool IsTextSelectionPointerTarget(ControlBase? originalSource, Point cells)
+    {
+        _ = originalSource;
+        var viewport = SelectableTextViewportAbsolute();
+        return _content.Bounds.Contains(cells) &&
+               cells.X >= viewport.X + GutterWidth;
+    }
+
+    /// <inheritdoc/>
+    protected override int HitTestTextSelectionCore(Point cells)
+    {
+        var viewport = SelectableTextViewportAbsolute();
+        var y = viewport.Height <= 0
+            ? viewport.Y
+            : Math.Clamp(cells.Y, viewport.Y, viewport.Bottom - 1);
+        return OffsetAt(new Point(cells.X, y)) ?? 0;
+    }
+
+    /// <inheritdoc/>
+    protected override int TextSelectionPageDistance() => Math.Max(1, Viewport.Height - PageOverlap);
+
+    /// <inheritdoc/>
+    protected override SelectableTextSnapshot GetTextSelectionProjection()
+    {
+        var glyphs = new List<SelectableTextGlyph>();
+        var viewport = SelectableTextViewportAbsolute();
+        var originX = viewport.X - Bounds.X + GutterWidth;
+        var originY = viewport.Y - Bounds.Y;
+
+        for (var visibleIndex = 0; visibleIndex < _visibleLines.Count; visibleIndex++)
+        {
+            var sourceLine = _visibleLines[visibleIndex];
+            var text = _lines[sourceLine];
+            var lineStart = LineStartOffset(sourceLine);
+            var x = 0;
+
+            foreach (var grapheme in Graphemes.Enumerate(text))
+            {
+                var cluster = text.AsSpan(grapheme.Offset, grapheme.Length);
+                var width = CodeClusterWidth(cluster);
+                glyphs.Add(new SelectableTextGlyph(
+                    new TextSelection(lineStart + grapheme.Offset, lineStart + grapheme.Offset + grapheme.Length),
+                    new Rect(originX + x, originY + visibleIndex, width, 1)));
+                x += width;
+            }
+        }
+
+        return new SelectableTextSnapshot(NormalizedCode, glyphs, isAuthoritative: true);
+    }
+
+    /// <inheritdoc/>
+    protected override Rect GetTextSelectionAdornmentBounds(Rect bounds) => new(
+        Bounds.X + bounds.X - HorizontalOffset,
+        Bounds.Y + bounds.Y - VerticalOffset,
+        bounds.Width,
+        bounds.Height);
 
     #endregion
 
@@ -842,42 +835,6 @@ public sealed class CodeView:
             DrawSlice(canvas, " (...)", indicatorStyle, x, y, ref column, offset, BackgroundMode.Transparent);
         }
 
-        DrawSelectionOverlay(canvas, sourceLine, text, style, x, y, offset);
-    }
-
-    private void DrawSelectionOverlay(TerminalCanvas canvas, int sourceLine, string text, CodeViewStyle style, int x, int y, int horizontalOffset)
-    {
-        if (Selection.IsEmpty)
-        {
-            return;
-        }
-
-        var lineStart = _lineStartOffsets[sourceLine];
-        var lineEnd = LineEndOffset(sourceLine);
-        var selectionStart = Math.Max(Selection.Start, lineStart);
-        var selectionEnd = Math.Min(Selection.End, lineEnd);
-
-        if (selectionStart >= selectionEnd)
-        {
-            return;
-        }
-
-        var overlayStyle = WithColors(
-            ResolvedStyle,
-            ResolveColor(style.SelectedTextColor, Theme),
-            ResolveColor(style.SelectedBackground, Theme));
-        var column = MeasureCodeCellsToOffset(sourceLine, selectionStart - lineStart);
-        var slice = text.AsSpan(selectionStart - lineStart, selectionEnd - selectionStart);
-        DrawSlice(
-            canvas,
-            slice,
-            overlayStyle,
-            x,
-            y,
-            ref column,
-            horizontalOffset,
-            BackgroundMode.Opaque,
-            startColumn: column);
     }
 
     private void DrawSlice(
@@ -934,121 +891,9 @@ public sealed class CodeView:
         _ = canvas.Draw(buffer, new Point(drawX, y), style, background: background);
     }
 
-    [Pure]
-    private static TerminalStyle WithColors(TerminalStyle source, Color foreground, Color background) => new(
-        foreground,
-        background,
-        source.Attributes,
-        source.Hyperlink,
-        source.Underline,
-        source.UnderlineColor);
-
     #endregion
 
     #region Keyboard input
-
-    private void OnKeyRouted(object? sender, KeyEventArgs eventArgs)
-    {
-        _ = sender;
-
-        if (eventArgs.Phase != RoutingPhase.Bubble || eventArgs.Stroke.Action != KeyAction.Press)
-        {
-            return;
-        }
-
-        var stroke = eventArgs.Stroke;
-        var extend = (stroke.Modifiers & Modifiers.Shift) != 0;
-
-        if (stroke.Code == KeyCode.Character && (stroke.Modifiers & Modifiers.Control) != 0)
-        {
-            if (stroke.Character == new Rune('a') || stroke.Character == new Rune('A'))
-            {
-                SelectAll();
-                eventArgs.IsHandled = true;
-                return;
-            }
-
-            if (stroke.Character == new Rune('c') || stroke.Character == new Rune('C'))
-            {
-                RequestClipboardCopy();
-                eventArgs.IsHandled = true;
-                return;
-            }
-        }
-
-        var code = stroke.Code;
-
-        if (code == KeyCode.Left)
-        {
-            eventArgs.IsHandled = MoveCaret(TextEdit.MovePrevious(NormalizedCode, Selection, extend).Selection);
-        }
-        else if (code == KeyCode.Right)
-        {
-            eventArgs.IsHandled = MoveCaret(TextEdit.MoveNext(NormalizedCode, Selection, extend).Selection);
-        }
-        else if (code == KeyCode.Up)
-        {
-            eventArgs.IsHandled = MoveVertically(-1, extend);
-        }
-        else if (code == KeyCode.Down)
-        {
-            eventArgs.IsHandled = MoveVertically(1, extend);
-        }
-        else if (code == KeyCode.Home)
-        {
-            var lineStart = LineStartOffset(LineAt(Selection.Caret));
-            eventArgs.IsHandled = MoveCaret(new TextSelection(extend ? Selection.Anchor : lineStart, lineStart));
-        }
-        else if (code == KeyCode.End)
-        {
-            var lineEnd = LineEndOffset(LineAt(Selection.Caret));
-            eventArgs.IsHandled = MoveCaret(new TextSelection(extend ? Selection.Anchor : lineEnd, lineEnd));
-        }
-        else if (code == KeyCode.PageUp)
-        {
-            eventArgs.IsHandled = MoveVertically(-Math.Max(1, Viewport.Height - PageOverlap), extend);
-        }
-        else if (code == KeyCode.PageDown)
-        {
-            eventArgs.IsHandled = MoveVertically(Math.Max(1, Viewport.Height - PageOverlap), extend);
-        }
-    }
-
-    private bool MoveCaret(TextSelection selection)
-    {
-        CommitSelection(selection, resetDesiredColumn: true);
-        RevealCaret();
-        return true;
-    }
-
-    private bool MoveVertically(int lineDelta, bool extend)
-    {
-        if (_visibleLines.Count == 0)
-        {
-            return false;
-        }
-
-        var caretLine = LineAt(Selection.Caret);
-        var currentColumn = _desiredColumn ??
-            MeasureCodeCellsToOffset(caretLine, Selection.Caret - LineStartOffset(caretLine));
-        var visibleIndex = _visibleLines.BinarySearch(caretLine);
-
-        if (visibleIndex < 0)
-        {
-            visibleIndex = Math.Min(~visibleIndex, _visibleLines.Count - 1);
-        }
-
-        var targetIndex = Math.Clamp(visibleIndex + lineDelta, 0, _visibleLines.Count - 1);
-        var targetLine = _visibleLines[targetIndex];
-        var targetOffset = LineStartOffset(targetLine) + OffsetForCodeCells(targetLine, currentColumn);
-
-        CommitSelection(new TextSelection(extend ? Selection.Anchor : targetOffset, targetOffset), resetDesiredColumn: false);
-        _desiredColumn = currentColumn;
-        RevealCaret();
-        return true;
-    }
-
-    private void RevealCaret() => _ = RevealOffset(Selection.Caret, _visibleLines);
 
     private void ProcessPendingReveal()
     {
@@ -1184,47 +1029,12 @@ public sealed class CodeView:
     #region Pointer input
 
     /// <inheritdoc/>
-    protected override void OnAttached()
-    {
-        base.OnAttached();
-        Debug.Assert(Dispatcher is not null, "An attached CodeView owns a dispatcher.");
-        _autoScrollTimer = new DispatcherTimer(Dispatcher, _autoScrollInterval);
-        _autoScrollTimer.Tick += OnAutoScrollTick;
-    }
-
-    /// <inheritdoc/>
-    protected override void OnDetached()
-    {
-        ReleaseAutoScrollTimer();
-        base.OnDetached();
-    }
-
-    /// <inheritdoc/>
-    protected override void OnDisposing()
-    {
-        ReleaseAutoScrollTimer();
-        base.OnDisposing();
-    }
-
-    private void ReleaseAutoScrollTimer()
-    {
-        if (_autoScrollTimer is not { } timer)
-        {
-            return;
-        }
-
-        timer.Tick -= OnAutoScrollTick;
-        timer.Dispose();
-        _autoScrollTimer = null;
-    }
-
-    /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
         base.OnEvent(eventArgs);
 
-        if (eventArgs.IsHandled || eventArgs is not PointerEventArgs { Pointer: var pointer } pointerEventArgs)
+        if (eventArgs.IsHandled || eventArgs is not PointerEventArgs { Pointer: var pointer })
         {
             return;
         }
@@ -1235,102 +1045,19 @@ public sealed class CodeView:
             return;
         }
 
-        if (pointer.Action == PointerAction.Press && (pointer.Buttons & Buttons.Primary) != 0 && pointer.Cells is { } pressedCells)
-        {
-            HandlePress(pointerEventArgs, pressedCells);
-            return;
-        }
-
-        if (!_pointerSelecting)
-        {
-            return;
-        }
-
-        if (pointer.Cells is not { } cells)
-        {
-            if (pointer.Action is PointerAction.Release or PointerAction.Leave)
+        if (pointer is
             {
-                CancelPointerSelection();
-            }
-
+                Action: PointerAction.Press,
+                Buttons: var buttons,
+                Cells: { } pressedCells
+            } &&
+            (buttons & Buttons.Primary) != 0 &&
+            IsFoldingEnabled &&
+            TryToggleFoldAt(pressedCells))
+        {
+            _ = RequestFocus();
             eventArgs.IsHandled = true;
-            return;
         }
-
-        // Never gated on _content.Bounds.Contains(cells): a captured drag routinely reports
-        // positions past the visible content - most usefully, past its right edge on a line
-        // wider than the viewport, or past its top/bottom edge on a buffer taller than the
-        // viewport. AdvanceDragSelection resolves one step immediately from this move event;
-        // UpdateAutoScroll arms a repeating timer that keeps invoking that same step for as long
-        // as the drag position remains outside the content while the button stays held, so a
-        // drag held still past an edge keeps scrolling and extending the selection instead of
-        // stalling the instant the pointer itself stops moving.
-        AdvanceDragSelection(cells);
-        UpdateAutoScroll(cells);
-
-        eventArgs.IsHandled = true;
-
-        if (pointer.Action is PointerAction.Release or PointerAction.Leave)
-        {
-            CancelPointerSelection();
-        }
-    }
-
-    private void HandlePress(PointerEventArgs eventArgs, Point pressedCells)
-    {
-        if (!Bounds.Contains(pressedCells))
-        {
-            return;
-        }
-
-        _ = RequestFocus();
-
-        if (!_content.Bounds.Contains(pressedCells))
-        {
-            eventArgs.IsHandled = true;
-            return;
-        }
-
-        if (IsFoldingEnabled && TryToggleFoldAt(pressedCells))
-        {
-            eventArgs.IsHandled = true;
-            return;
-        }
-
-        if (OffsetAt(pressedCells) is not { } offset)
-        {
-            eventArgs.IsHandled = true;
-            return;
-        }
-
-        if (eventArgs.ClickCount == 2)
-        {
-            var line = LineAt(offset);
-            var column = offset - LineStartOffset(line);
-            var word = TextEdit.SelectWord(_lines[line], column);
-            CommitSelection(new TextSelection(LineStartOffset(line) + word.Anchor, LineStartOffset(line) + word.Caret), resetDesiredColumn: true);
-            eventArgs.IsHandled = true;
-            return;
-        }
-
-        if (eventArgs.ClickCount >= 3)
-        {
-            var line = LineAt(offset);
-            CommitSelection(new TextSelection(LineStartOffset(line), LineEndOffset(line)), resetDesiredColumn: true);
-            eventArgs.IsHandled = true;
-            return;
-        }
-
-        if (!CapturePointer())
-        {
-            eventArgs.IsHandled = true;
-            return;
-        }
-
-        _pointerAnchor = offset;
-        _pointerSelecting = true;
-        CommitSelection(new TextSelection(offset, offset), resetDesiredColumn: true);
-        eventArgs.IsHandled = true;
     }
 
     /// <summary>Toggles the fold starting at the visible line under a press, if the press landed in the fold gutter.</summary>
@@ -1355,119 +1082,6 @@ public sealed class CodeView:
 
         var sourceLine = _visibleLines[row];
         return _foldStartRanges.ContainsKey(sourceLine) && ToggleFold(sourceLine);
-    }
-
-    private void CancelPointerSelection()
-    {
-        _pointerSelecting = false;
-        _autoScrollTimer?.Stop();
-        ReleasePointerCapture();
-    }
-
-    /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
-        base.OnLostPointerCapture(reason);
-        _pointerSelecting = false;
-        _autoScrollTimer?.Stop();
-    }
-
-    /// <summary>Gets the currently visible, clipped viewing rectangle: <see cref="_content"/>'s
-    /// own arranged position combined with <see cref="Viewport"/>'s size, rather than <see
-    /// cref="_content"/>'s own Bounds size. <see cref="_content"/> is arranged once at its full
-    /// unclipped logical extent - which can be far larger than the viewport - and the scrollable
-    /// stack shifts that arranged position by the negative scroll offset so the correct portion
-    /// lines up with the clip region; <see cref="_content"/>'s own Bounds therefore already
-    /// reports the viewport's true root-relative origin, but its Width and Height still describe
-    /// the full extent rather than what actually renders on screen.</summary>
-    private Rect ViewportBounds => new(_content.Bounds.X, _content.Bounds.Y, Viewport.Width, Viewport.Height);
-
-    /// <summary>Extends the active drag selection toward one pointer position, taking the
-    /// vertical step when the position sits above or below the visible <see
-    /// cref="ViewportBounds"/> - which <see cref="OffsetAt"/> alone cannot resolve, since a source
-    /// line's row on screen depends on which lines are currently scrolled into view, not on a
-    /// continuous pixel offset - and otherwise resolving through <see cref="OffsetAt"/>'s own
-    /// scroll-aware column clamp for a position that is merely left or right of the viewport.</summary>
-    /// <param name="cells">The root-relative pointer position to extend the selection toward.</param>
-    private void AdvanceDragSelection(Point cells)
-    {
-        var viewport = ViewportBounds;
-
-        if (cells.Y < viewport.Y)
-        {
-            if (!ScrollBy(0, -1, ScrollCause.Pointer))
-            {
-                return;
-            }
-
-            Debug.Assert(
-                VerticalOffset < _visibleLines.Count,
-                "MeasureProjection reports Extent.Height as exactly _visibleLines.Count, so a saturated VerticalOffset always indexes a real visible line.");
-            var line = _visibleLines[VerticalOffset];
-            CommitSelection(new TextSelection(_pointerAnchor, LineStartOffset(line)), resetDesiredColumn: true);
-            RevealCaret();
-            return;
-        }
-
-        if (cells.Y >= viewport.Bottom)
-        {
-            if (!ScrollBy(0, 1, ScrollCause.Pointer))
-            {
-                return;
-            }
-
-            var bottomVisibleIndex = VerticalOffset + Viewport.Height - 1;
-            Debug.Assert(
-                bottomVisibleIndex < _visibleLines.Count,
-                "MeasureProjection reports Extent.Height as exactly _visibleLines.Count, so a saturated VerticalOffset always leaves the bottommost viewport row indexing a real visible line.");
-            var line = _visibleLines[bottomVisibleIndex];
-            CommitSelection(new TextSelection(_pointerAnchor, LineEndOffset(line)), resetDesiredColumn: true);
-            RevealCaret();
-            return;
-        }
-
-        if (OffsetAt(cells) is { } dragged)
-        {
-            CommitSelection(new TextSelection(_pointerAnchor, dragged), resetDesiredColumn: true);
-            RevealCaret();
-        }
-    }
-
-    /// <summary>Arms or disarms the repeating auto-scroll timer for a drag position, and records
-    /// that position for the timer's own tick to resolve against once the pointer itself stops
-    /// generating new move events.</summary>
-    /// <param name="cells">The most recently reported root-relative drag position.</param>
-    private void UpdateAutoScroll(Point cells)
-    {
-        _lastDragCells = cells;
-
-        if (!ViewportBounds.Contains(cells))
-        {
-            _autoScrollTimer?.Start();
-        }
-        else
-        {
-            _autoScrollTimer?.Stop();
-        }
-    }
-
-    private void OnAutoScrollTick(object? sender, EventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-
-        if (!_pointerSelecting)
-        {
-            _autoScrollTimer?.Stop();
-            return;
-        }
-
-        AdvanceDragSelection(_lastDragCells);
-
-        if (ViewportBounds.Contains(_lastDragCells))
-        {
-            _autoScrollTimer?.Stop();
-        }
     }
 
     #endregion
@@ -1513,16 +1127,7 @@ public sealed class CodeView:
 
     private void RebuildProjection()
     {
-        // Code, Language, and Catalog reassignment can land mid-drag - the pointer stays captured
-        // and selecting while a host live-reloads or streams new content into an already-mounted
-        // view. _pointerAnchor is an absolute offset into the text that is about to be replaced;
-        // if the replacement text is shorter, the very next pointer-move event would commit a
-        // Selection built from that now out-of-range anchor. CommitSelection's own bounds check is
-        // a Debug.Assert, compiled out in Release, so nothing else would catch this before
-        // SelectedText's later Substring call throws from what looks like an unrelated read.
-        // Canceling here - the same reset a real Release or focus-loss already performs - keeps a
-        // reassignment from ever combining with a stale anchor in the first place.
-        CancelPointerSelection();
+        CancelTextSelectionGesture(releaseCapture: true);
         _pendingRevealOffset = null;
         _pendingRevealProjection = null;
         NormalizedCode = Code.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
@@ -1543,7 +1148,7 @@ public sealed class CodeView:
         _foldedStartLines.Clear();
         _foldStartRanges = BuildFoldStartRanges(_result.FoldRanges);
         RebuildVisibleLines();
-        CommitSelection(new TextSelection(0, 0), resetDesiredColumn: true);
+        _ = CommitTextSelection(default);
         _content.RequestInvalidate(InvalidationImpact.Measure);
     }
 

@@ -15,7 +15,10 @@ internal sealed class TextSelectionGesture
     private ulong _autoScrollGeneration;
     private int _anchor;
     private TextSelectionSource? _associatedSource;
+    private int _clickCount;
+    private bool _capturedPotential;
     private Point _latestCells;
+    private ControlBase? _originalSource;
     private Point _pressCells;
     private ulong _semanticFingerprint;
 
@@ -42,6 +45,11 @@ internal sealed class TextSelectionGesture
             if (Phase != TextSelectionGesturePhase.Idle &&
                 (pointer.Action == PointerAction.Leave || IsPrimaryRelease(pointer)))
             {
+                if (Phase == TextSelectionGesturePhase.Potential && IsPrimaryRelease(pointer))
+                {
+                    _owner.ReleasePotentialTextSelectionChildCapture(_originalSource);
+                }
+
                 Cancel(releaseCapture: Phase == TextSelectionGesturePhase.Selecting);
             }
 
@@ -63,10 +71,23 @@ internal sealed class TextSelectionGesture
             (pressedButtons & Buttons.Primary) != 0)
         {
             _pressCells = pressedCells;
+            _originalSource = eventArgs.OriginalSource;
             _anchor = _owner.HitTestTextSelection(pressedCells);
-            _associatedSource = _owner.TextSelectionSourceAt(pressedCells);
+            _clickCount = _owner.GetTextSelectionClickCount(eventArgs.OriginalSource, eventArgs.ClickCount);
+            _associatedSource = _owner.GetTextSelectionSource(eventArgs.OriginalSource, pressedCells);
             _semanticFingerprint = _owner.TextSelectionFingerprint;
             Phase = TextSelectionGesturePhase.Potential;
+
+            if (_owner.ShouldCaptureTextSelectionOnPress)
+            {
+                _capturedPotential = _owner.CaptureTextSelectionPointer();
+
+                if (!_capturedPotential)
+                {
+                    Cancel(releaseCapture: false);
+                }
+            }
+
             return;
         }
 
@@ -110,8 +131,20 @@ internal sealed class TextSelectionGesture
         {
             if (pointer.Cells is { } releasedCells)
             {
-                var caret = _owner.HitTestTextSelection(releasedCells);
-                _owner.CommitPointerTextSelection(caret, caret);
+                _owner.CommitTextSelectionClick(
+                    _owner.HitTestTextSelection(releasedCells),
+                    _clickCount);
+                _owner.CompleteTextSelectionClick(
+                    _originalSource,
+                    _pressCells,
+                    releasedCells,
+                    _clickCount,
+                    eventArgs);
+
+                if (_clickCount >= 2)
+                {
+                    eventArgs.IsHandled = true;
+                }
             }
 
             Cancel(releaseCapture: false);
@@ -129,7 +162,15 @@ internal sealed class TextSelectionGesture
         StopAutoScroll();
         Phase = TextSelectionGesturePhase.Idle;
         _anchor = 0;
+        _clickCount = 0;
         _associatedSource = null;
+        _originalSource = null;
+
+        if (_capturedPotential)
+        {
+            releaseCapture = true;
+            _capturedPotential = false;
+        }
 
         if (releaseCapture)
         {

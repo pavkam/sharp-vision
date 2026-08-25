@@ -318,7 +318,7 @@ public sealed class DocumentLinkSurfaceTests
 
         // Assert
         activations.ShouldBe(1);
-        document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Idle);
+        document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Idle);
         (await surface.Application.Dispatcher.InvokeAsync(
             () => document.Selection,
             TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 0));
@@ -447,7 +447,7 @@ public sealed class DocumentLinkSurfaceTests
 
         // Assert
         activations.ShouldBe(0);
-        document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Potential);
+        document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Potential);
         (await surface.Application.Dispatcher.InvokeAsync(
             () => document.Selection,
             TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 4));
@@ -455,7 +455,7 @@ public sealed class DocumentLinkSurfaceTests
         // Act and assert - the primary release remains the sole completing transition.
         await surface.Pointer.ReleaseAsync();
         activations.ShouldBe(1);
-        document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Idle);
+        document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Idle);
         (await surface.Application.Dispatcher.InvokeAsync(
             () => document.Selection,
             TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 0));

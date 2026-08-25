@@ -95,7 +95,6 @@ public sealed class DocumentSelectionSurfaceTests
         await RouteKeyAsync(surface, document, Code.End, Modifiers.Shift);
 
         document.SelectionMap.ShouldNotBeSameAs(projection);
-        document.HasSelectionCaretGeometryAffinity.ShouldBeFalse();
         (await surface.Application.Dispatcher.InvokeAsync(
             () => document.SelectedText,
             TestContext.Current.CancellationToken)).ShouldBe(text);
@@ -697,7 +696,7 @@ public sealed class DocumentSelectionSurfaceTests
         await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "release capture from ScrollChanged");
 
         surface.ShouldHaveCapture(null);
-        document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Idle);
+        document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Idle);
         (await surface.Application.Dispatcher.InvokeAsync(
             () => document.Selection,
             TestContext.Current.CancellationToken)).ShouldBe(selectionBefore);
@@ -728,7 +727,7 @@ public sealed class DocumentSelectionSurfaceTests
         await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "replace content from ScrollChanged");
 
         surface.ShouldHaveCapture(null);
-        document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Idle);
+        document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Idle);
         (await surface.Application.Dispatcher.InvokeAsync(
             () => document.SelectedText,
             TestContext.Current.CancellationToken)).ShouldBeEmpty();
@@ -763,7 +762,7 @@ public sealed class DocumentSelectionSurfaceTests
         await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "move source to another semantic range");
 
         surface.ShouldHaveCapture(null);
-        document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Idle);
+        document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Idle);
         document.SelectionMap.Text.ShouldBe(textBefore);
         var occurrenceAfter = document.SelectionMap.Sources.Single();
         occurrenceAfter.Source.ShouldBeSameAs(occurrenceBefore.Source);
@@ -805,7 +804,7 @@ public sealed class DocumentSelectionSurfaceTests
             await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "prove unavailable callback timer is inert");
 
             surface.ShouldHaveCapture(null);
-            document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Idle);
+            document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Idle);
         }
     }
 
@@ -1499,7 +1498,7 @@ public sealed class DocumentSelectionSurfaceTests
 
         // Assert
         document.VerticalOffset.ShouldBe(0);
-        document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Idle);
+        document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Idle);
         surface.ShouldHaveCapture(null);
     }
 
@@ -1524,7 +1523,7 @@ public sealed class DocumentSelectionSurfaceTests
 
         // Assert
         document.VerticalOffset.ShouldBe(0);
-        document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Idle);
+        document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Idle);
         surface.ShouldHaveCapture(null);
     }
 
@@ -1732,7 +1731,7 @@ public sealed class DocumentSelectionSurfaceTests
 
         // Assert
         surface.ShouldHaveCapture(null);
-        document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Idle);
+        document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Idle);
         (await surface.Application.Dispatcher.InvokeAsync(
             () => document.Selection,
             TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 2));
@@ -1950,7 +1949,7 @@ public sealed class DocumentSelectionSurfaceTests
 
         // Assert
         surface.ShouldHaveCapture(null);
-        document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Idle);
+        document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Idle);
         (await surface.Application.Dispatcher.InvokeAsync(
             () => document.Selection,
             TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 2));
@@ -2006,7 +2005,7 @@ public sealed class DocumentSelectionSurfaceTests
         // Assert
         surface.ShouldHaveCapture(null);
         clicks.ShouldBe(0);
-        document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Idle);
+        document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Idle);
         (await surface.Application.Dispatcher.InvokeAsync(
             () => document.Selection,
             TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 6));
@@ -2059,7 +2058,7 @@ public sealed class DocumentSelectionSurfaceTests
         // Assert
         secondaryReleases.ShouldBe(1);
         surface.ShouldHaveCapture(document);
-        document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Selecting);
+        document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Selecting);
         (await surface.Application.Dispatcher.InvokeAsync(
             () => document.Selection,
             TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 2));
@@ -2067,7 +2066,7 @@ public sealed class DocumentSelectionSurfaceTests
         // Act and assert
         await surface.Pointer.ReleaseAsync();
         surface.ShouldHaveCapture(null);
-        document.SelectionGesturePhase.ShouldBe(DocumentSelectionGesturePhase.Idle);
+        document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Idle);
         (await surface.Application.Dispatcher.InvokeAsync(
             () => document.Selection,
             TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 2));

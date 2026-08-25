@@ -49,6 +49,38 @@ public sealed class TextSelectionGestureSurfaceTests
         }
     }
 
+    /// <summary>Verifies word and visual-line click expansion belong to the common controller.</summary>
+    [Fact]
+    public async Task Pointer_WhenCommonOwnerIsClickedRepeatedly_SelectsWordThenVisualLineAsync()
+    {
+        var text = new ControlText("alpha beta gamma");
+        var owner = new Stack
+        {
+            IsFocusable = true,
+            IsTextSelectionEnabled = true,
+            Children = { text }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            owner,
+            new Size(16, 1),
+            TestContext.Current.CancellationToken);
+
+        await surface.Pointer.ClickAsync(text, new Point(7, 0));
+        await surface.Pointer.ClickAsync(text, new Point(7, 0));
+
+        var selectedWord = await surface.Application.Dispatcher.InvokeAsync(
+            () => owner.SelectedText,
+            TestContext.Current.CancellationToken);
+        selectedWord.ShouldBe("beta");
+
+        await surface.Pointer.ClickAsync(text, new Point(7, 0));
+
+        var selectedLine = await surface.Application.Dispatcher.InvokeAsync(
+            () => owner.SelectedText,
+            TestContext.Current.CancellationToken);
+        selectedLine.ShouldBe("alpha beta gamma");
+    }
+
     /// <summary>Verifies an opt-out ancestor does not intercept an ordinary child press route.</summary>
     [Fact]
     public async Task Pointer_WhenDisabled_DoesNotCreateSelectionOrCaptureAsync()
@@ -101,6 +133,41 @@ public sealed class TextSelectionGestureSurfaceTests
             TestContext.Current.CancellationToken);
         selection.ShouldBe(new Selection(0, 1));
         selectedText.ShouldBe("A");
+    }
+
+    /// <summary>Verifies ordinary and word navigation are shared selection commands too.</summary>
+    [Fact]
+    public async Task Keyboard_WhenCommonOwnerMovesWithoutShift_CollapsesThenMovesByWordAsync()
+    {
+        var owner = new Stack
+        {
+            IsFocusable = true,
+            IsTextSelectionEnabled = true,
+            Children = { new ControlText("alpha beta") }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            owner,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(
+            () =>
+            {
+                owner.Focus().ShouldBeTrue();
+                owner.SetTextSelection(new Selection(6, 10));
+            },
+            "focus owner with selected word");
+
+        await RouteKeyAsync(surface, owner, Code.Left, Modifiers.None);
+        var collapsed = await surface.Application.Dispatcher.InvokeAsync(
+            () => owner.TextSelection,
+            TestContext.Current.CancellationToken);
+        collapsed.ShouldBe(new Selection(6, 6));
+
+        await RouteKeyAsync(surface, owner, Code.Left, Modifiers.Control);
+        var moved = await surface.Application.Dispatcher.InvokeAsync(
+            () => owner.TextSelection,
+            TestContext.Current.CancellationToken);
+        moved.ShouldBe(new Selection(0, 0));
     }
 
     /// <summary>Verifies common vertical navigation follows projected rows while preserving the anchor.</summary>

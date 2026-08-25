@@ -1466,7 +1466,7 @@ public sealed partial class ApplicationTests
             },
             TestContext.Current.CancellationToken);
 
-        var consumed = new Stroke(Code.Character, new Rune('a'), nativeCode: 0, Modifiers.Control, KeyAction.Press);
+        var consumed = new Stroke(Code.Character, new Rune('q'), nativeCode: 0, Modifiers.Control, KeyAction.Press);
         application.Input(in consumed);
         SendGrapheme(application);
         await application.Dispatcher.InvokeAsync(

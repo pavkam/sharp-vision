@@ -2214,8 +2214,15 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
     /// <summary>Responds after this control's keyboard-focus state changes.</summary>
     /// <param name="focused">The newly committed focus state.</param>
-    protected virtual void OnFocusChanged(bool focused) =>
+    protected virtual void OnFocusChanged(bool focused)
+    {
         Debug.Assert(!IsDisposed, "A disposed control cannot change focus state.");
+
+        if (!focused && TextSelectionPhase == Text.TextSelectionGesturePhase.Selecting)
+        {
+            _textSelectionGesture?.Cancel(releaseCapture: true);
+        }
+    }
 
     /// <summary>Responds after this control's pressed visual state commits.</summary>
     /// <param name="pressed">The newly committed pressed state.</param>

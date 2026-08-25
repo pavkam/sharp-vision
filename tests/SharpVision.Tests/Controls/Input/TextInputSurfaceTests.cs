@@ -288,7 +288,9 @@ public sealed class TextInputSurfaceTests
         // Assert
         changes.ShouldBe(1);
         input.Text.ShouldBe("A\u0301界");
-        input.SelectedText.ShouldBe("界");
+        (await surface.Application.Dispatcher.InvokeAsync(
+            () => input.SelectedText,
+            TestContext.Current.CancellationToken)).ShouldBe("界");
         input.SelectionStart.ShouldBe(2);
         input.SelectionLength.ShouldBe(1);
         (surface.Cell(new Point(1, 0)).Style.Attributes & TerminalAttributes.Reverse)
@@ -550,7 +552,9 @@ public sealed class TextInputSurfaceTests
         // Assert
         input.SelectionStart.ShouldBe(0);
         input.SelectionLength.ShouldBe(4);
-        input.SelectedText.ShouldBe("A界e\u0301");
+        (await surface.Application.Dispatcher.InvokeAsync(
+            () => input.SelectedText,
+            TestContext.Current.CancellationToken)).ShouldBe("A界e\u0301");
         surface.ShouldHaveState(input, VisualState.IsPointerOver | VisualState.Focused);
         (surface.Cell(default).Style.Attributes & TerminalAttributes.Reverse).ShouldBe(TerminalAttributes.Reverse);
         (surface.Cell(new Point(1, 0)).Style.Attributes & TerminalAttributes.Reverse).ShouldBe(TerminalAttributes.Reverse);

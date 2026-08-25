@@ -22,17 +22,15 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     private readonly List<EditResult> _undo = [];
     private readonly List<EditResult> _redo = [];
     private bool _coalescing;
+    private bool _committingEditSelection;
     private int _coalescingCaret;
     private bool _coalescingWasWhitespace;
     private string _text = string.Empty;
-    private Selection _selection;
     private int[]? _boundaryRowCache;
     private int[]? _boundaryColumnCache;
     private string? _boundaryCacheSource;
     private Rune? _boundaryCachePasswordCharacter;
     private UnicodePolicy? _boundaryCacheCellPolicy;
-    private bool _pointerSelecting;
-    private int _pointerAnchor;
     private int _contentWidth;
     private int _contentHeight = 1;
     private readonly OwnedControlSlot _chrome;
@@ -41,6 +39,9 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private Rect _editorBounds;
     private VisualLine[] _visualLines = [];
+
+    /// <inheritdoc/>
+    protected override bool CaptureTextSelectionOnPress => true;
 
     /// <summary>Initializes an empty focusable single-line editor with a light one-cell border.</summary>
     public TextInput()
@@ -277,7 +278,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public int CaretIndex
     {
-        get => _selection.Caret;
+        get => CommittedTextSelection.Caret;
         set => SetSelection(new Selection(value, value));
     }
 
@@ -288,7 +289,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public int SelectionStart
     {
-        get => _selection.Start;
+        get => CommittedTextSelection.Start;
         set => Select(value, SelectionLength);
     }
 
@@ -299,15 +300,9 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public int SelectionLength
     {
-        get => _selection.Length;
+        get => CommittedTextSelection.Length;
         set => Select(SelectionStart, value);
     }
-
-    /// <inheritdoc/>
-    public override Selection TextSelection => _selection;
-
-    /// <summary>Gets selected source text as a new owned string.</summary>
-    public override string SelectedText => Text.Substring(SelectionStart, SelectionLength);
 
     /// <summary>Gets the current horizontal cell offset.</summary>
     public int HorizontalOffset { get; private set; }
@@ -331,7 +326,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         }
 
         var glyphs = new List<SelectableTextGlyph>();
-        var bounds = _editorBounds.Intersect(Bounds);
+        var bounds = _editorBounds == default ? Bounds : _editorBounds.Intersect(Bounds);
         var clip = bounds.Intersect(SelectableTextAggregation.GetEffectiveClip(this));
 
         if (bounds.Width > 0 && bounds.Height > 0)
@@ -347,6 +342,83 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         }
 
         return new SelectableTextSnapshot(Text, glyphs, isAuthoritative: true);
+    }
+
+    /// <inheritdoc/>
+    internal override TextSelectionMap GetTextSelectionMap()
+    {
+        var glyphs = new List<TextSelectionGlyph>();
+
+        if (WordWrap && _visualLines.Length > 0)
+        {
+            for (var row = 0; row < _visualLines.Length; row++)
+            {
+                var line = _visualLines[row];
+                var span = Text.AsSpan(line.Offset, line.Length);
+                var x = 0;
+
+                foreach (var grapheme in Graphemes.Enumerate(span))
+                {
+                    var cluster = span.Slice(grapheme.Offset, grapheme.Length);
+
+                    if (IsLineBreak(cluster))
+                    {
+                        continue;
+                    }
+
+                    var width = ClusterWidth(cluster, x);
+                    glyphs.Add(new TextSelectionGlyph(
+                        new Selection(line.Offset + grapheme.Offset, line.Offset + grapheme.Offset + grapheme.Length),
+                        new Rect(x, row, width, 1)));
+                    x += width;
+                }
+            }
+
+            return new TextSelectionMap(Text, [.. glyphs], [], _visualLines.Length);
+        }
+
+        var column = 0;
+        var visualRow = 0;
+
+        foreach (var grapheme in Graphemes.Enumerate(Text))
+        {
+            var cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
+
+            if (IsLineBreak(cluster))
+            {
+                column = 0;
+                visualRow++;
+                continue;
+            }
+
+            var width = ClusterWidth(cluster, column);
+            glyphs.Add(new TextSelectionGlyph(
+                new Selection(grapheme.Offset, grapheme.Offset + grapheme.Length),
+                new Rect(column, visualRow, width, 1)));
+            column += width;
+        }
+
+        return new TextSelectionMap(Text, [.. glyphs], [], visualRow + 1);
+    }
+
+    /// <inheritdoc/>
+    protected override int HitTestTextSelectionCore(Point cells)
+    {
+        var editor = _editorBounds == default ? Bounds : _editorBounds;
+        var x = Math.Max(0, cells.X - editor.X + (WordWrap ? 0 : HorizontalOffset));
+        var y = Math.Max(0, cells.Y - editor.Y + VerticalOffset);
+        return GetTextSelectionMap().HitTest(new Point(x, y));
+    }
+
+    /// <inheritdoc/>
+    protected override Rect GetTextSelectionAdornmentBounds(Rect bounds)
+    {
+        var editor = _editorBounds == default ? Bounds : _editorBounds;
+        return new Rect(
+            editor.X + bounds.X - (WordWrap ? 0 : HorizontalOffset),
+            editor.Y + bounds.Y - VerticalOffset,
+            bounds.Width,
+            bounds.Height);
     }
 
     /// <summary>Projects visible wrapped source graphemes through the committed visual-line cache.</summary>
@@ -553,53 +625,21 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
             throw new ArgumentOutOfRangeException(nameof(length), length, "The selection range overflows.");
         }
 
+        _coalescing = false;
         SetSelection(new Selection(start, (int) sum));
-    }
-
-    /// <inheritdoc/>
-    public override void SetTextSelection(Selection selection)
-    {
-        VerifyTextSelectionEnabled();
-        SetSelection(selection);
-    }
-
-    /// <inheritdoc/>
-    public override void SelectAllText()
-    {
-        VerifyTextSelectionEnabled();
-        SetSelection(new Selection(0, Text.Length));
-    }
-
-    /// <inheritdoc/>
-    public override void ClearTextSelection()
-    {
-        VerifyTextSelectionEnabled();
-        SetSelection(new Selection(_selection.Caret, _selection.Caret));
     }
 
     /// <summary>Copies selected text unless password policy suppresses source disclosure.</summary>
     /// <returns>An owned selected string, or empty when no selection or password masking is active.</returns>
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public string CopySelection()
+    public string CopySelection() => CopySelectedText();
+
+    /// <inheritdoc/>
+    protected override string GetTextSelectionCopyText()
     {
         VerifyMutable();
         return PasswordCharacter.HasValue ? string.Empty : SelectedText;
-    }
-
-    /// <inheritdoc/>
-    public override string CopySelectedText() => CopySelection();
-
-    /// <inheritdoc/>
-    protected override bool UsesTextSelectionController => false;
-
-    /// <inheritdoc/>
-    protected override void OnTextSelectionEnabledChanged(bool enabled)
-    {
-        if (!enabled && _selection != default)
-        {
-            SetSelection(new Selection(_selection.Caret, _selection.Caret));
-        }
     }
 
     /// <summary>Copies and deletes selection unless read-only or password policy suppresses cutting.</summary>
@@ -612,7 +652,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
 
         if (copied.Length > 0 && !IsReadOnly)
         {
-            _ = Commit(Edit.Delete(Text, _selection), true);
+            _ = Commit(Edit.Delete(Text, CommittedTextSelection), true);
         }
 
         return copied;
@@ -816,11 +856,8 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
                 }
 
                 var width = ClusterWidth(c, x);
-                var sourceOffset = line.Offset + g.Offset;
                 var point = new Point(bounds.X + x, screenY);
-                var selected = sourceOffset < _selection.End &&
-                               sourceOffset + g.Length > _selection.Start;
-                var style = selected ? SelectedStyle() : ResolvedStyle;
+                var style = ResolvedStyle;
 
                 if (PasswordCharacter is { } mask)
                 {
@@ -841,7 +878,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
 
         if (IsFocused)
         {
-            Position(_selection.Caret, out var caretX, out var caretY);
+            Position(CommittedTextSelection.Caret, out var caretX, out var caretY);
             var position = new Point(
                 bounds.X + caretX,
                 bounds.Y + caretY - VerticalOffset);
@@ -873,9 +910,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
             var point = new Point(
                 bounds.X + x - HorizontalOffset,
                 bounds.Y + y - VerticalOffset);
-            var selected = grapheme.Offset < _selection.End &&
-                           grapheme.Offset + grapheme.Length > _selection.Start;
-            var style = selected ? SelectedStyle() : ResolvedStyle;
+            var style = ResolvedStyle;
 
             if (PasswordCharacter is { } mask)
             {
@@ -895,7 +930,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
 
         if (IsFocused)
         {
-            Position(_selection.Caret, out var caretX, out var caretY);
+            Position(CommittedTextSelection.Caret, out var caretX, out var caretY);
             var position = new Point(
                 bounds.X + caretX - HorizontalOffset,
                 bounds.Y + caretY - VerticalOffset);
@@ -947,7 +982,6 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        CancelPointer(releaseCapture: false);
 
         if (reason == ReleaseReason.Disposed)
         {
@@ -969,13 +1003,6 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         _undo.Clear();
         _redo.Clear();
         _coalescing = false;
-    }
-
-    /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
-        base.OnLostPointerCapture(reason);
-        CancelPointer(releaseCapture: false);
     }
 
     /// <inheritdoc/>
@@ -1008,7 +1035,6 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         // Losing focus does not touch either offset - a caret nobody can see has
         // nothing left to reveal, and resetting would discard a position the user
         // may have reached by wheel-scrolling (which stays focus-independent).
-        CancelPointer(releaseCapture: true);
     }
 
     private bool Commit(EditResult proposal, bool recordHistory, bool coalesce = false)
@@ -1027,7 +1053,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
 
         var textChanged = !string.Equals(Text, proposal.Text, StringComparison.Ordinal);
 
-        if (!textChanged && _selection == proposal.Selection)
+        if (!textChanged && CommittedTextSelection == proposal.Selection)
         {
             return false;
         }
@@ -1044,7 +1070,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         }
 
         var previousText = Text;
-        var previousSelection = _selection;
+        var previousSelection = CommittedTextSelection;
 
         if (recordHistory && textChanged)
         {
@@ -1066,66 +1092,132 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         }
 
         _text = proposal.Text;
-        _selection = proposal.Selection;
 
         if (textChanged && WordWrap && _editorBounds.Width > 0)
         {
             BuildVisualLines(_editorBounds.Width);
         }
 
-        EnsureCaretVisible(_editorBounds, remeasure: textChanged);
+        var selectionChanged = previousSelection != proposal.Selection;
 
-        if (textChanged)
+        void PublishTextAndPropertyChanges()
         {
-            NotifyPropertyChanged(nameof(Text), InvalidationImpact.Measure);
+            EnsureCaretVisible(_editorBounds, remeasure: textChanged);
+
+            if (textChanged)
+            {
+                NotifyPropertyChanged(nameof(Text), InvalidationImpact.Measure);
+            }
+
+            if (textChanged)
+            {
+                TextChanged?.Invoke(this, new TextChangedEventArgs(previousText, Text));
+            }
         }
 
-        if (previousSelection != _selection)
+        if (selectionChanged)
         {
-            NotifyPropertyChanged(nameof(CaretIndex), InvalidationImpact.Render);
-            NotifyPropertyChanged(nameof(SelectionStart), InvalidationImpact.Render);
-            NotifyPropertyChanged(nameof(SelectionLength), InvalidationImpact.Render);
-        }
+            _committingEditSelection = true;
 
-        if (textChanged)
-        {
-            TextChanged?.Invoke(this, new TextChangedEventArgs(previousText, Text));
+            try
+            {
+                _ = CommitTextSelectionForAuthoritativeText(
+                    proposal.Selection,
+                    Text,
+                    PublishTextAndPropertyChanges);
+            }
+            finally
+            {
+                _committingEditSelection = false;
+            }
         }
-
-        if (previousSelection != _selection)
+        else
         {
-            SelectionChanged?.Invoke(
-                this,
-                new InputSelectionChangedEventArgs(previousSelection, _selection));
-            PublishTextSelectionChanged(previousSelection, _selection);
+            PublishTextAndPropertyChanges();
         }
 
         return true;
     }
 
-    private void SetSelection(Selection selection)
+    /// <inheritdoc/>
+    protected override void OnTextSelectionStateChanged(TextSelectionChangedEventArgs eventArgs)
     {
-        Edit.Validate(Text, selection);
-        _ = Commit(new EditResult(Text, selection, selection != _selection), false);
+        _ = eventArgs;
+        EstablishTextSelectionCaret();
+        if (!_committingEditSelection)
+        {
+            _coalescing = false;
+        }
+        NotifyPropertyChanged(nameof(CaretIndex), InvalidationImpact.Render);
+        NotifyPropertyChanged(nameof(SelectionStart), InvalidationImpact.Render);
+        NotifyPropertyChanged(nameof(SelectionLength), InvalidationImpact.Render);
     }
 
-    /// <summary>Moves or extends the caret to the previous complete grapheme in O(log n) instead of
-    /// Edit.MovePreviousUnchecked's O(n) full-prefix rescan, using a lazily built and reference-
-    /// invalidated boundary offset cache. Holding Left through a large document previously cost
-    /// O(n) per keystroke - O(n^2) total across n keystrokes.</summary>
-    private EditResult MoveCaretPrevious(bool extend)
+    /// <inheritdoc/>
+    protected override void OnTextSelectionCommitted(TextSelectionChangedEventArgs eventArgs)
     {
-        var caret = !extend && !_selection.IsEmpty
-            ? _selection.Start
-            : PreviousBoundaryFast(_selection.Caret);
-        var selection = extend ? new Selection(_selection.Anchor, caret) : new Selection(caret, caret);
-        return selection == _selection
-            ? new EditResult(Text, _selection, changed: false)
-            : new EditResult(Text, selection, changed: true);
+        EnsureCaretVisible(_editorBounds, remeasure: false);
+        SelectionChanged?.Invoke(
+            this,
+            new InputSelectionChangedEventArgs(eventArgs.PreviousSelection, eventArgs.Selection));
     }
 
-    /// <summary>Finds the largest cached boundary offset strictly less than <paramref name="index"/>
-    /// via binary search.</summary>
+    /// <inheritdoc/>
+    protected override void RevealTextSelectionCaret(int caret)
+    {
+        _ = caret;
+        EnsureCaretVisible(_editorBounds, remeasure: false);
+    }
+
+    private void SetSelection(Selection selection) => SetTextSelection(selection);
+
+    /// <inheritdoc/>
+    protected override void CommitTextSelectionNavigation(Selection selection) =>
+        _ = CommitTextSelectionForAuthoritativeText(selection, Text);
+
+    /// <inheritdoc/>
+    protected override int MoveTextSelectionCaret(Code code, bool extend, bool word)
+    {
+        var selection = CommittedTextSelection;
+
+        if (code == Code.Left)
+        {
+            return !extend && !selection.IsEmpty
+                ? selection.Start
+                : word
+                    ? MovePreviousWordFast(selection.Caret)
+                    : PreviousBoundaryFast(selection.Caret);
+        }
+
+        if (code == Code.Right)
+        {
+            return !extend && !selection.IsEmpty
+                ? selection.End
+                : word
+                    ? Edit.MoveNextWord(Text, selection, extend).Selection.Caret
+                    : NextBoundaryFast(selection.Caret);
+        }
+
+        if (code == Code.Home)
+        {
+            return Edit.MoveHome(Text, selection, extend).Selection.Caret;
+        }
+
+        if (code == Code.End)
+        {
+            return Edit.MoveEnd(Text, selection, extend).Selection.Caret;
+        }
+
+        if (code is Code.Up or Code.Down && !WordWrap)
+        {
+            PositionFast(selection.Caret, out var column, out var row);
+            return IndexAtRowFast(Math.Max(0, row + (code == Code.Up ? -1 : 1)), column);
+        }
+
+        return base.MoveTextSelectionCaret(code, extend, word);
+    }
+
+    /// <summary>Finds the preceding cached grapheme boundary in logarithmic time.</summary>
     private int PreviousBoundaryFast(int index)
     {
         var (offsets, _, _) = BoundaryCache();
@@ -1134,18 +1226,21 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         return position > 0 ? offsets[position - 1] : 0;
     }
 
-    /// <summary>Moves or extends the caret to the previous Unicode word start in O(word length)
-    /// instead of Edit.MovePreviousWord's O(n) per boundary step, by walking the cached boundary
-    /// offset array with an integer index instead of repeatedly calling Edit's O(n) PreviousBoundary
-    /// scan. Mirrors Edit.MovePreviousWord's exact two-loop algorithm, classifying each cached
-    /// offset with Edit.Kind (O(1): decodes only the rune at that offset). Holding Ctrl+Left through
-    /// a large document previously cost O(n) per boundary step crossed.</summary>
-    private EditResult MoveCaretPreviousWord(bool extend)
+    /// <summary>Finds the following cached grapheme boundary in logarithmic time.</summary>
+    private int NextBoundaryFast(int index)
     {
         var (offsets, _, _) = BoundaryCache();
-        var startPosition = !extend && !_selection.IsEmpty ? _selection.Start : _selection.Caret;
-        var index = Array.BinarySearch(offsets, startPosition);
-        Debug.Assert(index >= 0, "The queried index is always a valid cached boundary.");
+        var position = Array.BinarySearch(offsets, index);
+        Debug.Assert(position >= 0, "The caret is always a valid cached boundary.");
+        return position < offsets.Length - 1 ? offsets[position + 1] : Text.Length;
+    }
+
+    /// <summary>Walks cached grapheme boundaries to the preceding Unicode word start.</summary>
+    private int MovePreviousWordFast(int caret)
+    {
+        var (offsets, _, _) = BoundaryCache();
+        var index = Array.BinarySearch(offsets, caret);
+        Debug.Assert(index >= 0, "The caret is always a valid cached boundary.");
 
         while (index > 0 && Edit.Kind(Text, offsets[index - 1]) != 2)
         {
@@ -1157,11 +1252,37 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
             index--;
         }
 
-        var caret = offsets[index];
-        var selection = extend ? new Selection(_selection.Anchor, caret) : new Selection(caret, caret);
-        return selection == _selection
-            ? new EditResult(Text, _selection, changed: false)
-            : new EditResult(Text, selection, changed: true);
+        return offsets[index];
+    }
+
+    /// <summary>Finds the nearest cached boundary on one unwrapped logical row.</summary>
+    private int IndexAtRowFast(int targetRow, int targetColumn)
+    {
+        var (offsets, rows, columns) = BoundaryCache();
+        var startIndex = LowerBoundByRow(rows, targetRow);
+
+        if (startIndex >= rows.Length || rows[startIndex] != targetRow)
+        {
+            return Text.Length;
+        }
+
+        var lastIndex = startIndex;
+
+        for (var index = startIndex + 1; index < rows.Length && rows[index] == targetRow; index++)
+        {
+            lastIndex = index;
+            var before = columns[index - 1];
+            var after = columns[index];
+
+            if (targetColumn < after)
+            {
+                return targetColumn < before + ((after - before + 1) / 2)
+                    ? offsets[index - 1]
+                    : offsets[index];
+            }
+        }
+
+        return offsets[lastIndex];
     }
 
     /// <summary>Looks up the non-word-wrap caret cell position for <paramref name="index"/> in
@@ -1176,8 +1297,8 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         y = rows[position];
     }
 
-    /// <summary>Gets the cached grapheme boundary offsets backing <see cref="MoveCaretPrevious"/>
-    /// and <see cref="PositionFast"/>. Also exposed internally so regression coverage can assert the
+    /// <summary>Gets the cached grapheme boundary offsets backing <see cref="PositionFast"/>.
+    /// Also exposed internally so regression coverage can assert the
     /// same array instance is reused, not rebuilt, across repeated navigation.</summary>
     internal int[]? BoundaryOffsets { get; private set; }
 
@@ -1187,10 +1308,8 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     /// input - <see cref="PasswordCharacter"/> and <see cref="ControlBase.CellPolicy"/> - are unchanged.
     /// The <see cref="Text"/> check is a reference comparison, safe because every assignment routes
     /// through <see cref="Commit"/>, which either keeps the same string reference or replaces it
-    /// wholesale. Holding Left, or repeatedly committing a selection-only change that must
-    /// reposition the caret, previously cost O(n) per keystroke twice over - once in
-    /// <c>Edit.MovePreviousUnchecked</c> and again in <see cref="Position"/> - for O(n^2) total
-    /// across n keystrokes.</summary>
+    /// wholesale. Repeatedly committing a selection-only change reuses the same projection instead
+    /// of rescanning the full source merely to reposition the caret.</summary>
     [MemberNotNull(nameof(BoundaryOffsets), nameof(_boundaryRowCache), nameof(_boundaryColumnCache))]
     private (int[] Offsets, int[] Rows, int[] Columns) BoundaryCache()
     {
@@ -1251,7 +1370,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         {
             result = Edit.Replace(
                 Text,
-                _selection,
+                CommittedTextSelection,
                 value,
                 MaxLength,
                 AcceptsReturn,
@@ -1277,19 +1396,11 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
             return;
         }
 
-        var extend = (eventArgs.Stroke.Modifiers & Modifiers.Shift) != 0;
         var word = (eventArgs.Stroke.Modifiers & Modifiers.Control) != 0;
 
         if (word && eventArgs.Stroke is { Code: Code.Character, Character: { } character })
         {
             var value = Rune.ToLowerInvariant(character);
-
-            if (value == new Rune('a'))
-            {
-                SetSelection(new Selection(0, Text.Length));
-                eventArgs.IsHandled = true;
-                return;
-            }
 
             if (value == new Rune('z'))
             {
@@ -1308,41 +1419,13 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
 
         EditResult? result = null;
 
-        if (eventArgs.Stroke.Code == Code.Left)
+        if (eventArgs.Stroke.Code == Code.Backspace && !IsReadOnly)
         {
-            result = word
-                ? MoveCaretPreviousWord(extend)
-                : MoveCaretPrevious(extend);
-        }
-        else if (eventArgs.Stroke.Code == Code.Right)
-        {
-            result = word
-                ? Edit.MoveNextWord(Text, _selection, extend)
-                : Edit.MoveNextUnchecked(Text, _selection, extend);
-        }
-        else if (eventArgs.Stroke.Code == Code.Home)
-        {
-            result = Edit.MoveHome(Text, _selection, extend);
-        }
-        else if (eventArgs.Stroke.Code == Code.End)
-        {
-            result = Edit.MoveEnd(Text, _selection, extend);
-        }
-        else if (eventArgs.Stroke.Code == Code.Up)
-        {
-            result = MoveVertical(-1, extend);
-        }
-        else if (eventArgs.Stroke.Code == Code.Down)
-        {
-            result = MoveVertical(1, extend);
-        }
-        else if (eventArgs.Stroke.Code == Code.Backspace && !IsReadOnly)
-        {
-            result = Edit.Backspace(Text, _selection);
+            result = Edit.Backspace(Text, CommittedTextSelection);
         }
         else if (eventArgs.Stroke.Code == Code.Delete && !IsReadOnly)
         {
-            result = Edit.Delete(Text, _selection);
+            result = Edit.Delete(Text, CommittedTextSelection);
         }
 
         if (result.HasValue)
@@ -1381,169 +1464,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
             eventArgs.IsHandled = ScrollBy(
                 pointer.WheelX,
                 pointer.WheelY.Negate());
-            return;
         }
-
-        if (pointer.Action == PointerAction.Press &&
-            (pointer.Buttons & Buttons.Primary) != 0 &&
-            pointer.Cells is { } pressedCells &&
-            Bounds.Contains(pressedCells))
-        {
-            _ = RequestFocus();
-
-            if (eventArgs.ClickCount == 2)
-            {
-                SetSelection(Edit.SelectWord(Text, IndexAt(pressedCells)));
-                eventArgs.IsHandled = true;
-                return;
-            }
-
-            var capture = CaptureOwner;
-
-            if (capture is null || !capture.Capture(this))
-            {
-                return;
-            }
-
-            _pointerAnchor = IndexAt(pressedCells);
-            _pointerSelecting = true;
-            SetSelection(new Selection(_pointerAnchor, _pointerAnchor));
-            eventArgs.IsHandled = true;
-            return;
-        }
-
-        if (!_pointerSelecting)
-        {
-            return;
-        }
-
-        if (pointer.Cells is not { } cells)
-        {
-            eventArgs.IsHandled = true;
-
-            if (pointer.Action is PointerAction.Release or PointerAction.Leave)
-            {
-                CancelPointer(releaseCapture: true);
-            }
-
-            return;
-        }
-
-        SetSelection(new Selection(_pointerAnchor, IndexAt(cells)));
-        eventArgs.IsHandled = true;
-
-        if (pointer.Action is PointerAction.Release or PointerAction.Leave)
-        {
-            CancelPointer(releaseCapture: true);
-        }
-    }
-
-    private int IndexAt(Point point)
-    {
-        if (WordWrap && _visualLines.Length > 0)
-        {
-            var targetX = Math.Max(0, point.X - _editorBounds.X);
-            var targetY = Math.Clamp(
-                point.Y - _editorBounds.Y + VerticalOffset,
-                0,
-                _visualLines.Length - 1);
-            var line = _visualLines[targetY];
-
-            if (line.Length == 0)
-            {
-                return line.Offset;
-            }
-
-            var span = Text.AsSpan(line.Offset, line.Length);
-            var x = 0;
-
-            foreach (var g in Graphemes.Enumerate(span))
-            {
-                var c = span.Slice(g.Offset, g.Length);
-
-                if (IsLineBreak(c))
-                {
-                    return line.Offset + g.Offset;
-                }
-
-                var width = ClusterWidth(c, x);
-
-                if (targetX < x + width)
-                {
-                    return targetX < x + ((width + 1) / 2)
-                        ? line.Offset + g.Offset
-                        : line.Offset + g.Offset + g.Length;
-                }
-
-                x += width;
-            }
-
-            return line.Offset + line.Length;
-        }
-
-        var targetXOrig = Math.Max(0, point.X - _editorBounds.X + HorizontalOffset);
-        var targetYOrig = Math.Max(0, point.Y - _editorBounds.Y + VerticalOffset);
-        return IndexAtRowFast(targetYOrig, targetXOrig);
-    }
-
-    /// <summary>Finds the boundary offset at cell column <paramref name="targetX"/> on cached row
-    /// <paramref name="targetY"/> in O(log n + row length) via the cached boundary/row/column arrays,
-    /// instead of scanning <see cref="Text"/> from its start up to the target row on every call.</summary>
-    /// <remarks>
-    /// Holding Up or Down through a large non-word-wrap document previously rescanned every row from
-    /// the document start for every keystroke - the same O(document) per navigation event, summed over
-    /// n keystrokes, that the boundary cache was built to eliminate for horizontal navigation.
-    /// Row <paramref name="targetY"/> always has at least one cached entry when it exists (a
-    /// document break increments the row before recording the following boundary), so the row's start
-    /// is always found at column 0; the loop below mirrors the original scan's snap-to-nearest-half-cell
-    /// and end-of-row/end-of-document fallbacks exactly.
-    /// </remarks>
-    private int IndexAtRowFast(int targetY, int targetX)
-    {
-        var (offsets, rows, columns) = BoundaryCache();
-        var startIndex = LowerBoundByRow(rows, targetY);
-
-        if (startIndex >= rows.Length || rows[startIndex] != targetY)
-        {
-            return Text.Length;
-        }
-
-        var lastIndexInRow = startIndex;
-
-        for (var index = startIndex; index < rows.Length && rows[index] == targetY; index++)
-        {
-            lastIndexInRow = index;
-
-            if (index == startIndex)
-            {
-                continue;
-            }
-
-            var before = columns[index - 1];
-            var after = columns[index];
-
-            if (targetX < after)
-            {
-                return targetX < before + ((after - before + 1) / 2)
-                    ? offsets[index - 1]
-                    : offsets[index];
-            }
-        }
-
-        return offsets[lastIndexInRow];
-    }
-
-    private EditResult MoveVertical(int delta, bool extend)
-    {
-        Position(_selection.Caret, out var x, out var y);
-        var targetY = Math.Max(0, y + delta);
-        var caret = IndexAt(new Point(
-            _editorBounds.X + x - (WordWrap && _visualLines.Length > 0 ? 0 : HorizontalOffset),
-            _editorBounds.Y + targetY - VerticalOffset));
-        var selection = extend
-            ? new Selection(_selection.Anchor, caret)
-            : new Selection(caret, caret);
-        return new EditResult(Text, selection, selection != _selection);
     }
 
     private void EnsureCaretVisible(Rect bounds, bool remeasure = true)
@@ -1559,7 +1480,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
             // never leaves a stale out-of-range offset behind.
             if (IsFocused)
             {
-                Position(_selection.Caret, out _, out var y);
+                Position(CommittedTextSelection.Caret, out _, out var y);
                 VerticalOffset = Offset(VerticalOffset, y, bounds.Height, _contentHeight);
             }
             else
@@ -1588,7 +1509,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         // unconditional chase always did.
         if (IsFocused)
         {
-            Position(_selection.Caret, out var x, out var caretY);
+            Position(CommittedTextSelection.Caret, out var x, out var caretY);
 
             HorizontalOffset = AlignToClusterStart(
                 Offset(HorizontalOffset, x, bounds.Width, _contentWidth),
@@ -1597,7 +1518,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         }
         else
         {
-            Position(_selection.Caret, out _, out var caretY);
+            Position(CommittedTextSelection.Caret, out _, out var caretY);
 
             HorizontalOffset = AlignToClusterStart(
                 ClampOffset(HorizontalOffset, bounds.Width, _contentWidth),
@@ -2035,17 +1956,14 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         return UnicodeWidth.Measure(buffer[..length], CellPolicy.AmbiguousWidth).Cells;
     }
 
-    private TerminalStyle SelectedStyle()
-    {
-        var style = ResolvedStyle;
-        return new TerminalStyle(
-            style.Foreground,
-            style.Background,
-            style.Attributes | TerminalAttributes.Reverse,
-            style.Hyperlink,
-            style.Underline,
-            style.UnderlineColor);
-    }
+    /// <inheritdoc/>
+    protected override TerminalStyle ApplyTextSelectionStyle(TerminalStyle current) => new(
+        current.Foreground,
+        current.Background,
+        current.Attributes | TerminalAttributes.Reverse,
+        current.Hyperlink,
+        current.Underline,
+        current.UnderlineColor);
 
     private TerminalStyle PlaceholderStyle()
     {
@@ -2133,7 +2051,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
             return false;
         }
 
-        var current = new EditResult(Text, _selection, false);
+        var current = new EditResult(Text, CommittedTextSelection, false);
 
         if (!Commit(new EditResult(snapshot.Text, snapshot.Selection, true), false))
         {
@@ -2250,16 +2168,6 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         if (remove > 0)
         {
             history.RemoveRange(0, remove);
-        }
-    }
-
-    private void CancelPointer(bool releaseCapture)
-    {
-        _pointerSelecting = false;
-
-        if (releaseCapture && CaptureOwner?.Captured is { } captured && ReferenceEquals(captured, this))
-        {
-            CaptureOwner.Release();
         }
     }
 

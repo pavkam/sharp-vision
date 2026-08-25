@@ -631,7 +631,7 @@ internal sealed class TextSelectionMap
 
     #region Mutation fingerprint
 
-    private static ulong ComputeFingerprint(string text, TextSelectionSource[] sources)
+    internal static ulong ComputeFingerprint(string text, ReadOnlySpan<TextSelectionSource> sources)
     {
         const ulong offset = 14695981039346656037;
         var hash = offset;

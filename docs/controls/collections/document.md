@@ -567,15 +567,16 @@ grapheme chooses a valid boundary. Reversing direction preserves
 disable, detach, and disposal end the gesture without leaving capture or a timer
 behind.
 
-While a captured drag remains outside a selectable viewport, `Document` ticks
-autoscroll every 50 milliseconds. Direction follows the edge crossed, and speed
-is the outside cell distance clamped to 1 through 8 cells per tick. The nearest
-eligible nested `ISelectableTextViewport` scrolls first; a saturated viewport
-passes the same motion to `Document`, then to an eligible ancestor `AutoScroll`
-container. Each successful move re-hit-tests the newly exposed content
-immediately. Returning inside stops the timer. Traversal never crosses the
-active modal plane, and source mutation or lifecycle changes cancel stale
-geometry before another selection commit.
+While a captured drag remains outside a selectable viewport, the inherited
+`ControlBase` selection controller ticks autoscroll every 50 milliseconds.
+Direction follows the edge crossed, and speed is the outside cell distance
+clamped to 1 through 8 cells per tick. The nearest eligible nested
+`ISelectableTextViewport` scrolls first; a saturated viewport passes the same
+motion to `Document`, then to an eligible ancestor `AutoScroll` container. Each
+successful move re-hit-tests the newly exposed content immediately. Returning
+inside stops the timer. Traversal never crosses the active modal plane, and
+source mutation or lifecycle changes cancel stale geometry before another
+selection commit.
 
 ### Keyboard extension and mutation
 

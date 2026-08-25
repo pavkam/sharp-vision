@@ -178,7 +178,9 @@ public sealed class ComponentSurfaceTests
         // Assert
         input.SelectionStart.ShouldBe(1);
         input.SelectionLength.ShouldBe(1);
-        input.SelectedText.ShouldBe("界");
+        (await surface.Application.Dispatcher.InvokeAsync(
+            () => input.SelectedText,
+            TestContext.Current.CancellationToken)).ShouldBe("界");
         surface.ShouldHaveCursor(new Point(1, 0), visible: true);
     }
 

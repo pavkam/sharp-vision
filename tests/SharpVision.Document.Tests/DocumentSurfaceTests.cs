@@ -242,7 +242,7 @@ public sealed class DocumentSurfaceTests
             () =>
             {
                 var source = outer.SelectionMap.Sources.Single(item => ReferenceEquals(item.Source, inner));
-                var moved = outer.AutoScrollSelection(
+                var moved = outer.AutoScrollTextSelection(
                     new Point(inner.Bounds.X, inner.Bounds.Bottom),
                     source,
                     out _);

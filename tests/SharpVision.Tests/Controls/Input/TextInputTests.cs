@@ -1562,6 +1562,7 @@ public sealed class TextInputTests
             using PointerManager capture = new(root);
 
             _ = capture.Dispatch(Pointer(new Point(0, 0), PointerAction.Press, new Point(5, 5)));
+            _ = capture.Dispatch(Pointer(new Point(2, 0), PointerAction.Move, new Point(7, 5)));
             capture.Captured.ShouldBeSameAs(control);
             focus.Focus(other).ShouldBeTrue();
 

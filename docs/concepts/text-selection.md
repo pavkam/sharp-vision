@@ -8,6 +8,12 @@ retained descendants, including a range that crosses child boundaries.
 `IsTextSelectionEnabled` defaults to `false`; opting in does not implicitly make
 the control focusable or a tab stop.
 
+`ControlBase` owns the range, click and drag transaction, keyboard navigation,
+capture, nested autoscroll, reveal, final adornment, and common change event.
+Concrete controls provide only projection and policy: semantic geometry,
+selectable hit regions, colors, viewport behavior, copy disclosure, and legacy
+API aliases. They do not retain a second selection state machine.
+
 The public range is read-only except through selection commands. Text mutation
 remains the responsibility of an editor such as `TextInput`.
 
@@ -39,19 +45,23 @@ from snapshots and copy output.
 
 ## Input and ownership
 
-The nearest enabled owner to the routed original source wins. An outer enabled
-ancestor never starts a competing gesture.
+The nearest enabled owner to the routed original source normally wins. An
+authoritative aggregate such as `Document` arbitrates drags beginning in its
+projected descendants so one range can cross child boundaries; the descendant's
+ordinary click path remains intact until the shared drag threshold is crossed.
 
 - A primary click collapses the range without preventing an ordinary child
   click.
 - Moving one cell with the primary button held transfers capture to the owner
   and begins a cross-child drag.
 - Ctrl+A selects the complete stream.
-- Shift+Left/Right moves by grapheme.
-- Shift+Up/Down preserves a visual column.
-- Shift+Home/End selects to a visual-row boundary.
-- Shift+Page Up/Page Down moves by the visible height minus a container's
-  `PageOverlap`, with a minimum of one row.
+- Left/Right moves by grapheme and Ctrl+Left/Right moves by word; without Shift,
+  an existing range first collapses toward the requested direction.
+- Up/Down preserves a visual column.
+- Home/End moves to a visual-row boundary.
+- Page Up/Page Down moves by the visible height minus `PageOverlap`, with a
+  minimum of one row.
+- Shift extends each navigation command from the established anchor.
 
 An edge-held drag offers scrolling from the innermost eligible
 `ISelectableTextViewport` outward through the selection owner and enabled
