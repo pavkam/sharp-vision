@@ -807,6 +807,89 @@ public sealed class MarkdownDocumentReaderTests
         paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(expected);
     }
 
+    /// <summary>Verifies one through four spaces after a bullet marker establish structural
+    /// content indentation instead of becoming visible text.</summary>
+    [Theory]
+    [InlineData("- first\n  continued")]
+    [InlineData("-  first\n   continued")]
+    [InlineData("-   first\n    continued")]
+    [InlineData("-    first\n     continued")]
+    public void Read_WhenBulletMarkerUsesOneThroughFourSpaces_StripsStructuralIndentation(string source)
+    {
+        // Arrange and act
+        var item = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem();
+
+        // Assert
+        var paragraph = item.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+        paragraph.Inlines.Count.ShouldBe(3);
+        paragraph.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("first");
+        _ = paragraph.Inlines[1].ShouldBeOfType<DocumentSoftBreak>();
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("continued");
+    }
+
+    /// <summary>Verifies ordered marker width includes both its digit run and all one-through-four
+    /// structural spaces.</summary>
+    [Theory]
+    [InlineData("1.  first\n    continued")]
+    [InlineData("10)   first\n      continued")]
+    [InlineData("100.    first\n        continued")]
+    public void Read_WhenOrderedMarkerUsesMultipleSpaces_StripsCompleteStructuralIndentation(string source)
+    {
+        // Arrange and act
+        var item = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem();
+
+        // Assert
+        var paragraph = item.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+        paragraph.Inlines.Count.ShouldBe(3);
+        paragraph.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("first");
+        _ = paragraph.Inlines[1].ShouldBeOfType<DocumentSoftBreak>();
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("continued");
+    }
+
+    /// <summary>Verifies each peer item uses its own marker spacing when removing continuation
+    /// indentation.</summary>
+    [Fact]
+    public void Read_WhenPeerItemsUseDifferentMarkerSpacing_StripsEachItemsOwnIndentation()
+    {
+        // Arrange
+        const string source = "- first\n-   second\n    continued";
+
+        // Act
+        var list = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentList>();
+
+        // Assert
+        list.Items.Count.ShouldBe(2);
+        var paragraph = list.Items[1].Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+        paragraph.Inlines.Count.ShouldBe(3);
+        paragraph.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("second");
+        _ = paragraph.Inlines[1].ShouldBeOfType<DocumentSoftBreak>();
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("continued");
+    }
+
+    /// <summary>Verifies marker spacing establishes the indentation boundary for a nested list
+    /// without leaking spaces into the parent text.</summary>
+    [Fact]
+    public void Read_WhenSpacedMarkerContainsNestedList_PreservesParentAndNestedBlocks()
+    {
+        // Arrange
+        const string source = "-   parent\n    - child";
+
+        // Act
+        var item = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem();
+
+        // Assert
+        item.Blocks.Count.ShouldBe(2);
+        item.Blocks[0].ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("parent");
+        item.Blocks[1].ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem().Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("child");
+    }
+
     /// <summary>Verifies a blank line between peer items makes one list loose instead of splitting
     /// it into unrelated list blocks.</summary>
     [Fact]

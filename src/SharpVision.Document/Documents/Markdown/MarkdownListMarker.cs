@@ -11,9 +11,9 @@ internal readonly struct MarkdownListMarker
     /// <param name="isOrdered">Whether the marker is numeric.</param>
     /// <param name="start">The parsed numeric ordinal, or one for bullets.</param>
     /// <param name="markerWidth">The column width of the marker and its required or implied
-    /// trailing space, excluding <paramref name="indent"/>: always 2 for a bullet (<c>"- "</c>),
-    /// or the digit count plus 2 for an ordinal (<c>"1. "</c> is 3, <c>"10. "</c> is 4). An empty
-    /// item with no physical trailing space retains the implied width needed by later content.</param>
+    /// trailing spacing, excluding <paramref name="indent"/>. The width includes one through four
+    /// structural spaces after the marker; an empty item with no physical trailing space retains
+    /// the implied one-space width needed by later content.</param>
     /// <param name="content">The source following the marker and spacing, or an empty string for
     /// an empty item.</param>
     internal MarkdownListMarker(int indent, bool isOrdered, int start, int markerWidth, string content)
@@ -34,10 +34,10 @@ internal readonly struct MarkdownListMarker
     /// <summary>Gets the first numeric ordinal, or one for bullets.</summary>
     internal int Start { get; }
 
-    /// <summary>Gets the column width of the marker and its required or implied trailing space,
+    /// <summary>Gets the column width of the marker and its required or implied trailing spacing,
     /// excluding <see cref="Indent"/>. A continuation line's own indentation must be measured
-    /// against <see cref="Indent"/> plus this width, not a fixed width: an ordinal marker's prefix
-    /// grows with its digit count (<c>"1. "</c> is 3 columns, <c>"10. "</c> is 4).</summary>
+    /// against <see cref="Indent"/> plus this width, not a fixed width: the prefix grows with both
+    /// an ordinal's digit count and the one through four structural spaces after the marker.</summary>
     internal int MarkerWidth { get; }
 
     /// <summary>Gets the source after the marker.</summary>

@@ -40,6 +40,7 @@ So this sentence does too.
 1. Later items share the measured marker gutter
 2.
 3. Empty items retain their authored position
+4. Multiple marker spaces stay structural: `4.    item`
 
 > Block quotes can contain flowing text and **inline formatting**.
 

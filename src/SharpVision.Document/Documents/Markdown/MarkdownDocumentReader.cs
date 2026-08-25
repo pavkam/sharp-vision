@@ -375,7 +375,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 }
                 else
                 {
-                    var remove = Math.Min(firstMarker.Indent + firstMarker.MarkerWidth, CountLeadingSpaces(lines[index]));
+                    var remove = Math.Min(marker.Indent + marker.MarkerWidth, CountLeadingSpaces(lines[index]));
                     continuation.Add(lines[index][remove..]);
                 }
 
@@ -1024,9 +1024,16 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 return true;
             }
 
-            if (suffix[0] == ' ')
+            var spacing = CountListMarkerSpaces(suffix);
+
+            if (spacing > 0)
             {
-                marker = new MarkdownListMarker(indent, isOrdered: false, start: 1, markerWidth: 2, suffix[1..].ToString());
+                marker = new MarkdownListMarker(
+                    indent,
+                    isOrdered: false,
+                    start: 1,
+                    markerWidth: 1 + spacing,
+                    suffix[spacing..].ToString());
                 return true;
             }
         }
@@ -1055,9 +1062,16 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 return true;
             }
 
-            if (suffix[0] == ' ')
+            var spacing = CountListMarkerSpaces(suffix);
+
+            if (spacing > 0)
             {
-                marker = new MarkdownListMarker(indent, isOrdered: true, start, markerWidth: digits + 2, suffix[1..].ToString());
+                marker = new MarkdownListMarker(
+                    indent,
+                    isOrdered: true,
+                    start,
+                    markerWidth: digits + 1 + spacing,
+                    suffix[spacing..].ToString());
                 return true;
             }
         }
@@ -1078,6 +1092,19 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         }
 
         return true;
+    }
+
+    [Pure]
+    private static int CountListMarkerSpaces(ReadOnlySpan<char> source)
+    {
+        var spaces = 0;
+
+        while (spaces < source.Length && source[spaces] == ' ')
+        {
+            spaces++;
+        }
+
+        return spaces > 4 ? 1 : spaces;
     }
 
     [Pure]
