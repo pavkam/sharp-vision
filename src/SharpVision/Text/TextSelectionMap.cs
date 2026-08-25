@@ -1,14 +1,14 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Controls.Documents;
+namespace SharpVision.Text;
 
 using System.Runtime.CompilerServices;
 
 /// <summary>Owns one immutable semantic document stream, visible glyph map, and row-local hit index.</summary>
-internal sealed class DocumentSelectionMap
+internal sealed class TextSelectionMap
 {
-    private readonly DocumentSelectionGlyph[] _glyphs;
+    private readonly TextSelectionGlyph[] _glyphs;
     private readonly int[] _graphemeBoundaries;
     private readonly int[] _nearestOffsets;
     private readonly int[][] _rowGlyphIndexes;
@@ -23,10 +23,10 @@ internal sealed class DocumentSelectionMap
     /// <param name="glyphs">Visible glyphs in visual reading order.</param>
     /// <param name="sources">Embedded sources in semantic order.</param>
     /// <param name="lineCount">The non-negative number of projected visual lines.</param>
-    internal DocumentSelectionMap(
+    internal TextSelectionMap(
         string text,
-        DocumentSelectionGlyph[] glyphs,
-        DocumentSelectionSource[] sources,
+        TextSelectionGlyph[] glyphs,
+        TextSelectionSource[] sources,
         int lineCount)
     {
         Debug.Assert(text is not null, "A document selection map owns semantic text.");
@@ -56,16 +56,16 @@ internal sealed class DocumentSelectionMap
     }
 
     /// <summary>Gets the empty map used before the first document layout.</summary>
-    internal static DocumentSelectionMap Empty { get; } = new(string.Empty, [], [], 0);
+    internal static TextSelectionMap Empty { get; } = new(string.Empty, [], [], 0);
 
     /// <summary>Gets the complete normalized semantic UTF-16 stream.</summary>
     internal string Text { get; }
 
     /// <summary>Gets visible semantic graphemes in document reading order.</summary>
-    internal IReadOnlyList<DocumentSelectionGlyph> Glyphs { get; }
+    internal IReadOnlyList<TextSelectionGlyph> Glyphs { get; }
 
     /// <summary>Gets embedded source snapshots in document order.</summary>
-    internal IReadOnlyList<DocumentSelectionSource> Sources { get; }
+    internal IReadOnlyList<TextSelectionSource> Sources { get; }
 
     /// <summary>Gets the stable same-process fingerprint of semantic text and ordered source identity.</summary>
     /// <remarks>
@@ -85,7 +85,7 @@ internal sealed class DocumentSelectionMap
     /// Range participates so one source identity projected more than once never drifts to another
     /// occurrence. Exact duplicates resolve to the first semantic occurrence deterministically.
     /// </remarks>
-    internal DocumentSelectionSource? ResolveSourceOccurrence(DocumentSelectionSource source)
+    internal TextSelectionSource? ResolveSourceOccurrence(TextSelectionSource source)
     {
         ArgumentNullException.ThrowIfNull(source);
 
@@ -180,7 +180,7 @@ internal sealed class DocumentSelectionMap
         bool end,
         out int boundary,
         out Rect bounds,
-        out DocumentSelectionSource? source)
+        out TextSelectionSource? source)
     {
         if (!TryGetVisualPosition(offset, out var row, out _))
         {
@@ -212,14 +212,14 @@ internal sealed class DocumentSelectionMap
     /// <param name="bounds">Receives content-relative glyph cells.</param>
     /// <param name="source">Receives the embedded source occurrence, or null for document text.</param>
     /// <returns>True when visible glyph geometry exists.</returns>
-    internal bool TryGetCaretGeometry(int offset, out Rect bounds, out DocumentSelectionSource? source)
+    internal bool TryGetCaretGeometry(int offset, out Rect bounds, out TextSelectionSource? source)
         => TryGetCaretGeometry(offset, out bounds, out source, out _);
 
     /// <summary>Gets caret geometry while reporting semantic-index entries inspected.</summary>
     internal bool TryGetCaretGeometry(
         int offset,
         out Rect bounds,
-        out DocumentSelectionSource? source,
+        out TextSelectionSource? source,
         out int inspectedEntries)
     {
         if (TryGetCaretGlyph(offset, out var glyph, out inspectedEntries))
@@ -235,7 +235,7 @@ internal sealed class DocumentSelectionMap
         return false;
     }
 
-    private DocumentSelectionSource? SourceContaining(int offset)
+    private TextSelectionSource? SourceContaining(int offset)
     {
         foreach (var source in Sources)
         {
@@ -256,7 +256,7 @@ internal sealed class DocumentSelectionMap
         return null;
     }
 
-    private bool TryGetCaretGlyph(int offset, out DocumentSelectionGlyph glyph, out int inspectedEntries)
+    private bool TryGetCaretGlyph(int offset, out TextSelectionGlyph glyph, out int inspectedEntries)
     {
         inspectedEntries = 0;
         var low = 0;
@@ -341,7 +341,7 @@ internal sealed class DocumentSelectionMap
         return [.. result];
     }
 
-    private static int[] BuildSemanticIndex(DocumentSelectionGlyph[] glyphs)
+    private static int[] BuildSemanticIndex(TextSelectionGlyph[] glyphs)
     {
         var indexes = Enumerable.Range(0, glyphs.Length).ToArray();
         Array.Sort(indexes, (left, right) =>
@@ -353,7 +353,7 @@ internal sealed class DocumentSelectionMap
     }
 
     private static void BuildSemanticPrefixIndex(
-        DocumentSelectionGlyph[] glyphs,
+        TextSelectionGlyph[] glyphs,
         int[] indexes,
         out int[] ends,
         out int[] candidates)
@@ -486,7 +486,7 @@ internal sealed class DocumentSelectionMap
         return previousDistance <= nextDistance ? previousGlyph.Range.End : nextGlyph.Range.Start;
     }
 
-    private static int[][] BuildRowIndex(DocumentSelectionGlyph[] glyphs, int lineCount)
+    private static int[][] BuildRowIndex(TextSelectionGlyph[] glyphs, int lineCount)
     {
         var rows = new List<int>[lineCount];
 
@@ -514,7 +514,7 @@ internal sealed class DocumentSelectionMap
     }
 
     private static void BuildRowQueryIndex(
-        DocumentSelectionGlyph[] glyphs,
+        TextSelectionGlyph[] glyphs,
         int[][] rows,
         out long[][] prefixMaxRights,
         out int[][] prefixMaxRightIndexes)
@@ -550,7 +550,7 @@ internal sealed class DocumentSelectionMap
         }
     }
 
-    private static int CompareVisualGlyphs(DocumentSelectionGlyph[] glyphs, int leftIndex, int rightIndex)
+    private static int CompareVisualGlyphs(TextSelectionGlyph[] glyphs, int leftIndex, int rightIndex)
     {
         var left = glyphs[leftIndex];
         var right = glyphs[rightIndex];
@@ -580,7 +580,7 @@ internal sealed class DocumentSelectionMap
         return comparison != 0 ? comparison : leftIndex.CompareTo(rightIndex);
     }
 
-    private static int[] BuildNearestOffsets(DocumentSelectionGlyph[] glyphs, int[][] rows)
+    private static int[] BuildNearestOffsets(TextSelectionGlyph[] glyphs, int[][] rows)
     {
         var nearest = new int[rows.Length];
         var nextOffsets = new int[rows.Length];
@@ -631,7 +631,7 @@ internal sealed class DocumentSelectionMap
 
     #region Mutation fingerprint
 
-    private static ulong ComputeFingerprint(string text, DocumentSelectionSource[] sources)
+    private static ulong ComputeFingerprint(string text, TextSelectionSource[] sources)
     {
         const ulong offset = 14695981039346656037;
         var hash = offset;

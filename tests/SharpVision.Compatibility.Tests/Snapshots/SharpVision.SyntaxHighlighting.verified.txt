@@ -1,6 +1,6 @@
 ﻿namespace SharpVision.Controls.SyntaxHighlighting
 {
-    public sealed class CodeView : SharpVision.Controls.CompositeControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.SyntaxHighlighting.CodeViewStyle>, SharpVision.Runtime.IClipboardCopySource, SharpVision.Text.ISelectableTextSource, SharpVision.Text.ISelectableTextViewport
+    public sealed class CodeView : SharpVision.Controls.CompositeControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.SyntaxHighlighting.CodeViewStyle>, SharpVision.Runtime.IClipboardCopySource, SharpVision.Text.ISelectableTextViewport
     {
         public CodeView() { }
         public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
@@ -18,19 +18,24 @@
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
         public SharpVision.Terminal.Geometry.Rect SelectableTextViewport { get; }
-        public string SelectedText { get; }
+        public override string SelectedText { get; }
         public SharpVision.Text.Selection Selection { get; }
         public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
         public SharpVision.Controls.SyntaxHighlighting.CodeViewStyle? Style { get; set; }
+        public override SharpVision.Text.Selection TextSelection { get; }
+        protected override bool UsesTextSelectionController { get; }
         public int VerticalOffset { get; set; }
         public SharpVision.Terminal.Geometry.Size Viewport { get; }
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         public event System.EventHandler<System.EventArgs>? SelectionChanged;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public void ClearSelection() { }
+        public override void ClearTextSelection() { }
         public void CollapseAll() { }
+        public override string CopySelectedText() { }
         public string CopySelection() { }
         public void ExpandAll() { }
+        public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         public bool IsFoldStart(int line) { }
         public bool IsFolded(int line) { }
         protected override void OnAttached() { }
@@ -38,12 +43,15 @@
         protected override void OnDisposing() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
+        protected override void OnTextSelectionEnabledChanged(bool enabled) { }
         public bool RevealSelectableTextOffset(int offset) { }
         public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
         public bool ScrollSelectableTextViewport(int horizontal, int vertical) { }
         public void SelectAll() { }
+        public override void SelectAllText() { }
         public bool SetFolded(int line, bool folded) { }
         public void SetSelection(SharpVision.Text.Selection selection) { }
+        public override void SetTextSelection(SharpVision.Text.Selection selection) { }
         public bool ToggleFold(int line) { }
     }
     public sealed class CodeViewContextMenu : SharpVision.Menus.ContextMenu

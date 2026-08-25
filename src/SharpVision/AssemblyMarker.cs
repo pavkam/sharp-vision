@@ -3,6 +3,7 @@
 
 [assembly: InternalsVisibleTo("SharpVision.Tests")]
 [assembly: InternalsVisibleTo("SharpVision.Test.Shared")]
+[assembly: InternalsVisibleTo("SharpVision.Document")]
 [assembly: InternalsVisibleTo("SharpVision.Document.Tests")]
 [assembly: InternalsVisibleTo("SharpVision.FigletFonts.Tests")]
 [assembly: InternalsVisibleTo("SharpVision.SyntaxHighlighting.Tests")]

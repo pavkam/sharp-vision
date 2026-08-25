@@ -15,11 +15,11 @@ internal sealed class DocumentSelectionBuilder
 {
     private readonly Dictionary<ControlBase, SelectableTextSnapshot> _controlSnapshots =
         new(ReferenceEqualityComparer.Instance);
-    private readonly Dictionary<ControlBase, DocumentSelectionSource> _controlSources =
+    private readonly Dictionary<ControlBase, TextSelectionSource> _controlSources =
         new(ReferenceEqualityComparer.Instance);
-    private readonly List<DocumentSelectionGlyph> _directGlyphs = [];
+    private readonly List<TextSelectionGlyph> _directGlyphs = [];
     private readonly Dictionary<(int ParsedRun, int Offset, int Length), Selection> _parsedRanges = [];
-    private readonly List<DocumentSelectionSource> _sources = [];
+    private readonly List<TextSelectionSource> _sources = [];
     private readonly StringBuilder _text = new();
 
     private bool _pendingBlockSeparator;
@@ -141,7 +141,7 @@ internal sealed class DocumentSelectionBuilder
             {
                 var cluster = semanticPrefix.Slice(grapheme.Offset, grapheme.Length);
                 var width = Math.Max(1, UnicodeWidth.Measure(cluster, ambiguousWidth).Cells);
-                _directGlyphs.Add(new DocumentSelectionGlyph(
+                _directGlyphs.Add(new TextSelectionGlyph(
                     new Selection(
                         semanticOffset + grapheme.Offset,
                         semanticOffset + grapheme.Offset + grapheme.Length),
@@ -151,13 +151,13 @@ internal sealed class DocumentSelectionBuilder
         }
         else
         {
-            _directGlyphs.Add(new DocumentSelectionGlyph(
+            _directGlyphs.Add(new TextSelectionGlyph(
                 new Selection(semanticOffset, semanticOffset + semanticPrefix.Length),
                 new Rect(column, line, Math.Max(1, markerCells), 1)));
         }
 
         var spaceStart = range.End - 1;
-        _directGlyphs.Add(new DocumentSelectionGlyph(
+        _directGlyphs.Add(new TextSelectionGlyph(
             new Selection(spaceStart, range.End),
             new Rect(
                 SaturatingAdd(column, markerCells),
@@ -222,7 +222,7 @@ internal sealed class DocumentSelectionBuilder
 
         var snapshot = source.GetSelectableTextSnapshot();
         var range = AppendLiteral(snapshot.Text);
-        var selectionSource = new DocumentSelectionSource(
+        var selectionSource = new TextSelectionSource(
             source,
             control as ISelectableTextViewport,
             range,
@@ -281,14 +281,14 @@ internal sealed class DocumentSelectionBuilder
     /// <param name="placements">Embedded control rectangles in content coordinates.</param>
     /// <param name="ambiguousWidth">The live terminal width policy.</param>
     /// <returns>An independently owned semantic map.</returns>
-    internal DocumentSelectionMap Build(
+    internal TextSelectionMap Build(
         IReadOnlyList<DocumentVisualLine> lines,
         IReadOnlyList<DocumentVisualRun> runs,
         IReadOnlyList<DocumentParsedRun> parsedRuns,
         IReadOnlyList<DocumentControlPlacement> placements,
         Ambiguous ambiguousWidth)
     {
-        var glyphs = new List<DocumentSelectionGlyph>();
+        var glyphs = new List<TextSelectionGlyph>();
         var directIndex = 0;
         var inlineControls = new HashSet<ControlBase>(ReferenceEqualityComparer.Instance);
         var placementByControl = new Dictionary<ControlBase, DocumentControlPlacement>(
@@ -343,7 +343,7 @@ internal sealed class DocumentSelectionBuilder
                 }
                 else if (run.Kind == DocumentRunKind.Repeat && !run.SemanticRange.IsEmpty)
                 {
-                    glyphs.Add(new DocumentSelectionGlyph(
+                    glyphs.Add(new TextSelectionGlyph(
                         run.SemanticRange,
                         new Rect(run.Column, lineIndex, run.Cells, 1)));
                 }
@@ -354,11 +354,11 @@ internal sealed class DocumentSelectionBuilder
             }
         }
 
-        return new DocumentSelectionMap(_text.ToString(), [.. glyphs], [.. _sources], lines.Count);
+        return new TextSelectionMap(_text.ToString(), [.. glyphs], [.. _sources], lines.Count);
     }
 
     private void AppendTextGlyphs(
-        List<DocumentSelectionGlyph> glyphs,
+        List<TextSelectionGlyph> glyphs,
         DocumentParsedRun parsed,
         DocumentVisualRun run,
         int line,
@@ -384,13 +384,13 @@ internal sealed class DocumentSelectionBuilder
                     glyphs[^1].Bounds.Right == x)
                 {
                     var previous = glyphs[^1];
-                    glyphs[^1] = new DocumentSelectionGlyph(
+                    glyphs[^1] = new TextSelectionGlyph(
                         range,
                         new Rect(previous.Bounds.X, line, previous.Bounds.Width + width, 1));
                 }
                 else
                 {
-                    glyphs.Add(new DocumentSelectionGlyph(range, new Rect(x, line, width, 1)));
+                    glyphs.Add(new TextSelectionGlyph(range, new Rect(x, line, width, 1)));
                 }
             }
 
@@ -399,7 +399,7 @@ internal sealed class DocumentSelectionBuilder
     }
 
     private void AppendControlGlyphs(
-        List<DocumentSelectionGlyph> glyphs,
+        List<TextSelectionGlyph> glyphs,
         DocumentControlPlacement placement)
     {
         if (!_controlSources.TryGetValue(placement.Control, out var source) ||
@@ -410,7 +410,7 @@ internal sealed class DocumentSelectionBuilder
 
         foreach (var glyph in snapshot.Glyphs)
         {
-            glyphs.Add(new DocumentSelectionGlyph(
+            glyphs.Add(new TextSelectionGlyph(
                 new Selection(source.Range.Start + glyph.Range.Start, source.Range.Start + glyph.Range.End),
                 new Rect(
                     SaturatingAdd(placement.Bounds.X, glyph.Bounds.X),

@@ -72,6 +72,26 @@ internal sealed class DocumentPane: CompositeControlBase
                 ? $"Selection: caret {document.Selection.Caret}"
                 : $"Selection: {document.Selection.Length} UTF-16 code unit(s)";
 
+        var ordinaryStatus = new Text("Selection: collapsed");
+        var ordinary = new Stack
+        {
+            IsFocusable = true,
+            IsTabStop = true,
+            IsTextSelectionEnabled = true,
+            Orientation = Orientation.Vertical,
+            Width = Length.Cells(64),
+            Children =
+            {
+                new Text("This is an ordinary Stack, not a Document."),
+                new Button("&Deploy from a child button"),
+                new CheckBox("&Include child captions")
+            }
+        };
+        ordinary.TextSelectionChanged += (_, eventArgs) =>
+            ordinaryStatus.Content = eventArgs.Selection.IsEmpty
+                ? $"Selection: caret {eventArgs.Selection.Caret}"
+                : $"Selection: {eventArgs.Selection.Length} UTF-16 code unit(s)";
+
         return new DocSection(
             "⌁",
             "Selection across mixed content",
@@ -96,6 +116,26 @@ internal sealed class DocumentPane: CompositeControlBase
                 }));
 
                 document.SelectionChanged += (_, _) => Show(document.SelectedText);
+                """),
+            new DocExample(
+                "The same capability on an ordinary composite",
+                "Text selection belongs to ControlBase. This Stack opts in and selects across " +
+                "its Text, Button, and CheckBox descendants without a Document projection.",
+                new DocColumn(ordinary, ordinaryStatus),
+                """
+                var content = new Stack
+                {
+                    IsFocusable = true,
+                    IsTextSelectionEnabled = true,
+                    Children =
+                    {
+                        new Text("Select across ordinary children"),
+                        new Button("Deploy"),
+                        new CheckBox("Include captions")
+                    }
+                };
+
+                content.TextSelectionChanged += (_, args) => Show(content.SelectedText);
                 """));
     }
 

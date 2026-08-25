@@ -13,7 +13,7 @@ using UnicodeWidth = Width;
 
 /// <summary>Displays grapheme-safe inline-markup text through semantic terminal cells.</summary>
 [PublicAPI]
-public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>, ISelectableTextSource
+public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
 {
     private const TerminalAttributes _blinkAttributes =
         TerminalAttributes.Blink | TerminalAttributes.RapidBlink;
@@ -159,7 +159,7 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>, IS
     internal ReadOnlyMemory<Line> Lines => _lines.AsMemory(0, _lineCount);
 
     /// <inheritdoc/>
-    public SelectableTextSnapshot GetSelectableTextSnapshot()
+    public override SelectableTextSnapshot GetSelectableTextSnapshot()
     {
         VerifyMutable();
         EnsureParsed();

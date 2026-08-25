@@ -44,7 +44,13 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         (IsDisposed ? " Disposed" : "");
 
     /// <summary>Initializes an empty control with one central visual-ownership registry.</summary>
-    protected ControlBase() => OwnedControls = new OwnedControlRegistry(this);
+    protected ControlBase()
+    {
+        OwnedControls = new OwnedControlRegistry(this);
+        _ = AddHandler(Events.Key, OnTextSelectionKeyRouted, handledEventsToo: true);
+        _ = AddHandler(Events.Pointer, OnTextSelectionPointerRouted, handledEventsToo: true);
+        _ = AddHandler(Events.TerminalFocusChanged, OnTextSelectionTerminalFocusRouted, handledEventsToo: true);
+    }
 
     /// <summary>Raised after one public property has committed a changed value.</summary>
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -2248,8 +2254,11 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
     /// <summary>Responds after this control loses pointer capture or its associated press transaction.</summary>
     /// <param name="reason">The defined reason exclusive pointer ownership ended.</param>
-    protected virtual void OnLostPointerCapture(PointerCaptureLossReason reason) =>
+    protected virtual void OnLostPointerCapture(PointerCaptureLossReason reason)
+    {
         Debug.Assert(Enum.IsDefined(reason), "Capture-loss reasons are validated internally.");
+        _textSelectionGesture?.Cancel(releaseCapture: false);
+    }
 
     /// <summary>Responds after this control's direct ownership changes.</summary>
     /// <param name="previous">The previous owner, or null.</param>
@@ -2264,8 +2273,11 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
     /// <summary>Releases derived transient state when this control becomes unavailable.</summary>
     /// <param name="reason">The precise unavailability reason.</param>
-    protected virtual void OnUnavailable(ReleaseReason reason) =>
+    protected virtual void OnUnavailable(ReleaseReason reason)
+    {
         Debug.Assert(Enum.IsDefined(reason), "Unavailable reasons are validated internally.");
+        _textSelectionGesture?.Cancel(releaseCapture: false);
+    }
 
     /// <summary>Configures the framework-owned chrome surrounding this control's content.</summary>
     /// <returns>The narrow set of chrome adjustments required by a specialized frame.</returns>
@@ -2293,6 +2305,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     {
         _ = canvas.Bounds;
         Debug.Assert(!IsDisposed, "A disposed control cannot render an adornment.");
+        RenderTextSelectionAdornment(canvas);
     }
 
     /// <summary>Gets the own-content drawing bounds, including deliberate visual overflow.</summary>

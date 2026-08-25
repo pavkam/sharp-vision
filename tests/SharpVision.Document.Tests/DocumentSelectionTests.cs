@@ -11,6 +11,25 @@ using Document = Controls.Documents.Document;
 /// from visual wrapping, decorative chrome, and retained-control presentation details.</summary>
 public sealed class DocumentSelectionTests
 {
+    /// <summary>Verifies Document exposes its specialized semantic projection through the common control contract.</summary>
+    [Fact]
+    public void TextSelection_WhenAccessedThroughControlBase_UsesDocumentSelectionState()
+    {
+        // Arrange
+        var document = new Document();
+        document.Blocks.Add(new DocumentParagraph("Alpha Beta"));
+        ControlBase control = document;
+
+        // Act
+        control.SetTextSelection(new Selection(6, 10));
+
+        // Assert
+        control.IsTextSelectionEnabled.ShouldBeTrue();
+        control.TextSelection.ShouldBe(document.Selection);
+        control.SelectedText.ShouldBe("Beta");
+        control.CopySelectedText().ShouldBe(document.CopySelection());
+    }
+
     /// <summary>Verifies repeated source identity resolves by exact semantic occurrence and exact
     /// duplicate records choose the first occurrence deterministically.</summary>
     [Fact]
@@ -18,11 +37,11 @@ public sealed class DocumentSelectionTests
     {
         // Arrange
         var probe = new DocumentSelectionSourceProbe();
-        var first = new DocumentSelectionSource(probe, probe, new Selection(0, 5), "Probe", 0);
-        var second = new DocumentSelectionSource(probe, probe, new Selection(6, 11), "Probe", 0);
-        var duplicate = new DocumentSelectionSource(probe, probe, new Selection(6, 11), "Probe", 0);
-        var map = new DocumentSelectionMap("Probe\nProbe", [], [first, second, duplicate], 0);
-        var capturedSecond = new DocumentSelectionSource(probe, probe, new Selection(6, 11), "Probe", 0);
+        var first = new TextSelectionSource(probe, probe, new Selection(0, 5), "Probe", 0);
+        var second = new TextSelectionSource(probe, probe, new Selection(6, 11), "Probe", 0);
+        var duplicate = new TextSelectionSource(probe, probe, new Selection(6, 11), "Probe", 0);
+        var map = new TextSelectionMap("Probe\nProbe", [], [first, second, duplicate], 0);
+        var capturedSecond = new TextSelectionSource(probe, probe, new Selection(6, 11), "Probe", 0);
 
         // Act
         var resolved = map.ResolveSourceOccurrence(capturedSecond);
@@ -690,20 +709,20 @@ public sealed class DocumentSelectionTests
     public void HitTest_WhenGlyphOrderAndRectanglesConflict_UsesDeterministicSpatialOrder()
     {
         // Arrange
-        var reversed = new DocumentSelectionMap(
+        var reversed = new TextSelectionMap(
             "ab",
             [
-                new DocumentSelectionGlyph(new Selection(1, 2), new Rect(1, 0, 1, 1)),
-                new DocumentSelectionGlyph(new Selection(0, 1), new Rect(0, 0, 1, 1))
+                new TextSelectionGlyph(new Selection(1, 2), new Rect(1, 0, 1, 1)),
+                new TextSelectionGlyph(new Selection(0, 1), new Rect(0, 0, 1, 1))
             ],
             [],
             lineCount: 1);
-        var overlaps = new DocumentSelectionMap(
+        var overlaps = new TextSelectionMap(
             "abc",
             [
-                new DocumentSelectionGlyph(new Selection(2, 3), new Rect(0, 0, 3, 1)),
-                new DocumentSelectionGlyph(new Selection(1, 2), new Rect(0, 0, 3, 1)),
-                new DocumentSelectionGlyph(new Selection(0, 1), new Rect(1, 0, 1, 1))
+                new TextSelectionGlyph(new Selection(2, 3), new Rect(0, 0, 3, 1)),
+                new TextSelectionGlyph(new Selection(1, 2), new Rect(0, 0, 3, 1)),
+                new TextSelectionGlyph(new Selection(0, 1), new Rect(1, 0, 1, 1))
             ],
             [],
             lineCount: 1);
@@ -722,16 +741,16 @@ public sealed class DocumentSelectionTests
     {
         // Arrange
         const int count = 10_000;
-        var glyphs = new DocumentSelectionGlyph[count];
+        var glyphs = new TextSelectionGlyph[count];
 
         for (var index = 0; index < glyphs.Length; index++)
         {
-            glyphs[index] = new DocumentSelectionGlyph(
+            glyphs[index] = new TextSelectionGlyph(
                 new Selection(index, index + 1),
                 new Rect(index * 2, 0, 1, 1));
         }
 
-        var map = new DocumentSelectionMap(new string('a', count), glyphs, [], lineCount: 1);
+        var map = new TextSelectionMap(new string('a', count), glyphs, [], lineCount: 1);
 
         // Act
         var offset = map.HitTest(new Point((count - 1) * 2, 0), out var inspectedEntries);
@@ -760,16 +779,16 @@ public sealed class DocumentSelectionTests
         // Act
         using var probe = new DocumentRenderProbe(document, new Size(12, 2));
         var translated = document.SelectionMap.Glyphs.First(glyph => glyph.Source != null);
-        var midpoint = new DocumentSelectionMap(
+        var midpoint = new TextSelectionMap(
             "a",
-            [new DocumentSelectionGlyph(new Selection(0, 1), new Rect(0, 0, int.MaxValue, 1))],
+            [new TextSelectionGlyph(new Selection(0, 1), new Rect(0, 0, int.MaxValue, 1))],
             [],
             lineCount: 1);
-        var gap = new DocumentSelectionMap(
+        var gap = new TextSelectionMap(
             "aXb",
             [
-                new DocumentSelectionGlyph(new Selection(0, 1), new Rect(int.MinValue, 0, 1, 1)),
-                new DocumentSelectionGlyph(new Selection(2, 3), new Rect(int.MaxValue, 0, 1, 1))
+                new TextSelectionGlyph(new Selection(0, 1), new Rect(int.MinValue, 0, 1, 1)),
+                new TextSelectionGlyph(new Selection(2, 3), new Rect(int.MaxValue, 0, 1, 1))
             ],
             [],
             lineCount: 1);
@@ -824,11 +843,11 @@ public sealed class DocumentSelectionTests
     [Fact]
     public void VisualLineBoundary_WhenGlyphsOverlap_UsesTrueVisualExtents()
     {
-        var map = new DocumentSelectionMap(
+        var map = new TextSelectionMap(
             "ab",
             [
-                new DocumentSelectionGlyph(new Selection(0, 1), new Rect(0, 0, 10, 1)),
-                new DocumentSelectionGlyph(new Selection(1, 2), new Rect(5, 0, 1, 1))
+                new TextSelectionGlyph(new Selection(0, 1), new Rect(0, 0, 10, 1)),
+                new TextSelectionGlyph(new Selection(1, 2), new Rect(5, 0, 1, 1))
             ],
             [],
             1);
@@ -848,12 +867,12 @@ public sealed class DocumentSelectionTests
     public void Navigation_WhenMapIsLarge_InspectsBoundedIndexEntries()
     {
         const int count = 10_000;
-        var glyphs = new DocumentSelectionGlyph[count];
+        var glyphs = new TextSelectionGlyph[count];
         for (var index = 0; index < count; index++)
         {
-            glyphs[index] = new DocumentSelectionGlyph(new Selection(index, index + 1), new Rect(index, 0, 1, 1));
+            glyphs[index] = new TextSelectionGlyph(new Selection(index, index + 1), new Rect(index, 0, 1, 1));
         }
-        var map = new DocumentSelectionMap(new string('a', count), glyphs, [], 1);
+        var map = new TextSelectionMap(new string('a', count), glyphs, [], 1);
 
         map.PreviousBoundary(9_999, out var previousInspected).ShouldBe(9_998);
         map.NextBoundary(9_999, out var nextInspected).ShouldBe(10_000);

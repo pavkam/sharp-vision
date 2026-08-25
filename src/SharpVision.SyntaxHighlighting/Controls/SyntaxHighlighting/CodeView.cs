@@ -52,7 +52,6 @@ using TextSelection = Selection;
 public sealed class CodeView:
     CompositeControlBase,
     IStyled<CodeViewStyle>,
-    ISelectableTextSource,
     ISelectableTextViewport,
     IClipboardCopySource
 {
@@ -110,6 +109,7 @@ public sealed class CodeView:
         ContextMenu = new CodeViewContextMenu(this);
         RebuildProjection();
         _ = AddHandler(Events.Key, OnKeyRouted);
+        IsTextSelectionEnabled = true;
     }
 
     #region Content
@@ -348,7 +348,7 @@ public sealed class CodeView:
     #region Selection
 
     /// <inheritdoc/>
-    SelectableTextSnapshot ISelectableTextSource.GetSelectableTextSnapshot()
+    public override SelectableTextSnapshot GetSelectableTextSnapshot()
     {
         VerifyMutable();
         LastSelectableTextSnapshotInspectedLineCount = 0;
@@ -498,8 +498,11 @@ public sealed class CodeView:
     /// <summary>Gets the current directional selection over the normalized <see cref="Code"/> text.</summary>
     public TextSelection Selection { get; private set; }
 
+    /// <inheritdoc/>
+    public override TextSelection TextSelection => Selection;
+
     /// <summary>Gets the selected substring of the normalized <see cref="Code"/> text, or an empty string.</summary>
-    public string SelectedText => Selection.IsEmpty ? string.Empty : NormalizedCode.Substring(Selection.Start, Selection.Length);
+    public override string SelectedText => Selection.IsEmpty ? string.Empty : NormalizedCode.Substring(Selection.Start, Selection.Length);
 
     /// <summary>Raised after the committed selection changes.</summary>
     public event EventHandler<EventArgs>? SelectionChanged;
@@ -517,6 +520,13 @@ public sealed class CodeView:
         CommitSelection(selection, resetDesiredColumn: true);
     }
 
+    /// <inheritdoc/>
+    public override void SetTextSelection(TextSelection selection)
+    {
+        VerifyTextSelectionEnabled();
+        SetSelection(selection);
+    }
+
     /// <summary>Selects the entire normalized <see cref="Code"/> text.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -524,6 +534,13 @@ public sealed class CodeView:
     {
         VerifyMutable();
         CommitSelection(new TextSelection(0, NormalizedCode.Length), resetDesiredColumn: true);
+    }
+
+    /// <inheritdoc/>
+    public override void SelectAllText()
+    {
+        VerifyTextSelectionEnabled();
+        SelectAll();
     }
 
     /// <summary>Collapses the selection to an empty range at its current caret.</summary>
@@ -535,6 +552,13 @@ public sealed class CodeView:
         CommitSelection(new TextSelection(Selection.Caret, Selection.Caret), resetDesiredColumn: true);
     }
 
+    /// <inheritdoc/>
+    public override void ClearTextSelection()
+    {
+        VerifyTextSelectionEnabled();
+        ClearSelection();
+    }
+
     /// <summary>
     /// Returns the currently selected text without touching any clipboard. Mirrors
     /// <c>TextInput.CopySelection</c>: the host application - not this control - decides whether
@@ -543,6 +567,22 @@ public sealed class CodeView:
     /// <returns>The selected substring, or an empty string when nothing is selected.</returns>
     [Pure]
     public string CopySelection() => SelectedText;
+
+    /// <inheritdoc/>
+    [Pure]
+    public override string CopySelectedText() => CopySelection();
+
+    /// <inheritdoc/>
+    protected override bool UsesTextSelectionController => false;
+
+    /// <inheritdoc/>
+    protected override void OnTextSelectionEnabledChanged(bool enabled)
+    {
+        if (!enabled && Selection != default)
+        {
+            ClearSelection();
+        }
+    }
 
     /// <summary>
     /// Gets or sets the delegate <see cref="RequestClipboardCopy"/> forwards <see cref="CopySelection"/>'s
@@ -577,6 +617,7 @@ public sealed class CodeView:
             return;
         }
 
+        var previous = Selection;
         Selection = selection;
 
         if (resetDesiredColumn)
@@ -586,6 +627,7 @@ public sealed class CodeView:
 
         _content.RequestInvalidate(InvalidationImpact.Render);
         SelectionChanged?.Invoke(this, EventArgs.Empty);
+        PublishTextSelectionChanged(previous, selection);
     }
 
     #endregion

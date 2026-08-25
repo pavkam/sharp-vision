@@ -12,7 +12,7 @@ using SharpVision.Text;
 /// in the shared ownership, layout, rendering, input, context, and disposal infrastructure.
 /// </remarks>
 [PublicAPI]
-public abstract class CompositeControlBase: ControlBase, ISelectableTextSource
+public abstract class CompositeControlBase: ControlBase
 {
     private readonly OwnedControlSlot _contentSlot;
     private bool _initializationConsumed;
@@ -43,7 +43,7 @@ public abstract class CompositeControlBase: ControlBase, ISelectableTextSource
     /// The component is attached off-dispatcher, or its root is uninitialized or was disposed directly.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The component has been disposed.</exception>
-    public SelectableTextSnapshot GetSelectableTextSnapshot()
+    public override SelectableTextSnapshot GetSelectableTextSnapshot()
     {
         VerifyMutable();
         return SelectableTextAggregation.Create(this);

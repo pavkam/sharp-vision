@@ -341,7 +341,7 @@ public sealed class ComboBox: InputBase
     {
         _ = MeasureChild(_popup, new Constraint(constraint.Width, DropDownHeight.Add(_popupConnectingFrameHeight)));
         var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
-        var width = MeasureCells(SelectedText())
+        var width = MeasureCells(SelectedItemText())
             .Add(_indicatorReservedWidth)
             .Add(affixes.StartCells)
             .Add(affixes.EndCells);
@@ -386,7 +386,7 @@ public sealed class ComboBox: InputBase
         var labelBox = DeflateForAffixes(fieldBox, affixes);
         var label = canvas.Clip(labelBox);
         _ = label.Draw(
-            SelectedText().AsSpan(),
+            SelectedItemText().AsSpan(),
             new Point(labelBox.X, labelBox.Y),
             style,
             background: BackgroundMode.Transparent);
@@ -528,7 +528,7 @@ public sealed class ComboBox: InputBase
 
     #region Geometry
 
-    private string SelectedText()
+    private string SelectedItemText()
     {
         var index = _selectedIndex;
 

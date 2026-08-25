@@ -3,10 +3,30 @@
 
 namespace SharpVision.SyntaxHighlighting.Tests;
 
+using SharpVision.Controls;
+
 /// <summary>Verifies CodeView content, selection, and folding behavior.</summary>
 public sealed class CodeViewTests
 {
     private const string _rustSnippet = "fn main() {\n    let x = 1;\n}\n";
+
+    /// <summary>Verifies CodeView adapts its read-only selection through the common control contract.</summary>
+    [Fact]
+    public void TextSelection_WhenAccessedThroughControlBase_UsesCodeViewSelectionState()
+    {
+        // Arrange
+        var view = new CodeView { Code = "Alpha Beta" };
+        ControlBase control = view;
+
+        // Act
+        control.SetTextSelection(new Selection(6, 10));
+
+        // Assert
+        control.IsTextSelectionEnabled.ShouldBeTrue();
+        control.TextSelection.ShouldBe(view.Selection);
+        control.SelectedText.ShouldBe("Beta");
+        control.CopySelectedText().ShouldBe(view.CopySelection());
+    }
 
     /// <summary>Verifies the selectable projection owns the complete normalized logical source.</summary>
     [Fact]

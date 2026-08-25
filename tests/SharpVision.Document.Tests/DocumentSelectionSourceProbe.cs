@@ -42,7 +42,7 @@ internal sealed class DocumentSelectionSourceProbe: ControlBase, ISelectableText
     public Rect SelectableTextViewport => new(0, 0, 5, 1);
 
     /// <inheritdoc/>
-    public SelectableTextSnapshot GetSelectableTextSnapshot()
+    public override SelectableTextSnapshot GetSelectableTextSnapshot()
     {
         if (UsesHorizontalProjection)
         {

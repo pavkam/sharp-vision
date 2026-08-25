@@ -14,7 +14,7 @@ using SharpVision.Text;
 /// control without disposing it; disposing this owner disposes content that remains assigned.
 /// </remarks>
 [PublicAPI]
-public abstract class ContentControl: ControlBase, ISelectableTextSource
+public abstract class ContentControl: ControlBase
 {
     private readonly OwnedControlSlot _contentSlot;
     private ControlBase? _publishedContent;
@@ -59,7 +59,7 @@ public abstract class ContentControl: ControlBase, ISelectableTextSource
     }
 
     /// <inheritdoc/>
-    public SelectableTextSnapshot GetSelectableTextSnapshot()
+    public override SelectableTextSnapshot GetSelectableTextSnapshot()
     {
         VerifyMutable();
         return SelectableTextAggregation.Create(this);

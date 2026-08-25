@@ -13,7 +13,7 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 
 /// <summary>Defines a mutable control that owns an ordered child collection.</summary>
 [PublicAPI]
-public abstract class Container: ControlBase, ISelectableTextSource
+public abstract class Container: ControlBase
 {
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
 
@@ -38,7 +38,7 @@ public abstract class Container: ControlBase, ISelectableTextSource
     public ControlCollection Children { get; }
 
     /// <inheritdoc/>
-    public SelectableTextSnapshot GetSelectableTextSnapshot()
+    public override SelectableTextSnapshot GetSelectableTextSnapshot()
     {
         VerifyMutable();
         return SelectableTextAggregation.Create(this);

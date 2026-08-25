@@ -1116,14 +1116,12 @@ public sealed class Application:
         if (command == new Rune('c'))
         {
             var boundary = Modality.BoundaryFor(keyTarget);
-            var source = FindClipboardCopySource(keyTarget, boundary);
-
-            if (source is null)
+            if (!TryCopySelectedText(keyTarget, boundary, out var copied))
             {
                 return false;
             }
 
-            PublishClipboard(source.CopySelection());
+            PublishClipboard(copied);
             return true;
         }
 
@@ -1148,15 +1146,23 @@ public sealed class Application:
         return true;
     }
 
-    private static IClipboardCopySource? FindClipboardCopySource(
+    private static bool TryCopySelectedText(
         ControlBase keyTarget,
-        ControlBase? boundary)
+        ControlBase? boundary,
+        [NotNullWhen(true)] out string? copied)
     {
         for (var target = keyTarget; target is not null; target = target.Parent)
         {
+            if (target.IsTextSelectionEnabled)
+            {
+                copied = target.CopySelectedText();
+                return true;
+            }
+
             if (target is IClipboardCopySource source)
             {
-                return source;
+                copied = source.CopySelection();
+                return true;
             }
 
             if (ReferenceEquals(target, boundary))
@@ -1165,7 +1171,8 @@ public sealed class Application:
             }
         }
 
-        return null;
+        copied = null;
+        return false;
     }
 
     private void OnContextMenuPointer(object? sender, PointerEventArgs eventArgs)

@@ -27,7 +27,7 @@ using DisplayText = Display.Text;
 /// capability is meant to be wired once, from the constructor.
 /// </remarks>
 [PublicAPI]
-public abstract class InputBase: ControlBase, ISelectableTextSource
+public abstract class InputBase: ControlBase
 {
     /// <summary>Initializes a focusable control participating in Tab traversal.</summary>
     protected InputBase()
@@ -164,7 +164,7 @@ public abstract class InputBase: ControlBase, ISelectableTextSource
     protected internal DisplayText? TextControl { get; private set; }
 
     /// <inheritdoc/>
-    public SelectableTextSnapshot GetSelectableTextSnapshot()
+    public override SelectableTextSnapshot GetSelectableTextSnapshot()
     {
         VerifyMutable();
         return SelectableTextAggregation.Create(this);

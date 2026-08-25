@@ -143,13 +143,14 @@ mnemonic cannot be inserted into the newly focused editor.
 
 Ctrl+C uses the same handled-route precedence as every other key. After preview,
 bubble, and control defaults remain unhandled, `Application` walks from the
-focused target through `ControlBase.Parent` and chooses the nearest
-`IClipboardCopySource`. It calls `CopySelection()` exactly once, publishes that
-owned string through `Application.Terminal.Clipboard`, and consumes the stroke.
-An empty result is still authoritative and never falls through to a more distant
-ancestor. With no source, the stroke remains available to later application
-fallbacks. Ctrl+X and Ctrl+V remain editing commands owned by `TextInput`; the
-copy interface does not imply mutation.
+focused target through `ControlBase.Parent` and chooses the nearest enabled
+control-wide text selection, then falls back to the nearest
+`IClipboardCopySource`. It calls the chosen pure copy method exactly once,
+publishes that owned string through `Application.Terminal.Clipboard`, and
+consumes the stroke. An empty result is still authoritative and never falls
+through to a more distant ancestor. With no source, the stroke remains available
+to later application fallbacks. Ctrl+X and Ctrl+V remain editing commands owned
+by `TextInput`; the copy interface does not imply mutation.
 
 `ISelectableTextSource.GetSelectableTextSnapshot()` supplies complete semantic
 text plus grapheme-to-cell rectangles for currently visible complete glyphs.
@@ -159,6 +160,12 @@ remain present without visible geometry, which is how folded, scrolled, or
 temporarily clipped content stays copyable without becoming hit-testable.
 `ISelectableTextViewport` optionally lets an owner reveal one semantic offset or
 scroll a nested text viewport without knowing its concrete control type.
+
+`ControlBase.IsTextSelectionEnabled` is false by default. When enabled, the
+nearest enabled owner on a pointer route may select across semantic child
+snapshots; outer enabled ancestors remain observers. Its final adornment paints
+only complete mapped graphemes, and disable, capture loss, unavailability, or
+terminal-focus loss cancels retained gesture state.
 
 ## Pointer capture and coordinates
 

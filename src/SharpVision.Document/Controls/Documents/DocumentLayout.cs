@@ -71,7 +71,7 @@ internal sealed class DocumentLayout
     public IReadOnlyList<DocumentControlPlacement> ControlPlacements => _controlPlacements;
 
     /// <summary>Gets the immutable semantic selection projection built beside the visual layout.</summary>
-    public DocumentSelectionMap SelectionMap { get; private set; } = DocumentSelectionMap.Empty;
+    public TextSelectionMap SelectionMap { get; private set; } = TextSelectionMap.Empty;
 
     /// <summary>Refreshes embedded glyph rectangles after retained children receive final bounds.</summary>
     /// <param name="contentOrigin">The absolute origin of document content coordinates.</param>

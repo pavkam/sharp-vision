@@ -242,16 +242,16 @@ namespace SharpVision.Controls
         public int EndCells { get; }
         public int StartCells { get; }
     }
-    public abstract class CompositeControlBase : SharpVision.Controls.ControlBase, SharpVision.Text.ISelectableTextSource
+    public abstract class CompositeControlBase : SharpVision.Controls.ControlBase
     {
         protected CompositeControlBase() { }
         protected SharpVision.Controls.ControlBase Content { get; }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
-        public SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
+        public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected void InitializeContent(SharpVision.Controls.ControlBase content) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
     }
-    public abstract class Container : SharpVision.Controls.ControlBase, SharpVision.Text.ISelectableTextSource
+    public abstract class Container : SharpVision.Controls.ControlBase
     {
         protected Container() { }
         protected Container(int capacity) { }
@@ -274,23 +274,23 @@ namespace SharpVision.Controls
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         protected abstract override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public bool BringIntoView(SharpVision.Controls.ControlBase descendant) { }
-        public SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
+        public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected abstract override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected virtual void OnChildrenChanged() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
     }
-    public abstract class ContentControl : SharpVision.Controls.ControlBase, SharpVision.Text.ISelectableTextSource
+    public abstract class ContentControl : SharpVision.Controls.ControlBase
     {
         protected ContentControl() { }
         public SharpVision.Controls.ControlBase? Content { get; set; }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
-        public SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
+        public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected virtual void OnContentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
     }
-    public abstract class ControlBase : System.ComponentModel.INotifyPropertyChanged, System.IDisposable
+    public abstract class ControlBase : SharpVision.Text.ISelectableTextSource, System.ComponentModel.INotifyPropertyChanged, System.IDisposable
     {
         protected ControlBase() { }
         protected virtual string? AccessKeyText { get; }
@@ -332,6 +332,7 @@ namespace SharpVision.Controls
         protected virtual bool IsPressedState { get; }
         protected virtual bool IsSelectedState { get; }
         public bool IsTabStop { get; set; }
+        public bool IsTextSelectionEnabled { get; set; }
         public SharpVision.Terminal.Geometry.Rect LocalBounds { get; }
         public SharpVision.Layout.Thickness Margin { get; set; }
         public int MaxHeight { get; set; }
@@ -343,12 +344,15 @@ namespace SharpVision.Controls
         public SharpVision.Layout.Thickness Padding { get; set; }
         public SharpVision.Controls.ControlBase? Parent { get; }
         protected SharpVision.Terminal.Rendering.CellStyle ResolvedStyle { get; }
+        public virtual string SelectedText { get; }
         public SharpVision.Styling.Shadow Shadow { get; set; }
         public int TabIndex { get; set; }
         public SharpVision.Input.TabNavigation TabNavigation { get; set; }
         public object? Tag { get; set; }
+        public virtual SharpVision.Text.Selection TextSelection { get; }
         public SharpVision.Styling.Theme? Theme { get; }
         public bool UseMnemonic { get; set; }
+        protected virtual bool UsesTextSelectionController { get; }
         public SharpVision.Layout.VerticalAlignment VerticalAlignment { get; set; }
         public SharpVision.Layout.Visibility Visibility { get; set; }
         protected virtual SharpVision.Terminal.Geometry.Rect VisualBounds { get; }
@@ -369,6 +373,7 @@ namespace SharpVision.Controls
         public event System.EventHandler<SharpVision.Input.PointerEventArgs>? PointerPressed;
         public event System.EventHandler<SharpVision.Input.PointerEventArgs>? PointerReleased;
         public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+        public event System.EventHandler<SharpVision.Input.TextSelectionChangedEventArgs>? TextSelectionChanged;
         public event System.EventHandler? VisibilityChanged;
         public System.IDisposable AddHandler<TArgs>(SharpVision.Input.Event<TArgs> routedEvent, System.EventHandler<TArgs> handler, bool handledEventsToo = false)
             where TArgs : SharpVision.Input.RoutedEventArgs { }
@@ -378,6 +383,9 @@ namespace SharpVision.Controls
         protected void BindStyle<TStyle>(SharpVision.Controls.StyleSlot<TStyle> source, SharpVision.Controls.ControlBase target, string targetPropertyName = "Style")
             where TStyle : SharpVision.Styling.ControlStyle { }
         protected bool CapturePointer() { }
+        public virtual void ClearTextSelection() { }
+        protected bool CommitTextSelection(SharpVision.Text.Selection selection) { }
+        public virtual string CopySelectedText() { }
         public void Dispose() { }
         protected void EnableChromeAuthoring() { }
         protected T? FindAncestor<T>()
@@ -390,6 +398,7 @@ namespace SharpVision.Controls
         protected virtual SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected SharpVision.Terminal.Geometry.Rect GetDescendantSelectableTextInheritedClip(SharpVision.Controls.ControlBase descendant) { }
         protected SharpVision.Terminal.Rendering.CellStyle GetResolvedStyle(SharpVision.Styling.VisualState state) { }
+        public virtual SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected virtual SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
         protected SharpVision.Controls.StyleSlot<TStyle> InitializePartStyle<TStyle>(SharpVision.Controls.StyleDefinition<TStyle> definition, string propertyName, System.Action<TStyle, TStyle>? changed = null)
             where TStyle : SharpVision.Styling.ControlStyle { }
@@ -418,7 +427,9 @@ namespace SharpVision.Controls
         protected virtual void OnPressedChanged(bool pressed) { }
         protected virtual void OnRenderAdornment(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected virtual void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected virtual void OnTextSelectionEnabledChanged(bool enabled) { }
         protected virtual void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected void PublishTextSelectionChanged(SharpVision.Text.Selection previous, SharpVision.Text.Selection selection) { }
         protected void ReleasePointerCapture() { }
         protected void RenderAffixes(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect contentBox, SharpVision.Controls.AffixMetrics metrics, SharpVision.Styling.Affix? start, SharpVision.Styling.Affix? end, SharpVision.Terminal.Rendering.CellStyle style) { }
         protected bool RequestFocus() { }
@@ -430,11 +441,14 @@ namespace SharpVision.Controls
         public SharpVision.Styling.ControlAppearance ResolveAppearance(SharpVision.Styling.Theme? theme, SharpVision.Styling.VisualState visualState = 0) { }
         protected SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ControlColor value) { }
         protected SharpVision.Terminal.Geometry.Rect RootBounds(SharpVision.Terminal.Geometry.Rect fallback) { }
+        public virtual void SelectAllText() { }
         protected void SetAppearance(SharpVision.Styling.VisualState state, SharpVision.Styling.AppearanceOverlay? appearance) { }
         protected void SetOptionalGlyph(ref System.Text.Rune? storage, System.Text.Rune value, string propertyName) { }
         protected bool SetProperty<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
+        public virtual void SetTextSelection(SharpVision.Text.Selection selection) { }
         protected bool SetVisualStateProperty<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         protected void VerifyMutable() { }
+        protected void VerifyTextSelectionEnabled() { }
         protected static SharpVision.Terminal.Geometry.Rect DeflateForAffixes(SharpVision.Terminal.Geometry.Rect contentBox, SharpVision.Controls.AffixMetrics metrics) { }
         protected static SharpVision.Controls.InvalidationImpact MaximumImpact(SharpVision.Controls.InvalidationImpact left, SharpVision.Controls.InvalidationImpact right) { }
         protected static SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ControlColor value, SharpVision.Styling.Theme? theme) { }
@@ -482,7 +496,7 @@ namespace SharpVision.Controls
         TStyle ActualStyle { get; }
         TStyle Style { get; set; }
     }
-    public abstract class InputBase : SharpVision.Controls.ControlBase, SharpVision.Text.ISelectableTextSource
+    public abstract class InputBase : SharpVision.Controls.ControlBase
     {
         protected const int DropDownIndicatorWidth = 1;
         protected InputBase() { }
@@ -501,7 +515,7 @@ namespace SharpVision.Controls
         protected SharpVision.Popups.Popup EnablePopup(SharpVision.Controls.ControlBase content, SharpVision.Popups.PopupPlacement placement = 0, bool focusOnOpen = false, SharpVision.Input.TabNavigation popupTabNavigation = 3, System.Action? beforeOpen = null, System.Action? beforeCloseFocusRestore = null) { }
         protected void EnablePressActivation() { }
         protected void ExecuteCommandIfAny() { }
-        public SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
+        public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected void HandlePressActivation(SharpVision.Input.RoutedEventArgs e) { }
         protected SharpVision.Terminal.Geometry.Size MeasureCaption(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
@@ -1278,7 +1292,7 @@ namespace SharpVision.Controls.Display
         public static System.Text.Rune Diamond { get; }
         public static System.Text.Rune Whitespace { get; }
     }
-    public sealed class Text : SharpVision.Controls.ControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Display.TextStyle>, SharpVision.Text.ISelectableTextSource
+    public sealed class Text : SharpVision.Controls.ControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Display.TextStyle>
     {
         public Text() { }
         public Text(string content) { }
@@ -1292,7 +1306,7 @@ namespace SharpVision.Controls.Display
         public SharpVision.Text.Alignment TextAlignment { get; set; }
         public event System.EventHandler? TextChanged;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
-        public SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
+        public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
@@ -1771,7 +1785,7 @@ namespace SharpVision.Controls.Input
         public required SharpVision.Styling.ControlColor TrackColor { get; init; }
         public new static SharpVision.Controls.Input.SliderStyle Default { get; }
     }
-    public sealed class TextInput : SharpVision.Controls.ControlBase, SharpVision.Runtime.IClipboardCopySource, SharpVision.Text.ISelectableTextSource
+    public sealed class TextInput : SharpVision.Controls.ControlBase, SharpVision.Runtime.IClipboardCopySource
     {
         public TextInput() { }
         public bool AcceptsReturn { get; set; }
@@ -1789,13 +1803,15 @@ namespace SharpVision.Controls.Input
         public string? Placeholder { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
-        public string SelectedText { get; }
+        public override string SelectedText { get; }
         public int SelectionLength { get; set; }
         public int SelectionStart { get; set; }
         public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
         public SharpVision.Styling.Affix? StartAffix { get; set; }
         public string Text { get; set; }
+        public override SharpVision.Text.Selection TextSelection { get; }
         public int UndoLimit { get; set; }
+        protected override bool UsesTextSelectionController { get; }
         public int VerticalOffset { get; }
         public bool WordWrap { get; set; }
         public event System.EventHandler<SharpVision.Input.InputSelectionChangedEventArgs>? SelectionChanged;
@@ -1803,19 +1819,24 @@ namespace SharpVision.Controls.Input
         public event System.EventHandler<SharpVision.Input.TextChangedEventArgs>? TextChanged;
         public event System.EventHandler<SharpVision.Input.TextChangingEventArgs>? TextChanging;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        public override void ClearTextSelection() { }
+        public override string CopySelectedText() { }
         public string CopySelection() { }
         public string CutSelection() { }
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
-        public SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
+        public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnTextSelectionEnabledChanged(bool enabled) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool Redo() { }
         public bool ReplaceSelection(string value) { }
         public void Select(int start, int length) { }
+        public override void SelectAllText() { }
+        public override void SetTextSelection(SharpVision.Text.Selection selection) { }
         public bool Undo() { }
     }
     public sealed class TextInputContextMenu : SharpVision.Menus.ContextMenu
@@ -2928,6 +2949,12 @@ namespace SharpVision.Input
     {
         public TextEventArgs(SharpVision.Terminal.Input.TerminalText text) { }
         public SharpVision.Terminal.Input.TerminalText Text { get; }
+    }
+    public sealed class TextSelectionChangedEventArgs : System.EventArgs
+    {
+        public TextSelectionChangedEventArgs(SharpVision.Text.Selection previousSelection, SharpVision.Text.Selection selection) { }
+        public SharpVision.Text.Selection PreviousSelection { get; }
+        public SharpVision.Text.Selection Selection { get; }
     }
     public sealed class TimeInputValueChangedEventArgs : System.EventArgs
     {

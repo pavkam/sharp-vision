@@ -1,6 +1,6 @@
 ﻿namespace SharpVision.Controls.Documents
 {
-    public sealed class Document : SharpVision.Controls.CompositeControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Documents.DocumentStyle>, SharpVision.Runtime.IClipboardCopySource, SharpVision.Text.ISelectableTextSource, SharpVision.Text.ISelectableTextViewport
+    public sealed class Document : SharpVision.Controls.CompositeControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Documents.DocumentStyle>, SharpVision.Runtime.IClipboardCopySource, SharpVision.Text.ISelectableTextViewport
     {
         public Document() { }
         public SharpVision.Controls.Documents.DocumentLink? ActiveLink { get; set; }
@@ -12,24 +12,29 @@
         public int PageOverlap { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Terminal.Geometry.Rect SelectableTextViewport { get; }
-        public string SelectedText { get; }
+        public override string SelectedText { get; }
         public SharpVision.Text.Selection Selection { get; }
         public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
         public SharpVision.Controls.Documents.DocumentStyle? Style { get; set; }
+        public override SharpVision.Text.Selection TextSelection { get; }
+        protected override bool UsesTextSelectionController { get; }
         public int VerticalOffset { get; set; }
         public SharpVision.Terminal.Geometry.Size Viewport { get; }
         public event System.EventHandler<SharpVision.Controls.Documents.DocumentLinkEventArgs>? LinkClicked;
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         public event System.EventHandler? SelectionChanged;
         public void ClearSelection() { }
+        public override void ClearTextSelection() { }
+        public override string CopySelectedText() { }
         public string CopySelection() { }
-        public SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
+        public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         public SharpVision.Documents.DocumentReadResult Load(string source, SharpVision.Documents.IDocumentFormatReader reader, SharpVision.Documents.DocumentReadOptions? options = null) { }
         public System.Threading.Tasks.ValueTask<SharpVision.Documents.DocumentReadResult> LoadAsync(System.IO.Stream source, SharpVision.Documents.IDocumentFormatReader reader, SharpVision.Documents.DocumentReadOptions? options = null, System.Text.Encoding? encoding = null, System.Threading.CancellationToken cancellationToken = default) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnRenderAdornment(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnTextSelectionEnabledChanged(bool enabled) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool RevealSelectableTextOffset(int offset) { }
         public bool ScrollBy(int lines, SharpVision.Scrolling.ScrollCause cause = 0) { }
@@ -37,7 +42,9 @@
         public bool ScrollToEnd() { }
         public bool ScrollToTop() { }
         public void SelectAll() { }
+        public override void SelectAllText() { }
         public void SetSelection(SharpVision.Text.Selection selection) { }
+        public override void SetTextSelection(SharpVision.Text.Selection selection) { }
     }
     public abstract class DocumentBlock : SharpVision.Controls.Documents.DocumentNode { }
     public sealed class DocumentBlockCollection : SharpVision.Controls.Documents.DocumentNodeCollection<SharpVision.Controls.Documents.DocumentBlock> { }

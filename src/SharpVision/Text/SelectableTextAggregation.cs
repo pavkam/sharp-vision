@@ -17,19 +17,44 @@ internal static class SelectableTextAggregation
     /// <returns>An independently owned non-authoritative aggregate snapshot.</returns>
     internal static SelectableTextSnapshot Create(ControlBase owner)
     {
+        var map = CreateMap(owner);
+        var glyphs = new SelectableTextGlyph[map.Glyphs.Count];
+
+        for (var index = 0; index < glyphs.Length; index++)
+        {
+            var glyph = map.Glyphs[index];
+            glyphs[index] = new SelectableTextGlyph(glyph.Range, glyph.Bounds);
+        }
+
+        return new SelectableTextSnapshot(map.Text, glyphs, isAuthoritative: false);
+    }
+
+    /// <summary>Aggregates semantic text, glyphs, and source identity into the common indexed map.</summary>
+    /// <param name="owner">The aggregate owner whose origin defines returned glyph coordinates.</param>
+    /// <returns>An immutable common selection map.</returns>
+    internal static TextSelectionMap CreateMap(ControlBase owner)
+    {
         ArgumentNullException.ThrowIfNull(owner);
 
         if (owner.IsDisposed || !owner.EffectiveIsVisible)
         {
-            return new SelectableTextSnapshot(string.Empty, [], isAuthoritative: false);
+            return TextSelectionMap.Empty;
         }
 
         var text = new StringBuilder();
-        var glyphs = new List<SelectableTextGlyph>();
+        var glyphs = new List<TextSelectionGlyph>();
+        var sources = new List<TextSelectionSource>();
         var inheritedClip = GetEffectiveClip(owner);
         var descendantClip = owner.ResolveSelectableTextDescendantClip(inheritedClip);
-        CollectAggregate(owner, owner, descendantClip, text, glyphs);
-        return new SelectableTextSnapshot(text.ToString(), glyphs, isAuthoritative: false);
+        CollectAggregate(owner, owner, descendantClip, text, glyphs, sources);
+        var lineCount = Math.Max(0, owner.Bounds.Height);
+
+        foreach (var glyph in glyphs)
+        {
+            lineCount = Math.Max(lineCount, glyph.Bounds.Bottom);
+        }
+
+        return new TextSelectionMap(text.ToString(), [.. glyphs], [.. sources], lineCount);
     }
 
     /// <summary>Visits one aggregate node without constructing an intermediate snapshot.</summary>
@@ -38,17 +63,18 @@ internal static class SelectableTextAggregation
         ControlBase aggregate,
         Rect clip,
         StringBuilder text,
-        List<SelectableTextGlyph> glyphs)
+        List<TextSelectionGlyph> glyphs,
+        List<TextSelectionSource> sources)
     {
         var children = new List<ControlBase>();
 
         if (!aggregate.AddSelectableTextChildren(children))
         {
-            CollectLeaf(owner, aggregate, clip, text, glyphs);
+            CollectLeaf(owner, aggregate, clip, text, glyphs, sources);
             return;
         }
 
-        CollectChildren(owner, children, clip, text, glyphs);
+        CollectChildren(owner, children, clip, text, glyphs, sources);
     }
 
     /// <summary>Visits ordered aggregate children through one carried clipping aperture.</summary>
@@ -57,7 +83,8 @@ internal static class SelectableTextAggregation
         List<ControlBase> children,
         Rect clip,
         StringBuilder text,
-        List<SelectableTextGlyph> glyphs)
+        List<TextSelectionGlyph> glyphs,
+        List<TextSelectionSource> sources)
     {
         foreach (var child in children)
         {
@@ -71,11 +98,11 @@ internal static class SelectableTextAggregation
             if (child.AddSelectableTextChildren(nested))
             {
                 var childClip = child.ResolveSelectableTextDescendantClip(clip);
-                CollectChildren(owner, nested, childClip, text, glyphs);
+                CollectChildren(owner, nested, childClip, text, glyphs, sources);
             }
             else
             {
-                CollectLeaf(owner, child, clip, text, glyphs);
+                CollectLeaf(owner, child, clip, text, glyphs, sources);
             }
         }
     }
@@ -86,7 +113,8 @@ internal static class SelectableTextAggregation
         ControlBase leaf,
         Rect clip,
         StringBuilder text,
-        List<SelectableTextGlyph> glyphs)
+        List<TextSelectionGlyph> glyphs,
+        List<TextSelectionSource> sources)
     {
         if (leaf is not ISelectableTextSource source)
         {
@@ -96,6 +124,13 @@ internal static class SelectableTextAggregation
         var snapshot = source.GetSelectableTextSnapshot();
         var offset = text.Length;
         _ = text.Append(snapshot.Text);
+        var selectionSource = new TextSelectionSource(
+            source,
+            leaf as ISelectableTextViewport,
+            new Selection(offset, text.Length),
+            snapshot.Text,
+            source.SelectableTextVersion);
+        sources.Add(selectionSource);
 
         foreach (var glyph in snapshot.Glyphs)
         {
@@ -110,7 +145,7 @@ internal static class SelectableTextAggregation
                 continue;
             }
 
-            glyphs.Add(new SelectableTextGlyph(
+            glyphs.Add(new TextSelectionGlyph(
                 new Selection(
                     SaturatingAdd(offset, glyph.Range.Start),
                     SaturatingAdd(offset, glyph.Range.End)),
@@ -118,7 +153,8 @@ internal static class SelectableTextAggregation
                     SaturatingSubtract(absolute.X, owner.Bounds.X),
                     SaturatingSubtract(absolute.Y, owner.Bounds.Y),
                     absolute.Width,
-                    absolute.Height)));
+                    absolute.Height),
+                selectionSource));
         }
     }
 

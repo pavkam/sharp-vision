@@ -37,7 +37,7 @@ internal sealed class CountingDocumentSelectionSource: ControlBase, ISelectableT
     }
 
     /// <inheritdoc/>
-    public SelectableTextSnapshot GetSelectableTextSnapshot()
+    public override SelectableTextSnapshot GetSelectableTextSnapshot()
     {
         SnapshotCalls++;
         var glyphs = new SelectableTextGlyph[_text.Length];

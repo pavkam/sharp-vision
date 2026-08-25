@@ -17,7 +17,7 @@ using UnicodeWidth = Width;
 
 /// <summary>Defines a focusable grapheme-safe single- or multiline text editor.</summary>
 [PublicAPI]
-public sealed class TextInput: ControlBase, ISelectableTextSource, IClipboardCopySource
+public sealed class TextInput: ControlBase, IClipboardCopySource
 {
     private readonly List<EditResult> _undo = [];
     private readonly List<EditResult> _redo = [];
@@ -68,6 +68,7 @@ public sealed class TextInput: ControlBase, ISelectableTextSource, IClipboardCop
         IsFocusable = true;
         IsTabStop = true;
         ContextMenu = new TextInputContextMenu(this);
+        IsTextSelectionEnabled = true;
     }
 
     /// <inheritdoc/>
@@ -301,8 +302,11 @@ public sealed class TextInput: ControlBase, ISelectableTextSource, IClipboardCop
         set => Select(SelectionStart, value);
     }
 
+    /// <inheritdoc/>
+    public override Selection TextSelection => _selection;
+
     /// <summary>Gets selected source text as a new owned string.</summary>
-    public string SelectedText => Text.Substring(SelectionStart, SelectionLength);
+    public override string SelectedText => Text.Substring(SelectionStart, SelectionLength);
 
     /// <summary>Gets the current horizontal cell offset.</summary>
     public int HorizontalOffset { get; private set; }
@@ -311,7 +315,7 @@ public sealed class TextInput: ControlBase, ISelectableTextSource, IClipboardCop
     public int VerticalOffset { get; private set; }
 
     /// <inheritdoc/>
-    public SelectableTextSnapshot GetSelectableTextSnapshot()
+    public override SelectableTextSnapshot GetSelectableTextSnapshot()
     {
         VerifyMutable();
 
@@ -551,6 +555,27 @@ public sealed class TextInput: ControlBase, ISelectableTextSource, IClipboardCop
         SetSelection(new Selection(start, (int) sum));
     }
 
+    /// <inheritdoc/>
+    public override void SetTextSelection(Selection selection)
+    {
+        VerifyTextSelectionEnabled();
+        SetSelection(selection);
+    }
+
+    /// <inheritdoc/>
+    public override void SelectAllText()
+    {
+        VerifyTextSelectionEnabled();
+        SetSelection(new Selection(0, Text.Length));
+    }
+
+    /// <inheritdoc/>
+    public override void ClearTextSelection()
+    {
+        VerifyTextSelectionEnabled();
+        SetSelection(new Selection(_selection.Caret, _selection.Caret));
+    }
+
     /// <summary>Copies selected text unless password policy suppresses source disclosure.</summary>
     /// <returns>An owned selected string, or empty when no selection or password masking is active.</returns>
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
@@ -559,6 +584,21 @@ public sealed class TextInput: ControlBase, ISelectableTextSource, IClipboardCop
     {
         VerifyMutable();
         return PasswordCharacter.HasValue ? string.Empty : SelectedText;
+    }
+
+    /// <inheritdoc/>
+    public override string CopySelectedText() => CopySelection();
+
+    /// <inheritdoc/>
+    protected override bool UsesTextSelectionController => false;
+
+    /// <inheritdoc/>
+    protected override void OnTextSelectionEnabledChanged(bool enabled)
+    {
+        if (!enabled && _selection != default)
+        {
+            SetSelection(new Selection(_selection.Caret, _selection.Caret));
+        }
     }
 
     /// <summary>Copies and deletes selection unless read-only or password policy suppresses cutting.</summary>
@@ -1056,6 +1096,7 @@ public sealed class TextInput: ControlBase, ISelectableTextSource, IClipboardCop
             SelectionChanged?.Invoke(
                 this,
                 new InputSelectionChangedEventArgs(previousSelection, _selection));
+            PublishTextSelectionChanged(previousSelection, _selection);
         }
 
         return true;

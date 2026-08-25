@@ -40,7 +40,6 @@ public sealed class Document:
     CompositeControlBase,
     IStyled<DocumentStyle>,
     IClipboardCopySource,
-    ISelectableTextSource,
     ISelectableTextViewport
 {
     /// <summary>The width an unbounded measurement lays out against.</summary>
@@ -68,9 +67,9 @@ public sealed class Document:
     private int? _selectionDesiredColumn;
     private int? _selectionDesiredRow;
     private Rect? _selectionCaretGeometryAffinity;
-    private DocumentSelectionMap? _selectionCaretGeometryAffinityMap;
+    private TextSelectionMap? _selectionCaretGeometryAffinityMap;
     private int _selectionCaretGeometryAffinityOffset;
-    private DocumentSelectionMap _selectionSemanticMap = DocumentSelectionMap.Empty;
+    private TextSelectionMap _selectionSemanticMap = TextSelectionMap.Empty;
 
     /// <summary>Initializes an empty scrollable document.</summary>
     public Document()
@@ -107,6 +106,7 @@ public sealed class Document:
         TabNavigation = TabNavigation.None;
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Stretch;
+        IsTextSelectionEnabled = true;
     }
 
     #region Content
@@ -287,7 +287,7 @@ public sealed class Document:
     /// This internal seam proves that logical text, grapheme geometry, source identity, and row hit
     /// testing are rebuilt together without prematurely exposing Document's public selection API.
     /// </remarks>
-    internal DocumentSelectionMap SelectionMap => _layout.SelectionMap;
+    internal TextSelectionMap SelectionMap => _layout.SelectionMap;
 
     /// <summary>Gets the pointer-selection phase for mounted cleanup invariant tests.</summary>
     /// <remarks>
@@ -317,7 +317,7 @@ public sealed class Document:
     /// </remarks>
     /// <exception cref="InvalidOperationException">The attached document is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
-    public new SelectableTextSnapshot GetSelectableTextSnapshot()
+    public override SelectableTextSnapshot GetSelectableTextSnapshot()
     {
         VerifyMutable();
         var map = EnsureSelectionProjection();
@@ -424,10 +424,13 @@ public sealed class Document:
         private set => _selection = value;
     }
 
+    /// <inheritdoc/>
+    public override Selection TextSelection => Selection;
+
     /// <summary>Gets an owned copy of the selected normalized semantic text, or an empty string.</summary>
     /// <exception cref="InvalidOperationException">The attached document is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
-    public string SelectedText
+    public override string SelectedText
     {
         get
         {
@@ -461,6 +464,13 @@ public sealed class Document:
         CommitSelection(selection);
     }
 
+    /// <inheritdoc/>
+    public override void SetTextSelection(Selection selection)
+    {
+        VerifyTextSelectionEnabled();
+        SetSelection(selection);
+    }
+
     /// <summary>Selects the complete normalized semantic document stream.</summary>
     /// <exception cref="InvalidOperationException">The attached document is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
@@ -475,6 +485,13 @@ public sealed class Document:
         CommitSelection(new Selection(0, projection.Map.Text.Length));
     }
 
+    /// <inheritdoc/>
+    public override void SelectAllText()
+    {
+        VerifyTextSelectionEnabled();
+        SelectAll();
+    }
+
     /// <summary>Collapses the selection to its current active caret endpoint.</summary>
     /// <exception cref="InvalidOperationException">The attached document is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
@@ -487,6 +504,13 @@ public sealed class Document:
         CommitSelection(new Selection(_selection.Caret, _selection.Caret));
     }
 
+    /// <inheritdoc/>
+    public override void ClearTextSelection()
+    {
+        VerifyTextSelectionEnabled();
+        ClearSelection();
+    }
+
     /// <summary>Copies selected semantic text without publishing clipboard or terminal state.</summary>
     /// <returns>An independently owned string, or empty when the selection is collapsed.</returns>
     /// <exception cref="InvalidOperationException">The attached document is accessed off-dispatcher.</exception>
@@ -494,7 +518,23 @@ public sealed class Document:
     [Pure]
     public string CopySelection() => SelectedText;
 
-    private DocumentSelectionMap EnsureSelectionProjection()
+    /// <inheritdoc/>
+    [Pure]
+    public override string CopySelectedText() => CopySelection();
+
+    /// <inheritdoc/>
+    protected override bool UsesTextSelectionController => false;
+
+    /// <inheritdoc/>
+    protected override void OnTextSelectionEnabledChanged(bool enabled)
+    {
+        if (!enabled && _selection != default)
+        {
+            ClearSelection();
+        }
+    }
+
+    private TextSelectionMap EnsureSelectionProjection()
     {
         var projection = PrepareSelectionProjection();
         CommitSelectionProjection(projection.Layout);
@@ -503,7 +543,7 @@ public sealed class Document:
         return projection.Map;
     }
 
-    private (DocumentLayout? Layout, DocumentSelectionMap Map) PrepareSelectionProjection()
+    private (DocumentLayout? Layout, TextSelectionMap Map) PrepareSelectionProjection()
     {
         if (_layoutValid && SelectionSourcesAreCurrent())
         {
@@ -550,7 +590,7 @@ public sealed class Document:
         RestoreActiveLink(activeLink);
     }
 
-    private void AdoptSelectionMap(DocumentSelectionMap map)
+    private void AdoptSelectionMap(TextSelectionMap map)
     {
         Debug.Assert(map is not null, "A committed document layout always has a selection map.");
 
@@ -571,7 +611,7 @@ public sealed class Document:
         }
     }
 
-    private static bool SemanticallyEquals(DocumentSelectionMap previous, DocumentSelectionMap current)
+    private static bool SemanticallyEquals(TextSelectionMap previous, TextSelectionMap current)
     {
         if (!string.Equals(previous.Text, current.Text, StringComparison.Ordinal) ||
             previous.Sources.Count != current.Sources.Count)
@@ -602,9 +642,11 @@ public sealed class Document:
             return;
         }
 
+        var previous = _selection;
         _selection = selection;
         Invalidate();
         SelectionChanged?.Invoke(this, EventArgs.Empty);
+        PublishTextSelectionChanged(previous, selection);
     }
 
     #endregion
@@ -1226,7 +1268,7 @@ public sealed class Document:
         return true;
     }
 
-    private int MoveSelectionVertically(DocumentSelectionMap map, int caret, int rows)
+    private int MoveSelectionVertically(TextSelectionMap map, int caret, int rows)
     {
         if (map.VisualRowCount == 0)
         {
@@ -1326,7 +1368,7 @@ public sealed class Document:
     private bool TryContinueKeyboardReveal(
         Selection expectedSelection,
         ulong expectedFingerprint,
-        out DocumentSelectionMap map)
+        out TextSelectionMap map)
     {
         map = EnsureSelectionProjection();
         DiscardStaleSelectionCaretGeometryAffinity(map);
@@ -1412,7 +1454,7 @@ public sealed class Document:
         _selectionCaretGeometryAffinityMap = null;
     }
 
-    private void SetSelectionCaretGeometryAffinity(DocumentSelectionMap map, int offset, Rect bounds)
+    private void SetSelectionCaretGeometryAffinity(TextSelectionMap map, int offset, Rect bounds)
     {
         if (bounds.Width <= 0 || bounds.Height <= 0)
         {
@@ -1424,7 +1466,7 @@ public sealed class Document:
         _selectionCaretGeometryAffinityOffset = offset;
     }
 
-    private void DiscardStaleSelectionCaretGeometryAffinity(DocumentSelectionMap map)
+    private void DiscardStaleSelectionCaretGeometryAffinity(TextSelectionMap map)
     {
         if (_selectionCaretGeometryAffinity is not null &&
             !ReferenceEquals(_selectionCaretGeometryAffinityMap, map))
@@ -1531,7 +1573,7 @@ public sealed class Document:
     /// <param name="originalSource">The original routed control.</param>
     /// <param name="cells">The pointer coordinate used as a geometry fallback.</param>
     /// <returns>The nearest embedded source, or null for document-owned text.</returns>
-    internal DocumentSelectionSource? SelectionSourceFor(ControlBase? originalSource, Point cells)
+    internal TextSelectionSource? SelectionSourceFor(ControlBase? originalSource, Point cells)
     {
         var map = EnsureSelectionProjection();
 
@@ -1552,7 +1594,7 @@ public sealed class Document:
     /// <summary>Finds the innermost selectable viewport currently containing one pointer cell.</summary>
     /// <param name="cells">The pointer's screen-cell coordinate.</param>
     /// <returns>The matching source, or null.</returns>
-    internal DocumentSelectionSource? SelectionSourceAt(Point cells)
+    internal TextSelectionSource? SelectionSourceAt(Point cells)
     {
         var map = EnsureSelectionProjection();
 
@@ -1575,7 +1617,7 @@ public sealed class Document:
     /// <param name="source">The previously associated source occurrence, or null.</param>
     /// <param name="cells">The retained pointer cell used when no prior occurrence remains.</param>
     /// <returns>The current eligible exact occurrence, a source under the pointer, or null.</returns>
-    internal DocumentSelectionSource? ResolveSelectionSource(DocumentSelectionSource? source, Point cells)
+    internal TextSelectionSource? ResolveSelectionSource(TextSelectionSource? source, Point cells)
     {
         if (source is null)
         {
@@ -1593,7 +1635,7 @@ public sealed class Document:
     /// <param name="cells">The retained pointer cell.</param>
     /// <param name="associatedSource">The nearest nested selectable source, or null.</param>
     /// <returns>True when a deterministic timer should remain armed.</returns>
-    internal bool HasSelectionAutoScrollRequest(Point cells, DocumentSelectionSource? associatedSource) =>
+    internal bool HasSelectionAutoScrollRequest(Point cells, TextSelectionSource? associatedSource) =>
         ResolveSelectionAutoScroll(cells, associatedSource, apply: false, out _);
 
     /// <summary>Offers one edge-scroll attempt from the innermost selectable viewport outward.</summary>
@@ -1603,13 +1645,13 @@ public sealed class Document:
     /// <returns>True when one viewport offset changed.</returns>
     internal bool AutoScrollSelection(
         Point cells,
-        DocumentSelectionSource? associatedSource,
+        TextSelectionSource? associatedSource,
         out Point hitAdjustment)
         => ResolveSelectionAutoScroll(cells, associatedSource, apply: true, out hitAdjustment);
 
     private bool ResolveSelectionAutoScroll(
         Point cells,
-        DocumentSelectionSource? associatedSource,
+        TextSelectionSource? associatedSource,
         bool apply,
         out Point hitAdjustment)
     {
@@ -1720,7 +1762,7 @@ public sealed class Document:
             Viewport.Height);
     }
 
-    private bool IsSelectionSourceEligible(DocumentSelectionSource source) =>
+    private bool IsSelectionSourceEligible(TextSelectionSource source) =>
         source.Viewport is not null &&
         source.Source is ControlBase
         {
@@ -1730,7 +1772,7 @@ public sealed class Document:
         } control &&
         IsSelectionContentSource(control);
 
-    private bool TrySourceViewportBounds(DocumentSelectionSource source, out Rect bounds)
+    private bool TrySourceViewportBounds(TextSelectionSource source, out Rect bounds)
     {
         if (source.Viewport is null || source.Source is not ControlBase { IsDisposed: false } control)
         {

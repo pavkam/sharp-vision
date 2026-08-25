@@ -6,6 +6,43 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies TextInput validation, editing, events, input, rendering, and history.</summary>
 public sealed class TextInputTests
 {
+    /// <summary>Verifies editable input selection is exposed through the common non-mutating text-selection contract.</summary>
+    [Fact]
+    public void TextSelection_WhenAccessedThroughControlBase_UsesInputSelectionState()
+    {
+        // Arrange
+        var input = new TextInput { Text = "Alpha Beta" };
+        ControlBase control = input;
+
+        // Act
+        control.SetTextSelection(new Selection(6, 10));
+
+        // Assert
+        control.IsTextSelectionEnabled.ShouldBeTrue();
+        control.TextSelection.ShouldBe(new Selection(6, 10));
+        control.SelectedText.ShouldBe("Beta");
+        control.CopySelectedText().ShouldBe("Beta");
+    }
+
+    /// <summary>Verifies the common copy surface preserves password-disclosure policy.</summary>
+    [Fact]
+    public void CopySelectedText_WhenInputIsPasswordMasked_ReturnsEmpty()
+    {
+        // Arrange
+        ControlBase control = new TextInput
+        {
+            Text = "secret",
+            PasswordCharacter = new Rune('*')
+        };
+        control.SetTextSelection(new Selection(0, 6));
+
+        // Act
+        var copied = control.CopySelectedText();
+
+        // Assert
+        copied.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies a text field is discoverable through light intrinsic chrome by default.</summary>
     [Fact]
     public void Properties_WhenConstructed_UsesLightFieldBorder()

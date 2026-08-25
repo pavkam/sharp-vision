@@ -6,6 +6,34 @@ namespace SharpVision.Tests.Runtime;
 /// <summary>Verifies application clipboard-copy fallback across focused control ancestry.</summary>
 public sealed class ClipboardCopySourceTests
 {
+    /// <summary>Verifies every enabled control can publish its inherited cross-child selection.</summary>
+    [Fact]
+    public async Task Input_WhenAncestorUsesCommonTextSelection_CopiesItsSelectedTextAsync()
+    {
+        var focus = new ProbeControl { IsFocusable = true };
+        var source = new Stack
+        {
+            IsTextSelectionEnabled = true,
+            Children = { new ControlText("Alpha"), new ControlText(" Beta"), focus }
+        };
+        var target = new TextInput();
+        var root = new Stack { Children = { source, target } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 6),
+            TestContext.Current.CancellationToken);
+        await surface.Application.Dispatcher.InvokeAsync(
+            () => source.SetTextSelection(new Selection(6, 10)),
+            TestContext.Current.CancellationToken);
+        await FocusAsync(surface, focus);
+
+        await SendShortcutAsync(surface, 'c');
+        await FocusAsync(surface, target);
+        await SendShortcutAsync(surface, 'v');
+
+        target.Text.ShouldBe("Beta");
+    }
+
     /// <summary>Verifies a focused source publishes its owned result through the application buffer.</summary>
     [Fact]
     public async Task Input_WhenFocusedControlIsCopySource_PublishesReturnedTextOnceAsync()

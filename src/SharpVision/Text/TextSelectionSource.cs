@@ -1,10 +1,10 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Controls.Documents;
+namespace SharpVision.Text;
 
 /// <summary>Captures one embedded selectable source's identity and semantic contribution.</summary>
-internal sealed class DocumentSelectionSource
+internal sealed class TextSelectionSource
 {
     /// <summary>Initializes one source captured during a document layout.</summary>
     /// <param name="source">The live source whose snapshot supplied the text.</param>
@@ -12,7 +12,7 @@ internal sealed class DocumentSelectionSource
     /// <param name="range">The source snapshot's range in the complete document stream.</param>
     /// <param name="text">The independently owned snapshot text used by the projection.</param>
     /// <param name="invalidationVersion">The source's invalidation generation after snapshot capture.</param>
-    internal DocumentSelectionSource(
+    internal TextSelectionSource(
         ISelectableTextSource source,
         ISelectableTextViewport? viewport,
         Selection range,

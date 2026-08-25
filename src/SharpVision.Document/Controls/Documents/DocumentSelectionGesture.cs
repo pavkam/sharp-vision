@@ -20,7 +20,7 @@ internal sealed class DocumentSelectionGesture
     private DispatcherTimer? _autoScrollTimer;
     private ulong _autoScrollGeneration;
     private int _anchor;
-    private DocumentSelectionSource? _associatedSource;
+    private TextSelectionSource? _associatedSource;
     private Point _latestCells;
     private ControlBase? _originalSource;
     private DocumentLink? _pressedLink;

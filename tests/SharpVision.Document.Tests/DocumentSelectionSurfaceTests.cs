@@ -2315,7 +2315,7 @@ public sealed class DocumentSelectionSurfaceTests
             Encoding.ASCII.GetBytes(FormattableString.Invariant($"\u001b[{(int) character};5u")),
             $"press Control+{character}");
 
-    private static Point PointAt(DocumentSelectionGlyph glyph) =>
+    private static Point PointAt(TextSelectionGlyph glyph) =>
         new(glyph.Bounds.X, glyph.Bounds.Y);
 
     private static Document ScrollableDocument(DocumentBlock? first = null)

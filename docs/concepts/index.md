@@ -11,6 +11,7 @@ flowchart TB
     Screen --> Threading["Dispatcher and threading"]
     Threading --> Input["Input routing and focus"]
     Input --> Controls["Retained controls"]
+    Controls --> Selection["Semantic text selection"]
     Controls --> Surfaces["Floating surfaces"]
     Controls --> Invalidation["Invalidation and UI updates"]
     Invalidation --> Layout["Measure, arrange, scrolling"]
@@ -38,6 +39,7 @@ flowchart TB
 - [Focus](focus.md#overview)
 - [Modality](modality.md#overview)
 - [Input routing](input-routing.md#overview)
+- [Semantic text selection](text-selection.md#overview)
 - [Access keys](access-keys.md#overview)
 - [Threading](threading.md#overview)
 - [Data binding](data-binding.md#overview)
