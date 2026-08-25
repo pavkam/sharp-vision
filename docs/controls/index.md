@@ -128,6 +128,7 @@ See the [intrinsic appearance rules](../concepts/styling.md#shared-chrome).
 - [Calendar](input/calendar.md#overview)
 - [CheckBox](input/check-box.md#overview)
 - [ColorPicker](input/color-picker.md#overview)
+- [CommandPalette](input/command-palette.md#overview)
 - [ComboBox](input/combo-box.md#overview)
 - [CurrencyInput](input/currency-input.md#overview)
 - [DateInput](input/date-input.md#overview)

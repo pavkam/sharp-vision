@@ -57,6 +57,28 @@ export const locateExampleBox = (rows, occurrence = 1) => {
     return null;
 };
 
+/// Finds the complete Example group box selected by a capture state. A numeric
+/// selector chooses the visible occurrence; a string selector chooses the box
+/// containing that marker. States default to the first example.
+export const locateStateExampleBox = (rows, state) => {
+    const selector = state.example ?? 1;
+
+    if (typeof selector === "number")
+        return locateExampleBox(rows, selector);
+
+    for (let occurrence = 1; ; occurrence += 1) {
+        const rect = locateExampleBox(rows, occurrence);
+
+        if (rect === null) return null;
+
+        for (let index = rect.top - 1; index < rect.bottom; index += 1) {
+            const column = findColumn(rows[index], selector);
+
+            if (column >= rect.left && column <= rect.right) return rect;
+        }
+    }
+};
+
 const cellTextAt = (row, visualColumn) => {
     let visual = 1;
 
@@ -351,22 +373,32 @@ const main = async () => {
                 await sleep(80);
             }
 
-            // Park the pointer outside the pane so no specimen renders its
-            // hover appearance in the captured frame.
-            sendSgr(35, 0, 0, "M");
-            const baseline = await settled(entry.animated === true);
-            const rect = locateExampleBox(baseline);
-
-            if (rect === null)
-                throw new Error(
-                    `The ${entry.page} page did not show a complete example box.`,
-                );
-
             for (const state of entry.states ?? [{}]) {
                 const name = state.name
                     ? `${slug}-${state.name}.png`
                     : `${slug}.png`;
                 let held = null;
+
+                let baseline = null;
+                let rect = null;
+
+                for (let scroll = 0; scroll < 40; scroll += 1) {
+                    // Park the pointer outside the pane so no specimen renders
+                    // its hover appearance in the captured frame.
+                    sendSgr(35, 0, 0, "M");
+                    baseline = await settled(entry.animated === true);
+                    rect = locateStateExampleBox(baseline, state);
+
+                    if (rect !== null) break;
+
+                    sendSgr(65, sessionWidth - 2, 25, "M");
+                    await sleep(80);
+                }
+
+                if (rect === null)
+                    throw new Error(
+                        `The ${entry.page} page did not show example ${state.example ?? 1} completely.`,
+                    );
 
                 for (const action of state.actions ?? []) {
                     if (action.click !== undefined) {

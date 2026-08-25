@@ -45,6 +45,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     /// <summary>Initializes an empty focusable single-line editor with a light one-cell border.</summary>
     public TextInput()
     {
+        EnableChromeAuthoring();
         _chrome = RegisterOwnedSlot(
             new OwnedControlOptions(
                 OwnedControlRole.FrameworkPart,

@@ -44,6 +44,7 @@ internal sealed class PopupDropDownCoordinator
     private readonly Action _raiseDropDownClosed;
     private readonly Action? _beforeOpen;
     private readonly Action? _beforeCloseFocusRestore;
+    private readonly ControlBase? _ownerInitialFocus;
     private readonly PopupModalTracker _modalTracker;
 
     /// <summary>Initializes a coordinator for one owner's private popup.</summary>
@@ -56,6 +57,8 @@ internal sealed class PopupDropDownCoordinator
     /// <param name="raiseDropDownClosed">Raises the owner's public DropDownClosed event.</param>
     /// <param name="beforeOpen">Optional owner-specific work run before the popup opens, such as seeding a value or syncing a calendar.</param>
     /// <param name="beforeCloseFocusRestore">Optional owner-specific work run before the closing focus-restore check, such as discarding type-ahead state.</param>
+    /// <param name="ownerInitialFocus">Optional focusable retained descendant used when the
+    /// public composite owner is not itself focusable.</param>
     /// <exception cref="ArgumentNullException">A required argument is null.</exception>
     public PopupDropDownCoordinator(
         ControlBase owner,
@@ -66,7 +69,8 @@ internal sealed class PopupDropDownCoordinator
         Action raiseDropDownOpened,
         Action raiseDropDownClosed,
         Action? beforeOpen = null,
-        Action? beforeCloseFocusRestore = null)
+        Action? beforeCloseFocusRestore = null,
+        ControlBase? ownerInitialFocus = null)
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(popup);
@@ -85,6 +89,7 @@ internal sealed class PopupDropDownCoordinator
         _raiseDropDownClosed = raiseDropDownClosed;
         _beforeOpen = beforeOpen;
         _beforeCloseFocusRestore = beforeCloseFocusRestore;
+        _ownerInitialFocus = ownerInitialFocus;
 
         _popup.Opened += OnPopupOpened;
         _popup.Closing += OnPopupClosing;
@@ -124,7 +129,7 @@ internal sealed class PopupDropDownCoordinator
     {
         if (_popup.IsOpen)
         {
-            _modalTracker.Enter(_owner);
+            _modalTracker.Enter(_owner, _ownerInitialFocus);
         }
     }
 
@@ -140,7 +145,7 @@ internal sealed class PopupDropDownCoordinator
     {
         _beforeOpen?.Invoke();
         _popup.IsOpen = true;
-        _modalTracker.Enter(_owner);
+        _modalTracker.Enter(_owner, _ownerInitialFocus);
         _raiseDropDownOpened();
     }
 

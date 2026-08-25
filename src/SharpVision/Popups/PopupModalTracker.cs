@@ -33,7 +33,9 @@ internal sealed class PopupModalTracker
     /// <summary>Enters a dismiss-mode modal scope on the owner's modality manager.</summary>
     /// <param name="owner">The control that owns the popup and serves as modal root, and the
     /// fallback initial focus when nothing more specific already holds it.</param>
-    public void Enter(ControlBase owner)
+    /// <param name="ownerInitialFocus">The optional focusable retained descendant used instead
+    /// of a non-focusable composite owner.</param>
+    public void Enter(ControlBase owner, ControlBase? ownerInitialFocus = null)
     {
         if (_scope?.IsActive == true || owner.ModalityOwner is not { } modality)
         {
@@ -53,7 +55,7 @@ internal sealed class PopupModalTracker
             owner.FocusOwner?.Focused is { } focused &&
             ControlBase.ContainsFocused(content)
             ? focused
-            : owner;
+            : ownerInitialFocus ?? owner;
 
         ModalScope? scope = null;
 

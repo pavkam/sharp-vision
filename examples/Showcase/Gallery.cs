@@ -44,6 +44,7 @@ public sealed class Gallery: Screen
         ("Progress", ChaseIndicatorPane.Title, static () => new ChaseIndicatorPane()),
         ("Input", CheckBoxPane.Title, static () => new CheckBoxPane()),
         ("Input", ColorPickerPane.Title, static () => new ColorPickerPane()),
+        ("Input", CommandPalettePane.Title, static () => new CommandPalettePane()),
         ("Input", ComboBoxPane.Title, static () => new ComboBoxPane()),
         ("Input", CurrencyInputPane.Title, static () => new CurrencyInputPane()),
         ("Layout", DockPane.Title, static () => new DockPane()),

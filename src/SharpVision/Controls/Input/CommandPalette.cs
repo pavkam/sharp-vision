@@ -1,0 +1,649 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Controls.Input;
+
+using Collections;
+
+using Popups;
+
+using SharpVision.Terminal.Input;
+
+/// <summary>Provides an editable command search field with asynchronously resolved popup results.</summary>
+/// <remarks>
+/// The retained editor remains the focus target in embedded, centered, and top-centered layouts.
+/// Each text change cancels the prior request, and only the latest completion may publish items.
+/// </remarks>
+[PublicAPI]
+public sealed class CommandPalette: CompositeControlBase
+{
+    private const int _defaultDropDownHeight = 8;
+    private readonly TextInput _input;
+    private readonly ListView _list;
+    private readonly Popup _popup;
+    private readonly PopupDropDownCoordinator _popupCoordinator;
+    private CancellationTokenSource? _resolutionCancellation;
+    private int _resolutionGeneration;
+    private bool _wantsOpen;
+
+    #region Construction and events
+
+    /// <summary>Initializes an empty command palette with a bordered editor and connected popup.</summary>
+    public CommandPalette()
+    {
+        _input = new TextInput { HorizontalAlignment = HorizontalAlignment.Stretch };
+        _input.TextChanged += OnTextChanged;
+        _list = new ListView
+        {
+            IsTabStop = false,
+            MaxHeight = _defaultDropDownHeight,
+            SelectionMode = ListSelectionMode.Single
+        };
+        _list.ItemInvoked += OnItemInvoked;
+        _popup = new Popup
+        {
+            Anchor = _input,
+            ConnectsToAnchor = true,
+            Content = _list,
+            FocusOnOpen = false,
+            ModalBehavior = PopupModalBehavior.None,
+            Placement = PopupPlacement.Below,
+            TabNavigation = TabNavigation.None,
+            TracksAnchorReflow = false
+        };
+        var popupSlot = RegisterOwnedSlot(
+            new OwnedControlOptions(
+                OwnedControlRole.FrameworkPart,
+                OwnedControlLayer.Popup,
+                participatesInHitTesting: true,
+                participatesInNavigation: true,
+                partKey: "results",
+                InvalidationImpact.Measure),
+            capacity: 1);
+        popupSlot.Add(_popup);
+        _popupCoordinator = new PopupDropDownCoordinator(
+            this,
+            _popup,
+            _list,
+            _input.Focus,
+            () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None),
+            () => Opened?.Invoke(this, EventArgs.Empty),
+            () => Closed?.Invoke(this, EventArgs.Empty),
+            ownerInitialFocus: _input);
+        _ = AddHandler(Events.Key, OnKeyRouted, handledEventsToo: true);
+        InitializeContent(_input);
+    }
+
+    /// <summary>Raised after a non-empty result popup opens.</summary>
+    public event EventHandler? Opened;
+
+    /// <summary>Raised after the result popup closes.</summary>
+    public event EventHandler? Closed;
+
+    /// <summary>Raised after the current result snapshot changes.</summary>
+    public event EventHandler? ResultsChanged;
+
+    /// <summary>Raised when the still-current resolver request fails.</summary>
+    public event EventHandler<CommandPaletteResolutionFailedEventArgs>? ResolutionFailed;
+
+    /// <summary>Raised after keyboard or pointer activation of one resolved item.</summary>
+    public event EventHandler<ItemInvokedEventArgs>? ItemInvoked;
+
+    #endregion
+
+    #region Search and results
+
+    /// <summary>Gets or sets the optional resolver invoked for each current search snapshot.</summary>
+    /// <remarks>Assigning a resolver immediately resolves the current text.</remarks>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public CommandPaletteResolver? Resolver
+    {
+        get;
+        set
+        {
+            VerifyMutable();
+
+            if (ReferenceEquals(field, value))
+            {
+                return;
+            }
+
+            field = value;
+            NotifyPropertyChanged(nameof(Resolver), InvalidationImpact.None);
+            BeginResolution();
+        }
+    }
+
+    /// <summary>Gets or sets the freely editable non-null search text.</summary>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="ArgumentException">The value violates the retained editor policy.</exception>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public string Text
+    {
+        get => _input.Text;
+        set => _input.Text = value;
+    }
+
+    /// <summary>Gets the copied current resolver result snapshot.</summary>
+    public IReadOnlyList<object?> Items => _list.Items;
+
+    /// <summary>Gets whether the current resolver request has not completed.</summary>
+    public bool IsResolving { get; private set; }
+
+    /// <summary>Gets or sets the detached-control factory used to realize each result row.</summary>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="ArgumentException">Candidate output is invalid or duplicated.</exception>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public ItemTemplate ItemTemplate
+    {
+        get => _list.ItemTemplate;
+        set
+        {
+            VerifyMutable();
+            _list.ItemTemplate = value;
+            NotifyPropertyChanged(nameof(ItemTemplate), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Gets or sets the fixed row height, or null for content-sized rows.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public int? RowHeight
+    {
+        get => _list.RowHeight;
+        set
+        {
+            VerifyMutable();
+            _list.RowHeight = value;
+            NotifyPropertyChanged(nameof(RowHeight), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Starts a fresh resolution for the current text and makes results eligible to open.</summary>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public void Refresh()
+    {
+        VerifyMutable();
+        _wantsOpen = true;
+        BeginResolution();
+    }
+
+    #endregion
+
+    #region Presentation
+
+    /// <summary>Gets or sets optional placeholder text shown while the editor is empty.</summary>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public string? Placeholder
+    {
+        get => _input.Placeholder;
+        set
+        {
+            VerifyMutable();
+
+            if (string.Equals(_input.Placeholder, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _input.Placeholder = value;
+            NotifyPropertyChanged(nameof(Placeholder), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Gets or sets the optional leading editor affix.</summary>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public Affix? StartAffix
+    {
+        get => _input.StartAffix;
+        set
+        {
+            VerifyMutable();
+
+            if (_input.StartAffix == value)
+            {
+                return;
+            }
+
+            _input.StartAffix = value;
+            NotifyPropertyChanged(nameof(StartAffix), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Gets or sets the optional trailing editor affix.</summary>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public Affix? EndAffix
+    {
+        get => _input.EndAffix;
+        set
+        {
+            VerifyMutable();
+
+            if (_input.EndAffix == value)
+            {
+                return;
+            }
+
+            _input.EndAffix = value;
+            NotifyPropertyChanged(nameof(EndAffix), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Gets or sets the complete local editor border.</summary>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public Border FieldBorder
+    {
+        get => _input.Border;
+        set
+        {
+            VerifyMutable();
+
+            if (_input.Border == value)
+            {
+                return;
+            }
+
+            _input.Border = value;
+            NotifyPropertyChanged(nameof(FieldBorder), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Returns the editor border to the active input appearance.</summary>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public void ResetFieldBorder()
+    {
+        VerifyMutable();
+        _input.ResetBorder();
+        NotifyPropertyChanged(nameof(FieldBorder), InvalidationImpact.None);
+    }
+
+    /// <summary>Gets or sets the complete local editor shadow.</summary>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public Shadow FieldShadow
+    {
+        get => _input.Shadow;
+        set
+        {
+            VerifyMutable();
+
+            if (_input.Shadow == value)
+            {
+                return;
+            }
+
+            _input.Shadow = value;
+            NotifyPropertyChanged(nameof(FieldShadow), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Returns the editor shadow to the active input appearance.</summary>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public void ResetFieldShadow()
+    {
+        VerifyMutable();
+        _input.ResetShadow();
+        NotifyPropertyChanged(nameof(FieldShadow), InvalidationImpact.None);
+    }
+
+    /// <summary>Gets or sets the result popup's border and shadow together.</summary>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public PopupChrome PopupChrome
+    {
+        get => _popup.Style;
+        set
+        {
+            VerifyMutable();
+
+            if (_popup.Style == value)
+            {
+                return;
+            }
+
+            _popup.Style = value;
+            NotifyPropertyChanged(nameof(PopupChrome), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Returns the result popup border and shadow to its appearance role.</summary>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public void ResetPopupChrome() => PopupChrome = default;
+
+    /// <summary>Gets or sets the positive maximum visible result height in cells.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public int DropDownHeight
+    {
+        get => _list.MaxHeight;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
+            VerifyMutable();
+
+            if (_list.MaxHeight == value)
+            {
+                return;
+            }
+
+            _list.MaxHeight = value;
+            NotifyPropertyChanged(nameof(DropDownHeight), InvalidationImpact.None);
+        }
+    }
+
+    /// <summary>Gets or sets whether the non-empty result popup is open.</summary>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public bool IsOpen
+    {
+        get => _popupCoordinator.IsOpen;
+        set
+        {
+            VerifyMutable();
+
+            if (value && (!EffectiveIsEnabled || !EffectiveIsVisible))
+            {
+                _wantsOpen = false;
+                return;
+            }
+
+            _wantsOpen = value;
+
+            if (!value)
+            {
+                _popupCoordinator.SetOpen(false);
+                return;
+            }
+
+            if (Items.Count > 0)
+            {
+                _popupCoordinator.SetOpen(true);
+            }
+            else
+            {
+                BeginResolution();
+            }
+        }
+    }
+
+    /// <summary>Focuses the retained editor and opens current or freshly resolved results.</summary>
+    /// <returns>True when the mounted editor accepted focus.</returns>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public bool Open()
+    {
+        IsOpen = true;
+        return _input.Focus();
+    }
+
+    /// <summary>Closes results while preserving the current search text.</summary>
+    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
+    public void Close() => IsOpen = false;
+
+    #endregion
+
+    #region Layout, input, and lifecycle
+
+    /// <inheritdoc/>
+    protected override Size MeasureOverride(Constraint constraint)
+    {
+        _ = MeasureChild(_popup, new Constraint(constraint.Width, DropDownHeight.Add(1)));
+        return base.MeasureOverride(constraint);
+    }
+
+    /// <inheritdoc/>
+    protected override void ArrangeOverride(Rect bounds)
+    {
+        base.ArrangeOverride(bounds);
+        ArrangeChild(_popup, RootBounds(bounds), ResolvedAxes.Both);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnAttached()
+    {
+        base.OnAttached();
+        _popupCoordinator.OnOwnerAttached();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnUnavailable(ReleaseReason reason)
+    {
+        base.OnUnavailable(reason);
+        CancelResolution();
+
+        if (reason == ReleaseReason.Disposed)
+        {
+            _input.TextChanged -= OnTextChanged;
+            _list.ItemInvoked -= OnItemInvoked;
+            _popupCoordinator.Detach();
+            Opened = null;
+            Closed = null;
+            ResultsChanged = null;
+            ResolutionFailed = null;
+            ItemInvoked = null;
+        }
+    }
+
+    private void OnKeyRouted(object? sender, KeyEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.Phase != RoutingPhase.Preview ||
+            eventArgs.IsHandled ||
+            eventArgs.Stroke.Action != KeyAction.Press ||
+            !IsOpen)
+        {
+            return;
+        }
+
+        if (eventArgs.Stroke.Code == Code.Escape)
+        {
+            Close();
+            eventArgs.IsHandled = true;
+            return;
+        }
+
+        if (eventArgs.Stroke.Code == Code.Enter && _list.SelectedIndex >= 0)
+        {
+            Invoke(_list.SelectedIndex, ActivationCause.Keyboard);
+            eventArgs.IsHandled = true;
+            return;
+        }
+
+        if (eventArgs.Stroke.Code is Code.Up or Code.Down)
+        {
+            var direction = eventArgs.Stroke.Code == Code.Down ? 1 : -1;
+            var start = _list.SelectedIndex < 0
+                ? direction > 0 ? -1 : Items.Count
+                : _list.SelectedIndex;
+            _list.SelectedIndex = Math.Clamp(start + direction, 0, Items.Count - 1);
+            eventArgs.IsHandled = true;
+        }
+    }
+
+    #endregion
+
+    #region Resolution
+
+    private void OnTextChanged(object? sender, TextChangedEventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+        NotifyPropertyChanged(nameof(Text), InvalidationImpact.None);
+        _wantsOpen |= Resolver is not null;
+        BeginResolution();
+    }
+
+    private void BeginResolution()
+    {
+        CancelResolution();
+        var generation = ++_resolutionGeneration;
+        var resolver = Resolver;
+
+        if (resolver is null)
+        {
+            SetIsResolving(false);
+            ApplyResults(generation, []);
+            return;
+        }
+
+        var cancellation = new CancellationTokenSource();
+        _resolutionCancellation = cancellation;
+        SetIsResolving(true);
+        ValueTask<IReadOnlyList<object?>> pending;
+
+        try
+        {
+            pending = resolver(Text, cancellation.Token);
+        }
+        catch (Exception exception)
+        {
+            ApplyFailure(generation, Text, exception);
+            return;
+        }
+
+        if (pending.IsCompletedSuccessfully)
+        {
+            ApplyCompletion(generation, Text, pending.Result);
+            return;
+        }
+
+        _ = CompleteResolutionAsync(pending, Text, generation, cancellation.Token);
+    }
+
+    private async Task CompleteResolutionAsync(
+        ValueTask<IReadOnlyList<object?>> pending,
+        string searchTerms,
+        int generation,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var results = await pending.ConfigureAwait(false);
+            DispatchCompletion(() => ApplyCompletion(generation, searchTerms, results));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            DispatchCompletion(() => ApplyFailure(generation, searchTerms, exception));
+        }
+    }
+
+    private void DispatchCompletion(Action action)
+    {
+        var dispatcher = Dispatcher;
+
+        if (dispatcher is null || dispatcher.CheckAccess())
+        {
+            action();
+            return;
+        }
+
+        try
+        {
+            dispatcher.Post(action);
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    private void ApplyResults(int generation, IReadOnlyList<object?> results)
+    {
+        if (generation != _resolutionGeneration || IsDisposed)
+        {
+            return;
+        }
+
+        SetIsResolving(false);
+        _list.Items = results;
+        _list.SelectedIndex = -1;
+        NotifyPropertyChanged(nameof(Items), InvalidationImpact.None);
+        ResultsChanged?.Invoke(this, EventArgs.Empty);
+        _popupCoordinator.SetOpen(_wantsOpen && results.Count > 0);
+    }
+
+    private void ApplyCompletion(
+        int generation,
+        string searchTerms,
+        IReadOnlyList<object?>? results)
+    {
+        if (results is null)
+        {
+            ApplyFailure(
+                generation,
+                searchTerms,
+                new InvalidOperationException("A command-palette resolver returned a null result snapshot."));
+            return;
+        }
+
+        ApplyResults(generation, results);
+    }
+
+    private void ApplyFailure(int generation, string searchTerms, Exception exception)
+    {
+        if (generation != _resolutionGeneration || IsDisposed)
+        {
+            return;
+        }
+
+        SetIsResolving(false);
+        _list.Items = [];
+        NotifyPropertyChanged(nameof(Items), InvalidationImpact.None);
+        ResultsChanged?.Invoke(this, EventArgs.Empty);
+        _popupCoordinator.SetOpen(false);
+        ResolutionFailed?.Invoke(
+            this,
+            new CommandPaletteResolutionFailedEventArgs(searchTerms, exception));
+    }
+
+    private void SetIsResolving(bool value)
+    {
+        if (IsResolving == value)
+        {
+            return;
+        }
+
+        IsResolving = value;
+        NotifyPropertyChanged(nameof(IsResolving), InvalidationImpact.None);
+    }
+
+    private void CancelResolution()
+    {
+        var cancellation = _resolutionCancellation;
+        _resolutionCancellation = null;
+        cancellation?.Cancel();
+        cancellation?.Dispose();
+    }
+
+    private void OnItemInvoked(object? sender, ItemInvokedEventArgs eventArgs)
+    {
+        _ = sender;
+        Invoke(eventArgs.Index, eventArgs.Cause);
+    }
+
+    private void Invoke(int index, ActivationCause cause)
+    {
+        var eventArgs = new ItemInvokedEventArgs(index, Items[index], cause);
+        Close();
+        ItemInvoked?.Invoke(this, eventArgs);
+    }
+
+    #endregion
+}

@@ -79,8 +79,8 @@ sidebar organizes its 59 entries by primary use:
 
 - Concepts: ControlBase, Border, Shadow, Data Binding, and Styling.
 - Input: Button, HyperlinkButton, Calendar, DateInput, DateTimeInput, CheckBox,
-  ColorPicker, ComboBox, CurrencyInput, NumberInput, RadioButton, Slider,
-  TextInput, and TimeInput.
+  ColorPicker, CommandPalette, ComboBox, CurrencyInput, NumberInput,
+  RadioButton, Slider, TextInput, and TimeInput.
 - Collections: JsonView, ListView, TabControl, Table, and TreeView.
 - Navigation: Menu, MenuItem, and NavigationView.
 - Layout: Dock, Expander, Grid, GroupBox, Overlay, ScrollBar, and Stack.

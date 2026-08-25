@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-    diffBounds,
-    locateExampleBox,
-} from "./capture-control-images.mjs";
+import * as captureHelpers from "./capture-control-images.mjs";
 import { parseCapture } from "./render-terminal-capture.mjs";
+
+const { diffBounds, locateExampleBox } = captureHelpers;
 
 const page = [
     "Heading text",
@@ -33,6 +32,37 @@ test("locateExampleBox returns the requested occurrence's border rectangle", () 
         right: 16,
     });
     assert.equal(locateExampleBox(rows, 3), null);
+});
+
+test("locateStateExampleBox honors a state's example occurrence", () => {
+    const rows = parseCapture(page);
+
+    assert.equal(typeof captureHelpers.locateStateExampleBox, "function");
+    assert.deepEqual(
+        captureHelpers.locateStateExampleBox(rows, { example: 2 }),
+        {
+            top: 5,
+            left: 2,
+            bottom: 7,
+            right: 16,
+        },
+    );
+});
+
+test("locateStateExampleBox selects an example by visible marker", () => {
+    const rows = parseCapture(page);
+
+    assert.deepEqual(
+        captureHelpers.locateStateExampleBox(rows, {
+            example: "second box",
+        }),
+        {
+            top: 5,
+            left: 2,
+            bottom: 7,
+            right: 16,
+        },
+    );
 });
 
 test("locateExampleBox returns null for a box without a bottom border", () => {

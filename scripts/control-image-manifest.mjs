@@ -2,8 +2,9 @@
 /// path under docs/controls without extension; the image slug is its basename.
 /// A state without a name is the default capture. `actions` run before the
 /// capture; `press` followed by `drag` holds a real primary-button selection
-/// gesture, `popup: true` widens the crop to rows the actions changed, and
-/// `animated: true` skips the stable-frame wait for continuously moving pages.
+/// gesture, `example` selects a DocExample by visible occurrence or marker,
+/// `popup: true` widens the crop to rows the actions changed, and `animated:
+/// true` skips the stable-frame wait for continuously moving pages.
 export const controls = [
     { doc: "control", page: "Control" },
     {
@@ -29,6 +30,25 @@ export const controls = [
         ],
     },
     { doc: "input/color-picker", page: "ColorPicker" },
+    {
+        doc: "input/command-palette",
+        page: "CommandPalette",
+        states: [
+            {},
+            {
+                name: "centered",
+                example: "Open centered",
+                popup: true,
+                actions: [{ click: "Open centered" }],
+            },
+            {
+                name: "top-centered",
+                example: "Open centered",
+                popup: true,
+                actions: [{ click: "Open at top" }],
+            },
+        ],
+    },
     {
         doc: "input/combo-box",
         page: "ComboBox",
