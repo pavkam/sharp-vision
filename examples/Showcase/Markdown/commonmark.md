@@ -11,6 +11,9 @@ of their target. Angle-delimited destinations permit spaces.
 
 Backslash escapes keep \*punctuation\* literal.
 
+Paragraph boundary spaces and tabs are structural, while interior spacing stays
+authored content.
+
 Setext heading level 1
 ======================
 

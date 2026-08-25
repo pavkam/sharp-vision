@@ -53,6 +53,13 @@ thematic breaks. Backslash escapes preserve punctuation literally. A hard break
 may use either two trailing spaces or a trailing backslash. Optional syntax
 stays visible as literal text when its extension is disabled.
 
+Paragraph raw content follows the
+[CommonMark 0.31.2 paragraph rules](https://spec.commonmark.org/0.31.2/#paragraphs):
+spaces and tabs at the paragraph edges and around soft line breaks are
+structural and are removed before inline parsing. Two trailing spaces or an
+unescaped trailing backslash still create an interior hard break, while trailing
+markers at the end of a paragraph are stripped without creating a break.
+
 Ordered-list markers follow the
 [CommonMark 0.31.2 list-item grammar](https://spec.commonmark.org/0.31.2/#list-items):
 one to nine ASCII digits followed by `.` or `)`. Any valid start value forms a

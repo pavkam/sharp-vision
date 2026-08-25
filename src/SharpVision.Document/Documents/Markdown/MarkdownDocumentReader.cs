@@ -487,19 +487,19 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
         for (var index = 0; index < lines.Count; index++)
         {
-            var line = lines[index];
+            var line = index == 0
+                ? TrimParagraphOpening(lines[index])
+                : lines[index].TrimStart(' ', '\t');
             var hasFollowingLine = index + 1 < lines.Count;
             var spaceBreak = hasFollowingLine && line.EndsWith("  ", StringComparison.Ordinal);
             var slashBreak = hasFollowingLine && EndsWithUnescapedBackslash(line);
 
-            if (spaceBreak)
+            line = (spaceBreak, slashBreak) switch
             {
-                line = line.TrimEnd(' ');
-            }
-            else if (slashBreak)
-            {
-                line = line[..^1];
-            }
+                (true, _) => line.TrimEnd(' '),
+                (_, true) => line[..^1],
+                _ => line.TrimEnd(' ', '\t')
+            };
 
             ParseInlines(line, paragraph.Inlines);
 
@@ -512,6 +512,15 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         }
 
         return paragraph;
+    }
+
+    [Pure]
+    private static string TrimParagraphOpening(string line)
+    {
+        var spaces = CountLeadingSpaces(line);
+        return spaces <= 3 && (spaces == line.Length || line[spaces] != '\t')
+            ? line[spaces..]
+            : line;
     }
 
     private void ParseInlines(string source, DocumentInlineCollection destination, bool insideLink = false)

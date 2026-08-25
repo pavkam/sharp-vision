@@ -230,7 +230,7 @@ public sealed class MarkdownDocumentReaderTests
         paragraph.Inlines.Count.ShouldBe(3);
         paragraph.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("paragraph");
         _ = paragraph.Inlines[1].ShouldBeOfType<DocumentSoftBreak>();
-        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(marker);
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(marker.TrimEnd(' ', '\t'));
     }
 
     /// <summary>Verifies disabled non-standard syntax remains ordinary visible source.</summary>
@@ -462,7 +462,7 @@ public sealed class MarkdownDocumentReaderTests
         // Assert
         var paragraph = result.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
         paragraph.Inlines.Count.ShouldBe(5);
-        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(fence);
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(fence.TrimStart(' ', '\t'));
         paragraph.Inlines[4].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("continuation");
     }
 
@@ -591,6 +591,77 @@ public sealed class MarkdownDocumentReaderTests
         paragraph.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("alpha");
         _ = paragraph.Inlines[1].ShouldBeOfType<DocumentLineBreak>();
         paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("beta");
+    }
+
+    /// <summary>Verifies spaces and tabs at the outer boundaries of paragraph raw content are
+    /// removed before inline parsing.</summary>
+    [Theory]
+    [InlineData("   paragraph   ")]
+    [InlineData("paragraph\t")]
+    [InlineData(" paragraph \t ")]
+    public void Read_WhenParagraphHasBoundaryWhitespace_RemovesBoundaryWhitespace(string source)
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("paragraph");
+    }
+
+    /// <summary>Verifies spaces and tabs adjacent to a soft line break are structural rather than
+    /// visible or selectable paragraph content.</summary>
+    [Fact]
+    public void Read_WhenSoftBreakHasAdjacentWhitespace_RemovesBoundaryWhitespace()
+    {
+        // Arrange
+        const string source = "  alpha \t\n \t beta\t ";
+
+        // Act
+        var paragraph = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.Count.ShouldBe(3);
+        paragraph.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("alpha");
+        _ = paragraph.Inlines[1].ShouldBeOfType<DocumentSoftBreak>();
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("beta");
+    }
+
+    /// <summary>Verifies trimming keeps both hard-break marker forms on interior line boundaries,
+    /// removes indentation from the following line, and strips whitespace from the paragraph end.</summary>
+    [Theory]
+    [InlineData(" alpha  \n \tbeta  ")]
+    [InlineData(" alpha\\\n \tbeta\t")]
+    public void Read_WhenHardBreakHasParagraphBoundaryWhitespace_PreservesBreakOnly(string source)
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.Count.ShouldBe(3);
+        paragraph.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("alpha");
+        _ = paragraph.Inlines[1].ShouldBeOfType<DocumentLineBreak>();
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("beta");
+    }
+
+    /// <summary>Verifies the shared paragraph normalization also applies inside list items and
+    /// block quotes rather than only at the document root.</summary>
+    [Fact]
+    public void Read_WhenNestedParagraphsHaveTrailingWhitespace_RemovesBoundaryWhitespace()
+    {
+        // Arrange and act
+        var listParagraph = new MarkdownDocumentReader().Read("- item \t").Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem().Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
+        var quoteParagraph = new MarkdownDocumentReader().Read("> quote \t").Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentBlockQuote>().Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        listParagraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("item");
+        quoteParagraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("quote");
     }
 
     /// <summary>Verifies table recognition never truncates a wider authored header or data row.</summary>
