@@ -433,6 +433,10 @@ Two characters inside a run are structural rather than text. A newline — `\n`,
 appears. A tab advances a fixed four cells; it is a blank advance rather than a
 tab stop, so a break in a different place cannot change its width.
 
+Generated cells for a tab or `DocumentSoftBreak` retain their originating inline
+style and link target. Backgrounds, attributes, underline metadata, and terminal
+hyperlink identity therefore remain continuous across visible blanks.
+
 ### DocumentLink
 
 | Member                                     | Type                      | Default    | Description                                                                         |

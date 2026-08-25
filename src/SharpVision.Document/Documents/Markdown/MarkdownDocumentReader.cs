@@ -385,8 +385,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                     {
                         index = afterBlankIndex;
 
-                        if (afterBlank.Delimiter == firstMarker.Delimiter &&
-                            ContinuesSameSemanticList(marker.Content, afterBlank.Content))
+                        if (afterBlank.Delimiter == firstMarker.Delimiter)
                         {
                             list.IsLoose = true;
                         }
@@ -460,15 +459,6 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         }
 
         return list;
-    }
-
-    private bool ContinuesSameSemanticList(string current, string next)
-    {
-        var currentTask = Has(MarkdownExtension.TaskLists) && TryTask(current, out _, out _);
-        var nextTask = Has(MarkdownExtension.TaskLists) && TryTask(next, out _, out _);
-        var currentRadio = Has(MarkdownExtension.RadioLists) && TryRadio(current, out _, out _);
-        var nextRadio = Has(MarkdownExtension.RadioLists) && TryRadio(next, out _, out _);
-        return currentTask == nextTask && currentRadio == nextRadio;
     }
 
     private DocumentTable ParseTable(
@@ -609,10 +599,11 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continue;
             }
 
-            if (!insideLink && source[index] == '<' && TryAngleAutolink(source, index, out var angleEnd, out var angleTarget))
+            if (!insideLink && source[index] == '<' &&
+                TryAngleAutolink(source, index, out var angleEnd, out var angleText, out var angleTarget))
             {
                 Flush();
-                destination.Add(new DocumentLink(angleTarget, angleTarget));
+                destination.Add(new DocumentLink(angleText, angleTarget));
                 index = angleEnd;
                 continue;
             }
@@ -729,17 +720,18 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             if (!insideLink && !linkCloserUnavailable && source[index] == '[' &&
                 TryLink(source, index, out var linkEnd, out var label, out var target))
             {
+                var parsedLabel = new DocumentParagraph();
+                ParseInlines(label, parsedLabel.Inlines);
+
+                if (ContainsLink(parsedLabel.Inlines))
+                {
+                    _ = plain.Append(source[index]);
+                    index++;
+                    continue;
+                }
+
                 Flush();
                 var link = new DocumentLink { Target = target.Length == 0 ? null : target };
-
-                // CommonMark forbids a link from containing another link at any nesting depth: a
-                // label whose own content would otherwise resolve to a link (a literal reference
-                // marker is fine and stays plain text either way, but a genuinely link-shaped
-                // sequence such as another "[x](y)" or an autolink is not) instead leaves that
-                // content as ordinary literal text. insideLink propagates through every recursive
-                // call this label's own content can reach - emphasis, strong, strikethrough - so a
-                // link-shaped sequence nested arbitrarily deep inside the label still degrades to
-                // text instead of throwing when the model's own "no nested links" rule rejects it.
                 ParseInlines(label, link.Inlines, insideLink: true);
                 destination.Add(link);
                 index = linkEnd;
@@ -752,6 +744,11 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
         Flush();
     }
+
+    [Pure]
+    private static bool ContainsLink(IEnumerable<DocumentInline> inlines) =>
+        inlines.Any(static inline => inline is DocumentLink ||
+            (inline is DocumentInlineContainer container && ContainsLink(container.Inlines)));
 
     [Pure]
     private bool Has(MarkdownExtension extension) => (_extensions & extension) != 0;
@@ -1062,6 +1059,24 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continue;
             }
 
+            if (source[cursor] == '`')
+            {
+                var delimiterLength = CountRun(source, cursor, '`');
+                var codeEnd = FindCodeSpanEnd(source, cursor + delimiterLength, delimiterLength);
+
+                if (codeEnd >= 0)
+                {
+                    cursor = codeEnd + delimiterLength;
+                    continue;
+                }
+            }
+
+            if (source[cursor] == '<' && TryAngleAutolink(source, cursor, out var angleEnd, out _, out _))
+            {
+                cursor = angleEnd;
+                continue;
+            }
+
             if (source[cursor] == '[')
             {
                 depth++;
@@ -1271,7 +1286,12 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     }
 
     [Pure]
-    private static bool TryAngleAutolink(string source, int index, out int end, out string target)
+    private static bool TryAngleAutolink(
+        string source,
+        int index,
+        out int end,
+        out string text,
+        out string target)
     {
         var close = source.IndexOf('>', index + 1);
 
@@ -1279,20 +1299,97 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         {
             var candidate = source[(index + 1)..close];
 
-            if ((candidate.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
-                 candidate.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                 candidate.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase)) &&
-                !candidate.Any(char.IsWhiteSpace))
+            if (IsCommonMarkUriAutolink(candidate))
             {
+                text = candidate;
                 target = candidate;
+                end = close + 1;
+                return true;
+            }
+
+            if (IsCommonMarkEmailAutolink(candidate))
+            {
+                text = candidate;
+                target = $"mailto:{candidate}";
                 end = close + 1;
                 return true;
             }
         }
 
+        text = string.Empty;
         target = string.Empty;
         end = -1;
         return false;
+    }
+
+    [Pure]
+    private static bool IsCommonMarkUriAutolink(string candidate)
+    {
+        var colon = candidate.IndexOf(':');
+
+        if (colon is < 2 or > 32 || !char.IsAsciiLetter(candidate[0]))
+        {
+            return false;
+        }
+
+        for (var index = 1; index < colon; index++)
+        {
+            if (!char.IsAsciiLetterOrDigit(candidate[index]) && candidate[index] is not ('+' or '-' or '.'))
+            {
+                return false;
+            }
+        }
+
+        var destination = candidate.AsSpan(colon + 1);
+
+        if (destination.IsEmpty || destination.SequenceEqual("//"))
+        {
+            return false;
+        }
+
+        foreach (var character in destination)
+        {
+            if (character is <= ' ' or '\u007f' or '<')
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    [Pure]
+    private static bool IsCommonMarkEmailAutolink(string candidate)
+    {
+        var separator = candidate.IndexOf('@');
+
+        if (separator <= 0 || separator != candidate.LastIndexOf('@') || separator == candidate.Length - 1)
+        {
+            return false;
+        }
+
+        foreach (var character in candidate.AsSpan(0, separator))
+        {
+            if (!char.IsAsciiLetterOrDigit(character) &&
+                character is not ('.' or '!' or '#' or '$' or '%' or '&' or '\'' or '*' or '+' or
+                    '/' or '=' or '?' or '^' or '_' or '`' or '{' or '|' or '}' or '~' or '-'))
+            {
+                return false;
+            }
+        }
+
+        foreach (var label in candidate.AsSpan(separator + 1).ToString().Split('.'))
+        {
+            if (label.Length is < 1 or > 63 ||
+                !char.IsAsciiLetterOrDigit(label[0]) ||
+                !char.IsAsciiLetterOrDigit(label[^1]) ||
+                label.Any(static character => !char.IsAsciiLetterOrDigit(character) && character != '-'))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     [Pure]

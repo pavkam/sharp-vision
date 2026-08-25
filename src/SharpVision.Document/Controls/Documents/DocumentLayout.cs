@@ -629,7 +629,19 @@ internal sealed class DocumentLayout
 
         _runs.Add(token.Kind == DocumentFlowTokenKind.Control
             ? DocumentVisualRun.ForControl(column, token.Cells, token.Control!)
-            : token.ParsedRunIndex >= 0
+            : token.Glyph.Value != 0
+                ? DocumentVisualRun.ForRepeat(
+                    column,
+                    token.Cells,
+                    token.Glyph,
+                    token.Face,
+                    foregroundOverride,
+                    token.SemanticRange,
+                    token.ParsedRunIndex,
+                    token.Offset,
+                    token.Length,
+                    token.LinkIndex)
+                : token.ParsedRunIndex >= 0
                 ? DocumentVisualRun.ForText(
                     column,
                     token.Cells,
@@ -639,13 +651,7 @@ internal sealed class DocumentLayout
                     token.Face,
                     token.LinkIndex,
                     foregroundOverride)
-                : DocumentVisualRun.ForRepeat(
-                    column,
-                    token.Cells,
-                    token.Glyph,
-                    token.Face,
-                    foregroundOverride,
-                    token.SemanticRange));
+                : throw new UnreachableException("A non-control table token must provide text or a repeated glyph."));
         column += token.Cells;
     }
 
@@ -772,7 +778,19 @@ internal sealed class DocumentLayout
 
                 case DocumentSoftBreak:
                     var softBreakRange = _selectionBuilder.AppendSoftBreak();
-                    _tokens.Add(DocumentFlowToken.ForBlank(1, face, linkIndex, softBreakRange));
+                    const string softBreakDisplay = " ";
+                    var softBreakRunIndex = _parsedRuns.Count;
+                    _parsedRuns.Add(new DocumentParsedRun(
+                        softBreakDisplay,
+                        CreateLiteralSpans(softBreakDisplay, semanticAttributes, linkTarget)));
+                    _tokens.Add(DocumentFlowToken.ForBlank(
+                        1,
+                        face,
+                        linkIndex,
+                        softBreakRange,
+                        softBreakRunIndex,
+                        offset: 0,
+                        length: 1));
                     break;
 
                 case DocumentLineBreak:
@@ -906,7 +924,10 @@ internal sealed class DocumentLayout
                     _tabAdvance,
                     face,
                     linkIndex,
-                    _selectionBuilder.ParsedRangeOf(parsedRunIndex, offset, grapheme.Length)));
+                    _selectionBuilder.ParsedRangeOf(parsedRunIndex, offset, grapheme.Length),
+                    parsedRunIndex,
+                    offset,
+                    grapheme.Length));
                 continue;
             }
 
@@ -981,23 +1002,29 @@ internal sealed class DocumentLayout
 
             _runs.Add(token.Kind == DocumentFlowTokenKind.Control
                 ? DocumentVisualRun.ForControl(column, token.Cells, token.Control!)
-                : token.ParsedRunIndex >= 0
-                    ? DocumentVisualRun.ForText(
-                    column,
-                    token.Cells,
-                    token.ParsedRunIndex,
-                    token.Offset,
-                    token.Length,
-                    token.Face,
-                    token.LinkIndex,
-                    foregroundOverride)
-                    : DocumentVisualRun.ForRepeat(
+                : token.Glyph.Value != 0
+                    ? DocumentVisualRun.ForRepeat(
                         column,
                         token.Cells,
                         token.Glyph,
                         token.Face,
                         foregroundOverride,
-                        token.SemanticRange));
+                        token.SemanticRange,
+                        token.ParsedRunIndex,
+                        token.Offset,
+                        token.Length,
+                        token.LinkIndex)
+                    : token.ParsedRunIndex >= 0
+                    ? DocumentVisualRun.ForText(
+                        column,
+                        token.Cells,
+                        token.ParsedRunIndex,
+                        token.Offset,
+                        token.Length,
+                        token.Face,
+                        token.LinkIndex,
+                        foregroundOverride)
+                    : throw new UnreachableException("A non-control flow token must provide text or a repeated glyph."));
 
             column += token.Cells;
             lineWidth += token.Cells;

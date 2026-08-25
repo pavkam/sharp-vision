@@ -114,6 +114,10 @@ internal readonly struct DocumentVisualRun
     /// <param name="face">The painting face.</param>
     /// <param name="foregroundOverride">The enclosing semantic foreground, if any.</param>
     /// <param name="semanticRange">The semantic grapheme painted by the repeat, or an empty range.</param>
+    /// <param name="parsedRunIndex">The parsed run supplying style provenance, or -1.</param>
+    /// <param name="offset">The UTF-16 offset whose style applies to the repeat.</param>
+    /// <param name="length">The UTF-16 source length represented by the repeat.</param>
+    /// <param name="linkIndex">The owning link's index, or -1.</param>
     /// <returns>The repeat run.</returns>
     [Pure]
     public static DocumentVisualRun ForRepeat(
@@ -122,8 +126,24 @@ internal readonly struct DocumentVisualRun
         Rune glyph,
         DocumentFaceKind face,
         DocumentFaceKind? foregroundOverride = null,
-        Selection semanticRange = default) =>
-        new(DocumentRunKind.Repeat, column, cells, -1, 0, 0, glyph, null, face, foregroundOverride, -1, semanticRange);
+        Selection semanticRange = default,
+        int parsedRunIndex = -1,
+        int offset = 0,
+        int length = 0,
+        int linkIndex = -1) =>
+        new(
+            DocumentRunKind.Repeat,
+            column,
+            cells,
+            parsedRunIndex,
+            offset,
+            length,
+            glyph,
+            null,
+            face,
+            foregroundOverride,
+            linkIndex,
+            semanticRange);
 
     /// <summary>Creates a positioned retained-control run.</summary>
     /// <param name="column">The zero-based start column.</param>

@@ -90,14 +90,30 @@ internal readonly struct DocumentFlowToken
     /// <param name="face">The painting face.</param>
     /// <param name="linkIndex">The owning link's index, or -1.</param>
     /// <param name="semanticRange">The grapheme range represented by the blank, or an empty range.</param>
+    /// <param name="parsedRunIndex">The parsed run supplying style provenance, or -1.</param>
+    /// <param name="offset">The UTF-16 offset whose style applies to the blank.</param>
+    /// <param name="length">The UTF-16 source length represented by the blank.</param>
     /// <returns>The token.</returns>
     [Pure]
     public static DocumentFlowToken ForBlank(
         int cells,
         DocumentFaceKind face,
         int linkIndex,
-        Selection semanticRange = default) =>
-        new(DocumentFlowTokenKind.Space, -1, 0, 0, cells, new Rune(' '), null, face, linkIndex, semanticRange);
+        Selection semanticRange = default,
+        int parsedRunIndex = -1,
+        int offset = 0,
+        int length = 0) =>
+        new(
+            DocumentFlowTokenKind.Space,
+            parsedRunIndex,
+            offset,
+            length,
+            cells,
+            new Rune(' '),
+            null,
+            face,
+            linkIndex,
+            semanticRange);
 
     /// <summary>Creates an atomic embedded-control token.</summary>
     /// <param name="control">The measured single-line control.</param>

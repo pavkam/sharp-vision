@@ -50,6 +50,14 @@ validated separately and are not folded into `DocumentLink.Target`; the document
 model does not otherwise retain link titles. Invalid destination or title syntax
 remains literal text.
 
+Angle autolinks follow the CommonMark absolute-URI scheme grammar rather than a
+fixed protocol allowlist, and the separate email grammar produces a visible
+address with a `mailto:` target. Invalid schemes, prohibited ASCII controls and
+spaces, incomplete authority forms, and malformed domain labels remain literal.
+Code spans and angle autolinks bind more tightly than brackets while matching a
+link label. If a completed label contains another active link at any inline
+depth, the inner link wins and the outer bracket syntax remains literal.
+
 ## Baseline Markdown
 
 The default reader recognizes ATX and Setext headings, paragraphs, soft and hard
@@ -107,7 +115,9 @@ included in semantic text. Continuation and nested blocks use the same
 item-specific column, including ordered markers whose digit widths differ from
 their peers. Changing between `-`, `+`, and `*`, or between the `.` and `)`
 ordered delimiters, starts a distinct list block. Parser-generated radio groups
-follow those exact list boundaries.
+follow those exact list boundaries. Task, radio, and plain content classify an
+item, not its containing list, so transitions among them do not split an
+otherwise continuous list.
 
 A blank line makes a list loose only when it separates peer items or block
 children within an item. Blank lines that merely separate the final item from a
@@ -231,10 +241,10 @@ clipboard rules belong to the
 
 ## Expected behavior
 
-| Scope              | Observable evidence                                                                 |
-| ------------------ | ----------------------------------------------------------------------------------- |
-| Format abstraction | All detached roots transfer atomically through `Document.Load`.                     |
-| Baseline parsing   | Representative blocks and nested semantic inline nodes preserve source order.       |
-| Extensions         | Each flag changes only its syntax family; disabled syntax remains literal.          |
-| Forms              | Parsed task and radio items are retained controls with ordinary input behavior.     |
-| Bounds             | Oversized input is rejected before parsing beyond the configured character limit.   |
+| Scope              | Observable evidence                                                               |
+| ------------------ | --------------------------------------------------------------------------------- |
+| Format abstraction | All detached roots transfer atomically through `Document.Load`.                   |
+| Baseline parsing   | Representative blocks and nested semantic inline nodes preserve source order.     |
+| Extensions         | Each flag changes only its syntax family; disabled syntax remains literal.        |
+| Forms              | Parsed task and radio items are retained controls with ordinary input behavior.   |
+| Bounds             | Oversized input is rejected before parsing beyond the configured character limit. |

@@ -88,6 +88,42 @@ public sealed class DocumentInlineContainerTests
         document.ActiveLink.ShouldBeSameAs(link);
     }
 
+    /// <summary>Verifies generated cells retain the parsed and semantic style provenance of the
+    /// tab or soft break that produced them.</summary>
+    [Fact]
+    public void Render_WhenLinkContainsStyledTabAndSoftBreak_StylesAndTargetsEveryBlankCell()
+    {
+        // Arrange
+        var strong = new DocumentStrong
+        {
+            Inlines = { new DocumentTextRun("x"), new DocumentSoftBreak(), new DocumentTextRun("y") }
+        };
+        var link = new DocumentLink
+        {
+            Target = "https://example.test/docs",
+            Inlines = { new DocumentTextRun("<bg=#102030>a\tb</bg>"), strong }
+        };
+        var document = new Document
+        {
+            Blocks = { new DocumentParagraph { Inlines = { link } } }
+        };
+
+        // Act
+        using var render = new DocumentRenderProbe(document, new Size(12, 1));
+
+        // Assert
+        render.Row(0).ShouldBe("a    bx y");
+
+        for (var column = 1; column <= 4; column++)
+        {
+            render.Cell(column, 0).Style.Background.ShouldBe(Color.Rgb(0x10, 0x20, 0x30));
+            render.Cell(column, 0).Style.Hyperlink.ShouldBe("https://example.test/docs");
+        }
+
+        (render.Cell(7, 0).Style.Attributes & TerminalAttributes.Bold).ShouldBe(TerminalAttributes.Bold);
+        render.Cell(7, 0).Style.Hyperlink.ShouldBe("https://example.test/docs");
+    }
+
     /// <summary>Verifies code spans are literal and soft breaks participate in ordinary whitespace flow.</summary>
     [Fact]
     public void Render_WhenCodeAndSoftBreakAreUsed_PreservesLiteralTextAndFlow()

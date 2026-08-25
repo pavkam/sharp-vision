@@ -1431,6 +1431,32 @@ public sealed class Document:
 
             if (run.Kind == DocumentRunKind.Repeat)
             {
+                if (run.ParsedRunIndex >= 0)
+                {
+                    var parsed = _layout.ParsedRunOf(run);
+                    var spanIndex = SpanIndexAt(parsed.Spans, run.Offset);
+
+                    if (spanIndex >= 0)
+                    {
+                        var inheritedStyle = style;
+                        style = Merge(style, parsed.Spans[spanIndex]);
+
+                        if (IsForegroundLocked(run))
+                        {
+                            style = new TerminalStyle(
+                                inheritedStyle.Foreground,
+                                style.Background,
+                                style.Attributes,
+                                style.Hyperlink,
+                                style.Underline,
+                                (run.ForegroundOverride is not null || IsStandardCalloutFace(run.Face)) &&
+                                style.Underline != Underline.None
+                                    ? inheritedStyle.Foreground
+                                    : style.UnderlineColor);
+                        }
+                    }
+                }
+
                 canvas.Fill(new Rect(origin.X, origin.Y, run.Cells, 1), run.Glyph, style);
                 continue;
             }

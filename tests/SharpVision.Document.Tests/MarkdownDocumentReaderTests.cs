@@ -341,15 +341,14 @@ public sealed class MarkdownDocumentReaderTests
         tasks.Items[0].Blocks[0].ShouldBeOfType<DocumentBlockControl>().Control
             .ShouldBeOfType<CheckBox>().IsChecked.ShouldBe(true);
 
-        var radios = result.Blocks[2].ShouldBeOfType<DocumentList>();
-        var first = radios.Items[0].Blocks[0].ShouldBeOfType<DocumentBlockControl>().Control
+        var first = tasks.Items[2].Blocks[0].ShouldBeOfType<DocumentBlockControl>().Control
             .ShouldBeOfType<RadioButton>();
-        var second = radios.Items[1].Blocks[0].ShouldBeOfType<DocumentBlockControl>().Control
+        var second = tasks.Items[3].Blocks[0].ShouldBeOfType<DocumentBlockControl>().Control
             .ShouldBeOfType<RadioButton>();
         first.GroupName.ShouldBe(second.GroupName);
         second.IsChecked.ShouldBeTrue();
 
-        var callout = result.Blocks[3].ShouldBeOfType<DocumentCallout>();
+        var callout = result.Blocks[2].ShouldBeOfType<DocumentCallout>();
         callout.Kind.ShouldBe("NOTE");
         callout.Title.ShouldBe("Read this");
         callout.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
@@ -1271,6 +1270,46 @@ public sealed class MarkdownDocumentReaderTests
         VisibleText(result).ShouldBe(source);
     }
 
+    /// <summary>Verifies baseline angle autolinks accept the CommonMark URI-scheme and email
+    /// grammars and preserve a mail address as the visible label.</summary>
+    [Theory]
+    [InlineData("<irc://example.org/channel>", "irc://example.org/channel", "irc://example.org/channel")]
+    [InlineData("<git+ssh.2:repository>", "git+ssh.2:repository", "git+ssh.2:repository")]
+    [InlineData("<foo@example.com>", "foo@example.com", "mailto:foo@example.com")]
+    [InlineData("<first.last+tag@example-domain.test>", "first.last+tag@example-domain.test", "mailto:first.last+tag@example-domain.test")]
+    public void Read_WhenAngleAutolinkUsesCommonMarkGrammar_CreatesLink(
+        string source,
+        string expectedText,
+        string expectedTarget)
+    {
+        // Arrange and act
+        var link = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentLink>();
+
+        // Assert
+        link.Text.ShouldBe(expectedText);
+        link.Target.ShouldBe(expectedTarget);
+    }
+
+    /// <summary>Verifies incomplete schemes, prohibited bytes, and malformed mailboxes remain
+    /// literal angle-bracket source.</summary>
+    [Theory]
+    [InlineData("<http://>")]
+    [InlineData("<x:data>")]
+    [InlineData("<foo\u0001bar:baz>")]
+    [InlineData("<foo bar:baz>")]
+    [InlineData("<foo@example-.com>")]
+    public void Read_WhenAngleAutolinkGrammarIsInvalid_PreservesLiteralSource(string source)
+    {
+        // Arrange and act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines
+            .ShouldNotContain(static inline => inline is DocumentLink);
+        VisibleText(result).ShouldBe(source);
+    }
+
     /// <summary>Verifies a link label containing its own literal, balanced <c>[...]</c> - a
     /// "citation-style" reference marker - still resolves to one link over the complete label,
     /// rather than failing at the first, inner "]".</summary>
@@ -1287,41 +1326,63 @@ public sealed class MarkdownDocumentReaderTests
         link.Text.ShouldBe("See [1]");
     }
 
-    /// <summary>Verifies the common "linked image" markup shape - a nested "[x](y)"-looking
-    /// sequence inside an outer link's own label, the pattern Markdown authors use to link an
-    /// image - resolves the outer boundary correctly instead of mistaking the nested sequence's
-    /// own "](" for the outer link's separator, and that the nested sequence itself degrades to
-    /// literal text rather than becoming a second, nested link: this reader has no separate image
-    /// node, and CommonMark forbids a link from containing another link at any nesting depth.</summary>
-    [Fact]
-    public void Read_WhenLinkLabelContainsALinkShapedNestedSequence_ResolvesTheOuterLinkAndFlattensTheNestedOne()
+    /// <summary>Verifies brackets inside a higher-precedence code span do not close a candidate
+    /// link label.</summary>
+    [Theory]
+    [InlineData("[not a `link](/foo`)")]
+    [InlineData("[not a ``link](/foo``)")]
+    public void Read_WhenCodeSpanContainsLabelBracket_DoesNotCreateSpuriousLink(string source)
     {
         // Arrange and act
-        var link = new MarkdownDocumentReader().Read("[![alt](img.png)](http://example.invalid)")
-            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
-            .ShouldBeOfType<DocumentLink>();
+        var result = new MarkdownDocumentReader().Read(source);
 
         // Assert
-        link.Target.ShouldBe("http://example.invalid");
-        link.Text.ShouldBe("![alt](img.png)");
+        result.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines
+            .ShouldNotContain(static inline => inline is DocumentLink);
     }
 
-    /// <summary>Verifies the "no nested link" rule propagates through an intermediate inline
-    /// container - not just when the link-shaped sequence sits directly in the label - since a
-    /// link's own label is free to contain emphasis or strong text that itself wraps further
-    /// content.</summary>
+    /// <summary>Verifies a complete code span may contain a closing bracket inside a valid link
+    /// label without hiding the label's actual close.</summary>
     [Fact]
-    public void Read_WhenLinkLabelContainsALinkShapedSequenceInsideStrong_FlattensTheNestedOne()
+    public void Read_WhenValidLinkLabelContainsCodeSpanBracket_UsesOuterLabelClose()
     {
         // Arrange and act
-        var link = new MarkdownDocumentReader().Read("[**[inner](x)**](http://example.invalid)")
-            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
-            .ShouldBeOfType<DocumentLink>();
+        var link = new MarkdownDocumentReader().Read("[a `]` b](target)").Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentLink>();
 
         // Assert
-        link.Target.ShouldBe("http://example.invalid");
-        var strong = link.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentStrong>();
-        strong.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("[inner](x)");
+        link.Target.ShouldBe("target");
+        link.Inlines.OfType<DocumentCodeSpan>().ShouldHaveSingleItem().Text.ShouldBe("]");
+    }
+
+    /// <summary>Verifies the active inner link wins when linked-image-shaped source is nested inside
+    /// another candidate link label.</summary>
+    [Fact]
+    public void Read_WhenLinkLabelContainsALinkShapedNestedSequence_ResolvesTheInnerLink()
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read("[![alt](img.png)](http://example.invalid)")
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        var link = paragraph.Inlines.OfType<DocumentLink>().ShouldHaveSingleItem();
+        link.Target.ShouldBe("img.png");
+        link.Text.ShouldBe("alt");
+    }
+
+    /// <summary>Verifies inner-link precedence propagates through an intermediate strong
+    /// container.</summary>
+    [Fact]
+    public void Read_WhenLinkLabelContainsALinkShapedSequenceInsideStrong_ResolvesTheInnerLink()
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read("[**[inner](x)**](http://example.invalid)")
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        var strong = paragraph.Inlines.OfType<DocumentStrong>().ShouldHaveSingleItem();
+        strong.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentLink>().Target.ShouldBe("x");
+        paragraph.Inlines.OfType<DocumentLink>().ShouldBeEmpty();
     }
 
     /// <summary>Verifies trailing hashes close a heading only when whitespace separates them.</summary>
@@ -1694,6 +1755,33 @@ public sealed class MarkdownDocumentReaderTests
         // Assert
         list.IsLoose.ShouldBeTrue();
         list.Items.Count.ShouldBe(2);
+    }
+
+    /// <summary>Verifies interactive item syntax does not create a separate list type across a
+    /// blank separator.</summary>
+    [Theory]
+    [InlineData(MarkdownExtension.TaskLists, "- [ ] task\n\n- plain", true)]
+    [InlineData(MarkdownExtension.TaskLists, "- plain\n\n- [ ] task", false)]
+    [InlineData(MarkdownExtension.RadioLists, "- ( ) choice\n\n- plain", true)]
+    [InlineData(MarkdownExtension.RadioLists, "- plain\n\n- ( ) choice", false)]
+    public void Read_WhenBlankSeparatedItemsMixInteractiveAndPlainContent_ProducesOneLooseList(
+        MarkdownExtension extension,
+        string source,
+        bool firstIsInteractive)
+    {
+        // Arrange
+        var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = extension });
+
+        // Act
+        var list = reader.Read(source).Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentList>();
+
+        // Assert
+        list.IsLoose.ShouldBeTrue();
+        list.Items.Count.ShouldBe(2);
+        _ = list.Items[firstIsInteractive ? 0 : 1].Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentBlockControl>();
+        _ = list.Items[firstIsInteractive ? 1 : 0].Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
     }
 
     /// <summary>Verifies blank lines that terminate a list do not retroactively loosen its items.</summary>
