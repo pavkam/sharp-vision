@@ -78,6 +78,8 @@ Toast open and suppresses `Closing` and `Closed`.
 
 ![The Toast control rendered in the live showcase](../../images/controls/toast.png)
 
+![An error Toast rendered in the live showcase](../../images/controls/toast-error.png)
+
 ```csharp
 var toast = new Toast
 {

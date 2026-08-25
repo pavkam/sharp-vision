@@ -128,7 +128,15 @@ export const controls = [
     {
         doc: "notifications/toast",
         page: "Toast",
-        states: [{ popup: true, actions: [{ click: "Show toast" }] }],
+        states: [
+            { popup: true, actions: [{ click: "Show toast" }] },
+            {
+                name: "error",
+                example: "Show error",
+                popup: true,
+                actions: [{ click: "Show error" }],
+            },
+        ],
     },
     { doc: "windows/window", page: "Window" },
 ];
