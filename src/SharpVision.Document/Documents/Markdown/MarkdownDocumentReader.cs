@@ -713,30 +713,36 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             return false;
         }
 
-        var depth = 1;
         var cursor = closeLabel + 2;
 
-        while (cursor < source.Length && depth > 0)
+        if (!TrySkipInlineLinkWhitespace(source, ref cursor, out _) ||
+            !TryInlineLinkDestination(source, ref cursor, out target))
         {
-            if (source[cursor] == '\\' && cursor + 1 < source.Length)
-            {
-                cursor += 2;
-                continue;
-            }
-
-            if (source[cursor] == '(')
-            {
-                depth++;
-            }
-            else if (source[cursor] == ')')
-            {
-                depth--;
-            }
-
-            cursor++;
+            end = -1;
+            label = string.Empty;
+            target = string.Empty;
+            return false;
         }
 
-        if (depth != 0)
+        if (!TrySkipInlineLinkWhitespace(source, ref cursor, out var separated))
+        {
+            end = -1;
+            label = string.Empty;
+            target = string.Empty;
+            return false;
+        }
+
+        if (separated && cursor < source.Length && source[cursor] is '\'' or '"' or '(' &&
+            !TryInlineLinkTitle(source, ref cursor))
+        {
+            end = -1;
+            label = string.Empty;
+            target = string.Empty;
+            return false;
+        }
+
+        if (!TrySkipInlineLinkWhitespace(source, ref cursor, out _) ||
+            cursor >= source.Length || source[cursor] != ')')
         {
             end = -1;
             label = string.Empty;
@@ -745,8 +751,174 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         }
 
         label = source[(index + 1)..closeLabel];
-        target = UnescapePunctuation(source[(closeLabel + 2)..(cursor - 1)]);
-        end = cursor;
+        end = cursor + 1;
+        return true;
+    }
+
+    [Pure]
+    private static bool TryInlineLinkDestination(string source, ref int cursor, out string target)
+    {
+        if (cursor >= source.Length || source[cursor] == ')')
+        {
+            target = string.Empty;
+            return true;
+        }
+
+        if (source[cursor] == '<')
+        {
+            var start = ++cursor;
+
+            while (cursor < source.Length)
+            {
+                if (source[cursor] == '\\' && cursor + 1 < source.Length &&
+                    IsEscapablePunctuation(source[cursor + 1]))
+                {
+                    cursor += 2;
+                    continue;
+                }
+
+                if (source[cursor] == '>')
+                {
+                    target = UnescapePunctuation(source[start..cursor]);
+                    cursor++;
+                    return true;
+                }
+
+                if (source[cursor] == '<' || char.IsControl(source[cursor]))
+                {
+                    target = string.Empty;
+                    return false;
+                }
+
+                cursor++;
+            }
+
+            target = string.Empty;
+            return false;
+        }
+
+        var destinationStart = cursor;
+        var depth = 0;
+
+        while (cursor < source.Length)
+        {
+            if (source[cursor] == '\\' && cursor + 1 < source.Length &&
+                IsEscapablePunctuation(source[cursor + 1]))
+            {
+                cursor += 2;
+                continue;
+            }
+
+            if (source[cursor] is ' ' or '\t' or '\n' or '\r')
+            {
+                break;
+            }
+
+            if (char.IsControl(source[cursor]) || source[cursor] == '<')
+            {
+                target = string.Empty;
+                return false;
+            }
+
+            if (source[cursor] == '(')
+            {
+                depth++;
+            }
+            else if (source[cursor] == ')')
+            {
+                if (depth == 0)
+                {
+                    break;
+                }
+
+                depth--;
+            }
+
+            cursor++;
+        }
+
+        if (cursor == destinationStart || depth != 0)
+        {
+            target = string.Empty;
+            return false;
+        }
+
+        target = UnescapePunctuation(source[destinationStart..cursor]);
+        return true;
+    }
+
+    [Pure]
+    private static bool TryInlineLinkTitle(string source, ref int cursor)
+    {
+        var opener = source[cursor];
+        var closer = opener == '(' ? ')' : opener;
+        cursor++;
+
+        while (cursor < source.Length)
+        {
+            if (source[cursor] == '\\' && cursor + 1 < source.Length &&
+                IsEscapablePunctuation(source[cursor + 1]))
+            {
+                cursor += 2;
+                continue;
+            }
+
+            if (source[cursor] == closer)
+            {
+                cursor++;
+                return true;
+            }
+
+            if (opener == '(' && source[cursor] == '(')
+            {
+                return false;
+            }
+
+            if (source[cursor] == '\n')
+            {
+                var next = cursor + 1;
+
+                while (next < source.Length && source[next] is ' ' or '\t')
+                {
+                    next++;
+                }
+
+                if (next < source.Length && source[next] == '\n')
+                {
+                    return false;
+                }
+            }
+
+            cursor++;
+        }
+
+        return false;
+    }
+
+    [Pure]
+    private static bool TrySkipInlineLinkWhitespace(string source, ref int cursor, out bool skipped)
+    {
+        skipped = false;
+        var lineEndings = 0;
+
+        while (cursor < source.Length && source[cursor] is ' ' or '\t' or '\n' or '\r')
+        {
+            skipped = true;
+
+            if (source[cursor] == '\n' ||
+                (source[cursor] == '\r' && (cursor + 1 >= source.Length || source[cursor + 1] != '\n')))
+            {
+                lineEndings++;
+
+                if (lineEndings > 1)
+                {
+                    return false;
+                }
+            }
+
+            cursor++;
+        }
+
         return true;
     }
 

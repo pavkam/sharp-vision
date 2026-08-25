@@ -3,6 +3,8 @@
 
 namespace SharpVision.Document.Tests;
 
+using SharpVision.Text;
+
 using DocumentControl = Controls.Documents.Document;
 
 /// <summary>Verifies native Markdown parsing and independently selectable extensions.</summary>
@@ -704,6 +706,78 @@ public sealed class MarkdownDocumentReaderTests
         link.Target.ShouldBe("https://example.invalid/a_(b)");
     }
 
+    /// <summary>Verifies angle destinations remove their delimiters, preserve allowed spaces,
+    /// and apply punctuation escapes.</summary>
+    [Theory]
+    [InlineData("[link](<a b>)", "a b")]
+    [InlineData("[link](</a\\>b>)", "/a>b")]
+    [InlineData("[link](<>)", null)]
+    public void Read_WhenLinkUsesAngleDestination_ProducesDecodedTarget(string source, string? expected)
+    {
+        // Arrange and act
+        var link = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentLink>();
+
+        // Assert
+        link.Target.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies every CommonMark title delimiter is parsed separately from the terminal
+    /// hyperlink target.</summary>
+    [Theory]
+    [InlineData("[link](/uri \"title\")")]
+    [InlineData("[link](/uri 'title')")]
+    [InlineData("[link](/uri (title))")]
+    public void Read_WhenLinkHasTitle_PreservesOnlyDestinationAsTarget(string source)
+    {
+        // Arrange and act
+        var link = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentLink>();
+
+        // Assert
+        link.Target.ShouldBe("/uri");
+    }
+
+    /// <summary>Verifies whitespace may surround a destination and escaped parentheses remain
+    /// literal target characters.</summary>
+    [Theory]
+    [InlineData("[link]( /uri )", "/uri")]
+    [InlineData("[link](/a\\(b\\))", "/a(b)")]
+    public void Read_WhenLinkDestinationUsesAllowedSpacingOrEscapes_ProducesDecodedTarget(
+        string source,
+        string expected)
+    {
+        // Arrange and act
+        var link = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentLink>();
+
+        // Assert
+        link.Target.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies malformed destination and title grammar remains literal text instead of
+    /// creating a corrupted terminal hyperlink target.</summary>
+    [Theory]
+    [InlineData("[link](/my uri)")]
+    [InlineData("[link](/uri\u0001tail)")]
+    [InlineData("[link](<a<b>)")]
+    [InlineData("[link](<a>b>)")]
+    [InlineData("[link](<bar>(title))")]
+    [InlineData("[link](/uri \"ti\"tle\")")]
+    public void Read_WhenLinkDestinationOrTitleIsInvalid_PreservesLiteralSource(string source)
+    {
+        // Arrange and act
+        var result = new MarkdownDocumentReader().Read(source);
+        var paragraph = result.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.ShouldNotContain(static inline => inline is DocumentLink);
+        VisibleText(result).ShouldBe(source);
+    }
+
     /// <summary>Verifies a link label containing its own literal, balanced <c>[...]</c> - a
     /// "citation-style" reference marker - still resolves to one link over the complete label,
     /// rather than failing at the first, inner "]".</summary>
@@ -1082,7 +1156,8 @@ public sealed class MarkdownDocumentReaderTests
             {
                 foreach (var inline in paragraph.Inlines.OfType<DocumentTextRun>())
                 {
-                    _ = text.Append(inline.Text);
+                    _ = TextMarkup.Parse(inline.Text.AsSpan(), out var display);
+                    _ = text.Append(display);
                 }
             }
         }

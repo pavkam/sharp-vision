@@ -34,6 +34,14 @@ not a Markdown rule.
 An inline link with an empty destination, such as `[label]()`, remains a
 semantic `DocumentLink` with a null `Target`. It keeps document link navigation
 and activation semantics without emitting an invalid OSC 8 hyperlink target.
+Inline destinations follow the
+[CommonMark 0.31.2 link grammar](https://spec.commonmark.org/0.31.2/#inline-link):
+bare destinations exclude spaces and ASCII controls and require balanced
+parentheses, while angle destinations remove their delimiters and may contain
+spaces. Optional single-quoted, double-quoted, and parenthesized titles are
+validated separately and are not folded into `DocumentLink.Target`; the document
+model does not otherwise retain link titles. Invalid destination or title syntax
+remains literal text.
 
 ## Baseline Markdown
 
