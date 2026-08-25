@@ -446,8 +446,10 @@ solid, high-contrast chip that reads as a compact call to action. Use
 
 A disabled link paints with `DisabledLinkFace` regardless of `Emphasis`, is
 skipped by link navigation, and never raises `Clicked`. Disabling the currently
-active link clears `ActiveLink` on the next layout pass, as does removing it
-from the tree.
+active link clears `ActiveLink` synchronously, as does removing any subtree that
+contains it. Until the next layout rebuilds link geometry, keyboard navigation
+and pointer hit-testing ignore detached links still present in the stale
+projection.
 
 A `DocumentLink` cannot contain another `DocumentLink`. Inserting a subtree that
 would create nested link semantics throws `ArgumentException` before the tree

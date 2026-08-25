@@ -242,6 +242,27 @@ public sealed class Document:
         InvalidateActiveLinkAppearance();
     }
 
+    /// <summary>Reconciles semantic state before a subtree loses the ancestry needed to identify
+    /// the document state it owns.</summary>
+    /// <param name="subtree">The attached subtree about to be detached.</param>
+    internal void OnNodeDetaching(DocumentNode subtree)
+    {
+        Debug.Assert(subtree is not null, "A detachment notification identifies its subtree.");
+
+        for (DocumentNode? ancestor = _activeLink; ancestor is not null; ancestor = ancestor.ParentNode)
+        {
+            if (!ReferenceEquals(ancestor, subtree))
+            {
+                continue;
+            }
+
+            _activeLink = null;
+            ActiveLinkIndex = -1;
+            InvalidateActiveLinkAppearance();
+            return;
+        }
+    }
+
     /// <summary>Resolves one document style color through a possibly absent theme.</summary>
     internal static Color ResolveDocumentColor(ControlColor value, Theme? theme) => ResolveColor(value, theme);
 
@@ -731,12 +752,15 @@ public sealed class Document:
     /// <summary>Gets or sets the focused link, or null when no link is focused.</summary>
     /// <remarks>
     /// Setting a link that is not in this document, or is disabled, clears the selection instead.
+    /// Disabling or detaching the focused link also clears the selection synchronously.
     /// </remarks>
     /// <exception cref="InvalidOperationException">The attached document is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
     public DocumentLink? ActiveLink
     {
-        get => _activeLink is { IsEnabled: true } ? _activeLink : null;
+        get => _activeLink is { IsEnabled: true } link && ReferenceEquals(link.OwnerDocument, this)
+            ? link
+            : null;
         set
         {
             VerifyMutable();
@@ -787,7 +811,7 @@ public sealed class Document:
         {
             var link = _layout.Links[linkIndex];
 
-            if (!link.IsEnabled)
+            if (!link.IsEnabled || !ReferenceEquals(link.OwnerDocument, this))
             {
                 continue;
             }
@@ -1244,7 +1268,8 @@ public sealed class Document:
         {
             if (region.Line == line &&
                 region.Contains(column) &&
-                _layout.Links[region.LinkIndex] is { IsEnabled: true } link)
+                _layout.Links[region.LinkIndex] is { IsEnabled: true } link &&
+                ReferenceEquals(link.OwnerDocument, this))
             {
                 return link;
             }

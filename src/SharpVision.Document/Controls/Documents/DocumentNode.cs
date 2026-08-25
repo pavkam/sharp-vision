@@ -82,6 +82,7 @@ public abstract class DocumentNode
     /// <summary>Clears this node's owner after a collection has removed it.</summary>
     internal void Detach()
     {
+        OwnerDocument?.OnNodeDetaching(this);
         ParentNode = null;
         RootDocument = null;
     }

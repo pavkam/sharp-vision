@@ -340,10 +340,10 @@ public sealed class DocumentTests
         document.ActiveLinkIndex.ShouldBe(0);
     }
 
-    /// <summary>Verifies removing the selected link's paragraph drops the stale selection at the next
-    /// layout rather than leaving the document pointing past the end of its own link list.</summary>
+    /// <summary>Verifies removing the selected link's paragraph by position clears selection before
+    /// another layout can observe the detached node.</summary>
     [Fact]
-    public void ActiveLink_WhenTheSelectedLinkLeavesTheTree_ClampsTheSelectionAway()
+    public void ActiveLink_WhenSelectedLinkIsRemovedAt_ClearsSynchronously()
     {
         // Arrange
         var first = new DocumentLink("first");
@@ -355,11 +355,67 @@ public sealed class DocumentTests
 
         // Act
         document.Blocks.RemoveAt(1);
-        new LayoutEngine().Layout(document, new Size(40, 5));
 
         // Assert
         document.ActiveLinkIndex.ShouldBe(-1);
         document.ActiveLink.ShouldBeNull();
+    }
+
+    /// <summary>Verifies removing the selected link's paragraph by identity clears selection before
+    /// another layout can observe the detached node.</summary>
+    [Fact]
+    public void ActiveLink_WhenSelectedLinkIsRemoved_ClearsSynchronously()
+    {
+        // Arrange
+        var link = new DocumentLink("only");
+        var document = LinkDocument(link);
+        new LayoutEngine().Layout(document, new Size(20, 2));
+        document.ActiveLink = link;
+
+        // Act
+        document.Blocks.Remove(document.Blocks[0]).ShouldBeTrue();
+
+        // Assert
+        document.ActiveLink.ShouldBeNull();
+        document.ActiveLinkIndex.ShouldBe(-1);
+    }
+
+    /// <summary>Verifies clearing a tree that contains the selected link clears selection before
+    /// another layout can observe the detached node.</summary>
+    [Fact]
+    public void ActiveLink_WhenBlocksAreCleared_ClearsSynchronously()
+    {
+        // Arrange
+        var link = new DocumentLink("only");
+        var document = LinkDocument(link);
+        new LayoutEngine().Layout(document, new Size(20, 2));
+        document.ActiveLink = link;
+
+        // Act
+        document.Blocks.Clear();
+
+        // Assert
+        document.ActiveLink.ShouldBeNull();
+        document.ActiveLinkIndex.ShouldBe(-1);
+    }
+
+    /// <summary>Verifies loading a replacement tree clears a selected link from the previous tree
+    /// before the replacement is laid out.</summary>
+    [Fact]
+    public void ActiveLink_WhenLoadReplacesTheTree_ClearsSynchronously()
+    {
+        // Arrange
+        var link = new DocumentLink("only");
+        var document = LinkDocument(link);
+        new LayoutEngine().Layout(document, new Size(20, 2));
+        document.ActiveLink = link;
+
+        // Act
+        _ = document.Load("replacement", new PlainTextDocumentReaderProbe());
+
+        // Assert
+        document.ActiveLink.ShouldBeNull();
+        document.ActiveLinkIndex.ShouldBe(-1);
     }
 
     /// <summary>Verifies rebuilding after an earlier sibling is removed preserves the selected link

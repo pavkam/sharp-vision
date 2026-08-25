@@ -200,6 +200,89 @@ public sealed class DocumentLinkSurfaceTests
         order.ShouldBe(["link", "document", "link", "document"]);
     }
 
+    /// <summary>Verifies removing the active link and routing activation in the same dispatcher
+    /// turn cannot publish either link notification for the detached node.</summary>
+    [Fact]
+    public async Task Keyboard_WhenActiveLinkIsRemovedBeforeImmediateActivation_DoesNotActivateItAsync()
+    {
+        // Arrange
+        var link = new DocumentLink("only");
+        var document = LinkDocument(link);
+        var activations = 0;
+        link.Clicked += (_, _) => activations++;
+        document.LinkClicked += (_, _) => activations++;
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => document.Focus().ShouldBeTrue(), "focus document");
+        await surface.Keyboard.PressAsync(Code.Tab);
+        var enter = new KeyEventArgs(new Stroke(Code.Enter, null, 0, Modifiers.None, KeyAction.Press));
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                document.Blocks.RemoveAt(0);
+                _ = Router.Route(document, Events.Key, enter);
+            },
+            "remove active link and route Enter");
+
+        // Assert
+        activations.ShouldBe(0);
+        enter.IsHandled.ShouldBeFalse();
+        document.ActiveLink.ShouldBeNull();
+    }
+
+    /// <summary>Verifies same-turn Tab navigation skips a detached link still present in the stale
+    /// projection and reaches the next owned link.</summary>
+    [Fact]
+    public async Task Keyboard_WhenEarlierLinkIsRemovedBeforeImmediateTab_SelectsTheNextOwnedLinkAsync()
+    {
+        // Arrange
+        var first = new DocumentLink("first");
+        var second = new DocumentLink("second");
+        var document = LinkDocument(first, second);
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(12, 4),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => document.Focus().ShouldBeTrue(), "focus document");
+        var tab = new KeyEventArgs(new Stroke(Code.Tab, null, 0, Modifiers.None, KeyAction.Press));
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                document.Blocks.RemoveAt(0);
+                _ = Router.Route(document, Events.Key, tab);
+            },
+            "remove earlier link and route Tab");
+
+        // Assert
+        tab.IsHandled.ShouldBeTrue();
+        document.ActiveLink.ShouldBeSameAs(second);
+    }
+
+    /// <summary>Verifies stale projected geometry cannot hit a detached link before the next layout
+    /// rebuilds the document.</summary>
+    [Fact]
+    public void Pointer_WhenLinkedParagraphIsRemoved_StopsHittingItsOldCellSynchronously()
+    {
+        // Arrange
+        var link = new DocumentLink("only");
+        var paragraph = new DocumentParagraph { Inlines = { link } };
+        var document = new Document { Blocks = { paragraph } };
+        using var probe = new DocumentRenderProbe(document, new Size(12, 2));
+        document.LinkAt(new Point(0, 0)).ShouldBeSameAs(link);
+
+        // Act
+        document.Blocks.Remove(paragraph).ShouldBeTrue();
+
+        // Assert
+        document.LinkAt(new Point(0, 0)).ShouldBeNull();
+    }
+
     /// <summary>Verifies a disabled link is skipped by navigation, refused as an explicit selection,
     /// and never activated.</summary>
     [Fact]
