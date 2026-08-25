@@ -5,16 +5,17 @@ namespace SharpVision.Controls.Input;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable hyperlink-button presentation. This style's own
-/// "hyperlinkButton" theme key falls back to the standard borderless interactive appearance,
+/// <summary>Defines one complete immutable hyperlink-button presentation. This style declares no
+/// theme section of its own: it falls back to the standard borderless interactive appearance,
 /// defaulting every state to accent-colored underlined text - a hyperlink's identity persists
-/// through hover, focus, and press, unlike a resting-only accent.</summary>
+/// through hover, focus, and press, unlike a resting-only accent - and is themeable only through
+/// that fallback and a locally assigned <see cref="HyperlinkButton.Style"/>.</summary>
 [PublicAPI]
 public sealed record HyperlinkButtonStyle: ControlStyle
 {
-    /// <summary>Gets the primary hyperlink-button-style definition. A theme's own
-    /// "hyperlinkButton" key can restyle the face directly - the reflective Overlay
-    /// mechanism reaches every member of this type uniformly.</summary>
+    /// <summary>Gets the primary hyperlink-button-style definition. Falls back through
+    /// <see cref="Theme.GetInteractiveControlStyleSet"/>; the forced accent-colored underline is
+    /// code-owned and applied on top of every resolved state.</summary>
     internal static StyleDefinition<HyperlinkButtonStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetInteractiveControlStyleSet(),
         Complete,

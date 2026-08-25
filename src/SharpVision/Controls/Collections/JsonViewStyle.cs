@@ -5,17 +5,19 @@ namespace SharpVision.Controls.Collections;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable JSON syntax and selection presentation. This
-/// style's own "jsonView" theme key falls back to <see cref="ContainerStyle"/>'s "container"
-/// key for anything it does not author itself.</summary>
+/// <summary>Defines one complete immutable JSON syntax and selection presentation. This style
+/// declares no theme section of its own: it falls back to <see cref="ContainerStyle"/>'s
+/// "container" role section for its passive chrome, resolves its own syntax and selection
+/// colors from semantic colors, and is themeable only through that fallback and a locally
+/// assigned <see cref="JsonView.Style"/>.</summary>
 [PublicAPI]
 public sealed record JsonViewStyle: ContainerStyle
 {
-    /// <summary>Gets the primary JSON-view style definition. A theme's own "jsonView" key can
-    /// restyle any syntax color directly. Falls back through
-    /// <see cref="Theme.GetFocusableContainerStyleSet"/> rather than the bare "container" key
-    /// so a directly focused JsonView gets a visible border-color cue instead of none at all -
-    /// JsonView is a focus target in its own right, unlike a merely passive panel.</summary>
+    /// <summary>Gets the primary JSON-view style definition. Falls back through
+    /// <see cref="Theme.GetFocusableContainerStyleSet"/> rather than the bare "container" role
+    /// section so a directly focused JsonView gets a visible border-color cue instead of none at
+    /// all - JsonView is a focus target in its own right, unlike a merely passive panel. Every
+    /// syntax and selection color is code-owned.</summary>
     internal static StyleDefinition<JsonViewStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetFocusableContainerStyleSet(),
         Complete,

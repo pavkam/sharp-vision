@@ -5,16 +5,17 @@ namespace SharpVision.Controls.Input;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable checkbox presentation. This style's own
-/// "checkBox" theme key falls back to <see cref="InputStyle"/>'s "input" key, chromeless
-/// (a checkbox is a selectable control, not a framed one).</summary>
+/// <summary>Defines one complete immutable checkbox presentation. This style declares no theme
+/// section of its own: it falls back to <see cref="InputStyle"/>'s "input" role section,
+/// chromeless (a checkbox is a selectable control, not a framed one), resolves its own mark style
+/// and glyph family from <see cref="Theme.Glyphs"/>, and is themeable only through that fallback
+/// and a locally assigned <see cref="CheckBox.Style"/>.</summary>
 [PublicAPI]
 public sealed record CheckBoxStyle: InputStyle
 {
-    /// <summary>Gets the primary checkbox-style definition. A theme's own "checkBox" key can
-    /// restyle MarkStyle, Glyphs, or anything else directly - the standalone registrable
-    /// "checkBox" style section this used to read separately is retired; the reflective
-    /// Overlay reaches every member of this type uniformly.</summary>
+    /// <summary>Gets the primary checkbox-style definition. Falls back to <see cref="InputStyle"/>'s
+    /// "input" role section, chromeless; MarkStyle and Glyphs are code-owned from
+    /// <see cref="Theme.Glyphs"/>.</summary>
     internal static StyleDefinition<CheckBoxStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetStyleSet(InputStyle.Default),
         Complete,
@@ -35,9 +36,10 @@ public sealed record CheckBoxStyle: InputStyle
         new(input.Face, NoBorder, NoShadow, theme.Glyphs.CheckBox.MarkStyle, theme.Glyphs.CheckBox.Glyphs)
         {
             // Forwarded from the fallback rather than left at the code-owned value the base
-            // constructor supplies. Without this the member is inherited into this style's own
-            // theme key, accepted by the parser, and silently ignored - the exact
-            // blessed-but-unread section themes.md says the design exists to prevent.
+            // constructor supplies. Without this, DropDownGlyph would stay stuck at
+            // InputStyle.Default's literal regardless of how a theme customizes "input"'s own
+            // dropDownGlyph - a divergence CheckBox would never surface visually, since it never
+            // draws a dropdown glyph itself.
             DropDownGlyph = input.DropDownGlyph,
             AffixGap = input.AffixGap
         };

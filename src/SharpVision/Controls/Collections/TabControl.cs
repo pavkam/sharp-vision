@@ -146,7 +146,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     }
 
     /// <summary>Gets the resolved tab-strip style: the local <see cref="Style"/> when assigned,
-    /// otherwise the active theme's "tabControl" section over the code-owned default.</summary>
+    /// otherwise the theme-resolved default falling back to the "control" role section.</summary>
     public TabControlStyle ActualStyle => _style.Actual;
 
     /// <inheritdoc/>

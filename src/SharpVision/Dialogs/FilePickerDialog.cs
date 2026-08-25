@@ -85,7 +85,7 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
     public IReadOnlyList<string> SelectedPaths { get; private set; } = Array.AsReadOnly<string>([]);
 
     /// <summary>Gets or sets the complete local aggregate presentation, or null to let the active
-    /// Theme's own "filePickerDialog" section (or its Window fallback) own the frame and structural
+    /// Theme's <see cref="WindowStyle"/> role section own the frame and structural
     /// geometry.</summary>
     /// <exception cref="InvalidOperationException">The attached dialog is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>

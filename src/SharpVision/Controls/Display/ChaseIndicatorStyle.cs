@@ -5,16 +5,17 @@ namespace SharpVision.Controls.Display;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable chase-indicator presentation. This style's
-/// own "chaseIndicator" theme key falls back to <see cref="ControlStyle"/>'s "control"
-/// key.</summary>
+/// <summary>Defines one complete immutable chase-indicator presentation. This style declares no
+/// theme section of its own: it falls back to <see cref="ControlStyle"/>'s "control" role section
+/// for its passive chrome, resolves its own colors from semantic colors and its glyph pair from
+/// <see cref="Theme.Glyphs"/>, and is themeable only through that fallback and a locally assigned
+/// <see cref="ChaseIndicator.Style"/>.</summary>
 [PublicAPI]
 public sealed record ChaseIndicatorStyle: ControlStyle
 {
-    /// <summary>Gets the primary chase-indicator-style definition. A theme's own "chaseIndicator"
-    /// key can restyle the three colors or the glyph family directly - the standalone registrable
-    /// "chaseIndicator" style section this used to read separately is retired; the reflective
-    /// Overlay reaches every member of this type uniformly.</summary>
+    /// <summary>Gets the primary chase-indicator-style definition. Falls back to
+    /// <see cref="ControlStyle"/>'s "control" role section for its passive chrome; the three
+    /// colors and the glyph family are code-owned.</summary>
     internal static StyleDefinition<ChaseIndicatorStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,

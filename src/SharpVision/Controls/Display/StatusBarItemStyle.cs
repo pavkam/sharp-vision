@@ -5,9 +5,11 @@ namespace SharpVision.Controls.Display;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable status-bar entry presentation. This style's own
-/// "statusBarItem" theme key falls back to <see cref="ControlStyle"/>'s "control" key for anything
-/// it does not author itself.</summary>
+/// <summary>Defines one complete immutable status-bar entry presentation. This style declares no
+/// theme section of its own: it falls back to <see cref="ControlStyle"/>'s "control" role section
+/// for its passive chrome, resolves its own separator glyphs from code-owned defaults, and is
+/// themeable only through that fallback and a locally assigned
+/// <see cref="StatusBarItem.Style"/>.</summary>
 /// <remarks>
 /// Named for the item rather than the bar because the separators are the item's own chrome:
 /// <see cref="StatusBar"/> itself draws none. Keying it "statusBar" would have put members under a
@@ -17,8 +19,9 @@ using System.Diagnostics.CodeAnalysis;
 [PublicAPI]
 public sealed record StatusBarItemStyle: ControlStyle
 {
-    /// <summary>Gets the primary status-bar-entry style definition. A theme's own "statusBarItem"
-    /// key restyles both separator glyphs for every item at once.</summary>
+    /// <summary>Gets the primary status-bar-entry style definition. Falls back to
+    /// <see cref="ControlStyle"/>'s "control" role section; both separator glyphs are code-owned,
+    /// shared by every item.</summary>
     internal static StyleDefinition<StatusBarItemStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,

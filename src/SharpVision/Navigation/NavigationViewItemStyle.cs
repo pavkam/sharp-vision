@@ -5,9 +5,11 @@ namespace SharpVision.Navigation;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable navigation-entry presentation. This style's own
-/// "navigationViewItem" theme key falls back to the standard borderless row-interaction
-/// appearance for anything it does not author itself.</summary>
+/// <summary>Defines one complete immutable navigation-entry presentation. This style declares no
+/// theme section of its own: it falls back to the standard borderless row-interaction appearance
+/// for its passive chrome, resolves its own idle and current markers from code-owned defaults,
+/// and is themeable only through that fallback and a locally assigned
+/// <see cref="NavigationViewItem.Style"/>.</summary>
 [PublicAPI]
 public sealed record NavigationViewItemStyle: ControlStyle
 {

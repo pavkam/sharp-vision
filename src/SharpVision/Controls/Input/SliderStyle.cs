@@ -5,15 +5,17 @@ namespace SharpVision.Controls.Input;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable slider presentation. This style's own
-/// "slider" theme key falls back to the standard borderless interactive appearance.</summary>
+/// <summary>Defines one complete immutable slider presentation. This style declares no theme
+/// section of its own: it falls back to the standard borderless interactive appearance for its
+/// passive chrome, resolves its own colors from semantic colors and its glyph family from a
+/// code-owned default, and is themeable only through that fallback and a locally assigned
+/// <see cref="Slider.Style"/>.</summary>
 [PublicAPI]
 public sealed record SliderStyle: ControlStyle
 {
-    /// <summary>Gets the primary slider-style definition. A theme's own "slider" key can restyle
-    /// the three colors or the glyph family directly - the standalone registrable "slider" style
-    /// section this used to read separately is retired; the reflective Overlay mechanism
-    /// reaches every member of this type uniformly.</summary>
+    /// <summary>Gets the primary slider-style definition. Falls back through
+    /// <see cref="Theme.GetInteractiveControlStyleSet"/>; the three colors and the glyph family
+    /// are code-owned, not read from any authorable theme section.</summary>
     internal static StyleDefinition<SliderStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetInteractiveControlStyleSet(),
         Complete,

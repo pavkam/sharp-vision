@@ -213,7 +213,7 @@ public sealed class Theme
     }
 
     // Mirrors ThemeCatalog.ResolveColorValue/ResolveColor exactly, but reads this Theme's own public
-    // Palette instead of the private dictionary the eager document parse builds - a registrable
+    // Palette instead of the private dictionary the eager document parse builds - a role
     // section's color members are resolved lazily, long after that parse-time dictionary is gone.
     internal ControlColor ResolveSectionColor(string value, string context)
     {
@@ -231,7 +231,7 @@ public sealed class Theme
                             $"Theme '{Slug}' {context} references unknown palette key '{value}'.");
     }
 
-    // Shared by every registrable style section's glyph members - previously
+    // Shared by every style section's glyph members - previously
     // hand-copied verbatim into six controls' own ParseGlyph helpers.
     internal Rune? ParseSectionGlyph(string? value, string context)
     {
@@ -268,7 +268,7 @@ public sealed class Theme
         }
     }
 
-    // Shared by every registrable style section's named-enum members -
+    // Shared by every style section's named-enum members -
     // previously hand-copied verbatim into four controls' own ParseMarkStyle/ParseChrome/
     // ParseFill helpers.
     internal TEnum? ParseSectionEnum<TEnum>(string? value, string context) where TEnum : struct, Enum =>
@@ -322,7 +322,7 @@ public sealed class Theme
     /// <param name="current">The fragment instance overrides are patched onto. Cloned before any
     /// property is written, so the original instance is never mutated.</param>
     /// <param name="overrides">The JSON object's own decoded member set.</param>
-    /// <param name="context">The dotted path so far, for diagnostics (e.g. "styles.button.normal").</param>
+    /// <param name="context">The dotted path so far, for diagnostics (e.g. "styles.control.normal").</param>
     /// <param name="restrictToChrome">Whether only <c>Face</c>/<c>Border</c>/<c>Shadow</c> - the
     /// three members every state besides <c>normal</c> is actually read back from - may be authored
     /// at this level. A structural member (padding, mark style, a glyph family) is otherwise parsed,
@@ -407,7 +407,7 @@ public sealed class Theme
     }
 
     // Dispatches purely on the target property's declared type. ControlColor and Rune route through
-    // the same theme-aware parsers every registrable style section already uses; an enum invokes
+    // the same theme-aware parsers every style section already uses; an enum invokes
     // the generic ParseSectionEnum<TEnum> via a per-type-cached MethodInfo, since the concrete
     // TEnum is only known at this point as a runtime Type; everything else (primitives, and any
     // other JSON-convertible leaf shape such as Thickness or Point) deserializes directly through

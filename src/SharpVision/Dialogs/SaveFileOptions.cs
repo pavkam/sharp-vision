@@ -274,7 +274,8 @@ public sealed class SaveFileOptions
     } = "&No";
 
     /// <summary>Gets or sets the complete local presentation applied to the overwrite-confirmation
-    /// MessageBox, or null to let it use the active Theme's own "messageBox" section.</summary>
+    /// MessageBox, or null to let it use the active Theme's own default
+    /// <see cref="MessageBoxStyle"/>.</summary>
     public MessageBoxStyle? OverwriteStyle { get; set; }
 
     /// <summary>Creates an independent configuration snapshot for one dialog.</summary>

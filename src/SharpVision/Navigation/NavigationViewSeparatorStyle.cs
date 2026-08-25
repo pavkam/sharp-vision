@@ -5,9 +5,11 @@ namespace SharpVision.Navigation;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable navigation-divider presentation. This style's own
-/// "navigationViewSeparator" theme key falls back to <see cref="ControlStyle"/>'s "control" key for
-/// anything it does not author itself.</summary>
+/// <summary>Defines one complete immutable navigation-divider presentation. This style declares
+/// no theme section of its own: it falls back to <see cref="ControlStyle"/>'s "control" role
+/// section for its passive chrome, resolves its own divider glyph from a code-owned default, and
+/// is themeable only through that fallback and a locally assigned
+/// <see cref="NavigationViewSeparator.Style"/>.</summary>
 [PublicAPI]
 public sealed record NavigationViewSeparatorStyle: ControlStyle
 {

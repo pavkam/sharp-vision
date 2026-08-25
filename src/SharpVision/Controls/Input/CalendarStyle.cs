@@ -5,8 +5,10 @@ namespace SharpVision.Controls.Input;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable calendar presentation. This style's own
-/// "calendar" theme key falls back to <see cref="InputStyle"/>'s "input" key.</summary>
+/// <summary>Defines one complete immutable calendar presentation. This style declares no theme
+/// section of its own: it falls back to <see cref="InputStyle"/>'s "input" role section for its
+/// passive chrome, resolves its own day and navigation colors from semantic colors, and is
+/// themeable only through that fallback and a locally assigned <see cref="Calendar.Style"/>.</summary>
 [PublicAPI]
 public sealed record CalendarStyle: InputStyle
 {
@@ -49,9 +51,10 @@ public sealed record CalendarStyle: InputStyle
             new Thickness(horizontal: 1, vertical: 0))
         {
             // Forwarded from the fallback rather than left at the code-owned value the base
-            // constructor supplies. Without this the member is inherited into this style's own
-            // theme key, accepted by the parser, and silently ignored - the exact
-            // blessed-but-unread section themes.md says the design exists to prevent.
+            // constructor supplies. Without this, DropDownGlyph would stay stuck at
+            // InputStyle.Default's literal regardless of how a theme customizes "input"'s own
+            // dropDownGlyph - a divergence Calendar would never surface visually, since it never
+            // draws a dropdown glyph itself.
             //
             // AffixGap is deliberately NOT forwarded here: docs/concepts/styling.md documents it
             // as exposed "on each hosting style type" - Calendar has no StartAffix/EndAffix of

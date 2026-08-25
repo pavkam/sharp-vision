@@ -5,12 +5,18 @@ namespace SharpVision.Controls.Charts;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable chart presentation and fallback palette.</summary>
+/// <summary>Defines one complete immutable chart presentation and fallback palette. This style
+/// declares no theme section of its own: it falls back to <see cref="ControlStyle"/>'s "control"
+/// role section for its passive chrome, resolves its own axis, label, and series colors from
+/// semantic colors, and is themeable only through that fallback and a locally assigned
+/// <see cref="ChartControlBase.Style"/>.</summary>
 [PublicAPI]
 public sealed record ChartStyle: ControlStyle
 {
-    /// <summary>Gets the primary chart-style definition whose <c>chart</c> theme key falls back
-    /// to the passive <c>control</c> style.</summary>
+    /// <summary>Gets the primary chart-style definition. Falls back to <see cref="ControlStyle"/>'s
+    /// "control" role section for its passive chrome; the axis, label, series colors, fill and
+    /// line modes, and glyph family are all code-owned, not read from any authorable theme
+    /// section.</summary>
     internal static StyleDefinition<ChartStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,

@@ -7,9 +7,11 @@ using System.Diagnostics.CodeAnalysis;
 
 using Styling;
 
-/// <summary>Defines one complete immutable FilePickerDialog presentation. This style's own
-/// "filePickerDialog" theme key falls back to <see cref="WindowStyle"/>'s window appearance for
-/// anything it does not author itself.</summary>
+/// <summary>Defines one complete immutable FilePickerDialog presentation. This style declares no
+/// theme section of its own: it falls back to <see cref="WindowStyle"/>'s "window" role section
+/// for its passive chrome, resolves its own root padding, content spacing, and file-list border
+/// from code-owned defaults, and is themeable only through that fallback and a locally assigned
+/// <see cref="FilePickerDialog.Style"/>.</summary>
 [PublicAPI]
 public sealed record FilePickerDialogStyle: FileDialogStyle
 {

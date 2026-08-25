@@ -363,11 +363,13 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     /// <summary>Gets the check-mark presentation applied to items that do not override it.</summary>
     /// <remarks>
     /// The fallback is theme-resolved, not the static <c>CheckMark.Brackets</c> preset.
-    /// <c>CheckBox</c> resolves its glyphs through <c>CheckBoxStyle.Definition</c>, so a theme
-    /// authoring <c>styles.checkBox.normal.glyphs</c> - the documented way to restyle check marks -
-    /// used to move every CheckBox and leave every tree row on the code-owned family, silently, on
-    /// the same screen. <c>ForwardingDefinition</c> is the seam built for this: it hands over the
-    /// narrow value without applying the checkbox appearance, which would recolor the whole row.
+    /// <c>CheckBox</c> resolves its glyphs through <c>CheckBoxStyle.Definition</c>, which
+    /// completes from the active theme's glyph family, so selecting a different family in a
+    /// theme's root-level "glyphs" field - the documented way to restyle check marks - moves
+    /// every CheckBox; without this fallback, a tree row would stay on the code-owned family,
+    /// silently, on the same screen. <c>ForwardingDefinition</c> is the seam built for this: it
+    /// hands over the narrow value without applying the checkbox appearance, which would recolor
+    /// the whole row.
     /// </remarks>
     public CheckMark ActualCheckMark => CheckMark ?? ThemedCheckMark(Theme);
 

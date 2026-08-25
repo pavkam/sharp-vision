@@ -8,8 +8,10 @@ using System.Diagnostics.CodeAnalysis;
 
 using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
 
-/// <summary>Defines one complete immutable spinner presentation. This style's own
-/// "spinner" theme key falls back to <see cref="ControlStyle"/>'s "control" key.</summary>
+/// <summary>Defines one complete immutable spinner presentation. This style declares no theme
+/// section of its own: it falls back to <see cref="ControlStyle"/>'s "control" role section for
+/// its passive chrome, resolves its own frame sequence from <see cref="Theme.Glyphs"/>, and is
+/// themeable only through that fallback and a locally assigned <see cref="Spinner.Style"/>.</summary>
 [PublicAPI]
 public sealed record SpinnerStyle: ControlStyle
 {
@@ -23,10 +25,9 @@ public sealed record SpinnerStyle: ControlStyle
         new Rune('|'), new Rune('/'), new Rune('-'), new Rune('\\')
     ];
 
-    /// <summary>Gets the primary spinner-style definition. A theme's own "spinner" key can
-    /// restyle Frames directly - the standalone registrable "spinner" style section this used to
-    /// read separately is retired; the reflective Overlay reaches every member of
-    /// this type uniformly.</summary>
+    /// <summary>Gets the primary spinner-style definition. Falls back to <see cref="ControlStyle"/>'s
+    /// "control" role section; the frame sequence is code-owned from
+    /// <see cref="Theme.Glyphs"/>.</summary>
     internal static StyleDefinition<SpinnerStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,

@@ -5,9 +5,10 @@ namespace SharpVision.Menus;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable menu-entry presentation. This style's own "menuItem"
-/// theme key falls back to the standard borderless interactive appearance for anything it does
-/// not author itself.</summary>
+/// <summary>Defines one complete immutable menu-entry presentation. This style declares no theme
+/// section of its own: it falls back to the standard borderless interactive appearance for its
+/// passive chrome, resolves its own check and radio markers from code-owned glyph constants, and
+/// is themeable only through that fallback and a locally assigned <see cref="MenuItem.Style"/>.</summary>
 /// <remarks>
 /// Carries both marker pairs rather than one, because a menu entry's kind - check or radio - is a
 /// semantic fact the entry owns, not a presentation choice a theme makes. A theme restyling menu
@@ -16,9 +17,9 @@ using System.Diagnostics.CodeAnalysis;
 [PublicAPI]
 public sealed record MenuItemStyle: ControlStyle
 {
-    /// <summary>Gets the primary menu-item style definition. A theme's own "menuItem" key can
-    /// restyle all four markers directly - the path the misleadingly-named private
-    /// <c>ThemeMenuGlyph</c> resolver never actually had.</summary>
+    /// <summary>Gets the primary menu-item style definition. Falls back through
+    /// <see cref="Theme.GetInteractiveControlStyleSet"/>; all four check and radio markers are
+    /// code-owned from <see cref="ControlGlyphs.Selection"/>.</summary>
     internal static StyleDefinition<MenuItemStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetInteractiveControlStyleSet(),
         Complete,

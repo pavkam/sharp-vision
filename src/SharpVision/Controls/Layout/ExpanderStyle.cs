@@ -7,14 +7,17 @@ using System.Diagnostics.CodeAnalysis;
 
 using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 
-/// <summary>Defines one complete immutable collapsible-section presentation. This style's own
-/// "expander" theme key falls back to the standard borderless interactive appearance for
-/// anything it does not author itself.</summary>
+/// <summary>Defines one complete immutable collapsible-section presentation. This style declares
+/// no theme section of its own: it falls back to the standard borderless interactive appearance
+/// for its passive chrome, resolves its own disclosure glyphs and content indent from code-owned
+/// defaults, and is themeable only through that fallback and a locally assigned
+/// <see cref="Expander.Style"/>.</summary>
 [PublicAPI]
 public sealed record ExpanderStyle: ControlStyle
 {
-    /// <summary>Gets the primary expander-style definition. A theme's own "expander" key can
-    /// restyle both disclosure glyphs and the content indent directly.</summary>
+    /// <summary>Gets the primary expander-style definition. Falls back through
+    /// <see cref="Theme.GetInteractiveControlStyleSet"/>; both disclosure glyphs and the content
+    /// indent are code-owned.</summary>
     internal static StyleDefinition<ExpanderStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetInteractiveControlStyleSet(),
         Complete,

@@ -5,14 +5,17 @@ namespace SharpVision.Controls.Collections;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable tab-strip presentation. This style's own "tabControl"
-/// theme key falls back to <see cref="ControlStyle"/>'s "control" key for anything it does not
-/// author itself.</summary>
+/// <summary>Defines one complete immutable tab-strip presentation. This style declares no theme
+/// section of its own: it falls back to <see cref="ControlStyle"/>'s "control" role section for
+/// its passive chrome, resolves its own divider and selection-indicator colors and glyphs from
+/// semantic colors, and is themeable only through that fallback and a locally assigned
+/// <see cref="TabControl.Style"/>.</summary>
 [PublicAPI]
 public sealed record TabControlStyle: ControlStyle
 {
-    /// <summary>Gets the primary tab-control style definition. A theme's own "tabControl" key can
-    /// restyle the divider and underline glyphs and both strip colors directly.</summary>
+    /// <summary>Gets the primary tab-control style definition. Falls back to
+    /// <see cref="ControlStyle"/>'s "control" role section; the divider and underline glyphs and
+    /// both strip colors are code-owned.</summary>
     internal static StyleDefinition<TabControlStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,

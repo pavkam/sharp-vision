@@ -110,7 +110,7 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
     public string FileName => _fileNameInput.Text;
 
     /// <summary>Gets or sets the complete local aggregate presentation, or null to let the active
-    /// Theme's own "saveFileDialog" section (or its Window fallback) own the frame and structural
+    /// Theme's <see cref="WindowStyle"/> role section own the frame and structural
     /// geometry.</summary>
     /// <exception cref="InvalidOperationException">The attached dialog is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
@@ -249,7 +249,8 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
     } = "&No";
 
     /// <summary>Gets or sets the complete local presentation applied to the overwrite-confirmation
-    /// MessageBox, or null to let it use the active Theme's own "messageBox" section.</summary>
+    /// MessageBox, or null to let it use the active Theme's own default
+    /// <see cref="MessageBoxStyle"/>.</summary>
     /// <exception cref="InvalidOperationException">The attached dialog is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
     public MessageBoxStyle? OverwriteStyle

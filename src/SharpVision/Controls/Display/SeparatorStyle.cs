@@ -5,14 +5,17 @@ namespace SharpVision.Controls.Display;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable divider presentation. This style's own
-/// "separator" theme key falls back to <see cref="ControlStyle"/>'s "control" key for
-/// anything it does not author itself.</summary>
+/// <summary>Defines one complete immutable divider presentation. This style declares no theme
+/// section of its own: it falls back to <see cref="ControlStyle"/>'s "control" role section for
+/// its passive chrome, resolves its own horizontal and vertical glyphs from code-owned defaults,
+/// and is themeable only through that fallback and a locally assigned
+/// <see cref="Separator.Style"/>.</summary>
 [PublicAPI]
 public sealed record SeparatorStyle: ControlStyle
 {
-    /// <summary>Gets the primary separator-style definition. A theme's own "separator" key can
-    /// restyle the horizontal and vertical glyphs directly.</summary>
+    /// <summary>Gets the primary separator-style definition. Falls back to
+    /// <see cref="ControlStyle"/>'s "control" role section; the horizontal and vertical glyphs
+    /// are code-owned.</summary>
     internal static StyleDefinition<SeparatorStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,

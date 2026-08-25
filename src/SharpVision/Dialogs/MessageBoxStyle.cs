@@ -7,12 +7,15 @@ using System.Diagnostics.CodeAnalysis;
 
 using Styling;
 
-/// <summary>Defines one complete immutable MessageBox presentation. By design, this style's own
-/// "messageBox" theme key falls back to <see cref="WindowStyle"/>'s window appearance
-/// (including the ActiveBorder-on-FocusWithin default every Window-derived style shares) for
-/// anything it does not author itself. The generated action Buttons and divider Separator resolve
-/// their own "button"/"separator" theme keys independently through the established part-style
-/// forwarding mechanism rather than nesting inside this aggregate.</summary>
+/// <summary>Defines one complete immutable MessageBox presentation. This style declares no theme
+/// section of its own: it falls back to <see cref="WindowStyle"/>'s "window" role section
+/// (including the ActiveBorder-on-FocusWithin default every Window-derived style shares) for its
+/// passive chrome, resolves its own message face and margins from code-owned defaults, and is
+/// themeable only through that fallback and a locally assigned <see cref="MessageBox.Style"/>.
+/// The generated action Buttons and divider Separator resolve independently through the
+/// established part-style forwarding mechanism - each falling back to its own declared role
+/// section ("input" and "control" respectively) - rather than nesting inside this
+/// aggregate.</summary>
 [PublicAPI]
 public sealed record MessageBoxStyle: WindowStyle
 {

@@ -5,9 +5,10 @@ namespace SharpVision.Controls.Display;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable text presentation. This style's own "text" theme key
-/// falls back to <see cref="ControlStyle"/>'s "control" key for anything it does not author
-/// itself.</summary>
+/// <summary>Defines one complete immutable text presentation. This style declares no theme
+/// section of its own: it falls back to <see cref="ControlStyle"/>'s "control" role section for
+/// its passive chrome, resolves its own truncation marker from a code-owned default, and is
+/// themeable only through that fallback and a locally assigned <see cref="Text.Style"/>.</summary>
 /// <remarks>
 /// The truncation marker has the widest blast radius of any single glyph in the library - every
 /// elided string in an application renders it - and was reachable only per <see cref="Text"/>
@@ -17,8 +18,9 @@ using System.Diagnostics.CodeAnalysis;
 [PublicAPI]
 public sealed record TextStyle: ControlStyle
 {
-    /// <summary>Gets the primary text-style definition. A theme's own "text" key restyles the
-    /// truncation marker for every elided string at once.</summary>
+    /// <summary>Gets the primary text-style definition. Falls back to <see cref="ControlStyle"/>'s
+    /// "control" role section; the truncation marker is code-owned, shared by every elided
+    /// string.</summary>
     internal static StyleDefinition<TextStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,

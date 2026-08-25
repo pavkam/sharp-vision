@@ -91,7 +91,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
     public MessageBoxButtons Buttons { get; }
 
     /// <summary>Gets or sets the complete local aggregate presentation, or null to let the active
-    /// Theme's own "messageBox" section (or its Window fallback) own the frame, message face, and
+    /// Theme's <see cref="WindowStyle"/> role section own the frame, message face, and
     /// content geometry.</summary>
     /// <exception cref="InvalidOperationException">The attached MessageBox is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The MessageBox is disposed.</exception>
@@ -118,7 +118,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
     public ButtonStyle ActualButtonStyle => _buttonStyle.Actual;
 
     /// <summary>Gets or sets the complete local presentation applied to the divider above the
-    /// action row, or null to let the divider use its own Theme-resolved "separator" presentation.</summary>
+    /// action row, or null to let the divider use its own Theme-resolved default presentation.</summary>
     /// <exception cref="InvalidOperationException">The attached MessageBox is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The MessageBox is disposed.</exception>
     public SeparatorStyle? SeparatorStyle

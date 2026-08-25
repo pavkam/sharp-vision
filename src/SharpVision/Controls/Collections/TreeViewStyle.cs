@@ -7,16 +7,18 @@ using System.Diagnostics.CodeAnalysis;
 
 /// <summary>Defines one complete immutable tree view presentation, including the synthetic
 /// loading and failed status rows an unloaded item's asynchronous child request may present. This
-/// style's own "treeView" theme key falls back to <see cref="ContainerStyle"/>'s "container" key
-/// for anything it does not author itself.</summary>
+/// style declares no theme section of its own: it falls back to <see cref="ContainerStyle"/>'s
+/// "container" role section for its passive chrome, resolves its own status colors and glyphs
+/// from semantic colors, and is themeable only through that fallback and a locally assigned
+/// <see cref="TreeView.Style"/>.</summary>
 [PublicAPI]
 public sealed record TreeViewStyle: ContainerStyle
 {
-    /// <summary>Gets the primary tree view style definition. A theme's own "treeView" key can
-    /// restyle the status colors, glyphs, and disclosure glyphs directly. Falls back through
-    /// <see cref="Theme.GetFocusableContainerStyleSet"/> rather than the bare "container" key
-    /// so a directly focused TreeView gets a visible border-color cue instead of none at all -
-    /// TreeView is a focus target in its own right, unlike a merely passive panel.</summary>
+    /// <summary>Gets the primary tree view style definition. Falls back through
+    /// <see cref="Theme.GetFocusableContainerStyleSet"/> rather than the bare "container" role
+    /// section so a directly focused TreeView gets a visible border-color cue instead of none at
+    /// all - TreeView is a focus target in its own right, unlike a merely passive panel. The
+    /// status colors, glyphs, and disclosure glyphs are all code-owned.</summary>
     internal static StyleDefinition<TreeViewStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetFocusableContainerStyleSet(),
         Complete,

@@ -5,14 +5,17 @@ namespace SharpVision.Menus;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable menu-divider presentation. This style's own
-/// "menuSeparator" theme key falls back to <see cref="ControlStyle"/>'s "control" key for anything
-/// it does not author itself.</summary>
+/// <summary>Defines one complete immutable menu-divider presentation. This style declares no
+/// theme section of its own: it falls back to <see cref="ControlStyle"/>'s "control" role section
+/// for its passive chrome, resolves its own divider glyph from a code-owned default, and is
+/// themeable only through that fallback and a locally assigned
+/// <see cref="MenuSeparator.Style"/>.</summary>
 [PublicAPI]
 public sealed record MenuSeparatorStyle: ControlStyle
 {
-    /// <summary>Gets the primary menu-separator style definition. A theme's own "menuSeparator" key
-    /// can restyle the divider glyph directly, the same way "separator" already could.</summary>
+    /// <summary>Gets the primary menu-separator style definition. Falls back to
+    /// <see cref="ControlStyle"/>'s "control" role section; the divider glyph is
+    /// code-owned.</summary>
     internal static StyleDefinition<MenuSeparatorStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,

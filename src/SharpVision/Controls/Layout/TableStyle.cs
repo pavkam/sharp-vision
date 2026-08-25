@@ -5,9 +5,11 @@ namespace SharpVision.Controls.Layout;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable tabular presentation. This style's own "table" theme key
-/// falls back to <see cref="ControlStyle"/>'s "control" key for anything it does not author
-/// itself.
+/// <summary>Defines one complete immutable tabular presentation. This style declares no theme
+/// section of its own: it falls back to <see cref="ControlStyle"/>'s "control" role section for
+/// its passive chrome, resolves its own grid glyphs, part colors, and cell padding from
+/// code-owned defaults, and is themeable only through that fallback and a locally assigned
+/// <see cref="Table.Style"/>.
 ///
 /// <para>Falls back to "control" rather than "container" despite a table being container-shaped:
 /// <c>Table</c> takes <c>ControlBase</c>'s borderless default today, and <c>ContainerStyle</c>'s
@@ -16,15 +18,15 @@ using System.Diagnostics.CodeAnalysis;
 [PublicAPI]
 public sealed record TableStyle: ControlStyle
 {
-    /// <summary>Gets the primary table-style definition. A theme's own "table" key can restyle the
-    /// grid glyphs, the three part colors, and the cell padding directly. Falls back through
-    /// <see cref="Theme.GetFocusableControlStyleSet"/> rather than the bare "control" key so a
-    /// directly focused Table gets a visible cue instead of none at all - Table is a focus target
-    /// in its own right, unlike a merely passive panel. Deliberately narrower than
+    /// <summary>Gets the primary table-style definition. Falls back through
+    /// <see cref="Theme.GetFocusableControlStyleSet"/> rather than the bare "control" role
+    /// section so a directly focused Table gets a visible cue instead of none at all - Table is a
+    /// focus target in its own right, unlike a merely passive panel. Deliberately narrower than
     /// <see cref="Theme.GetInteractiveControlStyleSet"/>: Table's own hover and per-row/cell
     /// selection are already handled more specifically by its cells, so only Focused/FocusWithin
-    /// are rebased here, leaving hover and press exactly as the passive "control" key resolves
-    /// them (unchanged).</summary>
+    /// are rebased here, leaving hover and press exactly as the passive "control" role section
+    /// resolves them (unchanged). The grid glyphs, the three part colors, and the cell padding
+    /// are all code-owned.</summary>
     internal static StyleDefinition<TableStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetFocusableControlStyleSet(),
         Complete,

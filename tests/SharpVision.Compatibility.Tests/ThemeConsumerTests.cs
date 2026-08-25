@@ -8,6 +8,7 @@ using System.Text;
 
 using SharpVision.Controls;
 using SharpVision.Styling;
+using SharpVision.Terminal.Protocols;
 
 /// <summary>
 /// Verifies <see cref="Theme"/>'s four interaction-derived style sets -
@@ -179,10 +180,14 @@ public sealed class ThemeConsumerTests
         protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
             (theme ?? ThemeCatalog.Dark).GetInteractiveRowStyleSet().ToAppearanceStates();
 
-        /// <summary>Exposes the protected hook's own resolution for one explicit Theme, the way a
-        /// real control author unit-tests appearance selection directly rather than through a
-        /// fully mounted, themed application tree.</summary>
+        /// <summary>Exposes the protected hook's own resolution for one explicit Theme, so the
+        /// test can assert which style set the hook SELECTED - still in semantic form - separately
+        /// from the literal resolution <see cref="ControlBase.ResolveAppearance"/> performs.</summary>
         public Face ResolveNormalFace(Theme theme) => GetDefaultAppearanceStates(theme).Normal.Face;
+
+        /// <summary>Resolves one semantic color the way the base class does, so the literal-path
+        /// test below can compute its expected value through public/protected surface alone.</summary>
+        public static Color ResolveExpected(ControlColor value, Theme theme) => ResolveColor(value, theme);
     }
 
     /// <summary>Verifies the <c>GetDefaultAppearanceStates</c> hook overload compiles publicly and
@@ -191,12 +196,12 @@ public sealed class ThemeConsumerTests
     /// <remarks>
     /// This resolves through the protected hook directly with an explicit Theme rather than
     /// through the inherited <c>ActualFace</c>. <c>ActualFace</c> resolves every semantic color
-    /// against a control's ambient <c>Theme</c> (<c>InheritedTheme</c>), which only a mounted
-    /// <c>Application</c> tree publishes; attaching one without mounting requires the
-    /// internal-only <c>SetTheme</c> test seam this project deliberately has no access to (see the
-    /// class remarks). An unattached control's own <c>ActualFace</c> is theme-less by design -
-    /// every semantic color floors to <c>Color.Default</c> regardless of which style set
-    /// backed it - so asserting on it here would prove nothing about which style set was chosen.
+    /// against a control's ambient <c>Theme</c>, which only a mounted <c>Application</c> tree
+    /// publishes - an unattached control's own <c>ActualFace</c> is theme-less by design, so
+    /// asserting on it here would prove nothing about which style set was chosen. The sanctioned
+    /// unattached preview for the RESOLVED appearance is
+    /// <see cref="ControlBase.ResolveAppearance"/>, covered by the companion test below; this one
+    /// pins the semantic selection itself.
     /// </remarks>
     [Fact]
     public void ResolveNormalFace_WhenControlSelectsInteractiveRowStyleSetThroughTheHook_ResolvesEndToEnd()
@@ -209,5 +214,25 @@ public sealed class ThemeConsumerTests
 
         // Assert
         face.ShouldBe(ThemeCatalog.Dark.GetInteractiveRowStyleSet().Normal.Face);
+    }
+
+    /// <summary>Verifies <see cref="ControlBase.ResolveAppearance"/> previews the hook-selected
+    /// interaction set's appearance with literals resolved against an explicit Theme, on an
+    /// unattached control, through public surface alone - the seam a third-party control author
+    /// unit-tests themed appearance with, no mounted application required.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenControlSelectsInteractiveRowStyleSetThroughTheHook_ResolvesLiteralsForTheExplicitTheme()
+    {
+        // Arrange
+        var control = new RowLikeControl();
+        var theme = ThemeCatalog.Dark;
+        var semantic = theme.GetInteractiveRowStyleSet().Normal.Face;
+
+        // Act
+        var appearance = control.ResolveAppearance(theme);
+
+        // Assert
+        appearance.Face.Background.Literal.ShouldBe(RowLikeControl.ResolveExpected(semantic.Background, theme));
+        appearance.Face.Foreground.IsLiteral.ShouldBeTrue();
     }
 }

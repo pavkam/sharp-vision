@@ -5,15 +5,17 @@ namespace SharpVision.Controls.Display;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable progress-bar presentation. This style's own
-/// "progressBar" theme key falls back to <see cref="ControlStyle"/>'s "control" key.</summary>
+/// <summary>Defines one complete immutable progress-bar presentation. This style declares no
+/// theme section of its own: it falls back to <see cref="ControlStyle"/>'s "control" role section
+/// for its passive chrome, resolves its own colors from semantic colors and its glyph family from
+/// <see cref="Theme.Glyphs"/>, and is themeable only through that fallback and a locally assigned
+/// <see cref="ProgressBar.Style"/>.</summary>
 [PublicAPI]
 public sealed record ProgressBarStyle: ControlStyle
 {
-    /// <summary>Gets the primary progress-bar-style definition. A theme's own "progressBar" key
-    /// can restyle the three colors or the glyph family directly - the standalone registrable
-    /// "progressBar" style section this used to read separately is retired; the reflective
-    /// Overlay reaches every member of this type uniformly.</summary>
+    /// <summary>Gets the primary progress-bar-style definition. Falls back to
+    /// <see cref="ControlStyle"/>'s "control" role section; the three colors are code-owned from
+    /// semantic colors and the glyph family is code-owned from <see cref="Theme.Glyphs"/>.</summary>
     internal static StyleDefinition<ProgressBarStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,

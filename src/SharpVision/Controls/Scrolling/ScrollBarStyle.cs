@@ -5,15 +5,18 @@ namespace SharpVision.Controls.Scrolling;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable scrollbar presentation. This style's own
-/// "scrollBar" theme key falls back to the standard borderless interactive appearance.</summary>
+/// <summary>Defines one complete immutable scrollbar presentation. This style declares no theme
+/// section of its own: it falls back to the standard borderless interactive appearance for its
+/// passive chrome, resolves its Chrome, Fill, and Glyphs from <see cref="Theme.Glyphs"/> and its
+/// three colors from semantic colors, and is themeable only through that fallback and a locally
+/// assigned <see cref="ScrollBar.Style"/>.</summary>
 [PublicAPI]
 public sealed record ScrollBarStyle: ControlStyle
 {
-    /// <summary>Gets the primary scrollbar-style definition. A theme's own "scrollBar" key can
-    /// restyle Chrome, Fill, Glyphs, or any color directly - the standalone registrable
-    /// "scrollBar" style section this used to read separately is retired; the reflective Overlay
-    /// mechanism reaches every member of this type uniformly.</summary>
+    /// <summary>Gets the primary scrollbar-style definition. Falls back through
+    /// <see cref="Theme.GetInteractiveControlStyleSet"/>; Chrome, Fill, and Glyphs are code-owned
+    /// from <see cref="Theme.Glyphs"/>, and the three colors are code-owned from semantic
+    /// colors.</summary>
     internal static StyleDefinition<ScrollBarStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetInteractiveControlStyleSet(),
         Complete,

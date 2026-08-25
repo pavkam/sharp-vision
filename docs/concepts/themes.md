@@ -122,10 +122,10 @@ names - `normal`, `pointerOver`, `focusWithin`, `focused`, `current`,
 **fractional** override object: any subset of that style type's own public
 properties, reflectively patched onto a resolved base value. `normal` patches
 onto the type's own code-owned default (or, for the five non-`control` well-
-known styles, onto `control`'s own resolved `Normal` face/border/shadow first -
-see below); every other authored state patches onto the SAME type's own resolved
-`normal`, not onto another state. An unauthored state is that type's resolved
-`normal` unchanged, except where the cascade described next supplies one.
+known styles, onto `control`'s own resolved `Normal` face/border/shadow first);
+every other authored state patches onto the SAME type's own resolved `normal`,
+not onto another state. An unauthored state is that type's resolved `normal`
+unchanged, except where the cascade described next supplies one.
 
 A control is often in more than one state at once - a list row can be both
 `selected` and `disabled`. Every active state applies, in the fixed order the
@@ -209,9 +209,10 @@ beneath them. Popup uses a rounded border; Tooltip uses the light glyph style
 instead, so a passive hint still reads as visually distinct from an interactive
 drop-down or menu even though both are now framed.
 
-A fractional state object holds optional `face`, `border`, and `shadow` objects
+Every fractional object shares the same precise shape regardless of which style
+type or state it overrides: optional `face`, `border`, and `shadow` sub-objects
 whose members match the corresponding type's own public properties (reflectively
-resolved, not a hand-maintained DTO shape): face colors and decorations; border
+resolved, not a hand-maintained DTO shape) - face colors and decorations; border
 sides, glyph style, colors, and attributes; shadow visibility, mode, offset,
 glyph, colors, and attributes.
 
@@ -224,21 +225,21 @@ its resolved `normal` alone, so a theme authoring, say,
 `styles.window.pointerOver.closeGlyph` is rejected rather than parsed,
 validated, and silently ignored.
 
-Colors inside a style section must name a `SemanticColor` or a `palette` entry -
-a raw hex literal is rejected here too, the same way it is in `colors`.
-Attributes accept a literal attribute name/array or the JSON name of a global
-semantic value. Border glyph styles and shadow geometry are allowed here because
-they define the type's own chrome, not something a specific control instance
-owns. Individual controls may still set complete local styles that take
-precedence over everything a theme supplies.
-
-A color member accepts the same shapes a well-known style's color does: a
-`SemanticColor` name, a palette key, or `"transparent"`/`"default"` - never a
+A color member - whether one of `face`/`border`/`shadow`'s own nested colors or
+a structural one such as `window`'s close-mark colors - accepts the same shapes:
+a `SemanticColor` name, a palette key, or `"transparent"`/`"default"` - never a
 raw hex literal - resolved through `Theme.Palette` lazily rather than an eager
-parse-time dictionary. A `glyphs`-shaped member is a nested object whose own
-members are each one printable, one-cell Rune string - an entry with more than
-one Rune, or a Rune that measures wider than one cell, is rejected the same way
-a hand-authored glyph value would be.
+parse-time dictionary. A `glyphs`-shaped member such as `anchorGlyphs` is a
+nested object whose own members are each one printable, one-cell Rune string -
+an entry with more than one Rune, or a Rune that measures wider than one cell,
+is rejected the same way a hand-authored glyph value would be.
+
+The same rule set covers every other member kind a style section accepts:
+attributes take a literal attribute name/array or the JSON name of a global
+semantic value; border glyph styles and shadow geometry are allowed because they
+define the type's own chrome, not something a specific control instance owns.
+Individual controls may still set complete local styles that take precedence
+over everything a theme supplies.
 
 Every bundled theme except the two zero-config defaults (`default-dark`/
 `default-light`, backing `ThemeCatalog.Dark`/`ThemeCatalog.White`) restyles

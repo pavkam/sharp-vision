@@ -252,7 +252,7 @@ public sealed class TreeViewItem: ControlBase
     /// <summary>Gets the check-mark presentation this item renders.</summary>
     /// <remarks>
     /// The final fallback covers an item not yet attached to a tree, and is theme-resolved for the
-    /// same reason the tree's own is: a themed <c>styles.checkBox</c> family must reach tree rows.
+    /// same reason the tree's own is: a theme's selected glyph family must reach tree rows.
     /// </remarks>
     public CheckMark ActualCheckMark =>
         CheckMark ?? FindTreeView()?.ActualCheckMark ?? TreeView.ThemedCheckMark(Theme);
