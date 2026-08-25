@@ -102,4 +102,26 @@ public sealed class MessageBoxStyleTests
 
         MessageBoxStyle.Definition.Compare(previous, null, current, null).ShouldBe(InvalidationImpact.Measure);
     }
+
+    /// <summary>Verifies every inherited close-chrome member is compared by the shared Window-style policy.</summary>
+    [Fact]
+    public void Definition_Compare_WhenAnyCloseChromeMemberChanges_IsRender()
+    {
+        var previous = MessageBoxStyle.Default;
+        MessageBoxStyle[] variants =
+        [
+            previous with { CloseGlyph = new Rune('x') },
+            previous with { CloseLeftBracket = new Rune('{') },
+            previous with { CloseRightBracket = new Rune('}') },
+            previous with { CloseMarkColor = SemanticColor.Error },
+            previous with { CloseMarkActiveColor = SemanticColor.Error },
+            previous with { CloseMarkPressedColor = SemanticColor.Error },
+            previous with { CloseMarkDisabledColor = SemanticColor.Error }
+        ];
+
+        foreach (var current in variants)
+        {
+            MessageBoxStyle.Definition.Compare(previous, null, current, null).ShouldBe(InvalidationImpact.Render);
+        }
+    }
 }

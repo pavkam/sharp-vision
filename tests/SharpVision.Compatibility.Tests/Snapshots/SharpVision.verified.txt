@@ -3791,6 +3791,7 @@ namespace SharpVision.Styling
         public bool IsSemantic { get; }
         public SharpVision.Terminal.Protocols.Color Literal { get; }
         public SharpVision.Styling.SemanticColor SemanticColor { get; }
+        public SharpVision.Terminal.Protocols.Color Resolve(SharpVision.Styling.Theme? theme) { }
         public override string ToString() { }
         public static SharpVision.Styling.ControlColor op_Implicit(SharpVision.Styling.SemanticColor value) { }
         public static SharpVision.Styling.ControlColor op_Implicit(SharpVision.Terminal.Protocols.Color value) { }
@@ -3803,6 +3804,7 @@ namespace SharpVision.Styling
         public bool IsSemantic { get; }
         public SharpVision.Terminal.Rendering.TerminalAttributes Literal { get; }
         public SharpVision.Styling.SemanticDecoration SemanticDecoration { get; }
+        public SharpVision.Terminal.Rendering.TerminalAttributes Resolve(SharpVision.Styling.Theme? theme) { }
         public override string ToString() { }
         public static SharpVision.Styling.ControlDecoration op_Implicit(SharpVision.Styling.SemanticDecoration value) { }
         public static SharpVision.Styling.ControlDecoration op_Implicit(SharpVision.Terminal.Rendering.TerminalAttributes value) { }

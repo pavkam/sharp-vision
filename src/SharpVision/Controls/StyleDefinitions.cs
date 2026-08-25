@@ -41,7 +41,9 @@ public static class StyleDefinitions
         return new StyleDefinition<TStyle>(
             (local, theme) => local ?? ResolveNormal(theme ?? ThemeCatalog.Dark, fallbackTo, complete),
             (style, theme) => (theme ?? ThemeCatalog.Dark).BuildFallbackAwareStates(style, fallbackTo, complete),
-            compare,
+            (previous, previousTheme, current, currentTheme) => MaximumImpact(
+                compare(previous, previousTheme, current, currentTheme),
+                GetInheritedImpact(previous, previousTheme, current, currentTheme)),
             localAppearance: (style, theme) =>
                 (theme ?? ThemeCatalog.Dark).BuildCodeOwnedStates(
                     style,
@@ -60,6 +62,19 @@ public static class StyleDefinitions
         where TStyle : ControlStyle
         where TFallback : ControlStyle =>
         complete(fallbackTo(theme).Normal, VisualState.Normal, theme);
+
+    private static InvalidationImpact GetInheritedImpact<TStyle>(
+        TStyle previous,
+        Theme? previousTheme,
+        TStyle current,
+        Theme? currentTheme)
+        where TStyle : ControlStyle =>
+        previous is WindowStyle previousWindow && current is WindowStyle currentWindow
+            ? WindowStyle.GetCloseChromeImpact(previousWindow, previousTheme, currentWindow, currentTheme)
+            : InvalidationImpact.None;
+
+    private static InvalidationImpact MaximumImpact(InvalidationImpact left, InvalidationImpact right) =>
+        (int) left >= (int) right ? left : right;
 
     /// <summary>Creates a secondary style definition that does not own its control's appearance states.</summary>
     /// <typeparam name="TStyle">The immutable complete style value.</typeparam>

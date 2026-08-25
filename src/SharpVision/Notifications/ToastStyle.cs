@@ -19,7 +19,11 @@ public sealed record ToastStyle: PopupStyle
             previous.AdornmentGap != current.AdornmentGap ||
             previous.CloseGlyph != current.CloseGlyph
                 ? InvalidationImpact.Measure
-                : InvalidationImpact.None);
+                : previous.TitleFace != current.TitleFace ||
+                  previous.AdornmentColor != current.AdornmentColor ||
+                  previous.CloseColor != current.CloseColor
+                    ? InvalidationImpact.Render
+                    : InvalidationImpact.None);
 
     /// <summary>Initializes a complete Toast appearance.</summary>
     /// <param name="face">The body face.</param>
@@ -32,6 +36,7 @@ public sealed record ToastStyle: PopupStyle
     /// <param name="padding">The non-negative content padding in cells.</param>
     /// <param name="contentGap">The non-negative rows between title and content.</param>
     /// <param name="adornmentGap">The non-negative columns after an adornment.</param>
+    /// <exception cref="ArgumentException">A foreground paint color is transparent.</exception>
     /// <exception cref="ArgumentOutOfRangeException">A gap is negative.</exception>
     [SetsRequiredMembers]
     public ToastStyle(
@@ -48,6 +53,8 @@ public sealed record ToastStyle: PopupStyle
     {
         ArgumentOutOfRangeException.ThrowIfNegative(contentGap);
         ArgumentOutOfRangeException.ThrowIfNegative(adornmentGap);
+        ControlColor.ValidatePaint(adornmentColor, nameof(adornmentColor));
+        ControlColor.ValidatePaint(closeColor, nameof(closeColor));
         TitleFace = titleFace;
         AdornmentColor = adornmentColor;
         CloseGlyph = closeGlyph;
@@ -61,13 +68,31 @@ public sealed record ToastStyle: PopupStyle
     public required Face TitleFace { get; init; }
 
     /// <summary>Gets the default foreground used by an adornment without its own color.</summary>
-    public required ControlColor AdornmentColor { get; init; }
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public required ControlColor AdornmentColor
+    {
+        get;
+        init
+        {
+            ControlColor.ValidatePaint(value, nameof(value));
+            field = value;
+        }
+    }
 
     /// <summary>Gets the preferred and fallback glyph used by the dismiss affordance.</summary>
     public required ControlGlyph CloseGlyph { get; init; }
 
     /// <summary>Gets the dismiss affordance foreground.</summary>
-    public required ControlColor CloseColor { get; init; }
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public required ControlColor CloseColor
+    {
+        get;
+        init
+        {
+            ControlColor.ValidatePaint(value, nameof(value));
+            field = value;
+        }
+    }
 
     /// <summary>Gets the internal padding in terminal cells.</summary>
     public required Thickness Padding { get; init; }

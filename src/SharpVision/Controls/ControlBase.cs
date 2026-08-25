@@ -3272,7 +3272,9 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         var definition = slot.Definition;
         var previousStyle = definition.Resolve(slot.LocalValue, Theme);
         var currentStyle = definition.Resolve(value, Theme);
-        var styleImpact = definition.Compare(previousStyle, Theme, currentStyle, Theme);
+        var styleImpact = MaximumImpact(
+            definition.Compare(previousStyle, Theme, currentStyle, Theme),
+            StyleSlot<TStyle>.GetSemanticValueImpact(previousStyle, Theme, currentStyle, Theme));
         ValidateImpact(styleImpact);
         var impact = styleImpact;
         ResolvedAppearance previousAppearance = default;
@@ -3403,7 +3405,9 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         var definition = slot.Definition;
         var previousStyle = definition.Resolve(slot.LocalValue, previous);
         var currentStyle = definition.Resolve(slot.LocalValue, current);
-        var impact = definition.Compare(previousStyle, previous, currentStyle, current);
+        var impact = MaximumImpact(
+            definition.Compare(previousStyle, previous, currentStyle, current),
+            StyleSlot<TStyle>.GetSemanticValueImpact(previousStyle, previous, currentStyle, current));
         ValidateImpact(impact);
         return slot.OwnsAppearance
             ? MaximumImpact(
@@ -4559,9 +4563,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <param name="theme">The active theme, or null when no theme resolves the value.</param>
     /// <returns>The literal color, or the theme-resolved color, or <see cref="Color.Default"/>.</returns>
     [Pure]
-    protected internal static Color ResolveColor(ControlColor value, Theme? theme) => value.IsLiteral
-        ? value.Literal
-        : theme?.ResolveColor(value.SemanticColor) ?? Color.Default;
+    protected internal static Color ResolveColor(ControlColor value, Theme? theme) => value.Resolve(theme);
 
     /// <summary>Resolves a possibly-literal color value against this control's active theme.</summary>
     /// <param name="value">The literal or theme-referenced color value.</param>

@@ -37,18 +37,16 @@ Theme; a complete local `Style` still wins.
 
 Control authors declare that lifecycle once with an immutable
 `StyleDefinition<TStyle>`. A control opts into that facade by declaring
-[`IStyled<TStyle>`](../../src/SharpVision/Controls/IStyled.cs) - a plain marker
-interface with no default members - and forwarding `Style`/`ActualStyle` itself
-over a private `StyleSlot<TStyle>` field. That field comes from the protected
-`InitializeStyle<TStyle>(definition, changed)` method every `ControlBase`
-exposes, regardless of which concrete base the control actually derives from
-(`ControlBase`, `InputBase`, `CompositeControlBase`, `FloatingSurfaceBase`, or
-otherwise); `IStyled<TStyle>` documents the shape as an explicit contract rather
-than supplying it, since a default interface member is not reachable through
-bare dot-access on the implementing class. A control that needs post-commit
-behavior after a changed style commits passes a private method as
-`InitializeStyle`'s optional `changed` callback - there is no virtual
-`OnStyleChanged` to override. `InitializePartStyle` owns named pairs such as
+[`IStyled<TStyle>`](../../src/SharpVision/Controls/IStyled.cs), whose required
+`Style` and `ActualStyle` members make that contract compiler-enforced, and
+forwards both members over a private `StyleSlot<TStyle>` field. That field comes
+from the protected `InitializeStyle<TStyle>(definition, changed)` method every
+`ControlBase` exposes, regardless of which concrete base the control actually
+derives from (`ControlBase`, `InputBase`, `CompositeControlBase`,
+`FloatingSurfaceBase`, or otherwise). A control that needs post-commit behavior
+after a changed style commits passes a private method as `InitializeStyle`'s
+optional `changed` callback - there is no virtual `OnStyleChanged` to override.
+`InitializePartStyle` owns named pairs such as
 `ScrollBarStyle`/`ActualScrollBarStyle`. `BindStyle` forwards the nullable local
 value to matching retained-child slots, including parts created later. It never
 copies a resolved value, so null reset and theme replacement remain live through

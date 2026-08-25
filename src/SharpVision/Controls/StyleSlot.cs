@@ -237,6 +237,65 @@ public sealed class StyleSlot<TStyle>
             : null;
     }
 
+    /// <summary>Returns render impact when any semantic paint member resolves differently.</summary>
+    internal static InvalidationImpact GetSemanticValueImpact(
+        TStyle previous,
+        Theme? previousTheme,
+        TStyle current,
+        Theme? currentTheme) =>
+        ResolvedSemanticValuesEqual(previous, previousTheme, current, currentTheme, isStyleRoot: true)
+            ? InvalidationImpact.None
+            : InvalidationImpact.Render;
+
+    [Pure]
+    private static bool ResolvedSemanticValuesEqual(
+        object? previous,
+        Theme? previousTheme,
+        object? current,
+        Theme? currentTheme,
+        bool isStyleRoot)
+    {
+        if (previous is null || current is null || previous.GetType() != current.GetType())
+        {
+            return true;
+        }
+
+        if (previous is ControlColor previousColor && current is ControlColor currentColor)
+        {
+            return previousColor.Resolve(previousTheme) == currentColor.Resolve(currentTheme);
+        }
+
+        if (previous is ControlDecoration previousDecoration && current is ControlDecoration currentDecoration)
+        {
+            return previousDecoration.Resolve(previousTheme) == currentDecoration.Resolve(currentTheme);
+        }
+
+        if (previous is not IAppearanceFragment)
+        {
+            return true;
+        }
+
+        foreach (var property in previous.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (isStyleRoot && property.DeclaringType == typeof(ControlStyle))
+            {
+                continue;
+            }
+
+            if (!ResolvedSemanticValuesEqual(
+                    property.GetValue(previous),
+                    previousTheme,
+                    property.GetValue(current),
+                    currentTheme,
+                    isStyleRoot: false))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     [Pure]
     private static bool ResolvedValuesEqual(object? previous, Theme? previousTheme, object? current, Theme? currentTheme)
     {
@@ -253,7 +312,7 @@ public sealed class StyleSlot<TStyle>
 
         if (previous is ControlColor previousColor && current is ControlColor currentColor)
         {
-            return ControlBase.ResolveColor(previousColor, previousTheme) == ControlBase.ResolveColor(currentColor, currentTheme);
+            return previousColor.Resolve(previousTheme) == currentColor.Resolve(currentTheme);
         }
 
         // ControlDecoration has the same semantic/literal split, and every bundled theme authors
@@ -263,7 +322,7 @@ public sealed class StyleSlot<TStyle>
         // bound to ActualStyle ever refreshed across that swap.
         if (previous is ControlDecoration previousDecoration && current is ControlDecoration currentDecoration)
         {
-            return Resolve(previousDecoration, previousTheme) == Resolve(currentDecoration, currentTheme);
+            return previousDecoration.Resolve(previousTheme) == currentDecoration.Resolve(currentTheme);
         }
 
         // Boxed ImmutableArray - SpinnerStyle.Frames is the one in play - compares by the
@@ -290,13 +349,6 @@ public sealed class StyleSlot<TStyle>
 
         return true;
     }
-
-    // Mirrors ControlBase.ResolveColor's themeless fallback: no theme means no table to consult, so
-    // a symbolic reference resolves to the same neutral value on both sides and compares equal.
-    [Pure]
-    private static TerminalAttributes Resolve(ControlDecoration value, Theme? theme) => value.IsLiteral
-        ? value.Literal
-        : theme?.Resolve(value) ?? TerminalAttributes.None;
 
     internal void ClearResolvedCache() => ClearCache();
 }

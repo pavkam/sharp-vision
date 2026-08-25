@@ -11,6 +11,26 @@ using System.Diagnostics.CodeAnalysis;
 [PublicAPI]
 public record WindowStyle: ControlStyle
 {
+    /// <summary>Compares close-button glyphs and resolved paint shared by every Window-derived style.</summary>
+    internal static InvalidationImpact GetCloseChromeImpact(
+        WindowStyle previous,
+        Theme? previousTheme,
+        WindowStyle current,
+        Theme? currentTheme) =>
+        previous.CloseGlyph != current.CloseGlyph ||
+        previous.CloseLeftBracket != current.CloseLeftBracket ||
+        previous.CloseRightBracket != current.CloseRightBracket ||
+        previous.CloseMarkColor != current.CloseMarkColor ||
+        previous.CloseMarkActiveColor != current.CloseMarkActiveColor ||
+        previous.CloseMarkPressedColor != current.CloseMarkPressedColor ||
+        previous.CloseMarkDisabledColor != current.CloseMarkDisabledColor ||
+        previous.CloseMarkColor.Resolve(previousTheme) != current.CloseMarkColor.Resolve(currentTheme) ||
+        previous.CloseMarkActiveColor.Resolve(previousTheme) != current.CloseMarkActiveColor.Resolve(currentTheme) ||
+        previous.CloseMarkPressedColor.Resolve(previousTheme) != current.CloseMarkPressedColor.Resolve(currentTheme) ||
+        previous.CloseMarkDisabledColor.Resolve(previousTheme) != current.CloseMarkDisabledColor.Resolve(currentTheme)
+            ? InvalidationImpact.Render
+            : InvalidationImpact.None;
+
     /// <summary>Initializes a complete window appearance.</summary>
     /// <param name="face">The complete normal face.</param>
     /// <param name="border">The complete normal border.</param>

@@ -53,4 +53,17 @@ public sealed class ControlColorTests
         _ = Should.NotThrow(() => literalAttributes.ToString());
         semanticAttributes.ToString().ShouldBe("SemanticDecoration.FocusedText");
     }
+
+    /// <summary>Verifies external comparer code can resolve either branch without inheriting a control.</summary>
+    [Fact]
+    public void Resolve_WhenValueIsLiteralOrSemantic_ReturnsItsRenderedColor()
+    {
+        ControlColor literal = Color.Rgb(1, 2, 3);
+        ControlColor semantic = SemanticColor.Accent;
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(accent: "#abcdef"));
+
+        literal.Resolve(theme).ShouldBe(Color.Rgb(1, 2, 3));
+        semantic.Resolve(theme).ShouldBe(Color.Rgb(0xab, 0xcd, 0xef));
+        semantic.Resolve(null).ShouldBe(Color.Default);
+    }
 }

@@ -344,6 +344,21 @@ public sealed class StyleSlotTests
         notifications.ShouldContain(nameof(StyleSlotProbe.ActualStyle));
     }
 
+    /// <summary>Verifies the slot owns semantic-color invalidation even when a third-party
+    /// aggregate comparer returns None for an unchanged raw token.</summary>
+    [Fact]
+    public void PropagateTheme_WhenCustomSemanticColorResolvesDifferently_InvalidatesRender()
+    {
+        using var probe = new SemanticColorStyleProbe();
+        probe.ApplyTheme(ThemeCatalog.Parse(ThemeJson.Create(accent: "#112233")));
+        _ = probe.ActualStyle;
+        probe.Clear(Invalidation.All);
+
+        probe.ApplyTheme(ThemeCatalog.Parse(ThemeJson.Create(accent: "#aabbcc")));
+
+        probe.Pending.ShouldBe(Invalidation.Render);
+    }
+
     /// <summary>Verifies an <c>ImmutableArray</c> member with equal contents stops reporting a
     /// change. Boxed, it compares by the underlying array reference, so two structurally identical
     /// resolutions of <c>SpinnerStyle.Frames</c> looked different every single time - the

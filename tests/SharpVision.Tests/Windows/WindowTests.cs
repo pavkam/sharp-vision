@@ -7,6 +7,20 @@ namespace SharpVision.Tests.Windows;
 /// <summary>Verifies framed terminal window layout, title chrome, and visual shadow behavior.</summary>
 public sealed class WindowTests
 {
+    /// <summary>Verifies a Theme-only close-glyph change invalidates the Window render.</summary>
+    [Fact]
+    public void SetTheme_WhenCloseGlyphChanges_InvalidatesRender()
+    {
+        var previous = ThemeCatalog.Parse(ThemeJson.Create(windowExtra: """, "closeGlyph": "x" """));
+        var current = ThemeCatalog.Parse(ThemeJson.Create(windowExtra: """, "closeGlyph": "+" """));
+        using var window = new Window { CanClose = true };
+        window.SetTheme(previous);
+        window.Clear(Invalidation.All);
+
+        window.SetTheme(current);
+
+        window.Pending.ShouldBe(Invalidation.Render);
+    }
     /// <summary>Verifies a Window owns an opaque semantic background distinct from ordinary
     /// Control/Container content, without caller styling.</summary>
     [Fact]

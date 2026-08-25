@@ -53,6 +53,14 @@ public readonly record struct ControlDecoration
         ? ThemeDecorationValue
         : throw new InvalidOperationException("The attribute value contains concrete terminal attributes.");
 
+    /// <summary>Resolves this authoring value to the attributes a control paints under one Theme.</summary>
+    /// <param name="theme">The active Theme, or null when no semantic attribute table is available.</param>
+    /// <returns>The literal attributes, the Theme-resolved semantic attributes, or <see cref="TerminalAttributes.None"/>.</returns>
+    [Pure]
+    public TerminalAttributes Resolve(Theme? theme) => IsLiteral
+        ? Literal
+        : theme?.Resolve(this) ?? TerminalAttributes.None;
+
     /// <summary>Converts concrete terminal attributes to an authoring value.</summary>
     public static implicit operator ControlDecoration(TerminalAttributes value) => new(value);
 

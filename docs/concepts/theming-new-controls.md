@@ -45,13 +45,44 @@ control has an additional semantic part outside those three, expose a validated
 default:
 
 ```csharp
-public ControlColor Fill { get; set; } = SemanticColor.Accent;
+private ControlColor _fill = SemanticColor.Accent;
+
+public ControlColor Fill
+{
+    get => _fill;
+    set
+    {
+        if (value.IsLiteral && value.Literal.IsTransparent)
+        {
+            throw new ArgumentException("Fill cannot be transparent.", nameof(value));
+        }
+
+        _ = SetProperty(ref _fill, value, InvalidationImpact.Render);
+    }
+}
+
+protected override InvalidationImpact GetThemeChangeImpact(
+    Theme? previous,
+    Theme? current,
+    Face? previousParentAmbientFace,
+    Face? currentParentAmbientFace) =>
+    MaximumImpact(
+        base.GetThemeChangeImpact(
+            previous,
+            current,
+            previousParentAmbientFace,
+            currentParentAmbientFace),
+        Fill.Resolve(previous) != Fill.Resolve(current)
+            ? InvalidationImpact.Render
+            : InvalidationImpact.None);
 ```
 
-Resolve that value through the attached `Theme` during rendering. Assign a
-concrete `Color` instead when the caller's choice must survive theme changes.
-Background channels may use `Color.Transparent`; glyph-painting foreground
-channels must reject it before mutation.
+Resolve that value through the attached `Theme` during rendering and compare its
+resolved colors in `GetThemeChangeImpact`, as above; the raw semantic token does
+not change when two themes map it to different colors. Assign a concrete `Color`
+instead when the caller's choice must survive theme changes. Background channels
+may use `Color.Transparent`; glyph-painting foreground channels must reject it
+before mutation.
 
 ## Local customization
 
@@ -166,6 +197,15 @@ aggregate style onto heterogeneous retained parts - there is no virtual
 `OnStyleChanged` to override. The factory is fully public and requires no
 internal access - a third-party control registers its own `StyleDefinition`
 exactly the way `CommandTileStyle` does above.
+
+The style slot recursively tracks every `ControlColor` and `ControlDecoration`
+member, including members nested in faces, borders, shadows, and custom style
+fragments. A theme replacement that changes any resolved paint value therefore
+requests render even when the definition's callback sees identical raw semantic
+tokens. The callback still owns structural classification: return `Measure` or
+`Arrange` for geometry changes and `Render` for non-semantic visual members.
+Standalone control properties are outside a style slot, so their control keeps
+the explicit `GetThemeChangeImpact` comparison shown above.
 
 Use `StyleDefinitions.Part`, `InitializePartStyle`, and `BindStyle` for a named
 style forwarded to retained implementation controls. Bind the nullable local

@@ -51,6 +51,14 @@ public readonly record struct ControlColor
         ? SemanticValue
         : throw new InvalidOperationException("The color value contains a concrete terminal color.");
 
+    /// <summary>Resolves this authoring value to the color a control paints under one Theme.</summary>
+    /// <param name="theme">The active Theme, or null when no semantic color table is available.</param>
+    /// <returns>The literal color, the Theme-resolved semantic color, or <see cref="Color.Default"/>.</returns>
+    [Pure]
+    public Color Resolve(Theme? theme) => IsLiteral
+        ? Literal
+        : theme?.ResolveColor(SemanticColor) ?? Color.Default;
+
     /// <summary>Converts a concrete terminal color to an authoring value.</summary>
     public static implicit operator ControlColor(Color value) => new(value);
 

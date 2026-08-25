@@ -4,11 +4,9 @@
 namespace SharpVision.Controls;
 
 /// <summary>Declares that a control or surface exposes one typed primary complete-style slot.
-/// A conforming type still declares its own <see cref="Style"/> and <see cref="ActualStyle"/>
-/// forwarders over a private <see cref="StyleSlot{TStyle}"/> field initialized through
-/// <c>InitializeStyle</c> - this interface documents that shape as an explicit contract rather
-/// than supplying any member itself, since a default interface member is not reachable through
-/// bare dot-access on the implementing class, only through an interface-typed reference.</summary>
+/// A conforming type implements the required <see cref="Style"/> and <see cref="ActualStyle"/>
+/// members as forwarders over a private <see cref="StyleSlot{TStyle}"/> initialized through
+/// <c>InitializeStyle</c>.</summary>
 /// <typeparam name="TStyle">The small immutable complete style value.</typeparam>
 [PublicAPI]
 public interface IStyled<TStyle>

@@ -48,4 +48,68 @@ public sealed class ToastStyleTests
 
         ToastStyle.Definition.Compare(previous, null, current, null).ShouldBe(InvalidationImpact.Measure);
     }
+
+    /// <summary>Verifies every dedicated Toast paint channel invalidates before the next frame.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void Style_WhenPaintOnlyMemberChanges_InvalidatesRender(int member)
+    {
+        using var toast = new Toast { Style = ToastStyle.Info };
+        toast.Clear(Invalidation.All);
+
+        toast.Style = member switch
+        {
+            0 => ToastStyle.Info with { TitleFace = ToastStyle.Info.TitleFace with { Foreground = SemanticColor.Error } },
+            1 => ToastStyle.Info with { AdornmentColor = SemanticColor.Error },
+            _ => ToastStyle.Info with { CloseColor = SemanticColor.Error }
+        };
+
+        toast.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies constructor and with-expression writes reject transparent paint channels.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void PaintColor_WhenTransparent_ThrowsAtTheStyleBoundary(bool adornment)
+    {
+        var value = (ControlColor) Color.Transparent;
+
+        _ = Should.Throw<ArgumentException>(() => adornment
+            ? ToastStyle.Info with { AdornmentColor = value }
+            : ToastStyle.Info with { CloseColor = value });
+
+        _ = Should.Throw<ArgumentException>(() => new ToastStyle(
+            ToastStyle.Info.Face,
+            ToastStyle.Info.Border,
+            ToastStyle.Info.Shadow,
+            ToastStyle.Info.TitleFace,
+            adornment ? value : ToastStyle.Info.AdornmentColor,
+            ToastStyle.Info.CloseGlyph,
+            adornment ? ToastStyle.Info.CloseColor : value,
+            ToastStyle.Info.Padding,
+            ToastStyle.Info.ContentGap,
+            ToastStyle.Info.AdornmentGap));
+    }
+
+    /// <summary>Verifies unchanged semantic Toast tokens repaint when their Theme mappings change.</summary>
+    [Fact]
+    public void SetTheme_WhenSemanticToastColorResolvesDifferently_InvalidatesRender()
+    {
+        var previous = ThemeCatalog.Parse(ThemeJson.Create());
+        var current = ThemeCatalog.Parse(ThemeJson.Create().Replace(
+            "\"__info\":\"#0000ff\"",
+            "\"__info\":\"#ff00ff\"",
+            StringComparison.Ordinal));
+        using var toast = new Toast { Style = ToastStyle.Info };
+        toast.SetTheme(previous);
+        _ = toast.ActualStyle;
+        toast.Clear(Invalidation.All);
+
+        toast.SetTheme(current);
+
+        toast.Pending.ShouldBe(Invalidation.Render);
+    }
 }

@@ -83,4 +83,23 @@ public sealed class FileDialogStyleTests
 
         FilePickerDialogStyle.Definition.Compare(previous, null, current, null).ShouldBe(InvalidationImpact.Measure);
     }
+
+    /// <summary>Verifies both dialog definitions inherit Window close-chrome comparison.</summary>
+    [Fact]
+    public void Definition_Compare_WhenCloseChromeChanges_IsRenderForBothDialogs()
+    {
+        var picker = FilePickerDialogStyle.Default;
+        var save = SaveFileDialogStyle.Default;
+
+        FilePickerDialogStyle.Definition.Compare(
+            picker,
+            null,
+            picker with { CloseLeftBracket = new Rune('{') },
+            null).ShouldBe(InvalidationImpact.Render);
+        SaveFileDialogStyle.Definition.Compare(
+            save,
+            null,
+            save with { CloseMarkPressedColor = SemanticColor.Error },
+            null).ShouldBe(InvalidationImpact.Render);
+    }
 }

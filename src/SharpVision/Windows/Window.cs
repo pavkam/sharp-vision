@@ -548,13 +548,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             currentParentAmbientFace);
         var previousStyle = ResolveCloseChromeStyle(previous);
         var currentStyle = ResolveCloseChromeStyle(current);
-        var colorImpact =
-            ResolveColor(previousStyle.CloseMarkColor, previous) != ResolveColor(currentStyle.CloseMarkColor, current) ||
-            ResolveColor(previousStyle.CloseMarkActiveColor, previous) != ResolveColor(currentStyle.CloseMarkActiveColor, current) ||
-            ResolveColor(previousStyle.CloseMarkPressedColor, previous) != ResolveColor(currentStyle.CloseMarkPressedColor, current) ||
-            ResolveColor(previousStyle.CloseMarkDisabledColor, previous) != ResolveColor(currentStyle.CloseMarkDisabledColor, current)
-                ? InvalidationImpact.Render
-                : InvalidationImpact.None;
+        var colorImpact = WindowStyle.GetCloseChromeImpact(previousStyle, previous, currentStyle, current);
 
         return MaximumImpact(baseImpact, colorImpact);
     }
