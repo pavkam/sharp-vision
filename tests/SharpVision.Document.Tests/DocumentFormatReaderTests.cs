@@ -229,19 +229,24 @@ public sealed class DocumentFormatReaderTests
         stream.CanRead.ShouldBeTrue();
     }
 
-    /// <summary>Verifies a reader result reused after attachment is rejected before replacement begins.</summary>
+    /// <summary>Verifies loading consumes the exact detached result tree and rejects a later reuse
+    /// before another document replacement begins.</summary>
     [Fact]
-    public void Load_WhenReaderReturnsAnAttachedResult_ThrowsAndPreservesExistingBlocks()
+    public void Load_WhenReaderReturnsPreviouslyConsumedResult_ThrowsAndPreservesExistingBlocks()
     {
         // Arrange
         var result = new DocumentReadResult([new DocumentParagraph("parsed")]);
         var reader = new StaticDocumentFormatReaderProbe(result);
         var first = new DocumentControl();
-        _ = first.Load("first", reader);
+        var applied = first.Load("first", reader);
         var destination = new DocumentControl
         {
             Blocks = { new DocumentParagraph("old") }
         };
+
+        applied.ShouldBeSameAs(result);
+        first.Blocks[0].ShouldBeSameAs(result.Blocks[0]);
+        result.Blocks[0].IsAttached.ShouldBeTrue();
 
         // Act
         var action = () => destination.Load("second", reader);
@@ -250,6 +255,34 @@ public sealed class DocumentFormatReaderTests
         _ = action.ShouldThrow<ArgumentException>();
         destination.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
             .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("old");
+    }
+
+    /// <summary>Verifies cross-root mutations made after result construction are rejected as one
+    /// tree before the destination loses any existing content.</summary>
+    [Fact]
+    public void Load_WhenReaderResultMutatesToDuplicateControl_ThrowsAndPreservesExistingBlocks()
+    {
+        // Arrange
+        var shared = new CheckBox("shared");
+        var first = new DocumentParagraph();
+        var second = new DocumentParagraph();
+        var result = new DocumentReadResult([first, second]);
+        first.Inlines.Add(new DocumentInlineControl(shared));
+        second.Inlines.Add(new DocumentInlineControl(shared));
+        var document = new DocumentControl
+        {
+            Blocks = { new DocumentParagraph("old") }
+        };
+
+        // Act
+        var action = () => document.Load("source", new StaticDocumentFormatReaderProbe(result));
+
+        // Assert
+        _ = action.ShouldThrow<ArgumentException>();
+        document.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("old");
+        first.IsAttached.ShouldBeFalse();
+        second.IsAttached.ShouldBeFalse();
     }
 
     /// <summary>Verifies document lifecycle validation runs before arbitrary reader code.</summary>

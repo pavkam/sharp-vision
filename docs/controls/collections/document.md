@@ -95,8 +95,8 @@ classDiagram
 | Inherited `IsTextSelectionEnabled`                                                             | `bool`                                        | `true`           | Enabled by the constructor; disabling clears Document selection and selection gestures.  |
 | Inherited `TextSelection`                                                                      | `Selection`                                   | Empty at `0`     | The same committed directional value exposed by `Selection`.                             |
 | `SelectedText`                                                                                 | `string`                                      | `""`             | Read-only owned copy of the selected semantic substring.                                 |
-| `Load(string, IDocumentFormatReader, DocumentReadOptions?)`                                    | `DocumentReadResult`                          | —                | Parses detached content through a format reader, then replaces the block tree.           |
-| `LoadAsync(Stream, IDocumentFormatReader, DocumentReadOptions?, Encoding?, CancellationToken)` | `ValueTask<DocumentReadResult>`               | —                | Reads a bounded stream without closing it, then replaces the block tree unless canceled. |
+| `Load(string, IDocumentFormatReader, DocumentReadOptions?)`                                    | `DocumentReadResult`                          | —                | Parses, revalidates, then atomically consumes all detached roots.                        |
+| `LoadAsync(Stream, IDocumentFormatReader, DocumentReadOptions?, Encoding?, CancellationToken)` | `ValueTask<DocumentReadResult>`               | —                | Reads a bounded stream, then consumes its result unless canceled.                        |
 | `ScrollBy(int lines, ScrollCause cause)`                                                       | `bool`                                        | —                | Adds a signed line delta with saturation and endpoint clamping; rejects unknown cause.   |
 | `ScrollToTop()`                                                                                | `bool`                                        | —                | Scrolls to the first line; reports whether the offset changed.                           |
 | `ScrollToEnd()`                                                                                | `bool`                                        | —                | Scrolls to the last line; reports whether the offset changed.                            |
@@ -134,6 +134,12 @@ calls `Load` with the accumulated text. Each decode read requests at most the
 remaining allowance plus one character, so excess input is detected without
 filling the pooled buffer first. `encoding` defaults to strict UTF-8 with
 byte-order-mark detection.
+
+Both load paths revalidate the reader result as one complete mutable tree before
+clearing existing content. Cross-root duplicate controls, attached nodes, and
+other invalid ownership are rejected without changing the destination. A
+successful load consumes the exact roots: the returned result still exposes them
+for inspection, but they now belong to that document and cannot be loaded again.
 
 The document validates its lifecycle and dispatcher access before the first read
 and never disposes `source`. On any bound, decoding, cancellation, reader, or

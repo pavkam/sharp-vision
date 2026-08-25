@@ -152,10 +152,11 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
         index++;
         var body = new StringBuilder();
+        var hasBodyLine = false;
 
         while (index < lines.Length && !IsFenceCloser(lines[index], fence))
         {
-            if (body.Length > 0)
+            if (hasBodyLine)
             {
                 _ = body.Append('\n');
             }
@@ -163,6 +164,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             var line = lines[index];
             var removableIndent = Math.Min(fence.Indent, CountLeadingSpaces(line));
             _ = body.Append(line.AsSpan(removableIndent));
+            hasBodyLine = true;
             index++;
         }
 
@@ -365,10 +367,23 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
                 if (string.IsNullOrWhiteSpace(lines[index]))
                 {
-                    if (index + 1 < lines.Length && TryListMarker(lines[index + 1], out var afterBlank) &&
+                    var afterBlankIndex = index + 1;
+
+                    while (afterBlankIndex < lines.Length && string.IsNullOrWhiteSpace(lines[afterBlankIndex]))
+                    {
+                        afterBlankIndex++;
+                    }
+
+                    if (afterBlankIndex >= lines.Length)
+                    {
+                        index = afterBlankIndex;
+                        break;
+                    }
+
+                    if (TryListMarker(lines[afterBlankIndex], out var afterBlank) &&
                         afterBlank.Indent == firstMarker.Indent)
                     {
-                        index++;
+                        index = afterBlankIndex;
 
                         if (afterBlank.Delimiter == firstMarker.Delimiter &&
                             ContinuesSameSemanticList(marker.Content, afterBlank.Content))
@@ -380,6 +395,12 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                             endListAfterItem = true;
                         }
 
+                        break;
+                    }
+
+                    if (CountLeadingSpaces(lines[afterBlankIndex]) <= firstMarker.Indent)
+                    {
+                        index = afterBlankIndex;
                         break;
                     }
 
@@ -1446,11 +1467,19 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     [Pure]
     private static bool TryTask(string source, out bool isChecked, out string text)
     {
-        if (source.Length >= 4 && source[0] == '[' && source[2] == ']' && source[3] == ' ' &&
-            source[1] is ' ' or 'x' or 'X')
+        if (source.Length >= 4 && source[0] == '[' && source[2] == ']' &&
+            (IsMarkdownWhitespace(source[1]) || source[1] is 'x' or 'X') &&
+            IsMarkdownWhitespace(source[3]))
         {
+            var contentStart = 4;
+
+            while (contentStart < source.Length && IsMarkdownWhitespace(source[contentStart]))
+            {
+                contentStart++;
+            }
+
             isChecked = source[1] is 'x' or 'X';
-            text = source[4..];
+            text = source[contentStart..];
             return true;
         }
 
@@ -1458,6 +1487,9 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         text = string.Empty;
         return false;
     }
+
+    [Pure]
+    private static bool IsMarkdownWhitespace(char value) => value is ' ' or '\t' or '\n' or '\v' or '\f' or '\r';
 
     [Pure]
     private static bool TryRadio(string source, out bool isChecked, out string text)
@@ -1551,10 +1583,16 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
         var cells = new List<string>();
         var cell = new StringBuilder();
-        var codeDelimiterLength = 0;
 
         for (var index = 0; index < trimmed.Length; index++)
         {
+            if (trimmed[index] == '\\' && index + 1 < trimmed.Length && trimmed[index + 1] == '|')
+            {
+                _ = cell.Append('|');
+                index++;
+                continue;
+            }
+
             if (trimmed[index] == '\\' && index + 1 < trimmed.Length)
             {
                 _ = cell.Append(trimmed[index]).Append(trimmed[index + 1]);
@@ -1562,25 +1600,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continue;
             }
 
-            if (trimmed[index] == '`')
-            {
-                var run = CountRun(trimmed, index, '`');
-
-                if (codeDelimiterLength == 0)
-                {
-                    codeDelimiterLength = run;
-                }
-                else if (run == codeDelimiterLength)
-                {
-                    codeDelimiterLength = 0;
-                }
-
-                _ = cell.Append(trimmed.AsSpan(index, run));
-                index += run - 1;
-                continue;
-            }
-
-            if (trimmed[index] == '|' && codeDelimiterLength == 0)
+            if (trimmed[index] == '|')
             {
                 cells.Add(cell.ToString().Trim());
                 _ = cell.Clear();

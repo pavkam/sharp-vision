@@ -27,6 +27,13 @@ source order plus deterministic `DocumentDiagnostic` entries carrying zero-based
 UTF-16 `DocumentSourceSpan` ranges. Readers construct detached nodes; they never
 mutate a mounted control.
 
+`Document.Load` and `LoadAsync` are the explicit ownership-transfer boundary.
+They revalidate all mutable result roots together immediately before
+replacement, including cross-root embedded-control uniqueness. A rejected result
+leaves the current document unchanged. Success attaches those exact roots to the
+destination; the returned result remains inspectable but is consumed and cannot
+be loaded into another document.
+
 `MaximumCharacters` defaults to 4 Mi UTF-16 code units and rejects non-positive
 configuration or oversized input. This is a format-independent memory boundary,
 not a Markdown rule.
@@ -102,10 +109,19 @@ their peers. Changing between `-`, `+`, and `*`, or between the `.` and `)`
 ordered delimiters, starts a distinct list block. Parser-generated radio groups
 follow those exact list boundaries.
 
+A blank line makes a list loose only when it separates peer items or block
+children within an item. Blank lines that merely separate the final item from a
+following outdented paragraph, heading, quote, fence, or the end of the source
+leave the list tight.
+
 Fence block boundaries use the same full opener grammar as fence parsing. An
 opener may be indented by at most three spaces, and a backtick fence's info
 string cannot contain a backtick. A rejected fence-looking line remains part of
 the surrounding paragraph instead of splitting it.
+
+Every fenced-code body line is preserved literally after the opener's optional
+indent removal, including leading blank lines and bodies made entirely of blank
+lines. An empty body remains distinct from multiple empty body lines.
 
 Block-quote recognition, paragraph interruption, and quote-line consumption use
 the same marker grammar. A `>` marker may be preceded by zero through three
@@ -166,6 +182,11 @@ GFM table bodies accept rows without pipes and fill missing trailing cells with
 empty content. A blank line or any recognized block start ends the table, even
 when that block's source line contains a pipe.
 
+A pipe separates cells even when it appears between backticks; only `\|`
+protects it as cell content. The table splitter removes that escape before
+inline parsing, so an escaped pipe inside a code span becomes literal `|`, while
+an unmatched backtick cannot swallow later column boundaries.
+
 The standard callout kinds use distinct theme semantic colors: `NOTE` uses
 `Info`, `TIP` uses `Success`, `IMPORTANT` uses `Accent`, `WARNING` uses
 `Warning`, and `CAUTION` uses `Error`. Matching is case-insensitive. Other kinds
@@ -195,6 +216,12 @@ owning `Document`, so radio lists in sibling documents cannot deselect each
 other. If malformed source marks several radios in one list as selected, the
 last selected marker wins.
 
+Task markers follow GFM's ASCII-whitespace rule: an unchecked marker may contain
+an ASCII whitespace character between its brackets, and at least one ASCII
+whitespace character must separate the closing bracket from the label. All such
+separator whitespace is structural and omitted from the generated `CheckBox`
+text; Unicode whitespace such as a non-breaking space remains literal.
+
 Those generated labels participate in the owning `Document`'s continuous
 semantic selection like directly embedded controls. Copy output preserves their
 displayed text but omits checkbox, radio, table-border, quote-bar, and callout
@@ -204,10 +231,10 @@ clipboard rules belong to the
 
 ## Expected behavior
 
-| Scope              | Observable evidence                                                               |
-| ------------------ | --------------------------------------------------------------------------------- |
-| Format abstraction | A custom reader can return a detached tree consumed by `Document.Load`.           |
-| Baseline parsing   | Representative blocks and nested semantic inline nodes preserve source order.     |
-| Extensions         | Each flag changes only its syntax family; disabled syntax remains literal.        |
-| Forms              | Parsed task and radio items are retained controls with ordinary input behavior.   |
-| Bounds             | Oversized input is rejected before parsing beyond the configured character limit. |
+| Scope              | Observable evidence                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| Format abstraction | All detached roots transfer atomically through `Document.Load`.                     |
+| Baseline parsing   | Representative blocks and nested semantic inline nodes preserve source order.       |
+| Extensions         | Each flag changes only its syntax family; disabled syntax remains literal.          |
+| Forms              | Parsed task and radio items are retained controls with ordinary input behavior.     |
+| Bounds             | Oversized input is rejected before parsing beyond the configured character limit.   |

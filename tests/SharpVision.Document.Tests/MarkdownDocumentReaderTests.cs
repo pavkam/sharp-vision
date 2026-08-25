@@ -356,6 +356,54 @@ public sealed class MarkdownDocumentReaderTests
             .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("Callout body.");
     }
 
+    /// <summary>Verifies GFM ASCII whitespace is accepted both inside an unchecked task marker
+    /// and between the marker and its label.</summary>
+    [Theory]
+    [InlineData("- [ ] task", false)]
+    [InlineData("- [x]\ttask", true)]
+    [InlineData("- [X] \t task", true)]
+    [InlineData("- [\t]\t\ttask", false)]
+    [InlineData("- [\v]\ftask", false)]
+    public void Read_WhenTaskMarkerUsesGfmWhitespace_CreatesCheckBox(string source, bool expectedChecked)
+    {
+        // Arrange
+        var reader = new MarkdownDocumentReader(new MarkdownOptions
+        {
+            Extensions = MarkdownExtension.TaskLists
+        });
+
+        // Act
+        var control = reader.Read(source).Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentList>()
+            .Items.ShouldHaveSingleItem().Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentBlockControl>().Control;
+
+        // Assert
+        var checkBox = control.ShouldBeOfType<CheckBox>();
+        checkBox.IsChecked.ShouldBe(expectedChecked);
+        checkBox.Text.ShouldBe("task");
+    }
+
+    /// <summary>Verifies missing separators and non-ASCII whitespace do not become task markers.</summary>
+    [Theory]
+    [InlineData("- [x]task")]
+    [InlineData("- [\u00a0] task")]
+    [InlineData("- [x]\u00a0task")]
+    public void Read_WhenTaskMarkerDoesNotUseGfmWhitespace_PreservesParagraph(string source)
+    {
+        // Arrange
+        var reader = new MarkdownDocumentReader(new MarkdownOptions
+        {
+            Extensions = MarkdownExtension.TaskLists
+        });
+
+        // Act
+        var block = reader.Read(source).Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentList>()
+            .Items.ShouldHaveSingleItem().Blocks.ShouldHaveSingleItem();
+
+        // Assert
+        _ = block.ShouldBeOfType<DocumentParagraph>();
+    }
+
     /// <summary>Verifies malformed source with several selected radios normalizes to the last
     /// authored selection before the controls are mounted.</summary>
     [Fact]
@@ -527,6 +575,23 @@ public sealed class MarkdownDocumentReaderTests
         // Assert
         code.Language.ShouldBe("csharp");
         code.Text.ShouldBe("a\n```\n```not-close\nb");
+    }
+
+    /// <summary>Verifies fenced code preserves its literal body-line sequence even when one or
+    /// every body line is empty.</summary>
+    [Theory]
+    [InlineData("```\n```", "")]
+    [InlineData("```\n\nvalue\n```", "\nvalue")]
+    [InlineData("```\n\n\nvalue\n```", "\n\nvalue")]
+    [InlineData("~~~\n\n\n~~~", "\n")]
+    public void Read_WhenFenceBodyContainsEmptyLines_PreservesEveryBodyLine(string source, string expected)
+    {
+        // Arrange and act
+        var code = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentCodeBlock>();
+
+        // Assert
+        code.Text.ShouldBe(expected);
     }
 
     /// <summary>Verifies a backtick fence with a forbidden backtick in its info string remains
@@ -1003,12 +1068,13 @@ public sealed class MarkdownDocumentReaderTests
         VisibleText(result).ShouldContain("y");
     }
 
-    /// <summary>Verifies escaped and code-span pipes remain inside their table cells.</summary>
+    /// <summary>Verifies GFM pipe escapes protect table cells and are removed before inline parsing,
+    /// including inside code spans.</summary>
     [Fact]
-    public void Read_WhenTableCellsContainProtectedPipes_PreservesTwoColumns()
+    public void Read_WhenTableCellsContainEscapedPipes_PreservesTwoColumnsAndUnescapesContent()
     {
         // Arrange
-        const string source = "| Left | Right |\n| --- | --- |\n| a \\| b | `c|d` |";
+        const string source = "| Left | Right |\n| --- | --- |\n| a \\| b | `c\\|d` |";
         var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = MarkdownExtension.Tables });
 
         // Act
@@ -1018,6 +1084,40 @@ public sealed class MarkdownDocumentReaderTests
         body.Cells.Count.ShouldBe(2);
         body.Cells[0].Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("a | b");
         body.Cells[1].Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentCodeSpan>().Text.ShouldBe("c|d");
+    }
+
+    /// <summary>Verifies a raw pipe remains a table delimiter even when backticks surround it.</summary>
+    [Fact]
+    public void Read_WhenTableCodeSpanContainsRawPipe_SplitsAtRawPipe()
+    {
+        // Arrange
+        const string source = "| A | B |\n| --- | --- |\n| first | `left|right` |";
+        var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = MarkdownExtension.Tables });
+
+        // Act
+        var body = reader.Read(source).Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentTable>().Rows[1];
+
+        // Assert
+        body.Cells.Count.ShouldBe(2);
+        body.Cells[0].Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("first");
+        body.Cells[1].Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("`left");
+    }
+
+    /// <summary>Verifies an unmatched backtick cannot suppress all later table delimiters.</summary>
+    [Fact]
+    public void Read_WhenTableCellHasUnmatchedBacktick_PreservesLaterCellBoundaries()
+    {
+        // Arrange
+        const string source = "| A | B | C |\n| --- | --- | --- |\n| `open | middle | end |";
+        var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = MarkdownExtension.Tables });
+
+        // Act
+        var body = reader.Read(source).Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentTable>().Rows[1];
+
+        // Assert
+        body.Cells[0].Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("`open");
+        body.Cells[1].Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("middle");
+        body.Cells[2].Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("end");
     }
 
     /// <summary>Verifies a GFM table data row may omit pipes and receives empty cells for
@@ -1594,6 +1694,30 @@ public sealed class MarkdownDocumentReaderTests
         // Assert
         list.IsLoose.ShouldBeTrue();
         list.Items.Count.ShouldBe(2);
+    }
+
+    /// <summary>Verifies blank lines that terminate a list do not retroactively loosen its items.</summary>
+    [Theory]
+    [InlineData("- one\n- two\n\nparagraph", typeof(DocumentParagraph))]
+    [InlineData("- one\n- two\n\n# heading", typeof(DocumentHeading))]
+    [InlineData("- one\n- two\n\n> quote", typeof(DocumentBlockQuote))]
+    [InlineData("- one\n- two\n\n```\ncode\n```", typeof(DocumentCodeBlock))]
+    [InlineData("- one\n- two\n\n", null)]
+    public void Read_WhenBlankLineEndsList_KeepsListTight(string source, Type? followingBlockType)
+    {
+        // Arrange and act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        var list = result.Blocks[0].ShouldBeOfType<DocumentList>();
+        list.IsLoose.ShouldBeFalse();
+        list.Items.Count.ShouldBe(2);
+        result.Blocks.Count.ShouldBe(followingBlockType is null ? 1 : 2);
+
+        if (followingBlockType is not null)
+        {
+            result.Blocks[1].GetType().ShouldBe(followingBlockType);
+        }
     }
 
     private static string VisibleText(DocumentReadResult result)

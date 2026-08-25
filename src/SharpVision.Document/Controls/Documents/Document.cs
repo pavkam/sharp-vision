@@ -104,11 +104,16 @@ public sealed class Document:
     /// <summary>Gets the owned ordered block content.</summary>
     public DocumentBlockCollection Blocks { get; }
 
-    /// <summary>Reads serialized content and replaces the current block tree after parsing succeeds.</summary>
+    /// <summary>Reads serialized content and atomically replaces the current block tree after parsing succeeds.</summary>
     /// <param name="source">The non-null serialized source.</param>
     /// <param name="reader">The non-null format reader.</param>
     /// <param name="options">Optional general read limits.</param>
-    /// <returns>The applied read result.</returns>
+    /// <returns>The consumed read result whose exact blocks now belong to this document.</returns>
+    /// <remarks>
+    /// The complete mutable result tree is revalidated before replacement. A rejected result leaves
+    /// the current tree unchanged; a successful load transfers every result root into this document,
+    /// so the same result cannot be loaded again.
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="reader"/> is null.</exception>
     /// <exception cref="ArgumentException">The reader result is no longer a detached tree.</exception>
     /// <exception cref="ArgumentOutOfRangeException">The source exceeds an enabled reader limit.</exception>
@@ -125,17 +130,7 @@ public sealed class Document:
         var result = reader.Read(source, options);
         ArgumentNullException.ThrowIfNull(result);
 
-        foreach (var block in result.Blocks)
-        {
-            if (block.IsAttached)
-            {
-                throw new ArgumentException(
-                    "A reader result can be loaded only while every block remains detached.",
-                    nameof(reader));
-            }
-
-            DocumentEmbeddedControlCollector.ValidateInsertion(block, ownerNode: null, ownerDocument: null);
-        }
+        result.ValidateForConsumption(nameof(reader));
 
         Blocks.Clear();
 
@@ -153,14 +148,15 @@ public sealed class Document:
     /// <param name="options">Optional general read limits.</param>
     /// <param name="encoding">The optional source encoding; UTF-8 is used when null.</param>
     /// <param name="cancellationToken">Cancels asynchronous stream reads before mutation.</param>
-    /// <returns>The applied result.</returns>
+    /// <returns>The consumed result whose exact blocks now belong to this document.</returns>
     /// <remarks>
     /// Lifecycle validation completes before the first read. If <paramref name="source"/> supports
     /// seeking, any failure restores its original byte position. A non-seekable source remains at
     /// the position reached by decoding because consumed bytes cannot be restored.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="reader"/> is null.</exception>
-    /// <exception cref="ArgumentException"><paramref name="source"/> is not readable.</exception>
+    /// <exception cref="ArgumentException"><paramref name="source"/> is not readable, or the reader
+    /// result is no longer one complete detached tree.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Decoded content exceeds the configured limit.</exception>
     /// <exception cref="InvalidOperationException">The attached document is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The document or source stream is disposed.</exception>
