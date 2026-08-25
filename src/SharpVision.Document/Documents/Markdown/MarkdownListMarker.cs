@@ -9,6 +9,8 @@ internal readonly struct MarkdownListMarker
     /// <summary>Initializes a list-marker description.</summary>
     /// <param name="indent">The zero-through-three-space indentation.</param>
     /// <param name="isOrdered">Whether the marker is numeric.</param>
+    /// <param name="delimiter">The exact bullet character or ordered punctuation that determines
+    /// list identity.</param>
     /// <param name="start">The parsed numeric ordinal, or one for bullets.</param>
     /// <param name="markerWidth">The column width of the marker and its required or implied
     /// trailing spacing, excluding <paramref name="indent"/>. The width includes one through four
@@ -16,10 +18,17 @@ internal readonly struct MarkdownListMarker
     /// the implied one-space width needed by later content.</param>
     /// <param name="content">The source following the marker and spacing, or an empty string for
     /// an empty item.</param>
-    internal MarkdownListMarker(int indent, bool isOrdered, int start, int markerWidth, string content)
+    internal MarkdownListMarker(
+        int indent,
+        bool isOrdered,
+        char delimiter,
+        int start,
+        int markerWidth,
+        string content)
     {
         Indent = indent;
         IsOrdered = isOrdered;
+        Delimiter = delimiter;
         Start = start;
         MarkerWidth = markerWidth;
         Content = content;
@@ -30,6 +39,10 @@ internal readonly struct MarkdownListMarker
 
     /// <summary>Gets whether the marker is numeric.</summary>
     internal bool IsOrdered { get; }
+
+    /// <summary>Gets the exact bullet character or ordered punctuation that determines list
+    /// identity.</summary>
+    internal char Delimiter { get; }
 
     /// <summary>Gets the first numeric ordinal, or one for bullets.</summary>
     internal int Start { get; }

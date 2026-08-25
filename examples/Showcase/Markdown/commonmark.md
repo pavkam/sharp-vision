@@ -41,6 +41,7 @@ So this sentence does too.
 2.
 3. Empty items retain their authored position
 4. Multiple marker spaces stay structural: `4.    item`
+5. Delimiter changes such as `-` to `+` start a new list block
 
 > Block quotes can contain flowing text and **inline formatting**.
 

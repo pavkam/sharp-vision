@@ -332,7 +332,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         RadioButton? selectedRadio = null;
 
         while (index < lines.Length && TryListMarker(lines[index], out var marker) &&
-               marker.Indent == firstMarker.Indent && marker.IsOrdered == firstMarker.IsOrdered)
+               marker.Indent == firstMarker.Indent && marker.Delimiter == firstMarker.Delimiter)
         {
             var item = new DocumentListItem();
             var continuation = new List<string>();
@@ -358,7 +358,8 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                     {
                         index++;
 
-                        if (ContinuesSameSemanticList(marker.Content, afterBlank.Content))
+                        if (afterBlank.Delimiter == firstMarker.Delimiter &&
+                            ContinuesSameSemanticList(marker.Content, afterBlank.Content))
                         {
                             list.IsLoose = true;
                         }
@@ -1020,7 +1021,13 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
             if (suffix.IsEmpty || ContainsOnlyListMarkerWhitespace(suffix))
             {
-                marker = new MarkdownListMarker(indent, isOrdered: false, start: 1, markerWidth: 2, string.Empty);
+                marker = new MarkdownListMarker(
+                    indent,
+                    isOrdered: false,
+                    delimiter: trimmed[0],
+                    start: 1,
+                    markerWidth: 2,
+                    string.Empty);
                 return true;
             }
 
@@ -1031,6 +1038,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 marker = new MarkdownListMarker(
                     indent,
                     isOrdered: false,
+                    delimiter: trimmed[0],
                     start: 1,
                     markerWidth: 1 + spacing,
                     suffix[spacing..].ToString());
@@ -1058,7 +1066,13 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
             if (suffix.IsEmpty || ContainsOnlyListMarkerWhitespace(suffix))
             {
-                marker = new MarkdownListMarker(indent, isOrdered: true, start, markerWidth: digits + 2, string.Empty);
+                marker = new MarkdownListMarker(
+                    indent,
+                    isOrdered: true,
+                    delimiter: trimmed[digits],
+                    start,
+                    markerWidth: digits + 2,
+                    string.Empty);
                 return true;
             }
 
@@ -1069,6 +1083,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 marker = new MarkdownListMarker(
                     indent,
                     isOrdered: true,
+                    delimiter: trimmed[digits],
                     start,
                     markerWidth: digits + 1 + spacing,
                     suffix[spacing..].ToString());

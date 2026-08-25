@@ -890,6 +890,69 @@ public sealed class MarkdownDocumentReaderTests
             .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("child");
     }
 
+    /// <summary>Verifies changing the bullet character starts a distinct list for every bullet
+    /// marker type.</summary>
+    [Fact]
+    public void Read_WhenBulletCharacterChanges_ProducesSeparateLists()
+    {
+        // Arrange
+        const string source = "- first\n+ second\n* third";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.Blocks.Count.ShouldBe(3);
+        result.Blocks.ShouldAllBe(static block => block is DocumentList);
+        result.Blocks.Cast<DocumentList>().ShouldAllBe(static list => list.Items.Count == 1);
+    }
+
+    /// <summary>Verifies changing between period and parenthesis ordered delimiters starts a
+    /// distinct list and preserves each new list's authored start.</summary>
+    [Fact]
+    public void Read_WhenOrderedDelimiterChanges_ProducesSeparateLists()
+    {
+        // Arrange
+        const string source = "1. first\n2) second\n3. third";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.Blocks.Count.ShouldBe(3);
+        result.Blocks[0].ShouldBeOfType<DocumentList>().Start.ShouldBe(1);
+        result.Blocks[1].ShouldBeOfType<DocumentList>().Start.ShouldBe(2);
+        result.Blocks[2].ShouldBeOfType<DocumentList>().Start.ShouldBe(3);
+        result.Blocks.Cast<DocumentList>().ShouldAllBe(static list => list.Items.Count == 1);
+    }
+
+    /// <summary>Verifies radio items separated by a bullet-character change receive independent
+    /// generated groups and cannot deselect each other during parsing.</summary>
+    [Fact]
+    public void Read_WhenRadioListBulletChanges_KeepsGeneratedGroupsIndependent()
+    {
+        // Arrange
+        var reader = new MarkdownDocumentReader(new MarkdownOptions
+        {
+            Extensions = MarkdownExtension.RadioLists
+        });
+
+        // Act
+        var result = reader.Read("- (x) First\n+ (x) Second");
+
+        // Assert
+        result.Blocks.Count.ShouldBe(2);
+        var first = result.Blocks[0].ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem()
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentBlockControl>().Control
+            .ShouldBeOfType<RadioButton>();
+        var second = result.Blocks[1].ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem()
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentBlockControl>().Control
+            .ShouldBeOfType<RadioButton>();
+        first.GroupName.ShouldNotBe(second.GroupName);
+        first.IsChecked.ShouldBeTrue();
+        second.IsChecked.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a blank line between peer items makes one list loose instead of splitting
     /// it into unrelated list blocks.</summary>
     [Fact]

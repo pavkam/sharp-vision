@@ -57,7 +57,9 @@ cannot interrupt an open paragraph. For a non-empty item, one through four
 literal spaces after the marker establish that item's content column and are not
 included in semantic text. Continuation and nested blocks use the same
 item-specific column, including ordered markers whose digit widths differ from
-their peers.
+their peers. Changing between `-`, `+`, and `*`, or between the `.` and `)`
+ordered delimiters, starts a distinct list block. Parser-generated radio groups
+follow those exact list boundaries.
 
 Block-quote nesting is interpreted to a maximum of 64 semantic levels. Any
 deeper quote markers remain literal paragraph content, keeping hostile input
