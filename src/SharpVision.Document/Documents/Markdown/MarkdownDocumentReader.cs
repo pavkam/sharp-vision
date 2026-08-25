@@ -37,6 +37,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     {
         ArgumentNullException.ThrowIfNull(source);
         options ??= new DocumentReadOptions();
+        InlineCandidateScanCount = 0;
 
         if (source.Length > options.MaximumCharacters)
         {
@@ -54,6 +55,10 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         return new DocumentReadResult(blocks, diagnostics);
     }
 
+    /// <summary>Gets the characters examined while indexing inline delimiter candidates during
+    /// the most recent read, exposing the bounded-scan invariant for hostile inputs.</summary>
+    internal int InlineCandidateScanCount { get; private set; }
+
     private List<DocumentBlock> ParseBlocks(
         string[] lines,
         ref int radioGroupOrdinal,
@@ -67,7 +72,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         {
             var line = lines[index];
 
-            if (string.IsNullOrWhiteSpace(line))
+            if (IsBlankLine(line))
             {
                 index++;
                 continue;
@@ -125,7 +130,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             var paragraphLines = new List<string>();
             var setextLevel = 0;
 
-            while (index < lines.Length && !string.IsNullOrWhiteSpace(lines[index]))
+            while (index < lines.Length && !IsBlankLine(lines[index]))
             {
                 if (paragraphLines.Count > 0 && TrySetextUnderline(lines[index], out setextLevel))
                 {
@@ -378,16 +383,16 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                     break;
                 }
 
-                if (!string.IsNullOrWhiteSpace(lines[index]) && CountLeadingSpaces(lines[index]) <= firstMarker.Indent)
+                if (!IsBlankLine(lines[index]) && CountLeadingSpaces(lines[index]) <= firstMarker.Indent)
                 {
                     break;
                 }
 
-                if (string.IsNullOrWhiteSpace(lines[index]))
+                if (IsBlankLine(lines[index]))
                 {
                     var afterBlankIndex = index + 1;
 
-                    while (afterBlankIndex < lines.Length && string.IsNullOrWhiteSpace(lines[afterBlankIndex]))
+                    while (afterBlankIndex < lines.Length && IsBlankLine(lines[afterBlankIndex]))
                     {
                         afterBlankIndex++;
                     }
@@ -435,7 +440,16 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
             if (Has(MarkdownExtension.TaskLists) && TryTask(marker.Content, out var isChecked, out var taskText))
             {
-                item.Blocks.Add(new DocumentBlockControl(new CheckBox(taskText) { IsChecked = isChecked }));
+                var paragraph = new DocumentParagraph();
+                paragraph.Inlines.Add(new DocumentInlineControl(new CheckBox { IsChecked = isChecked }));
+
+                if (taskText.Length > 0)
+                {
+                    paragraph.Inlines.Add(new DocumentTextRun(" "));
+                    ParseInlines(taskText, paragraph.Inlines);
+                }
+
+                item.Blocks.Add(paragraph);
             }
             else if (radioGroup is not null && TryRadio(marker.Content, out isChecked, out var radioText))
             {
@@ -504,7 +518,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         index += 2;
 
         while (index < lines.Length &&
-               !string.IsNullOrWhiteSpace(lines[index]) &&
+               !IsBlankLine(lines[index]) &&
                !IsBlockStart(lines[index]))
         {
             table.Rows.Add(CreateTableRow(SplitTableRow(lines[index]), alignments, isHeader: false));
@@ -585,8 +599,9 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     {
         var index = 0;
         var plain = new StringBuilder();
-        var linkCloserUnavailable = false;
         var wikiCloserUnavailable = false;
+        var codeSpanEnds = BuildCodeSpanEnds(source);
+        var labelCloses = BuildLabelCloses(source, codeSpanEnds);
 
         void Flush()
         {
@@ -734,8 +749,9 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             if (source[index] == '`')
             {
                 var delimiterLength = CountRun(source, index, '`');
+                var codeEnd = codeSpanEnds[index];
 
-                if (FindCodeSpanEnd(source, index + delimiterLength, delimiterLength) is var codeEnd && codeEnd >= 0)
+                if (codeEnd >= 0)
                 {
                     Flush();
                     destination.Add(new DocumentCodeSpan(
@@ -745,14 +761,8 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 }
             }
 
-            if (!linkCloserUnavailable && source[index] == '[' &&
-                source.IndexOf("](", index + 1, StringComparison.Ordinal) < 0)
-            {
-                linkCloserUnavailable = true;
-            }
-
-            if (!insideLink && !linkCloserUnavailable && source[index] == '[' &&
-                TryLink(source, index, out var linkEnd, out var label, out var target))
+            if (!insideLink && source[index] == '[' && labelCloses[index] >= 0 &&
+                TryLink(source, index, labelCloses[index], out var linkEnd, out var label, out var target))
             {
                 var parsedLabel = new DocumentParagraph();
                 ParseInlines(label, parsedLabel.Inlines);
@@ -786,6 +796,87 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
     [Pure]
     private bool Has(MarkdownExtension extension) => (_extensions & extension) != 0;
+
+    private int[] BuildCodeSpanEnds(string source)
+    {
+        var ends = new int[source.Length];
+        Array.Fill(ends, -1);
+        var previousByLength = new Dictionary<int, int>();
+        var index = 0;
+
+        while (index < source.Length)
+        {
+            InlineCandidateScanCount++;
+
+            if (source[index] != '`')
+            {
+                index++;
+                continue;
+            }
+
+            var length = CountRun(source, index, '`');
+            InlineCandidateScanCount += length - 1;
+
+            if (previousByLength.TryGetValue(length, out var previous))
+            {
+                ends[previous] = index;
+            }
+
+            previousByLength[length] = index;
+            index += length;
+        }
+
+        return ends;
+    }
+
+    private int[] BuildLabelCloses(string source, int[] codeSpanEnds)
+    {
+        var closes = new int[source.Length];
+        Array.Fill(closes, -1);
+        var openers = new Stack<int>();
+        var index = 0;
+
+        while (index < source.Length)
+        {
+            InlineCandidateScanCount++;
+
+            if (source[index] == '\\' && index + 1 < source.Length)
+            {
+                InlineCandidateScanCount++;
+                index += 2;
+                continue;
+            }
+
+            if (source[index] == '`' && codeSpanEnds[index] >= 0)
+            {
+                var delimiterLength = CountRun(source, index, '`');
+                var next = codeSpanEnds[index] + delimiterLength;
+                InlineCandidateScanCount += next - index - 1;
+                index = next;
+                continue;
+            }
+
+            if (source[index] == '<' && TryAngleAutolink(source, index, out var angleEnd, out _, out _))
+            {
+                InlineCandidateScanCount += angleEnd - index - 1;
+                index = angleEnd;
+                continue;
+            }
+
+            if (source[index] == '[')
+            {
+                openers.Push(index);
+            }
+            else if (source[index] == ']' && openers.TryPop(out var opener))
+            {
+                closes[opener] = index;
+            }
+
+            index++;
+        }
+
+        return closes;
+    }
 
     [Pure]
     private static bool TryStrikethrough(string source, int index, out int end, out int delimiterLength)
@@ -879,11 +970,15 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     }
 
     [Pure]
-    private static bool TryLink(string source, int index, out int end, out string label, out string target)
+    private static bool TryLink(
+        string source,
+        int index,
+        int closeLabel,
+        out int end,
+        out string label,
+        out string target)
     {
-        var closeLabel = FindLabelClose(source, index);
-
-        if (closeLabel < 0 || closeLabel + 1 >= source.Length || source[closeLabel + 1] != '(')
+        if (closeLabel + 1 >= source.Length || source[closeLabel + 1] != '(')
         {
             end = -1;
             label = string.Empty;
@@ -1100,69 +1195,6 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         return true;
     }
 
-    /// <summary>
-    /// Finds the label-closing <c>]</c> for a link opened at <paramref name="index"/>, tracking
-    /// bracket nesting depth rather than accepting the first unescaped <c>]</c> regardless of
-    /// context. A label may legitimately contain its own balanced <c>[...]</c> - a literal
-    /// reference marker ("[See [1]](url)") or a nested image ("[![alt](img.png)](url)", the common
-    /// "linked image" pattern - and the label's true end is the <c>]</c> that returns nesting back
-    /// to zero, not whichever <c>]</c> happens to appear first.
-    /// </summary>
-    /// <param name="source">The complete inline source.</param>
-    /// <param name="index">The zero-based offset of the opening <c>[</c>.</param>
-    /// <returns>The zero-based offset of the matching <c>]</c>, or -1 when the brackets never balance.</returns>
-    [Pure]
-    private static int FindLabelClose(string source, int index)
-    {
-        var depth = 1;
-        var cursor = index + 1;
-
-        while (cursor < source.Length)
-        {
-            if (source[cursor] == '\\' && cursor + 1 < source.Length)
-            {
-                cursor += 2;
-                continue;
-            }
-
-            if (source[cursor] == '`')
-            {
-                var delimiterLength = CountRun(source, cursor, '`');
-                var codeEnd = FindCodeSpanEnd(source, cursor + delimiterLength, delimiterLength);
-
-                if (codeEnd >= 0)
-                {
-                    cursor = codeEnd + delimiterLength;
-                    continue;
-                }
-            }
-
-            if (source[cursor] == '<' && TryAngleAutolink(source, cursor, out var angleEnd, out _, out _))
-            {
-                cursor = angleEnd;
-                continue;
-            }
-
-            if (source[cursor] == '[')
-            {
-                depth++;
-            }
-            else if (source[cursor] == ']')
-            {
-                depth--;
-
-                if (depth == 0)
-                {
-                    return cursor;
-                }
-            }
-
-            cursor++;
-        }
-
-        return -1;
-    }
-
     [Pure]
     private static bool TryWikiLink(
         string source,
@@ -1224,32 +1256,6 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             }
 
             index = found + value.Length;
-        }
-
-        return -1;
-    }
-
-    [Pure]
-    private static int FindCodeSpanEnd(string source, int start, int delimiterLength)
-    {
-        var index = start;
-
-        while (index < source.Length)
-        {
-            if (source[index] != '`')
-            {
-                index++;
-                continue;
-            }
-
-            var length = CountRun(source, index, '`');
-
-            if (length == delimiterLength)
-            {
-                return index;
-            }
-
-            index += length;
         }
 
         return -1;
@@ -1458,8 +1464,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         return true;
     }
 
-    [Pure]
-    private static bool TryExtendedAutolink(
+    private bool TryExtendedAutolink(
         string source,
         int index,
         out int end,
@@ -1484,23 +1489,55 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         while (length < remainder.Length && remainder[length] is > ' ' and not ('\u007f' or '<' or '>'))
         {
             length++;
+            InlineCandidateScanCount++;
         }
 
         while (length > 0 && remainder[length - 1] is '.' or ',' or ';' or ':' or '!' or '?' or '*' or '_' or '~')
         {
             length--;
+            InlineCandidateScanCount++;
         }
 
-        while (length > 0 && remainder[length - 1] == ')' &&
-               CountCharacter(remainder[..length], ')') > CountCharacter(remainder[..length], '('))
+        var openingParentheses = 0;
+        var closingParentheses = 0;
+        var openingBrackets = 0;
+        var closingBrackets = 0;
+
+        foreach (var character in remainder[..length])
         {
-            length--;
+            InlineCandidateScanCount++;
+
+            switch (character)
+            {
+                case '(':
+                    openingParentheses++;
+                    break;
+                case ')':
+                    closingParentheses++;
+                    break;
+                case '[':
+                    openingBrackets++;
+                    break;
+                case ']':
+                    closingBrackets++;
+                    break;
+                default:
+                    break;
+            }
         }
 
-        while (length > 0 && remainder[length - 1] == ']' &&
-               CountCharacter(remainder[..length], ']') > CountCharacter(remainder[..length], '['))
+        while (length > 0 && remainder[length - 1] == ')' && closingParentheses > openingParentheses)
         {
             length--;
+            closingParentheses--;
+            InlineCandidateScanCount++;
+        }
+
+        while (length > 0 && remainder[length - 1] == ']' && closingBrackets > openingBrackets)
+        {
+            length--;
+            closingBrackets--;
+            InlineCandidateScanCount++;
         }
 
         text = remainder[..length].ToString();
@@ -1973,6 +2010,10 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     }
 
     [Pure]
+    private static bool IsBlankLine(string source) =>
+        !source.AsSpan().ContainsAnyExcept(' ', '\t');
+
+    [Pure]
     private static int CountRun(string source, int start, char value)
     {
         var end = start;
@@ -2020,19 +2061,4 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         return (slashes & 1) == 1;
     }
 
-    [Pure]
-    private static int CountCharacter(ReadOnlySpan<char> source, char value)
-    {
-        var count = 0;
-
-        foreach (var character in source)
-        {
-            if (character == value)
-            {
-                count++;
-            }
-        }
-
-        return count;
-    }
 }

@@ -284,4 +284,83 @@ public sealed class DocumentBlockControlTests
         // Assert
         checkBox.Bounds.Width.ShouldBeGreaterThan(previousWidth);
     }
+
+    /// <summary>Verifies a collapsed inline control is absent from flow and can return without
+    /// restructuring the semantic tree.</summary>
+    [Fact]
+    public void Layout_WhenInlineControlVisibilityTransitions_OmitsAndRestoresItsFlowToken()
+    {
+        // Arrange
+        var checkBox = new CheckBox("Choice");
+        var document = new Document
+        {
+            Blocks =
+            {
+                new DocumentParagraph
+                {
+                    Inlines =
+                    {
+                        new DocumentTextRun("Before "),
+                        new DocumentInlineControl(checkBox),
+                        new DocumentTextRun(" After")
+                    }
+                }
+            }
+        };
+        checkBox.Visibility = Visibility.Collapsed;
+
+        // Act and assert
+        using (var collapsed = new DocumentRenderProbe(document, new Size(30, 2)))
+        {
+            collapsed.Row(0).ShouldBe("Before  After");
+        }
+
+        checkBox.Visibility = Visibility.Visible;
+
+        using (var visible = new DocumentRenderProbe(document, new Size(30, 2)))
+        {
+            visible.Row(0).ShouldContain("Choice");
+        }
+
+        checkBox.Visibility = Visibility.Collapsed;
+
+        using var collapsedAgain = new DocumentRenderProbe(document, new Size(30, 2));
+        collapsedAgain.Row(0).ShouldBe("Before  After");
+    }
+
+    /// <summary>Verifies a collapsed block control contributes neither a row nor sibling spacing
+    /// while retaining ownership for a later visible layout.</summary>
+    [Fact]
+    public void Layout_WhenBlockControlVisibilityTransitions_OmitsAndRestoresTheBlock()
+    {
+        // Arrange
+        var button = new CheckBox("Hidden") { Visibility = Visibility.Collapsed };
+        var document = new Document
+        {
+            Blocks =
+            {
+                new DocumentBlockControl(button),
+                new DocumentParagraph("After")
+            }
+        };
+
+        // Act and assert
+        using (var collapsed = new DocumentRenderProbe(document, new Size(20, 4)))
+        {
+            collapsed.Row(0).ShouldBe("After");
+        }
+
+        button.Visibility = Visibility.Visible;
+
+        using (var visible = new DocumentRenderProbe(document, new Size(20, 4)))
+        {
+            button.Bounds.Y.ShouldBe(0);
+            visible.Row(2).ShouldBe("After");
+        }
+
+        button.Visibility = Visibility.Collapsed;
+
+        using var collapsedAgain = new DocumentRenderProbe(document, new Size(20, 4));
+        collapsedAgain.Row(0).ShouldBe("After");
+    }
 }

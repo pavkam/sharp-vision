@@ -126,20 +126,7 @@ public sealed class Document:
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(reader);
-        VerifyMutable();
-        var result = reader.Read(source, options);
-        ArgumentNullException.ThrowIfNull(result);
-
-        result.ValidateForConsumption(nameof(reader));
-
-        Blocks.Clear();
-
-        foreach (var block in result.Blocks)
-        {
-            Blocks.Add(block);
-        }
-
-        return result;
+        return LoadCore(source, reader, options, observeCancellation: false, cancellationToken: default);
     }
 
     /// <summary>Reads a bounded text stream asynchronously, leaves it open, and replaces the current tree.</summary>
@@ -221,7 +208,8 @@ public sealed class Document:
                 ArrayPool<char>.Shared.Return(buffer, clearArray: true);
             }
 
-            return Load(builder.ToString(), reader, options);
+            cancellationToken.ThrowIfCancellationRequested();
+            return LoadCore(builder.ToString(), reader, options, observeCancellation: true, cancellationToken);
         }
         catch
         {
@@ -232,6 +220,45 @@ public sealed class Document:
 
             throw;
         }
+    }
+
+    private DocumentReadResult LoadCore(
+        string source,
+        IDocumentFormatReader reader,
+        DocumentReadOptions? options,
+        bool observeCancellation,
+        CancellationToken cancellationToken)
+    {
+        VerifyMutable();
+
+        if (observeCancellation)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        var result = reader.Read(source, options);
+        ArgumentNullException.ThrowIfNull(result);
+
+        if (observeCancellation)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        result.ValidateForConsumption(nameof(reader));
+
+        if (observeCancellation)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        Blocks.Clear();
+
+        foreach (var block in result.Blocks)
+        {
+            Blocks.Add(block);
+        }
+
+        return result;
     }
 
     /// <summary>Gets how many structural reconciliations have run, exposing the invariant that

@@ -175,9 +175,16 @@ internal sealed class DocumentLayout
         DocumentFaceKind? foregroundOverride,
         bool beginFirst = true)
     {
+        var emittedBlocks = 0;
+
         for (var index = 0; index < blocks.Count; index++)
         {
-            if (index > 0)
+            if (blocks[index] is DocumentBlockControl { Control.Visibility: Visibility.Collapsed })
+            {
+                continue;
+            }
+
+            if (emittedBlocks > 0)
             {
                 for (var blank = 0; blank < spacing; blank++)
                 {
@@ -185,12 +192,13 @@ internal sealed class DocumentLayout
                 }
             }
 
-            if (beginFirst || index > 0)
+            if (beginFirst || emittedBlocks > 0)
             {
                 _selectionBuilder.BeginBlockValue();
             }
 
             EmitBlock(blocks[index], indent, face, listDepth, foregroundOverride);
+            emittedBlocks++;
         }
     }
 
@@ -799,7 +807,7 @@ internal sealed class DocumentLayout
                     break;
 
                 case DocumentInlineControl control:
-                    if (control.Control.IsDisposed)
+                    if (control.Control.IsDisposed || control.Control.Visibility == Visibility.Collapsed)
                     {
                         break;
                     }

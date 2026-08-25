@@ -338,7 +338,8 @@ public sealed class MarkdownDocumentReaderTests
         wiki.Target.ShouldBe("Target#Part");
 
         var tasks = result.Blocks[1].ShouldBeOfType<DocumentList>();
-        tasks.Items[0].Blocks[0].ShouldBeOfType<DocumentBlockControl>().Control
+        tasks.Items[0].Blocks[0].ShouldBeOfType<DocumentParagraph>().Inlines[0]
+            .ShouldBeOfType<DocumentInlineControl>().Control
             .ShouldBeOfType<CheckBox>().IsChecked.ShouldBe(true);
 
         var first = tasks.Items[2].Blocks[0].ShouldBeOfType<DocumentBlockControl>().Control
@@ -372,14 +373,60 @@ public sealed class MarkdownDocumentReaderTests
         });
 
         // Act
-        var control = reader.Read(source).Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentList>()
+        var paragraph = reader.Read(source).Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentList>()
             .Items.ShouldHaveSingleItem().Blocks.ShouldHaveSingleItem()
-            .ShouldBeOfType<DocumentBlockControl>().Control;
+            .ShouldBeOfType<DocumentParagraph>();
 
         // Assert
-        var checkBox = control.ShouldBeOfType<CheckBox>();
+        var checkBox = paragraph.Inlines[0].ShouldBeOfType<DocumentInlineControl>().Control
+            .ShouldBeOfType<CheckBox>();
         checkBox.IsChecked.ShouldBe(expectedChecked);
-        checkBox.Text.ShouldBe("task");
+        checkBox.Text.ShouldBeEmpty();
+        paragraph.Inlines[^1].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("task");
+    }
+
+    /// <summary>Verifies a task marker adds an interactive checkbox without bypassing Markdown
+    /// parsing for the item's authored inline label.</summary>
+    [Fact]
+    public void Read_WhenTaskLabelContainsInlineMarkdown_PreservesItsSemanticInlines()
+    {
+        // Arrange
+        var reader = new MarkdownDocumentReader(new MarkdownOptions
+        {
+            Extensions = MarkdownExtension.TaskLists
+        });
+
+        // Act
+        var paragraph = reader.Read("- [ ] **bold** and [link](target)").Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem().Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines[0].ShouldBeOfType<DocumentInlineControl>().Control.ShouldBeOfType<CheckBox>()
+            .Text.ShouldBeEmpty();
+        paragraph.Inlines.ShouldContain(static inline => inline is DocumentStrong);
+        paragraph.Inlines.OfType<DocumentLink>().ShouldContain(static link => link.Target == "target");
+    }
+
+    /// <summary>Verifies only ASCII spaces and tabs make a CommonMark blank line; broader Unicode
+    /// whitespace remains authored paragraph content.</summary>
+    [Theory]
+    [InlineData("\u00a0")]
+    [InlineData("\u000c")]
+    [InlineData(" \u00a0\t")]
+    public void Read_WhenLineContainsUnicodeWhitespace_PreservesItInTheParagraph(string authoredWhitespace)
+    {
+        // Arrange
+        var source = $"before\n{authoredWhitespace}\nafter";
+
+        // Act
+        var paragraph = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.OfType<DocumentTextRun>().Select(static run => run.Text)
+            .ShouldContain(authoredWhitespace.Trim(' ', '\t'));
+        paragraph.Inlines.OfType<DocumentSoftBreak>().Count().ShouldBe(2);
     }
 
     /// <summary>Verifies missing separators and non-ASCII whitespace do not become task markers.</summary>
@@ -1664,6 +1711,33 @@ public sealed class MarkdownDocumentReaderTests
         }
     }
 
+    /// <summary>Verifies hostile link, code-span, and extended-autolink candidates use bounded
+    /// delimiter indexing instead of rescanning their remaining suffix at every opener.</summary>
+    [Fact]
+    public void Read_WhenInlineCandidatesAreHostile_ExaminesBoundedCandidateWork()
+    {
+        // Arrange
+        var cases = new[]
+        {
+            (Source: new string('[', 10_000) + "](target)", Extensions: MarkdownExtension.None),
+            (Source: string.Join('a', Enumerable.Range(1, 400).Select(static length => new string('`', length))),
+                Extensions: MarkdownExtension.None),
+            (Source: "https://example.com/" + new string(')', 10_000), Extensions: MarkdownExtension.Autolinks)
+        };
+
+        foreach (var (source, extensions) in cases)
+        {
+            var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = extensions });
+
+            // Act
+            var result = reader.Read(source);
+
+            // Assert
+            result.Blocks.ShouldNotBeEmpty();
+            reader.InlineCandidateScanCount.ShouldBeLessThanOrEqualTo(source.Length * 6);
+        }
+    }
+
     /// <summary>Verifies continuation lines remain inside the list item that introduced them.</summary>
     [Fact]
     public void Read_WhenListItemHasContinuationLine_PreservesOneItemParagraph()
@@ -1882,10 +1956,21 @@ public sealed class MarkdownDocumentReaderTests
         // Assert
         list.IsLoose.ShouldBeTrue();
         list.Items.Count.ShouldBe(2);
-        _ = list.Items[firstIsInteractive ? 0 : 1].Blocks.ShouldHaveSingleItem()
-            .ShouldBeOfType<DocumentBlockControl>();
-        _ = list.Items[firstIsInteractive ? 1 : 0].Blocks.ShouldHaveSingleItem()
+        var interactive = list.Items[firstIsInteractive ? 0 : 1].Blocks.ShouldHaveSingleItem();
+        var plain = list.Items[firstIsInteractive ? 1 : 0].Blocks.ShouldHaveSingleItem()
             .ShouldBeOfType<DocumentParagraph>();
+
+        if (extension == MarkdownExtension.TaskLists)
+        {
+            _ = interactive.ShouldBeOfType<DocumentParagraph>().Inlines[0]
+                .ShouldBeOfType<DocumentInlineControl>().Control.ShouldBeOfType<CheckBox>();
+        }
+        else
+        {
+            _ = interactive.ShouldBeOfType<DocumentBlockControl>().Control.ShouldBeOfType<RadioButton>();
+        }
+
+        plain.Inlines.OfType<DocumentInlineControl>().ShouldBeEmpty();
     }
 
     /// <summary>Verifies blank lines that terminate a list do not retroactively loosen its items.</summary>

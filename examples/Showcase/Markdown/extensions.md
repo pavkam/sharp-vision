@@ -15,8 +15,8 @@ Table bodies may omit pipes and missing trailing cells remain empty.
 
 ## Genuine form controls
 
-- [x] Parse the document
-- [ ] Ship the application
+- [x] Parse the **document**
+- [ ] Ship the [application](https://example.com/release)
 
 - (x) Stable channel
 - ( ) Preview channel

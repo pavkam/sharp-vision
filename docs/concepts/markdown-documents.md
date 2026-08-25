@@ -84,7 +84,10 @@ Paragraph raw content follows the
 spaces and tabs at the paragraph edges and around soft line breaks are
 structural and are removed before inline parsing. Two trailing spaces or an
 unescaped trailing backslash still create an interior hard break, while trailing
-markers at the end of a paragraph are stripped without creating a break.
+markers at the end of a paragraph are stripped without creating a break. Only an
+empty line or a line containing ASCII spaces and tabs is blank; non-breaking
+spaces, form feeds, and other Unicode whitespace remain authored paragraph
+content, including inside recursive blocks.
 
 Each normalized paragraph is parsed as one inline stream rather than one stream
 per physical source line. Emphasis, strong emphasis, strikethrough, and link
@@ -92,6 +95,12 @@ labels may therefore contain semantic soft or hard break nodes without losing
 their container. A source line ending inside a code span instead normalizes to a
 single literal space, as required by the code-span grammar. Escaped delimiters
 remain literal across those boundaries.
+
+Inline parsing builds code-span and balanced link-label indexes in bounded
+passes before consuming candidates. Malformed repeated brackets and unmatched
+backtick runs therefore do not rescan the remaining suffix at every opener;
+extended-autolink delimiter balance is likewise counted once before trailing
+punctuation is removed.
 
 Asterisk and underscore emphasis runs use the
 [CommonMark 0.31.2 left- and right-flanking rules](https://spec.commonmark.org/0.31.2/#emphasis-and-strong-emphasis)
@@ -172,7 +181,7 @@ silent gaps:
 | ------------------- | ------------------------------------ | ---------------------------------------------------------------- |
 | `Strikethrough`     | `~text~` / `~~text~~`                | `DocumentStrikethrough`                                          |
 | `Tables`            | GFM pipe table                       | `DocumentTable` with header and cell alignment                   |
-| `TaskLists`         | `- [ ]` / `- [x]`                    | Genuine `CheckBox` inside `DocumentBlockControl`                 |
+| `TaskLists`         | `- [ ]` / `- [x]`                    | Inline `CheckBox` followed by the parsed semantic label          |
 | `Autolinks`         | Extended URL                         | Activatable `DocumentLink`                                       |
 | `WikiLinks`         | `[[target]]` / `[[target \| label]]` | `DocumentLink` preserving target, heading, or block suffix       |
 | `Callouts`          | `> [!NOTE] Title`                    | Typed, semantically colored `DocumentCallout` with nested blocks |
@@ -243,7 +252,11 @@ Task markers follow GFM's ASCII-whitespace rule: an unchecked marker may contain
 an ASCII whitespace character between its brackets, and at least one ASCII
 whitespace character must separate the closing bracket from the label. All such
 separator whitespace is structural and omitted from the generated `CheckBox`
-text; Unicode whitespace such as a non-breaking space remains literal.
+text. The empty-caption checkbox is the first inline in the item paragraph,
+followed by a visual gap and the label parsed through the ordinary Markdown
+inline grammar. Emphasis, code spans, links, and escapes therefore keep the same
+semantics as a non-task list item; Unicode whitespace such as a non-breaking
+space remains literal.
 
 Those generated labels participate in the owning `Document`'s continuous
 semantic selection like directly embedded controls. Copy output preserves their

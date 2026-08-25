@@ -118,6 +118,58 @@ public sealed class DocumentFormatReaderTests
             .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("old");
     }
 
+    /// <summary>Verifies cancellation delivered by the EOF read is observed before parsing or
+    /// replacing the current tree.</summary>
+    [Fact]
+    public async Task LoadAsync_WhenEofReadCancelsToken_ThrowsAndPreservesExistingBlocksAsync()
+    {
+        // Arrange
+        var document = new DocumentControl
+        {
+            Blocks = { new DocumentParagraph("old") }
+        };
+        using var cancellation = new CancellationTokenSource();
+        await using var stream = new CancelAtEndStream(Encoding.UTF8.GetBytes("new"), cancellation);
+
+        // Act
+        var action = async () => await document.LoadAsync(
+            stream,
+            new PlainTextDocumentReaderProbe(),
+            cancellationToken: cancellation.Token);
+
+        // Assert
+        _ = await action.ShouldThrowAsync<OperationCanceledException>();
+        stream.Position.ShouldBe(0);
+        document.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("old");
+    }
+
+    /// <summary>Verifies cancellation observed after format parsing still wins before tree
+    /// validation and replacement.</summary>
+    [Fact]
+    public async Task LoadAsync_WhenReaderCancelsToken_ThrowsAndPreservesExistingBlocksAsync()
+    {
+        // Arrange
+        var document = new DocumentControl
+        {
+            Blocks = { new DocumentParagraph("old") }
+        };
+        using var cancellation = new CancellationTokenSource();
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes("new"));
+
+        // Act
+        var action = async () => await document.LoadAsync(
+            stream,
+            new CancelingDocumentFormatReaderProbe(cancellation),
+            cancellationToken: cancellation.Token);
+
+        // Assert
+        _ = await action.ShouldThrowAsync<OperationCanceledException>();
+        stream.Position.ShouldBe(0);
+        document.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("old");
+    }
+
     /// <summary>Verifies a format-reader failure after decoding restores a seekable source to its
     /// original byte position.</summary>
     [Fact]

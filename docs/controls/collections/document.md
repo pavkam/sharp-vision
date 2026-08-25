@@ -130,10 +130,11 @@ instead of subscribing to each one.
 `LoadAsync` reads `source` into a character buffer bounded by `options`'
 `MaximumCharacters` - throwing `ArgumentOutOfRangeException` the moment decoded
 content would exceed it, before any block ever replaces the current tree - then
-calls `Load` with the accumulated text. Each decode read requests at most the
-remaining allowance plus one character, so excess input is detected without
-filling the pooled buffer first. `encoding` defaults to strict UTF-8 with
-byte-order-mark detection.
+checks cancellation at the EOF-to-parse handoff, parses the accumulated text,
+and checks again before validation and replacement. Each decode read requests at
+most the remaining allowance plus one character, so excess input is detected
+without filling the pooled buffer first. `encoding` defaults to strict UTF-8
+with byte-order-mark detection.
 
 Both load paths revalidate the reader result as one complete mutable tree before
 clearing existing content. Cross-root duplicate controls, attached nodes, and
@@ -363,6 +364,8 @@ own indent rather than at the document's edge.
 The control participates in the ordinary retained tree, routed input, focus,
 measurement, and disposal contracts. A desired-size change reflows later
 document content. The same control instance cannot appear in two document nodes.
+A collapsed block control remains retained but contributes neither rows nor
+sibling spacing; making it visible restores its ordinary block position.
 
 **Known limitation:** the document measures every embedded control unbounded
 before its own layout pass ever runs, so a percentage `Width` or `Height` on the
@@ -418,6 +421,11 @@ on its own line and overflows it rather than being split mid-word.
 Whitespace an author actually typed survives — at the start of a paragraph and
 immediately after a hard break — while whitespace that a wrap pushed to the
 front of a continuation line is dropped.
+
+`DocumentInlineControl` contributes one indivisible, exactly one-cell-high
+retained control to that flow. A collapsed inline control remains retained but
+contributes no token or width; making it visible restores its position without
+restructuring the document tree.
 
 ### DocumentTextRun
 
