@@ -153,6 +153,11 @@ public sealed class Document:
     /// <param name="encoding">The optional source encoding; UTF-8 is used when null.</param>
     /// <param name="cancellationToken">Cancels asynchronous stream reads before mutation.</param>
     /// <returns>The applied result.</returns>
+    /// <remarks>
+    /// Lifecycle validation completes before the first read. If <paramref name="source"/> supports
+    /// seeking, any failure restores its original byte position. A non-seekable source remains at
+    /// the position reached by decoding because consumed bytes cannot be restored.
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="reader"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="source"/> is not readable.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Decoded content exceeds the configured limit.</exception>
@@ -168,6 +173,7 @@ public sealed class Document:
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(reader);
+        VerifyMutable();
 
         if (!source.CanRead)
         {
@@ -176,43 +182,59 @@ public sealed class Document:
 
         options ??= new DocumentReadOptions();
         encoding ??= new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
-        using var textReader = new StreamReader(
-            source,
-            encoding,
-            detectEncodingFromByteOrderMarks: true,
-            bufferSize: 4096,
-            leaveOpen: true);
-        var builder = new StringBuilder(Math.Min(options.MaximumCharacters, 4096));
-        var buffer = ArrayPool<char>.Shared.Rent(Math.Min(options.MaximumCharacters, 4096));
+        var initialPosition = source.CanSeek ? source.Position : (long?) null;
 
         try
         {
-            while (true)
+            using var textReader = new StreamReader(
+                source,
+                encoding,
+                detectEncodingFromByteOrderMarks: true,
+                bufferSize: 4096,
+                leaveOpen: true);
+            var builder = new StringBuilder(Math.Min(options.MaximumCharacters, 4096));
+            var buffer = ArrayPool<char>.Shared.Rent(Math.Min(options.MaximumCharacters, 4096));
+
+            try
             {
-                var count = await textReader.ReadAsync(buffer.AsMemory(), cancellationToken);
-
-                if (count == 0)
+                while (true)
                 {
-                    break;
-                }
+                    var remaining = options.MaximumCharacters - builder.Length;
+                    var requested = (int) Math.Min(buffer.Length, (long) remaining + 1);
+                    var count = await textReader.ReadAsync(buffer.AsMemory(0, requested), cancellationToken);
 
-                if ((long) builder.Length + count > options.MaximumCharacters)
-                {
-                    throw new ArgumentOutOfRangeException(
-                        nameof(source),
-                        builder.Length + count,
-                        "The document exceeds the configured maximum character count.");
-                }
+                    if (count == 0)
+                    {
+                        break;
+                    }
 
-                _ = builder.Append(buffer, 0, count);
+                    if ((long) builder.Length + count > options.MaximumCharacters)
+                    {
+                        throw new ArgumentOutOfRangeException(
+                            nameof(source),
+                            builder.Length + count,
+                            "The document exceeds the configured maximum character count.");
+                    }
+
+                    _ = builder.Append(buffer, 0, count);
+                }
             }
-        }
-        finally
-        {
-            ArrayPool<char>.Shared.Return(buffer, clearArray: true);
-        }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(buffer, clearArray: true);
+            }
 
-        return Load(builder.ToString(), reader, options);
+            return Load(builder.ToString(), reader, options);
+        }
+        catch
+        {
+            if (initialPosition is { } position)
+            {
+                _ = source.Seek(position, SeekOrigin.Begin);
+            }
+
+            throw;
+        }
     }
 
     /// <summary>Invalidates the projected content after the node tree structurally changes.</summary>

@@ -44,8 +44,52 @@ public sealed class DocumentFormatReaderTests
 
         // Assert
         _ = await action.ShouldThrowAsync<ArgumentOutOfRangeException>();
+        stream.Position.ShouldBe(0);
         document.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
             .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("old");
+    }
+
+    /// <summary>Verifies a failed bounded read restores the exact starting byte position even when
+    /// the decoded characters use multiple UTF-8 bytes.</summary>
+    [Fact]
+    public async Task LoadAsync_WhenMultibyteTextExceedsLimit_RestoresSeekableSourcePositionAsync()
+    {
+        // Arrange
+        var document = new DocumentControl();
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes("xxéé"));
+        stream.Position = 2;
+        var options = new DocumentReadOptions { MaximumCharacters = 1 };
+
+        // Act
+        var action = async () => await document.LoadAsync(
+            stream,
+            new PlainTextDocumentReaderProbe(),
+            options,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        _ = await action.ShouldThrowAsync<ArgumentOutOfRangeException>();
+        stream.Position.ShouldBe(2);
+    }
+
+    /// <summary>Verifies strict decoding failure restores a seekable source to its original byte
+    /// position.</summary>
+    [Fact]
+    public async Task LoadAsync_WhenUtf8IsMalformed_RestoresSeekableSourcePositionAsync()
+    {
+        // Arrange
+        var document = new DocumentControl();
+        await using var stream = new MemoryStream([0xc3, 0x28]);
+
+        // Act
+        var action = async () => await document.LoadAsync(
+            stream,
+            new PlainTextDocumentReaderProbe(),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        _ = await action.ShouldThrowAsync<DecoderFallbackException>();
+        stream.Position.ShouldBe(0);
     }
 
     /// <summary>Verifies a pre-canceled token is observed before any block replaces the current tree.</summary>
@@ -69,8 +113,80 @@ public sealed class DocumentFormatReaderTests
 
         // Assert
         _ = await action.ShouldThrowAsync<OperationCanceledException>();
+        stream.Position.ShouldBe(0);
         document.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
             .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("old");
+    }
+
+    /// <summary>Verifies a format-reader failure after decoding restores a seekable source to its
+    /// original byte position.</summary>
+    [Fact]
+    public async Task LoadAsync_WhenFormatReaderFails_RestoresSeekableSourcePositionAsync()
+    {
+        // Arrange
+        var document = new DocumentControl();
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes("text"));
+
+        // Act
+        var action = async () => await document.LoadAsync(
+            stream,
+            new ThrowingDocumentFormatReaderProbe(),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        _ = await action.ShouldThrowAsync<InvalidDataException>();
+        stream.Position.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a disposed document rejects asynchronous loading before reading or invoking
+    /// the format reader.</summary>
+    [Fact]
+    public async Task LoadAsync_WhenDocumentIsDisposed_DoesNotConsumeOrParseSourceAsync()
+    {
+        // Arrange
+        var document = new DocumentControl();
+        var reader = new StaticDocumentFormatReaderProbe(
+            new DocumentReadResult([new DocumentParagraph("parsed")]));
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes("text"));
+        document.Dispose();
+
+        // Act
+        var action = async () => await document.LoadAsync(
+            stream,
+            reader,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        _ = await action.ShouldThrowAsync<ObjectDisposedException>();
+        stream.Position.ShouldBe(0);
+        reader.ReadCalls.ShouldBe(0);
+    }
+
+    /// <summary>Verifies an attached document rejects off-dispatcher asynchronous loading before
+    /// reading or invoking the format reader.</summary>
+    [Fact]
+    public async Task LoadAsync_WhenCalledOffDispatcher_DoesNotConsumeOrParseSourceAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var document = new DocumentControl();
+        var reader = new StaticDocumentFormatReaderProbe(
+            new DocumentReadResult([new DocumentParagraph("parsed")]));
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes("text"));
+        await dispatcher.InvokeAsync(
+            () => document.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        var action = async () => await document.LoadAsync(
+            stream,
+            reader,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        _ = await action.ShouldThrowAsync<InvalidOperationException>();
+        stream.Position.ShouldBe(0);
+        reader.ReadCalls.ShouldBe(0);
     }
 
     /// <summary>Verifies an explicit non-default encoding decodes the stream instead of the UTF-8 default.</summary>

@@ -122,10 +122,17 @@ instead of subscribing to each one.
 `LoadAsync` reads `source` into a character buffer bounded by `options`'
 `MaximumCharacters` - throwing `ArgumentOutOfRangeException` the moment decoded
 content would exceed it, before any block ever replaces the current tree - then
-calls `Load` with the accumulated text. `encoding` defaults to UTF-8 with
-byte-order-mark detection; `source` is never disposed or left positioned
-mid-read on failure, matching `TextInput`'s and `CodeView`'s own "the host owns
-the stream" convention.
+calls `Load` with the accumulated text. Each decode read requests at most the
+remaining allowance plus one character, so excess input is detected without
+filling the pooled buffer first. `encoding` defaults to strict UTF-8 with
+byte-order-mark detection.
+
+The document validates its lifecycle and dispatcher access before the first read
+and never disposes `source`. On any bound, decoding, cancellation, reader, or
+commit failure, a seekable source returns to its original byte position. A
+non-seekable source remains at the position reached by decoding because its
+consumed bytes cannot be restored; callers that require retry semantics must
+provide a seekable or independently buffered source.
 
 > [!NOTE]
 >
