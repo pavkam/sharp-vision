@@ -11,6 +11,8 @@ Extended autolinks activate bare addresses such as (https://example.com/docs).
 | **Bold** and _soft_ | `ready` + ~~old~~ | [docs](https://example.com/docs) |
 | Unicode: café 🧭    |                   |                              240 |
 
+Table bodies may omit pipes and missing trailing cells remain empty.
+
 ## Genuine form controls
 
 - [x] Parse the document

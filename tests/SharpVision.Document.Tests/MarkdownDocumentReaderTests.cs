@@ -625,6 +625,55 @@ public sealed class MarkdownDocumentReaderTests
         body.Cells[1].Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentCodeSpan>().Text.ShouldBe("c|d");
     }
 
+    /// <summary>Verifies a GFM table data row may omit pipes and receives empty cells for
+    /// missing trailing columns.</summary>
+    [Fact]
+    public void Read_WhenTableBodyRowOmitsPipes_PreservesRowAndMissingCell()
+    {
+        // Arrange
+        const string source = "| A | B |\n| --- | --- |\nvalue";
+        var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = MarkdownExtension.Tables });
+
+        // Act
+        var table = reader.Read(source).Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentTable>();
+
+        // Assert
+        table.Rows.Count.ShouldBe(2);
+        table.Rows[1].Cells[0].Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("value");
+        table.Rows[1].Cells[1].Inlines.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies every implemented block family ends a GFM table even when its source
+    /// line contains a pipe that could otherwise resemble a data row.</summary>
+    [Theory]
+    [InlineData("# heading | text", "heading")]
+    [InlineData("> quote | text", "quote")]
+    [InlineData("- item | text", "list")]
+    [InlineData("```text | metadata\ncode\n```", "code")]
+    public void Read_WhenBlockStartsAfterTable_DoesNotConsumeBlockAsDataRow(string tail, string blockKind)
+    {
+        // Arrange
+        var source = $"| A | B |\n| --- | --- |\n{tail}";
+        var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = MarkdownExtension.Tables });
+
+        // Act
+        var result = reader.Read(source);
+
+        // Assert
+        var table = result.Blocks[0].ShouldBeOfType<DocumentTable>();
+        table.Rows.Count.ShouldBe(1);
+
+        _ = blockKind switch
+        {
+            "heading" => (DocumentBlock) result.Blocks[1].ShouldBeOfType<DocumentHeading>(),
+            "quote" => result.Blocks[1].ShouldBeOfType<DocumentBlockQuote>(),
+            "list" => result.Blocks[1].ShouldBeOfType<DocumentList>(),
+            "code" => result.Blocks[1].ShouldBeOfType<DocumentCodeBlock>(),
+            _ => throw new InvalidOperationException($"Unexpected block kind '{blockKind}'.")
+        };
+    }
+
     /// <summary>Verifies nested list indentation creates item-owned structure instead of root siblings.</summary>
     [Fact]
     public void Read_WhenListContainsNestedList_PreservesItemOwnedStructure()

@@ -103,6 +103,10 @@ silent gaps:
 autolinks. `All` enables every extension. Enabling one individual flag never
 implicitly enables another.
 
+GFM table bodies accept rows without pipes and fill missing trailing cells with
+empty content. A blank line or any recognized block start ends the table, even
+when that block's source line contains a pipe.
+
 The standard callout kinds use distinct theme semantic colors: `NOTE` uses
 `Info`, `TIP` uses `Success`, `IMPORTANT` uses `Accent`, `WARNING` uses
 `Warning`, and `CAUTION` uses `Error`. Matching is case-insensitive. Other kinds

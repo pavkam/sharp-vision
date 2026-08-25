@@ -448,7 +448,9 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         table.Rows.Add(header);
         index += 2;
 
-        while (index < lines.Length && !string.IsNullOrWhiteSpace(lines[index]) && lines[index].Contains('|'))
+        while (index < lines.Length &&
+               !string.IsNullOrWhiteSpace(lines[index]) &&
+               !IsBlockStart(lines[index]))
         {
             table.Rows.Add(CreateTableRow(SplitTableRow(lines[index]), alignments, isHeader: false));
             index++;
