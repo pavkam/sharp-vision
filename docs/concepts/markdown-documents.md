@@ -78,6 +78,14 @@ their container. A source line ending inside a code span instead normalizes to a
 single literal space, as required by the code-span grammar. Escaped delimiters
 remain literal across those boundaries.
 
+Asterisk and underscore emphasis runs use the
+[CommonMark 0.31.2 left- and right-flanking rules](https://spec.commonmark.org/0.31.2/#emphasis-and-strong-emphasis)
+for opening and closing at every supported run length. Whitespace cannot sit
+inside a delimiter boundary; Unicode punctuation and symbol categories apply the
+specified adjacency exceptions; and an invalid candidate closer is skipped so a
+later valid run can close the container. Underscores additionally retain the
+intraword restrictions defined by those rules.
+
 Ordered-list markers follow the
 [CommonMark 0.31.2 list-item grammar](https://spec.commonmark.org/0.31.2/#list-items):
 one to nine ASCII digits followed by `.` or `)`. Any valid start value forms a

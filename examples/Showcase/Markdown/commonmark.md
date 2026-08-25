@@ -14,6 +14,9 @@ Backslash escapes keep \*punctuation\* literal.
 _Inline emphasis can cross a hard line break\
 without losing its semantic container._
 
+Text*“quoted”* stays literal, while text _“quoted”_ uses punctuation-aware
+flanking.
+
 Paragraph boundary spaces and tabs are structural, while interior spacing stays
 authored content.
 

@@ -615,6 +615,84 @@ public sealed class MarkdownDocumentReaderTests
         paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("foo_bar_baz");
     }
 
+    /// <summary>Verifies whitespace-adjacent delimiter runs cannot open or close emphasis at any
+    /// supported asterisk or underscore run length.</summary>
+    [Theory]
+    [InlineData("x * foo*")]
+    [InlineData("*foo *")]
+    [InlineData("** foo**")]
+    [InlineData("**foo **")]
+    [InlineData("*** foo***")]
+    [InlineData("***foo ***")]
+    [InlineData("_ foo_")]
+    [InlineData("_foo _")]
+    [InlineData("__ foo__")]
+    [InlineData("__foo __")]
+    [InlineData("___ foo___")]
+    [InlineData("___foo ___")]
+    public void Read_WhenEmphasisDelimiterIsWhitespaceAdjacent_PreservesLiteralRuns(string source)
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(source);
+    }
+
+    /// <summary>Verifies punctuation-sensitive opening follows CommonMark's left-flanking rule
+    /// rather than treating every matching asterisk as emphasis.</summary>
+    [Theory]
+    [InlineData("a*\"foo\"*")]
+    [InlineData("a_\"foo\"_")]
+    [InlineData("a*“foo”*")]
+    [InlineData("a*😀foo*")]
+    public void Read_WhenEmphasisOpenerIsBetweenTextAndPunctuation_PreservesLiteralRuns(string source)
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(source);
+    }
+
+    /// <summary>Verifies whitespace before a punctuation-followed opener satisfies the
+    /// punctuation exception in CommonMark's left-flanking rule.</summary>
+    [Theory]
+    [InlineData("a *\"foo\"*", "\"foo\"")]
+    [InlineData("a _\"foo\"_", "\"foo\"")]
+    [InlineData("a *“foo”*", "“foo”")]
+    [InlineData("a *😀foo*", "😀foo")]
+    public void Read_WhenPunctuationFollowedEmphasisOpenerFollowsWhitespace_CreatesEmphasis(
+        string source,
+        string expected)
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.Count.ShouldBe(2);
+        paragraph.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("a ");
+        paragraph.Inlines[1].ShouldBeOfType<DocumentEmphasis>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies an underscore that is both left- and right-flanking inside a word is
+    /// skipped as a closer so the later valid delimiter closes the original run.</summary>
+    [Fact]
+    public void Read_WhenIntrawordUnderscorePrecedesValidCloser_ClosesAtValidDelimiter()
+    {
+        // Arrange and act
+        var emphasis = new MarkdownDocumentReader().Read("_foo_bar_").Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentEmphasis>();
+
+        // Assert
+        emphasis.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("foo_bar");
+    }
+
     /// <summary>Verifies a code span may use a longer delimiter to contain a shorter backtick run.</summary>
     [Fact]
     public void Read_WhenCodeSpanUsesLongDelimiter_PreservesShortBackticks()

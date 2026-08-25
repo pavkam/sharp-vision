@@ -620,7 +620,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 wikiCloserUnavailable = true;
             }
 
-            if (TryDelimited(source, index, "***", out var combinedEnd))
+            if (TryEmphasisDelimited(source, index, "***", out var combinedEnd))
             {
                 Flush();
                 var strong = new DocumentStrong();
@@ -632,7 +632,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continue;
             }
 
-            if (TryDelimited(source, index, "**", out var strongEnd))
+            if (TryEmphasisDelimited(source, index, "**", out var strongEnd))
             {
                 Flush();
                 var strong = new DocumentStrong();
@@ -642,7 +642,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continue;
             }
 
-            if (TryDelimited(source, index, "___", out var combinedUnderscoreEnd))
+            if (TryEmphasisDelimited(source, index, "___", out var combinedUnderscoreEnd))
             {
                 Flush();
                 var strongUnderscore = new DocumentStrong();
@@ -654,7 +654,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continue;
             }
 
-            if (TryDelimited(source, index, "__", out var strongUnderscoreEnd))
+            if (TryEmphasisDelimited(source, index, "__", out var strongUnderscoreEnd))
             {
                 Flush();
                 var strongUnderscoreOnly = new DocumentStrong();
@@ -674,9 +674,8 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continue;
             }
 
-            if (source[index] is '*' or '_' && CanOpenEmphasis(source, index) &&
-                FindUnescaped(source, source[index].ToString(), index + 1) is var emphasisEnd &&
-                emphasisEnd > index + 1)
+            if (source[index] is '*' or '_' &&
+                TryEmphasisDelimited(source, index, source[index].ToString(), out var emphasisEnd))
             {
                 Flush();
                 var emphasis = new DocumentEmphasis();
@@ -747,6 +746,52 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
         end = FindUnescaped(source, delimiter, index + delimiter.Length);
         return end > index + delimiter.Length;
+    }
+
+    [Pure]
+    private static bool TryEmphasisDelimited(string source, int index, string delimiter, out int end)
+    {
+        if (!source.AsSpan(index).StartsWith(delimiter, StringComparison.Ordinal))
+        {
+            end = -1;
+            return false;
+        }
+
+        var marker = delimiter[0];
+        var openingRunLength = CountRun(source, index, marker);
+
+        if (!CanOpenEmphasisRun(source, index, openingRunLength, marker))
+        {
+            end = -1;
+            return false;
+        }
+
+        var cursor = index + delimiter.Length;
+
+        while (cursor < source.Length)
+        {
+            var candidate = FindUnescaped(source, delimiter, cursor);
+
+            if (candidate < 0)
+            {
+                end = -1;
+                return false;
+            }
+
+            var closingRunLength = CountRun(source, candidate, marker);
+
+            if (candidate > index + delimiter.Length &&
+                CanCloseEmphasisRun(source, candidate, closingRunLength, marker))
+            {
+                end = candidate;
+                return true;
+            }
+
+            cursor = candidate + Math.Max(closingRunLength, 1);
+        }
+
+        end = -1;
+        return false;
     }
 
     [Pure]
@@ -1120,12 +1165,65 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     }
 
     [Pure]
-    private static bool CanOpenEmphasis(string source, int index)
+    private static bool CanOpenEmphasisRun(string source, int index, int runLength, char marker)
     {
-        return index + 1 < source.Length && !char.IsWhiteSpace(source[index + 1]) &&
-            (source[index] != '_' || index == 0 ||
-             !char.IsLetterOrDigit(source[index - 1]) || !char.IsLetterOrDigit(source[index + 1]));
+        var (leftFlanking, rightFlanking, beforePunctuation, _) =
+            ClassifyEmphasisRun(source, index, runLength);
+        return marker == '*'
+            ? leftFlanking
+            : leftFlanking && (!rightFlanking || beforePunctuation);
     }
+
+    [Pure]
+    private static bool CanCloseEmphasisRun(string source, int index, int runLength, char marker)
+    {
+        var (leftFlanking, rightFlanking, _, afterPunctuation) =
+            ClassifyEmphasisRun(source, index, runLength);
+        return marker == '*'
+            ? rightFlanking
+            : rightFlanking && (!leftFlanking || afterPunctuation);
+    }
+
+    [Pure]
+    private static (bool LeftFlanking, bool RightFlanking, bool BeforePunctuation, bool AfterPunctuation)
+        ClassifyEmphasisRun(string source, int index, int runLength)
+    {
+        var runEnd = index + runLength;
+        var beforeWhitespace = index == 0 || Rune.IsWhiteSpace(GetRuneBefore(source, index));
+        var afterWhitespace = runEnd >= source.Length || Rune.IsWhiteSpace(Rune.GetRuneAt(source, runEnd));
+        var beforePunctuation = index > 0 && IsPunctuationOrSymbol(GetRuneBefore(source, index));
+        var afterPunctuation = runEnd < source.Length && IsPunctuationOrSymbol(Rune.GetRuneAt(source, runEnd));
+        var leftFlanking = !afterWhitespace && (!afterPunctuation || beforeWhitespace || beforePunctuation);
+        var rightFlanking = !beforeWhitespace && (!beforePunctuation || afterWhitespace || afterPunctuation);
+        return (leftFlanking, rightFlanking, beforePunctuation, afterPunctuation);
+    }
+
+    [Pure]
+    private static Rune GetRuneBefore(string source, int index)
+    {
+        var runeStart = index - 1;
+
+        if (runeStart > 0 && char.IsLowSurrogate(source[runeStart]) && char.IsHighSurrogate(source[runeStart - 1]))
+        {
+            runeStart--;
+        }
+
+        return Rune.GetRuneAt(source, runeStart);
+    }
+
+    [Pure]
+    private static bool IsPunctuationOrSymbol(Rune value) => Rune.GetUnicodeCategory(value) is
+        UnicodeCategory.ConnectorPunctuation or
+        UnicodeCategory.DashPunctuation or
+        UnicodeCategory.OpenPunctuation or
+        UnicodeCategory.ClosePunctuation or
+        UnicodeCategory.InitialQuotePunctuation or
+        UnicodeCategory.FinalQuotePunctuation or
+        UnicodeCategory.OtherPunctuation or
+        UnicodeCategory.MathSymbol or
+        UnicodeCategory.CurrencySymbol or
+        UnicodeCategory.ModifierSymbol or
+        UnicodeCategory.OtherSymbol;
 
     [Pure]
     private static bool IsEscapablePunctuation(char value) =>
