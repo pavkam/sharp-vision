@@ -83,6 +83,33 @@ public sealed class StyleStatesTests
         set.IsPointerOver.ShouldBeNull();
     }
 
+    /// <summary>Verifies root-style memoization includes the caller's complete code-owned default,
+    /// so one library cannot make another library's default depend on call order.</summary>
+    [Fact]
+    public void GetStyleSet_WhenSameTypeAndKeyUseDifferentDefaults_CachesEachDefaultIndependently()
+    {
+        // Arrange
+        var firstDefault = RootDefault();
+        var secondDefault = firstDefault with
+        {
+            Face = firstDefault.Face with { Foreground = SemanticColor.Accent }
+        };
+        var forwardTheme = CreateTheme();
+        var reverseTheme = CreateTheme();
+
+        // Act
+        var forwardFirst = forwardTheme.GetStyleSet("missing", firstDefault);
+        var forwardSecond = forwardTheme.GetStyleSet("missing", secondDefault);
+        var reverseSecond = reverseTheme.GetStyleSet("missing", secondDefault);
+        var reverseFirst = reverseTheme.GetStyleSet("missing", firstDefault);
+
+        // Assert
+        forwardFirst.Normal.ShouldBeSameAs(firstDefault);
+        forwardSecond.Normal.ShouldBeSameAs(secondDefault);
+        reverseSecond.Normal.ShouldBeSameAs(secondDefault);
+        reverseFirst.Normal.ShouldBeSameAs(firstDefault);
+    }
+
     /// <summary>Verifies the root form patches both the "normal" and a named state override onto
     /// the code-owned default.</summary>
     [Fact]

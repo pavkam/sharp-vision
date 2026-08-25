@@ -46,4 +46,7 @@ internal abstract class StyleSlotBase
 
     /// <summary>Releases every upstream and downstream binding edge.</summary>
     internal abstract void DisposeBindings();
+
+    /// <summary>Releases an upstream edge that no longer follows retained ancestry.</summary>
+    internal abstract void ReleaseInvalidBinding();
 }

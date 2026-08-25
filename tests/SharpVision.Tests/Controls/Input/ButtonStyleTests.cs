@@ -66,6 +66,44 @@ public sealed class ButtonStyleTests
         resolved.ShouldBe(ButtonStyle.Filled);
     }
 
+    /// <summary>Verifies a complete local typed style remains authoritative in every interactive
+    /// state rather than having fallback Theme deltas cascaded over it.</summary>
+    [Theory]
+    [InlineData(VisualState.IsPointerOver)]
+    [InlineData(VisualState.FocusWithin)]
+    [InlineData(VisualState.Focused)]
+    [InlineData(VisualState.Pressed)]
+    [InlineData(VisualState.Disabled)]
+    [InlineData(VisualState.IsPointerOver | VisualState.Focused | VisualState.Pressed)]
+    public void ResolveAppearance_WhenCompleteLocalStyleIsAssigned_LocalWinsThemeStates(VisualState state)
+    {
+        // Arrange
+        var local = ButtonStyle.Standard with
+        {
+            Face = new Face(
+                Color.Rgb(1, 2, 3),
+                Color.Rgb(4, 5, 6),
+                TerminalAttributes.Bold,
+                Underline.None,
+                Color.Default),
+            Border = new Border(
+                BorderSide.All,
+                BorderGlyphStyle.Paired,
+                Color.Rgb(7, 8, 9),
+                Color.Rgb(10, 11, 12),
+                TerminalAttributes.Italic),
+            Shadow = ControlStyle.NoShadow
+        };
+        using var button = new Button { Style = local };
+        var expected = button.ResolveAppearance(ThemeCatalog.Dark);
+
+        // Act
+        var actual = button.ResolveAppearance(ThemeCatalog.Dark, state);
+
+        // Assert
+        actual.ShouldBe(expected);
+    }
+
     /// <summary>Verifies a Padding change is classified as a measure-affecting invalidation.</summary>
     [Fact]
     public void Definition_Compare_WhenPaddingChanges_IsMeasure()

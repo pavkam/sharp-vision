@@ -17,6 +17,7 @@ public sealed class StyleSlotBindingProbe: CompositeControlBase
                 ? InvalidationImpact.None
                 : InvalidationImpact.Measure);
     private readonly StyleSlot<ButtonStyle> _buttonStyle;
+    private readonly Overlay _root;
 
     /// <summary>Initializes a retained target and binds its primary slot.</summary>
     public StyleSlotBindingProbe()
@@ -24,8 +25,9 @@ public sealed class StyleSlotBindingProbe: CompositeControlBase
         Target = new StyleSlotProbe();
         SecondTarget = new StyleSlotProbe();
         Slider = new Slider();
-        var root = new Overlay { Children = { Target, SecondTarget, Slider } };
-        InitializeContent(root);
+        UnboundTarget = new StyleSlotProbe();
+        _root = new Overlay { Children = { Target, SecondTarget, UnboundTarget, Slider } };
+        InitializeContent(_root);
         _buttonStyle = InitializePartStyle(_definition, nameof(ButtonStyle));
         BindStyle(_buttonStyle, Target);
         BindStyle(_buttonStyle, SecondTarget);
@@ -36,6 +38,9 @@ public sealed class StyleSlotBindingProbe: CompositeControlBase
 
     /// <summary>Gets the second retained matching target.</summary>
     public StyleSlotProbe SecondTarget { get; }
+
+    /// <summary>Gets a retained matching target that starts without a binding.</summary>
+    public StyleSlotProbe UnboundTarget { get; }
 
     /// <summary>Gets a retained mismatched style target.</summary>
     public Slider Slider { get; }
@@ -59,4 +64,10 @@ public sealed class StyleSlotBindingProbe: CompositeControlBase
     /// <summary>Attempts to bind an arbitrary control outside this retained tree.</summary>
     /// <param name="target">The non-null external target.</param>
     public void BindCrossTree(ControlBase target) => BindStyle(_buttonStyle, target);
+
+    /// <summary>Removes the first target without disposing it.</summary>
+    public void DetachTarget() => _root.Children.Remove(Target);
+
+    /// <summary>Binds the initially unbound retained target.</summary>
+    public void BindUnboundTarget() => BindStyle(_buttonStyle, UnboundTarget);
 }

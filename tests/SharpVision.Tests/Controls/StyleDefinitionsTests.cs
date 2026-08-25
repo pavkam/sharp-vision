@@ -6,7 +6,8 @@ namespace SharpVision.Tests.Controls;
 using System.Diagnostics.CodeAnalysis;
 
 /// <summary>Verifies the StyleDefinitions factory surface against synthetic style types: the
-/// one-hop fallback form used by every leaf control style, and the secondary Part form. The six
+/// one-hop fallback form used by every leaf control style, plus the secondary Part and primary
+/// Aggregate forms. The six
 /// well-known base types resolve through <see cref="Theme.GetStyleSet{TStyle}(TStyle)"/> directly
 /// rather than through <see cref="StyleDefinitions"/> at all - there is no self-contained root
 /// form here to test.</summary>
@@ -65,6 +66,55 @@ public sealed class StyleDefinitionsTests
         definition.Appearance.ShouldBeNull();
     }
 
+    /// <summary>Verifies primary and part initializers reject definitions created for the opposite
+    /// role instead of silently changing appearance ownership.</summary>
+    [Fact]
+    public void InitializeStyle_WhenDefinitionRoleMismatches_Throws()
+    {
+        // Arrange
+        var controlDefinition = StyleDefinitions.Control(
+            static theme => theme.GetStyleSet(InputStyle.Default),
+            static (input, _, _) => ButtonStyle.Standard with
+            {
+                Face = input.Face,
+                Border = input.Border,
+                Shadow = input.Shadow
+            },
+            static (_, _, _, _) => InvalidationImpact.None);
+        var partDefinition = StyleDefinitions.Part(
+            static _ => ButtonStyle.Standard,
+            static (_, _, _, _) => InvalidationImpact.None);
+
+        // Act
+        var primaryException = Should.Throw<InvalidOperationException>(() =>
+            new StyleDefinitionRoleProbe().InitializePrimary(partDefinition));
+        var partException = Should.Throw<InvalidOperationException>(() =>
+            new StyleDefinitionRoleProbe().InitializePart(controlDefinition));
+
+        // Assert
+        primaryException.Message.ShouldContain("primary");
+        partException.Message.ShouldContain("part");
+    }
+
+    /// <summary>Verifies an explicit aggregate definition can own a primary-named slot without
+    /// claiming semantic appearance, the intentional ColorPicker-shaped case.</summary>
+    [Fact]
+    public void Aggregate_WhenInitializedAsPrimary_DoesNotOwnAppearance()
+    {
+        // Arrange
+        var definition = StyleDefinitions.Aggregate(
+            static _ => ButtonStyle.Standard,
+            static (_, _, _, _) => InvalidationImpact.None);
+        var probe = new StyleDefinitionRoleProbe();
+
+        // Act
+        probe.InitializePrimary(definition);
+
+        // Assert
+        definition.IsControl.ShouldBeFalse();
+        definition.Appearance.ShouldBeNull();
+    }
+
     /// <summary>Verifies the fallback form rejects null delegate arguments before constructing a
     /// definition.</summary>
     [Fact]
@@ -89,6 +139,16 @@ public sealed class StyleDefinitionsTests
             StyleDefinitions.Part(null!, _neverInvalidatesRoot));
         _ = Should.Throw<ArgumentNullException>(() =>
             StyleDefinitions.Part(static _ => RootDefault(), null!));
+    }
+
+    /// <summary>Verifies Aggregate rejects null delegate arguments.</summary>
+    [Fact]
+    public void Aggregate_WhenArgumentsAreNull_ThrowsArgumentNullException()
+    {
+        _ = Should.Throw<ArgumentNullException>(() =>
+            StyleDefinitions.Aggregate(null!, _neverInvalidatesRoot));
+        _ = Should.Throw<ArgumentNullException>(() =>
+            StyleDefinitions.Aggregate(static _ => RootDefault(), null!));
     }
 
     private static readonly Func<TestRootStyle, Theme?, TestRootStyle, Theme?, InvalidationImpact> _neverInvalidatesRoot =

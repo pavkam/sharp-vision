@@ -167,7 +167,20 @@ exactly the way `CommandTileStyle` does above.
 
 Use `StyleDefinitions.Part`, `InitializePartStyle`, and `BindStyle` for a named
 style forwarded to retained implementation controls. Bind the nullable local
-slot, not `Actual`, so a reset never pins a theme-derived value.
+slot, not `Actual`, so a reset never pins a theme-derived value. The framework
+rejects a control definition passed to `InitializePartStyle` and a part
+definition passed to `InitializeStyle`; role mismatches are authoring errors,
+not a way to suppress appearance ownership. A primary-named style that only
+projects values onto heterogeneous retained parts uses
+`StyleDefinitions.Aggregate` with `InitializeStyle`, as `ColorPickerStyle` does.
+Aggregate styles retain conventional `Style`/`ActualStyle` naming without
+claiming the aggregate control's own face, border, or shadow.
+
+Bindings are scoped to retained ancestry. Removing or reparenting the target
+releases its upstream edge automatically, after which the target may accept its
+own local style or a new owner's binding. Source updates preflight and commit
+the complete transitive graph before callbacks publish; exceptions do not leave
+later targets stale, and reentrant commits supersede older notifications.
 
 Implement `IsCheckedState`, `IsSelectedState`, or `IsIndeterminateState` only
 when the control genuinely owns that semantic fact. `Focused` means direct

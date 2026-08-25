@@ -52,9 +52,13 @@ behavior after a changed style commits passes a private method as
 `ScrollBarStyle`/`ActualScrollBarStyle`. `BindStyle` forwards the nullable local
 value to matching retained-child slots, including parts created later. It never
 copies a resolved value, so null reset and theme replacement remain live through
-nested proxy chains. The framework owns dispatcher checks, notification order,
-theme transition planning, caching, exact invalidation, and disposal of binding
-edges.
+nested proxy chains. A binding releases when its target leaves the source
+owner's retained subtree, so a removed part can be reused or reparented without
+being disposed. Style graph values commit coherently before callbacks run;
+throwing callbacks are aggregated after every target has committed, and a
+reentrant newer commit abandons the older publication. The framework owns
+dispatcher checks, notification order, theme transition planning, caching, exact
+invalidation, and disposal of remaining binding edges.
 
 `TStyle` must derive from `ControlStyle` - see
 [themes.md](themes.md#style-types) for the type hierarchy and how a control's

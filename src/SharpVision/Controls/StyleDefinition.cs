@@ -17,21 +17,31 @@ public sealed class StyleDefinition<TStyle>
     internal StyleDefinition(
         Func<TStyle?, Theme?, TStyle> resolve,
         Func<TStyle, Theme?, AppearanceStates>? appearance,
-        Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compare)
+        Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compare,
+        StyleDefinitionKind kind = StyleDefinitionKind.Control,
+        Func<TStyle, Theme?, AppearanceStates>? localAppearance = null)
     {
         Resolve = resolve;
         Appearance = appearance;
         Compare = compare;
+        Kind = kind;
+        LocalAppearance = localAppearance ?? appearance;
     }
 
     /// <summary>Gets whether this definition can own a control's semantic appearance.</summary>
-    internal bool IsControl => Appearance is not null;
+    internal bool IsControl => Kind == StyleDefinitionKind.Control;
+
+    /// <summary>Gets the slot role this definition is valid to initialize.</summary>
+    internal StyleDefinitionKind Kind { get; }
 
     /// <summary>Gets the complete-style resolver.</summary>
     internal Func<TStyle?, Theme?, TStyle> Resolve { get; }
 
     /// <summary>Gets the appearance selector, or null for a secondary definition.</summary>
     internal Func<TStyle, Theme?, AppearanceStates>? Appearance { get; }
+
+    /// <summary>Gets the appearance selector used after a complete local style wins Theme states.</summary>
+    internal Func<TStyle, Theme?, AppearanceStates>? LocalAppearance { get; }
 
     /// <summary>Gets the exact structural comparison policy.</summary>
     internal Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> Compare { get; }

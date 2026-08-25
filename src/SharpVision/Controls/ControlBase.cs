@@ -27,6 +27,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 {
     private StyleSlotBase? _primaryStyle;
     private Dictionary<string, StyleSlotBase>? _styleSlots;
+    private long _stylePublicationVersion;
     private bool? _effectiveIsVisible;
     private bool? _effectiveIsEnabled;
 
@@ -1794,6 +1795,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         Debug.Assert(slot is null || ReferenceEquals(slot.Registry.Owner, parent),
             "The slot belongs to the committed parent.");
         Parent = parent;
+        ReleaseInvalidStyleBindings();
         InvalidateEffectiveState();
         OwningSlot = slot;
     }
@@ -3021,7 +3023,8 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <param name="changed">An optional callback after a changed resolved style commits.</param>
     /// <returns>The initialized slot used by the public Style and ActualStyle properties.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="definition"/> is null.</exception>
-    /// <exception cref="InvalidOperationException">A primary slot was already initialized.</exception>
+    /// <exception cref="InvalidOperationException">A primary slot was already initialized, or
+    /// <paramref name="definition"/> describes a named part rather than a primary control or aggregate.</exception>
     protected StyleSlot<TStyle> InitializeStyle<TStyle>(
         StyleDefinition<TStyle> definition,
         Action<TStyle, TStyle>? changed = null)
@@ -3033,6 +3036,11 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         if (_styleSlots?.ContainsKey("Style") == true)
         {
             throw new InvalidOperationException("A control can initialize only one primary style slot.");
+        }
+
+        if (definition.Kind == StyleDefinitionKind.Part)
+        {
+            throw new InvalidOperationException("A part-style definition cannot initialize a primary Style slot.");
         }
 
         var slot = new StyleSlot<TStyle>(
@@ -3059,7 +3067,8 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <returns>The initialized secondary slot.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="definition"/> or <paramref name="propertyName"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="propertyName"/> is empty, Style, or does not end in Style.</exception>
-    /// <exception cref="InvalidOperationException">The property name is already registered.</exception>
+    /// <exception cref="InvalidOperationException">The property name is already registered, or
+    /// <paramref name="definition"/> does not describe a named part.</exception>
     protected StyleSlot<TStyle> InitializePartStyle<TStyle>(
         StyleDefinition<TStyle> definition,
         string propertyName,
@@ -3073,6 +3082,11 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         if (propertyName == "Style" || !propertyName.EndsWith("Style", StringComparison.Ordinal))
         {
             throw new ArgumentException("A part-style property must be a named FooStyle property.", nameof(propertyName));
+        }
+
+        if (definition.Kind != StyleDefinitionKind.Part)
+        {
+            throw new InvalidOperationException("Only a part-style definition can initialize a named part slot.");
         }
 
         var slot = new StyleSlot<TStyle>(
@@ -3094,6 +3108,8 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <exception cref="ArgumentNullException">A required argument is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="targetPropertyName"/> is empty.</exception>
     /// <exception cref="InvalidOperationException">Ownership, ancestry, type, duplication, or graph validation fails.</exception>
+    /// <remarks>The binding releases when the target leaves the source owner's retained subtree.
+    /// Source mutations preflight and commit the complete downstream graph before callbacks run.</remarks>
     protected void BindStyle<TStyle>(
         StyleSlot<TStyle> source,
         ControlBase target,
@@ -3146,6 +3162,19 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         return false;
     }
 
+    private void ReleaseInvalidStyleBindings()
+    {
+        if (_styleSlots is null)
+        {
+            return;
+        }
+
+        foreach (var slot in _styleSlots.Values)
+        {
+            slot.ReleaseInvalidBinding();
+        }
+    }
+
     private void RegisterStyleSlot(StyleSlotBase slot)
     {
         _styleSlots ??= new Dictionary<string, StyleSlotBase>(StringComparer.Ordinal);
@@ -3177,6 +3206,49 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             return;
         }
 
+        var commits = new List<StyleCommit<TStyle>>();
+
+        foreach (var target in slot.GetPropagationGraph())
+        {
+            if (!EqualityComparer<TStyle?>.Default.Equals(target.LocalValue, value))
+            {
+                commits.Add(target.Owner.PrepareStyleCommit(target, value));
+            }
+        }
+
+        var ownerVersions = new Dictionary<ControlBase, long>();
+        foreach (var commit in commits)
+        {
+            var owner = commit.Slot.Owner;
+            if (!ownerVersions.TryGetValue(owner, out var ownerVersion))
+            {
+                ownerVersion = owner.AdvanceStylePublicationVersion();
+                ownerVersions.Add(owner, ownerVersion);
+            }
+
+            commit.OwnerVersion = ownerVersion;
+            owner.ApplyStyleCommit(commit);
+        }
+
+        ExceptionDispatchInfo? failure = null;
+        foreach (var commit in commits)
+        {
+            commit.Slot.Owner.PublishStyleCommit(commit, ref failure);
+        }
+
+        failure?.Throw();
+    }
+
+    private StyleCommit<TStyle> PrepareStyleCommit<TStyle>(StyleSlot<TStyle> slot, TStyle? value)
+        where TStyle : ControlStyle
+    {
+        VerifyMutable();
+
+        if (!ReferenceEquals(slot.Owner, this))
+        {
+            throw new InvalidOperationException("The style slot is not owned by this control.");
+        }
+
         var definition = slot.Definition;
         var previousStyle = definition.Resolve(slot.LocalValue, Theme);
         var currentStyle = definition.Resolve(value, Theme);
@@ -3190,8 +3262,8 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         {
             var parentAmbientFace = AppearanceSnapshot.ResolveParentAmbient(Parent);
             var appearanceState = GetAppearanceState();
-            var previousProfile = definition.Appearance!(previousStyle, Theme);
-            var currentProfile = definition.Appearance(currentStyle, Theme);
+            var previousProfile = slot.GetAppearance(previousStyle, slot.LocalValue is not null, Theme);
+            var currentProfile = slot.GetAppearance(currentStyle, value is not null, Theme);
             impact = MaximumImpact(
                 impact,
                 this.GetImpact(Theme, previousProfile, Theme, currentProfile, parentAmbientFace, parentAmbientFace));
@@ -3209,8 +3281,24 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                 this.ResolveSnapshot(ambientState, Theme, currentProfile, parentAmbientFace).Face;
         }
 
-        slot.LocalValue = value;
+        return new StyleCommit<TStyle>(
+            slot,
+            value,
+            previousStyle,
+            currentStyle,
+            impact,
+            previousAppearance,
+            currentAppearance,
+            ambientFaceChanged);
+    }
+
+    private void ApplyStyleCommit<TStyle>(StyleCommit<TStyle> commit)
+        where TStyle : ControlStyle
+    {
+        var slot = commit.Slot;
+        slot.LocalValue = commit.Value;
         slot.ClearCache();
+        commit.SlotVersion = slot.AdvanceCommitVersion();
 
         // A slot that owns appearance replaces the face descendants inherit. The bare cache clear
         // leaves the subtree with no scheduled frame, which is invisible right up until this
@@ -3218,7 +3306,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         // pins the foreground resolves byte-identically, so Compare returns None and Invalidate is
         // a no-op - while its transparent Text child now resolves a different foreground from a
         // cleared cache and never repaints.
-        if (ambientFaceChanged)
+        if (commit.AmbientFaceChanged)
         {
             InvalidateSubtreeAmbientAppearance();
         }
@@ -3227,22 +3315,61 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             InvalidateSubtreeResolvedStyleCache();
         }
 
-        Invalidate(InvalidationFor(impact));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(slot.PropertyName));
-        slot.ForwardLocal();
+        Invalidate(InvalidationFor(commit.Impact));
+    }
 
-        if (previousStyle.Equals(currentStyle))
+    private void PublishStyleCommit<TStyle>(
+        StyleCommit<TStyle> commit,
+        ref ExceptionDispatchInfo? failure)
+        where TStyle : ControlStyle
+    {
+        if (!IsCurrentStyleCommit(commit))
         {
             return;
         }
 
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(slot.ActualPropertyName));
+        var slot = commit.Slot;
+        ExceptionAggregation.Capture(
+            () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(slot.PropertyName)),
+            ref failure);
+
+        if (!IsCurrentStyleCommit(commit) || !commit.ResolvedStyleChanged)
+        {
+            return;
+        }
+
+        ExceptionAggregation.Capture(
+            () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(slot.ActualPropertyName)),
+            ref failure);
+
+        if (!IsCurrentStyleCommit(commit))
+        {
+            return;
+        }
+
         if (slot.OwnsAppearance)
         {
-            PublishAppearanceChanges(previousAppearance, currentAppearance);
+            ExceptionAggregation.Capture(
+                () => PublishAppearanceChanges(commit.PreviousAppearance, commit.CurrentAppearance),
+                ref failure);
         }
-        slot.PublishChanged(previousStyle, currentStyle);
+
+        if (IsCurrentStyleCommit(commit))
+        {
+            ExceptionAggregation.Capture(
+                () => slot.PublishChanged(commit.PreviousStyle, commit.CurrentStyle),
+                ref failure);
+        }
     }
+
+    [Pure]
+    private bool IsCurrentStyleCommit<TStyle>(StyleCommit<TStyle> commit)
+        where TStyle : ControlStyle =>
+        commit.OwnerVersion == _stylePublicationVersion &&
+        commit.Slot.IsCurrentVersion(commit.SlotVersion);
+
+    /// <summary>Advances the generation that invalidates stale style and Theme publication.</summary>
+    private long AdvanceStylePublicationVersion() => unchecked(++_stylePublicationVersion);
 
     /// <summary>Calculates one registered slot's exact Theme-transition impact.</summary>
     internal InvalidationImpact GetStyleThemeImpact<TStyle>(
@@ -3263,9 +3390,9 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                 impact,
                 this.GetImpact(
                     previous,
-                    definition.Appearance!(previousStyle, previous),
+                    slot.GetAppearance(previousStyle, slot.LocalValue is not null, previous),
                     current,
-                    definition.Appearance(currentStyle, current),
+                    slot.GetAppearance(currentStyle, slot.LocalValue is not null, current),
                     previousParentAmbientFace,
                     currentParentAmbientFace))
             : impact;
@@ -3575,6 +3702,8 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
         if (transition.ThemeTransition is { } themeTransition)
         {
+            _ = AdvanceStylePublicationVersion();
+
             if (_styleSlots is { } styleSlots)
             {
                 foreach (var slot in styleSlots.Values)
@@ -3593,17 +3722,41 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     {
         Debug.Assert(ReferenceEquals(change.Control, this), "Appearance changes publish through their owning control.");
 
+        var publicationVersion = _stylePublicationVersion;
+        ExceptionDispatchInfo? failure = null;
+
         if (change.ThemeTransition is { } transition)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Theme)));
+            ExceptionAggregation.Capture(
+                () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Theme))),
+                ref failure);
 
-            foreach (var actualStylePropertyName in transition.ResolvedStylePropertyNames)
+            if (publicationVersion == _stylePublicationVersion)
             {
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(actualStylePropertyName));
+                foreach (var actualStylePropertyName in transition.ResolvedStylePropertyNames)
+                {
+                    ExceptionAggregation.Capture(
+                        () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(actualStylePropertyName)),
+                        ref failure);
+
+                    if (publicationVersion != _stylePublicationVersion)
+                    {
+                        break;
+                    }
+                }
             }
         }
 
-        PublishAppearanceChanges(change.PreviousAppearance, change.CurrentAppearance);
+        if (publicationVersion == _stylePublicationVersion)
+        {
+            var previousAppearance = change.PreviousAppearance;
+            var currentAppearance = change.CurrentAppearance;
+            ExceptionAggregation.Capture(
+                () => PublishAppearanceChanges(previousAppearance, currentAppearance),
+                ref failure);
+        }
+
+        failure?.Throw();
     }
 
     /// <summary>Publishes this control's already committed attachment.</summary>

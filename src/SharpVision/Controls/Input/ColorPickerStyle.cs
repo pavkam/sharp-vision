@@ -16,7 +16,7 @@ using System.Diagnostics.CodeAnalysis;
 public sealed record ColorPickerStyle: ControlStyle
 {
     /// <summary>Gets the secondary aggregate definition.</summary>
-    internal static StyleDefinition<ColorPickerStyle> Definition { get; } = StyleDefinitions.Part(
+    internal static StyleDefinition<ColorPickerStyle> Definition { get; } = StyleDefinitions.Aggregate(
         static theme => new ColorPickerStyle(
             DefaultFace,
             NoBorder,

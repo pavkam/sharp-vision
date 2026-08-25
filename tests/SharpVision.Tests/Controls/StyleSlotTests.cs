@@ -139,6 +139,140 @@ public sealed class StyleSlotTests
         control.SecondTarget.Style.ShouldBe(ButtonStyle.Filled);
     }
 
+    /// <summary>Verifies removing a retained target releases its edge without disposal, so the old
+    /// owner stops writing it and a new owner can reuse it normally.</summary>
+    [Fact]
+    public void BindStyle_WhenTargetIsDetached_ReleasesTheBindingEdge()
+    {
+        // Arrange
+        var control = new StyleSlotBindingProbe();
+
+        // Act
+        control.DetachTarget();
+        control.ButtonStyle = ButtonStyle.Filled;
+        control.Target.Style = ButtonStyle.Standard;
+        var newParent = new Overlay { Children = { control.Target } };
+
+        // Assert
+        control.Target.Style.ShouldBe(ButtonStyle.Standard);
+        control.SecondTarget.Style.ShouldBe(ButtonStyle.Filled);
+        control.Target.Parent.ShouldBeSameAs(newParent);
+    }
+
+    /// <summary>Verifies reentrant source publication supersedes the outer value across the entire
+    /// graph and prevents stale resolved-style notifications from resuming afterward.</summary>
+    [Fact]
+    public void Local_WhenSourceNotificationReenters_CommitsOnlyTheNewestGraphValue()
+    {
+        // Arrange
+        var control = new StyleSlotBindingProbe();
+        var actualNotifications = 0;
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(StyleSlotBindingProbe.ButtonStyle) &&
+                control.ButtonStyle == ButtonStyle.Standard)
+            {
+                control.ButtonStyle = ButtonStyle.Filled;
+            }
+
+            if (eventArgs.PropertyName == nameof(StyleSlotBindingProbe.ActualButtonStyle))
+            {
+                actualNotifications++;
+            }
+        };
+
+        // Act
+        control.ButtonStyle = ButtonStyle.Standard;
+
+        // Assert
+        control.ButtonStyle.ShouldBe(ButtonStyle.Filled);
+        control.Target.Style.ShouldBe(ButtonStyle.Filled);
+        control.SecondTarget.Style.ShouldBe(ButtonStyle.Filled);
+        actualNotifications.ShouldBe(1);
+    }
+
+    /// <summary>Verifies one throwing target observer cannot strand later targets on an older
+    /// source value; the coherent graph commits before the first publication failure escapes.</summary>
+    [Fact]
+    public void Local_WhenBoundTargetNotificationThrows_CommitsEveryTargetBeforeRethrowing()
+    {
+        // Arrange
+        var control = new StyleSlotBindingProbe();
+        control.Target.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(StyleSlotProbe.Style))
+            {
+                throw new InvalidOperationException("target publication");
+            }
+        };
+
+        // Act
+        var exception = Should.Throw<InvalidOperationException>(() => control.ButtonStyle = ButtonStyle.Filled);
+
+        // Assert
+        exception.Message.ShouldBe("target publication");
+        control.ButtonStyle.ShouldBe(ButtonStyle.Filled);
+        control.Target.Style.ShouldBe(ButtonStyle.Filled);
+        control.SecondTarget.Style.ShouldBe(ButtonStyle.Filled);
+    }
+
+    /// <summary>Verifies a new binding is fully committed even when its publication throws, leaving
+    /// one coherent edge and value rather than a partially initialized graph.</summary>
+    [Fact]
+    public void BindStyle_WhenInitialTargetPublicationThrows_CommitsOneCoherentBinding()
+    {
+        // Arrange
+        var control = new StyleSlotBindingProbe { ButtonStyle = ButtonStyle.Filled };
+        var throwPublication = true;
+        control.UnboundTarget.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(StyleSlotProbe.Style) && throwPublication)
+            {
+                throwPublication = false;
+                throw new InvalidOperationException("initial publication");
+            }
+        };
+
+        // Act
+        var exception = Should.Throw<InvalidOperationException>(control.BindUnboundTarget);
+        control.ButtonStyle = ButtonStyle.Standard;
+
+        // Assert
+        exception.Message.ShouldBe("initial publication");
+        control.UnboundTarget.Style.ShouldBe(ButtonStyle.Standard);
+        _ = Should.Throw<InvalidOperationException>(() => control.UnboundTarget.Style = ButtonStyle.Filled);
+    }
+
+    /// <summary>Verifies a local style installed by a Theme notification supersedes the outer
+    /// transition, which must not resume stale ActualStyle or appearance publication afterward.</summary>
+    [Fact]
+    public void PropagateTheme_WhenThemeNotificationAssignsLocalStyle_AbandonsStaleThemePublication()
+    {
+        // Arrange
+        using var probe = new StyleSlotProbe();
+        var actualStyleNotifications = 0;
+        probe.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ControlBase.Theme))
+            {
+                probe.Style = ButtonStyle.Filled;
+            }
+
+            if (eventArgs.PropertyName == nameof(StyleSlotProbe.ActualStyle))
+            {
+                actualStyleNotifications++;
+            }
+        };
+
+        // Act
+        probe.PropagateTheme(ThemeCatalog.White);
+
+        // Assert
+        probe.Style.ShouldBe(ButtonStyle.Filled);
+        probe.ActualStyle.ShouldBe(ButtonStyle.Filled);
+        actualStyleNotifications.ShouldBe(1);
+    }
+
     /// <summary>Verifies repeated resolved reads use one cached value without allocating.</summary>
     [Fact]
     public void Actual_WhenReadRepeatedly_UsesCachedAllocationFreeValue()

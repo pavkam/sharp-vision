@@ -45,4 +45,6 @@ internal sealed class StyleSlotRegistration<TStyle>: StyleSlotBase
     internal override void ClearResolvedCache() => _slot.ClearResolvedCache();
 
     internal override void DisposeBindings() => _slot.DisposeBindings();
+
+    internal override void ReleaseInvalidBinding() => _slot.ReleaseInvalidBinding();
 }

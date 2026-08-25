@@ -19,6 +19,7 @@ public sealed class StyleSlot<TStyle>
     private TStyle? _cache;
     private TStyle? _cacheKey;
     private Theme? _cacheTheme;
+    private long _commitVersion;
 
     /// <summary>Initializes one framework-owned slot.</summary>
     internal StyleSlot(
@@ -104,19 +105,44 @@ public sealed class StyleSlot<TStyle>
             }
         }
 
+        var previousVersion = target._commitVersion;
         target.Source = this;
         _targets.Add(target);
-        target.Owner.CommitStyle(target, LocalValue, fromBinding: true);
-    }
 
-    /// <summary>Forwards one committed nullable local value to every bound target.</summary>
-    internal void ForwardLocal()
-    {
-        foreach (var target in _targets)
+        try
         {
             target.Owner.CommitStyle(target, LocalValue, fromBinding: true);
         }
+        catch
+        {
+            if (target._commitVersion == previousVersion)
+            {
+                _ = _targets.Remove(target);
+                target.Source = null;
+            }
+
+            throw;
+        }
     }
+
+    /// <summary>Collects this slot and its transitive downstream graph in publication order.</summary>
+    internal List<StyleSlot<TStyle>> GetPropagationGraph()
+    {
+        var graph = new List<StyleSlot<TStyle>> { this };
+
+        for (var index = 0; index < graph.Count; index++)
+        {
+            graph.AddRange(graph[index]._targets);
+        }
+
+        return graph;
+    }
+
+    /// <summary>Advances and returns the version that supersedes older publication.</summary>
+    internal long AdvanceCommitVersion() => ++_commitVersion;
+
+    /// <summary>Gets whether one staged publication still describes this slot.</summary>
+    internal bool IsCurrentVersion(long version) => _commitVersion == version;
 
     /// <summary>Releases every graph edge owned by this slot during control disposal.</summary>
     internal void DisposeBindings()
@@ -144,8 +170,36 @@ public sealed class StyleSlot<TStyle>
     internal bool OwnsAppearance { get; }
 
     internal AppearanceStates GetAppearance(Theme? theme) =>
-        (Definition.Appearance ?? throw new InvalidOperationException("A secondary style cannot own appearance."))(
-            Definition.Resolve(LocalValue, theme), theme);
+        GetAppearance(Definition.Resolve(LocalValue, theme), LocalValue is not null, theme);
+
+    /// <summary>Resolves appearance for one prospective local value.</summary>
+    internal AppearanceStates GetAppearance(TStyle style, bool hasLocalValue, Theme? theme) =>
+        hasLocalValue
+            ? (Definition.LocalAppearance ??
+               throw new InvalidOperationException("A secondary style cannot own appearance."))(style, theme)
+            : (Definition.Appearance ?? throw new InvalidOperationException("A secondary style cannot own appearance."))(
+                style,
+                theme);
+
+    /// <summary>Releases the upstream edge when its source owner is no longer an ancestor.</summary>
+    internal void ReleaseInvalidBinding()
+    {
+        if (Source is not { } source)
+        {
+            return;
+        }
+
+        for (var current = Owner.Parent; current is not null; current = current.Parent)
+        {
+            if (ReferenceEquals(current, source.Owner))
+            {
+                return;
+            }
+        }
+
+        _ = source._targets.Remove(this);
+        Source = null;
+    }
 
     internal InvalidationImpact GetThemeImpact(
         Theme? previous,

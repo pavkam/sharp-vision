@@ -646,7 +646,7 @@ public sealed class Theme
     ];
 
     private readonly ConcurrentDictionary<string, Dictionary<string, Dictionary<string, JsonElement>>?> _rawStyleSections = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<(Type, string), object> _styleSets = new();
+    private readonly ConcurrentDictionary<(Type, string, ControlStyle), object> _styleSets = new();
 
     // Raw per-state JSON override dictionaries for one styles.* key, with no code-owned default
     // baked in and no fallback awareness - the primitive both GetStyleSet (root types) and a leaf
@@ -695,7 +695,7 @@ public sealed class Theme
         where TStyle : ControlStyle => GetStyleSet(StyleKey.Of<TStyle>(), codeOwnedDefault);
 
     /// <summary>Resolves one root style's complete per-state set from an explicit key, memoized
-    /// per theme, style type, and key.</summary>
+    /// per theme, style type, key, and code-owned default.</summary>
     /// <typeparam name="TStyle">The complete style type to resolve.</typeparam>
     /// <param name="key">The validated theme-section key.</param>
     /// <param name="codeOwnedDefault">The code-owned default patched by the theme section.</param>
@@ -707,7 +707,7 @@ public sealed class Theme
         ArgumentNullException.ThrowIfNull(codeOwnedDefault);
 
         return (StyleStates<TStyle>) _styleSets.GetOrAdd(
-            (typeof(TStyle), key),
+            (typeof(TStyle), key, codeOwnedDefault),
             static (_, state) => state.theme.BuildRootStyleSet(state.key, state.codeOwnedDefault),
             (theme: this, key, codeOwnedDefault));
     }
@@ -736,7 +736,7 @@ public sealed class Theme
     /// <returns>The cached complete per-state control-style set.</returns>
     public StyleStates<ControlStyle> GetInteractiveControlStyleSet() =>
         (StyleStates<ControlStyle>) _styleSets.GetOrAdd(
-            (typeof(ControlStyle), "$interactiveControl"),
+            (typeof(ControlStyle), "$interactiveControl", ControlStyle.Default),
             static (_, theme) => theme.BuildInteractiveStyleSet(theme.GetStyleSet(ControlStyle.Default), preservePointerBackground: false),
             this);
 
@@ -755,7 +755,7 @@ public sealed class Theme
     /// <returns>The cached complete per-state control-style set.</returns>
     public StyleStates<ControlStyle> GetInteractiveRowStyleSet() =>
         (StyleStates<ControlStyle>) _styleSets.GetOrAdd(
-            (typeof(ControlStyle), "$interactiveRow"),
+            (typeof(ControlStyle), "$interactiveRow", ControlStyle.Default),
             static (_, theme) => theme.BuildInteractiveStyleSet(theme.GetStyleSet(ControlStyle.Default), preservePointerBackground: true),
             this);
 
@@ -871,7 +871,7 @@ public sealed class Theme
     /// <returns>The cached complete per-state container-style set.</returns>
     public StyleStates<ContainerStyle> GetFocusableContainerStyleSet() =>
         (StyleStates<ContainerStyle>) _styleSets.GetOrAdd(
-            (typeof(ContainerStyle), "$focusableContainer"),
+            (typeof(ContainerStyle), "$focusableContainer", ContainerStyle.Default),
             static (_, theme) => theme.BuildFocusableStyleSet(theme.GetStyleSet(ContainerStyle.Default)),
             this);
 
@@ -895,7 +895,7 @@ public sealed class Theme
     /// <returns>The cached complete per-state control-style set.</returns>
     public StyleStates<ControlStyle> GetFocusableControlStyleSet() =>
         (StyleStates<ControlStyle>) _styleSets.GetOrAdd(
-            (typeof(ControlStyle), "$focusableControl"),
+            (typeof(ControlStyle), "$focusableControl", ControlStyle.Default),
             static (_, theme) => theme.BuildFocusableStyleSet(theme.GetStyleSet(ControlStyle.Default)),
             this);
 
@@ -1221,6 +1221,31 @@ public sealed class Theme
         };
 
         return set.ToAppearanceStates();
+    }
+
+    /// <summary>Builds only the per-state deltas authored by a leaf style's completion logic,
+    /// excluding every state supplied by its Theme fallback.</summary>
+    internal AppearanceStates BuildCodeOwnedStates<TStyle, TFallback>(
+        TStyle resolvedNormal,
+        TFallback fallbackNormal,
+        Func<TFallback, VisualState, Theme, TStyle> complete)
+        where TStyle : ControlStyle
+        where TFallback : ControlStyle
+    {
+        var completedFallbackNormal = complete(fallbackNormal, VisualState.Normal, this);
+        TStyle ResolveState(VisualState state) => complete(fallbackNormal, state, this);
+
+        return new AppearanceStates(
+            new ControlAppearance(resolvedNormal.Face, resolvedNormal.Border, resolvedNormal.Shadow),
+            StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(VisualState.IsPointerOver)),
+            StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(VisualState.FocusWithin)),
+            StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(VisualState.Focused)),
+            StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(VisualState.Current)),
+            StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(VisualState.Selected)),
+            StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(VisualState.Checked)),
+            StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(VisualState.Indeterminate)),
+            StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(VisualState.Pressed)),
+            StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(VisualState.Disabled)));
     }
 
     // An active Window's border has always distinguished itself from an inactive one, but no

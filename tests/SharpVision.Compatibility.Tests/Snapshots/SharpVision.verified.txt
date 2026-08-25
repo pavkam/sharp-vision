@@ -588,6 +588,8 @@ namespace SharpVision.Controls
         where TStyle : SharpVision.Styling.ControlStyle { }
     public static class StyleDefinitions
     {
+        public static SharpVision.Controls.StyleDefinition<TStyle> Aggregate<TStyle>(System.Func<SharpVision.Styling.Theme?, TStyle> fallback, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compare)
+            where TStyle : SharpVision.Styling.ControlStyle { }
         public static SharpVision.Controls.StyleDefinition<TStyle> Control<TStyle, TFallback>(System.Func<SharpVision.Styling.Theme, SharpVision.Styling.StyleStates<TFallback>> fallbackTo, System.Func<TFallback, SharpVision.Styling.VisualState, SharpVision.Styling.Theme, TStyle> complete, System.Func<TStyle, SharpVision.Styling.Theme?, TStyle, SharpVision.Styling.Theme?, SharpVision.Controls.InvalidationImpact> compare)
             where TStyle : SharpVision.Styling.ControlStyle
             where TFallback : SharpVision.Styling.ControlStyle { }

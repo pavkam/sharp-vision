@@ -41,7 +41,12 @@ public static class StyleDefinitions
         return new StyleDefinition<TStyle>(
             (local, theme) => local ?? ResolveNormal(theme ?? ThemeCatalog.Dark, fallbackTo, complete),
             (style, theme) => (theme ?? ThemeCatalog.Dark).BuildFallbackAwareStates(style, fallbackTo, complete),
-            compare);
+            compare,
+            localAppearance: (style, theme) =>
+                (theme ?? ThemeCatalog.Dark).BuildCodeOwnedStates(
+                    style,
+                    fallbackTo(Theme.Unthemed).Normal,
+                    complete));
     }
 
     // Used to also overlay this key's own "normal" JSON on top of the completed fallback. A leaf
@@ -69,6 +74,31 @@ public static class StyleDefinitions
     {
         ArgumentNullException.ThrowIfNull(fallback);
         ArgumentNullException.ThrowIfNull(compare);
-        return new StyleDefinition<TStyle>((local, theme) => local ?? fallback(theme), null, compare);
+        return new StyleDefinition<TStyle>(
+            (local, theme) => local ?? fallback(theme),
+            null,
+            compare,
+            StyleDefinitionKind.Part);
+    }
+
+    /// <summary>Creates a primary-named aggregate style definition that projects complete values
+    /// onto heterogeneous retained parts without owning the aggregate control's appearance.</summary>
+    /// <typeparam name="TStyle">The immutable complete aggregate style value.</typeparam>
+    /// <param name="fallback">Resolves the complete fallback for one inherited Theme.</param>
+    /// <param name="compare">Returns the earliest phase affected by resolved members.</param>
+    /// <returns>An immutable aggregate-style definition.</returns>
+    /// <exception cref="ArgumentNullException">A delegate is null.</exception>
+    public static StyleDefinition<TStyle> Aggregate<TStyle>(
+        Func<Theme?, TStyle> fallback,
+        Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compare)
+        where TStyle : ControlStyle
+    {
+        ArgumentNullException.ThrowIfNull(fallback);
+        ArgumentNullException.ThrowIfNull(compare);
+        return new StyleDefinition<TStyle>(
+            (local, theme) => local ?? fallback(theme),
+            null,
+            compare,
+            StyleDefinitionKind.Aggregate);
     }
 }
