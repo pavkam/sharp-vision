@@ -46,10 +46,12 @@ jobs:
       ui_version: ${{ steps.package-versions.outputs.ui_version }}
       document_version: ${{ steps.package-versions.outputs.document_version }}
       fonts_version: ${{ steps.package-versions.outputs.fonts_version }}
+      syntax_version: ${{ steps.package-versions.outputs.syntax_version }}
       terminal_deployed: ${{ steps.published-versions.outputs.terminal_deployed }}
       ui_deployed: ${{ steps.published-versions.outputs.ui_deployed }}
       document_deployed: ${{ steps.published-versions.outputs.document_deployed }}
       fonts_deployed: ${{ steps.published-versions.outputs.fonts_deployed }}
+      syntax_deployed: ${{ steps.published-versions.outputs.syntax_deployed }}
 
     steps:
       - name: ☁️ Check out repository
@@ -69,10 +71,11 @@ jobs:
           ui_version="$(dotnet msbuild src/SharpVision/SharpVision.csproj -getProperty:Version | tail -n 1)"
           document_version="$(dotnet msbuild src/SharpVision.Document/SharpVision.Document.csproj -getProperty:Version | tail -n 1)"
           fonts_version="$(dotnet msbuild src/SharpVision.FigletFonts/SharpVision.FigletFonts.csproj -getProperty:Version | tail -n 1)"
+          syntax_version="$(dotnet msbuild src/SharpVision.SyntaxHighlighting/SharpVision.SyntaxHighlighting.csproj -getProperty:Version | tail -n 1)"
 
           semver_pattern='^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'
 
-          for entry in "SharpVision.Terminal:$terminal_version" "SharpVision:$ui_version" "SharpVision.Document:$document_version" "SharpVision.FigletFonts:$fonts_version"; do
+          for entry in "SharpVision.Terminal:$terminal_version" "SharpVision:$ui_version" "SharpVision.Document:$document_version" "SharpVision.FigletFonts:$fonts_version" "SharpVision.SyntaxHighlighting:$syntax_version"; do
             name="${entry%%:*}"
             version="${entry#*:}"
 
@@ -86,6 +89,7 @@ jobs:
           echo "ui_version=$ui_version" >> "$GITHUB_OUTPUT"
           echo "document_version=$document_version" >> "$GITHUB_OUTPUT"
           echo "fonts_version=$fonts_version" >> "$GITHUB_OUTPUT"
+          echo "syntax_version=$syntax_version" >> "$GITHUB_OUTPUT"
 
       - name: 🔎 Check if package is already published
         id: published-versions
@@ -95,6 +99,7 @@ jobs:
           UI_VERSION: ${{ steps.package-versions.outputs.ui_version }}
           DOCUMENT_VERSION: ${{ steps.package-versions.outputs.document_version }}
           FONTS_VERSION: ${{ steps.package-versions.outputs.fonts_version }}
+          SYNTAX_VERSION: ${{ steps.package-versions.outputs.syntax_version }}
         run: |
           check_package() {
             local output_name="$1"
@@ -125,6 +130,7 @@ jobs:
           check_package ui_deployed SharpVision "$UI_VERSION"
           check_package document_deployed SharpVision.Document "$DOCUMENT_VERSION"
           check_package fonts_deployed SharpVision.FigletFonts "$FONTS_VERSION"
+          check_package syntax_deployed SharpVision.SyntaxHighlighting "$SYNTAX_VERSION"
 
       - name: 📦 Pack SharpVision packages
         shell: bash
@@ -133,6 +139,7 @@ jobs:
           UI_VERSION: ${{ steps.package-versions.outputs.ui_version }}
           DOCUMENT_VERSION: ${{ steps.package-versions.outputs.document_version }}
           FONTS_VERSION: ${{ steps.package-versions.outputs.fonts_version }}
+          SYNTAX_VERSION: ${{ steps.package-versions.outputs.syntax_version }}
         run: |
           rm -rf artifacts/package
           mkdir -p artifacts/package
@@ -161,6 +168,12 @@ jobs:
             --no-restore \
             --output artifacts/package
 
+          dotnet pack src/SharpVision.SyntaxHighlighting/SharpVision.SyntaxHighlighting.csproj \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            --output artifacts/package
+
           expected_files=(
             "SharpVision.$UI_VERSION.nupkg"
             "SharpVision.$UI_VERSION.snupkg"
@@ -168,6 +181,8 @@ jobs:
             "SharpVision.Document.$DOCUMENT_VERSION.snupkg"
             "SharpVision.FigletFonts.$FONTS_VERSION.nupkg"
             "SharpVision.FigletFonts.$FONTS_VERSION.snupkg"
+            "SharpVision.SyntaxHighlighting.$SYNTAX_VERSION.nupkg"
+            "SharpVision.SyntaxHighlighting.$SYNTAX_VERSION.snupkg"
             "SharpVision.Terminal.$TERMINAL_VERSION.nupkg"
             "SharpVision.Terminal.$TERMINAL_VERSION.snupkg"
           )
@@ -175,7 +190,7 @@ jobs:
           mapfile -t package_files < <(find artifacts/package -maxdepth 1 -type f -printf '%f\n' | sort)
 
           if [[ "${package_files[*]}" != "${expected_sorted[*]}" ]]; then
-            echo "Unexpected package output. Exactly four packages and their symbols are expected:" >&2
+            echo "Unexpected package output. Exactly five packages and their symbols are expected:" >&2
             printf '  %s\n' "${package_files[@]}" >&2
             exit 1
           fi
@@ -296,6 +311,28 @@ jobs:
           --source "$NUGET_SOURCE"
           --skip-duplicate
 
+      - name: 🚀 Publish SharpVision.SyntaxHighlighting package
+        if: ${{ needs.build-and-test.outputs.syntax_deployed == 'no' }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_ORG_API_KEY }}
+          VERSION: ${{ needs.build-and-test.outputs.syntax_version }}
+        run: >-
+          dotnet nuget push "artifacts/package/SharpVision.SyntaxHighlighting.${VERSION}.nupkg"
+          --api-key "$NUGET_API_KEY"
+          --source "$NUGET_SOURCE"
+          --skip-duplicate
+
+      - name: 🚀 Publish SharpVision.SyntaxHighlighting symbols
+        if: ${{ needs.build-and-test.outputs.syntax_deployed == 'no' }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_ORG_API_KEY }}
+          VERSION: ${{ needs.build-and-test.outputs.syntax_version }}
+        run: >-
+          dotnet nuget push "artifacts/package/SharpVision.SyntaxHighlighting.${VERSION}.snupkg"
+          --api-key "$NUGET_API_KEY"
+          --source "$NUGET_SOURCE"
+          --skip-duplicate
+
   summary:
     name: ✔️ Generate publish summary
     needs: [lint, build-and-test, publish]
@@ -331,6 +368,12 @@ jobs:
               document_status="✅ Already published"
             fi
 
+            if [[ "${{ needs.build-and-test.outputs.syntax_deployed }}" == "no" ]]; then
+              syntax_status="✅ Published"
+            else
+              syntax_status="✅ Already published"
+            fi
+
             {
               echo "## NuGet packages"
               echo
@@ -340,6 +383,7 @@ jobs:
               echo "| SharpVision | $ui_status | ${{ needs.build-and-test.outputs.ui_version }} |"
               echo "| SharpVision.Document | $document_status | ${{ needs.build-and-test.outputs.document_version }} |"
               echo "| SharpVision.FigletFonts | $fonts_status | ${{ needs.build-and-test.outputs.fonts_version }} |"
+              echo "| SharpVision.SyntaxHighlighting | $syntax_status | ${{ needs.build-and-test.outputs.syntax_version }} |"
             } >> "$GITHUB_STEP_SUMMARY"
           else
             {

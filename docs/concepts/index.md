@@ -28,6 +28,7 @@ flowchart TB
 - [Styling](styling.md#overview)
 - [Intrinsic chrome](intrinsic-chrome.md#overview)
 - [Themes](themes.md#overview)
+- [Theming a new control](theming-new-controls.md#overview)
 - [Markdown documents](markdown-documents.md#overview)
 - [Syntax highlighting](syntax-highlighting.md#overview)
 - [Layout](layout.md#overview)

@@ -62,19 +62,23 @@ section.
   `complete` folds that fallback's contribution into this type's own shape. A
   leaf declares no `styles.*` section of its own at all — its only sources of
   appearance are this completion logic, the fallback's resolved states, and a
-  locally assigned `Style`.
+  locally assigned `Style`. `complete` itself is shaped
+  `(TFallback, VisualState, Theme) -> TStyle`; the `Theme` parameter is how
+  completion reaches theme-level values beyond the fallback's own resolved
+  appearance — the glyph-aware styles (CheckBox, RadioButton, ScrollBar,
+  Spinner, ProgressBar, ChaseIndicator) read `theme.Glyphs` from it to complete
+  their own structural members.
 - `StyleDefinitions.Part<TStyle>(fallback, compare)` — a secondary style that
   does not own its control's appearance states.
 
 A well-known type's key is **derived from its type name** by the internal
-`StyleKey`: drop a trailing `Style`, drop a leading `Theme`, lower-case the
-first character — so `ControlStyle` owns `"control"`, `WindowStyle` owns
-`"window"`. That derivation only ever resolves for the six well-known roots; a
-leaf style's own derived key (`ButtonStyle` would derive `"button"`) is never
-looked up against a theme document, since `styles` admits only the six names
-regardless of what a leaf type's key would compute to. There is no registry, no
-vendor namespace, and no explicit-key overload for a leaf or third-party
-section.
+`StyleKey`: drop a trailing `Style`, lower-case the first character — so
+`ControlStyle` owns `"control"`, `WindowStyle` owns `"window"`. That derivation
+only ever resolves for the six well-known roots; a leaf style's own derived key
+(`ButtonStyle` would derive `"button"`) is never looked up against a theme
+document, since `styles` admits only the six names regardless of what a leaf
+type's key would compute to. There is no registry, no vendor namespace, and no
+explicit-key overload for a leaf or third-party section.
 
 ## Workflow
 
@@ -141,6 +145,14 @@ section.
 - **Static initializer order.** A `static` member that reads other statics of
   the same class must be declared _after_ them; initializers run in textual
   order and a too-early declaration silently captures zeroed structs.
+- **`Theme.Unthemed` is internal.** A style type declared in another assembly
+  (`SharpVision.Document`, `SharpVision.SyntaxHighlighting`) has no
+  `InternalsVisibleTo` grant to reach `SharpVision`'s internal `Theme.Unthemed`,
+  so its static presets complete against a bare `new Theme()` instead — see
+  `DocumentStyle.Default` and `CodeViewStyle.Default`. `Complete` never actually
+  reads the theme it is given for these styles, so any valid instance resolves
+  identically; do not "fix" this by trying to reach `Theme.Unthemed` from
+  outside `SharpVision.dll`.
 - **Passive styles ignore interactive states.** Only `"input"` inherits
   `"control"`'s per-state deltas. Containers, windows, popups, and tooltips
   deliberately do not answer hover or focus — cascading into them tints every

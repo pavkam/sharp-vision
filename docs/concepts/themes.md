@@ -282,14 +282,14 @@ local `Style`.
 ### Where a section name comes from
 
 A section key is not a free-form string: it is **derived from the style type
-that owns it**. Drop a trailing `Style`, drop a leading `Theme`, and lower-case
-the first character - so `ControlStyle` owns `control`, `InputStyle` owns
-`input`, and the same rule accounts for the remaining four well-known roots.
-Deriving the key from the type keeps the two from drifting apart, but only the
-six well-known roots ever resolve a section through this derivation: a leaf
-control style's own derived key (`ButtonStyle` would derive `button`) is never
-looked up against a theme document at all, since `styles` admits only the six
-names regardless of what a type's own key would compute to.
+that owns it**. Drop a trailing `Style` and lower-case the first character - so
+`ControlStyle` owns `control`, `InputStyle` owns `input`, and the same rule
+accounts for the remaining four well-known roots. Deriving the key from the type
+keeps the two from drifting apart, but only the six well-known roots ever
+resolve a section through this derivation: a leaf control style's own derived
+key (`ButtonStyle` would derive `button`) is never looked up against a theme
+document at all, since `styles` admits only the six names regardless of what a
+type's own key would compute to.
 
 Register a library style type's fallback definition with
 `StyleDefinitions.Control<TStyle, TFallback>(fallbackTo, complete, compare)` -

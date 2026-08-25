@@ -1,16 +1,16 @@
 <Project>
   <PropertyGroup>
     <!-- Each published library owns its own version and can be released independently of the
-         others - SharpVision.Terminal, SharpVision, SharpVision.Document, and
-         SharpVision.FigletFonts do not need to move in lockstep. These four properties are the
-         single source of truth for their
-         respective package's version; every other version-derived property below selects the
-         matching one by project name. -->
-    <SharpVisionTerminalVersion>1.1.0-beta.1</SharpVisionTerminalVersion>
+         others - SharpVision.Terminal, SharpVision, SharpVision.Document,
+         SharpVision.FigletFonts, and SharpVision.SyntaxHighlighting do not need to move in
+         lockstep. These five properties are the single source of truth for their respective
+         package's version; every other version-derived property below selects the matching one
+         by project name. -->
+    <SharpVisionTerminalVersion>1.2.0-beta.1</SharpVisionTerminalVersion>
     <SharpVisionVersion>1.2.0-beta.1</SharpVisionVersion>
-    <SharpVisionDocumentVersion>1.1.0-beta.1</SharpVisionDocumentVersion>
+    <SharpVisionDocumentVersion>1.2.0-beta.1</SharpVisionDocumentVersion>
     <SharpVisionFigletFontsVersion>1.1.0-beta.1</SharpVisionFigletFontsVersion>
-    <SharpVisionSyntaxHighlightingVersion>1.1.0-beta.1</SharpVisionSyntaxHighlightingVersion>
+    <SharpVisionSyntaxHighlightingVersion>1.2.0-beta.1</SharpVisionSyntaxHighlightingVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'SharpVision.Terminal'">

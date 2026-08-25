@@ -111,41 +111,43 @@ unused.
 
 ## Package publication
 
-`SharpVision.Terminal`, `SharpVision`, `SharpVision.Document`, and
-`SharpVision.FigletFonts` each own an independent version
-(`SharpVisionTerminalVersion`, `SharpVisionVersion`,
-`SharpVisionDocumentVersion`, and `SharpVisionFigletFontsVersion` in
-`Directory.Build.props`) and publish on their own schedule. Neither optional
-leaf needs to move in lockstep with core; its dependency on `SharpVision` uses
-the packed core version as the floor.
+`SharpVision.Terminal`, `SharpVision`, `SharpVision.Document`,
+`SharpVision.FigletFonts`, and `SharpVision.SyntaxHighlighting` each own an
+independent version (`SharpVisionTerminalVersion`, `SharpVisionVersion`,
+`SharpVisionDocumentVersion`, `SharpVisionFigletFontsVersion`, and
+`SharpVisionSyntaxHighlightingVersion` in `Directory.Build.props`) and publish
+on their own schedule. None of the optional leaves need to move in lockstep with
+core; each one's dependency on `SharpVision` uses the packed core version as the
+floor.
 
 The `sharpvision-publish.yml` workflow runs the same build-and-test action and
 then reads each project's own `Version` independently. Publication accepts a
 three-part semantic version with an optional prerelease suffix for each package;
-the four packages are never required to agree.
+the five packages are never required to agree.
 
-The workflow independently checks whether each of the four packages already
-exists at its own version. It always packs and validates exactly four main
-packages and four symbol packages, then publishes each missing package with its
-symbols in dependency order: Terminal, UI, then the optional Document and font
-catalog leaves. An existing UI package cannot suppress a missing optional
-package. A main package that already exists is not rebuilt or republished under
-the immutable version.
+The workflow independently checks whether each of the five packages already
+exists at its own version. It always packs and validates exactly five main
+packages and five symbol packages, then publishes each missing package with its
+symbols in dependency order: Terminal, UI, then the optional Document, font
+catalog, and syntax-highlighting leaves. An existing UI package cannot suppress
+a missing optional package. A main package that already exists is not rebuilt or
+republished under the immutable version.
 
-`SharpVision.Document` and `SharpVision.FigletFonts` each emit a minimum
-dependency on the `SharpVision` core's own version (`SharpVisionVersion`), not
-on the leaf's own version. The packages publish independently and are not
+`SharpVision.Document`, `SharpVision.FigletFonts`, and
+`SharpVision.SyntaxHighlighting` each emit a minimum dependency on the
+`SharpVision` core's own version (`SharpVisionVersion`), not on the leaf's own
+version, resolved through the central `SharpVision` `PackageVersion` floor in
+`Directory.Packages.props`. The packages publish independently and are not
 expected to share a version number. NuGet serializes that open-ended range as
-that bare minimum version in the `.nuspec`. The packed-consumer test asserts the
-packed dependency equals the packed core package's own version, so a floor that
-drifted away from the core it ships beside fails there rather than shipping.
+that bare minimum version in the `.nuspec`.
 
-That test restores the two packed artifacts from the local feed; nuget.org stays
-in its generated `NuGet.config` because the packed nuspecs depend on
-`JetBrains.Annotations`, which no local feed provides. It verifies that core has
-no FIGfont resources, verifies the optional assembly has 19 individual font
-resources and no ZIP, and renders `Classy` through the transitive dependency
-graph.
+`FirstPartyPackageVersionTests` is a static assertion, not a packing or
+consumption proof: it parses `Directory.Packages.props`, requires every
+`PackageVersion` entry whose package name starts with `SharpVision` to reference
+`$(SharpVisionVersion)` rather than a literal, and confirms that token actually
+expands to the `SharpVisionVersion` value `Directory.Build.props` currently
+carries. A floor that drifted back to a hardcoded version, or one that failed to
+expand, fails there without packing or restoring anything.
 
 `Directory.Build.targets` refuses to generate a NuGet manifest for a packable
 project when any required public metadata is empty: identity, version, title,
@@ -168,4 +170,4 @@ terminal, Unicode, rendering, and control behavior.
 | Format and lint | No C# formatting/analyzer, Markdown formatting/lint, or local-link violations; runs as its own job beside build and test. |
 | Build           | Zero warnings/errors across production, examples, showcase, tests, and XML documentation.                                 |
 | Test            | Minimum discovery is met and every discovered test passes without retries.                                                |
-| Package         | All four packages and symbols use the approved version and validated metadata; dependencies publish before dependents.    |
+| Package         | All five packages and symbols use the approved version and validated metadata; dependencies publish before dependents.    |
