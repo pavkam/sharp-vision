@@ -1323,8 +1323,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     private bool IsBlockStart(string line) =>
         TryHeading(line, out _) ||
         line.TrimStart().StartsWith('>') ||
-        line.TrimStart().StartsWith("```", StringComparison.Ordinal) ||
-        line.TrimStart().StartsWith("~~~", StringComparison.Ordinal) ||
+        TryFenceOpener(line, out _) ||
         TryListMarker(line, out _) ||
         IsRule(line);
 
@@ -1334,8 +1333,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             ? marker.Content.Length > 0 && (!marker.IsOrdered || marker.Start == 1)
             : TryHeading(line, out _) ||
               line.TrimStart().StartsWith('>') ||
-              line.TrimStart().StartsWith("```", StringComparison.Ordinal) ||
-              line.TrimStart().StartsWith("~~~", StringComparison.Ordinal) ||
+              TryFenceOpener(line, out _) ||
               IsRule(line);
 
     [Pure]

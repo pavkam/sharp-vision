@@ -31,6 +31,8 @@ This sentence starts on the next rendered line. A trailing backslash also makes
 a hard break.\
 So this sentence does too.
 
+Only valid fence openers split paragraphs into code blocks.
+
 - Unicode-safe text: café, 你好, and 👩‍💻
 - Bulleted lists use flowing inline content
   - Nested items retain their own marker gutter

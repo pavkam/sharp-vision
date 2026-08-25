@@ -426,6 +426,62 @@ public sealed class MarkdownDocumentReaderTests
         code.Text.ShouldBe("a\n```\n```not-close\nb");
     }
 
+    /// <summary>Verifies a backtick fence with a forbidden backtick in its info string remains
+    /// ordinary continuation text inside the surrounding paragraph.</summary>
+    [Fact]
+    public void Read_WhenInvalidBacktickFenceFollowsParagraph_PreservesOneParagraph()
+    {
+        // Arrange
+        const string source = "paragraph\n```bad`info\ncontinuation";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        var paragraph = result.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+        paragraph.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("paragraph");
+        paragraph.Inlines.OfType<DocumentSoftBreak>().Count().ShouldBe(2);
+        paragraph.Inlines[^1].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("continuation");
+    }
+
+    /// <summary>Verifies a fence-like line beyond the three-space block indent cannot interrupt
+    /// an open paragraph for either fence marker.</summary>
+    [Theory]
+    [InlineData("    ```text")]
+    [InlineData("    ~~~text")]
+    public void Read_WhenOverIndentedFenceFollowsParagraph_PreservesOneParagraph(string fence)
+    {
+        // Arrange
+        var source = $"paragraph\n{fence}\ncontinuation";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        var paragraph = result.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+        paragraph.Inlines.Count.ShouldBe(5);
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(fence);
+        paragraph.Inlines[4].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("continuation");
+    }
+
+    /// <summary>Verifies a valid opener still interrupts a paragraph and produces a code block.</summary>
+    [Fact]
+    public void Read_WhenValidFenceFollowsParagraph_ProducesParagraphAndCodeBlock()
+    {
+        // Arrange
+        const string source = "paragraph\n```text\ncode\n```";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.Blocks.Count.ShouldBe(2);
+        _ = result.Blocks[0].ShouldBeOfType<DocumentParagraph>();
+        var code = result.Blocks[1].ShouldBeOfType<DocumentCodeBlock>();
+        code.Language.ShouldBe("text");
+        code.Text.ShouldBe("code");
+    }
+
     /// <summary>Verifies baseline punctuation escapes suppress inline syntax and hide the escape slash.</summary>
     [Fact]
     public void Read_WhenPunctuationIsBackslashEscaped_PreservesLiteralText()

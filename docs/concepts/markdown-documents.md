@@ -61,6 +61,11 @@ their peers. Changing between `-`, `+`, and `*`, or between the `.` and `)`
 ordered delimiters, starts a distinct list block. Parser-generated radio groups
 follow those exact list boundaries.
 
+Fence block boundaries use the same full opener grammar as fence parsing. An
+opener may be indented by at most three spaces, and a backtick fence's info
+string cannot contain a backtick. A rejected fence-looking line remains part of
+the surrounding paragraph instead of splitting it.
+
 Block-quote nesting is interpreted to a maximum of 64 semantic levels. Any
 deeper quote markers remain literal paragraph content, keeping hostile input
 bounded without discarding source text.
