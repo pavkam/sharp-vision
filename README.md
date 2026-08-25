@@ -125,8 +125,6 @@ maps the commands to the public gate.
 
 Planned work not yet implemented:
 
-- A command palette.
-- Toasts and notifications.
 - File system views, with the save and open dialogs built on top of them.
 - Animations for opening floating surfaces.
 - A Turbo Vision theme.
