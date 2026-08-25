@@ -48,13 +48,13 @@ public sealed class StyleStatesTests
     public void GetRawStyleSection_WhenKeyIsPresent_SplitsByStateThenByProperty()
     {
         var theme = CreateTheme(
-            inputExtra: ", \"padding\": 2",
+            inputExtra: ", \"affixGap\": 2",
             inputStates: """, "pointerOver": { "border": { "foreground": "accent" } } """);
 
         var raw = theme.GetRawStyleSection("input");
 
         _ = raw.ShouldNotBeNull();
-        raw["normal"]["padding"].GetInt32().ShouldBe(2);
+        raw["normal"]["affixGap"].GetInt32().ShouldBe(2);
         raw["pointerOver"].ShouldContainKey("border");
     }
 
@@ -63,9 +63,8 @@ public sealed class StyleStatesTests
     [Fact]
     public void GetRawStyleSection_WhenStateNameIsUnknown_Throws()
     {
-        var theme = CreateTheme(inputStates: """, "hovered": {} """);
-
-        _ = Should.Throw<InvalidDataException>(() => theme.GetRawStyleSection("input"));
+        _ = Should.Throw<InvalidDataException>(() =>
+            CreateTheme(inputStates: """, "hovered": {} """));
     }
 
     /// <summary>Verifies the self-contained root form falls back to the caller-supplied code-owned

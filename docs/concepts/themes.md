@@ -109,12 +109,11 @@ Only `control` is conventionally load-bearing: it is the terminal root every
 other well-known style's `Normal` state cascades from (see below), and every
 bundled theme authors it. There is no strict parse-time requirement that any
 individual `styles.*` key be present, though - an absent key simply means that
-type resolves entirely from its own code-owned default. `styles` parsing is
-lazy: the document's JSON is captured as-is when a theme loads, and a given
-key's leaf values (colors, glyph styles, and so on) are only actually converted
-and validated the first time something resolves that style type. A malformed
-leaf a theme never exercises does not fail to load; it fails the first time it
-is read.
+type resolves entirely from its own code-owned default. Theme loading compiles
+all six declared root style sections before publishing the frozen `Theme`, so a
+malformed leaf fails atomically from `Parse`, `Load`, or `LoadFile` with that
+loader's source label. Control inventory and first-use order never affect
+validation.
 
 Each style type's own section is an object whose top-level keys are visual state
 names - `normal`, `pointerOver`, `focusWithin`, `focused`, `current`,

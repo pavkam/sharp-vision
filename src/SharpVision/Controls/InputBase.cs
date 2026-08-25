@@ -462,10 +462,13 @@ public abstract class InputBase: ControlBase
     /// </remarks>
     /// <param name="fallback">The code-owned narrow-policy fallback.</param>
     /// <returns>The glyph to draw.</returns>
-    protected Rune ResolveDropDownGlyph(Rune fallback) =>
-        (Theme ?? ThemeCatalog.Dark)
-        .GetStyleSet(InputStyle.Default)
-        .Normal.DropDownGlyph.Resolve(fallback, CellPolicy.AmbiguousWidth);
+    protected Rune ResolveDropDownGlyph(Rune fallback)
+    {
+        TrackThemeStructuralDependency(ThemeStructuralDependency.InputDropDownGlyph);
+        return (Theme ?? ThemeCatalog.Dark)
+            .GetStyleSet(InputStyle.Default)
+            .Normal.DropDownGlyph.Resolve(fallback, CellPolicy.AmbiguousWidth);
+    }
 
     /// <summary>Draws the shared disclosure chevron at the content box's trailing edge.</summary>
     /// <param name="canvas">The canvas to draw into.</param>

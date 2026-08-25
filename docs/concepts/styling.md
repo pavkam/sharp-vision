@@ -60,6 +60,11 @@ reentrant newer commit abandons the older publication. The framework owns
 dispatcher checks, notification order, theme transition planning, caching, exact
 invalidation, and disposal of remaining binding edges.
 
+Protected structural resolvers such as the shared input affix gap and drop-down
+glyph register their root-Theme dependency when used. A later Theme replacement
+therefore requests measure or render even though those values do not appear in
+`AppearanceStates`; consuming controls do not duplicate comparison overrides.
+
 `TStyle` must derive from `ControlStyle` - see
 [themes.md](themes.md#style-types) for the type hierarchy and how a control's
 own `StyleDefinition<TStyle>` is built.

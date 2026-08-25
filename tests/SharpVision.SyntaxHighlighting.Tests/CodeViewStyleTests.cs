@@ -180,4 +180,20 @@ public sealed class CodeViewStyleTests
         ControlBase.ResolveColor(style.SpecialCharColor, theme).ShouldNotBe(stringColor);
         ControlBase.ResolveColor(style.SpecialStringColor, theme).ShouldNotBe(stringColor);
     }
+
+    /// <summary>Verifies the focusable CodeView fallback contributes the standard focused
+    /// container border instead of leaving keyboard focus visually identical to rest.</summary>
+    [Fact]
+    public void Definition_Appearance_WhenFocused_UsesFocusableContainerBorder()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create());
+        var style = CodeViewStyle.Definition.Resolve(null, theme);
+        var appearance = CodeViewStyle.Definition.Appearance!(style, theme);
+
+        var normal = appearance.Resolve(VisualState.Normal);
+        var focused = appearance.Resolve(VisualState.Focused);
+
+        focused.Border.Foreground.ShouldNotBe(normal.Border.Foreground);
+        focused.Border.Foreground.ShouldBe((ControlColor) SemanticColor.FocusedBorder);
+    }
 }

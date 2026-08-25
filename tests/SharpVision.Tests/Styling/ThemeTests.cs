@@ -219,7 +219,7 @@ public sealed class ThemeTests
         var exception = Should.Throw<InvalidDataException>(
             () => theme.ParseSectionGlyph("xy", "styles.checkBox.glyphs.unchecked"));
         exception.Message.ShouldBe(
-            $"Theme '{theme.Slug}' styles.checkBox.glyphs.unchecked must contain one Rune.");
+            "Theme '<parsed>' styles.checkBox.glyphs.unchecked must contain one Rune.");
     }
 
     /// <summary>Verifies ParseSectionEnum's null passthrough, case-insensitive success, and the
@@ -237,7 +237,7 @@ public sealed class ThemeTests
         var exception = Should.Throw<InvalidDataException>(
             () => theme.ParseSectionEnum<CheckBoxMarkStyle>("bogus", "styles.checkBox.markStyle"));
         exception.Message.ShouldBe(
-            $"Theme '{theme.Slug}' styles.checkBox.markStyle has unknown value 'bogus'.");
+            "Theme '<parsed>' styles.checkBox.markStyle has unknown value 'bogus'.");
     }
 
     /// <summary>Verifies one frozen theme safely resolves global colors from concurrent renderer threads.</summary>
@@ -426,8 +426,8 @@ public sealed class ThemeTests
     [Fact]
     public void GetStyleSet_WhenAStructuralMemberIsAuthoredUnderANonNormalState_ThrowsNamingTheDottedPath()
     {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            controlExtra: """, "pressed": { "weight": 2 } """));
+        var theme = CreateThemeWithControlStyles(
+            /*lang=json,strict*/ """{"pressed":{"weight":2}}""");
 
         var exception = Should.Throw<InvalidDataException>(() =>
             theme.GetStyleSet("control", StructuralDefault()));
@@ -440,7 +440,8 @@ public sealed class ThemeTests
     [Fact]
     public void GetStyleSet_WhenAStructuralMemberIsAuthoredUnderNormal_Succeeds()
     {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(controlNormalExtra: ", \"weight\": 2"));
+        var theme = CreateThemeWithControlStyles(
+            /*lang=json,strict*/ """{"normal":{"weight":2}}""");
 
         var resolved = theme.GetStyleSet("control", StructuralDefault());
 
@@ -535,6 +536,16 @@ public sealed class ThemeTests
 
     private static TestStructuralRootStyle StructuralDefault() =>
         new(ControlStyle.DefaultFace, ControlStyle.NoBorder, ControlStyle.NoShadow, weight: 1);
+
+    private static Theme CreateThemeWithControlStyles(string json)
+    {
+        var theme = new Theme();
+        theme.SetStyleSections(new Dictionary<string, JsonElement>
+        {
+            ["control"] = JsonSerializer.Deserialize<JsonElement>(json)
+        });
+        return theme;
+    }
 
     // A root style with one structural (non-Face/Border/Shadow) member, the shape
     // restrictToChrome exists to police: Weight is declared on this type, not on ControlStyle, so

@@ -9,6 +9,10 @@ syntax-colored source file with grapheme-safe selection, two-axis scrolling, and
 collapsible fold ranges. There is no editing API: replacing `Code` replaces the
 whole source.
 
+`CodeView` is a direct keyboard focus target. Its container-shaped style uses
+the focusable-container Theme fallback, preserving normal container geometry
+while applying the standard focused border cue.
+
 Line endings normalize to LF before tokenization or selection. Offsets are
 UTF-16 grapheme boundaries in that normalized string. Lines never wrap, and a
 tab is one semantic character and exactly one displayed cell. The control owns

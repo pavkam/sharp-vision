@@ -1233,7 +1233,15 @@ public class Popup: FloatingSurfaceBase
     private Rune ResolveAnchor(ControlGlyph themed) =>
         themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
 
-    private PopupAnchorGlyphs ResolvedAnchorGlyphs =>
-        (Theme ?? ThemeCatalog.Dark).GetStyleSet(PopupStyle.Default).Normal.AnchorGlyphs;
+    /// <summary>Gets the resolved anchor family and records its render dependency for Theme swaps.</summary>
+    /// <remarks>Internal so tests can prove the dependency is registered at the resolver boundary.</remarks>
+    internal PopupAnchorGlyphs ResolvedAnchorGlyphs
+    {
+        get
+        {
+            TrackThemeStructuralDependency(ThemeStructuralDependency.PopupAnchorGlyphs);
+            return (Theme ?? ThemeCatalog.Dark).GetStyleSet(PopupStyle.Default).Normal.AnchorGlyphs;
+        }
+    }
 
 }

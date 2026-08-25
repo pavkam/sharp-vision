@@ -6,6 +6,23 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies TextInput validation, editing, events, input, rendering, and history.</summary>
 public sealed class TextInputTests
 {
+    /// <summary>Verifies the shared affix-gap resolver registers its layout dependency rather than
+    /// relying on each consuming input to duplicate Theme comparison plumbing.</summary>
+    [Fact]
+    public void SetTheme_WhenResolvedAffixGapChanges_InvalidatesMeasure()
+    {
+        var previous = ThemeCatalog.Parse(ThemeJson.Create(inputExtra: ", \"affixGap\": 1"));
+        var current = ThemeCatalog.Parse(ThemeJson.Create(inputExtra: ", \"affixGap\": 3"));
+        var input = new TextInput { Text = "value", StartAffix = new Affix("!") };
+        input.SetTheme(previous);
+        new LayoutEngine().Layout(input, new Size(20, 1));
+        input.Clear(Invalidation.All);
+
+        input.SetTheme(current);
+
+        input.Pending.ShouldBe(Invalidation.All);
+    }
+
     /// <summary>Verifies editable input selection is exposed through the common non-mutating text-selection contract.</summary>
     [Fact]
     public void TextSelection_WhenAccessedThroughControlBase_UsesInputSelectionState()

@@ -11,7 +11,7 @@ using SharpVision.SyntaxHighlighting;
 /// Defines one complete immutable <see cref="CodeView"/> presentation: one
 /// <see cref="ControlColor"/> per <see cref="SyntaxDefaultStyle"/> role, plus selection and fold
 /// gutter colors. This style declares no theme section of its own: it falls back to
-/// <see cref="ContainerStyle"/>'s "container" role section for its passive chrome, resolves its
+/// <see cref="ContainerStyle"/>'s focusable "container" role presentation, resolves its
 /// syntax-role colors from semantic colors, and is themeable only through that fallback and a
 /// locally assigned <see cref="CodeView.Style"/>.
 /// </summary>
@@ -28,13 +28,11 @@ public sealed record CodeViewStyle: ContainerStyle
 {
     /// <summary>Gets the primary code-view style definition.</summary>
     /// <remarks>
-    /// Falls back through the public <see cref="Theme.GetStyleSet{TStyle}"/> rather than the
-    /// core library's own internal focusable-container resolution (reserved for control types
-    /// declared inside the core <c>SharpVision</c> assembly itself), the same public-surface
-    /// constraint <c>DocumentStyle</c> documents for every style declared in a different assembly.
+    /// Falls back through the public <see cref="Theme.GetFocusableContainerStyleSet"/>, preserving
+    /// container geometry while contributing the standard focused border cue.
     /// </remarks>
     internal static StyleDefinition<CodeViewStyle> Definition { get; } = StyleDefinitions.Control(
-        static theme => theme.GetStyleSet(ContainerStyle.Default),
+        static theme => theme.GetFocusableContainerStyleSet(),
         Complete,
         static (previous, previousTheme, current, currentTheme) => Compare(previous, previousTheme, current, currentTheme));
 

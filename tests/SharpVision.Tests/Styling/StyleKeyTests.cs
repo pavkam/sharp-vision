@@ -160,11 +160,8 @@ public sealed class StyleKeyTests
     [Fact]
     public void Parse_WhenBorderSidesNameSomethingUndeclared_Throws()
     {
-        // Section binding is deferred, so the failure surfaces on first resolution rather than
-        // at Parse.
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(containerSides: "\"top, diagonal\""));
-
-        _ = Should.Throw<InvalidDataException>(() => theme.GetStyleSet(ContainerStyle.Default));
+        _ = Should.Throw<InvalidDataException>(() =>
+            ThemeCatalog.Parse(ThemeJson.Create(containerSides: "\"top, diagonal\"")));
     }
 
     /// <summary>Verifies a plain enum still requires an exact declared member, so widening the
@@ -172,9 +169,8 @@ public sealed class StyleKeyTests
     [Fact]
     public void Parse_WhenAPlainEnumValueIsUndeclared_Throws()
     {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(inputGlyphStyle: "\"triple\""));
-
-        _ = Should.Throw<InvalidDataException>(() => theme.GetStyleSet(InputStyle.Default));
+        _ = Should.Throw<InvalidDataException>(() =>
+            ThemeCatalog.Parse(ThemeJson.Create(inputGlyphStyle: "\"triple\"")));
     }
 
     /// <summary>The counter-case: an unauthored theme keeps the code-owned tab strip - TabControl's

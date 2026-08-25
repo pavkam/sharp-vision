@@ -67,10 +67,8 @@ public sealed class StyleInvariantEnforcementTests
     [Fact]
     public void GetStyleSet_WhenAThemeAuthorsAWideGlyphInARuneArray_NamesTheOffendingIndex()
     {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            controlExtra: """, "pressed": { "border": { "glyphStyle": ["─","│","┌","漢","└","┘","├","┤"] } } """));
-
-        var error = Should.Throw<InvalidDataException>(() => theme.GetStyleSet(ControlStyle.Default));
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(ThemeJson.Create(
+            controlExtra: """, "pressed": { "border": { "glyphStyle": ["─","│","┌","漢","└","┘","├","┤"] } } """)));
 
         error.Message.ShouldContain("styles.control.pressed.border.glyphStyle[3]");
     }
@@ -99,10 +97,8 @@ public sealed class StyleInvariantEnforcementTests
     [Fact]
     public void GetStyleSet_WhenAThemeAuthorsATransparentForeground_RejectsItWithTheStylePath()
     {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
-            controlExtra: """, "pressed": { "face": { "foreground": "transparent" } } """));
-
-        var error = Should.Throw<InvalidDataException>(() => theme.GetStyleSet(ControlStyle.Default));
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(ThemeJson.Create(
+            controlExtra: """, "pressed": { "face": { "foreground": "transparent" } } """)));
 
         error.Message.ShouldContain("styles.control.pressed.face.foreground");
     }
@@ -131,11 +127,9 @@ public sealed class StyleInvariantEnforcementTests
     [Fact]
     public void GetStyleSet_WhenAThemeAuthorsAConflictingDecoration_RejectsTheCompletedFace()
     {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(ThemeJson.Create(
             controlExtra:
-            """, "pressed": { "face": { "attributes": ["underline"], "underline": "straight" } } """));
-
-        var error = Should.Throw<InvalidDataException>(() => theme.GetStyleSet(ControlStyle.Default));
+            """, "pressed": { "face": { "attributes": ["underline"], "underline": "straight" } } """)));
 
         error.Message.ShouldContain("styles.control.pressed.face");
     }

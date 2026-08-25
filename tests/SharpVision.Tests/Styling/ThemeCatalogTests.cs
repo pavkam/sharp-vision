@@ -519,6 +519,34 @@ public sealed class ThemeCatalogTests
         _ = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "t").Input.Normal.Border.GlyphStyle);
     }
 
+    /// <summary>Verifies every declared style leaf is converted before Parse publishes a Theme,
+    /// even when no matching control or style property is ever requested.</summary>
+    [Fact]
+    public void Parse_WhenUnusedStyleLeafIsMalformed_ThrowsAtTheLoadBoundaryWithSource()
+    {
+        var json = ThemeJson.Create().Replace(
+            "\"tooltip\": { \"normal\": { \"border\": { \"sides\":\"none\" } } }",
+            "\"tooltip\": { \"normal\": { \"border\": { \"sides\":\"diagonal\" } } }",
+            StringComparison.Ordinal);
+
+        var exception = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "unused.theme.json"));
+
+        exception.Message.ShouldContain("unused.theme.json");
+        exception.Message.ShouldContain("styles.tooltip.normal.border.sides");
+    }
+
+    /// <summary>Verifies stream loading retains its diagnostic label through eager style compilation.</summary>
+    [Fact]
+    public void Load_WhenUnusedStyleLeafIsMalformed_ThrowsNamingTheStream()
+    {
+        var json = ThemeJson.Create(inputGlyphStyle: "\"diagonal\"");
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+
+        var exception = Should.Throw<InvalidDataException>(() => ThemeCatalog.Load(stream));
+
+        exception.Message.ShouldContain("<stream>");
+    }
+
     /// <summary>Verifies an unqualified unknown styles key is rejected instead of silently
     /// retained, since it is very likely a typo of one of the six well-known role names.</summary>
     [Fact]

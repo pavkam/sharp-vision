@@ -268,10 +268,13 @@ public static class ThemeCatalog
                 ? ReadRequiredMetadata(definition.Source, "source", source)
                 : Or(definition.Source, "https://github.com/sharpvision/sharpvision"));
 
+        theme.SetDiagnosticSource(source);
+
         SetSemanticColors(theme, definition.Colors, palette, source);
         SetSemanticAttributes(theme, definition.Attributes, source);
         ApplyStyleSections(theme, definition.Styles, source);
         theme.SetGlyphs(ReadGlyphFamily(definition.Glyphs, source));
+        theme.ValidateStyleSections();
         theme.Freeze();
         return theme;
     }

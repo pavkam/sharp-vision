@@ -21,6 +21,8 @@ property directly:
 ```csharp
 public sealed class PrimitiveCommandTile : ControlBase
 {
+    public PrimitiveCommandTile() => EnableChromeAuthoring();
+
     protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
         (theme ?? ThemeCatalog.Dark).Input;
 
@@ -82,10 +84,10 @@ so callers can inspect the fully resolved values.
 
 A control whose structure needs more than one of the six well-known types
 alone - its own padding, glyph family, mark style, or any other structural
-member - declares a `sealed record` (or `readonly record struct`) deriving from
-`ControlStyle` (or one of its five siblings), and registers a
-`static StyleDefinition<TStyle>` for it with a declared **one-hop fallback** to
-whichever of the six well-known types is the closest semantic match -
+member - declares a `sealed record` deriving from `ControlStyle` (or one of its
+five siblings), and registers a `static StyleDefinition<TStyle>` for it with a
+declared **one-hop fallback** to whichever of the six well-known types is the
+closest semantic match -
 `StyleDefinitions.Control<TStyle, TFallback>(fallbackTo, complete, compare)`.
 This is the one factory every leaf control style in the library calls today -
 `Button`, `CheckBox`, `RadioButton`, `ScrollBar`, and the rest - so a restyled

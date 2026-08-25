@@ -28,6 +28,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     private StyleSlotBase? _primaryStyle;
     private Dictionary<string, StyleSlotBase>? _styleSlots;
     private long _stylePublicationVersion;
+    private ThemeStructuralDependency _themeStructuralDependencies;
     private bool? _effectiveIsVisible;
     private bool? _effectiveIsEnabled;
 
@@ -2737,8 +2738,27 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// style of its own.
     /// </remarks>
     /// <returns>The cell gap between a present affix and the content it sits beside.</returns>
-    protected int ResolveAffixGap() =>
-        (Theme ?? ThemeCatalog.Dark).GetStyleSet(InputStyle.Default).Normal.AffixGap;
+    protected int ResolveAffixGap()
+    {
+        TrackThemeStructuralDependency(ThemeStructuralDependency.InputAffixGap);
+        return (Theme ?? ThemeCatalog.Dark).GetStyleSet(InputStyle.Default).Normal.AffixGap;
+    }
+
+    /// <summary>Records one non-appearance root Theme value used by this control.</summary>
+    /// <param name="dependency">The defined structural dependency.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="dependency"/> is unknown.</exception>
+    private protected void TrackThemeStructuralDependency(ThemeStructuralDependency dependency)
+    {
+        if (dependency == ThemeStructuralDependency.None ||
+            (dependency & ~(ThemeStructuralDependency.InputAffixGap |
+                            ThemeStructuralDependency.InputDropDownGlyph |
+                            ThemeStructuralDependency.PopupAnchorGlyphs)) != 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(dependency), dependency, "The Theme structural dependency is unknown.");
+        }
+
+        _themeStructuralDependencies |= dependency;
+    }
 
     /// <summary>Resolves the printable cell width an affix reserves under the tree's live
     /// <see cref="CellPolicy"/>, and reports which of <see cref="Affix.Content"/> or
@@ -4193,26 +4213,47 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                 previousParentAmbientFace,
                 currentParentAmbientFace);
 
-        if (_styleSlots is null)
+        if (_styleSlots is not null)
         {
-            return impact;
-        }
-
-        foreach (var slot in _styleSlots.Values)
-        {
-            if (!ReferenceEquals(slot, _primaryStyle))
+            foreach (var slot in _styleSlots.Values)
             {
-                impact = MaximumImpact(
-                    impact,
-                    slot.GetThemeImpact(
-                        previous,
-                        current,
-                        previousParentAmbientFace,
-                        currentParentAmbientFace));
+                if (!ReferenceEquals(slot, _primaryStyle))
+                {
+                    impact = MaximumImpact(
+                        impact,
+                        slot.GetThemeImpact(
+                            previous,
+                            current,
+                            previousParentAmbientFace,
+                            currentParentAmbientFace));
+                }
             }
         }
 
-        return impact;
+        return MaximumImpact(impact, GetTrackedThemeStructuralImpact(previous, current));
+    }
+
+    /// <summary>Compares every root Theme value previously resolved outside appearance profiles.</summary>
+    private InvalidationImpact GetTrackedThemeStructuralImpact(Theme? previous, Theme? current)
+    {
+        var previousTheme = previous ?? ThemeCatalog.Dark;
+        var currentTheme = current ?? ThemeCatalog.Dark;
+        var affixGapChanged =
+            (_themeStructuralDependencies & ThemeStructuralDependency.InputAffixGap) != 0 &&
+            previousTheme.GetStyleSet(InputStyle.Default).Normal.AffixGap !=
+            currentTheme.GetStyleSet(InputStyle.Default).Normal.AffixGap;
+        var glyphChanged =
+            ((_themeStructuralDependencies & ThemeStructuralDependency.InputDropDownGlyph) != 0 &&
+                previousTheme.GetStyleSet(InputStyle.Default).Normal.DropDownGlyph !=
+                currentTheme.GetStyleSet(InputStyle.Default).Normal.DropDownGlyph) ||
+            ((_themeStructuralDependencies & ThemeStructuralDependency.PopupAnchorGlyphs) != 0 &&
+                previousTheme.GetStyleSet(PopupStyle.Default).Normal.AnchorGlyphs !=
+                currentTheme.GetStyleSet(PopupStyle.Default).Normal.AnchorGlyphs);
+        return affixGapChanged
+            ? InvalidationImpact.Measure
+            : glyphChanged
+                ? InvalidationImpact.Render
+                : InvalidationImpact.None;
     }
 
     /// <summary>Calculates the exact invalidation impact of one resolved appearance change.</summary>

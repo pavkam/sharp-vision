@@ -761,6 +761,23 @@ public sealed class InputBaseTests
         Should.NotThrow(() => new LayoutEngine().Layout(probe, new Size(1, 1)));
     }
 
+    /// <summary>Verifies resolving a root structural glyph registers the render dependency used
+    /// when a later Theme swap changes only that non-appearance member.</summary>
+    [Fact]
+    public void SetTheme_WhenResolvedDropDownGlyphChanges_InvalidatesRender()
+    {
+        var previous = ThemeCatalog.Parse(ThemeJson.Create(inputExtra: ", \"dropDownGlyph\": \"v\""));
+        var current = ThemeCatalog.Parse(ThemeJson.Create(inputExtra: ", \"dropDownGlyph\": \"x\""));
+        var probe = new PopupListInputProbe();
+        probe.SetTheme(previous);
+        _ = probe.ProbeResolveDropDownGlyph(new Rune('?'));
+        probe.Clear(Invalidation.All);
+
+        probe.SetTheme(current);
+
+        probe.Pending.ShouldBe(Invalidation.Render);
+    }
+
     #endregion
 
     private static KeyEventArgs Key(Code code, Modifiers modifiers = Modifiers.None) => new(new Stroke(

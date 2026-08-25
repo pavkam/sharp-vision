@@ -39,6 +39,17 @@ public sealed class Theme
     private readonly TerminalAttributes[] _attributes =
         new TerminalAttributes[Enum.GetValues<SemanticDecoration>().Length];
     private Dictionary<string, JsonElement> _styleSections = [];
+    private string? DiagnosticSourceOverride { get; set; }
+
+    /// <summary>Gets the loader source retained for delayed style diagnostics.</summary>
+    private string DiagnosticSource => DiagnosticSourceOverride ?? Slug;
+
+    /// <summary>Retains the exact loader source before any style leaf is compiled.</summary>
+    internal void SetDiagnosticSource(string source)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
+        DiagnosticSourceOverride = source;
+    }
 
     /// <summary>Initializes an unfrozen theme and copies its optional named palette.</summary>
     /// <param name="palette">Optional named concrete colors.</param>
@@ -228,7 +239,7 @@ public sealed class Theme
                     : Palette.TryGetValue(value, out var paletteColor)
                         ? paletteColor
                         : throw new InvalidDataException(
-                            $"Theme '{Slug}' {context} references unknown palette key '{value}'.");
+                            $"Theme '{DiagnosticSource}' {context} references unknown palette key '{value}'.");
     }
 
     // Shared by every style section's glyph members - previously
@@ -244,14 +255,14 @@ public sealed class Theme
 
         if (!enumerator.MoveNext())
         {
-            throw new InvalidDataException($"Theme '{Slug}' {context} must contain one Rune.");
+            throw new InvalidDataException($"Theme '{DiagnosticSource}' {context} must contain one Rune.");
         }
 
         var result = enumerator.Current;
 
         if (enumerator.MoveNext())
         {
-            throw new InvalidDataException($"Theme '{Slug}' {context} must contain one Rune.");
+            throw new InvalidDataException($"Theme '{DiagnosticSource}' {context} must contain one Rune.");
         }
 
         // Counting Runes is only half of what themes.md promises: it also states a value measuring
@@ -264,7 +275,7 @@ public sealed class Theme
         }
         catch (ArgumentException error)
         {
-            throw new InvalidDataException($"Theme '{Slug}' {context} must be one cell wide.", error);
+            throw new InvalidDataException($"Theme '{DiagnosticSource}' {context} must be one cell wide.", error);
         }
     }
 
@@ -276,7 +287,7 @@ public sealed class Theme
             ? null
             : Enum.TryParse<TEnum>(value, ignoreCase: true, out var result) && IsRepresentable(result)
                 ? result
-                : throw new InvalidDataException($"Theme '{Slug}' {context} has unknown value '{value}'.");
+                : throw new InvalidDataException($"Theme '{DiagnosticSource}' {context} has unknown value '{value}'.");
 
     /// <summary>Reports whether one parsed enum value is expressible in its type.</summary>
     /// <remarks>
@@ -348,12 +359,12 @@ public sealed class Theme
         foreach (var (key, value) in overrides)
         {
             var property = ThemeStyleFragment.ResolveProperty(type, key)
-                ?? throw new InvalidDataException($"Theme '{Slug}' '{context}.{key}' is not a known property.");
+                ?? throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}.{key}' is not a known property.");
 
             if (restrictToChrome && property.DeclaringType != typeof(ControlStyle))
             {
                 throw new InvalidDataException(
-                    $"Theme '{Slug}' '{context}.{key}' is a structural member and only takes effect under 'normal'.");
+                    $"Theme '{DiagnosticSource}' '{context}.{key}' is a structural member and only takes effect under 'normal'.");
             }
 
             object? updated;
@@ -364,7 +375,7 @@ public sealed class Theme
                     ? Overlay(
                         property.GetValue(patched)!,
                         value.Deserialize<Dictionary<string, JsonElement>>(ThemeCatalog.JsonOptions)
-                            ?? throw new InvalidDataException($"Theme '{Slug}' '{context}.{key}' must be an object."),
+                            ?? throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}.{key}' must be an object."),
                         $"{context}.{key}")
                     : ConvertLeaf(property.PropertyType, value, $"{context}.{key}");
 
@@ -386,7 +397,7 @@ public sealed class Theme
                 // the target of an invocation", the same unwrapping ConvertLeaf's enum branch
                 // already does.
                 throw new InvalidDataException(
-                    $"Theme '{Slug}' '{context}.{key}' is invalid.",
+                    $"Theme '{DiagnosticSource}' '{context}.{key}' is invalid.",
                     error is TargetInvocationException { InnerException: { } inner } ? inner : error);
             }
         }
@@ -400,7 +411,7 @@ public sealed class Theme
         }
         catch (ArgumentException error)
         {
-            throw new InvalidDataException($"Theme '{Slug}' '{context}' is invalid.", error);
+            throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' is invalid.", error);
         }
 
         return patched;
@@ -431,7 +442,7 @@ public sealed class Theme
         if (propertyType == typeof(Rune))
         {
             return ParseSectionGlyph(RequireString(value, context), context)
-                ?? throw new InvalidDataException($"Theme '{Slug}' '{context}' must contain one Rune.");
+                ?? throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' must contain one Rune.");
         }
 
         if (propertyType == typeof(ControlDecoration))
@@ -469,7 +480,7 @@ public sealed class Theme
             try
             {
                 return method.Invoke(this, [RequireString(value, context), context])
-                    ?? throw new InvalidDataException($"Theme '{Slug}' '{context}' has an unknown value.");
+                    ?? throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' has an unknown value.");
             }
             catch (TargetInvocationException error) when (error.InnerException is not null)
             {
@@ -484,13 +495,13 @@ public sealed class Theme
         }
 
         return value.Deserialize(propertyType, ThemeCatalog.JsonOptions)
-            ?? throw new InvalidDataException($"Theme '{Slug}' '{context}' must not be null.");
+            ?? throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' must not be null.");
     }
 
     private string RequireString(JsonElement value, string context) =>
         value.ValueKind == JsonValueKind.String
             ? value.GetString()!
-            : throw new InvalidDataException($"Theme '{Slug}' '{context}' must be a string.");
+            : throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' must be a string.");
 
     // Mirrors ThemeCatalog.ParseAttributes exactly, via the shared ConvertLeaf unification: a string
     // first tries a semantic SemanticDecoration name, then falls back to one literal named
@@ -502,12 +513,12 @@ public sealed class Theme
             var name = value.GetString()!;
             return Enum.TryParse<SemanticDecoration>(name, ignoreCase: true, out var semantic) && Enum.IsDefined(semantic)
                 ? semantic
-                : ThemeCatalog.ResolveAttributeName(name, Slug, context);
+                : ThemeCatalog.ResolveAttributeName(name, DiagnosticSource, context);
         }
 
         if (value.ValueKind != JsonValueKind.Array)
         {
-            throw new InvalidDataException($"Theme '{Slug}' '{context}' must be a string or array.");
+            throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' must be a string or array.");
         }
 
         var result = TerminalAttributes.None;
@@ -515,10 +526,10 @@ public sealed class Theme
         {
             if (item.ValueKind != JsonValueKind.String)
             {
-                throw new InvalidDataException($"Theme '{Slug}' '{context}' must contain strings.");
+                throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' must contain strings.");
             }
 
-            result |= ThemeCatalog.ResolveAttributeName(item.GetString()!, Slug, context);
+            result |= ThemeCatalog.ResolveAttributeName(item.GetString()!, DiagnosticSource, context);
         }
 
         return result;
@@ -545,13 +556,13 @@ public sealed class Theme
                 "lightshade" => BorderGlyphStyle.LightShade,
                 "mediumshade" => BorderGlyphStyle.MediumShade,
                 "darkshade" => BorderGlyphStyle.DarkShade,
-                _ => throw new InvalidDataException($"Theme '{Slug}' '{context}' has unknown glyph style '{name}'.")
+                _ => throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' has unknown glyph style '{name}'.")
             };
         }
 
         if (value.ValueKind != JsonValueKind.Array)
         {
-            throw new InvalidDataException($"Theme '{Slug}' '{context}' must be a string or an eight-Rune array.");
+            throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' must be a string or an eight-Rune array.");
         }
 
         var runes = new Rune[8];
@@ -561,7 +572,7 @@ public sealed class Theme
             if (index >= runes.Length || item.ValueKind != JsonValueKind.String)
             {
                 throw new InvalidDataException(
-                    $"Theme '{Slug}' '{context}' array must contain exactly eight one-Rune strings.");
+                    $"Theme '{DiagnosticSource}' '{context}' array must contain exactly eight one-Rune strings.");
             }
 
             runes[index] = ParseSectionGlyph(item.GetString(), $"{context}[{index}]")!.Value;
@@ -569,7 +580,7 @@ public sealed class Theme
         }
 
         return index != runes.Length
-            ? throw new InvalidDataException($"Theme '{Slug}' '{context}' array must contain exactly eight Runes.")
+            ? throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' array must contain exactly eight Runes.")
             : new BorderGlyphStyle(runes[0], runes[1], runes[2], runes[3], runes[4], runes[5], runes[6], runes[7]);
     }
 
@@ -583,7 +594,7 @@ public sealed class Theme
     {
         if (value.ValueKind != JsonValueKind.Array)
         {
-            throw new InvalidDataException($"Theme '{Slug}' '{context}' must be an array.");
+            throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' must be an array.");
         }
 
         var builder = ImmutableArray.CreateBuilder<Rune>();
@@ -592,14 +603,14 @@ public sealed class Theme
             if (builder.Count == _maximumGlyphSequenceLength)
             {
                 throw new InvalidDataException(
-                    $"Theme '{Slug}' '{context}' cannot contain more than {_maximumGlyphSequenceLength} entries.");
+                    $"Theme '{DiagnosticSource}' '{context}' cannot contain more than {_maximumGlyphSequenceLength} entries.");
             }
 
             builder.Add(ParseSectionGlyph(RequireString(item, context), context)!.Value);
         }
 
         return builder.Count == 0
-            ? throw new InvalidDataException($"Theme '{Slug}' '{context}' must contain at least one entry.")
+            ? throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' must contain at least one entry.")
             : builder.ToImmutable();
     }
 
@@ -615,14 +626,14 @@ public sealed class Theme
             x.ValueKind != JsonValueKind.Number ||
             y.ValueKind != JsonValueKind.Number)
         {
-            throw new InvalidDataException($"Theme '{Slug}' '{context}' must be an object with numeric 'x' and 'y'.");
+            throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' must be an object with numeric 'x' and 'y'.");
         }
 
         var horizontal = x.GetInt32();
         var vertical = y.GetInt32();
 
         return horizontal < 0 || vertical < 0
-            ? throw new InvalidDataException($"Theme '{Slug}' '{context}' must not be negative.")
+            ? throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' must not be negative.")
             : new Thickness(horizontal, vertical);
     }
 
@@ -636,7 +647,7 @@ public sealed class Theme
         !value.TryGetProperty("y", out var y) ||
         x.ValueKind != JsonValueKind.Number ||
         y.ValueKind != JsonValueKind.Number
-            ? throw new InvalidDataException($"Theme '{Slug}' '{context}' must be an object with numeric 'x' and 'y'.")
+            ? throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' must be an object with numeric 'x' and 'y'.")
             : new Point(x.GetInt32(), y.GetInt32());
 
     private static readonly string[] _visualStateJsonNames =
@@ -668,18 +679,18 @@ public sealed class Theme
         }
 
         var byState = element.Deserialize<Dictionary<string, JsonElement>>(ThemeCatalog.JsonOptions)
-            ?? throw new InvalidDataException($"Theme '{Slug}' 'styles.{key}' must be an object.");
+            ?? throw new InvalidDataException($"Theme '{DiagnosticSource}' 'styles.{key}' must be an object.");
 
         var result = new Dictionary<string, Dictionary<string, JsonElement>>(StringComparer.Ordinal);
         foreach (var (state, value) in byState)
         {
             if (!Array.Exists(_visualStateJsonNames, name => string.Equals(name, state, StringComparison.Ordinal)))
             {
-                throw new InvalidDataException($"Theme '{Slug}' 'styles.{key}' has unknown state '{state}'.");
+                throw new InvalidDataException($"Theme '{DiagnosticSource}' 'styles.{key}' has unknown state '{state}'.");
             }
 
             result[state] = value.Deserialize<Dictionary<string, JsonElement>>(ThemeCatalog.JsonOptions)
-                ?? throw new InvalidDataException($"Theme '{Slug}' 'styles.{key}.{state}' must be an object.");
+                ?? throw new InvalidDataException($"Theme '{DiagnosticSource}' 'styles.{key}.{state}' must be an object.");
         }
 
         return result;
@@ -710,6 +721,17 @@ public sealed class Theme
             (typeof(TStyle), key, codeOwnedDefault),
             static (_, state) => state.theme.BuildRootStyleSet(state.key, state.codeOwnedDefault),
             (theme: this, key, codeOwnedDefault));
+    }
+
+    /// <summary>Compiles every closed root style section before a loader publishes this Theme.</summary>
+    internal void ValidateStyleSections()
+    {
+        _ = GetStyleSet(ControlStyle.Default);
+        _ = GetStyleSet(InputStyle.Default);
+        _ = GetStyleSet(ContainerStyle.Default);
+        _ = GetWindowStyleSet();
+        _ = GetStyleSet(PopupStyle.Default);
+        _ = GetStyleSet(TooltipStyle.Default);
     }
 
     /// <summary>Gets Input's interaction state deltas rebased onto the passive control's own

@@ -36,6 +36,23 @@ public sealed class PopupTests
         popup.Style.ShouldBe(default);
     }
 
+    /// <summary>Verifies resolving popup anchor glyphs registers their root structural render
+    /// dependency for later Theme swaps.</summary>
+    [Fact]
+    public void SetTheme_WhenResolvedAnchorGlyphsChange_InvalidatesRender()
+    {
+        var previous = PopupTheme("^");
+        var current = PopupTheme("+");
+        using var popup = new Popup();
+        popup.SetTheme(previous);
+        _ = popup.ResolvedAnchorGlyphs;
+        popup.Clear(Invalidation.All);
+
+        popup.SetTheme(current);
+
+        popup.Pending.ShouldBe(Invalidation.Render);
+    }
+
     /// <summary>Verifies changing ShowAnchorIndicator after the popup is already rendered
     /// publishes PropertyChanged, matching every other live-mutable Popup property, instead
     /// of silently doing nothing until an unrelated change forces a repaint.</summary>
@@ -2085,4 +2102,9 @@ public sealed class PopupTests
             restored.IsActive.ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
     }
+
+    private static Theme PopupTheme(string pointingUp) => ThemeCatalog.Parse(ThemeJson.Create().Replace(
+        "\"popup\": { \"normal\": { \"border\": { \"sides\":\"all\", \"glyphStyle\":\"rounded\" } } }",
+        $"\"popup\": {{ \"normal\": {{ \"border\": {{ \"sides\":\"all\", \"glyphStyle\":\"rounded\" }}, \"anchorGlyphs\": {{ \"pointingUp\": \"{pointingUp}\" }} }} }}",
+        StringComparison.Ordinal));
 }
