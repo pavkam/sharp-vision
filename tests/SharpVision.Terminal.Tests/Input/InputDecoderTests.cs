@@ -1608,26 +1608,26 @@ public sealed class InputDecoderTests
     }
 
     /// <summary>
-    /// Verifies CSI arrow keys with event types decode when UseAnsiKeyGrammar is false,
-    /// simulating a real terminal profile (like Kitty) where the ANSI grammar is disabled
-    /// and only the key map and standard CSI handlers are active.
+    /// Verifies the built-in legacy CSI cursor/function-key grammar (bare finals such as
+    /// <c>CSI A</c> and their modifier/event-type spellings) is gated to profiles that describe
+    /// it: with UseAnsiKeyGrammar false and no matching terminal-description binding, these
+    /// sequences must not decode to strokes. Instead they report unsupported, the same fallback
+    /// the ANSI-grammar terminal handler already applies to every other unmatched CSI shape, so a
+    /// profile whose terminfo database never described these strings cannot have them silently
+    /// forged from the ANSI table.
     /// </summary>
     [Theory]
-    [InlineData("[1;1:1A", Code.Up, Modifiers.None, KeyAction.Press)]
-    [InlineData("[1;1:3A", Code.Up, Modifiers.None, KeyAction.Release)]
-    [InlineData("[1;1:1B", Code.Down, Modifiers.None, KeyAction.Press)]
-    [InlineData("[1;1:1C", Code.Right, Modifiers.None, KeyAction.Press)]
-    [InlineData("[1;1:1D", Code.Left, Modifiers.None, KeyAction.Press)]
-    [InlineData("[1;1:1H", Code.Home, Modifiers.None, KeyAction.Press)]
-    [InlineData("[1;1:1F", Code.End, Modifiers.None, KeyAction.Press)]
-    [InlineData("[1;5:1C", Code.Right, Modifiers.Control, KeyAction.Press)]
-    [InlineData("[A", Code.Up, Modifiers.None, KeyAction.Press)]
-    [InlineData("[B", Code.Down, Modifiers.None, KeyAction.Press)]
-    public void Decode_WhenAnsiGrammarIsDisabled_StillDecodesCsiKeys(
-        string input,
-        Code code,
-        Modifiers modifiers,
-        KeyAction action)
+    [InlineData("[1;1:1A")]
+    [InlineData("[1;1:3A")]
+    [InlineData("[1;1:1B")]
+    [InlineData("[1;1:1C")]
+    [InlineData("[1;1:1D")]
+    [InlineData("[1;1:1H")]
+    [InlineData("[1;1:1F")]
+    [InlineData("[1;5:1C")]
+    [InlineData("[A")]
+    [InlineData("[B")]
+    public void Decode_WhenAnsiGrammarIsDisabled_DoesNotDecodeLegacyCsiKeys(string input)
     {
         var sink = new RecordingInputSink();
         var options = InputOptions.Default with { UseAnsiKeyGrammar = false };
@@ -1638,9 +1638,8 @@ public sealed class InputDecoderTests
             decoder.Complete();
         }
 
-        sink.Strokes.ShouldContain(
-            item => item.Code == code && item.Modifiers == modifiers && item.Action == action);
-        sink.Diagnostics.ShouldBeEmpty();
+        sink.Strokes.ShouldBeEmpty();
+        sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Unsupported);
     }
 
     #endregion

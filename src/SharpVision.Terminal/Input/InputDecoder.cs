@@ -767,7 +767,7 @@ public sealed class InputDecoder: IDisposable
     }
 
     private bool TryHandleLegacyCsiKey(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final) =>
-        intermediates.IsEmpty && TryHandleCsiKey(parameters, final);
+        _options.UseAnsiKeyGrammar && intermediates.IsEmpty && TryHandleCsiKey(parameters, final);
 
     /// <summary>The terminal handler: always claims the sequence, either via the ANSI grammar
     /// fallback or by reporting it unsupported/malformed.</summary>
