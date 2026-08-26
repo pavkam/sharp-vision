@@ -52,7 +52,7 @@ public sealed class KittyGraphicsCommand
     /// <summary>Gets the image source format.</summary>
     public KittyGraphicsFormat Format { get; }
 
-    /// <summary>Gets transmission compression, which is currently always <see cref="KittyGraphicsCompression.None"/>.</summary>
+    /// <summary>Gets transmission compression: none or zlib for a transmit command, always none otherwise.</summary>
     public KittyGraphicsCompression Compression { get; }
 
     /// <summary>Gets the nonzero renderer-owned image identifier.</summary>
@@ -145,13 +145,13 @@ public sealed class KittyGraphicsCommand
     /// <summary>Creates one direct bounded image transmission command.</summary>
     /// <param name="imageId">The nonzero renderer-owned image identifier.</param>
     /// <param name="pixelSize">Positive dimensions no greater than 16,384 on either axis.</param>
-    /// <param name="format">RGBA or PNG; RGB is reserved for the official query.</param>
+    /// <param name="format">RGB, RGBA, or PNG.</param>
     /// <param name="quiet">Response suppression mode zero, one, or two.</param>
     /// <param name="medium">The transmission medium; only direct is supported.</param>
-    /// <param name="compression">The transmission compression; only none is supported.</param>
+    /// <param name="compression">The transmission compression; none or zlib.</param>
     /// <returns>A validated transmission command.</returns>
     /// <exception cref="ArgumentOutOfRangeException">An identifier, dimension, enum, or quiet value is invalid.</exception>
-    /// <exception cref="NotSupportedException">The format, medium, or compression is unsupported.</exception>
+    /// <exception cref="NotSupportedException">The medium is unsupported.</exception>
     [Pure]
     public static KittyGraphicsCommand Transmit(
         uint imageId,
@@ -169,10 +169,6 @@ public sealed class KittyGraphicsCommand
 
         return !Enum.IsDefined(medium)
             ? throw new ArgumentOutOfRangeException(nameof(medium), medium, "The Kitty medium is unknown.")
-            : format == KittyGraphicsFormat.Rgb
-            ? throw new NotSupportedException("RGB is supported only by the Kitty capability query.")
-            : compression != KittyGraphicsCompression.None
-            ? throw new NotSupportedException("Compressed Kitty transmission is not supported.")
             : medium != KittyGraphicsMedium.Direct
             ? throw new NotSupportedException("Only direct Kitty graphics transmission is supported.")
             : new KittyGraphicsCommand(

@@ -4,6 +4,7 @@
 namespace SharpVision.Terminal.Tests.Graphics.Kitty;
 
 using System.Buffers.Binary;
+using System.IO.Compression;
 
 using SharpVision.Terminal.Kitty.Graphics;
 
@@ -83,6 +84,83 @@ public sealed class KittyGraphicsWriterTests
             "\u001b_Ga=t,f=100,t=d,i=9,m=1,q=2;"u8.ToArray());
     }
 
+    /// <summary>Verifies direct RGB transmission carries the three-byte-per-pixel shape and f=24,
+    /// proving RGB payload validation and framing work now that transmission accepts it.</summary>
+    [Fact]
+    public void WriteTransmission_WhenRgbFitsOneChunk_EmitsCanonicalBytes()
+    {
+        var output = new ArrayBufferWriter<byte>();
+        var command = KittyGraphicsCommand.Transmit(
+            imageId: 10,
+            new Size(1, 1),
+            KittyGraphicsFormat.Rgb,
+            quiet: 2);
+
+        KittyGraphicsWriter.WriteTransmission(command, [1, 2, 3], output);
+
+        output.WrittenSpan.ToArray().ShouldBe(
+            "\u001b_Ga=t,f=24,t=d,s=1,v=1,i=10,q=2;AQID\u001b\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies zlib-compressed transmission emits the <c>o=z</c> field and bytes that are
+    /// actually smaller than the raw payload, decompressing back to the exact original pixels.</summary>
+    [Fact]
+    public void WriteTransmission_WhenCompressed_EmitsCompressionFieldAndActuallyCompressedBytes()
+    {
+        var output = new ArrayBufferWriter<byte>();
+        var size = new Size(16, 16);
+        var raw = new byte[16 * 16 * 4];
+        raw.AsSpan().Fill(7);
+        var command = KittyGraphicsCommand.Transmit(
+            imageId: 11,
+            size,
+            KittyGraphicsFormat.Rgba,
+            quiet: 2,
+            compression: KittyGraphicsCompression.Zlib);
+
+        KittyGraphicsWriter.WriteTransmission(command, raw, output);
+
+        var bytes = output.WrittenSpan;
+        var semicolon = bytes.IndexOf((byte) ';');
+        bytes[..semicolon].ToArray().ShouldBe(
+            "\u001b_Ga=t,f=32,t=d,o=z,s=16,v=16,i=11,q=2"u8.ToArray());
+
+        var decoded = Convert.FromBase64String(Encoding.ASCII.GetString(bytes[(semicolon + 1)..^2]));
+        decoded.Length.ShouldBeLessThan(raw.Length);
+
+        using var decompressed = new MemoryStream();
+
+        using (var zlib = new ZLibStream(new MemoryStream(decoded), CompressionMode.Decompress))
+        {
+            zlib.CopyTo(decompressed);
+        }
+
+        decompressed.ToArray().ShouldBe(raw);
+    }
+
+    /// <summary>Verifies compressing and chunking the same payload twice produces byte-identical
+    /// output, proving the fixed compression level makes <c>WriteTransmission</c> deterministic just
+    /// like <c>Graphics.Png.Encode</c>.</summary>
+    [Fact]
+    public void WriteTransmission_WhenCompressedAndCalledTwice_ProducesByteIdenticalOutput()
+    {
+        var size = new Size(16, 16);
+        var raw = new byte[16 * 16 * 4];
+        Random.Shared.NextBytes(raw);
+        var command = KittyGraphicsCommand.Transmit(
+            imageId: 12,
+            size,
+            KittyGraphicsFormat.Rgba,
+            compression: KittyGraphicsCompression.Zlib);
+        var first = new ArrayBufferWriter<byte>();
+        var second = new ArrayBufferWriter<byte>();
+
+        KittyGraphicsWriter.WriteTransmission(command, raw, first);
+        KittyGraphicsWriter.WriteTransmission(command, raw, second);
+
+        first.WrittenSpan.ToArray().ShouldBe(second.WrittenSpan.ToArray());
+    }
+
     #endregion
 
     #region Commands and policy
@@ -160,19 +238,20 @@ public sealed class KittyGraphicsWriterTests
             medium: medium));
     }
 
-    /// <summary>Verifies unsupported RGB transmission and zlib metadata cannot enter the writer.</summary>
+    /// <summary>Verifies an unrecognized format or compression enum value cannot enter the writer,
+    /// now that RGB format and zlib compression are themselves both accepted.</summary>
     [Fact]
-    public void Transmit_WhenFormatOrCompressionIsUnsupported_ThrowsNotSupportedException()
+    public void Transmit_WhenFormatOrCompressionIsUndefined_ThrowsArgumentOutOfRangeException()
     {
-        _ = Should.Throw<NotSupportedException>(() => KittyGraphicsCommand.Transmit(
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => KittyGraphicsCommand.Transmit(
             1,
             new Size(1, 1),
-            KittyGraphicsFormat.Rgb));
-        _ = Should.Throw<NotSupportedException>(() => KittyGraphicsCommand.Transmit(
+            (KittyGraphicsFormat) (-1)));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => KittyGraphicsCommand.Transmit(
             1,
             new Size(1, 1),
             KittyGraphicsFormat.Rgba,
-            compression: KittyGraphicsCompression.Zlib));
+            compression: (KittyGraphicsCompression) (-1)));
     }
 
     #endregion
@@ -219,6 +298,7 @@ public sealed class KittyGraphicsWriterTests
     [InlineData("delete")]
     [InlineData("query-shape")]
     [InlineData("rgba-shape")]
+    [InlineData("rgb-shape")]
     [InlineData("png-shape")]
     public void WriteEncoded_WhenPayloadOrActionIsUnsafe_WritesNothing(string scenario)
     {
@@ -228,6 +308,7 @@ public sealed class KittyGraphicsWriterTests
             "place" => KittyGraphicsCommand.Place(1, 1, new Rect(0, 0, 1, 1), new Size(1, 1)),
             "delete" => KittyGraphicsCommand.DeleteImage(1),
             "query-shape" => KittyGraphicsCommand.Query(31),
+            "rgb-shape" => KittyGraphicsCommand.Transmit(1, new Size(1, 1), KittyGraphicsFormat.Rgb),
             "png-shape" => KittyGraphicsCommand.Transmit(1, new Size(1, 1), KittyGraphicsFormat.Png),
             _ => KittyGraphicsCommand.Transmit(1, new Size(1, 1), KittyGraphicsFormat.Rgba)
         };
@@ -238,6 +319,7 @@ public sealed class KittyGraphicsWriterTests
             "oversized" => [.. Enumerable.Repeat((byte) 'A', 4_097)],
             "query-shape" => "AA=="u8.ToArray(),
             "rgba-shape" => "AQID"u8.ToArray(),
+            "rgb-shape" => "AQIDBA=="u8.ToArray(),
             "png-shape" => "AAAA"u8.ToArray(),
             _ => "AAAA"u8.ToArray()
         };

@@ -11,18 +11,22 @@ an optional semicolon plus Base64 data, and ST `ESC \`.
 provide the typed direct-data surface. Image identifiers and placement
 identifiers are canonical nonzero unsigned 32-bit decimal values: leading
 zeroes, signs, and overflow are rejected. The official direct RGB query uses
-`f=24`; transmission accepts only RGBA `f=32` and PNG `f=100`. File,
-temporary-file, and shared-memory media are rejected before output because they
-depend on filesystem paths and externally managed lifetimes that SharpVision
-does not trust.
+`f=24`; transmission accepts RGB `f=24`, RGBA `f=32`, and PNG `f=100`. Raw RGB
+or RGBA transmission may additionally request zlib `o=z` compression:
+`KittyGraphicsWriter.WriteTransmission` compresses the caller's raw payload with
+a fixed compression level (matching `Graphics.Png`'s deterministic PNG encoding
+technique) before chunking the compressed bytes for the wire; `Write` and
+`WriteEncoded` are unaffected, since they already receive framed wire bytes with
+no raw/compressed distinction to make. File, temporary-file, and shared-memory
+media are rejected before output because they depend on filesystem paths and
+externally managed lifetimes that SharpVision does not trust.
 
 > [!IMPORTANT]
 >
-> **Implementation gap:** four documented Kitty graphics protocol features have
-> no implementation yet. `KittyGraphicsCommand` rejects RGB `f=24` transmission
-> and zlib `o=z` compression before output, and neither animation nor Unicode
-> placeholder presentation has a typed surface, so every placement is a
-> cursor-anchored direct-data upload.
+> **Implementation gap:** two documented Kitty graphics protocol features have
+> no implementation yet: neither animation nor Unicode placeholder presentation
+> has a typed surface, so every placement is a cursor-anchored direct-data
+> upload.
 
 ## Supported features
 
@@ -30,7 +34,8 @@ Typed and implemented behavior includes:
 
 - the official one-pixel direct RGB query;
 - strict bounded typed response parsing and numeric correlation;
-- direct RGBA and PNG upload, retained placement/update, and deletion;
+- direct RGB, RGBA, and PNG upload, retained placement/update, and deletion;
+- optional zlib-compressed direct RGB or RGBA transmission;
 - renderer-owned finite image and placement identifiers;
 - 4,096-byte maximum encoded data chunks with metadata-minimal continuation
   chunks;
@@ -76,9 +81,9 @@ The backend uses quiet mode 2 and never opens a terminal-supplied path.
 `KittyGraphicsWriter.WriteEncoded` is a checked public convenience, not a way
 around validation. It accepts only query or transmit commands, decodes at most
 3,072 bytes, requires an exact canonical re-encoding, and validates the decoded
-query, RGBA, or complete PNG shape before mutating the destination. Complete raw
-transmission always validates payload shape before chunking; there is no public
-validation bypass.
+query, RGB/RGBA, or complete PNG shape before mutating the destination. Complete
+raw transmission always validates payload shape before chunking; there is no
+public validation bypass.
 
 Placements carry the exact source pixel rectangle, destination cell width and
 height, stable image/placement pair, deterministic frame-order z-index, and
@@ -156,16 +161,17 @@ mutation.
 
 ## Security and tests
 
-Exact-byte tests cover the query, valid RGBA/PNG payloads across chunk
-boundaries, placements, updates, soft and hard deletion, response quiet modes,
-and rejected malformed, noncanonical, or shape-invalid Base64. Successful and
-printable-error replies, malformed duplicate recovery, and enabled 8-bit APC
-framing run at every possible transport split; numeric overflow, canonical IDs,
-bounds, duplicate correlation, and redaction are also covered. Real
-backend-to-renderer tests prove image caching, byte-quiet commit, stable ID
-reuse, last-use deletion, cursor restoration, uncertain tombstone recovery,
-allocation-free cleanup commit, per-delete tmux routing, Screen rejection, and
-explicit shutdown after success or partial failure.
+Exact-byte tests cover the query, valid RGB/RGBA/PNG payloads across chunk
+boundaries, zlib-compressed transmission and its determinism, placements,
+updates, soft and hard deletion, response quiet modes, and rejected malformed,
+noncanonical, or shape-invalid Base64. Successful and printable-error replies,
+malformed duplicate recovery, and enabled 8-bit APC framing run at every
+possible transport split; numeric overflow, canonical IDs, bounds, duplicate
+correlation, and redaction are also covered. Real backend-to-renderer tests
+prove image caching, byte-quiet commit, stable ID reuse, last-use deletion,
+cursor restoration, uncertain tombstone recovery, allocation-free cleanup
+commit, per-delete tmux routing, Screen rejection, and explicit shutdown after
+success or partial failure.
 
 Local emulator evidence on 2026-07-20 found Kitty 0.46.2 installed, but the test
 process had no `KITTY_PID` and standard input was not a TTY. A live frontend

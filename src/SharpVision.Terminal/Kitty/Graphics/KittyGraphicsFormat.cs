@@ -7,7 +7,7 @@ namespace SharpVision.Terminal.Kitty.Graphics;
 [PublicAPI]
 public enum KittyGraphicsFormat
 {
-    /// <summary>Three bytes per pixel in RGB order, reserved for the official capability query.</summary>
+    /// <summary>Three bytes per pixel in RGB order, used by the official capability query and transmission.</summary>
     Rgb = 24,
 
     /// <summary>Four bytes per pixel in RGBA order.</summary>

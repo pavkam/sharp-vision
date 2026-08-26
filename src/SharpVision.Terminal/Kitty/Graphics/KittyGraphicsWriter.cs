@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Kitty.Graphics;
 
+using System.IO.Compression;
+
 using SharpVision.Terminal.Clipboard;
 using SharpVision.Terminal.Graphics;
 
@@ -115,6 +117,17 @@ public static class KittyGraphicsWriter
         }
 
         ValidatePayload(command, payload);
+
+        if (command.Compression == KittyGraphicsCompression.Zlib)
+        {
+            // Compression applies only to the wire bytes chunked here: ValidatePayload above already
+            // checked the caller's raw pre-compression shape against the command's declared
+            // dimensions, so the raw payload is compressed once and the compressed bytes are then
+            // chunked exactly like raw bytes are below. Write and WriteEncoded receive already-framed
+            // wire bytes with no raw/compressed distinction to make, so they are untouched.
+            WriteCompressedChunks(command, payload, destination);
+            return;
+        }
 
         if (payload.Length <= _rawChunkBytes)
         {
@@ -243,6 +256,11 @@ public static class KittyGraphicsWriter
             position = AppendField(destination, position, (byte) 'f', (int) command.Format);
             position = AppendLiteralField(destination, position, (byte) 't', (byte) 'd');
 
+            if (command.Compression == KittyGraphicsCompression.Zlib)
+            {
+                position = AppendLiteralField(destination, position, (byte) 'o', (byte) 'z');
+            }
+
             if (command.Format is KittyGraphicsFormat.Rgb or KittyGraphicsFormat.Rgba)
             {
                 position = AppendField(destination, position, (byte) 's', command.PixelSize.Width);
@@ -309,6 +327,53 @@ public static class KittyGraphicsWriter
     [MustUseReturnValue]
     private static int Encode(ReadOnlySpan<byte> payload, Span<byte> destination) =>
         payload.EncodeBase64OrThrow(destination, "A bounded Kitty chunk failed Base64 encoding.");
+
+    private static void WriteCompressedChunks(
+        KittyGraphicsCommand command,
+        ReadOnlySpan<byte> rawPayload,
+        IBufferWriter<byte> destination)
+    {
+        var compressed = CompressZlib(rawPayload);
+        Span<byte> encoded = stackalloc byte[_encodedChunkBytes];
+
+        if (compressed.Length <= _rawChunkBytes)
+        {
+            var encodedLength = Encode(compressed, encoded);
+            WriteEncodedCore(command.WithMore(false), encoded[..encodedLength], destination);
+            return;
+        }
+
+        var offset = 0;
+        var first = true;
+
+        while (offset < compressed.Length)
+        {
+            var length = Math.Min(_rawChunkBytes, compressed.Length - offset);
+            var more = offset + length < compressed.Length;
+            var encodedLength = Encode(compressed.AsSpan(offset, length), encoded);
+            var chunk = first
+                ? command.WithMore(more)
+                : KittyGraphicsCommand.Continuation(more, command.Quiet);
+            WriteEncodedCore(chunk, encoded[..encodedLength], destination);
+            offset += length;
+            first = false;
+        }
+    }
+
+    private static byte[] CompressZlib(ReadOnlySpan<byte> raw)
+    {
+        using var compressed = new MemoryStream();
+
+        // A fixed compression level, rather than one derived from input size or content, is what
+        // makes compressing the same payload always produce byte-identical output. This mirrors
+        // Graphics.Png's PNG IDAT compression technique exactly.
+        using (var zlib = new ZLibStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
+        {
+            zlib.Write(raw);
+        }
+
+        return compressed.ToArray();
+    }
 
     [Conditional("DEBUG")]
     private static void AssertRoundTripsToTheSameCanonicalForm(
