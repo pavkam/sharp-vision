@@ -353,6 +353,43 @@ public sealed class ScrollBarTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an auxiliary release cannot terminate an active primary thumb drag.</summary>
+    [Fact]
+    public async Task Dispatch_WhenSecondaryReleaseArrivesDuringThumbDrag_PreservesCaptureAndContinuesAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var control = new ScrollBar
+            {
+                Bounds = new Rect(0, 0, 12, 1),
+                Orientation = Orientation.Horizontal,
+                Maximum = 100
+            };
+            control.Attach(dispatcher);
+            using PointerManager pointer = new(control);
+            _ = pointer.Dispatch(Pointer(new Point(1, 0), PointerAction.Press));
+
+            // Act
+            _ = pointer.Dispatch(Pointer(
+                new Point(1, 0),
+                PointerAction.Release,
+                buttons: Buttons.Secondary));
+
+            // Assert
+            pointer.Captured.ShouldBeSameAs(control);
+            pointer.PressOrigin.ShouldBeSameAs(control);
+            control.IsPressed.ShouldBeTrue();
+
+            _ = pointer.Dispatch(Pointer(new Point(10, 0), PointerAction.Move));
+            _ = pointer.Dispatch(Pointer(new Point(10, 0), PointerAction.Release));
+            control.Value.ShouldBe(100);
+            pointer.Captured.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a resize mid-drag is reflected immediately: the track length used to
     /// convert the pointer position back to a value is re-read from live geometry on every move
     /// instead of the length captured once when the drag began, so widening the bar mid-drag
@@ -599,10 +636,11 @@ public sealed class ScrollBarTests
         Point cells,
         PointerAction action,
         Point? pixels = null,
-        bool inferred = false) => new(
+        bool inferred = false,
+        Buttons buttons = Buttons.Primary) => new(
         cells,
         pixels,
-        Buttons.Primary,
+        buttons,
         action,
         wheelX: 0,
         wheelY: 0,

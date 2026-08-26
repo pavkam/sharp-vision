@@ -43,9 +43,9 @@ internal sealed class TextSelectionGesture
         if (eventArgs.IsHandled)
         {
             if (Phase != TextSelectionGesturePhase.Idle &&
-                (pointer.Action == PointerAction.Leave || IsPrimaryRelease(pointer)))
+                (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer)))
             {
-                if (Phase == TextSelectionGesturePhase.Potential && IsPrimaryRelease(pointer))
+                if (Phase == TextSelectionGesturePhase.Potential && PointerButtonTransition.IsPrimaryRelease(pointer))
                 {
                     _owner.ReleasePotentialTextSelectionChildCapture(_originalSource);
                 }
@@ -130,7 +130,7 @@ internal sealed class TextSelectionGesture
             return;
         }
 
-        if (IsPrimaryRelease(pointer))
+        if (PointerButtonTransition.IsPrimaryRelease(pointer))
         {
             if (pointer.Cells is { } releasedCells)
             {
@@ -201,7 +201,7 @@ internal sealed class TextSelectionGesture
             return;
         }
 
-        if (IsPrimaryRelease(pointer))
+        if (PointerButtonTransition.IsPrimaryRelease(pointer))
         {
             if (pointer.Cells is { } releasedCells)
             {
@@ -218,11 +218,6 @@ internal sealed class TextSelectionGesture
             Cancel(releaseCapture: true);
         }
     }
-
-    [Pure]
-    private static bool IsPrimaryRelease(Pointer pointer) =>
-        pointer.Action == PointerAction.Release &&
-        (pointer.Buttons == Buttons.None || (pointer.Buttons & Buttons.Primary) != 0);
 
     private void RefreshAutoScroll()
     {

@@ -59,7 +59,7 @@ internal sealed class PressBehavior
     public void Handle(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
-        if (!_isAvailable())
+        if (eventArgs.IsHandled || !_isAvailable())
         {
             return;
         }
@@ -213,6 +213,11 @@ internal sealed class PressBehavior
             return;
         }
 
+        if (pointer.Action == PointerAction.Release && !PointerButtonTransition.IsPrimaryRelease(pointer))
+        {
+            return;
+        }
+
         if ((pointer.Buttons & Buttons.Primary) == 0 && pointer.Action != PointerAction.Release)
         {
             if (pointer.Action == PointerAction.Press)
@@ -245,7 +250,7 @@ internal sealed class PressBehavior
 
         _setPressed(inside);
         eventArgs.IsHandled = true;
-        if (pointer.Action == PointerAction.Release)
+        if (PointerButtonTransition.IsPrimaryRelease(pointer))
         {
             _pointerHeld = false;
             if (_hasPointerCapture())

@@ -278,6 +278,35 @@ public sealed class SliderTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an auxiliary release cannot terminate an active primary slider drag.</summary>
+    [Fact]
+    public async Task Dispatch_WhenSecondaryReleaseArrivesDuringPrimaryDrag_PreservesCaptureAndContinuesAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var slider = new Slider { Bounds = new Rect(0, 0, 11, 1), Maximum = 100 };
+            slider.Attach(dispatcher);
+            using PointerManager pointer = new(slider);
+            _ = pointer.Dispatch(Pointer(new Point(5, 0), PointerAction.Press));
+
+            // Act
+            _ = pointer.Dispatch(Pointer(new Point(5, 0), PointerAction.Release, Buttons.Secondary));
+
+            // Assert
+            pointer.Captured.ShouldBeSameAs(slider);
+            pointer.PressOrigin.ShouldBeSameAs(slider);
+            slider.IsPressed.ShouldBeTrue();
+
+            _ = pointer.Dispatch(Pointer(new Point(10, 0), PointerAction.Move));
+            _ = pointer.Dispatch(Pointer(new Point(10, 0), PointerAction.Release));
+            slider.Value.ShouldBe(100);
+            pointer.Captured.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies wheel changes commit while endpoint no-ops remain unhandled.</summary>
     [Fact]
     public void Dispatch_WhenWheelMoves_ConsumesOnlyChangedValues()
@@ -571,10 +600,13 @@ public sealed class SliderTests
                 Modifiers.None,
                 action)));
 
-    private static Pointer Pointer(Point cells, PointerAction action) => new(
+    private static Pointer Pointer(
+        Point cells,
+        PointerAction action,
+        Buttons buttons = Buttons.Primary) => new(
         cells,
         pixels: null,
-        Buttons.Primary,
+        buttons,
         action,
         wheelX: 0,
         wheelY: 0,

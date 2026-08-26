@@ -268,6 +268,36 @@ public sealed class ColorPlaneTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an auxiliary release cannot terminate an active primary color-plane drag.</summary>
+    [Fact]
+    public async Task Dispatch_WhenSecondaryReleaseArrivesDuringPrimaryDrag_PreservesCaptureAndContinuesAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var plane = new ColorPlane { Bounds = new Rect(0, 0, 11, 11) };
+            plane.Attach(dispatcher);
+            using PointerManager pointer = new(plane);
+            _ = pointer.Dispatch(Pointer(new Point(5, 5), PointerAction.Press));
+
+            // Act
+            _ = pointer.Dispatch(Pointer(new Point(5, 5), PointerAction.Release, Buttons.Secondary));
+
+            // Assert
+            pointer.Captured.ShouldBeSameAs(plane);
+            pointer.PressOrigin.ShouldBeSameAs(plane);
+            plane.IsPressed.ShouldBeTrue();
+
+            _ = pointer.Dispatch(Pointer(new Point(10, 0), PointerAction.Move));
+            _ = pointer.Dispatch(Pointer(new Point(10, 0), PointerAction.Release));
+            plane.Saturation.ShouldBe(1);
+            plane.Value.ShouldBe(1);
+            pointer.Captured.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies disabling the plane mid-drag cancels capture without a further commit.</summary>
     [Fact]
     public async Task Dispatch_WhenPlaneBecomesDisabledDuringDrag_CancelsCaptureWithoutFurtherChangeAsync()
@@ -317,10 +347,13 @@ public sealed class ColorPlaneTests
         return eventArgs;
     }
 
-    private static Pointer Pointer(Point cells, PointerAction action) => new(
+    private static Pointer Pointer(
+        Point cells,
+        PointerAction action,
+        Buttons buttons = Buttons.Primary) => new(
         cells,
         pixels: null,
-        Buttons.Primary,
+        buttons,
         action,
         wheelX: 0,
         wheelY: 0,

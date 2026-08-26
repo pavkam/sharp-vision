@@ -97,6 +97,25 @@ public sealed class ComponentPointer
         _primaryPressed = false;
     }
 
+    /// <summary>Emits a secondary-button release at the current point without changing the
+    /// driver's primary-button hold. This models an auxiliary transition arriving during a
+    /// captured primary gesture.</summary>
+    /// <returns>A task completed after routing and rendering settle.</returns>
+    /// <exception cref="InvalidOperationException">The primary button is not currently pressed.</exception>
+    public async Task ReleaseSecondaryWhilePrimaryHeldAsync()
+    {
+        if (!_primaryPressed)
+        {
+            throw new InvalidOperationException("Hold the primary pointer button before releasing the secondary button.");
+        }
+
+        var point = _lastPoint ?? throw new InvalidOperationException(
+            "Move the component pointer before releasing a button.");
+        await _surface.SendAsync(
+            Encode(button: 2, point, final: 'm'),
+            $"release secondary pointer while primary remains held at {point}");
+    }
+
     /// <summary>Moves to and clicks the current arranged center of an owned control.</summary>
     /// <param name="control">The mounted control or one of its owned descendants.</param>
     /// <returns>A task completed after move, press, release, activation, and rendering settle.</returns>

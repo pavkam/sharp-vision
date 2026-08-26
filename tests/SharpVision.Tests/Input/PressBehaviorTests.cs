@@ -22,6 +22,17 @@ public sealed class PressBehaviorTests
     private static KeyEventArgs Enter(KeyAction action, Modifiers modifiers = Modifiers.None) => new(
         new Stroke(Code.Enter, character: null, 0, modifiers, action));
 
+    private static PointerEventArgs Pointer(Buttons buttons, PointerAction action) => new(new Pointer(
+        new Point(5, 0),
+        pixels: null,
+        buttons,
+        action,
+        wheelX: 0,
+        wheelY: 0,
+        Modifiers.None,
+        isMotion: action == PointerAction.Move,
+        isCellPositionInferred: false));
+
     private static PressBehavior Create(
         bool releasesExpected,
         List<ActivationCause> activations,
@@ -247,5 +258,63 @@ public sealed class PressBehaviorTests
         release.IsHandled.ShouldBeTrue();
         activations.ShouldBeEmpty();
         pressed.ShouldBeEmpty();
+    }
+
+    /// <summary>An inherited convenience event may consume input before the composed default is
+    /// reached; press behavior must honor that routed verdict instead of activating anyway.</summary>
+    [Fact]
+    public void Handle_WhenEventIsAlreadyHandled_DoesNotRunPressDefaults()
+    {
+        // Arrange
+        List<ActivationCause> activations = [];
+        List<bool> pressed = [];
+        var behavior = Create(releasesExpected: true, activations, pressed);
+        var input = Enter(KeyAction.Press);
+        input.IsHandled = true;
+
+        // Act
+        behavior.Handle(input);
+
+        // Assert
+        activations.ShouldBeEmpty();
+        pressed.ShouldBeEmpty();
+    }
+
+    /// <summary>A release for another physical button must not complete an armed primary
+    /// gesture or give up its capture.</summary>
+    [Fact]
+    public void Handle_WhenSecondaryReleaseArrivesDuringPrimaryHold_PreservesGesture()
+    {
+        // Arrange
+        List<ActivationCause> activations = [];
+        List<bool> pressed = [];
+        var captured = false;
+        var behavior = new PressBehavior(
+            static () => new Rect(0, 0, 10, 1),
+            static () => true,
+            static () => true,
+            static () => true,
+            () => captured = true,
+            () => captured,
+            () => captured = false,
+            pressed.Add,
+            activations.Add,
+            static () => true);
+        behavior.Handle(Pointer(Buttons.Primary, PointerAction.Press));
+        var secondaryRelease = Pointer(Buttons.Secondary, PointerAction.Release);
+
+        // Act
+        behavior.Handle(secondaryRelease);
+
+        // Assert
+        secondaryRelease.IsHandled.ShouldBeFalse();
+        captured.ShouldBeTrue();
+        pressed.ShouldBe([true]);
+        activations.ShouldBeEmpty();
+
+        behavior.Handle(Pointer(Buttons.Primary, PointerAction.Release));
+        captured.ShouldBeFalse();
+        pressed.ShouldBe([true, true, false]);
+        activations.ShouldBe([ActivationCause.Pointer]);
     }
 }

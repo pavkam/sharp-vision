@@ -1847,11 +1847,16 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         }
     }
 
-    /// <summary>Runs this route member's default behavior after an unhandled bubble.</summary>
+    /// <summary>Publishes inherited input events, then runs this route member's unhandled default behavior.</summary>
     internal void InvokeDefault(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
-        OnEvent(eventArgs);
+        PublishInputEvent(eventArgs);
+
+        if (!eventArgs.IsHandled)
+        {
+            OnEvent(eventArgs);
+        }
 
         if (!eventArgs.IsHandled &&
             eventArgs is PointerEventArgs { Pointer: { Action: PointerAction.Press, Cells: { } cells } pointer } &&
@@ -2169,19 +2174,26 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     protected virtual void ArrangeOverride(Rect bounds) =>
         Debug.Assert(!IsDisposed, "A disposed control cannot arrange content.");
 
-    /// <summary>Runs target-specific default behavior for one unhandled routed event.</summary>
+    /// <summary>Runs target-specific default behavior after inherited input event publication.</summary>
     /// <param name="eventArgs">The non-null event state and typed payload.</param>
-    protected virtual void OnEvent(RoutedEventArgs eventArgs)
-    {
+    protected virtual void OnEvent(RoutedEventArgs eventArgs) =>
         ArgumentNullException.ThrowIfNull(eventArgs);
 
+    /// <summary>Publishes the inherited convenience event before concrete default behavior.</summary>
+    /// <param name="eventArgs">The non-null routed event and immutable input payload.</param>
+    private void PublishInputEvent(RoutedEventArgs eventArgs)
+    {
         switch (eventArgs)
         {
             case PointerEventArgs pointer:
                 switch (pointer.Pointer.Action)
                 {
                     case PointerAction.Press:
-                        PointerPressed?.Invoke(this, pointer);
+                        if ((pointer.Pointer.Buttons & Buttons.Primary) != 0)
+                        {
+                            PointerPressed?.Invoke(this, pointer);
+                        }
+
                         break;
                     case PointerAction.Release:
                         PointerReleased?.Invoke(this, pointer);

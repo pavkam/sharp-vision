@@ -132,16 +132,22 @@ delegates.
 and can be changed through `Retarget`, but only while dispatch is active. The
 control currently on the route is the handler's `sender`, and `Phase` reports
 preview or bubble. Each route member runs its bubble handlers and then, if the
-event is still unhandled, its own default behavior before the next ancestor is
-considered. This prevents an ancestor widget's default from preempting a nested
-editor. A pressed Tab with no modifiers other than Shift requests one post-route
-application traversal; the application executes that command exactly once from
-the stable route anchor. The same path enters the first eligible tab stop when
-no control was focused. A control that owns Tab semantics, such as a `TextInput`
-with `AcceptsTab`, handles the key before this fallback runs. Exceptions
-propagate after route state and pooled storage are cleaned up. Under modality,
-the fallback traverses and wraps only within the
-[active plane](modality.md#keyboard-text-and-paste).
+event is still unhandled, publishes the inherited `KeyDown`, `KeyUp`,
+`PointerPressed`, `PointerReleased`, or `PointerMoved` convenience event that
+matches the input. `PointerPressed` is primary-only; the other pointer events
+retain their action-wide meaning. If a convenience observer handles the event,
+that member's concrete default does not run. Otherwise the concrete default runs
+before the next ancestor is considered. This ordering is owned by the shared
+dispatch seam, so a control override cannot accidentally omit inherited input
+events or run its default after one of them handles the input. It also prevents
+an ancestor widget's default from preempting a nested editor. A pressed Tab with
+no modifiers other than Shift requests one post-route application traversal; the
+application executes that command exactly once from the stable route anchor. The
+same path enters the first eligible tab stop when no control was focused. A
+control that owns Tab semantics, such as a `TextInput` with `AcceptsTab`,
+handles the key before this fallback runs. Exceptions propagate after route
+state and pooled storage are cleaned up. Under modality, the fallback traverses
+and wraps only within the [active plane](modality.md#keyboard-text-and-paste).
 
 An unhandled pressed Alt character then enters the application
 [access-key fallback](access-keys.md#dispatch-precedence). Access-key discovery
@@ -197,6 +203,13 @@ remains an ordinary click.
 Pointer events preserve screen cells, optional pixels, the inferred cell
 position, buttons, wheel delta, modifiers, and the action. Local coordinates are
 derived from committed transforms at each route element.
+
+A primary press, drag, selection, or move/resize transaction completes only on
+an explicit primary release or on the buttonless release form emitted by a
+protocol that cannot identify the released button. A middle, secondary, back, or
+forward release never ends primary capture or clears its pressed/drag state; the
+later primary release completes the original transaction normally. Pointer leave
+remains an explicit cancellation for capture-backed gestures.
 
 `PointerManager` synthesizes `PointerEventArgs.ClickCount`, because terminal
 mouse reports do not carry desktop gesture counts. Presses accumulate only when

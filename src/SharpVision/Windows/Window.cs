@@ -824,7 +824,8 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         // Leave by construction). Otherwise the Window keeps pointer capture and the
         // gesture flag stuck true forever — releasing the button outside the terminal
         // delivers only a Leave, never a Release.
-        if (action is PointerAction.Release or PointerAction.Leave && (_dragging || _resizing))
+        if ((action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(eventArgs.Pointer)) &&
+            (_dragging || _resizing))
         {
             _dragging = false;
             _resizing = false;

@@ -340,7 +340,7 @@ public sealed class PointerManager: IDisposable
 
     private void CompletePress(Pointer pointer)
     {
-        if (pointer.Action is PointerAction.Release or PointerAction.Leave)
+        if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
         {
             PressOrigin = null;
         }

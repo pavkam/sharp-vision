@@ -335,7 +335,7 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
         {
             eventArgs.IsHandled = true;
 
-            if (pointer.Action is PointerAction.Release or PointerAction.Leave)
+            if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
             {
                 _drag.Cancel(releaseCapture: true);
                 ResetDragState();

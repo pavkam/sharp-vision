@@ -376,6 +376,13 @@ phases use stable ancestry and handler snapshots, even when a callback mutates
 the tree. The standard [`Events`](../concepts/input-routing.md#routed-event-api)
 cover key, text, pointer, paste, and terminal focus payloads.
 
+The inherited `KeyDown`, `KeyUp`, `PointerPressed`, `PointerReleased`, and
+`PointerMoved` convenience events publish from the sealed default-dispatch seam
+before `OnEvent`. `PointerPressed` publishes only for a primary-button press.
+Setting `IsHandled` from one of these convenience events suppresses the concrete
+control default, and an `OnEvent` override cannot omit the inherited event by
+skipping `base.OnEvent`.
+
 ## Layout extension points
 
 A derived control implements `MeasureOverride(Constraint)` to report its

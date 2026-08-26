@@ -1780,6 +1780,50 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an auxiliary release cannot terminate an active primary Window drag.</summary>
+    [Fact]
+    public async Task Drag_WhenSecondaryReleaseArrivesDuringPrimaryDrag_PreservesCaptureAndContinuesAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var canvas = new Overlay();
+            var window = new Window
+            {
+                Header = "Release",
+                Width = Length.Cells(10),
+                Height = Length.Cells(4),
+                CanClose = false
+            };
+            Overlay.SetLeft(window, Length.Cells(0));
+            Overlay.SetTop(window, Length.Cells(0));
+            canvas.Children.Add(window);
+            new LayoutEngine().Layout(canvas, new Size(20, 10));
+            canvas.Attach(dispatcher);
+            using PointerManager pointer = new(canvas);
+            _ = pointer.Dispatch(Pointer(new Point(3, 0), PointerAction.Press));
+
+            // Act
+            _ = pointer.Dispatch(Pointer(
+                new Point(3, 0),
+                PointerAction.Release,
+                Buttons.Secondary));
+
+            // Assert
+            pointer.Captured.ShouldBeSameAs(window);
+            pointer.PressOrigin.ShouldBeSameAs(window);
+            window.HasPointerCapture.ShouldBeTrue();
+
+            _ = pointer.Dispatch(Pointer(new Point(5, 2), PointerAction.Move));
+            _ = pointer.Dispatch(Pointer(new Point(5, 2), PointerAction.Release));
+            pointer.Captured.ShouldBeNull();
+            Overlay.GetLeft(window).ShouldBe(Length.Cells(2));
+            Overlay.GetTop(window).ShouldBe(Length.Cells(2));
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a Release still ends an active drag and releases capture even when
     /// CanMove was toggled off mid-drag, instead of leaking capture permanently.</summary>
     [Fact]
@@ -1912,10 +1956,13 @@ public sealed class WindowTests
         _ = Should.Throw<ArgumentException>(() => window.Header = header);
     }
 
-    private static Pointer Pointer(Point cells, PointerAction action) => new(
+    private static Pointer Pointer(
+        Point cells,
+        PointerAction action,
+        Buttons? buttons = null) => new(
         cells,
         pixels: null,
-        action == PointerAction.Release ? Buttons.None : Buttons.Primary,
+        buttons ?? (action == PointerAction.Release ? Buttons.None : Buttons.Primary),
         action,
         wheelX: 0,
         wheelY: 0,
