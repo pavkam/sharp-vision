@@ -263,7 +263,9 @@ public sealed class DispatcherTests
         await idle.Task.WaitAsync(TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies shutdown cancels queued invocations and remains idempotent.</summary>
+    /// <summary>Verifies shutdown cancels a queued function invocation, remains idempotent, and
+    /// preserves the caller-supplied token identity on the resulting cancellation - not a
+    /// disconnected fabricated one.</summary>
     [Fact]
     public async Task DisposeAsync_WhenInvocationIsQueued_CancelsAndStopsAsync()
     {
@@ -276,17 +278,49 @@ public sealed class DispatcherTests
             release.Wait();
         });
         await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var invocationToken = TestContext.Current.CancellationToken;
         var pending = dispatcher.InvokeAsync(
             static () => 42,
-            TestContext.Current.CancellationToken).AsTask();
+            invocationToken).AsTask();
 
         var disposal = dispatcher.DisposeAsync().AsTask();
-        _ = await Should.ThrowAsync<OperationCanceledException>(pending);
+        var thrown = await Should.ThrowAsync<OperationCanceledException>(pending);
+        thrown.CancellationToken.ShouldBe(invocationToken);
         release.Set();
         await disposal;
         await dispatcher.DisposeAsync();
 
         _ = Should.Throw<ObjectDisposedException>(() => dispatcher.Post(static () => { }));
+    }
+
+    /// <summary>Verifies the same token-identity preservation for a queued action invocation
+    /// (the <see cref="Dispatcher.InvokeAsync(Action, CancellationToken)"/> overload, backed by
+    /// ActionWork rather than FunctionWork&lt;T&gt;).</summary>
+    [Fact]
+    public async Task DisposeAsync_WhenActionInvocationIsQueued_CancelsWithSameTokenAsync()
+    {
+        var dispatcher = Dispatcher.Start();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new();
+        dispatcher.Post(() =>
+        {
+            entered.SetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var invocationToken = TestContext.Current.CancellationToken;
+        var invoked = false;
+        var pending = dispatcher.InvokeAsync(
+            () => invoked = true,
+            invocationToken).AsTask();
+
+        var disposal = dispatcher.DisposeAsync().AsTask();
+        var thrown = await Should.ThrowAsync<OperationCanceledException>(pending);
+        thrown.CancellationToken.ShouldBe(invocationToken);
+        release.Set();
+        await disposal;
+
+        invoked.ShouldBeFalse();
     }
 
     /// <summary>Verifies invalid construction and null callbacks fail immediately.</summary>

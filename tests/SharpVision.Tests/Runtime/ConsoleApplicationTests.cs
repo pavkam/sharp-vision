@@ -4,6 +4,14 @@
 namespace SharpVision.Tests.Runtime;
 
 /// <summary>Verifies <see cref="ConsoleApplication"/> validation and host preflight paths.</summary>
+/// <remarks>
+/// In <see cref="RealProcessSignalGroup"/>: <see cref="RunCoreAsync_WhenRealPosixSignalRaised_StopsCleanlyAsync(int)"/>
+/// raises a real POSIX signal against the current process, which every live signal registration in
+/// the process observes regardless of which test raised it. Any other test added later that also
+/// raises a real signal must join this same group - see the group's own remarks - rather than risk
+/// racing this one.
+/// </remarks>
+[Collection(RealProcessSignalGroup.Name)]
 public sealed class ConsoleApplicationTests
 {
     /// <summary>Verifies adding unsupported-terminal reporting preserves every existing numeric status.</summary>

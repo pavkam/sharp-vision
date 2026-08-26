@@ -49,5 +49,5 @@ internal sealed class FunctionWork<T>: Work
 
     /// <inheritdoc/>
     public override void Cancel() =>
-        _completion.TrySetCanceled(new CancellationToken(canceled: true));
+        _completion.TrySetCanceled(_cancellationToken);
 }

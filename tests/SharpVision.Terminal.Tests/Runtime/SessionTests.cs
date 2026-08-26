@@ -1007,6 +1007,36 @@ public sealed class SessionTests
     }
 
     /// <summary>
+    /// Verifies a fault notification failure is combined with the original exception rather than
+    /// written into <see cref="Session.LastCleanupException"/>, so a genuine lease-restoration
+    /// failure that happens alongside it stays observable there instead of being discarded.
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenFaultNotificationAndCleanupFail_PreservesBothExceptionsAsync()
+    {
+        var notificationFailure = new InvalidOperationException("notification failed");
+        await using SessionTransport transport = new()
+        {
+            ReadFailure = new IOException("read failed"),
+            FailWriteAt = 7
+        };
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink { FaultFailure = notificationFailure };
+        await using Session session = new(
+            transport,
+            resize,
+            sink,
+            new TerminalOptions { Capabilities = Supported() });
+
+        var thrown = await Should.ThrowAsync<AggregateException>(async () =>
+            await session.RunAsync(TestContext.Current.CancellationToken));
+
+        thrown.InnerExceptions.ShouldBe([transport.ReadFailure, notificationFailure]);
+        session.LastCleanupException.ShouldBeSameAs(transport.WriteFailure);
+        sink.Faults.ShouldBe([transport.ReadFailure]);
+    }
+
+    /// <summary>
     /// Verifies an input handler failure triggers cleanup and remains the primary error.
     /// </summary>
     [Fact]

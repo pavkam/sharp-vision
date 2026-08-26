@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Runtime;
 
+using System.Reflection;
+
 using Terminal.Backends;
 
 /// <summary>Verifies <see cref="ConsoleApplicationBuilder"/> fluent setters accumulate onto <see cref="ConsoleRunOptions"/>.</summary>
@@ -139,6 +141,60 @@ public sealed class ConsoleApplicationBuilderTests
         try
         {
             application.Theme.ShouldBeSameAs(ThemeCatalog.Dark);
+        }
+        finally
+        {
+            await application.DisposeAsync();
+        }
+    }
+
+    /// <summary>Verifies <c>Build()</c> actually threads <c>!TreatControlCAsInput</c> into
+    /// <c>Application</c>'s own process-signal registration end-to-end - proving the wiring the
+    /// "advanced case" section of docs/concepts/hosting.md describes is correct at the one call
+    /// site that computes it, not merely correct in isolation on either side of that call.</summary>
+    /// <param name="treatControlCAsInput">The option value <c>Build()</c> is configured with.</param>
+    /// <param name="expectCtrlCObserved">Whether SIGINT/SIGQUIT registration should exist afterward.</param>
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task Build_WhenTreatControlCAsInputIsSet_TogglesCtrlCSignalObservationAsync(
+        bool treatControlCAsInput,
+        bool expectCtrlCObserved)
+    {
+        Assert.SkipUnless(!OperatingSystem.IsWindows(), "Checks the Unix SIGINT/SIGQUIT registration fields.");
+
+        var builder = new ConsoleApplicationBuilder(
+            new ProbeScreen(),
+            static () => true,
+            _ => new ConsoleConnection(
+                new ConsoleApplicationTransport(),
+                new ConsoleApplicationResizeSource(),
+                new ConsoleApplicationRestoreLease()),
+            _ => { },
+            _ => { })
+            .UseTerminalProfile(TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative));
+
+        if (treatControlCAsInput)
+        {
+            builder = builder.TreatControlCAsInput();
+        }
+
+        var application = builder.Build();
+
+        try
+        {
+            var processSignals = typeof(Application)
+                .GetField("_processSignals", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(application);
+            _ = processSignals.ShouldNotBeNull();
+
+            // SIGTERM/SIGHUP are unconditional regardless of TreatControlCAsInput, so only the
+            // Ctrl+C-gated SIGINT registration distinguishes the two cases here.
+            var interrupt = processSignals!.GetType()
+                .GetField("_interrupt", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(processSignals);
+
+            (interrupt is not null).ShouldBe(expectCtrlCObserved);
         }
         finally
         {

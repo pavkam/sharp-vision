@@ -2,7 +2,7 @@
 {
     public sealed class Application : SharpVision.Terminal.Abstractions.ICapabilityResponseSink, SharpVision.Terminal.Abstractions.IClipboardReplySink, SharpVision.Terminal.Abstractions.IInputSink, SharpVision.Terminal.Abstractions.IKittyClipboardPacketSink, SharpVision.Terminal.Abstractions.IMetricsResponseSink, SharpVision.Terminal.Abstractions.IPaletteResponseSink, SharpVision.Terminal.Abstractions.IProtocolSink, SharpVision.Terminal.Abstractions.ISink, SharpVision.Terminal.Abstractions.IStatusResponseSink, System.IAsyncDisposable
     {
-        public Application(SharpVision.Controls.ControlBase root, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Abstractions.IResizeSource resize, SharpVision.Terminal.Runtime.TerminalOptions? options = null, System.IAsyncDisposable? hostLease = null, System.TimeProvider? timeProvider = null) { }
+        public Application(SharpVision.Controls.ControlBase root, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Abstractions.IResizeSource resize, SharpVision.Terminal.Runtime.TerminalOptions? options = null, System.IAsyncDisposable? hostLease = null, System.TimeProvider? timeProvider = null, bool? observeProcessSignals = default) { }
         public SharpVision.Windows.Window? ActiveWindow { get; }
         public SharpVision.Terminal.Capabilities.TerminalCapabilities Capabilities { get; }
         public SharpVision.Input.PointerManager Capture { get; }

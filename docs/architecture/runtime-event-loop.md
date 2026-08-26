@@ -167,6 +167,16 @@ Stopping rejects new application work, cancels waits, drains required cleanup,
 restores terminal modes, raises the stopped event once, and completes pending
 invocations with the documented cancellation or failure.
 
+Rejection at admission is not the only place input can be dropped: a record that
+was already queued before stopping began — for example, input enqueued
+concurrently with, but ordered just ahead of, a closure or fault record — is
+dequeued but not dispatched once that earlier record has flipped the application
+into stopping within the same drain pass. This is intentional, since dispatching
+more input into a tree that is mid-teardown is not useful, but it deliberately
+does not raise `UnhandledException` or otherwise fail the application, since
+dropping one late record during an otherwise ordinary shutdown is not itself a
+failure.
+
 Shutdown unwinds every active
 [modal scope](../concepts/modality.md#nested-scopes-and-lifetime) before
 disposing pointer and focus ownership. It does not restore saved focus into the
@@ -207,6 +217,18 @@ transport, and the lifetime source; `StreamTransport` disposal attempts each
 stream it owns. The first exception is retained and rethrown after the remaining
 cleanup finishes, so one failure never abandons unrelated handles or buffered
 output. A stream supplied as both input and output is attempted exactly once.
+
+`Application`'s own terminal-resource cleanup step marshals clipboard-timer
+teardown onto the dispatcher thread and, separately, marshals `FinalizeStopped`
+onto it once cleanup completes. Both crossings retry with a short delay while
+the bounded dispatcher queue is only transiently full, converging well inside
+`CleanupTimeout` because the dispatcher thread is confirmed still alive and
+draining at that point. A queue that stays full for the entire `CleanupTimeout`
+window is a last-resort give-up, not a hang: the clipboard-timer crossing folds
+its exception into `LastCleanupException` instead of letting `DisposeAsync`
+throw, accepting an armed periodic timer as the lesser failure, while the
+`FinalizeStopped` crossing still propagates, because `FinalizeStopped` runs
+dispatcher-affine cleanup that cannot be skipped in its place.
 
 Disposal stays idempotent: a second call after a failed first is quiet and
 retries nothing. When callers dispose concurrently, only the caller that

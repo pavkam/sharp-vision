@@ -91,6 +91,7 @@ export const SUITE_LEVEL_ALLOW_LIST = new Set([
   "ResponseContainerCompatibilityTests", // four core EventArgs types wrapping terminal-declared response types, no single src subject
   "DocumentSelectionTests", // semantic projection and mutation contract spanning Document, nodes, and embedded selectable sources
   "DocumentSelectionSurfaceTests", // routed selection, child arbitration, nested viewports, clipboard, styling, and timed autoscroll
+  "ApplicationProcessSignalTests", // Application's cooperative-shutdown-signal integration, split out of ApplicationTests so only this narrow slice - not the whole class - needs the real-signal-safe test collection
 ]);
 
 /**

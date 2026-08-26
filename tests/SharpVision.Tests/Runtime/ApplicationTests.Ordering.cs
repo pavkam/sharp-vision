@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Runtime;
 
+using SharpVision.Runtime;
+
 /// <summary>Verifies resize coalescing, input targeting, and application idleness.</summary>
 public sealed partial class ApplicationTests
 {
@@ -351,5 +353,65 @@ public sealed partial class ApplicationTests
             // expected failure is teardown noise from the forced-race technique, not something this
             // test is asserting about.
         }
+    }
+
+    /// <summary>Verifies a record admitted into the input queue just behind a Closed record - both
+    /// enqueued while the application was not yet stopping, so both pass Enqueue's admission check
+    /// - is dequeued but not dispatched once the Closed record, processed earlier in the same drain
+    /// pass, has already flipped <c>_stopping</c>. The skip itself is intentional (dispatching more
+    /// input into a tree that is mid-teardown is not useful), but it must no longer be silent:
+    /// <see cref="Application.DrainInputSkippedRecordHookForTests"/> is the only channel that
+    /// surfaces it, since routing this through <c>Report</c>/<c>UnhandledException</c> would
+    /// misrepresent an ordinary, successful shutdown as an application failure.</summary>
+    [Fact]
+    public async Task Input_WhenQueuedJustBehindClosedInSameDrainPass_SkipsDispatchObservablyAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var root = new ProbeContainer();
+        var child = new ProbeControl { IsFocusable = true };
+        root.Children.Add(child);
+        await using Application application = new(
+            root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var delivered = false;
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                application.Focus.Focus(child).ShouldBeTrue();
+                _ = child.AddHandler(Events.Key, (_, _) => delivered = true);
+            },
+            TestContext.Current.CancellationToken);
+
+        List<RecordKind> skipped = [];
+        application.DrainInputSkippedRecordHookForTests = record => skipped.Add(record.Kind);
+
+        // Block the dispatcher so both Enqueue calls below run - and complete - before DrainInput
+        // gets a chance to process either record, guaranteeing they are admitted while _stopping is
+        // still false and land in the queue in the exact FIFO order this test needs.
+        using ManualResetEventSlim release = new();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.Dispatcher.Post(() =>
+        {
+            entered.SetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        application.Closed();
+        var stroke = new Stroke(Code.Enter, character: null, nativeCode: 0, Modifiers.None, KeyAction.Press);
+        application.Input(in stroke);
+
+        release.Set();
+
+        await application.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        application.Completion.IsCompletedSuccessfully.ShouldBeTrue();
+        application.Failure.ShouldBeNull();
+        delivered.ShouldBeFalse();
+        skipped.ShouldBe([RecordKind.Key]);
     }
 }

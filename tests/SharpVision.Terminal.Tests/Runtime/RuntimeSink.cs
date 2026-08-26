@@ -60,6 +60,9 @@ internal sealed class RuntimeSink: ISink
     /// <summary>Gets an optional exact resize callback failure.</summary>
     internal Exception? ResizeFailure { get; init; }
 
+    /// <summary>Gets an optional exact fault notification failure.</summary>
+    internal Exception? FaultFailure { get; init; }
+
     /// <summary>Gets an optional hook invoked synchronously before a resize is recorded, so a
     /// caller can capture state exactly at the point of delivery without an async continuation
     /// race.</summary>
@@ -167,7 +170,15 @@ internal sealed class RuntimeSink: ISink
     /// <inheritdoc/>
     public void Fault(Exception exception)
     {
+        // Recorded before the injected failure (unlike TextFailure/ResizeFailure above) so a test
+        // can still observe which exception the run tried to notify even when the notification
+        // callback itself is made to fail.
         Faults.Add(exception);
         _ = FaultReceived.TrySetResult(exception);
+
+        if (FaultFailure is not null)
+        {
+            throw FaultFailure;
+        }
     }
 }

@@ -85,10 +85,10 @@ internal sealed class WindowsConsoleMode: IDisposable
             return;
         }
 
-        var restored = _setConsoleMode(_input, _savedInput);
+        var restored = _setConsoleMode(_output, _savedOutput);
         var failure = restored ? null : Failure();
 
-        if (!_setConsoleMode(_output, _savedOutput))
+        if (!_setConsoleMode(_input, _savedInput))
         {
             failure ??= Failure();
         }

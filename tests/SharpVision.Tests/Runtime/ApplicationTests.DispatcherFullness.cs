@@ -5,6 +5,8 @@ namespace SharpVision.Tests.Runtime;
 
 using System.Reflection;
 
+using SharpVision.Runtime;
+
 /// <summary>
 /// Verifies the six <c>Application</c> call sites that guard a <c>Dispatcher.Post</c> attempt -
 /// <see cref="Application.Profile"/>, the resize sink, <c>Enqueue</c> (reached through
@@ -374,5 +376,105 @@ public sealed partial class ApplicationTests
             .GetMethod("WakeInput", BindingFlags.Instance | BindingFlags.NonPublic)!;
 
         _ = Should.NotThrow(() => wakeInput.Invoke(application, null));
+    }
+
+    /// <summary>
+    /// Verifies <c>DisposeAsync</c>'s own terminal-resource cleanup step no longer lets a merely
+    /// transient full dispatcher queue escape as <see cref="InvalidOperationException"/>. The queue
+    /// is still saturated - not yet drained - when <c>DisposeAsync</c> is invoked, the exact race
+    /// <see cref="WaitForQueueToDrainAsync"/>'s own remarks describe; releasing the block shortly
+    /// after gives the bounded retry (see <c>Application.InvokeWithQueueRetryAsync</c>) room to
+    /// converge well inside the default <see cref="TerminalOptions.CleanupTimeout"/>, so
+    /// <c>TerminalServices.Dispose</c> still actually runs instead of the clipboard-timer teardown
+    /// being silently skipped.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenDispatcherQueueIsTransientlyFull_DisposesTerminalServicesWithoutThrowingAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        var disposeTask = application.DisposeAsync().AsTask();
+
+        // Deliberately does not drain the backlog first: DisposeAsync must observe the queue still
+        // full at the moment it posts, then release into an already-in-flight retry loop rather
+        // than a fresh one.
+        await Task.Delay(TimeSpan.FromMilliseconds(20), TestContext.Current.CancellationToken);
+        release.Set();
+
+        await disposeTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        ((TerminalServices) application.Terminal).DisposedOnDispatcherThreadForTests.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies the bounded retry gives up gracefully - folding its failure into
+    /// <see cref="Application.LastCleanupException"/> - instead of hanging forever when the
+    /// dispatcher queue never drains for the whole <see cref="TerminalOptions.CleanupTimeout"/>
+    /// window. Drives <c>DisposeTerminalResourcesAsync</c> directly through reflection (as
+    /// <see cref="WakeInput_WhenDispatcherQueueIsFull_PropagatesInvalidOperationExceptionAsync"/>
+    /// does for its own private target) so the assertion is isolated to the retry loop's own
+    /// give-up behavior, without also depending on <c>FinishWithoutSessionAsync</c>'s later
+    /// dispatcher post - which needs the same permanently-saturated queue to drain to make any
+    /// progress at all - succeeding within the test.
+    /// </summary>
+    [Fact]
+    public async Task DisposeTerminalResourcesAsync_WhenQueueNeverDrainsWithinCleanupTimeout_GivesUpAndRecordsFailureAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var options = TerminalOptions.Minimal with { CleanupTimeout = TimeSpan.FromMilliseconds(50) };
+        var application = new Application(new ProbeControl(), terminal, terminal, options);
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        try
+        {
+            var disposeTerminalResources = typeof(Application).GetMethod(
+                "DisposeTerminalResourcesAsync",
+                BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+            var task = (Task<Exception?>) disposeTerminalResources.Invoke(application, null)!;
+            var failure = await task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+            _ = failure.ShouldBeOfType<InvalidOperationException>();
+            application.LastCleanupException.ShouldBeSameAs(failure);
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        await application.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Verifies the bounded retry loop does not mistake a disposed dispatcher for a merely-full
+    /// queue: <see cref="ObjectDisposedException"/> derives from <see cref="InvalidOperationException"/>,
+    /// so a catch clause without the guard <c>Application.InvokeWithQueueRetryAsync</c> documents
+    /// would retry it for the whole <see cref="TerminalOptions.CleanupTimeout"/> window instead of
+    /// propagating it immediately as promised. Uses a long timeout and a stopwatch so a regression
+    /// (retrying instead of propagating) would make this test visibly slow rather than merely wrong.
+    /// </summary>
+    [Fact]
+    public async Task InvokeWithQueueRetryAsync_WhenDispatcherIsDisposed_PropagatesImmediatelyAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var options = TerminalOptions.Minimal with { CleanupTimeout = TimeSpan.FromSeconds(30) };
+        var application = new Application(new ProbeControl(), terminal, terminal, options);
+        await application.Dispatcher.DisposeAsync();
+
+        var invokeWithQueueRetryAsync = typeof(Application).GetMethod(
+            "InvokeWithQueueRetryAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        Action noop = () => { };
+        var stopwatch = Stopwatch.StartNew();
+        var task = (Task<Exception?>) invokeWithQueueRetryAsync.Invoke(application, [noop])!;
+
+        _ = await Should.ThrowAsync<ObjectDisposedException>(
+            () => task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(1));
     }
 }

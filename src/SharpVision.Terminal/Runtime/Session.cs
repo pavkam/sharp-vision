@@ -202,7 +202,14 @@ public sealed class Session: IAsyncDisposable
                 }
                 catch (Exception notificationException)
                 {
-                    LastCleanupException = notificationException;
+                    // A fault notification that itself throws is preserved alongside the original
+                    // failure rather than replacing it, mirroring Dispatcher.Report. Writing it into
+                    // LastCleanupException instead would be wrong on two counts: that property is
+                    // reserved for CleanupAsync's own lease-restoration failures below, and doing so
+                    // would make CleanupAsync's `LastCleanupException ??= exception` a guaranteed
+                    // no-op, silently discarding a genuine restoration failure whenever the
+                    // notification callback also throws.
+                    primary = new AggregateException(exception, notificationException);
                 }
             }
         }

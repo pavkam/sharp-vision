@@ -3,7 +3,7 @@
 
 namespace SharpVision;
 
-using System.Runtime.InteropServices;
+using SharpVision.Runtime;
 
 /// <summary>Provides the fluent entry point for interactive console applications.</summary>
 [PublicAPI]
@@ -61,57 +61,30 @@ public static class ConsoleApplication
             CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         var observeCtrlC = !builder.Options.TreatControlCAsInput;
-        ConsoleCancelEventHandler? onCancel = null;
-        PosixSignalRegistration? interruptRegistration = null;
-        PosixSignalRegistration? quitRegistration = null;
-        PosixSignalRegistration? terminateRegistration = null;
-        PosixSignalRegistration? hangupRegistration = null;
 
-        void OnPosixSignal(PosixSignalContext context)
+        // CooperativeShutdownSignals owns the actual SIGINT/SIGQUIT/SIGTERM/SIGHUP/CancelKeyPress
+        // registration - the same mechanism Application's own StartAsync uses for the bare
+        // `Build()` + `app.RunAsync()` shape - so the tricky BCL-initialization-avoidance logic
+        // documented on that type is never duplicated here.
+        //
+        // The callback cannot be the bare `cancellation.Cancel` method group: Register's contract
+        // requires onSignal to never throw, but a signal can still be in flight on its own thread
+        // when this method's `using var cancellation` disposes it below - Dispose does not wait for
+        // a concurrently-running callback - and Cancel() on an already-disposed source throws
+        // ObjectDisposedException, which is fatal to the whole process from a signal-handling
+        // thread. Once teardown has started, the token no longer matters, so this is a plain no-op.
+        var signals = CooperativeShutdownSignals.Register(observeCtrlC, () =>
         {
-            context.Cancel = true;
-            cancellation.Cancel();
-        }
-
-        if (!OperatingSystem.IsWindows())
-        {
-            // SIGTERM is the standard graceful-termination signal sent by process managers,
-            // containers, systemd, and plain `kill`; SIGHUP is wired the same way alongside it.
-            // Both are process-lifecycle signals, not Ctrl+C, so they are registered
-            // unconditionally here rather than being folded into the `observeCtrlC` gate below:
-            // `TreatControlCAsInput` only changes how Ctrl+C is delivered (decoded input vs. an
-            // OS signal) and must not suppress cooperative shutdown on process-manager-initiated
-            // termination.
-            terminateRegistration = PosixSignalRegistration.Create(PosixSignal.SIGTERM, OnPosixSignal);
-            hangupRegistration = PosixSignalRegistration.Create(PosixSignal.SIGHUP, OnPosixSignal);
-        }
-
-        if (observeCtrlC)
-        {
-            // Console.CancelKeyPress itself initializes the BCL's Unix console on first
-            // subscription, which is exactly the side effect this registration exists to avoid: once
-            // initialized, the runtime re-emits application-keypad-mode bytes on every later
-            // child-process exit, including this host's own teardown. PosixSignalRegistration
-            // observes Ctrl+C without that initialization. SIGQUIT is registered alongside SIGINT
-            // because Console.CancelKeyPress historically fires for both, and a SIGINT-only
-            // registration would let Ctrl+\ terminate the process without reverse cleanup.
-            if (OperatingSystem.IsWindows())
+            try
             {
-                onCancel = (_, eventArgs) =>
-                {
-                    eventArgs.Cancel = true;
-                    cancellation.Cancel();
-                };
-                Console.CancelKeyPress += onCancel;
+                cancellation.Cancel();
             }
-            else
+            catch (ObjectDisposedException)
             {
-                interruptRegistration = PosixSignalRegistration.Create(PosixSignal.SIGINT, OnPosixSignal);
-                quitRegistration = PosixSignalRegistration.Create(PosixSignal.SIGQUIT, OnPosixSignal);
             }
-        }
+        });
 
-        // The registrations above must be live before `builder.Build()` runs, not just around the
+        // The registration above must be live before `builder.Build()` runs, not just around the
         // post-build run loop: `Build()` enters raw/VT terminal mode and then synchronously runs
         // arbitrary user `OnAttach` code, and a signal landing in that window has to be observed
         // here rather than falling through to the OS default disposition (process killed) before
@@ -147,15 +120,7 @@ public static class ConsoleApplication
         }
         finally
         {
-            if (onCancel is not null)
-            {
-                Console.CancelKeyPress -= onCancel;
-            }
-
-            interruptRegistration?.Dispose();
-            quitRegistration?.Dispose();
-            terminateRegistration?.Dispose();
-            hangupRegistration?.Dispose();
+            signals.Dispose();
         }
     }
 

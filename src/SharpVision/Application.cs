@@ -90,6 +90,14 @@ public sealed class Application:
     private int _disposeState;
     private int _hostLeaseDisposed;
 
+    // Non-null only when the constructor's observeProcessSignals parameter opted this instance
+    // into owning its own Ctrl+C/SIGTERM/SIGHUP lifecycle - see the constructor's remarks and
+    // RequestCooperativeStop. _signalRequestedStopBeforeStart is set from an arbitrary
+    // signal-handling thread and only ever read once, at the top of StartAsync.
+    private readonly CooperativeShutdownSignals? _processSignals;
+    private int _processSignalsDisposed;
+    private volatile bool _signalRequestedStopBeforeStart;
+
     private Theme _theme = ThemeCatalog.Dark;
 
     private FocusManager? FocusValue { get; set; }
@@ -107,6 +115,23 @@ public sealed class Application:
     /// <param name="options">Validated terminal options, or null for defaults.</param>
     /// <param name="hostLease">An optional host resource disposed last after cleanup, or null.</param>
     /// <param name="timeProvider">The optional shared clock for application-owned timed services.</param>
+    /// <param name="observeProcessSignals">
+    /// Whether this application owns cooperative shutdown for Ctrl+C, <c>SIGTERM</c>, and
+    /// <c>SIGHUP</c>. Null (the default) registers nothing here, leaving process-lifecycle signals
+    /// entirely to the caller - the right choice for direct construction, and for
+    /// <see cref="ConsoleApplication"/>'s two static entry points, which already wrap their own
+    /// registration around the whole build-and-run sequence. A non-null value registers, right here
+    /// in the constructor so the registration is live for the rest of this instance's life
+    /// (including a caller's synchronous attach code that runs before <see cref="StartAsync"/> is
+    /// ever reached): <c>SIGTERM</c>/<c>SIGHUP</c> unconditionally on Unix, and Ctrl+C gated by the
+    /// value itself - true observes it as cooperative shutdown, false leaves it to reach the screen
+    /// as decoded input. A signal observed before <see cref="StartAsync"/> is called only latches a
+    /// request that call itself resolves; see <see cref="RequestCooperativeStop"/>.
+    /// <see cref="ConsoleApplicationBuilder.Build"/> passes a non-null value derived from
+    /// <see cref="ConsoleRunOptions.TreatControlCAsInput"/>, so every application it builds -
+    /// including the bare <c>Build()</c> + <c>RunAsync()</c> shape that has no other registration
+    /// wrapping it - gets cooperative shutdown.
+    /// </param>
     /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="root"/> is attached or already owned.</exception>
     /// <exception cref="ObjectDisposedException"><paramref name="root"/> is disposed.</exception>
@@ -119,7 +144,8 @@ public sealed class Application:
         IResizeSource resize,
         TerminalOptions? options = null,
         IAsyncDisposable? hostLease = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        bool? observeProcessSignals = null)
     {
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(transport);
@@ -164,6 +190,17 @@ public sealed class Application:
         _initializeModalKey = InitializeModalKey;
         Dispatcher.Idle += OnIdle;
         Dispatcher.UnhandledException += OnDispatcherUnhandled;
+
+        if (observeProcessSignals is { } observeCtrlC)
+        {
+            _processSignals = CooperativeShutdownSignals.Register(observeCtrlC, RequestCooperativeStop);
+            // FinalizeStopped is the sole writer of _stopped and the one funnel every terminal
+            // path crosses - the normal BeginStopping-driven stop, a forced Closed(), a fault, and
+            // the two paths that never raise Stopping at all - so this fires exactly once
+            // regardless of how this instance ends up stopped, without this class needing to
+            // duplicate that funnel itself.
+            Stopped += (_, _) => DisposeProcessSignals();
+        }
     }
 
     /// <summary>Raised on the dispatcher before terminal startup begins.</summary>
@@ -388,6 +425,18 @@ public sealed class Application:
             throw new InvalidOperationException("The application was already started.");
         }
 
+        if (_signalRequestedStopBeforeStart)
+        {
+            // The constructor's process-signal registration (see CooperativeShutdownSignals)
+            // already requested shutdown before this call even began - e.g. a signal landing
+            // during Build()'s synchronous OnAttach, which runs before the caller can ever reach
+            // StartAsync. Nothing observable ever started, so this finishes exactly like the
+            // already-cancelled-token catch below does, without throwing: there is nothing to
+            // report as cancelled to a caller whose own token never requested it.
+            await FinishWithoutSessionAsync();
+            return;
+        }
+
         try
         {
             await Dispatcher.InvokeAsync(
@@ -472,6 +521,56 @@ public sealed class Application:
         if (_stopping)
         {
             await _completion.Task.WaitAsync(cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// The callback registered process signals invoke (see the constructor). Runs on an arbitrary
+    /// signal-handling thread.
+    /// </summary>
+    /// <remarks>
+    /// When nothing has started yet - a signal landing during <c>Build()</c>'s synchronous
+    /// <c>OnAttach</c>, or in the gap before the caller reaches <see cref="StartAsync"/> at all -
+    /// there is no live session or <see cref="Stopping"/> veto to honor ("the application never
+    /// ran"), so this only latches a flag <see cref="StartAsync"/> itself checks first. Once
+    /// started, <see cref="StopAsync"/> is the same cooperative path an external caller uses;
+    /// <see cref="Observe"/> swallows the resulting task so an abandoned await here never surfaces
+    /// as an unobserved-exception crash, and <see cref="StopAsync"/>'s own dispatcher-affine
+    /// queuing and <c>_stopping</c> guard make it safe to invoke from this thread.
+    /// <para>
+    /// <see cref="StopAsync"/> is itself <c>async</c>, so an exception from its own body - including
+    /// one <c>Dispatcher.InvokeAsync</c> can throw synchronously for a disposed or full dispatcher -
+    /// is captured into the returned <see cref="ValueTask"/> rather than thrown here, and
+    /// <see cref="Observe"/> already swallows a pre-faulted task exactly like one that faults later.
+    /// The try/catch below is defense in depth against that invariant ever changing:
+    /// <c>CooperativeShutdownSignals</c> requires <c>onSignal</c> to never throw onto the
+    /// signal-handling thread.
+    /// </para>
+    /// </remarks>
+    private void RequestCooperativeStop()
+    {
+        if (Volatile.Read(ref _startState) == 0)
+        {
+            _signalRequestedStopBeforeStart = true;
+        }
+
+        try
+        {
+            Observe(StopAsync(CancellationToken.None).AsTask());
+        }
+        catch (Exception exception) when (exception is ObjectDisposedException or InvalidOperationException)
+        {
+            // See the remarks above: not expected to be reachable given StopAsync's async
+            // signature, but this callback must never throw onto the signal-handling thread.
+        }
+    }
+
+    /// <summary>Unregisters this application's process-signal scope at most once.</summary>
+    private void DisposeProcessSignals()
+    {
+        if (Interlocked.Exchange(ref _processSignalsDisposed, 1) == 0)
+        {
+            _processSignals?.Dispose();
         }
     }
 
@@ -1257,7 +1356,28 @@ public sealed class Application:
                     }
                 }
 
-                if (!_stopping)
+                if (_stopping)
+                {
+                    // This record passed Enqueue's admission check while _stopping was still
+                    // false, but a Closed/Fault record dispatched earlier in this same pass has
+                    // since flipped the flag - most likely both were enqueued by concurrent
+                    // producers a moment apart and happened to land in that order. Routing more
+                    // input into a tree that is mid-teardown is reasonably avoided, so the skip
+                    // itself stays intentional; only its silence was the defect.
+                    //
+                    // Report(...) is not the right channel to fix that: it sets Failure and
+                    // raises UnhandledException, both reserved for a genuine failure that should
+                    // force shutdown, and firing them here would misrepresent an ordinary,
+                    // successful stop as an application failure - exactly the false alarm a
+                    // consumer reacting to UnhandledException would not expect from closing down
+                    // cleanly. The Diagnostic/GraphicsDiagnostic events are not a fit either; both
+                    // carry unrelated terminal-protocol and render-metrics payloads, not "a record
+                    // was dropped because the application is stopping." So, like
+                    // DrainInputRaceHookForTests above, this stays a test-only seam rather than a
+                    // new public signal.
+                    DrainInputSkippedRecordHookForTests?.Invoke(record);
+                }
+                else
                 {
                     Dispatch(record);
                 }
@@ -1309,6 +1429,16 @@ public sealed class Application:
     /// relying on a race that is a handful of CPU instructions wide.
     /// </summary>
     internal Action? DrainInputRaceHookForTests { get; set; }
+
+    /// <summary>
+    /// Test-only observability seam. Invoked once, synchronously, for each record this drain
+    /// pass dequeues but declines to dispatch because <c>_stopping</c> was already set by
+    /// an earlier record in the same pass (typically <see cref="RecordKind.Closed"/> or
+    /// <see cref="RecordKind.Fault"/>). Skipping the record is intentional - see the comment at
+    /// the call site - but nothing else in this codebase surfaces it, so tests use this hook to
+    /// assert the skip actually happened instead of only asserting its absence of side effects.
+    /// </summary>
+    internal Action<Record>? DrainInputSkippedRecordHookForTests { get; set; }
 
     private void DrainProfile()
     {
@@ -1499,12 +1629,23 @@ public sealed class Application:
     private async Task FinishWithoutSessionAsync()
     {
         var cleanupFailure = await DisposeTerminalResourcesAsync();
-        await Dispatcher.InvokeAsync(() =>
+
+        // A transiently full queue is absorbed by the bounded retry instead of escaping straight
+        // out of DisposeAsync and masking whatever cleanupFailure it was about to record. Only if
+        // the retry is exhausted (see InvokeWithQueueRetryAsync) does this still propagate, exactly
+        // as before this loop existed - FinalizeStopped must run on the dispatcher thread and cannot
+        // be skipped in place of a fallback the way the terminal-resource disposal above can.
+        var postFailure = await InvokeWithQueueRetryAsync(() =>
         {
             Failure ??= cleanupFailure;
             LastCleanupException ??= cleanupFailure;
             FinalizeStopped();
         });
+
+        if (postFailure is not null)
+        {
+            ExceptionDispatchInfo.Throw(postFailure);
+        }
     }
 
     private async ValueTask DisposeHostLeaseAsync()
@@ -1532,16 +1673,18 @@ public sealed class Application:
             return;
         }
 
-        // Two callers reach here without ever passing through BeginStopping: StartAsync's
-        // Starting-handler catch, and DisposeAsync on an application that was never started.
-        // Latching _stopping here - the one funnel every terminal path crosses, already
-        // dispatcher-affine, so no new lock and no user callback under one - keeps the pair
-        // monotonic. Without it, StopAsync saw a stopped application as merely not-yet-stopping
-        // and queued a fresh BeginStopping, raising Stopping *after* Stopped against an
-        // already-disposed tree, cancelling a torn-down lifetime, and letting a handler's Cancel
-        // suppress the rethrow StopAsync owed its caller.
+        // Three callers reach here without ever passing through BeginStopping: StartAsync's
+        // Starting-handler catch, StartAsync's own early return when a process signal (see
+        // CooperativeShutdownSignals and RequestCooperativeStop) already requested shutdown before
+        // this call began, and DisposeAsync on an application that was never started. Latching
+        // _stopping here - the one funnel every terminal path crosses, already dispatcher-affine, so
+        // no new lock and no user callback under one - keeps the pair monotonic. Without it,
+        // StopAsync saw a stopped application as merely not-yet-stopping and queued a fresh
+        // BeginStopping, raising Stopping *after* Stopped against an already-disposed tree,
+        // cancelling a torn-down lifetime, and letting a handler's Cancel suppress the rethrow
+        // StopAsync owed its caller.
         //
-        // Stopping is therefore not raised at all on those two paths. That is the intended
+        // Stopping is therefore not raised at all on those three paths. That is the intended
         // reading - the application never ran - and lifecycle-events.md states it.
         _stopping = true;
 
@@ -1845,9 +1988,23 @@ public sealed class Application:
         // cleanup and FinalizeStopped; wrapping them in try/finally keeps that cleanup chain
         // unconditional even if either step above throws unexpectedly, matching the promise that
         // an exit-callback failure cannot skip later application cleanup.
+        //
+        // This method is launched fire-and-forget and never awaited or observed by anyone, so a
+        // full dispatcher queue that escaped either InvokeAsync call below would, at best, become
+        // an unobserved task fault and, at worst - for the second call - skip FinalizeStopped
+        // entirely, wedging _completion (and everything that awaits Application.Completion or
+        // StopAsync) forever. InvokeWithQueueRetryAsync absorbs a merely transient full queue
+        // instead of letting either call reach that outcome; only if the queue never drains for the
+        // whole CleanupTimeout window does this still propagate, same as before this loop existed.
         try
         {
-            await Dispatcher.InvokeAsync(() => BeginStopping(forced: true, failure));
+            var beginStoppingFailure = await InvokeWithQueueRetryAsync(() => BeginStopping(forced: true, failure));
+
+            if (beginStoppingFailure is not null)
+            {
+                ExceptionDispatchInfo.Throw(beginStoppingFailure);
+            }
+
             do
             {
                 await _renderTask;
@@ -1856,12 +2013,17 @@ public sealed class Application:
         finally
         {
             var cleanupFailure = await DisposeTerminalResourcesAsync();
-            await Dispatcher.InvokeAsync(() =>
+            var finalizeFailure = await InvokeWithQueueRetryAsync(() =>
             {
                 Failure ??= cleanupFailure;
                 LastCleanupException ??= cleanupFailure;
                 FinalizeStopped();
             });
+
+            if (finalizeFailure is not null)
+            {
+                ExceptionDispatchInfo.Throw(finalizeFailure);
+            }
         }
     }
 
@@ -2201,8 +2363,16 @@ public sealed class Application:
         // would race a live query's own deadline tick - which fires on the dispatcher thread - on
         // the same in-flight, single-threaded transaction with no lock between them. The dispatcher
         // itself is still running at this point in every caller of this method, so this cannot
-        // observe it disposed.
-        await Dispatcher.InvokeAsync(_terminalServices.Dispose).ConfigureAwait(false);
+        // observe it disposed - only a transiently full queue, which InvokeWithQueueRetryAsync
+        // retries away instead of letting escape immediately (see its own remarks). Only if the
+        // queue somehow never drains for the whole CleanupTimeout window does that retry give up;
+        // its exception is folded into failure below rather than rethrown, because permanently
+        // skipping this call - not a late, bounded retry of it - is what leaves the periodic
+        // clipboard-transaction DispatcherTimer armed and rooting the whole
+        // Application/dispatcher/renderer/control tree (see the timer-leak remarks on
+        // TerminalServices.Dispose): a last-resort leak is preferable to DisposeAsync throwing
+        // outright.
+        failure = await InvokeWithQueueRetryAsync(_terminalServices.Dispose).ConfigureAwait(false);
 
         if (_renderer is { } renderer)
         {
@@ -2242,6 +2412,67 @@ public sealed class Application:
             Session.LastCleanupException ??
             failure;
         return failure;
+    }
+
+    /// <summary>The delay between successive queue-full retries in
+    /// <see cref="InvokeWithQueueRetryAsync"/>.</summary>
+    private static readonly TimeSpan _queueRetryDelay = TimeSpan.FromMilliseconds(5);
+
+    /// <summary>
+    /// Invokes <paramref name="action"/> on the dispatcher, retrying while the bounded dispatcher
+    /// queue is transiently full instead of letting the first
+    /// <see cref="InvalidOperationException"/> ("the dispatcher queue is full") escape immediately.
+    /// </summary>
+    /// <remarks>
+    /// Every call site sharing this helper (<see cref="DisposeTerminalResourcesAsync"/>,
+    /// <see cref="FinishWithoutSessionAsync"/>, <see cref="ObserveSessionAsync"/>) runs while the
+    /// owning dispatcher thread is confirmed still alive and actively draining its queue, so the
+    /// transient full-queue rejection this loop retries is expected to clear well inside
+    /// <see cref="TerminalOptions.CleanupTimeout"/> in practice - the same window
+    /// <see cref="DisposeTerminalResourcesAsync"/> already bounds <c>renderer.ShutdownAsync</c>
+    /// with, reused here for consistency rather than a second, independently-tuned budget.
+    /// <see cref="ObjectDisposedException"/> means shutdown genuinely started elsewhere and is left
+    /// to propagate immediately, unretried, exactly as before this loop existed - it is not a
+    /// transient condition retrying could ever clear. If the queue somehow never drains for the
+    /// entire bound, this gives up and returns the last <see cref="InvalidOperationException"/>
+    /// instead of retrying forever; each caller decides how to fold that final failure into its own
+    /// cleanup bookkeeping rather than hang indefinitely.
+    /// </remarks>
+    /// <param name="action">The non-null callback to run on the dispatcher.</param>
+    /// <returns>Null once <paramref name="action"/> ran; otherwise the final
+    /// <see cref="InvalidOperationException"/> once <see cref="TerminalOptions.CleanupTimeout"/>
+    /// elapses without the queue accepting it.</returns>
+    private async Task<Exception?> InvokeWithQueueRetryAsync(Action action)
+    {
+        using var timeout = new CancellationTokenSource(_options.CleanupTimeout, _timeProvider);
+
+        while (true)
+        {
+            try
+            {
+                await Dispatcher.InvokeAsync(action).ConfigureAwait(false);
+                return null;
+            }
+            catch (InvalidOperationException exception) when (exception is not ObjectDisposedException)
+            {
+                // ObjectDisposedException derives from InvalidOperationException, so without this
+                // guard the catch above would also swallow it here and retry for the full timeout
+                // instead of propagating it immediately, as the remarks above promise.
+                if (timeout.Token.IsCancellationRequested)
+                {
+                    return exception;
+                }
+
+                try
+                {
+                    await Task.Delay(_queueRetryDelay, _timeProvider, timeout.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    return exception;
+                }
+            }
+        }
     }
 
     private void WakeInput()

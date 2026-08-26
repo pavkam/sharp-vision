@@ -60,9 +60,15 @@ There is also an immutable-options overload,
 `ConsoleApplication.RunAsync(Screen, ConsoleRunOptions)`, for callers that have
 already assembled a `ConsoleRunOptions` value instead of using the builder.
 
-All three managed entry points share `ConsoleApplicationBuilder.RunAsync`
-internally. It checks `ConsoleHost.Interactive` first: when standard input or
-output is redirected, it returns `ConsoleRunStatus.Redirected` (writing
+The three equivalent shapes above share `ConsoleApplicationBuilder.RunAsync` (in
+turn `ConsoleApplication.RunCoreAsync`) internally; the advanced case calls
+`Application.RunAsync` directly once `Build()` returns, with no `RunCoreAsync`
+wrapping it. Both still share the same
+`SharpVision.Runtime.CooperativeShutdownSignals` registration logic described
+below - `RunCoreAsync` and `Application` each call it rather than keeping two
+copies of its Unix `Console`-initialization-avoidance behavior. `RunCoreAsync`
+checks `ConsoleHost.Interactive` first: when standard input or output is
+redirected, it returns `ConsoleRunStatus.Redirected` (writing
 `RedirectedMessage` when set) rather than opening the console. Otherwise it
 opens only the platform connection needed for description lookup and resolves
 one `TerminalProfile`. Missing, generic, hardcopy, incomplete, and
@@ -82,8 +88,9 @@ owns the distinction from the physical `ConsoleConnection`, and the
 [discovery sequence](../architecture/discovery-pipeline.md#initialization-sequence)
 owns evidence precedence and startup publication.
 
-The host wires Ctrl+C to cooperative shutdown unless `TreatControlCAsInput` is
-set - through `PosixSignalRegistration` for `SIGINT` and `SIGQUIT` on Unix, and
+For the three equivalent shapes above, `RunCoreAsync` wires Ctrl+C to
+cooperative shutdown unless `TreatControlCAsInput` is set - through
+`PosixSignalRegistration` for `SIGINT` and `SIGQUIT` on Unix, and
 `Console.CancelKeyPress` on Windows, for the reason given under [Unix](#unix) -
 _before_ it builds the `Application`, not after. Registration wraps the whole
 preflight-and-build step as well as the subsequent run, so a signal arriving
@@ -115,6 +122,25 @@ arbitrary user code mid-execution would be unsafe, so `Build()` keeps running
 `OnAttach` to completion and the guarded shutdown only proceeds once it returns.
 The accepted trade is a hang until `OnAttach` finishes rather than a
 terminal-corrupting kill, not immediate cancellation.
+
+The advanced case has no `RunCoreAsync` wrapping it, but is not left
+unprotected: `Application` itself owns the identical registration from the
+moment its own constructor runs, which `ConsoleApplicationBuilder.Build()`
+triggers by passing a non-null `observeProcessSignals` derived from
+`TreatControlCAsInput` (direct construction of `Application` outside the builder
+defaults that parameter to null, registering nothing, so unrelated embedders
+never have their process signals hijacked by an `Application` they did not build
+through `ConsoleApplicationBuilder`). Because construction happens before
+`Build()` attaches the screen, this covers the same synchronous `OnAttach`
+window as the three equivalent shapes above, and everything from there through
+`StartAsync`, the run, and `StopAsync` - a signal arriving before the caller
+ever reaches `StartAsync` latches a request that call itself resolves without a
+session ever having gone live, instead of being lost. The one window this cannot
+close is a signal landing before the `Application` constructor has even run -
+during `Build()`'s own preflight and terminal-description resolution - because
+no instance exists yet for anything to hook into; that narrow gap still hits the
+OS default disposition, same as it would before the constructor of any object
+exists in any shape.
 
 Session startup expands the complete description-owned alternate-screen,
 cursor-visibility, and required application-key pairs before any transport
@@ -357,7 +383,12 @@ signal registrations on Unix, the `Console.CancelKeyPress` subscription on
 Windows - that would otherwise translate Ctrl+C into cooperative shutdown
 (`ConsoleRunStatus.Cancelled`). This leaves Ctrl+C available to focused control
 commands, including TextInput copy. A host that sets this option owns a separate
-decoded exit chord when it still needs a global keyboard exit path.
+decoded exit chord when it still needs a global keyboard exit path. This
+suppression reaches every shape uniformly, including the bare `Build()` +
+`app.RunAsync()` one: `ConsoleApplicationBuilder.Build()` passes
+`!TreatControlCAsInput` as `Application`'s own `observeProcessSignals`
+constructor parameter, so the option gates that instance's Ctrl+C registration
+the same way it gates `RunCoreAsync`'s.
 
 `TreatControlCAsInput` scopes to Ctrl+C delivery only - it does not affect
 `SIGTERM` or `SIGHUP` on Unix. Both remain registered and drive the same

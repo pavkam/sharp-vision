@@ -357,7 +357,15 @@ public sealed class ConsoleApplicationBuilder
                     ? EnvironmentSizeResizeSource.Wrap(connection.Resize, _readEnvironment)
                     : connection.Resize,
                 Options.ToTerminalOptions(profile),
-                hostLease: connection);
+                hostLease: connection,
+                // Every application this builder constructs owns its own cooperative Ctrl+C/SIGTERM/
+                // SIGHUP shutdown from this point on - including the bare Build() + app.RunAsync()
+                // shape, which has no ConsoleApplication.RunCoreAsync wrapper around it at all. For
+                // the two ConsoleApplication static entry points, RunCoreAsync's own registration
+                // (which must additionally cover the preflight-and-Build() window before this
+                // Application even exists) still wraps the whole run, so a real signal there is
+                // observed by both; StopAsync's idempotent shutdown makes that harmless.
+                observeProcessSignals: !Options.TreatControlCAsInput);
             // Attach (which runs the screen's OnAttach - the documented place for theme
             // publication, docs/concepts/screen.md) and the builder's own configured Theme both
             // now require the owning dispatcher thread. Build() itself always runs on
