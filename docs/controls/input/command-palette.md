@@ -64,13 +64,23 @@ only when the failing request is still current.
 2. A current successful completion copies and publishes `Items`, raises
    `ResultsChanged`, and opens the popup when results are non-empty.
 3. A cancelled or stale completion has no observable effect.
-4. Opening non-empty results selects the first available row and makes that same
+4. Detachment increments the generation, cancels the request, and clears
+   `IsResolving`; a resolver that ignores cancellation still cannot mutate or
+   publish into the detached palette.
+5. Opening non-empty results selects the first available row and makes that same
    row the list's current item while focus stays in the editor. Initial and
    repeated Down or Up key-down input moves selection and current item through
    the `ListView` navigation transaction, which scrolls the result viewport
    minimally to keep the row visible. Enter invokes the selected current result;
    pointer activation uses the same `ItemInvoked` contract. Escape closes
    results.
+
+Every public callback is a generation boundary. If `ResultsChanged`, popup
+lifecycle, or property notification code starts another query or disposes the
+palette, the older completion stops before changing later popup or failure
+state. A throwing `Text` or initial `IsResolving` property observer is rethrown
+only after the already-committed query has been admitted to its resolver, so no
+busy state is left without work capable of completing it.
 
 The result popup uses the shared dismissing modal scope, so outside input closes
 it and restores the focus that preceded `Open()`. The retained editor is the
@@ -123,7 +133,8 @@ _ = palette.Open();
 
 - Freely edited Unicode text is retained by `TextInput`; the palette never
   implements a competing edit model.
-- A stale or cancelled resolver completion cannot replace newer results.
+- A stale, cancelled, or detached resolver completion cannot replace newer
+  results, and reentrant callbacks cannot resume an older completion afterward.
 - Opening an embedded or overlay-positioned palette focuses the retained editor,
   while invoking a result closes the popup and preserves the query.
 - Result selection and current-item state identify the same row; holding Up or

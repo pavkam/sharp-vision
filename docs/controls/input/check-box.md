@@ -41,7 +41,9 @@ first; the bound command, if any and if `CanExecute` allows it, runs last. A
 command that cannot execute never suppresses the toggle itself. Assigning `null`
 to `IsChecked` while `ThreeState` is `false` throws `ArgumentException`. Turning
 three-state mode off while the value is indeterminate commits `false` before any
-notifications are published.
+notifications are published. A state-specific handler may commit another state;
+that newer transition publishes normally, while the superseded outer transition
+does not subsequently raise a stale `StateChanged` event.
 
 `CheckBoxStyle : InputStyle` is a complete immutable presentation: it bundles a
 `CheckBoxMarkStyle`, a complete `CheckBoxGlyphs` triple (unchecked, checked, and

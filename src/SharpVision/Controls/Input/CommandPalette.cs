@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Input;
 
+using System.Runtime.ExceptionServices;
+
 using Collections;
 
 using Popups;
@@ -110,8 +112,17 @@ public sealed class CommandPalette: CompositeControlBase
             }
 
             field = value;
-            NotifyPropertyChanged(nameof(Resolver), InvalidationImpact.None);
-            BeginResolution();
+            ExceptionDispatchInfo? failure = null;
+            ExceptionAggregation.Capture(
+                () => NotifyPropertyChanged(nameof(Resolver), InvalidationImpact.None),
+                ref failure);
+
+            if (!IsDisposed && ReferenceEquals(field, value))
+            {
+                ExceptionAggregation.Capture(BeginResolution, ref failure);
+            }
+
+            failure?.Throw();
         }
     }
 
@@ -423,7 +434,10 @@ public sealed class CommandPalette: CompositeControlBase
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        CancelResolution();
+        _resolutionGeneration++;
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(CancelResolution, ref failure);
+        ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
 
         if (reason == ReleaseReason.Disposed)
         {
@@ -436,6 +450,8 @@ public sealed class CommandPalette: CompositeControlBase
             ResolutionFailed = null;
             ItemInvoked = null;
         }
+
+        failure?.Throw();
     }
 
     private void OnKeyRouted(object? sender, KeyEventArgs eventArgs)
@@ -490,9 +506,19 @@ public sealed class CommandPalette: CompositeControlBase
     {
         _ = sender;
         _ = eventArgs;
-        NotifyPropertyChanged(nameof(Text), InvalidationImpact.None);
+        var committedText = Text;
         _wantsOpen |= Resolver is not null;
-        BeginResolution();
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(
+            () => NotifyPropertyChanged(nameof(Text), InvalidationImpact.None),
+            ref failure);
+
+        if (!IsDisposed && string.Equals(Text, committedText, StringComparison.Ordinal))
+        {
+            ExceptionAggregation.Capture(BeginResolution, ref failure);
+        }
+
+        failure?.Throw();
     }
 
     private void BeginResolution()
@@ -503,14 +529,24 @@ public sealed class CommandPalette: CompositeControlBase
 
         if (resolver is null)
         {
-            SetIsResolving(false);
-            ApplyResults(generation, []);
+            ExceptionDispatchInfo? failure = null;
+            ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
+            ExceptionAggregation.Capture(() => ApplyResults(generation, []), ref failure);
+            failure?.Throw();
             return;
         }
 
         var cancellation = new CancellationTokenSource();
         _resolutionCancellation = cancellation;
-        SetIsResolving(true);
+        ExceptionDispatchInfo? startupFailure = null;
+        ExceptionAggregation.Capture(() => SetIsResolving(true), ref startupFailure);
+
+        if (!IsCurrentResolution(generation))
+        {
+            startupFailure?.Throw();
+            return;
+        }
+
         ValueTask<IReadOnlyList<object?>> pending;
 
         try
@@ -519,17 +555,24 @@ public sealed class CommandPalette: CompositeControlBase
         }
         catch (Exception exception)
         {
-            ApplyFailure(generation, Text, exception);
+            ExceptionAggregation.Capture(
+                () => ApplyFailure(generation, Text, exception),
+                ref startupFailure);
+            startupFailure?.Throw();
             return;
         }
 
         if (pending.IsCompletedSuccessfully)
         {
-            ApplyCompletion(generation, Text, pending.Result);
+            ExceptionAggregation.Capture(
+                () => ApplyCompletion(generation, Text, pending.Result),
+                ref startupFailure);
+            startupFailure?.Throw();
             return;
         }
 
         _ = CompleteResolutionAsync(pending, Text, generation, cancellation.Token);
+        startupFailure?.Throw();
     }
 
     private async Task CompleteResolutionAsync(
@@ -573,19 +616,39 @@ public sealed class CommandPalette: CompositeControlBase
 
     private void ApplyResults(int generation, IReadOnlyList<object?> results)
     {
-        if (generation != _resolutionGeneration || IsDisposed)
+        if (!IsCurrentResolution(generation))
         {
             return;
         }
 
         SetIsResolving(false);
+
+        if (!IsCurrentResolution(generation))
+        {
+            return;
+        }
+
         _list.Items = results;
         _list.SelectedIndex = -1;
         NotifyPropertyChanged(nameof(Items), InvalidationImpact.None);
-        ResultsChanged?.Invoke(this, EventArgs.Empty);
-        _popupCoordinator.SetOpen(_wantsOpen && results.Count > 0);
 
-        if (_popupCoordinator.IsOpen && _list.SelectedIndex < 0)
+        if (!IsCurrentResolution(generation))
+        {
+            return;
+        }
+
+        ResultsChanged?.Invoke(this, EventArgs.Empty);
+
+        if (!IsCurrentResolution(generation))
+        {
+            return;
+        }
+
+        _popupCoordinator.SetOpen(_wantsOpen && Items.Count > 0);
+
+        if (IsCurrentResolution(generation) &&
+            _popupCoordinator.IsOpen &&
+            _list.SelectedIndex < 0)
         {
             _ = _list.MoveSelection(Code.Home);
         }
@@ -610,20 +673,48 @@ public sealed class CommandPalette: CompositeControlBase
 
     private void ApplyFailure(int generation, string searchTerms, Exception exception)
     {
-        if (generation != _resolutionGeneration || IsDisposed)
+        if (!IsCurrentResolution(generation))
         {
             return;
         }
 
         SetIsResolving(false);
+
+        if (!IsCurrentResolution(generation))
+        {
+            return;
+        }
+
         _list.Items = [];
         NotifyPropertyChanged(nameof(Items), InvalidationImpact.None);
+
+        if (!IsCurrentResolution(generation))
+        {
+            return;
+        }
+
         ResultsChanged?.Invoke(this, EventArgs.Empty);
+
+        if (!IsCurrentResolution(generation))
+        {
+            return;
+        }
+
         _popupCoordinator.SetOpen(false);
+
+        if (!IsCurrentResolution(generation))
+        {
+            return;
+        }
+
         ResolutionFailed?.Invoke(
             this,
             new CommandPaletteResolutionFailedEventArgs(searchTerms, exception));
     }
+
+    [Pure]
+    private bool IsCurrentResolution(int generation) =>
+        !IsDisposed && generation == _resolutionGeneration;
 
     private void SetIsResolving(bool value)
     {

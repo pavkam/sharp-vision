@@ -10,6 +10,7 @@ using System.Runtime.ExceptionServices;
 public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
 {
     private bool? _isChecked = false;
+    private int _stateVersion;
     private readonly StyleSlot<CheckBoxStyle> _style;
 
     /// <summary>Initializes an unchecked two-state CheckBox.</summary>
@@ -84,6 +85,7 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
             {
                 field = false;
                 _isChecked = false;
+                var version = ++_stateVersion;
                 InvalidateVisualState();
                 var eventArgs = new CheckChangedEventArgs(previous: null, current: false, ActivationCause.Programmatic);
                 ExceptionDispatchInfo? failure = null;
@@ -93,8 +95,20 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
                 ExceptionAggregation.Capture(
                     () => NotifyPropertyChanged(nameof(IsChecked), InvalidationImpact.None),
                     ref failure);
-                ExceptionAggregation.Capture(() => Unchecked?.Invoke(this, eventArgs), ref failure);
-                ExceptionAggregation.Capture(() => StateChanged?.Invoke(this, eventArgs), ref failure);
+                ExceptionAggregation.Capture(() =>
+                {
+                    if (IsStateCommitCurrent(version, false))
+                    {
+                        Unchecked?.Invoke(this, eventArgs);
+                    }
+                }, ref failure);
+                ExceptionAggregation.Capture(() =>
+                {
+                    if (IsStateCommitCurrent(version, false))
+                    {
+                        StateChanged?.Invoke(this, eventArgs);
+                    }
+                }, ref failure);
                 failure?.Throw();
                 return;
             }
@@ -253,10 +267,21 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
         }
 
         ArgumentOutOfRangeException.ThrowIfNotDefined(cause, nameof(cause), "The activation cause is unknown.");
+        VerifyMutable();
 
         var previous = _isChecked;
 
-        if (!SetVisualStateProperty(ref _isChecked, value, nameof(IsChecked)))
+        if (previous == value)
+        {
+            return;
+        }
+
+        _isChecked = value;
+        var version = ++_stateVersion;
+        InvalidateVisualState();
+        NotifyPropertyChanged(nameof(IsChecked), InvalidationImpact.None);
+
+        if (!IsStateCommitCurrent(version, value))
         {
             return;
         }
@@ -276,8 +301,15 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
             Indeterminate?.Invoke(this, eventArgs);
         }
 
-        StateChanged?.Invoke(this, eventArgs);
+        if (IsStateCommitCurrent(version, value))
+        {
+            StateChanged?.Invoke(this, eventArgs);
+        }
     }
+
+    [Pure]
+    private bool IsStateCommitCurrent(int version, bool? value) =>
+        !IsDisposed && _stateVersion == version && _isChecked == value;
 
     private int MarkWidth => ActualStyle.MarkWidth;
 

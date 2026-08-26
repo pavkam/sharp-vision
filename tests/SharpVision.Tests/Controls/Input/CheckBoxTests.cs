@@ -7,6 +7,65 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies CheckBox transitions, events, ownership, styling, and cells.</summary>
 public sealed class CheckBoxTests
 {
+    /// <summary>Verifies a state-specific callback that commits a newer state suppresses the stale
+    /// outer general notification.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void IsChecked_WhenSpecificEventReenters_PublishesOnlyTheCurrentGeneralState(bool outerValue)
+    {
+        // Arrange
+        var checkBox = new CheckBox { IsChecked = !outerValue };
+        var observations = new List<(bool? EventValue, bool? LiveValue)>();
+
+        void Reenter(object? sender, CheckChangedEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            checkBox.IsChecked = !outerValue;
+        }
+
+        if (outerValue)
+        {
+            checkBox.Checked += Reenter;
+        }
+        else
+        {
+            checkBox.Unchecked += Reenter;
+        }
+
+        checkBox.StateChanged += (_, eventArgs) =>
+            observations.Add((eventArgs.Current, checkBox.IsChecked));
+
+        // Act
+        checkBox.IsChecked = outerValue;
+
+        // Assert
+        checkBox.IsChecked.ShouldBe(!outerValue);
+        observations.ShouldBe([(!outerValue, !outerValue)]);
+    }
+
+    /// <summary>Verifies disabling three-state mode does not publish its normalization after an
+    /// Unchecked callback commits a newer checked state.</summary>
+    [Fact]
+    public void ThreeState_WhenNormalizationCallbackReenters_PublishesOnlyTheCurrentGeneralState()
+    {
+        // Arrange
+        var checkBox = new CheckBox { ThreeState = true, IsChecked = null };
+        var observations = new List<(bool? EventValue, bool? LiveValue)>();
+        checkBox.Unchecked += (_, _) => checkBox.IsChecked = true;
+        checkBox.StateChanged += (_, eventArgs) =>
+            observations.Add((eventArgs.Current, checkBox.IsChecked));
+
+        // Act
+        checkBox.ThreeState = false;
+
+        // Assert
+        checkBox.ThreeState.ShouldBeFalse();
+        checkBox.IsChecked.ShouldBe(true);
+        observations.ShouldBe([(true, true)]);
+    }
+
     /// <summary>Verifies local style ownership overrides Theme fallback and clearing restores it.</summary>
     [Fact]
     public void Style_WhenThemeAndLocalValuesChange_UsesDocumentedPrecedence()

@@ -1542,6 +1542,68 @@ public sealed class TextInputTests
         control.Text.ShouldBe("Hello World");
     }
 
+    /// <summary>Verifies a direct edit committed from TextChanging supersedes the stale outer
+    /// proposal and owns the single undo snapshot.</summary>
+    [Fact]
+    public void Text_WhenTextChangingReenters_PreservesNewerEditAndUndoHistory()
+    {
+        // Arrange
+        var control = new TextInput { Text = "A" };
+        var reentered = false;
+        var changed = new List<string>();
+        control.TextChanging += (_, _) =>
+        {
+            if (!reentered)
+            {
+                reentered = true;
+                control.Text = "handler";
+            }
+        };
+        control.TextChanged += (_, eventArgs) => changed.Add(eventArgs.Text);
+
+        // Act
+        control.Text = "outer";
+
+        // Assert
+        control.Text.ShouldBe("handler");
+        control.CaretIndex.ShouldBe("handler".Length);
+        changed.ShouldBe(["handler"]);
+        control.Undo().ShouldBeTrue();
+        control.Text.ShouldBe("A");
+        control.Redo().ShouldBeTrue();
+        control.Text.ShouldBe("handler");
+    }
+
+    /// <summary>Verifies a replacement committed from TextChanging supersedes the outer
+    /// replacement without adding an intermediate undo entry.</summary>
+    [Fact]
+    public void ReplaceSelection_WhenTextChangingReenters_PreservesNewerReplacement()
+    {
+        // Arrange
+        var control = new TextInput { Text = "A", CaretIndex = 1 };
+        var reentered = false;
+        control.TextChanging += (_, _) =>
+        {
+            if (!reentered)
+            {
+                reentered = true;
+                control.ReplaceSelection("handler").ShouldBeTrue();
+            }
+        };
+
+        // Act
+        var committed = control.ReplaceSelection("outer");
+
+        // Assert
+        committed.ShouldBeFalse();
+        control.Text.ShouldBe("Ahandler");
+        control.CaretIndex.ShouldBe("Ahandler".Length);
+        control.Undo().ShouldBeTrue();
+        control.Text.ShouldBe("A");
+        control.Redo().ShouldBeTrue();
+        control.Text.ShouldBe("Ahandler");
+    }
+
     /// <summary>Verifies replacement inserts at the caret when there is no selection, and that
     /// grapheme-unsafe Unicode (combining marks, ZWJ emoji sequences) commits as complete clusters
     /// rather than splitting them.</summary>

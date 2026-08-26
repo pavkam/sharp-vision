@@ -725,6 +725,39 @@ public sealed class ListViewTests
         invoked.ShouldBe([2]);
     }
 
+    /// <summary>Verifies pointer invocation stops when selection callbacks replace the exact
+    /// realized row, even if another item occupies its former index.</summary>
+    [Theory]
+    [InlineData("Clear")]
+    [InlineData("Replace")]
+    [InlineData("InsertBefore")]
+    public async Task Dispatch_WhenSelectionChangingReplacesActivatedRow_AbandonsInvocationAsync(
+        string mutation)
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var control = new UiListView { Items = new object?[] { "A", "B" } };
+        var invocations = new List<ItemInvokedEventArgs>();
+        control.ItemInvoked += (_, eventArgs) => invocations.Add(eventArgs);
+        control.SelectionChanging += (_, _) => control.Items = mutation switch
+        {
+            "Clear" => [],
+            "Replace" => ["replacement", "other"],
+            "InsertBefore" => ["inserted", "A", "B"],
+            _ => throw new UnreachableException()
+        };
+
+        // Act and assert
+        await dispatcher.InvokeAsync(() =>
+        {
+            control.Attach(dispatcher);
+            new LayoutEngine().Layout(control, new Size(10, 4));
+            using PointerManager capture = new(control);
+            Should.NotThrow(() => Click(capture, new Point(0, 1), Modifiers.None));
+        }, TestContext.Current.CancellationToken);
+        invocations.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies an incidental Control modifier on Enter still moves the active item but
     /// does not raise ItemInvoked - only the invocation is gated, not selection tracking.</summary>
     [Fact]

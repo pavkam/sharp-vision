@@ -1449,6 +1449,11 @@ public sealed class ListView: ItemsControl
         var item = (ListItem) sender!;
         SetActiveIndex(item.Index);
 
+        if (!IsActivatedItemCurrent(item))
+        {
+            return;
+        }
+
         if (item.LastKey == Code.Enter)
         {
             // An incidental modifier still applies the current-item tracking above, but does not
@@ -1468,6 +1473,11 @@ public sealed class ListView: ItemsControl
 
         _ = ApplyInputSelection(item.Index, isSpaceToggle ? modifiers | Modifiers.Control : modifiers);
 
+        if (!IsActivatedItemCurrent(item))
+        {
+            return;
+        }
+
         // A multi-click held with Control or Shift is a selection gesture (toggle or range-extend),
         // not a commit - PointerManager's click-count chain tracks target, cell, and buttons only,
         // never modifiers, so two rapid modified clicks on the same row still reach a multi-click
@@ -1481,6 +1491,12 @@ public sealed class ListView: ItemsControl
             ItemInvoked?.Invoke(this, new ItemInvokedEventArgs(item.Index, Items[item.Index], eventArgs.Cause));
         }
     }
+
+    [Pure]
+    private bool IsActivatedItemCurrent(ListItem item) =>
+        !IsDisposed &&
+        !item.IsDisposed &&
+        ReferenceEquals(ItemAt(item.Index), item);
 
     // Reacts only to the realized row's own content leaving availability, never to it arriving -
     // becoming available never reclaims selection or active state, matching the no-auto-reclaim

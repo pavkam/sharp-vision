@@ -25,6 +25,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     private bool _committingEditSelection;
     private int _coalescingCaret;
     private bool _coalescingWasWhitespace;
+    private int _editVersion;
     private string _text = string.Empty;
     private int[]? _boundaryRowCache;
     private int[]? _boundaryColumnCache;
@@ -1058,16 +1059,20 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
             return false;
         }
 
+        var observedVersion = _editVersion;
+
         if (textChanged)
         {
             var changing = new TextChangingEventArgs(proposal);
             TextChanging?.Invoke(this, changing);
 
-            if (changing.Cancel)
+            if (changing.Cancel || IsDisposed || _editVersion != observedVersion)
             {
                 return false;
             }
         }
+
+        _editVersion++;
 
         var previousText = Text;
         var previousSelection = CommittedTextSelection;

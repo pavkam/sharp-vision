@@ -6,6 +6,175 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies command-palette resolution, forwarding, validation, and stale-result handling.</summary>
 public sealed class CommandPaletteTests
 {
+    /// <summary>Verifies a non-cooperative completion from an attachment that ended cannot mutate
+    /// detached state or publish callbacks from its continuation thread.</summary>
+    [Fact]
+    public async Task Resolver_WhenDetachedBeforeIgnoredCancellationCompletes_DiscardsCompletionAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>();
+        var palette = new CommandPalette
+        {
+            Resolver = (searchTerms, _) => searchTerms == "late"
+                ? new ValueTask<IReadOnlyList<object?>>(completion.Task)
+                : ValueTask.FromResult<IReadOnlyList<object?>>(["initial"])
+        };
+        await using var dispatcher = Dispatcher.Start();
+        var callbacks = new List<int>();
+        palette.ResultsChanged += (_, _) => callbacks.Add(Environment.CurrentManagedThreadId);
+        await dispatcher.InvokeAsync(() =>
+        {
+            palette.Attach(dispatcher);
+            palette.Text = "late";
+            palette.Detach();
+            callbacks.Clear();
+        }, TestContext.Current.CancellationToken);
+
+        // Act
+        await Task.Run(() => completion.SetResult(["stale"]), TestContext.Current.CancellationToken);
+
+        // Assert
+        palette.Items.ShouldBe(["initial"]);
+        palette.IsResolving.ShouldBeFalse();
+        callbacks.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a success callback that starts an empty current query prevents the stale
+    /// outer success from reopening the popup.</summary>
+    [Fact]
+    public void ResultsChanged_WhenHandlerStartsEmptyResolution_KeepsNewerPopupState()
+    {
+        // Arrange
+        var palette = new CommandPalette
+        {
+            Resolver = (searchTerms, _) => ValueTask.FromResult<IReadOnlyList<object?>>(
+                searchTerms == "first" ? ["old"] : [])
+        };
+        palette.ResultsChanged += (_, _) =>
+        {
+            if (palette.Text == "first")
+            {
+                palette.Text = "second";
+            }
+        };
+
+        // Act
+        palette.Text = "first";
+
+        // Assert
+        palette.Text.ShouldBe("second");
+        palette.Items.ShouldBeEmpty();
+        palette.IsOpen.ShouldBeFalse();
+        palette.IsResolving.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a failure callback that starts a successful current query prevents stale
+    /// close and failure publication.</summary>
+    [Fact]
+    public void ResultsChanged_WhenFailureHandlerStartsSuccessfulResolution_KeepsNewerSuccess()
+    {
+        // Arrange
+        var failures = new List<CommandPaletteResolutionFailedEventArgs>();
+        var palette = new CommandPalette
+        {
+            Resolver = (searchTerms, _) => searchTerms == "first"
+                ? throw new InvalidOperationException("old failure")
+                : ValueTask.FromResult<IReadOnlyList<object?>>(["new"])
+        };
+        palette.ResultsChanged += (_, _) =>
+        {
+            if (palette.Text == "first")
+            {
+                palette.Text = "second";
+            }
+        };
+        palette.ResolutionFailed += (_, eventArgs) => failures.Add(eventArgs);
+
+        // Act
+        palette.Text = "first";
+
+        // Assert
+        palette.Text.ShouldBe("second");
+        palette.Items.ShouldBe(["new"]);
+        palette.IsOpen.ShouldBeTrue();
+        failures.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies disposal during result publication ends the stale completion without
+    /// touching retained popup state.</summary>
+    [Fact]
+    public void ResultsChanged_WhenHandlerDisposesPalette_StopsCompletion()
+    {
+        // Arrange
+        var palette = new CommandPalette
+        {
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["result"])
+        };
+        palette.ResultsChanged += (_, _) => palette.Dispose();
+
+        // Act and assert
+        Should.NotThrow(palette.Refresh);
+        palette.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a throwing Text observer cannot prevent the committed search from being
+    /// admitted to the resolver.</summary>
+    [Fact]
+    public void Text_WhenPropertyObserverThrows_StillResolvesCommittedTextBeforeRethrowing()
+    {
+        // Arrange
+        var queries = new List<string>();
+        var palette = new CommandPalette
+        {
+            Resolver = (searchTerms, _) =>
+            {
+                queries.Add(searchTerms);
+                return ValueTask.FromResult<IReadOnlyList<object?>>([searchTerms]);
+            }
+        };
+        queries.Clear();
+        palette.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(CommandPalette.Text))
+            {
+                throw new InvalidOperationException("observer");
+            }
+        };
+
+        // Act and assert
+        _ = Should.Throw<InvalidOperationException>(() => palette.Text = "query");
+        queries.ShouldBe(["query"]);
+        palette.Items.ShouldBe(["query"]);
+        palette.IsResolving.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a throwing busy-state observer cannot strand the request before the
+    /// resolver is invoked and synchronously completed.</summary>
+    [Fact]
+    public void Resolver_WhenResolvingObserverThrows_CompletesRequestBeforeRethrowing()
+    {
+        // Arrange
+        var calls = 0;
+        var palette = new CommandPalette();
+        palette.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(CommandPalette.IsResolving) && palette.IsResolving)
+            {
+                throw new InvalidOperationException("observer");
+            }
+        };
+
+        // Act and assert
+        _ = Should.Throw<InvalidOperationException>(() => palette.Resolver = (_, _) =>
+        {
+            calls++;
+            return ValueTask.FromResult<IReadOnlyList<object?>>(["result"]);
+        });
+        calls.ShouldBe(1);
+        palette.Items.ShouldBe(["result"]);
+        palette.IsResolving.ShouldBeFalse();
+    }
+
     /// <summary>Verifies freely assigned text resolves immediately and publishes the resulting items.</summary>
     [Fact]
     public void Text_WhenChanged_ResolvesItemsAndOpensTheDropDown()

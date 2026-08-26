@@ -190,8 +190,10 @@ unconditionally validated `Edit.MoveHome`/`Edit.MoveEnd`.
   text-and-selection snapshots and never keep more than `UndoLimit` entries per
   stack, independently for undo and redo.
 - `TextChanging` receives the complete proposed `EditResult` and may cancel it
-  before any field changes. After the text, selection, and scroll commit
-  atomically, `TextChanged` precedes `SelectionChanged` when both apply.
+  before any field changes. If its callback commits another edit, that newer
+  edit supersedes the outer proposal and owns the undo/redo snapshot; the stale
+  proposal is not applied afterward. After the text, selection, and scroll
+  commit atomically, `TextChanged` precedes `SelectionChanged` when both apply.
   `Submitted` carries the committed single-line text and is raised only for the
   initial Enter press. A multiline editor instead inserts a newline for each
   accepted Enter repeat.
