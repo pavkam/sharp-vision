@@ -506,6 +506,36 @@ public sealed class ToastSurfaceTests
         root.Children.ShouldNotContain(toast);
     }
 
+    /// <summary>Verifies Closed observes final host ownership and can immediately begin a distinct
+    /// presentation of the same Toast without colliding with the completed close transaction.</summary>
+    [Fact]
+    public async Task Dismiss_WhenClosedObserverReshowsToast_ObservesRemovalAndStartsNewPresentationAsync()
+    {
+        var root = new Overlay();
+        using var toast = CreateToast("one", ToastPosition.TopLeft);
+        ControlBase? parentAtClosed = root;
+        var closed = 0;
+        toast.Closed += (_, _) =>
+        {
+            closed++;
+            parentAtClosed = toast.Parent;
+            toast.Show(root);
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 10),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => toast.Show(root), "show Toast");
+
+        await surface.UpdateAsync(toast.Dismiss, "dismiss and reshow Toast from Closed");
+
+        closed.ShouldBe(1);
+        parentAtClosed.ShouldBeNull();
+        toast.IsOpen.ShouldBeTrue();
+        toast.Parent.ShouldBeSameAs(root);
+        root.Children.Count(child => ReferenceEquals(child, toast)).ShouldBe(1);
+    }
+
     /// <summary>Verifies a CloseRequested observer can repeat the same dismissal request without
     /// recursion or duplicate lifecycle publication.</summary>
     [Fact]

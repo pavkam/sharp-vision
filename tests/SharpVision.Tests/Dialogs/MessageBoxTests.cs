@@ -475,6 +475,38 @@ public sealed class MessageBoxTests
         messageBox.Parent.ShouldBeSameAs(host);
     }
 
+    /// <summary>Verifies a newer modeless selection made from property publication supersedes the
+    /// outer transition instead of producing a stale duplicate ResultSelected event.</summary>
+    [Fact]
+    public async Task ResultSelected_WhenPropertyObserverSelectsNewerResult_PublishesOnlyCurrentTransitionAsync()
+    {
+        var messageBox = new MessageBox("Choose.", "Action", MessageBoxButtons.YesNo);
+        var host = new Overlay { Children = { messageBox } };
+        var selections = new List<MessageBoxResult>();
+        messageBox.ResultSelected += (_, _) => selections.Add(messageBox.SelectedResult);
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(40, 12),
+            TestContext.Current.CancellationToken);
+        var yes = OwnedTree.FindAll<Button>(messageBox).Single(static candidate => candidate.IsDefault);
+        var no = OwnedTree.FindAll<Button>(messageBox).Single(static candidate => candidate.Text == "&No");
+        var reentered = false;
+        messageBox.PropertyChanged += (_, eventArgs) =>
+        {
+            if (!reentered && eventArgs.PropertyName == nameof(Dialog<>.SelectedResult))
+            {
+                reentered = true;
+                no.PerformClick();
+            }
+        };
+
+        await surface.UpdateAsync(yes.PerformClick, "select a reentrantly superseded modeless result");
+
+        selections.ShouldBe([MessageBoxResult.No]);
+        messageBox.HasSelectedResult.ShouldBeTrue();
+        messageBox.SelectedResult.ShouldBe(MessageBoxResult.No);
+    }
+
     /// <summary>Verifies each standard button layout can be constructed without fixed message-box geometry.</summary>
     [Theory]
     [InlineData(MessageBoxButtons.Ok)]

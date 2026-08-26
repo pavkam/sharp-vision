@@ -79,7 +79,10 @@ uses capture-aware pointer press and release semantics. Every route, including
 the display timeout, raises `CloseRequested` first; cancellation leaves the
 Toast open and suppresses `Closing` and `Closed`. A synchronous repeated
 `Dismiss()` from that request is absorbed by the shared request guard, so one
-request produces at most one close lifecycle.
+request produces at most one close lifecycle. Before `Closed` runs, the Toast
+has left its coordinator and presentation host and the shared close guard has
+released. A handler may therefore show the same Toast again as a distinct
+presentation; the completed dismissal does not remove that replacement.
 
 ## Example
 

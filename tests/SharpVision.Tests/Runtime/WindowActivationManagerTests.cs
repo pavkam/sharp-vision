@@ -171,6 +171,57 @@ public sealed class WindowActivationManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies bounded recency history remains an ordering hint rather than the complete
+    /// candidate set when every retained entry becomes unavailable.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task Availability_WhenOnlyEvictedWindowRemainsAvailable_RestoresItFromOwnedTreeAsync(
+        int mutation)
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var windows = Enumerable.Range(0, 10).Select(static _ => new Window()).ToArray();
+            var root = new Overlay();
+            root.Children.ReplaceAll(windows);
+            root.Attach(dispatcher);
+            using var manager = new WindowActivationManager(root);
+
+            foreach (var window in windows)
+            {
+                _ = manager.Activate(window);
+            }
+
+            for (var index = 1; index < windows.Length; index++)
+            {
+                var candidate = windows[index];
+
+                switch (mutation)
+                {
+                    case 0:
+                        candidate.Visibility = Visibility.Hidden;
+                        break;
+                    case 1:
+                        candidate.IsEnabled = false;
+                        break;
+                    case 2:
+                        _ = root.Children.Remove(candidate);
+                        break;
+                    default:
+                        candidate.Dispose();
+                        break;
+                }
+            }
+
+            manager.ActiveWindow.ShouldBeSameAs(windows[0]);
+            windows[0].IsActive.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies nested Window ancestry selects the Window nearest the target.</summary>
     [Fact]
     public async Task Activate_WhenWindowsAreNested_SelectsNearestWindowAsync()

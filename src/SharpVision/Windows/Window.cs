@@ -75,6 +75,13 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// <remarks>Activation is application-owned and does not imply keyboard focus or z-order promotion.</remarks>
     public bool IsActive { get; private set; }
 
+    /// <summary>Gets or sets the identity of the activation manager that most recently activated this Window.</summary>
+    /// <remarks>
+    /// The bounded manager history uses this retained-tree marker to distinguish an evicted prior
+    /// activation candidate from a Window that has never participated in that manager.
+    /// </remarks>
+    internal object? ActivationHistoryOwner { get; set; }
+
     /// <summary>Commits application-owned activation and invalidates the active appearance.</summary>
     /// <param name="value">Whether this Window is active.</param>
     internal void SetActive(bool value)

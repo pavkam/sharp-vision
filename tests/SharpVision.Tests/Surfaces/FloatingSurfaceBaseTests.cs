@@ -210,6 +210,30 @@ public sealed class FloatingSurfaceBaseTests
         closed.ShouldBe(1);
     }
 
+    /// <summary>Verifies Closed runs after the common transition guard releases, allowing every
+    /// floating-surface family to begin a distinct presentation from that completion boundary.</summary>
+    [Fact]
+    public async Task Close_WhenClosedObserverOpensAgain_StartsDistinctPresentationAsync()
+    {
+        using var probe = new FloatingSurfaceProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 6),
+            TestContext.Current.CancellationToken);
+        probe.Closed += (_, _) => probe.PublishBounds(new Rect(5, 1, 6, 2));
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                probe.PublishBounds(new Rect(1, 2, 3, 4));
+                probe.CloseForTest().ShouldBeTrue();
+            },
+            "reopen floating surface from Closed");
+
+        probe.IsPresented.ShouldBeTrue();
+        probe.SurfaceBounds.ShouldBe(new Rect(5, 1, 6, 2));
+    }
+
     /// <summary>Verifies a closing callback cannot recursively enter the same transition.</summary>
     [Fact]
     public async Task Close_WhenClosingCallbackReenters_RejectsReentryAfterCompletingCleanupAsync()

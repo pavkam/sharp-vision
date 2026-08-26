@@ -115,7 +115,9 @@ or pointer updates `SelectedResult`, sets `HasSelectedResult`, and raises
 `ResultSelected` without removing or disposing the surface. Escape still selects
 `Cancel` in this mode: the MessageBox's own routed handler consumes the stroke
 and publishes the cancel result, so an ancestor never sees a modeless
-MessageBox's Escape.
+MessageBox's Escape. If a result-property observer synchronously invokes a newer
+button choice, the newer choice supersedes the outer publication and is the only
+one subsequently raised through `ResultSelected`.
 
 ## Interaction
 

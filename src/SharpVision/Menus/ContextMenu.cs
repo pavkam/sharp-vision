@@ -112,9 +112,12 @@ public class ContextMenu: IDisposable
     /// A no-op until this menu is assigned to some <see cref="ControlBase.ContextMenu"/> — only that
     /// assignment attaches the retained popup this method opens.
     /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="row"/> or <paramref name="col"/> is negative.</exception>
     public void Show(int row, int col)
     {
         VerifyNotDisposed();
+        ArgumentOutOfRangeException.ThrowIfNegative(row);
+        ArgumentOutOfRangeException.ThrowIfNegative(col);
 
         if (_popup.Parent is null)
         {
@@ -223,7 +226,13 @@ public class ContextMenu: IDisposable
                 anchor: null,
                 () => _popup.IsOpen,
                 () => _popup.SurfaceBounds,
-                Close);
+                Close,
+                Terminal.Input.Buttons.Primary |
+                Terminal.Input.Buttons.Middle |
+                Terminal.Input.Buttons.Secondary |
+                Terminal.Input.Buttons.Back |
+                Terminal.Input.Buttons.Forward,
+                interceptAtModalBoundary: true);
         }
         else
         {

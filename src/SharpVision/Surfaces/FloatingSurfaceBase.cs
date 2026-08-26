@@ -261,15 +261,17 @@ public abstract class FloatingSurfaceBase: ContentControl
             SurfaceBounds = default;
             IsSurfacePresented = false;
             IncrementPresentationVersion();
-
-            if (closedHandlers is { } capturedClosed)
-            {
-                ExceptionAggregation.Capture(() => capturedClosed.Invoke(this, EventArgs.Empty), ref failure);
-            }
         }
         finally
         {
             _isClosing = false;
+        }
+
+        // Closed describes a fully completed transition. Publishing after the guard is released
+        // lets a handler begin a distinct presentation without reentering the transition above.
+        if (closedHandlers is { } capturedClosed)
+        {
+            ExceptionAggregation.Capture(() => capturedClosed.Invoke(this, EventArgs.Empty), ref failure);
         }
 
         failure?.Throw();

@@ -33,6 +33,7 @@ public abstract class Dialog<TResult>: Window
     private bool _isFinishingCompletion;
     private bool _closingRequestObserved;
     private bool _scheduledInvoked;
+    private long _selectedResultVersion;
     private CancellationToken _pendingCancellationToken;
     private TResult? _pendingResult;
     private Dispatcher? _scheduledDispatcher;
@@ -360,10 +361,23 @@ public abstract class Dialog<TResult>: Window
 
     private void PublishSelectedResult(TResult result)
     {
+        var version = ++_selectedResultVersion;
         SelectedResult = result;
         HasSelectedResult = true;
         NotifyPropertyChanged(nameof(SelectedResult), InvalidationImpact.None);
+
+        if (version != _selectedResultVersion)
+        {
+            return;
+        }
+
         NotifyPropertyChanged(nameof(HasSelectedResult), InvalidationImpact.None);
+
+        if (version != _selectedResultVersion)
+        {
+            return;
+        }
+
         ResultSelected?.Invoke(this, EventArgs.Empty);
     }
 

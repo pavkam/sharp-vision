@@ -65,6 +65,52 @@ public sealed class LightDismissTests
         (await pending).ShouldBeTrue();
     }
 
+    /// <summary>Verifies every concrete pointer-button press can replace an open context menu even
+    /// when modality intercepts the record before its routed root handler.</summary>
+    [Theory]
+    [InlineData(Buttons.Primary)]
+    [InlineData(Buttons.Middle)]
+    [InlineData(Buttons.Secondary)]
+    [InlineData(Buttons.Back)]
+    [InlineData(Buttons.Forward)]
+    public async Task Pointer_WhenAnyButtonIsPressedOutsideContextMenuInModalPlane_ClosesMenuAsync(
+        Buttons buttons)
+    {
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(60, 20),
+            TestContext.Current.CancellationToken);
+        using var menu = NewMenu();
+        var inner = NewAnchor(menu);
+        var dialog = new MenuHostDialog(inner);
+        Task<bool>? pending = null;
+        await surface.UpdateAsync(
+            () => pending = dialog.Present(opener, initialFocus: null, TestContext.Current.CancellationToken),
+            "present the modal dialog");
+        await OpenMenuAsync(surface, menu, inner);
+        var press = await OutsidePressPointAsync(surface, menu, inner, () => dialog.SurfaceBounds);
+
+        await surface.UpdateAsync(
+            () => _ = surface.Application.Capture.Dispatch(new Pointer(
+                press,
+                pixels: null,
+                buttons,
+                PointerAction.Press,
+                wheelX: 0,
+                wheelY: 0,
+                Modifiers.None,
+                isMotion: false,
+                isCellPositionInferred: false)),
+            $"press {buttons} outside the context menu");
+
+        menu.IsOpen.ShouldBeFalse();
+        pending!.IsCompleted.ShouldBeFalse();
+        await surface.UpdateAsync(() => dialog.Accept(true), "close the dialog");
+        (await pending).ShouldBeTrue();
+    }
+
     /// <summary>Verifies the modal dismissal policy is not indiscriminate: a press landing on the
     /// menu itself leaves it open, so "dismiss on any press inside the plane" cannot pass for the
     /// behavior the case above asserts.</summary>

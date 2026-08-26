@@ -124,6 +124,31 @@ public sealed class ContextMenuTests
         openingRaised.ShouldBeTrue();
     }
 
+    /// <summary>Verifies invalid zero-based coordinates are rejected before opening callbacks or
+    /// presentation state change, while the largest valid coordinates remain accepted for clamping.</summary>
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(0, -1)]
+    [InlineData(-1, -1)]
+    [InlineData(int.MinValue, int.MinValue)]
+    public void Show_WhenCoordinateIsNegative_ThrowsBeforeObservableMutation(int row, int col)
+    {
+        using var button = new Button { Text = "Host" };
+        using var menu = new ContextMenu();
+        button.ContextMenu = menu;
+        var opening = 0;
+        menu.Opening += (_, _) => opening++;
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => menu.Show(row, col));
+
+        opening.ShouldBe(0);
+        menu.IsOpen.ShouldBeFalse();
+
+        menu.Show(int.MaxValue, int.MaxValue);
+        opening.ShouldBe(1);
+        menu.IsOpen.ShouldBeTrue();
+    }
+
     /// <summary>Verifies Show is a no-op when the menu has no popup.</summary>
     [Fact]
     public void Show_WhenNotAttached_DoesNotRaiseOpening()

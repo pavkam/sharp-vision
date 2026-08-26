@@ -16,6 +16,7 @@ internal sealed class WindowActivationManager: IDisposable
 
     private readonly ControlBase _root;
     private readonly List<Window> _history = [];
+    private readonly object _historyOwner = new();
     private bool _hasPendingActivation;
     private bool _isActivating;
     private bool _isDisposed;
@@ -153,6 +154,8 @@ internal sealed class WindowActivationManager: IDisposable
         if (value is not null)
         {
             Subscribe(value);
+            value.ActivationHistoryOwner = _historyOwner;
+            _ = _history.RemoveAll(candidate => candidate.IsDisposed || !IsReachableFromRoot(candidate));
             _ = _history.Remove(value);
             _history.Insert(0, value);
 
@@ -266,6 +269,31 @@ internal sealed class WindowActivationManager: IDisposable
             if (Available(candidate) && IsReachableFromRoot(candidate))
             {
                 return candidate;
+            }
+        }
+
+        return FindAvailableInOwnedTree();
+    }
+
+    // History is deliberately bounded, so it can rank recent candidates but cannot be the source
+    // of truth for whether an eligible Window still exists. The retained tree is that source.
+    private Window? FindAvailableInOwnedTree()
+    {
+        var pending = new Stack<ControlBase>();
+        pending.Push(_root);
+
+        while (pending.TryPop(out var current))
+        {
+            if (current is Window candidate &&
+                ReferenceEquals(candidate.ActivationHistoryOwner, _historyOwner) &&
+                Available(candidate))
+            {
+                return candidate;
+            }
+
+            for (var index = current.OwnedControlCount - 1; index >= 0; index--)
+            {
+                pending.Push(current.OwnedControlAt(index));
             }
         }
 

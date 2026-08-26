@@ -252,9 +252,11 @@ public sealed class PointerManager: IDisposable
             CompletePress(pointer);
             BreakClickChainOnSwallowedPress(pointer);
 
-            if (pointer.Action == PointerAction.Wheel ||
+            var requestsModalDismiss = pointer.Action == PointerAction.Wheel ||
                 (pointer.Action == PointerAction.Press &&
-                    (pointer.Buttons & Buttons.Primary) != 0))
+                    (pointer.Buttons & Buttons.Primary) != 0);
+
+            if (pointer.Action == PointerAction.Press || requestsModalDismiss)
             {
                 var lightDismissed = false;
                 ExceptionDispatchInfo? lightDismissFailure = null;
@@ -266,7 +268,7 @@ public sealed class PointerManager: IDisposable
                         ref lightDismissFailure);
                 }
 
-                if (!lightDismissed && lightDismissFailure is null)
+                if (!lightDismissed && lightDismissFailure is null && requestsModalDismiss)
                 {
                     CaptureFailure(
                         () => targets.Modality?.RequestDismiss(targets.ModalScope!),

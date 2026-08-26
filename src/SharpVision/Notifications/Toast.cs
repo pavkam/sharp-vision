@@ -293,7 +293,11 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
                     NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None);
                     NotifyPropertyChanged(nameof(AnimationProgress), InvalidationImpact.None);
                 },
-                static () => { });
+                () =>
+                {
+                    _coordinator = null;
+                    coordinator?.Remove(this);
+                });
         }
         finally
         {

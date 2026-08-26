@@ -76,6 +76,11 @@ publishes `Closing`, exits modality, makes the content unavailable, clears
 from visible performs the same common cleanup directly but publishes neither
 lifecycle event.
 
+`Closed` runs only after the unavailable-state commit, bounds clearing,
+presentation-version advance, and close-guard release. A handler can therefore
+open the same reusable surface as a distinct presentation without reentering or
+being removed by the completed close.
+
 `CloseRequested` fires wherever the shared `CloseSurface` engine runs — the
 whole Popup family, and `Dialog<TResult>`'s own typed-completion path — and also
 from Window's close affordance, `CloseOnEscape`, and modal dismiss. The
