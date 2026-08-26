@@ -107,6 +107,15 @@ clipping, nested wheel propagation, and offset validation. `AutoScroll` and
 property observers return, so a reentrant observer's newer policy owns the
 offset reset, generated parts, and both axis reservation values.
 
+> [!NOTE]
+>
+> `ShowScrollBars` is write-through, not a peer of the per-axis properties:
+> every committed change overwrites both `HorizontalBarVisibility` and
+> `VerticalBarVisibility`, while the per-axis setters never write back.
+> Assignment order therefore decides the outcome — set `ShowScrollBars` first
+> and refine one axis after, never the reverse. Re-assigning an equal
+> `ShowScrollBars` value is inert and preserves per-axis refinements.
+
 ## Example
 
 ```csharp

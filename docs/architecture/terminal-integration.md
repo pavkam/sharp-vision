@@ -25,16 +25,16 @@ arrives, but replacing a snapshot cannot silently change the backend.
 
 ## Public API
 
-| API                                                             | Purpose                                                                      | Ownership and fallback                                                                        |
-| --------------------------------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `ConsoleApplication.CreateBuilder(Screen)`                      | Creates the fluent interactive host configuration.                           | The builder retains the detached screen until `Build()` or `RunAsync()`.                      |
-| `ConsoleApplication.RunAsync(...)`                              | Runs the complete host lifecycle and returns `ConsoleRunStatus`.             | Redirected or unsuitable terminals return a typed status without constructing an application. |
-| `ConsoleApplicationBuilder.UseTerminalProfile(TerminalProfile)` | Supplies a complete caller-owned profile.                                    | Highest precedence; bypasses native description lookup and disables negotiation.              |
-| `ConsoleApplicationBuilder.UseCapabilities(Capabilities)`       | Supplies exact semantic capability evidence through a built-in ANSI profile. | Compatibility path; disables native description lookup and negotiation.                       |
-| `ConsoleApplicationBuilder.UseNegotiation(NegotiationOptions)`  | Configures bounded active discovery.                                         | Query evidence refines the baseline before optional modes and the first frame.                |
-| `Application.Terminal`                                          | Exposes `ITerminalServices`.                                                 | Unsupported operations are byte-quiet unless the public method documents argument rejection.  |
-| `Application.Capabilities`                                      | Exposes the current immutable semantic profile.                              | Replaced atomically after accepted discovery evidence.                                        |
-| `Application.TerminalProfile`                                   | Exposes description plus current capabilities.                               | Description programs and key maps remain fixed across semantic refinement.                    |
+| API                                                               | Purpose                                                                      | Ownership and fallback                                                                        |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `ConsoleApplication.CreateBuilder(Screen)`                        | Creates the fluent interactive host configuration.                           | The builder retains the detached screen until `Build()` or `RunAsync()`.                      |
+| `ConsoleApplication.RunAsync(...)`                                | Runs the complete host lifecycle and returns `ConsoleRunStatus`.             | Redirected or unsuitable terminals return a typed status without constructing an application. |
+| `ConsoleApplicationBuilder.UseTerminalProfile(TerminalProfile)`   | Supplies a complete caller-owned profile.                                    | Highest precedence; bypasses native description lookup and disables negotiation.              |
+| `ConsoleApplicationBuilder.UseCapabilities(TerminalCapabilities)` | Supplies exact semantic capability evidence through a built-in ANSI profile. | Compatibility path; disables native description lookup and negotiation.                       |
+| `ConsoleApplicationBuilder.UseNegotiation(NegotiationOptions)`    | Configures bounded active discovery.                                         | Query evidence refines the baseline before optional modes and the first frame.                |
+| `Application.Terminal`                                            | Exposes `ITerminalServices`.                                                 | Unsupported operations are byte-quiet unless the public method documents argument rejection.  |
+| `Application.Capabilities`                                        | Exposes the current immutable semantic profile.                              | Replaced atomically after accepted discovery evidence.                                        |
+| `Application.TerminalProfile`                                     | Exposes description plus current capabilities.                               | Description programs and key maps remain fixed across semantic refinement.                    |
 
 See [Hosting](../concepts/hosting.md#overview) for every builder option and
 status. See [Terminal capabilities](capabilities.md#overview) for the complete

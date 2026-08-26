@@ -44,7 +44,7 @@ authoring-role diagram.
 | `Padding`                                                                   | `Thickness`                                   | Zero edges     | Internal non-negative `Thickness`.                                                                                                                                                                                                                                                        |
 | `HorizontalAlignment`                                                       | `HorizontalAlignment`                         | `Left`         | Horizontal placement within the arranged slot.                                                                                                                                                                                                                                            |
 | `VerticalAlignment`                                                         | `VerticalAlignment`                           | `Stretch`      | Vertical placement within the arranged slot.                                                                                                                                                                                                                                              |
-| `Visibility`                                                                | `Visibility`                                  | `IsVisible`    | IsVisible, hidden, or collapsed.                                                                                                                                                                                                                                                          |
+| `Visibility`                                                                | `Visibility`                                  | `Visible`      | Visible, hidden, or collapsed.                                                                                                                                                                                                                                                            |
 | `IsEnabled`                                                                 | `bool`                                        | `true`         | Inherited effective input state.                                                                                                                                                                                                                                                          |
 | `IsHitTestVisible`                                                          | `bool`                                        | `true`         | Whether pointer hit testing may target the control.                                                                                                                                                                                                                                       |
 | `IsFocusable`                                                               | `bool`                                        | `false`        | Whether the control is configured to accept keyboard focus.                                                                                                                                                                                                                               |
@@ -279,13 +279,13 @@ every owned descendant, and repeated disposal is safe.
 `Add`, indexed insert and replacement, `Remove`, `Clear`, and complete-slot
 replacement share the same commit discipline:
 
-| Guarantee                 | Detail                                                                                                                                                                                                                                                                                                                    |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Atomic validation         | The entire proposed change is validated before any ownership state changes. A control cannot have two parents, appear twice, be attached independently, or be inserted beneath one of its own descendants.                                                                                                                |
-| Rollback on failure       | When a batch fails validation, the old order, parent links, inherited context, focus, and pointer capture are all preserved unchanged.                                                                                                                                                                                    |
-| Reentrancy                | Tree mutation and disposal are rejected while any affected ownership transaction is still publishing.                                                                                                                                                                                                                     |
-| Focus/capture propagation | When a root owns focus or capture managers, that ownership propagates through every registered slot. Removal, inherited disable or hide, and disposal release manager state synchronously before parent or dispatcher references are cleared.                                                                             |
-| Disposal identity         | Disposing a child directly removes it through its exact owning slot with `ReleaseReason.IsDisposed`, publishes the slot change once, and never emits a second `Detached` notification. Owner disposal continues across all slots after a descendant callback failure and disposes each remaining descendant exactly once. |
+| Guarantee                 | Detail                                                                                                                                                                                                                                                                                                                  |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Atomic validation         | The entire proposed change is validated before any ownership state changes. A control cannot have two parents, appear twice, be attached independently, or be inserted beneath one of its own descendants.                                                                                                              |
+| Rollback on failure       | When a batch fails validation, the old order, parent links, inherited context, focus, and pointer capture are all preserved unchanged.                                                                                                                                                                                  |
+| Reentrancy                | Tree mutation and disposal are rejected while any affected ownership transaction is still publishing.                                                                                                                                                                                                                   |
+| Focus/capture propagation | When a root owns focus or capture managers, that ownership propagates through every registered slot. Removal, inherited disable or hide, and disposal release manager state synchronously before parent or dispatcher references are cleared.                                                                           |
+| Disposal identity         | Disposing a child directly removes it through its exact owning slot with `ReleaseReason.Disposed`, publishes the slot change once, and never emits a second `Detached` notification. Owner disposal continues across all slots after a descendant callback failure and disposes each remaining descendant exactly once. |
 
 Structural removal makes one deliberate exception to publication-after-commit.
 Its order is:
@@ -323,6 +323,8 @@ controls participate without exposing pending phase flags.
 | `SetProperty(ref field, value, impact)`                                         | Commit one ordinary CLR property and raise `PropertyChanged`.                                    |
 | Private-protected `SetPropertyAndSynchronize(ref field, value, impact, action)` | Synchronize retained state before publishing the still-current property generation.              |
 | Private-protected `SetPropertyAndContinue(ref field, value, impact, action)`    | Preserve notification order, then complete dependent work before rethrowing an observer failure. |
+| Private-protected `SetVersionedProperty(ref field, value, ref version, ...)`    | Commit a value whose typed event fires only while that commit is still the newest generation.    |
+| Private-protected `IsVersionedPropertyCurrent(field, value, version, observed)` | Test whether a captured commit still owns its property generation before raising a typed event.  |
 | `NotifyPropertyChanged(name, impact)`                                           | Publish a coordinated mutation after all related fields commit.                                  |
 | `Invalidate(InvalidationImpact)`                                                | Request phase work without a property notification.                                              |
 | `InvalidateVisualState()`                                                       | Clear resolved appearance caches after semantic state changes.                                   |
@@ -463,10 +465,18 @@ protected. Raw border and shadow authoring are public on every control but throw
 Appearance is local and render-only. Derived controls may use the protected
 `SetAppearance` for one `VisualState`. The resolver applies states in the fixed
 order IsPointerOver, FocusWithin, Focused, Current, Selected, Checked,
-Indeterminate, Pressed, then Disabled. Text-only ambient values can flow through
-normal parentage; background, border, shadow, and visual states never cascade. A
-caller may assign `FocusWithin` explicitly when a composite intentionally needs
-descendant-focus emphasis.
+Indeterminate, Pressed, then Disabled.
+
+> [!NOTE]
+>
+> `VisualState.IsPointerOver` is the enum's one Is-prefixed member — every
+> sibling is bare (`Focused`, `Pressed`, …) — and it is distinct from the
+> `bool ControlBase.IsPointerOver` property that feeds it; theme JSON spells the
+> same state `pointerOver`. All three spellings are correct in their own layer.
+> Text-only ambient values can flow through normal parentage; background,
+> border, shadow, and visual states never cascade. A caller may assign
+> `FocusWithin` explicitly when a composite intentionally needs descendant-focus
+> emphasis.
 
 Pointer membership and hover appearance are separate concerns. Every control in
 the physical hit ancestry exposes `IsPointerOver`; the active theme and local

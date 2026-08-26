@@ -2,11 +2,11 @@
 
 ## Overview
 
-`Document` is declared
-`public sealed class Document : CompositeControlBase, IStyled<DocumentStyle>, IClipboardCopySource`.
-It displays a scrollable tree of rich text content: headings, paragraphs with
-inline markup and activatable links, bulleted and numbered lists, block quotes,
-preformatted code, and thematic breaks.
+`Document` is declared `public sealed class Document : CompositeControlBase` and
+implements `IStyled<DocumentStyle>`, `ISelectableTextViewport`, and
+`IClipboardCopySource`. It displays a scrollable tree of rich text content:
+headings, paragraphs with inline markup and activatable links, bulleted and
+numbered lists, block quotes, preformatted code, and thematic breaks.
 
 A document is a semantic content tree. Text, links, lists, tables, callouts, and
 other structural nodes stay lightweight data. `DocumentInlineControl` and
@@ -94,7 +94,7 @@ classDiagram
 | `Selection`                                                                                    | `Selection`                                   | Empty at `0`     | Read-only directional UTF-16 range over the normalized semantic stream.                  |
 | Inherited `IsTextSelectionEnabled`                                                             | `bool`                                        | `true`           | Enabled by the constructor; disabling clears Document selection and selection gestures.  |
 | Inherited `TextSelection`                                                                      | `Selection`                                   | Empty at `0`     | The same committed directional value exposed by `Selection`.                             |
-| `SelectedText`                                                                                 | `string`                                      | `""`             | Read-only owned copy of the selected semantic substring.                                 |
+| Inherited `SelectedText`                                                                       | `string`                                      | `""`             | Read-only owned copy of the selected semantic substring.                                 |
 | `Load(string, IDocumentFormatReader, DocumentReadOptions?)`                                    | `DocumentReadResult`                          | —                | Parses, revalidates, then atomically consumes all detached roots.                        |
 | `LoadAsync(Stream, IDocumentFormatReader, DocumentReadOptions?, Encoding?, CancellationToken)` | `ValueTask<DocumentReadResult>`               | —                | Reads a bounded stream, then consumes its result unless canceled.                        |
 | `ScrollBy(int lines, ScrollCause cause)`                                                       | `bool`                                        | —                | Adds a signed line delta with saturation and endpoint clamping; rejects unknown cause.   |

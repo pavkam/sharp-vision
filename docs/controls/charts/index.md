@@ -70,7 +70,17 @@ membership or deep-model notification must be raised on the chart's dispatcher;
 an off-dispatcher notification throws `InvalidOperationException` synchronously
 instead of racing a later borrowed-collection enumeration. Detached charts apply
 notifications synchronously on the caller's thread, and disposed charts release
-all subscriptions. This follows the
+all subscriptions.
+
+> [!WARNING]
+>
+> That synchronous throw propagates out of the caller's own event dispatch: a
+> model mutated off-dispatcher faults the `ObservableCollection` or
+> `PropertyChanged` invocation in progress, which can abort delivery to the
+> model's other subscribers — not just the chart. Marshal model mutations to the
+> dispatcher once the chart is attached.
+
+This follows the
 [attached visual-tree ownership rule](../../concepts/threading.md#overview).
 
 ## Example

@@ -36,8 +36,9 @@ xterm/VT key decoding.
 `KittyKeyboardEnhancement` flags are Disambiguate (1), EventTypes (2),
 AlternateKeys (4), AllKeys (8), and AssociatedText (16). Unknown bits are
 rejected before output; AssociatedText without AllKeys is rejected because Kitty
-defines that combination as undefined. `KittyKeyboardEnhancementMode` exposes
-replace (1), set (2), and clear (3).
+defines that combination as undefined — except in the clear mode, where removing
+AssociatedText alone is well defined and accepted.
+`KittyKeyboardEnhancementMode` exposes replace (1), set (2), and clear (3).
 
 `Input.InputDecoder` recognizes `CSI key:shifted:base;modifiers:event;text…u`
 without allocation or retained parser spans. Modifier values are decoded as the

@@ -57,11 +57,21 @@ selection: `Write` and `Request` use Kitty OSC 5522 when it is authoritatively
 proven, fall back to OSC 52 text when only that is proven, and stay byte-quiet
 when neither is. Inbound OSC 52 and OSC 5522 replies route through the decoder
 into `TerminalServices`, which owns the `KittyClipboardTransaction` lifecycle
-(correlation, deadline, cancellation) and reports every outcome through the
-single `IClipboard.KittyClipboardReplyReceived` event. That covers every
-`Request`, whichever protocol served it, and a `Write` served by OSC 5522. An
-OSC 52 `Write` is fire-and-forget - the protocol defines no acknowledgement for
-a write, so no transaction is opened and no event is raised.
+(correlation, deadline, cancellation) and reports each completed, failed,
+timed-out, or cancelled operation through the single
+`IClipboard.KittyClipboardReplyReceived` event — for every `Request`, whichever
+protocol served it, and for a `Write` served by OSC 5522. An OSC 52 `Write` is
+fire-and-forget - the protocol defines no acknowledgement for a write, so no
+transaction is opened and no event is raised.
+
+> [!WARNING]
+>
+> A superseded or shutdown-abandoned operation raises no event at all. Starting
+> a new `Write` or `Request` while one is pending silently cancels and disposes
+> the pending transaction, and disposal at shutdown abandons an outstanding
+> request the same way. A caller that awaits `KittyClipboardReplyReceived` to
+> observe a specific operation never resumes for one that was superseded, and
+> the fetched selection is lost.
 
 Mode 5522 also lets a terminal push clipboard changes without a request. When
 the application has enabled paste events, such a terminal-initiated notification

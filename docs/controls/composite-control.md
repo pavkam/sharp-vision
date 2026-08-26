@@ -86,7 +86,7 @@ lazily from layout, and never retries construction during rendering.
 
 ## Layout and traversal
 
-The base measures the retained root once through `MeasureChild`. IsVisible and
+The base measures the retained root once through `MeasureChild`. Visible and
 hidden content contributes its desired border-box size plus margin using
 saturating arithmetic. Collapsed content contributes neither size nor margin,
 and the shared layout transaction clears its stale desired size and bounds.

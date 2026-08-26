@@ -108,12 +108,6 @@ public sealed class RatingField : InputBase
 
     public int SelectedIndex { get; private set; } = -1;
 
-    public new bool IsOpen
-    {
-        get => base.IsOpen;
-        set => base.IsOpen = value;
-    }
-
     protected override void Activate(ActivationCause cause) => IsOpen = !IsOpen;
 
     protected override void OnRenderContent(TerminalCanvas canvas)
@@ -124,13 +118,12 @@ public sealed class RatingField : InputBase
 }
 ```
 
-`IsOpen` is `protected` on `InputBase`, so `RatingField` re-declares it `public`
-with `new` and forwards to the base implementation - the same thin-forwarder
-shape `ComboBox`, `DateInput`, and `DateTimeInput` use for their own public
-`IsOpen` property. Calling `EnablePopup` a second time, or reading `IsOpen`
-before `EnablePopup` ever runs, both throw `InvalidOperationException` rather
-than silently no-op, so a capability mistake fails where it happens instead of
-producing an inert control.
+`IsOpen` is already `public` on `InputBase`, so `RatingField` inherits its
+open/close surface without declaring anything - the same inherited property
+`ComboBox`, `DateInput`, and `DateTimeInput` expose. Calling `EnablePopup` a
+second time, or reading `IsOpen` before `EnablePopup` ever runs, both throw
+`InvalidOperationException` rather than silently no-op, so a capability mistake
+fails where it happens instead of producing an inert control.
 
 ## Complete the component
 

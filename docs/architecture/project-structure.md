@@ -2,9 +2,10 @@
 
 ## Overview
 
-The solution contains four production libraries, three executable examples, and
-five top-level validation projects. The UI test project also exercises all three
-examples, so examples do not need duplicate test projects of their own.
+The solution contains five production libraries, four executable examples, and
+eight test projects. Each library has its own test project; examples are
+demonstrations whose behavior the owning libraries' tests already cover, so they
+carry no test projects of their own.
 
 ```mermaid
 flowchart LR
@@ -12,9 +13,11 @@ flowchart LR
     UI["SharpVision"]
     Document["SharpVision.Document"]
     FigletFonts["SharpVision.FigletFonts"]
+    Syntax["SharpVision.SyntaxHighlighting"]
     Showcase["SharpVision.Showcase"]
     Snake["Snake"]
     TextEditor["TextEditor"]
+    ProcessMonitor["ProcessMonitor"]
     TerminalTests["SharpVision.Terminal.Tests"]
     Probe["SharpVision.Terminal.Probe"]
     UITests["SharpVision.Tests"]
@@ -22,27 +25,31 @@ flowchart LR
     DocumentTests["SharpVision.Document.Tests"]
     UI --> Terminal
     FigletFonts -. "NuGet >= current version" .-> UI
-    Document -. "NuGet >= current version" .-> UI
+    Document --> UI
+    Syntax --> UI
     Showcase --> UI
     Showcase --> FigletFonts
     Showcase --> Document
     Snake --> UI
     Snake --> FigletFonts
     TextEditor --> UI
+    ProcessMonitor --> UI
     TerminalTests -. tests .-> Terminal
     TerminalTests -. launches .-> Probe
     Probe --> Terminal
     UITests -. tests .-> UI
     UITests -. tests .-> FigletFonts
-    UITests -. tests .-> Showcase
-    UITests -. tests .-> Snake
-    UITests -. tests .-> TextEditor
     CompatibilityTests -. public API snapshot .-> Terminal
     CompatibilityTests -. public API snapshot .-> UI
     CompatibilityTests -. public API snapshot .-> FigletFonts
     CompatibilityTests -. public API snapshot .-> Document
+    CompatibilityTests -. public API snapshot .-> Syntax
     DocumentTests -. parser and model tests .-> Document
 ```
+
+The FigletFonts, Document, SyntaxHighlighting, and shared test-support projects
+each carry their own test project as well; the diagram shows a representative
+subset of the test edges rather than all eight projects.
 
 `SharpVision.Terminal` owns protocols, transport, capabilities, input events,
 Unicode cell geometry, screen buffers, damage, and terminal output. It has no
@@ -50,10 +57,11 @@ reference to the UI project.
 
 Its public runtime boundaries are: `Protocols`, which provides exact encoders
 and streaming framing; `Input.InputDecoder`, which produces typed input values;
-`Rendering.Frame`, `Canvas`, and `Renderer`, which handle semantic output;
-`Transport.ITransport`, which performs bounded I/O; and `Runtime.Session`, which
-owns mode leases and ordered input, resize, closure, and fault delivery.
-Internal pooled storage never becomes a cross-project contract.
+`Rendering.Frame`, `TerminalCanvas`, and `Renderer`, which handle semantic
+output; `Transport.ITransport`, which performs bounded I/O; and
+`Runtime.Session`, which owns mode leases and ordered input, resize, closure,
+and fault delivery. Internal pooled storage never becomes a cross-project
+contract.
 
 ### Friend access
 
@@ -108,6 +116,8 @@ these infrastructure namespaces:
 | `SharpVision.DataBinding`          | Typed model bindings, property-path observation, and collection tracking.      |
 | `SharpVision.Fonts`                | FIG-font parsing, layout metadata, and glyph rendering for FIGlet text.        |
 | `SharpVision.Text`                 | Grapheme-safe text layout, wrapping, editing, and selection primitives.        |
+| `SharpVision.Notifications`        | The `Toast` notification surface and its stacking host.                        |
+| `SharpVision.Runtime`              | Application-facing runtime seams such as `IClipboardCopySource`.               |
 
 `SharpVision.FigletFonts` is an optional package over the public FIGlet engine
 in `SharpVision`. It owns `FigletCatalog`, `FigletFontInfo`, the curated
@@ -169,7 +179,7 @@ terminal checks. `SharpVision.Terminal.Tests` owns its lifecycle and assertions;
 production code does not use it.
 
 `SharpVision.Compatibility.Tests` owns the versioned public API baselines for
-all four libraries. It references production projects only from the test layer
+all five libraries. It references production projects only from the test layer
 and participates in the solution-wide gate. The normative reconciliation
 workflow is defined by the
 [public API compatibility contract](../testing/correctness-model.md#public-api-compatibility).

@@ -157,16 +157,25 @@ mnemonic cannot be inserted into the newly focused editor.
 
 ### Selection and clipboard fallback
 
-Ctrl+C uses the same handled-route precedence as every other key. After preview,
-bubble, and control defaults remain unhandled, `Application` walks from the
-focused target through `ControlBase.Parent` and chooses the nearest enabled
-control-wide text selection, then falls back to the nearest
-`IClipboardCopySource`. It calls the chosen pure copy method exactly once,
-publishes that owned string through `Application.Terminal.Clipboard`, and
-consumes the stroke. An empty result is still authoritative and never falls
-through to a more distant ancestor. With no source, the stroke remains available
-to later application fallbacks. Ctrl+X and Ctrl+V remain editing commands owned
-by `TextInput`; the copy interface does not imply mutation.
+The framework's Ctrl+C copy handler is registered on the application root and
+acts during the preview phase, so it runs ahead of every descendant preview
+handler, every bubble handler, and every control default. When the stroke is
+Ctrl+C, `Application` walks from the focused target through `ControlBase.Parent`
+toward the modal boundary and chooses the nearest enabled control-wide text
+selection, then falls back to the nearest `IClipboardCopySource`. It calls the
+chosen pure copy method exactly once, publishes that owned string through
+`Application.Terminal.Clipboard`, and consumes the stroke. An empty result is
+still authoritative and never falls through to a more distant ancestor. With no
+source, the stroke remains available to later application fallbacks. Ctrl+X and
+Ctrl+V remain editing commands owned by `TextInput`; the copy interface does not
+imply mutation.
+
+> [!NOTE]
+>
+> Because the copy handler acts in preview, a descendant's own Ctrl+C handler —
+> preview or bubble — never sees the stroke while a selection or copy source is
+> in scope. Only when the walk finds no source does Ctrl+C route normally to the
+> focused control.
 
 `ISelectableTextSource.GetSelectableTextSnapshot()` supplies complete semantic
 text plus grapheme-to-cell rectangles for currently visible complete glyphs.
@@ -198,7 +207,10 @@ A named keyboard command instead matches its documented modifier set exactly
 after removing Caps Lock and Num Lock state. For example, Control+A and
 Control+Z accept either lock key but reject Control+Shift, Control+Alt, and
 Control+Super variants. Keyboard activation uses the text-producing allowance:
-Shift and lock state remain eligible, while command modifiers bubble.
+Shift and lock state remain eligible, while command modifiers bubble. A third
+classification serves collection selection gestures: Control and Shift stay
+eligible alongside the lock keys, so extending or toggling a selection with
+those modifiers held remains a selection gesture rather than a command.
 
 ## Pointer capture and coordinates
 

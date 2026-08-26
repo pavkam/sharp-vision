@@ -12,7 +12,7 @@ across the active shell and selected page, and across every simultaneously open
 menu/submenu path. The shell advertises `Alt+key`, while the Menu and GroupBox
 pages demonstrate invocation and focus transfer.
 
-The sidebar remains one arrow-key `NavigationView`. Its heading, groups, and 59
+The sidebar remains one arrow-key `NavigationView`. Its heading, groups, and 61
 catalog items set `UseMnemonic = false`, because no useful single-character
 assignment can be globally unique at that scale. The repeated `DocExample` and
 `C# recipe` structural chrome also opts out. Body prose and generated list data
@@ -75,7 +75,7 @@ blink remain isolated demonstrations rather than general documentation styling.
 
 `Gallery` owns the stable catalog of pane group names, titles, and factories
 (`(string Group, string Name, Func<CompositeControlBase> Create)[]`). The
-sidebar organizes its 59 entries by primary use:
+sidebar organizes its 61 entries by primary use:
 
 - Concepts: ControlBase, Border, Shadow, Data Binding, and Styling.
 - Input: Button, HyperlinkButton, Calendar, DateInput, DateTimeInput, CheckBox,
@@ -89,6 +89,7 @@ sidebar organizes its 59 entries by primary use:
 - Charts: HorizontalBarChart, VerticalBarChart, LineChart, AreaChart, and
   Sparkline.
 - Progress: ChaseIndicator, ProgressBar, and Spinner.
+- Notifications: Toast.
 - Dialogs: FilePicker and MessageBox.
 - Windows: Popup, ContextMenu, Tooltip, Flyout, and Window.
 
@@ -289,24 +290,12 @@ logical embedded-resource names keep repository paths out of runtime APIs.
 
 The showcase compiles with the solution as production code and uses only public
 library APIs. Behavioral, input, layout, rendering, and Unicode guarantees are
-proved by the terminal and UI suites at the library boundaries that own them;
-the checked-in live image demonstrates the runnable gallery but does not replace
-those automated contracts. Showcase tests enumerate the complete 59-page
-catalog, Control as the initial page, marked `Text` documentation coverage,
-fresh detached composite ownership, stable composition-root identity across the
-first layout, no pane inheriting `Container`, and the matching runtime control
-type. They render every page at 30 by 8, 80 by 24, and 140 by 40 cells, validate
-wide-cell continuation structure, and prove automatic scrolling. A full
-Application test drives SGR pointer selection, keyboard sidebar navigation and
-button activation, wheel scrolling, text editing, and pixel-aware resize through
-terminal bytes. Dedicated tests prove cooperative exit through both the
-application-bar `Quit` button and a decoded `Ctrl+C` key. Startup coverage
-requires the exact SGR mouse-mode lease before the first frame. The live tmux
-smoke test then proves a normal Down/Up keyboard round trip between Control and
-Border, passive Canvas hover and leave, separate complete SGR clicks for Canvas
-and Button, Figlet dropdown opening and font selection, and a captured ScrollBar
-thumb drag; each completes without a trailing flushing key. The live image
-supplements these assertions; it cannot replace them.
+proved by the terminal and UI suites at the library boundaries that own them —
+the showcase carries no test project of its own, and no suite mounts its panes.
+An example demonstrates behavior the owning library's tests already cover, so
+its verification is the solution-wide compile plus those library suites. The
+checked-in live image demonstrates the runnable gallery but is illustrative, not
+an automated contract.
 
 Modality is not covered at the showcase-pane layer. Window isolation, popup
 dismissal, and `ModalScope` identity across menu and submenu transitions are

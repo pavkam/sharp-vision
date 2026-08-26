@@ -42,6 +42,14 @@ when shown asynchronously; there is no nested proxy Window.
 completes the returned task with that button's semantic result. Closing the
 frame or dismissing the surface completes the task with `Cancel`.
 
+> [!NOTE]
+>
+> `Cancel` is the dismissal result for every layout, including
+> `MessageBoxButtons.Ok`: Escape, a close request, forced detach, disposal, and
+> an outer modal scope unwinding all complete the task with `Cancel`. An awaited
+> OK-only box can therefore return `Cancel` — a completed `ShowAsync` is not
+> proof the user pressed OK.
+
 The constructors accept a non-null `message`, an optional non-null `title`
 (defaulting to `Message`), and a defined `MessageBoxButtons` value. The static
 overloads are:
@@ -91,20 +99,23 @@ and a local `Style` in one call, without exposing the generated Buttons or
 divider - the preferred way to localize or restyle a presented MessageBox
 instead of multiplying `ShowAsync` overloads.
 
-`owner` must resolve to an owning Screen, an explicit container, or the
-outermost fallback container. In a hosted application the helper adds one
+`owner` must resolve to an owning Screen, an explicit `Overlay`, or the
+outermost `Overlay` ancestor. In a hosted application the helper adds one
 temporary MessageBox to the Screen's private presentation slot, so a bounded
 card, pane, or showcase stage can identify ownership without constraining the
 modal surface or exposing framework children. Outside a Screen, an explicit or
-outermost container is still a supported host. The helper enters a Window modal
-presentation with outside interaction ignored. On normal completion it publishes
-`Closing` and `Closed`, removes and disposes the MessageBox, and then settles
-the returned task. Calls are dispatcher-affine.
+outermost `Overlay` is still a supported host; any other owner without an
+`Overlay` ancestor fails to resolve and `ShowAsync` throws. The helper enters a
+Window modal presentation with outside interaction ignored. On normal completion
+it publishes `Closing` and `Closed`, removes and disposes the MessageBox, and
+then settles the returned task. Calls are dispatcher-affine.
 
 A directly mounted MessageBox is modeless. Activating a button with the keyboard
 or pointer updates `SelectedResult`, sets `HasSelectedResult`, and raises
-`ResultSelected` without removing or disposing the surface. In this mode the
-MessageBox leaves Escape unhandled so an ancestor can apply its own policy.
+`ResultSelected` without removing or disposing the surface. Escape still selects
+`Cancel` in this mode: the MessageBox's own routed handler consumes the stroke
+and publishes the cancel result, so an ancestor never sees a modeless
+MessageBox's Escape.
 
 ## Interaction
 
@@ -115,33 +126,41 @@ handling rather than the inherited Escape-close fallback, which is dead code
 here because that fallback also requires `CanClose`.
 
 The window sizes itself from its title, wrapped message, and button labels, but
-never past **80% of the available presentation-host width** - the Overlay or
-Screen plane `ShowAsync` presents into, not the bounds of a small owner control.
-This is a cap, not a target: a short message stays compact, and only a message
-long enough to need the room grows the box toward that width. The cap is
-recomputed on every layout pass from the incoming measure constraint, so a live
-presentation resize retargets it automatically with no explicit resize handling.
-Its content is a two-row grid: the top row is an intrinsic message area whose
-centered, wrapped text begins two empty interior rows below the title edge, and
-the bottom row is the shared dialog action bar. The action bar renders a
-horizontal divider spanning the content width directly against the centered
-action row. Moving the Window therefore only adds placement offsets; its
-measured height does not change. Message text wraps within the capped width by
-grapheme cluster. The window keeps a 32-by-8-cell minimum footprint for
-consistent dialog proportions - never forced past a host too small to
-accommodate it - and is centered on both axes across that host.
+never past **80% of the available presentation-host width, floored at the
+32-cell minimum width** - the Overlay or Screen plane `ShowAsync` presents into,
+not the bounds of a small owner control. On a host narrower than 40 columns the
+floor wins and the cap collapses to the host's own width. This is a cap, not a
+target: a short message stays compact, and only a message long enough to need
+the room grows the box toward that width. The cap is recomputed on every layout
+pass from the incoming measure constraint, so a live presentation resize
+retargets it automatically with no explicit resize handling. Its content is a
+two-row grid: the top row is an intrinsic message area whose centered, wrapped
+text begins two empty interior rows below the title edge, and the bottom row is
+the shared dialog action bar. The action bar renders a horizontal divider
+spanning the content width directly against the centered action row. Moving the
+Window therefore only adds placement offsets; its measured height does not
+change. Message text wraps within the capped width by grapheme cluster. The
+window keeps a 32-by-8-cell minimum footprint for consistent dialog
+proportions - never forced past a host too small to accommodate it - and is
+centered on both axes across that host.
 
 The window also never grows past a **20-cell height ceiling**. The message area
 itself carries its own, narrower height ceiling well under that budget, and
 hosts its wrapped text in a vertically scrolling region beneath it - a
 `ScrollBar` fades in once the wrapped text overflows the available rows, and the
-mouse wheel, arrow keys, Page Up/Down, and Home/End all scroll it the same way
-any other scrollable SharpVision content does. A short message never scrolls;
-the bar only appears once wrapped content genuinely exceeds the rows the message
-area is given. Because the message area's own ceiling - not a floor on the
-action bar - is what keeps the dialog within budget, the action bar never has to
-compete for space at all: its divider and buttons always keep their full,
-natural size, regardless of how long the message grows.
+mouse wheel scrolls it. A short message never scrolls; the bar only appears once
+wrapped content genuinely exceeds the rows the message area is given. Because
+the message area's own ceiling - not a floor on the action bar - is what keeps
+the dialog within budget, the action bar never has to compete for space at all:
+its divider and buttons always keep their full, natural size, regardless of how
+long the message grows.
+
+> [!IMPORTANT]
+>
+> **Implementation gap:** the message area is not keyboard-scrollable. Focus
+> sits on the action buttons, which are siblings of the scrolling message host,
+> so arrow keys, Page Up/Down, Home, and End never reach it — a keyboard-only
+> user cannot scroll a long message today.
 
 The button group is centered horizontally and its buttons share the widest
 label's width. Captions use the Button default centered text alignment, and
@@ -225,19 +244,19 @@ The behavior above is verified end to end, so callers can rely on it:
   message are retained as given.
 - The window composes with the dialog role, wraps its message under a small
   viewport, and renders all four button layouts.
-- The outer width never exceeds 80% of the available presentation width, stays
-  compact for short messages, and recomputes the cap after a presentation
-  resize. A horizontal divider consistently separates the message from the
-  action row.
+- The outer width never exceeds the larger of 80% of the available presentation
+  width and the 32-cell minimum, stays compact for short messages, and
+  recomputes the cap after a presentation resize. A horizontal divider
+  consistently separates the message from the action row.
 - A message long enough to hit the 20-cell height ceiling scrolls within its
-  message area instead of overflowing the window or truncating unreachably, and
-  the action bar's divider and button row keep their generated Buttons and
-  divider visible - with a protected height - rather than being crushed away by
-  the resulting layout pressure.
+  message area instead of overflowing the window or truncating unreachably; the
+  message area's own ceiling — not a floor on the action bar — is what keeps the
+  divider and button row at their natural size.
 - Shown from a bounded owner, it centers across the whole application host,
   applies the deliberate message offset, and centers its captions.
 - Modal presentation honors default-button and Escape activation. A modeless
-  MessageBox publishes keyboard and pointer results and lets Escape propagate.
+  MessageBox publishes keyboard and pointer results, and its own handler
+  consumes Escape as a `Cancel` selection.
 - Completion follows the ordered close lifecycle: the result settles, the host
   is cleaned up, and focus is restored.
 - `ButtonStyle` propagates across every button layout with Theme fallback,

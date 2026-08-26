@@ -2,9 +2,10 @@
 
 ## Overview
 
-`Capabilities` is an immutable value published after bounded detection. It
-states which protocol features are supported, the color and style fidelity, the
-Unicode-width policy, cell and pixel metrics, and multiplexer constraints.
+`TerminalCapabilities` — exposed to applications as `Application.Capabilities` —
+is an immutable value published after bounded detection. It states which
+protocol features are supported, the color and style fidelity, the Unicode-width
+policy, cell and pixel metrics, and multiplexer constraints.
 
 Capabilities authorize optional runtime behavior; they do not identify the
 terminal emulator. The
@@ -289,12 +290,15 @@ startup batch in priority order:
 | Priority | Query family                                     | When it is included                                                   |
 | -------: | ------------------------------------------------ | --------------------------------------------------------------------- |
 |        1 | Kitty keyboard status                            | Support is unknown and at least two query slots exist.                |
-|        2 | Primary device attributes (DA1)                  | Always.                                                               |
-|        3 | Secondary device attributes (DA2)                | Capacity remains.                                                     |
-|        4 | Private modes 2026, 1004, 2004, 1006, 1016, 5522 | The corresponding feature is unknown or tentative.                    |
-|        5 | Geometry                                         | Local host geometry is incomplete.                                    |
-|        6 | Palette and default colors                       | Capacity remains; results remain diagnostic or caller-consumed facts. |
-|        7 | Finite xterm refinements                         | An xterm-like hint exists and stronger evidence has not settled it.   |
+|        2 | Kitty graphics query                             | Support is unknown; emitted before DA1 so DA1 stays its barrier.      |
+|        3 | Primary device attributes (DA1)                  | Always.                                                               |
+|        4 | Secondary device attributes (DA2)                | Capacity remains.                                                     |
+|        5 | Private modes 2026, 1004, 2004, 1006, 1016, 5522 | The corresponding feature is unknown or tentative.                    |
+|        6 | Geometry                                         | Local host geometry is incomplete.                                    |
+|        7 | Palette and default colors                       | Capacity remains; results remain diagnostic or caller-consumed facts. |
+|        8 | iTerm2 capability query (OSC 1337)               | `ItermImages` is unknown or tentative, no override, no multiplexer.   |
+|        9 | Finite xterm refinements                         | An xterm-like hint exists and stronger evidence has not settled it.   |
+|       10 | Cursor-position fence (`CSI 6 n`)                | Always last; its reply retires every still-unanswered family.         |
 
 Definitive database evidence and explicit overrides suppress redundant feature
 probes. The

@@ -2,10 +2,11 @@
 
 ## Overview
 
-`Toast` is declared `public sealed class Toast : FloatingSurfaceBase`. It
-presents one caller-owned notification object in the attached owner’s Screen or
-Overlay presentation plane without entering modality or moving focus. The Toast
-owns its replaceable `Content`; callers retain and dispose the Toast itself.
+`Toast` is declared `public sealed class Toast : FloatingSurfaceBase` and
+implements `IStyled<ToastStyle>`. It presents one caller-owned notification
+object in the attached owner’s Screen or Overlay presentation plane without
+entering modality or moving focus. The Toast owns its replaceable `Content`;
+callers retain and dispose the Toast itself.
 
 Six edge positions partition independent stacks. New notifications occupy the
 edge-nearest slot and older notifications move inward with one cell of spacing.
@@ -54,11 +55,13 @@ focus. Showing an already open Toast or changing position, animation, or timing
 while it is open throws. Resize recomputes the final edge slot against current
 host bounds.
 
-Animation progress derives from the dispatcher’s monotonic clock. Slide
-animations approach the final slot from their named direction, Expand grows
-around its final center, and Fade reveals stable cells in place. The display
-timer starts after entrance reaches one, so animation does not consume visible
-lifetime. Detach and disposal cancel both timers and release stack membership.
+Animation progress derives from the dispatcher’s monotonic clock. `SlideLeft`
+and `SlideRight` enter from the named side of the slot, `SlideDown` starts one
+toast height above the slot and travels down, `SlideTop` starts at the host
+content's top edge, `Expand` grows around its final center, and `Fade` reveals
+stable cells in place. The display timer starts after entrance reaches one, so
+animation does not consume visible lifetime. Detach and disposal cancel both
+timers and release stack membership.
 
 ## Appearance and dismissal
 

@@ -84,19 +84,20 @@ capability evidence is not reinterpreted through inner `TERM`, `TMUX`, or
 `TERM_PROGRAM` hints. Its complete typed batch crosses the selected route once.
 The bounded input seam recognizes only the configured outer prefix, retains at
 most the envelope limit across arbitrary fragmentation, peels each configured
-layer, and accepts only one complete recognized DA, mode, Kitty keyboard, cursor
-position, metrics, palette, status, or capability reply. Trailing text,
-controls, raw strings, and concatenated replies reject the entire envelope
-before it reaches ordinary input. Accepted bytes are routed through
-`ProtocolRouter` before `QueryTracker` correlation. tmux routes admit typed CSI,
-OSC, and DCS replies. Screen-containing routes admit CSI only. Real tmux
-delivers these replies raw rather than through this wrapped seam: the
-wrapped-envelope candidate match fails partway through the fixed `tmux;` prefix,
-and `ProtocolRouter`'s ordinary decoder fallback recognizes the raw reply
-instead. A complete malformed route candidate produces one redacted diagnostic;
-oversized candidates discard through the full outer recovery boundary without
-leaking ST bytes as keys or text. Diagnostics and all later parser events retain
-raw transport byte offsets, including outer framing and repeated ESC expansion.
+layer, and accepts only one complete recognized DA, mode, Kitty keyboard, Kitty
+graphics, iTerm2 capability, cursor position, metrics, palette, status, or
+capability reply; a modifyOtherKeys report is refused. Trailing text, controls,
+raw strings, and concatenated replies reject the entire envelope before it
+reaches ordinary input. Accepted bytes are routed through `ProtocolRouter`
+before `QueryTracker` correlation. tmux routes admit typed CSI, OSC, and DCS
+replies. Screen-containing routes admit CSI only. Real tmux delivers these
+replies raw rather than through this wrapped seam: the wrapped-envelope
+candidate match fails partway through the fixed `tmux;` prefix, and
+`ProtocolRouter`'s ordinary decoder fallback recognizes the raw reply instead. A
+complete malformed route candidate produces one redacted diagnostic; oversized
+candidates discard through the full outer recovery boundary without leaking ST
+bytes as keys or text. Diagnostics and all later parser events retain raw
+transport byte offsets, including outer framing and repeated ESC expansion.
 Wrong-family replies remain typed and observable but cannot retire the
 originating query. If bounded route encoding fails atomically, negotiation
 publishes absent evidence immediately without a write, flush, active query,

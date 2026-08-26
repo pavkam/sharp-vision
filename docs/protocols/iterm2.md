@@ -116,14 +116,14 @@ evidence — see
 whose sole function is making the query fire, so a second environment variable
 doing the identical job was judged not worth adding.
 
-> [!WARNING]
+> [!NOTE]
 >
-> **Spec ambiguity:** the published feature table assigns code `F` to both
-> `FILE` and `FOCUS_REPORTING` with no documented disambiguation (see Sources
-> below) — this library cannot tell which meaning a bare `F` in the reply
-> denotes from the code alone. `FocusReporting` is unaffected because it has its
-> own unambiguous DEC private mode query; only `ItermImages` reads the `F` code,
-> and only in combination with the version corroborator described next.
+> The published feature table assigns code `F` to both `FILE` and
+> `FOCUS_REPORTING` with no documented disambiguation (see Sources below) — this
+> library cannot tell which meaning a bare `F` in the reply denotes from the
+> code alone. `FocusReporting` is unaffected because it has its own unambiguous
+> DEC private mode query; only `ItermImages` reads the `F` code, and only in
+> combination with the version corroborator described next.
 
 Because of that ambiguity, and because Feature Reporting predates iTerm2 3.5's
 multipart protocol while `FILE` documents only the legacy single-sequence form

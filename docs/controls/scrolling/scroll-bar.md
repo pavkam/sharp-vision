@@ -17,19 +17,19 @@ classDiagram
 
 ## API
 
-| Member                                                  | Type                            | Default    | Description                                                               |
-| ------------------------------------------------------- | ------------------------------- | ---------- | ------------------------------------------------------------------------- |
-| `Minimum`                                               | `int`                           | `0`        | Non-negative inclusive lower endpoint.                                    |
-| `Maximum`                                               | `int`                           | `100`      | Non-negative inclusive upper endpoint.                                    |
-| `Value`                                                 | `int`                           | `0`        | The current value, always inside the inclusive `Minimum`–`Maximum` range. |
-| `ViewportSize`                                          | `int`                           | `0`        | Non-negative visible extent represented by the thumb.                     |
-| `SmallChange`                                           | `int`                           | `1`        | Non-negative button, key, or wheel increment.                             |
-| `LargeChange`                                           | `int`                           | `10`       | Non-negative page or track-click increment.                               |
-| `Orientation`                                           | `Orientation`                   | `Vertical` | Vertical or horizontal geometry.                                          |
-| `Style`                                                 | `ScrollBarStyle?`               | `null`     | Optional complete developer-authored presentation.                        |
-| `ActualStyle`                                           | `ScrollBarStyle`                | Resolved   | Read-only; the complete local, theme-owned, or code-owned presentation.   |
-| `ScrollBy(int delta, ScrollCause cause = Programmatic)` | `bool`                          | —          | Adds a signed command delta with saturation and endpoint clamping.        |
-| `ValueChanged`                                          | `EventHandler<ScrollEventArgs>` | —          | Raised after a changed value commits.                                     |
+| Member                                                  | Type                            | Default    | Description                                                                                                     |
+| ------------------------------------------------------- | ------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------- |
+| `Minimum`                                               | `int`                           | `0`        | Non-negative inclusive lower endpoint.                                                                          |
+| `Maximum`                                               | `int`                           | `100`      | Non-negative inclusive upper endpoint.                                                                          |
+| `Value`                                                 | `int`                           | `0`        | The current value, always inside the inclusive `Minimum`–`Maximum` range.                                       |
+| `ViewportSize`                                          | `int`                           | `0`        | Non-negative visible extent represented by the thumb.                                                           |
+| `SmallChange`                                           | `int`                           | `1`        | Non-negative button, key, or wheel increment.                                                                   |
+| `LargeChange`                                           | `int`                           | `10`       | Non-negative page or track-click increment.                                                                     |
+| `Orientation`                                           | `Orientation`                   | `Vertical` | Vertical or horizontal geometry.                                                                                |
+| `Style`                                                 | `ScrollBarStyle?`               | `null`     | Optional complete developer-authored presentation.                                                              |
+| `ActualStyle`                                           | `ScrollBarStyle`                | Resolved   | Read-only; the complete local, theme-owned, or code-owned presentation.                                         |
+| `ScrollBy(int delta, ScrollCause cause = Programmatic)` | `bool`                          | —          | Adds a signed command delta with saturation and endpoint clamping.                                              |
+| `ValueChanged`                                          | `EventHandler<ScrollEventArgs>` | —          | Raised after a changed value commits while that commit is still newest; a reentrant newer commit supersedes it. |
 
 A `ScrollBarStyle` bundles `Chrome`, `Fill`, a complete `ScrollBarGlyphs` set,
 `ControlColor`s for the track, thumb, and buttons, and the inherited
@@ -74,7 +74,7 @@ draw outside their bounds.
 
 Wheel events are handled only when they actually change the value. Arrow keys
 and the directional buttons move by `SmallChange`; the Page keys and clicks on
-the track move by `LargeChange`; Home and End jump to the endpoints. IsDragging
+the track move by `LargeChange`; Home and End jump to the endpoints. Dragging
 the thumb captures the pointer, and both cell and pixel pointer reports map
 through the same geometry. Keys outside the scrollbar command set remain
 available to inherited routed input.

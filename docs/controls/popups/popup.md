@@ -67,6 +67,14 @@ classDiagram
 | Inherited `Closing`                                                                            | `EventHandler`                                 | —                               | Raised when closure is requested or after family-specific closing state commits.                              |
 | Inherited `Closed`                                                                             | `EventHandler`                                 | —                               | Raised only after the presented surface becomes unavailable and its bounds clear.                             |
 
+> [!NOTE]
+>
+> Two of the defaults above hold only for a directly constructed `Popup`. Both
+> shipped subclasses flip `SuppressCloseOtherPopups` to `true` in their
+> constructors (`Tooltip`, `Flyout`), so showing either leaves an open drop-down
+> or menu untouched; and the popups `InputBase.EnablePopup` builds default
+> `FocusOnOpen` to `false`, with `Tooltip` setting it false again.
+
 ## Content ownership
 
 The inherited `Content` uses managed capacity-one ownership and is collapsed

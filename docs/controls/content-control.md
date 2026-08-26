@@ -12,7 +12,7 @@ Use `ContentControl` when arbitrary callers may replace one semantic content
 value. A component whose retained implementation tree is private uses
 [`CompositeControlBase`](composite-control.md#overview) instead, and a
 general-purpose panel whose callers add arbitrary children remains a
-[`Container`](container.md#overview). IsFocusable single-face controls typically
+[`Container`](container.md#overview). Focusable single-face controls typically
 compose one owned caption child through the owned-control engine instead of a
 replaceable content edge — see
 [`InputBase`'s caption capability](pressable.md#overview) for that narrower
@@ -94,11 +94,11 @@ transaction.
 
 ## Layout and traversal
 
-IsVisible or hidden content is measured once through `MeasureChild`. The
-reported content size adds the child's horizontal and vertical margin using
-saturating integer arithmetic. Arrangement passes the owner's complete content
-box to `ArrangeChild(content, bounds, ResolvedAxes.Both)`; the child applies its
-margin inside that slot, and both axes count as resolved by this parent.
+Visible or hidden content is measured once through `MeasureChild`. The reported
+content size adds the child's horizontal and vertical margin using saturating
+integer arithmetic. Arrangement passes the owner's complete content box to
+`ArrangeChild(content, bounds, ResolvedAxes.Both)`; the child applies its margin
+inside that slot, and both axes count as resolved by this parent.
 
 Collapsed content contributes neither desired size nor margin and enters neither
 child layout override. The base child transactions still clear its prior

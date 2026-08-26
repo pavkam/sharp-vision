@@ -138,6 +138,14 @@ phases remain pending. The application error policy then decides whether the
 session continues or stops; a failed pass is never recorded as a successful
 update.
 
+> [!WARNING]
+>
+> When the failure goes unhandled, the resulting stop is forced: `Stopping`
+> still raises, but its `Cancel` flag is inert on that path. A handler that
+> guards unsaved work by vetoing `Stopping` cannot hold an application open
+> after an unhandled layout or render exception — persist state from the handler
+> instead of relying on the veto.
+
 Terminal output has its own transactional boundary. The renderer commits its
 front frame only after the complete write and flush succeed. A partial write, a
 failed flush, a profile change, a size change, or an explicit terminal-state

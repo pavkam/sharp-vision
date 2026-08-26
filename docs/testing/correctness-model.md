@@ -10,10 +10,10 @@ test that has been observed failing for the intended reason.
 Test classes are named `<Type>Tests` for the type they exercise, declared under
 `src/` or `examples/`. The `SurfaceTests`, `PerformanceTests`, `ConsumerTests`,
 and `CompatibilityTests` suffixes identify an evidence tier — mounted-terminal
-rendered-cell proof, an allocation-perf gate, a packed-package consumer proof,
-and a public-contract/ABI freeze, respectively — not a different subject; a
-class covering multiple subjects at once belongs on the suite-level allow-list
-defined inside
+rendered-cell proof, an allocation-perf gate, an external-consumer compile proof
+against the public surface, and a public-contract/ABI freeze, respectively — not
+a different subject; a class covering multiple subjects at once belongs on the
+suite-level allow-list defined inside
 [`scripts/validate-test-class-naming.mjs`](../../scripts/validate-test-class-naming.mjs)
 instead of inventing a new suffix. Classes that predate the rule are tracked in
 a baseline that may only shrink, so a rename never has to happen all at once,
@@ -83,28 +83,30 @@ diagnosed and fixed, or the gate stays red.
 ## Public API compatibility
 
 `SharpVision.Compatibility.Tests` generates the complete public surfaces of
-`SharpVision.Terminal`, `SharpVision`, `SharpVision.Document`, and
-`SharpVision.FigletFonts` with PublicApiGenerator, strips every
-attribute-application line from the generated text (attributes are metadata
-annotations, not binary-breaking surface, so adding, removing, or editing one is
-never itself a reason to fail this gate), and compares what remains against one
-Verify snapshot per assembly in `Snapshots/*.verified.txt`. There is no
-per-version subfolder: the snapshot always reflects the current, approved shape
-of the public API, not a frozen baseline tied to a released version number.
+`SharpVision.Terminal`, `SharpVision`, `SharpVision.Document`,
+`SharpVision.FigletFonts`, and `SharpVision.SyntaxHighlighting` with
+PublicApiGenerator, strips every attribute-application line from the generated
+text (attributes are metadata annotations, not binary-breaking surface, so
+adding, removing, or editing one is never itself a reason to fail this gate),
+and compares what remains against one Verify snapshot per assembly in
+`Snapshots/*.verified.txt`. There is no per-version subfolder: the snapshot
+always reflects the current, approved shape of the public API, not a frozen
+baseline tied to a released version number.
 
 A changed public signature fails this gate. That failure is the maintainer's own
 signal to decide, from the diff, whether the change is significant enough to
 warrant bumping that assembly's own version property
 (`SharpVisionTerminalVersion`, `SharpVisionVersion`,
-`SharpVisionDocumentVersion`, or `SharpVisionFigletFontsVersion`) in
-`Directory.Build.props` - the gate does not make that decision automatically,
-and accepting a new baseline does not by itself require a version bump. Each
-library versions and publishes independently, so a signature change in one
-assembly never requires bumping the others.
+`SharpVisionDocumentVersion`, `SharpVisionFigletFontsVersion`, or
+`SharpVisionSyntaxHighlightingVersion`) in `Directory.Build.props` - the gate
+does not make that decision automatically, and accepting a new baseline does not
+by itself require a version bump. Each library versions and publishes
+independently, so a signature change in one assembly never requires bumping the
+others.
 
 Reviewing and accepting a changed baseline requires:
 
-1. Run the compatibility tests and inspect all four `.received.txt` files.
+1. Run the compatibility tests and inspect all five `.received.txt` files.
 2. Confirm every difference is an intended addition, removal, signature, or
    visibility change - not an accidental one.
 3. Overwrite the paired `.verified.txt` file with the `.received.txt` content to
@@ -117,7 +119,7 @@ snapshots are approval artifacts, not disposable test output.
 
 ## Shape and reflection
 
-`SharpVision.Compatibility.Tests` is the shape oracle for all four public
+`SharpVision.Compatibility.Tests` is the shape oracle for all five public
 surfaces; see [Public API compatibility](#public-api-compatibility) above. A
 hand-written test asserting that a member exists, is absent, or has a given
 accessibility duplicates that snapshot while covering less: the snapshot
@@ -131,11 +133,11 @@ compile-time broken reference into a run-time `null` reflection result or a
 silently stale assertion.
 
 When a test genuinely needs state a type does not expose, add a documented
-`internal` member instead. Both test assemblies are already friend assemblies,
-so the member is directly readable without reflection. An `internal` seam is not
-production surface: `PublicApiGenerator` excludes it, it appears in no
-`.verified.txt` snapshot, and no consumer can observe it. Document on the member
-which invariant it exists to prove — `KeySequenceMatcher.RetainsStorage`,
+`internal` member instead. Each library's own test assembly is already a friend
+assembly, so the member is directly readable without reflection. An `internal`
+seam is not production surface: `PublicApiGenerator` excludes it, it appears in
+no `.verified.txt` snapshot, and no consumer can observe it. Document on the
+member which invariant it exists to prove — `KeySequenceMatcher.RetainsStorage`,
 `Frame.CurrentMutationRevision`, and `Session.Backend` are established uses of
 this pattern.
 
@@ -152,7 +154,7 @@ standalone `Type_WhenInspected_*` test that only walks members is not allowed.
 | Stateful UI behavior | Unit state proof plus mounted surface observation.                   |
 | Protocol behavior    | Exact bytes, fragmentation, malformed recovery, and typed routing.   |
 | Rendering behavior   | Semantic cells plus incremental/full equivalence and terminal bytes. |
-| Public API change    | Reviewed versioned snapshots for all four production assemblies.     |
+| Public API change    | Reviewed current-shape snapshots for all five production assemblies. |
 
 No snapshot, mocked interaction, green build, or smoke test substitutes for a
 missing proof layer.

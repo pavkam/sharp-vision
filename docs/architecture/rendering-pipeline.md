@@ -30,10 +30,10 @@ every cell owned by an affected grapheme, then merges adjacent ranges.
 
 `Frame` owns a pooled row-major cell array and a finite pooled UTF-8 grapheme
 arena. Public callers observe only `CellInfo` and copy a complete grapheme into
-their own span; pooled memory never escapes. `Canvas.Draw` segments and measures
-with the frame's explicit ambiguous-width policy, preflights the complete arena
-cost, and only then mutates in a second pass, so a failed capacity check leaves
-the frame unchanged.
+their own span; pooled memory never escapes. `TerminalCanvas.Draw` segments and
+measures with the frame's explicit ambiguous-width policy, preflights the
+complete arena cost, and only then mutates in a second pass, so a failed
+capacity check leaves the frame unchanged.
 
 `Frame` also owns a finite pooled array of semantic image placements. Each
 nonempty placement retains one immutable `Graphics.ImageSource`, its positive
@@ -46,11 +46,11 @@ and copy operations prepare independent placement arrays before output, while
 clear and disposal release all retained image references before returning the
 cleared pooled storage. The default limit is 4,096 placements per frame.
 
-`Canvas.DrawImage(ImageSource, Rect, PlacementMode)` is the only control-facing
-image primitive. It clips the requested destination through both the canvas and
-the frame, records the image's complete pixel source, and emits no bytes. An
-empty intersection is a no-op. The canvas never selects Kitty, sixel, iTerm2, or
-any other terminal protocol.
+`TerminalCanvas.DrawImage(ImageSource, Rect, PlacementMode)` is the only
+control-facing image primitive. It clips the requested destination through both
+the canvas and the frame, records the image's complete pixel source, and emits
+no bytes. An empty intersection is a no-op. The canvas never selects Kitty,
+sixel, iTerm2, or any other terminal protocol.
 
 Each nonempty placement also records the frame-local mutation revision after its
 fallback cells were painted. A placement is effective only while no later cell
@@ -77,15 +77,27 @@ identity; that separate boundary is specified by the
 Kitty query or override evidence wins globally. Otherwise, one shared
 non-retained graphics backend preserves frame paint order while choosing sixel
 for compatible RGBA placements with exact metrics and query/override evidence,
-or iTerm2 multipart for compatible PNG placements under an explicit 3.5+
-override. Missing evidence, metrics, route capacity, or format semantics leaves
-the affected placement on ordinary cell fallback. Incremental repaint follows
-the finite transitive closure of later overlapping placements, so lower output
-never obscures an unchanged upper image. If an upper overlap cannot be encoded,
-it and every transitively affected lower placement remain on ordinary cell
-fallback; the backend does not invent unsafe clipping. Retained Kitty applies
-the same backward closure when a later placement is ineffective, preventing a
-lower remote image from obscuring that later placement's ordinary-cell fallback.
+or iTerm2 multipart for compatible PNG placements with query- or override-origin
+support, version-narrowed to iTerm2 3.5 or newer.
+
+> [!NOTE]
+>
+> The selector's authority test is stricter than the capability model's
+> `Feature.Authoritative`, which every other optional-output gate uses: graphics
+> selection accepts only query and override origins, so database-origin
+> `Supported` evidence for Kitty graphics, sixel, or iTerm2 images never selects
+> a backend — such a placement stays on cell fallback without a diagnostic.
+
+Missing evidence, metrics, route capacity, or format semantics leaves the
+affected placement on ordinary cell fallback. Incremental repaint follows the
+finite transitive closure of later overlapping placements, so lower output never
+obscures an unchanged upper image. If an upper overlap cannot be encoded, it and
+every transitively affected lower placement remain on ordinary cell fallback;
+the backend does not invent unsafe clipping. Retained Kitty applies the same
+backward closure when a later placement is ineffective,
+
+> preventing a lower remote image from obscuring that later placement's
+> ordinary-cell fallback.
 
 The application creates the renderer lazily for the first render, after profile
 and resize publication, and passes the current exact cell metrics to that
@@ -103,8 +115,18 @@ current frame profile. Revocation deletes retained Kitty state or performs a
 complete cell repair for sixel/iTerm2, and suppresses further graphics. Later
 profiles cannot promote a renderer created without an `IGraphicsBackend` or
 switch its graphics-backend family; fresh Application construction performs
-fresh selection. Terminal backend identity is independently fixed in
-`TerminalContext` and cannot be inferred from this choice.
+fresh selection.
+
+> [!NOTE]
+>
+> The recheck is one-way: later evidence can only revoke, never promote.
+> Selection happens once, at the lazily created renderer's construction, so
+> authoritative graphics evidence that arrives after the first render is
+> silently unusable for the rest of the process — only a new `Application`
+> observes it.
+
+Terminal backend identity is independently fixed in `TerminalContext` and cannot
+be inferred from this choice.
 
 A profile change received while frame output or flush is in flight records a
 pending renderer invalidation; it never invalidates the backend transaction that
@@ -113,50 +135,52 @@ applies the invalidation before preparing the new profile. This preserves the
 in-flight commit boundary while ensuring revocation removal or cell repair
 happens on the immediately following frame.
 
-`Canvas.Draw` and `Canvas.DrawRune` use an opaque background by default. Passing
-`BackgroundMode.Transparent` keeps the destination cell's existing background
-while replacing its grapheme, foreground, attributes, and hyperlink. The same
-option is available to `Canvas.ApplyStyle`. Structural lines, borders, shadows,
-and partial-glyph controls use it whenever they do not own an explicit surface
-background, which keeps controls visually aligned with painted panels instead of
-resetting isolated cells to the terminal default.
+`TerminalCanvas.Draw` and `TerminalCanvas.DrawRune` use an opaque background by
+default. Passing `BackgroundMode.Transparent` keeps the destination cell's
+existing background while replacing its grapheme, foreground, attributes, and
+hyperlink. The same option is available to `TerminalCanvas.ApplyStyle`.
+Structural lines, borders, shadows, and partial-glyph controls use it whenever
+they do not own an explicit surface background, which keeps controls visually
+aligned with painted panels instead of resetting isolated cells to the terminal
+default.
 
 Horizontal, vertical, and box line primitives merge compatible topology at
-intersections. `Canvas.DrawLineCell` instead writes one exact non-empty
+intersections. `TerminalCanvas.DrawLineCell` instead writes one exact non-empty
 `LineConnections` topology, replacing any previous connections in that cell.
 Controls use the exact primitive for authored line endings such as a Window
 title-bar tee; the canvas still owns line-family resolution and the
 deterministic ASCII fallback under a wide ambiguous-width policy.
 
-`Canvas.ApplyForeground` transforms only the foreground of stored grapheme
-owners. It visits complete owners once, in row-major order, and supplies each
-owner's absolute lead-cell coordinate to the synchronous selector. Stored spaces
-participate, while untouched blank cells are skipped. Background, attributes,
-hyperlink, typed underline, and underline color remain unchanged. A wide owner
-is transformed only when its complete cell range is inside the effective canvas
-clip. Selector callbacks are borrowed for the call and never retained. A
-callback exception propagates unchanged and fails the current render; owners
-completed earlier in the traversal remain transformed, while the failing and
-later owners remain unchanged.
+`TerminalCanvas.ApplyForeground` transforms only the foreground of stored
+grapheme owners. It visits complete owners once, in row-major order, and
+supplies each owner's absolute lead-cell coordinate to the synchronous selector.
+Stored spaces participate, while untouched blank cells are skipped. Background,
+attributes, hyperlink, typed underline, and underline color remain unchanged. A
+wide owner is transformed only when its complete cell range is inside the
+effective canvas clip. Selector callbacks are borrowed for the call and never
+retained. A callback exception propagates unchanged and fails the current
+render; owners completed earlier in the traversal remain transformed, while the
+failing and later owners remain unchanged.
 
-`Canvas.ApplyCellStyle` uses the same complete-owner discovery and clipping
-rules but replaces the complete returned `CellStyle`: foreground, background,
-attributes, typed underline, underline color, and hyperlink. A caller that
-intends to preserve a hyperlink must return it in the replacement. This is the
-final-overlay primitive used by semantic selection, so touching either cell of a
-wide owner styles the whole owner or, when the canvas clip excludes part of it,
-skips it entirely. Stored spaces participate, untouched blanks do not, and a
-throwing selector leaves the completed row-major prefix transformed.
+`TerminalCanvas.ApplyCellStyle` uses the same complete-owner discovery and
+clipping rules but replaces the complete returned `CellStyle`: foreground,
+background, attributes, typed underline, underline color, and hyperlink. A
+caller that intends to preserve a hyperlink must return it in the replacement.
+This is the final-overlay primitive used by semantic selection, so touching
+either cell of a wide owner styles the whole owner or, when the canvas clip
+excludes part of it, skips it entirely. Stored spaces participate, untouched
+blanks do not, and a throwing selector leaves the completed row-major prefix
+transformed.
 
-`Canvas.DrawWithForeground` adds write provenance to that same transformation.
-It validates both callbacks before frame lifetime, captures the frame's current
-mutation revision, invokes the borrowed drawing callback exactly once with the
-current clipped canvas, and captures the upper revision immediately when that
-callback returns. Traversal considers the cells in the requested region
-intersected with the current canvas clip, and any intersecting cell resolves to
-its complete stored owner. The closed draw-window revision — after the
-checkpoint and at or before the captured upper bound — decides whether a
-discovered owner is eligible. A selected owner's complete span may cross the
+`TerminalCanvas.DrawWithForeground` adds write provenance to that same
+transformation. It validates both callbacks before frame lifetime, captures the
+frame's current mutation revision, invokes the borrowed drawing callback exactly
+once with the current clipped canvas, and captures the upper revision
+immediately when that callback returns. Traversal considers the cells in the
+requested region intersected with the current canvas clip, and any intersecting
+cell resolves to its complete stored owner. The closed draw-window revision —
+after the checkpoint and at or before the captured upper bound — decides whether
+a discovered owner is eligible. A selected owner's complete span may cross the
 requested-region boundary, but it must remain fully inside the effective canvas
 clip; the selector receives its absolute lead-cell coordinate. A semantic
 overwrite counts as a mutation even when the glyph and style values are
@@ -198,9 +222,9 @@ wrapped according to the
 
 ## Control rendering
 
-`ControlBase.Render(Canvas)` is dispatcher-affine and rejects reentrancy. It
-clears render invalidation before extension code runs, clips its own drawing to
-`VisualBounds`, draws the framework-owned chrome underlay, calls
+`ControlBase.Render(TerminalCanvas)` is dispatcher-affine and rejects
+reentrancy. It clears render invalidation before extension code runs, clips its
+own drawing to `VisualBounds`, draws the framework-owned chrome underlay, calls
 `OnRenderContent`, and then renders owned children through either the arranged
 `Bounds` clip or the documented unclipped-child path. An invalidation raised
 during either callback therefore remains pending for the next frame. An
@@ -208,8 +232,8 @@ exception restores render dirtiness before propagating.
 
 A control that was already render-clean copies its previous frame's cells
 instead of running that paint sequence, when a previous frame is available
-(`Canvas.HasPreviousFrame`, attached only when no layout ran anywhere in the
-tree since that frame), the control owns no children of its own
+(`TerminalCanvas.HasPreviousFrame`, attached only when no layout ran anywhere in
+the tree since that frame), the control owns no children of its own
 (`OwnedControlCount == 0`, covering both the normal and popup layers), its
 resolved background is opaque (a transparent underlay never authors its
 uncovered cells, so copying them would resurrect stale content painted

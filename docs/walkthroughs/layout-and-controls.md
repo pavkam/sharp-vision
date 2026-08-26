@@ -63,7 +63,7 @@ sizing and alignment properties.
 | Consume outer edges, then fill  | [`Dock`](../controls/layout/dock.md#overview)          | attached `Side`, `Spacing`, `LastChildFills`         |
 | Rows, columns, and spans        | [`Grid`](../controls/layout/grid.md#overview)          | `Rows`, `Columns`, spacing, attached row/column/span |
 | Absolute or anchored placement  | [`Overlay`](../controls/layout/overlay.md#overview)    | attached `Left`, `Top`, `Right`, `Bottom`            |
-| Overlapping layers              | [`Overlay`](../controls/layout/overlay.md#overview)    | attached `ZIndex`, `ClipToBounds`                    |
+| Overlapping layers              | [`Overlay`](../controls/layout/overlay.md#overview)    | attached `ZIndex`, instance `ClipToBounds`           |
 | Header plus one child           | [`GroupBox`](../controls/layout/group-box.md#overview) | `Header`, `Content`, `Border`                        |
 
 ## Make overflowing content scroll

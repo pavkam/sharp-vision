@@ -21,13 +21,18 @@ default, collapses itself afterward: the visibility transaction completes the
 common cleanup and the close request then publishes `Closed`. A `Closing`
 handler that itself changes visibility takes responsibility for the outcome
 instead — if it leaves the Window visible and presented, `Closed` is suppressed.
-Changing a Window's visibility directly performs the cleanup without publishing
-`Closing` or `Closed`. Window's three close entry points still hand-roll their
-own sequence around that shared veto hook rather than routing through the
-`CloseSurface` engine itself — see
-[floating-surfaces.md](floating-surfaces.md#shared-lifecycle). Modal scopes
-publish `DismissRequested` and one committed `Exited` notification under the
-[modal lifetime contract](modality.md#nested-scopes-and-lifetime).
+
+> [!WARNING]
+>
+> Changing a Window's visibility directly performs the cleanup without
+> publishing `CloseRequested`, `Closing`, or `Closed`. A handler guarding
+> unsaved work on those events is silently skipped when code collapses the
+> Window through `Visibility` instead of requesting a close. Window's three
+> close entry points still hand-roll their own sequence around that shared veto
+> hook rather than routing through the `CloseSurface` engine itself — see
+> [floating-surfaces.md](floating-surfaces.md#shared-lifecycle). Modal scopes
+> publish `DismissRequested` and one committed `Exited` notification under the
+> [modal lifetime contract](modality.md#nested-scopes-and-lifetime).
 
 ## Ordering
 
@@ -63,20 +68,39 @@ after the initial capabilities, root layout, and first committed frame. The
 cancellable `Stopping` request occurs once, and `Stopped` fires after cleanup
 attempts and pending invocation completion.
 
-Two terminal paths skip `Stopping` entirely and raise only `Stopped`: a
-`Starting` handler that throws, and disposing an application that was never
-started. Both mean the application never ran, so there is no running state for a
-handler to veto — and a `Stopping` raised there would arrive after `Stopped`, on
-a tree that has already been disposed. `Stopped` is therefore the event to hook
-for teardown that must run on every path; `Stopping` is specifically the
-cancellable request to stop something that is currently running.
+Four terminal paths skip `Stopping` entirely and raise only `Stopped`: a
+`Starting` handler that throws, disposing an application that was never started,
+a process signal that lands before the run begins, and a run token already
+cancelled at the first await. All four mean the application never ran, so there
+is no running state for a handler to veto — and a `Stopping` raised there would
+arrive after `Stopped`, on a tree that has already been disposed. `Stopped` is
+therefore the event to hook for teardown that must run on every path; `Stopping`
+is specifically the cancellable request to stop something that is currently
+running.
 
-A lifecycle handler that throws never skips the state transition behind it. The
-exception is reported through `UnhandledException` — see
+> [!NOTE]
+>
+> The cancellation token passed to `StopAsync` cancels only the caller's
+> observation, never the stop itself. The stop request is queued without the
+> token, so an already-cancelled token throws `OperationCanceledException` at
+> the caller while shutdown proceeds to completion regardless.
+
+A `Starting`, `Started`, or `FrameRendered` handler that throws never skips the
+state transition behind it. The exception is reported through
+`UnhandledException` — see
 [error-handling.md](../architecture/error-handling.md) — and the application
-continues to the next transition either way, so marking the failure handled
-leaves a coherent application rather than one wedged part-way through startup or
-a frame.
+continues to the next transition either way. A `Stopping` handler's exception
+takes a different channel: it is recorded into `Failure` and
+`LastCleanupException` directly, without raising `UnhandledException`, because
+transport ordering can no longer host an interactive policy decision once
+shutdown has begun.
+
+> [!NOTE]
+>
+> Marking an `UnhandledException` handled suppresses only the forced stop — it
+> does not erase the failure. `Failure` is recorded before the event raises and
+> is write-once, so the application's completion still faults at teardown and a
+> console host still reports `Failed`, even for a handled exception.
 
 The five response events are dispatcher-affine and preserve their mutual
 transport order across numeric, palette, metrics, DECRQSS, and XTGETTCAP
@@ -113,7 +137,7 @@ invalidated exactly once before the slot notification. A callback failure cannot
 roll the tree back or suppress the later cleanup; an unexpected earlier failure
 still requests invalidation from the transaction's `finally` path, and the first
 failure is rethrown afterward. Direct child disposal uses only
-`ReleaseReason.IsDisposed`, even though clearing the attached context still
+`ReleaseReason.Disposed`, even though clearing the attached context still
 publishes the normal `OnDetached` lifecycle hook.
 
 Resize follows the ordering in the

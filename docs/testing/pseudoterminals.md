@@ -11,9 +11,9 @@ equivalent coverage through a real ConPTY-backed fixture.
 A Windows pseudo console has no "slave" the current process can enter raw mode
 on directly: only a process created attached to it via
 `PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE` ever sees a real console.
-`Support/ WindowsPseudoterminal.cs` creates the pseudo console and spawns the
+`Support/WindowsPseudoterminal.cs` creates the pseudo console and spawns the
 `SharpVision.Terminal.Probe` helper attached to it;
-`Runtime/ WindowsConsoleHostConPtyTests.cs` drives that probe through the
+`Runtime/WindowsConsoleHostConPtyTests.cs` drives that probe through the
 `ConsoleHost.Open`/`ConsoleConnection.Dispose` lifecycle and reads its
 plain-text and raw-byte reports back over the pseudo console's own pipes. These
 tests skip only on non-Windows platforms — creating and attaching to a pseudo

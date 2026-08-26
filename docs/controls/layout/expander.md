@@ -2,12 +2,13 @@
 
 ## Overview
 
-`Expander` is declared `public sealed class Expander : HeaderedContentControl`.
-It displays a collapsible section with a focusable header toggle and optional
-content. Pressing Enter or Space, or clicking the header with the primary
-pointer button, toggles the visibility of the content region below. The header
-row always renders the resolved expanded or collapsed disclosure glyph, followed
-by `Header` arranged into the remaining width.
+`Expander` is declared `public sealed class Expander : HeaderedContentControl`
+and implements `IStyled<ExpanderStyle>`. It displays a collapsible section with
+a focusable header toggle and optional content. Pressing Enter or Space, or
+clicking the header with the primary pointer button, toggles the visibility of
+the content region below. The header row always renders the resolved expanded or
+collapsed disclosure glyph, followed by `Header` arranged into the remaining
+width.
 
 The Expander itself owns focus, hover, and press for the header row, and keeps
 the disclosure glyph and the focus-highlighted row background as its own chrome.
@@ -59,8 +60,18 @@ the plain-text convenience described by
 `IsExpanded` defaults to `true` and controls content visibility. When it is
 `false`, only the header row renders; the content is excluded from measure,
 arrangement, rendering, hit testing, and navigation, but it remains owned and
-attached. `ExpandedChanged` fires after `IsExpanded` commits a changed value. If
-a property observer commits a newer expansion state, that newer transition owns
+attached.
+
+> [!NOTE]
+>
+> The exclusion works by writing the content's own public `Visibility`:
+> collapsing assigns `Collapsed`, and expanding restores the visibility the
+> child had when it was assigned as `Content` — not the value it holds now. A
+> child whose `Visibility` was changed after assignment silently reverts to that
+> captured value on the next expand.
+
+`ExpandedChanged` fires after `IsExpanded` commits a changed value. If a
+property observer commits a newer expansion state, that newer transition owns
 content visibility and the typed event; the superseded outer setter does not
 publish a stale `ExpandedChanged` payload. `Content` is the single owned child,
 arranged below the header row while expanded. Replacing the content while

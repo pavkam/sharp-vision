@@ -45,8 +45,8 @@ classDiagram
 | `Items`                                                    | `NavigationViewEntryCollection`                         | Empty          | Holds main items, groups, and separators in a scrollable section.             |
 | `FooterItems`                                              | `NavigationViewEntryCollection`                         | Empty          | Holds equivalent entries pinned below the main section.                       |
 | `SelectedItem`                                             | `NavigationViewItem?`                                   | `null`         | Read-only; the selected item across both sections.                            |
-| `ScrollBarStyle`                                           | `ScrollBarStyle?`                                       | `null`         | Local style for the generated bar; `null` resolves to `ThinLine`.             |
-| `ActualScrollBarStyle`                                     | `ScrollBarStyle`                                        | `ThinLine`     | Read-only; the style applied to the generated bar.                            |
+| `ScrollBarStyle`                                           | `ScrollBarStyle?`                                       | `null`         | Local style for the generated bar; `null` keeps theme resolution.             |
+| `ActualScrollBarStyle`                                     | `ScrollBarStyle`                                        | Resolved       | Read-only; the style applied to the generated bar.                            |
 | `Extent`                                                   | `Size`                                                  | Empty          | Read-only; the committed non-negative content extent of the scroll container. |
 | `Viewport`                                                 | `Size`                                                  | Empty          | Read-only; the committed non-negative visible extent of the scroll container. |
 | `HorizontalOffset`                                         | `int`                                                   | `0`            | The valid horizontal content offset of the generated scroll container.        |
@@ -78,9 +78,10 @@ viewport height minus `PageOverlap`, and they are handled even when the cursor
 cannot move any further, so the key never escapes to page an enclosing
 scrollable container. Home and End move to the first or last available entry.
 The current entry scrolls into view automatically. Enter and Space toggle a
-current group or invoke a current item without transferring focus. When no entry
-is current, activation first establishes the first available entry and then
-applies its action.
+current group or invoke a current item without transferring focus, firing once
+per key hold and only with activation-eligible modifiers, while the navigation
+keys repeat while held. When no entry is current, activation first establishes
+the first available entry and then applies its action.
 
 `LineSize` forwards the mouse wheel's cell step to the generated scroll
 container; keyboard Up and Down always move by exactly one entry regardless of
@@ -158,16 +159,17 @@ glyphs, and the separator's own rule glyph resolve from each control's
 control. `NavigationViewItemStyle` carries the immutable `IdleMarker` and
 `CurrentMarker`; `NavigationViewGroupStyle` carries `CollapsedGlyph`,
 `ExpandedGlyph`, and `ItemIndent`; `NavigationViewSeparatorStyle` carries
-`Glyph`. When no local `Style` is assigned, `ActualStyle` resolves the active
-theme's markers, falling back to the library's code-owned defaults.
+`Glyph`. When no local `Style` is assigned, `ActualStyle` completes from the
+library's code-owned markers; the theme's `glyphs` family does not cover
+navigation markers, so a local `Style` is the only way to move them.
 
 > [!NOTE]
 >
 > To override a marker, assign a complete local `Style` — for example
 > `item.Style = item.ActualStyle with { CurrentMarker = new Rune('▶') }` —
 > rather than looking for a single-glyph property. Assigning `Style = null`
-> returns the control to theme or code-owned ownership; there is no separate
-> reset method for an individual marker.
+> returns the control to code-owned ownership; there is no separate reset method
+> for an individual marker.
 
 ## Example
 

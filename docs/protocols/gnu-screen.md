@@ -46,14 +46,15 @@ outer profile, typed-operation approval, visibility gate, finite nesting, and
 bounded reply handling. A mixed route permits one farthest Screen layer with
 zero or more surrounding tmux layers. Screen-before-tmux and duplicate Screen
 layers are unsafe and therefore rejected. Detection records the nearest Screen
-layer from non-empty `STY` or `TERM=screen-*`, mirroring the equivalent
-non-empty `TMUX` fallback for tmux; either path detects only the nearest inner
-layer and cannot prove outer-terminal support.
+layer from non-empty `STY`, a bare `TERM=screen`, or `TERM=screen-*` — note the
+tmux side is narrower: only non-empty `TMUX` or a `TERM=tmux-*` prefix matches,
+never a bare `TERM=tmux`. Either path detects only the nearest inner layer and
+cannot prove outer-terminal support.
 
-Startup routes Kitty keyboard status, DA1, DA2, DEC mode reports, and cell or
-window metrics because those are CSI sequences. It neither writes nor registers
-OSC 4/10/11, XTGETTCAP, or DECRQSS, so omitted families consume no query slot
-and cannot hold publication until the deadline.
+Startup routes Kitty keyboard status, DA1, DA2, DEC mode reports, cell or window
+metrics, and the trailing `CSI 6 n` fence because those are CSI sequences. It
+neither writes nor registers OSC 4/10/11, XTGETTCAP, or DECRQSS, so omitted
+families consume no query slot and cannot hold publication until the deadline.
 
 > [!NOTE]
 >

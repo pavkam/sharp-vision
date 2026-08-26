@@ -17,11 +17,12 @@ needs arbitrary owned content instead of a plain caption does not call
 `EnableCaption` - it derives from [`InputBase`](input-base.md#overview) directly
 and calls whichever capabilities it actually needs, the way
 [`ComboBox`](input/combo-box.md#overview), `DateInput`, and `DateTimeInput` do
-for their popup-backed fields, calling only `EnablePressActivation`. `ListItem`
-composes the same shared press behavior directly (not through `InputBase`) while
-keeping [`ContentControl`](content-control.md#overview)'s replaceable `Content`
-edge for realized template output, since it already derives from
-`ContentControl` for that reason.
+for their popup-backed fields, pairing `EnablePopup` with
+`EnablePressActivation` and skipping the caption capability. `ListItem` composes
+the same shared press behavior directly (not through `InputBase`) while keeping
+[`ContentControl`](content-control.md#overview)'s replaceable `Content` edge for
+realized template output, since it already derives from `ContentControl` for
+that reason.
 
 Concrete controls implement `Activate(ActivationCause)`. `Button`, `CheckBox`,
 `RadioButton`, `HyperlinkButton`, and `MenuItem` call `EnablePressActivation`,

@@ -273,10 +273,10 @@ Boolean values. Numeric identifiers, including `U8`, accept only numeric values.
 `RGB` accepts exactly these ncurses forms and is metadata used with validated
 `setaf`/`setab`, never a parameter program itself:
 
-- Boolean `true` derives the total color-index width from `colors`, then assigns
-  red `(width + 2) / 3`, green `(width + 1) / 3`, and blue `width / 3` with
-  integer division. Thus `colors#256` is `3/3/2`, while `colors#16777216` is
-  `8/8/8`.
+- Boolean `true` is accepted when `colors` is a power of two. The ncurses
+  convention derives per-component bit widths from that total, but SharpVision
+  does not model component widths for this form — the color tier is derived from
+  `colors` alone.
 - A positive numeric value gives equal bits per red, green, and blue component;
   for example, `RGB#1` means `1/1/1`.
 - A string is exactly three slash-separated decimal bit widths,

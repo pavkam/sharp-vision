@@ -14,7 +14,7 @@ after return, frame completion, or disposal.
 | Terminal context        | Session and application      | One immutable snapshot at a time |
 | Backend identity        | Shared immutable instance    | Fixed for application lifetime   |
 | Discovery input         | Discovery context            | One detection pass               |
-| Query lifecycle state   | IsActive-query strategy      | Startup publication or disposal  |
+| Query lifecycle state   | Active-query strategy        | Startup publication or disposal  |
 | Front frame             | Renderer                     | Until a later successful commit  |
 | Back frame              | Frame builder                | Until commit/abandon             |
 | Grapheme arena          | Frame/screen owner           | While referenced by owned cells  |
@@ -83,9 +83,9 @@ by the parser and router remain owned after the session read buffer is reused.
 
 A rendering `Frame` owns its pooled cells and UTF-8 arena until disposal.
 `CellInfo` contains metadata only, and `CopyGrapheme` is the boundary where
-bytes cross into caller-owned storage. `Canvas` borrows its frame and becomes
-unusable when that frame is disposed. `Frame.Clear` clears active text bytes so
-the arena can be reused, while disposal clears the full rented arrays —
+bytes cross into caller-owned storage. `TerminalCanvas` borrows its frame and
+becomes unusable when that frame is disposed. `Frame.Clear` clears active text
+bytes so the arena can be reused, while disposal clears the full rented arrays —
 including hyperlink references — before returning them to the pool.
 
 `Renderer` owns its committed front-frame copy, one finite pooled byte buffer,
@@ -94,17 +94,18 @@ handed to a caller: damage tracking compares every target against it, so
 external mutation would desynchronize the frame from the physical terminal, and
 external disposal would permanently break a live renderer.
 `Renderer.AttachCommittedFrame` instead links it to a target frame, which reads
-it only through `Canvas.HasPreviousFrame` and `Canvas.CopyFromPrevious`. That
-copy takes complete grapheme owners only — a wide cluster straddling the region
-is written blank rather than split — validates geometry compatibility, and
-preflights the destination arena, so a rejected copy leaves the target unchanged
-and repeated copies cannot exceed the advertised bound. The renderer's
-preallocated transaction snapshot retains only owned immutable static-variable
-values and rolls back on failed encoding or output. The caller retains ownership
-of every back frame and transport. Back-frame memory is borrowed until
-`RenderAsync` completes; `ITransport.WriteAsync` borrows renderer memory until
-its returned operation completes and must either transfer the complete memory or
-throw. Renderer disposal never disposes a borrowed transport.
+it only through `TerminalCanvas.HasPreviousFrame` and
+`TerminalCanvas.CopyFromPrevious`. That copy takes complete grapheme owners only
+— a wide cluster straddling the region is written blank rather than split —
+validates geometry compatibility, and preflights the destination arena, so a
+rejected copy leaves the target unchanged and repeated copies cannot exceed the
+advertised bound. The renderer's preallocated transaction snapshot retains only
+owned immutable static-variable values and rolls back on failed encoding or
+output. The caller retains ownership of every back frame and transport.
+Back-frame memory is borrowed until `RenderAsync` completes;
+`ITransport.WriteAsync` borrows renderer memory until its returned operation
+completes and must either transfer the complete memory or throw. Renderer
+disposal never disposes a borrowed transport.
 
 `Terminal.Graphics.ImageSource` copies RGBA or structurally validated PNG bytes
 into private immutable storage. Public callers recover bytes only through a

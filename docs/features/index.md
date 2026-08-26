@@ -7,19 +7,23 @@ table; the current support state for each terminal protocol lives only in the
 
 ## Application and UI
 
-| Need                                             | Public surface                                                       | Reference                                                         |
-| ------------------------------------------------ | -------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Interactive console hosting                      | `ConsoleApplication` and `ConsoleApplicationBuilder`                 | [Hosting](../concepts/hosting.md#overview)                        |
-| Retained mutable controls                        | `ControlBase`, `Container`, `ContentControl`, `CompositeControlBase` | [Control catalog](../controls/index.md#control-catalog)           |
-| Strongly typed model binding                     | `Bind`, `BindItems`, `BindSelection`, `BindingMode`                  | [Data binding](../concepts/data-binding.md#overview)              |
-| Fixed, auto, percentage, and proportional layout | `Length`, `Stack`, `Dock`, `Grid`, `Overlay`                         | [Layout](../concepts/layout.md#overview)                          |
-| Elevated windows, dialogs, popups, and tooltips  | `FloatingSurfaceBase`, `Window`, `Dialog<TResult>`, `Popup`          | [Floating surfaces](../concepts/floating-surfaces.md#overview)    |
-| Routed keyboard and pointer input                | Preview/bubble events, focus, pointer capture                        | [Input routing](../concepts/input-routing.md#overview)            |
-| Scrollable content                               | `Container.AutoScroll` and scrollbar policy                          | [Scrolling](../concepts/scrolling.md#overview)                    |
-| Styling and themes                               | `Color` and `Theme`                                                  | [Themes](../concepts/themes.md#overview)                          |
-| Unicode-safe cells                               | Grapheme segmentation, width policy, wide-cell repair                | [Unicode geometry](../concepts/unicode-cell-geometry.md#overview) |
-| Menus, popups, and windows                       | Retained controls and popup render layer                             | [Control catalog](../controls/index.md#control-catalog)           |
-| Images                                           | `Image`, `ImageStretch`, and immutable graphics sources              | [Image control](../controls/display/image.md#overview)            |
+| Need                                             | Public surface                                                       | Reference                                                          |
+| ------------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Interactive console hosting                      | `ConsoleApplication` and `ConsoleApplicationBuilder`                 | [Hosting](../concepts/hosting.md#overview)                         |
+| Retained mutable controls                        | `ControlBase`, `Container`, `ContentControl`, `CompositeControlBase` | [Control catalog](../controls/index.md#control-catalog)            |
+| Strongly typed model binding                     | `Bind`, `BindItems`, `BindSelection`, `BindingMode`                  | [Data binding](../concepts/data-binding.md#overview)               |
+| Fixed, auto, percentage, and proportional layout | `Length`, `Stack`, `Dock`, `Grid`, `Overlay`                         | [Layout](../concepts/layout.md#overview)                           |
+| Elevated windows, dialogs, popups, and tooltips  | `FloatingSurfaceBase`, `Window`, `Dialog<TResult>`, `Popup`          | [Floating surfaces](../concepts/floating-surfaces.md#overview)     |
+| Routed keyboard and pointer input                | Preview/bubble events, focus, pointer capture                        | [Input routing](../concepts/input-routing.md#overview)             |
+| Scrollable content                               | `Container.AutoScroll` and scrollbar policy                          | [Scrolling](../concepts/scrolling.md#overview)                     |
+| Styling and themes                               | `Color` and `Theme`                                                  | [Themes](../concepts/themes.md#overview)                           |
+| Unicode-safe cells                               | Grapheme segmentation, width policy, wide-cell repair                | [Unicode geometry](../concepts/unicode-cell-geometry.md#overview)  |
+| Menus, popups, and windows                       | Retained controls and popup render layer                             | [Control catalog](../controls/index.md#control-catalog)            |
+| Images                                           | `Image`, `ImageStretch`, and immutable graphics sources              | [Image control](../controls/display/image.md#overview)             |
+| Toast notifications                              | `Toast` and its edge-slot stacking                                   | [Toast](../controls/notifications/toast.md#overview)               |
+| Rich documents and Markdown                      | `Document` and `MarkdownDocumentReader`                              | [Markdown documents](../concepts/markdown-documents.md#overview)   |
+| Syntax-highlighted source display                | `CodeView` and `SyntaxDefinitionCatalog`                             | [Syntax highlighting](../concepts/syntax-highlighting.md#overview) |
+| Text selection and clipboard copy                | `IsTextSelectionEnabled` and selection commands                      | [Text selection](../concepts/text-selection.md#overview)           |
 
 Every shipped control documents a C# example and its expected behavior on its
 own page. The
@@ -48,15 +52,17 @@ reason—is in the [coverage table](../protocols/coverage-matrix.md#coverage).
 The public `Image` control reaches Kitty graphics, sixel, and iTerm2 multipart
 images through backend selection and shutdown that the `Application` owns.
 Detecting a generic OSC, DCS, or APC parser—or recognizing a terminal by name—is
-not enough to turn on raster output: iTerm2 requires an explicit 3.5+ multipart
-override, and when a multiplexer is detected, graphics always go through its
-wrapping policy rather than falling back to unwrapped direct output.
+not enough to turn on raster output: iTerm2 requires a positive capability query
+reply or an explicit override, corroborated to the 3.5+ multipart protocol, and
+when a multiplexer is detected, graphics always go through its wrapping policy
+rather than falling back to unwrapped direct output.
 
-Windows console hosting is implemented and unit-tested at its mode-flag and
-P/Invoke boundaries, and the test suite runs on Windows in continuous
-integration; see [hosting](../concepts/hosting.md#windows) for the platform
-rules. Unix hosting uses the real tty and preserves both cell and pixel
-dimensions where the platform reports them.
+Windows console hosting is implemented, unit-tested at its mode-flag and
+P/Invoke boundaries, and exercised against a real ConPTY pseudo console in the
+Windows continuous-integration lane; see
+[hosting](../concepts/hosting.md#windows) for the platform rules. Unix hosting
+uses the real tty and preserves both cell and pixel dimensions where the
+platform reports them.
 
 ## Proof and limits
 

@@ -36,6 +36,7 @@ classDiagram
 | `Show(int row, int col)`       | `void`                | —              | Opens the menu at a zero-based root-cell position; a no-op until the menu is assigned to some `ControlBase.ContextMenu`.                                                             |
 | `Close()`                      | `void`                | —              | Closes the menu and clears its fixed origin; safe to call again.                                                                                                                     |
 | `ResetPopupChrome()`           | `void`                | —              | Returns the owned popup's border and shadow to `PopupChrome` ownership.                                                                                                              |
+| `Dispose()`                    | `void`                | —              | Closes the menu and disposes the owned popup and menu tree; the coordinator is unusable afterward.                                                                                   |
 | `Opening`, `Closing`, `Closed` | `EventHandler`        | No subscribers | Lifecycle notifications raised in order around visibility changes.                                                                                                                   |
 
 ## Ownership

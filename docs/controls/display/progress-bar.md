@@ -22,7 +22,7 @@ classDiagram
 | `IsIndeterminate`      | `bool`                                        | `false`                  | Switches from value-based fill to a static unknown-duration glyph fill (no animation).           |
 | `Orientation`          | `Orientation`                                 | `Orientation.Horizontal` | Chooses left-to-right or bottom-to-top fill; rejects an unknown value.                           |
 | `UseSubCellResolution` | `bool`                                        | `false`                  | Uses the theme's eight fractional block levels for finer-than-cell progress.                     |
-| `ValueChanged`         | `EventHandler<ProgressValueChangedEventArgs>` | —                        | Raised for every committed `Value` transition, however it was caused.                            |
+| `ValueChanged`         | `EventHandler<ProgressValueChangedEventArgs>` | —                        | Raised after a committed `Value` transition while that commit is still the newest generation.    |
 | `Style`                | `ProgressBarStyle?`                           | `null`                   | Optional complete developer-authored presentation.                                               |
 | `ActualStyle`          | `ProgressBarStyle`                            | Resolved                 | Read-only; the complete local, theme-owned, or code-owned presentation.                          |
 
@@ -32,10 +32,13 @@ cases before any mutation. Changing an endpoint clamps the current value in the
 same transaction, before any notification fires, so every notification observes
 coherent, already-clamped state: `PropertyChanged(Minimum)` or
 `PropertyChanged(Maximum)` fires first, followed by `PropertyChanged(Value)` and
-`ValueChanged` when the clamp actually changed the value.
-`PropertyChanged(Value)` and `ValueChanged` always agree, observing the same
-history; a clamp that leaves `Value` unchanged raises neither. The event args
-expose the committed value as `Value`, matching the other range controls.
+`ValueChanged` when the clamp actually changed the value. Publication is
+versioned under synchronous reentry: a `PropertyChanged(Value)` observer that
+commits a newer value supersedes the interrupted transition, which then raises
+no further events — so `ValueChanged` fires only for the commit that is still
+newest, and a superseded transition may publish `PropertyChanged` without its
+typed event. A clamp that leaves `Value` unchanged raises neither. The event
+args expose the committed value as `Value`, matching the other range controls.
 
 Determinate rendering normalizes the value with overflow-safe scaled arithmetic
 when opposite-sign finite endpoints would produce an infinite direct span, then
@@ -45,9 +48,9 @@ Horizontal fill grows from the left, vertical fill from the bottom.
 
 The intrinsic desired size is ten cells on the main axis and one cell on the
 cross axis, and both alignment axes default to `Stretch`. Rendering uses the
-resolved visual-state style, draws inside `ContentBounds`, and participates in
-shared intrinsic chrome. Zero content bounds draw nothing, and the control never
-handles pointer or keyboard input.
+resolved visual-state style, paints across the control's full `Bounds` — padding
+does not inset the fill — and participates in shared intrinsic chrome. Zero
+bounds draw nothing, and the control never handles pointer or keyboard input.
 
 ## Presentation and glyphs
 
@@ -58,6 +61,13 @@ presentation on top of the inherited `Face`/`Border`/`Shadow`:
 | ----------------------------------------------- | ------------------- | ------------------------------------------------------------------- |
 | `FillColor`, `TrackColor`, `IndeterminateColor` | `ControlColor`      | The required, non-transparent foreground for each rendered part.    |
 | `Glyphs`                                        | `ProgressBarGlyphs` | The validated one-cell `Fill`, `Track`, and `Indeterminate` glyphs. |
+
+> [!NOTE]
+>
+> With `UseSubCellResolution` enabled, the partial boundary cell always comes
+> from the code-owned fractional block ramp, never from the assigned `Glyphs`:
+> the ramp's endpoints must equal the full and empty cells exactly, so only the
+> full and empty cells honor a custom `Fill`/`Track` glyph.
 
 A `with` expression creates a validated member-wise copy of
 `ProgressBarStyle.Default` or of any resolved style. Assigning `Style` replaces

@@ -79,11 +79,13 @@ mapped graphemes are restyled, so wide cells are never split and borders or
 other non-semantic chrome remain untouched. Specialized controls may retain a
 typed selection face while exposing the same inherited state.
 
-After routed Ctrl+C remains unhandled, `Application` walks from focus toward the
-active boundary. It chooses the nearest enabled text-selection owner before
-falling back to another `IClipboardCopySource`, calls the chosen pure copy
-method exactly once, and treats an empty result as authoritative. Cut, paste,
-replacement, and password-disclosure policy remain editor-specific.
+The framework's Ctrl+C handler acts during the preview phase from the
+application root, ahead of descendant handlers and control defaults;
+`Application` walks from focus toward the active boundary. It chooses the
+nearest enabled text-selection owner before falling back to another
+`IClipboardCopySource`, calls the chosen pure copy method exactly once, and
+treats an empty result as authoritative. Cut, paste, replacement, and
+password-disclosure policy remain editor-specific.
 
 ## Validation and threading
 

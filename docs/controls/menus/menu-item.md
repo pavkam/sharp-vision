@@ -77,16 +77,17 @@ Check and radio markers, and the separator's own rule glyph, resolve from
 `Reset*Glyph` method: `MenuItemStyle` carries the complete immutable
 `UncheckedGlyph`, `CheckedGlyph`, `RadioUncheckedGlyph`, and `RadioCheckedGlyph`
 set, and `MenuSeparatorStyle` carries `Glyph`. When no local `Style` is
-assigned, `ActualStyle` resolves the active theme's markers, falling back to the
-library's code-owned defaults.
+assigned, `ActualStyle` completes from the library's code-owned markers; the
+theme's `glyphs` family does not cover menu markers, so a local `Style` is the
+only way to move them.
 
 > [!NOTE]
 >
 > To override a marker, assign a complete local `Style` — for example
 > `item.Style = item.ActualStyle with { CheckedGlyph = new Rune('✓') }` — rather
 > than looking for a single-glyph property. Assigning `Style = null` returns the
-> item to theme or code-owned ownership; there is no separate reset method for
-> an individual marker.
+> item to code-owned ownership; there is no separate reset method for an
+> individual marker.
 
 ## Affixes
 
@@ -152,7 +153,9 @@ set, `Shortcut` supplies its conventional display text; for example,
 `new KeyGesture(Code.Character, Modifiers.Control, new Rune('s'))` displays as
 `"Ctrl+S"`. An explicit `ShortcutText` assignment always wins over the derived
 text, following the same local-wins-over-derived precedence used throughout the
-library.
+library. Assigning `Shortcut` synchronizes the derived display text and the
+dispatcher's live-shortcut registration before the property publishes, and a
+reentrant newer assignment owns both.
 
 ## Shortcut dispatch
 
@@ -172,6 +175,15 @@ removed, disposed, reparented, or as a submenu opens and closes.
   the key entirely: it is never routed to the focused control, so a chord bound
   as a shortcut is never also typed or otherwise handled by whatever currently
   has focus.
+
+> [!WARNING]
+>
+> `KeyGesture` accepts `Modifiers.None`, so an unmodified character is a valid
+> `Shortcut` — and because dispatch runs before routing, binding one makes that
+> letter untypeable in every focused editor application-wide, with no
+> diagnostic. Reserve unmodified-character shortcuts for applications with no
+> text input.
+
 - **Duplicate gestures cycle from the current focus**, exactly like duplicate
   access keys: repeated presses advance from whichever match currently contains
   focus to the next one in tree order, wrapping around.

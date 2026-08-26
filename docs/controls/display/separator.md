@@ -23,17 +23,17 @@ classDiagram
 
 The intrinsic desired size is one cell by one cell. Because both inherited
 alignment axes default to `Stretch`, parent layout determines the final line
-length: horizontal drawing fills the first content row and vertical drawing
-fills the first content column. Either alignment can be replaced normally. Zero
-content bounds draw nothing. Changing the orientation invalidates measure and
-rendering — the active axis changes even though the intrinsic size stays one
-cell by one cell.
+length: horizontal drawing fills the first row of `Bounds` and vertical drawing
+fills the first column of `Bounds` — padding does not inset the line. Either
+alignment can be replaced normally. Zero bounds draw nothing. Changing the
+orientation invalidates measure and rendering — the active axis changes even
+though the intrinsic size stays one cell by one cell.
 
 By default the line uses the normal theme border color, combined with the
 resolved visual-state style and the inherited semantic cell policy. Separator
 participates in shared intrinsic chrome when border, body fill, or shadow
-properties are set, and draws its line inside `ContentBounds`. It never handles
-pointer or keyboard input.
+properties are set, and draws its line across `Bounds`. It never handles pointer
+or keyboard input.
 
 ## Glyphs
 

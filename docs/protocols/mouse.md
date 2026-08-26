@@ -42,23 +42,28 @@ pending X10 report rather than being treated as a keystroke.
 
 Cell reports subtract the wire's one-based origin exactly once. With
 `Input.InputOptions.PixelMouse`, SGR coordinates are retained as zero-based
-pixels; validated `Geometry.CellMetrics` derive optional cells from exact total
-dimensions and set `CellPositionInferred`. Without metrics, pixels remain
-available and cells stay null. Undefined extended buttons, negative/zero
-ordinary coordinates, overlong X10 fields, invalid UTF-8, and malformed decimal
-forms report once and recover at the next input.
+pixels; validated `Geometry.CellMetrics` derive optional cells and set
+`CellPositionInferred` — from exact total dimensions when both grids are known,
+or by dividing through the nominal cell size when only a cell-size report
+arrived. Without any metrics, pixels remain available and cells stay null.
+Undefined extended buttons, negative/zero ordinary coordinates, overlong X10
+fields, invalid UTF-8, and malformed decimal forms report once and recover at
+the next input.
 
 Exact metrics preserve total cell and pixel dimensions. For an in-window pixel
 coordinate, each axis maps as `floor(pixel * cellCount / pixelCount)` using a
 checked 64-bit intermediate. Uneven grids therefore retain every final column
-and row instead of truncating one nominal cell size. Coordinates outside the
-known pixel rectangle are not clamped into the terminal.
+and row instead of truncating one nominal cell size. On the exact path,
+coordinates outside the known pixel rectangle refuse to map and are not clamped
+into the terminal; the nominal path has no window rectangle, so an out-of-window
+pixel there maps to an out-of-grid cell instead.
 
 Cell-protocol reports always expose cell coordinates. Pixel-protocol reports
-always expose pixels and expose nullable cells only when exact mapping succeeds.
-Pointer leave has neither coordinate. Ordinary hit testing requires cells; an
-existing capture may receive pixel-only motion or release for a documented
-pixel-aware behavior. Missing metrics never fabricate top-left cell zero.
+always expose pixels and expose nullable cells only when metrics-based mapping
+succeeds. Pointer leave has neither coordinate. Ordinary hit testing requires
+cells; an existing capture may receive pixel-only motion or release for a
+documented pixel-aware behavior. Missing metrics never fabricate top-left cell
+zero.
 
 ## Input and lifecycle coverage
 

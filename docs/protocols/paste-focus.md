@@ -37,6 +37,14 @@ payloads are normalized to valid UTF-8 with U+FFFD for malformed subsequences,
 copied into an owned `Paste`, and remain stable when decoder storage is reused.
 End-of-stream drops partial payload and reports truncation.
 
+> [!WARNING]
+>
+> Overflow discards the entire paste, not the excess. The first byte past
+> `MaxPasteBytes` zeroes everything retained so far, and the finished paste
+> yields one `StringLimit` diagnostic and no `Paste` value at all — with the 16
+> MiB default, a paste one byte over produces nothing rather than a truncated
+> prefix. Size the cap for the largest paste the application must accept.
+
 CSI I/O emit immutable gained/lost `TerminalFocus` values. They are terminal
 focus only; application routing applies the separate
 [UI focus policy](../concepts/input-routing.md#route-construction).

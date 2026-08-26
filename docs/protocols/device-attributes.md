@@ -56,9 +56,10 @@ values stay immutable, and timeouts never promote unknown support.
 
 ## Typed API and behavior
 
-`XtermResponses.TryCsi` owns validated DA1, DA2, cursor-position DSR, and DECRPM
-values. `XtermResponses.TryMetricsCsi` accepts only the xterm window-operation
-reports `CSI 4 ; height ; width t`, `CSI 6 ; height ; width t`, and
+`XtermResponses.TryCsi` owns validated DA1, DA2, cursor-position DSR, DECRPM,
+and xterm modifyOtherKeys (`CSI > 4 ; Pv m`) values.
+`XtermResponses.TryMetricsCsi` accepts only the xterm window-operation reports
+`CSI 4 ; height ; width t`, `CSI 6 ; height ; width t`, and
 `CSI 8 ; height ; width t`; both extents must be from 1 through 65535 before a
 `MetricsResponse` is constructed. `XtermResponses.TryOsc` owns `PaletteResponse`
 values for OSC 4, OSC 10, and OSC 11. One-to-four-digit hexadecimal RGB
@@ -122,10 +123,15 @@ sequenceDiagram
 
 The runtime emits one description-first bounded batch. DA1 is always admitted.
 When Kitty status is still unknown and the limit has at least two slots, its
-status query appears immediately before DA1. DA2 follows DA1 when another slot
-is available. Later slots refine only unknown or tentative DECRQM modes 2026,
-1004, 2004, 1006, and 1016; definitive database evidence and explicit overrides
-suppress their corresponding probes.
+status query appears before DA1, with the Kitty graphics probe between the two
+when that family is also unknown. DA2 follows DA1 when another slot is
+available. Later slots refine only unknown or tentative DECRQM modes 2026, 1004,
+2004, 1006, and 1016; definitive database evidence and explicit overrides
+suppress their corresponding probes. When `ItermImages` is unknown or tentative
+with no override and no multiplexer, the batch also carries the
+`OSC 1337 ; Capabilities` probe. The batch ends with a `CSI 6 n` cursor-position
+fence: its reply retires every still-unanswered family without granting it
+query-origin evidence, so silence never outlives the batch.
 
 Local host geometry has precedence over terminal replies. On Unix the session
 samples `TIOCGWINSZ` before constructing the batch; the portable console path

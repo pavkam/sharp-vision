@@ -86,12 +86,12 @@ available header-strip width. `HeaderOverflowPolicy.Scroll` uses the existing
 horizontal container offset and reveals the selected header after keyboard or
 programmatic selection; it does not add a second scrollbar row to the tab strip.
 
-| Input                               | Result                                                                                   |
-| ----------------------------------- | ---------------------------------------------------------------------------------------- |
-| Primary pointer release on a header | Selects that page.                                                                       |
-| Left / Right                        | Moves and selects with wrapping, skipping pages that are effectively hidden or disabled. |
-| Home / End                          | Chooses the first or last eligible page.                                                 |
-| Delete                              | Requests closure of the selected closeable page.                                         |
+| Input                               | Result                                                                                                         |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Primary pointer release on a header | Selects that page.                                                                                             |
+| Left / Right                        | Moves and selects with wrapping, skipping pages that are effectively hidden or disabled.                       |
+| Home / End                          | Chooses the first or last eligible page.                                                                       |
+| Delete                              | Requests closure of the selected closeable page, once per key hold — a held Delete never closes a second page. |
 
 Pointer focus resolves to the `TabControl`, while hover and pressed state stay
 local to the hit header. A selected header combines `VisualState.Selected` with

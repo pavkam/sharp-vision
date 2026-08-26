@@ -98,9 +98,10 @@ confirmation's affirmative, accept-like action) — see
 
 `SaveFileDialog.ShowAsync(owner, options, cancellationToken)` requires a
 non-null, undisposed, attached owner and must be called on the owner's
-dispatcher. Passing a container as the owner makes that container the explicit
+dispatcher. Passing an `Overlay` as the owner makes that Overlay the explicit
 host; any other owner uses its owning Screen's private presentation slot.
-Outside a hosted Screen, the outermost container serves as the fallback host.
+Outside a hosted Screen, the outermost `Overlay` ancestor serves as the fallback
+host; with neither, `ShowAsync` throws.
 
 The helper attaches one temporary dialog directly to that host, presents the
 same object through `ShowModal(OutsideInteraction.Ignore, fileNameInput)`, and
@@ -123,15 +124,16 @@ caps its height at 21 chrome rows plus `MaxVisibleRows`, which makes the default
 maximum 33 rows. Window containment keeps the complete border box inside the
 host after a resize.
 
-One padded Grid owns six rows:
+One padded Grid stacks six visual rows — the metadata row lives inside the
+shared list-area grid, directly under the ListView:
 
 1. A five-cell parent-directory Button whose themed padding leaves `↑` visible,
    next to a stretching directory-path input.
 2. A bordered, vertically scrolling single-selection ListView.
-3. A `Name:` label next to a stretching filename input.
-4. A full-width metadata row split equally between the filter ComboBox on the
+3. A full-width metadata row split equally between the filter ComboBox on the
    leading half and ellipsized loading, count, or error status aligned to the
    trailing edge of the other half.
+4. A `Name:` label next to a stretching filename input.
 5. The Show hidden CheckBox.
 6. A full-width horizontal Separator directly above trailing Save and Cancel
    actions. Their action host is flush with the content bottom without shadows
@@ -150,10 +152,10 @@ separator, file rows use `·`, and names are markup-escaped and ellipsized.
   parent directory. Pressing Enter in the directory input loads that text's
   canonical path.
 - The file list follows select-then-commit: a single primary pointer click on
-  any row - file or directory - only selects it. Committing a row takes Enter,
-  the Save Button, or a second pointer click (a double-click). Committing a
-  directory navigates into it. Selecting a file copies its basename into
-  `FileName`; selecting a directory does not.
+  any row - file or directory - only selects it. Committing a row takes Enter or
+  a second pointer click (a double-click); the Save Button runs only the save
+  path. Committing a directory navigates into it. Selecting a file copies its
+  basename into `FileName`; selecting a directory does not.
 - Committing a file updates the filename and then attempts the Save, whether the
   commit came from Enter, a double-click, or the Save Button.
 - Typing a non-blank filename enables Save. Pressing Enter in the filename input
@@ -161,6 +163,13 @@ separator, file rows use `·`, and names are markup-escaped and ellipsized.
 - The result path is `GetFullPath(Path.Combine(CurrentDirectory, trimmedName))`.
   Filters constrain which rows the browser shows; they never rewrite or append
   to the typed filename.
+
+> [!NOTE]
+>
+> A typed name that resolves to an existing directory never completes: the
+> dialog rejects it in place with a status message and stays open, so a
+> directory path can never come back as the save target.
+
 - When `ConfirmOverwrite` is true and that path already exists, a nested Yes/No
   `MessageBox` — configured through `OverwriteTitle`, `OverwriteMessageFormat`,
   `OverwriteYesText`, `OverwriteNoText`, and `OverwriteStyle` — asks before
@@ -170,6 +179,14 @@ separator, file rows use `·`, and names are markup-escaped and ellipsized.
   filename request and dispatcher attachment that opened it. Editing the name,
   retrying Save, detaching, or migrating the modeless dialog supersedes that
   request, so its later answer cannot publish an abandoned path.
+
+> [!WARNING]
+>
+> With `ConfirmOverwrite` disabled, an existing file's path comes back with no
+> prompt and nothing on `SaveFileResult` distinguishes it — the caller's write
+> then truncates the existing file without the user ever consenting. Leave
+> `ConfirmOverwrite` on unless the caller performs its own existence check.
+
 - Changing the filter or the hidden-entry toggle replaces the asynchronous
   directory load. Tab and Shift+Tab stay inside the modal plane, and input
   outside the dialog is consumed.
@@ -234,8 +251,15 @@ caption, label, or placeholder in place — no control is ever recreated.
 `OverwriteNoText` configure the nested confirmation MessageBox through
 [`MessageBoxOptions`](message-box.md#api) each time it is shown; `ReadyText` and
 `LoadingText` (inherited) set the idle and in-flight status wording. Every
-setter validates non-null before mutating, and `SaveFileOptions` carries the
-same values through its `Copy()` snapshot for `ShowAsync`.
+setter validates non-null before mutating. `SaveFileOptions` carries the caption
+texts and the overwrite title, captions, and style to `ShowAsync`.
+
+> [!IMPORTANT]
+>
+> **Implementation gap:** `SaveFileOptions` does not carry
+> `OverwriteMessageFormat`, `ReadyText`, or `LoadingText`, so a `ShowAsync`
+> caller cannot localize the overwrite question or the status wording — only a
+> directly constructed dialog can set them today.
 
 ## Example
 
@@ -285,7 +309,7 @@ The behavior above is verified end to end, so callers can rely on it:
   fallback, updates the frame coherently after a live Theme swap (structural
   geometry stays code-owned unless a local `Style` moves it), and composes with
   every owned-part style property.
-- Every text property updates its retained control in place, is validated before
-  mutation, and is carried through `SaveFileOptions.Copy()` to `ShowAsync`; the
-  overwrite confirmation uses the configured title, message formatter, captions,
-  and style.
+- Every text property updates its retained control in place and is validated
+  before mutation; the caption texts and the overwrite title, captions, and
+  style are carried through `SaveFileOptions` to `ShowAsync`, and the overwrite
+  confirmation uses them.

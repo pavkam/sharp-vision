@@ -44,10 +44,10 @@ classDiagram
 no chrome of its own beyond what `ControlBase` already provides, so every
 per-part presentation lives on `StatusBarItem` instead.
 
-| Member    | Type                      | Default | Description                                                                                                                 |
-| --------- | ------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `Items`   | `StatusBarItemCollection` | Empty   | Typed collection accepting only detached `StatusBarItem` instances; rejects duplicates, cycles, and cross-parent insertion. |
-| `Spacing` | `int`                     | `1`     | Non-negative terminal cells between adjacent visible items; rejects a negative value.                                       |
+| Member    | Type                      | Default | Description                                                                                                                                                                                   |
+| --------- | ------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Items`   | `StatusBarItemCollection` | Empty   | Typed collection accepting only detached `StatusBarItem` instances; rejects duplicates, cycles, and cross-parent insertion.                                                                   |
+| `Spacing` | `int`                     | `1`     | Non-negative terminal cells between adjacent visible items; rejects a negative value. The retained host is synchronized before the property publishes, and a reentrant newer value owns both. |
 
 `Items` supports `Add`, `Insert`, `Remove`, `RemoveAt`, `Move`, `IndexOf`,
 `Clear`, a settable indexer, and enumeration. Removing, clearing, or replacing
@@ -101,10 +101,10 @@ from their code-owned defaults.
 ## Defaults and appearance
 
 `StatusBar` defaults to a one-cell fixed height, stretched horizontal alignment,
-the active theme's `StatusBar.normal` background, and one cell of inter-item
-spacing. It stays hit-testable so ordinary routed pointer events can be
-observed, but it is not focusable and is not a Tab stop. `StatusBarItem` is also
-non-focusable by default. Interactive retained content keeps its own normal
+the shared code-owned control appearance for its background, and one cell of
+inter-item spacing. It stays hit-testable so ordinary routed pointer events can
+be observed, but it is not focusable and is not a Tab stop. `StatusBarItem` is
+also non-focusable by default. Interactive retained content keeps its own normal
 input and focus behavior.
 
 The inherited `Face` remains theme-owned, so the shared normal appearance
@@ -122,7 +122,7 @@ configuration. Custom controls remain responsible for the shared
 
 ## Layout and clipping
 
-IsVisible left-aligned items keep their collection order from the leading edge,
+Visible left-aligned items keep their collection order from the leading edge,
 and visible right-aligned items keep their collection order as a group at the
 trailing edge. Alignment does not partition the public collection, so
 application code can update or enumerate status items in one semantic order.

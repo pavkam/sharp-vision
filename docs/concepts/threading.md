@@ -4,9 +4,9 @@
 
 The dispatcher thread exclusively owns the attached visual tree, control
 properties, style assignment, focus, pointer capture, layout, rendering, and
-user callbacks. A mutable `Style` resource is the one exception that may be
-changed from another thread; attached subscribers marshal its invalidation back
-to their dispatcher before touching any control state.
+user callbacks. There is no exception for styles: every style value is an
+immutable record, and a replacement is assigned and published on the dispatcher
+like any other control state.
 
 `CheckAccess` reports whether the caller is on the owner thread, and
 `VerifyAccess` throws before an invalid mutation can happen. `Post` queues
@@ -82,6 +82,13 @@ a running timer restarts one complete new interval, and stopping the timer keeps
 its handlers for a later restart. Start, stop, and interval mutation are
 dispatcher-affine. Disposal is thread-safe and idempotent.
 
+> [!NOTE]
+>
+> The stop/restart symmetry does not extend to disposal. `Dispose()` clears the
+> `Tick` handlers, and every later `Start`, `Stop`, or interval assignment
+> throws `ObjectDisposedException` — a disposed timer cannot be restarted the
+> way a stopped one can.
+
 The provider callback never invokes user code directly. It posts at most one
 pending tick, and any periods that elapse while that tick is queued are skipped
 rather than replayed as a burst. A full dispatcher queue drops that period, and
@@ -112,9 +119,9 @@ wake; no user callback or terminal I/O ever runs under them.
 
 The threading model guarantees that off-thread access fails before any mutation,
 posted and invoked work completes with exception and cancellation identity
-preserved, ordering stays FIFO within a priority, resizes coalesce, shutdown
-races resolve safely, queues stay bounded, and callback reentrancy attempts are
-rejected. Timers keep their cadence, interval replacement restarts a full
-interval, ticks coalesce, stop and disposal races resolve safely, handler
-failures follow the unhandled-exception policy, and the loop never busy-waits -
-all of which is observable with a fake clock and waiter.
+preserved, ordering stays FIFO, resizes coalesce, shutdown races resolve safely,
+queues stay bounded, and callback reentrancy attempts are rejected. Timers keep
+their cadence, interval replacement restarts a full interval, ticks coalesce,
+stop and disposal races resolve safely, handler failures follow the
+unhandled-exception policy, and the loop never busy-waits - all of which is
+observable with a fake clock and waiter.

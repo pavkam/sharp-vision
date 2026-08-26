@@ -14,10 +14,9 @@ border preserves both planes. Captioned controls additionally prove
 exact marker-free cells, grapheme underline style, routed precedence, the
 semantic access-key foreground, disabled-state preservation, keyboard action,
 unavailable filtering, duplicate order, modal confinement, and legacy Alt stroke
-and text suppression. The showcase inventory also rejects duplicate reachable
-keys within a page, across the active application tree, or along an open submenu
-path. Generated list data, repeated documentation chrome, and arrow-navigated
-catalog entries do not count as access-key captions.
+and text suppression. Duplicate reachable keys are rejected within a mounted
+tree and along an open submenu path. Generated list data, repeated documentation
+chrome, and arrow-navigated catalog entries do not count as access-key captions.
 
 Default-appearance tests require inactive and disabled semantic
 foreground/border pairs for transparent interactive controls, complete triplets
@@ -249,12 +248,10 @@ real Application and requires public Image fallback bytes before sixel output
 with the same exact metrics. Separate Kitty cases require remote delete then
 flush before transport disposal and prove that a cleanup write failure cannot
 skip Session disposal. Image control tests cover later Window and Popup
-occlusion; the runnable Image showcase is mounted at narrow, normal, and wide
-widths and validates real RGBA and PNG sources, all stretch modes, forced
-fallback, and later semantic overlap badges. Its forced fallback stays
-source-backed; the later overlay makes its placement ineffective. The mounted
-status test publishes changed Application capabilities and requires the
-inherited Kitty, sixel, and iTerm2 state plus origin to update.
+occlusion, real RGBA and PNG sources, all stretch modes, and forced fallback. A
+forced fallback stays source-backed; a later overlay makes its placement
+ineffective. The mounted status test publishes changed Application capabilities
+and requires the inherited Kitty, sixel, and iTerm2 state plus origin to update.
 
 `InteractiveControlTests` composes Button, CheckBox, RadioButton, TextInput,
 ScrollBar, an intrinsically scrollable Stack, and ListView under one real
@@ -294,7 +291,7 @@ scrollbars, and intrinsic container scrolling must enumerate their valid and
 invalid transitions and their event order. Fake clocks drive hover and open
 delays, timers, idle, and repeated input, so no test sleeps on the wall clock.
 
-`ControlBaseTextSelectionTests` and `TextSelectionGestureSurfaceTests` freeze
+The text-selection aspect of `ControlBaseTests` and its surface siblings freeze
 the default opt-out, cross-child semantic order, source-identity invalidation,
 Unicode-safe keyboard and pointer ranges, common multi-click and unmodified
 keyboard navigation, authoritative aggregate arbitration, final-cell styling,
@@ -341,9 +338,9 @@ movement, release, capture loss, both close edges, title-lane collision
 avoidance, and dialog Escape fallback through mounted controls.
 
 Floating-surface architecture proof treats public identity as observable
-behavior. Reflection and consumer-contract tests require `Window` and `Popup` to
-derive from `FloatingSurfaceBase`, `Dialog<TResult>` from Window, file dialogs
-and MessageBox from Dialog, and Flyout and Tooltip from Popup. Mounted ownership
+behavior. The compatibility snapshot pins `Window` and `Popup` deriving from
+`FloatingSurfaceBase`, `Dialog<TResult>` from Window, file dialogs and
+MessageBox from Dialog, and Flyout and Tooltip from Popup. Mounted ownership
 tests require the same concrete object to be presented, rendered, modal,
 removed, and disposed; a nested Window or Popup cannot satisfy that evidence.
 Overlay tests own all absolute-offset and z-order behavior, while architecture

@@ -34,15 +34,15 @@ they describe a shell session rather than a full-screen application.
 ## Typed API and behavior
 
 `Osc` implements selectors 0 and 2 for titles, selector 8 hyperlink open/close,
-selector 4 palette queries, and selectors 10 and 11 default-color queries. The
-raw `ProtocolWriter` validates the complete payload before advancing an
-`IBufferWriter<byte>` and always emits ST. `XtermResponses.TryOsc` decodes one
-bounded OSC 4 index/color pair or one OSC 10/11 default color into an immutable
-`PaletteResponse`. Palette indices are limited to 0 through 255. Each RGB
-component contains one through four hexadecimal digits and is normalized to a
-16-bit component before the typed value exists. Decimal index parsing rejects
-overflow before arithmetic, discards the malformed OSC value, and recovers at
-the next parser boundary.
+selector 4 palette queries, selectors 10 and 11 default-color queries, and the
+selector 1337 iTerm2 capability query. The raw `ProtocolWriter` validates the
+complete payload before advancing an `IBufferWriter<byte>` and always emits ST.
+`XtermResponses.TryOsc` decodes one bounded OSC 4 index/color pair or one OSC
+10/11 default color into an immutable `PaletteResponse`. Palette indices are
+limited to 0 through 255. Each RGB component contains one through four
+hexadecimal digits and is normalized to a 16-bit component before the typed
+value exists. Decimal index parsing rejects overflow before arithmetic, discards
+the malformed OSC value, and recovers at the next parser boundary.
 
 Negotiation publishes default colors for diagnostics and opt-in application
 theme adaptation. It does not silently replace semantic theme colors or change

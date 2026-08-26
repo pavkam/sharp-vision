@@ -31,9 +31,9 @@ var scope = application.Modality.Enter(
 `Enter` defaults to `OutsideInteraction.Ignore` and returns a disposable
 `ModalScope`. The scope exposes its primary `Root`, its `OutsideInteraction`
 policy, and `IsActive`. `DismissRequested` reports qualifying outside input,
-`Exited` runs once after the scope commits inactive, and `Include(Control)` adds
-another root to the plane. `ModalityManager.Active` exposes only the youngest
-scope, not a mutable stack.
+`Exited` runs once after the scope commits inactive, and `Include(ControlBase)`
+adds another root to the plane. `ModalityManager.Active` exposes only the
+youngest scope, not a mutable stack.
 
 `Enter` and `Include` reject null, detached, disposed, foreign, hidden,
 collapsed, and disabled roots before any observable mutation.

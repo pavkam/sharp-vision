@@ -119,7 +119,7 @@ Complete modal tasks such as `MessageBox` live in
 Face, border, and shadow are intrinsic `ControlBase` appearance configured
 through the complete `Face`, `Border`, and `Shadow` composites; none of them is
 a standalone control. Their matching `*Set` records provide partial state
-contributions. IsEnabled border sides reserve layout through the base box model,
+contributions. Enabled border sides reserve layout through the base box model,
 and the sealed renderer paints the configured chrome around `OnRenderContent`.
 See the [intrinsic appearance rules](../concepts/styling.md#shared-chrome).
 

@@ -66,6 +66,13 @@ session has faulted. The runtime exposes no separate global
 continue-after-unhandled policy; the per-event handled flag is the only
 continuation decision.
 
+> [!NOTE]
+>
+> An `UnhandledException` handler that itself throws loses its vote: the runtime
+> resets the handled flag, shutdown proceeds as if the event were unhandled, and
+> the handler's own exception is recorded in `LastCleanupException` rather than
+> `Failure`.
+
 `Renderer.LastCleanupException` keeps the first bounded recovery failure for the
 lifetime of the renderer; later successful frames and secondary failures neither
 clear nor replace it. `Runtime.Session.LastCleanupException` retains the first

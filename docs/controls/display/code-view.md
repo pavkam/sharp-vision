@@ -3,11 +3,11 @@
 ## Overview
 
 `CodeView` is declared `public sealed class CodeView : CompositeControlBase` and
-implements `IStyled<CodeViewStyle>`, `ISelectableTextSource`,
-`ISelectableTextViewport`, and `IClipboardCopySource`. It displays a read-only,
-syntax-colored source file with grapheme-safe selection, two-axis scrolling, and
-collapsible fold ranges. There is no editing API: replacing `Code` replaces the
-whole source.
+implements `IStyled<CodeViewStyle>`, `ISelectableTextViewport`, and
+`IClipboardCopySource` (the selectable-text source role is inherited from
+`ControlBase`). It displays a read-only, syntax-colored source file with
+grapheme-safe selection, two-axis scrolling, and collapsible fold ranges. There
+is no editing API: replacing `Code` replaces the whole source.
 
 `CodeView` is a direct keyboard focus target. Its container-shaped style uses
 the focusable-container Theme fallback, preserving normal container geometry
@@ -31,7 +31,6 @@ string and catalog.
 classDiagram
     ControlBase <|-- CompositeControlBase
     CompositeControlBase <|-- CodeView
-    ISelectableTextSource <|.. CodeView
     ISelectableTextViewport <|.. CodeView
     IClipboardCopySource <|.. CodeView
 ```
@@ -93,12 +92,12 @@ subscribers.
 background, the fold gutter, and its one-cell collapsed and expanded glyphs.
 Transparent role colors and control or non-one-cell fold glyphs are rejected.
 
-`Code`, `Catalog`, `Language`, and `ClipboardWriter` raise `PropertyChanged`
-exactly once after the replacement value and all dependent token, fold,
-selection, and viewport state have committed. Reentrant language changes during
-a catalog notification supersede that completed catalog projection instead of
-letting the outer transition restore a stale grammar. Reassigning the same value
-is silent.
+`Code`, `Catalog`, `Language`, `IsFoldingEnabled`, and `ClipboardWriter` raise
+`PropertyChanged` exactly once after the replacement value and all dependent
+token, fold, selection, and viewport state have committed. Reentrant language
+changes during a catalog notification supersede that completed catalog
+projection instead of letting the outer transition restore a stale grammar.
+Reassigning the same value is silent.
 
 ## Selection, viewport, and copying
 

@@ -75,8 +75,10 @@ one `TerminalProfile`. Missing, generic, hardcopy, incomplete, and
 padding-dependent descriptions return `ConsoleRunStatus.UnsupportedTerminal`,
 optionally writing `UnsupportedTerminalMessage` as plain host text. On that path
 no application, session, terminal query, mode lease, or renderer is ever
-constructed. `Build()` instead throws `NotSupportedException`, after disposing
-the resize source, the transport, and the platform restore lease in that order.
+constructed. `Build()` instead throws the public `UnsupportedTerminalException`
+(a `NotSupportedException` carrying the resolved `DescriptionResult` as
+`Resolution`), after disposing the resize source, the transport, and the
+platform restore lease in that order.
 
 After a successful preflight, the terminal options resolve one immutable
 `TerminalContext` from the profile and the caller-supplied environment snapshot.
@@ -100,9 +102,12 @@ disposition and killing the process before the terminal-mode restore lease
 inside `Build()` ever runs. Once built, the host starts the application, waits
 for completion or cancellation, stops cleanly, and maps the outcome to a
 `ConsoleRunStatus`: `Completed`, `Cancelled`, or `Failed` (when
-`Application.Failure` is set). The numeric values remain stable for
-compatibility: `Redirected=0`, `Completed=1`, `Cancelled=2`, `Failed=3`, and the
-appended `UnsupportedTerminal=4`.
+`Application.Failure` is set). A signal-driven shutdown reports `Cancelled` even
+when the cooperative stop completes before the run token observes the
+cancellation — the application latches the signal request, so a
+`SIGTERM`/`SIGHUP`/Ctrl+C run never reports `Completed`. The numeric values
+remain stable for compatibility: `Redirected=0`, `Completed=1`, `Cancelled=2`,
+`Failed=3`, and the appended `UnsupportedTerminal=4`.
 
 On Unix, `SIGTERM` and `SIGHUP` also drive the same cooperative shutdown,
 through their own `PosixSignalRegistration`s reusing the Ctrl+C cancellation
@@ -134,17 +139,27 @@ triggers by passing a non-null `observeProcessSignals` derived from
 `TreatControlCAsInput` (direct construction of `Application` outside the builder
 defaults that parameter to null, registering nothing, so unrelated embedders
 never have their process signals hijacked by an `Application` they did not build
-through `ConsoleApplicationBuilder`). Because construction happens before
-`Build()` attaches the screen, this covers the same synchronous `OnAttach`
-window as the three equivalent shapes above, and everything from there through
-`StartAsync`, the run, and `StopAsync` - a signal arriving before the caller
-ever reaches `StartAsync` latches a request that call itself resolves without a
-session ever having gone live, instead of being lost. The one window this cannot
-close is a signal landing before the `Application` constructor has even run -
-during `Build()`'s own preflight and terminal-description resolution - because
-no instance exists yet for anything to hook into; that narrow gap still hits the
-OS default disposition, same as it would before the constructor of any object
-exists in any shape.
+through `ConsoleApplicationBuilder`).
+
+> [!WARNING]
+>
+> An `Application` constructed directly with no signal observation leaves
+> `SIGTERM` and `SIGHUP` on the operating system's default disposition: the
+> process dies without running the stop path, and the platform terminal-mode
+> restore lease is never disposed, so the tty is left raw with echo off. An
+> embedder opting out of signal registration owns equivalent restoration itself.
+
+Because construction happens before `Build()` attaches the screen, this covers
+the same synchronous `OnAttach` window as the three equivalent shapes above, and
+everything from there through `StartAsync`, the run, and `StopAsync` - a signal
+arriving before the caller ever reaches `StartAsync` latches a request that call
+itself resolves without a session ever having gone live, instead of being lost.
+The one window this cannot close is a signal landing before the `Application`
+constructor has even run - during `Build()`'s own preflight and
+terminal-description resolution - because no instance exists yet for anything
+
+> to hook into; that narrow gap still hits the OS default disposition, same as
+> it would before the constructor of any object exists in any shape.
 
 Session startup expands the complete description-owned alternate-screen,
 cursor-visibility, and required application-key pairs before any transport
@@ -219,8 +234,10 @@ Otherwise `Capabilities`, when set, is retained for compatibility by wrapping
 its exact value in `TerminalProfile.CreateAnsi`; platform discovery comes third.
 `ColorDepth` is the final semantic override: it records
 `ColorOrigin=Origin.Override` while keeping the selected description, programs,
-and key map. Either complete explicit form disables negotiation; otherwise the
-resolved profile's capabilities are the negotiation baseline.
+and key map. Either complete explicit form disables negotiation — except the
+multiplexer routing policy, which survives from `Negotiation.Multiplexing` so
+graphics still cross an approved passthrough; otherwise the resolved profile's
+capabilities are the negotiation baseline.
 
 The parameterless `ToTerminalOptions()` remains a public source-compatibility
 surface for low-level callers. It uses `Profile` first, otherwise wraps
@@ -254,10 +271,11 @@ The public immutable result retains a `DescriptionLoadStatus`, an optional
 `TerminalProfile`, and ordered redacted diagnostics (`DescriptionDiagnosticCode`
 plus an optional allowlisted capability name). Advanced hosts can inspect that
 result directly; `ResolveProfile` remains the nullable convenience projection.
-SharpVision preflight retains the same result in its typed internal rejection.
-`Build()` exposes a safe `NotSupportedException` message containing the status,
-the unsuitable classification, and the diagnostic codes; `RunAsync` maps that
-exact rejection to `UnsupportedTerminal`.
+SharpVision preflight retains the same result in the public
+`UnsupportedTerminalException`, whose `Resolution` property exposes it.
+`Build()` exposes a safe exception message containing the status, the unsuitable
+classification, and the diagnostic codes; `RunAsync` maps that exact rejection
+to `UnsupportedTerminal`.
 
 The
 [terminal-description profile](../architecture/capabilities.md#terminal-description-profile)
@@ -367,12 +385,14 @@ mode read or write failure throws `IOException` wrapping a `Win32Exception`
 (`Marshal.GetLastPInvokeError()`), mirroring the existing Unix
 `Native.GetDimensions` failure shape.
 
-> [!IMPORTANT]
->
-> The Windows path is unit-tested for console mode-flag computation and the
-> P/Invoke boundary shape, but has not been validated against a real Windows
-> console or in Windows CI. Treat it as implemented but unverified until that
-> platform coverage exists.
+The Windows path is validated beyond its unit-tested mode-flag computation and
+P/Invoke boundary shape: a real ConPTY-backed fixture drives `ConsoleHost.Open`
+against a genuine pseudo console — mode application, control-key capture,
+restore-on-dispose, byte transfer, and the cells-only resize path — and the
+continuous-integration Windows lane runs that coverage on every change. The one
+remaining untested path is `WindowsConsoleMode.Enter`'s output-mode-set failure
+rollback, which needs a native-call injection seam; see
+[pseudoterminals](../testing/pseudoterminals.md#overview).
 
 ## `TreatControlCAsInput`
 
@@ -407,7 +427,8 @@ process-manager-initiated termination rather than a Ctrl+C key press.
 | Integration    | Description resolution, discovery publication, mode acquisition, input, resize, output, and reverse shutdown. |
 | Pseudoterminal | Real raw-mode entry, Ctrl+C policy, fragmented input, SIGWINCH, cancellation, and restoration.                |
 
-- Windows remains implemented but not fully verified until a real Windows
-  console or Windows CI exercises its mode and resize path.
+- Windows mode and resize behavior is exercised by a real ConPTY fixture in the
+  Windows continuous-integration lane; only the output-mode-set failure rollback
+  still lacks a test.
 - The redirected and unsuitable-terminal paths create no application, session,
   query, or optional mode, and that absence is proven.

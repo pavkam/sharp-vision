@@ -121,10 +121,21 @@ pooled bytes. Cancellation and I/O failures still release local state and
 preserve the original exception. Repeated shutdown is byte-quiet. Parameterless
 `Dispose()` is emergency local cleanup and cannot send terminal bytes. The
 runtime host must invoke asynchronous renderer shutdown before disposing its
-transport. Application implements that ordering with a finite cleanup timeout:
-it awaits hard/soft deletes and flush, then disposes Session's borrowed
-transport and the host lease. A renderer cleanup failure is retained as the
-lifetime diagnostic but cannot skip those later disposal boundaries.
+transport.
+
+> [!WARNING]
+>
+> Disposing the renderer first permanently forfeits remote cleanup. `Dispose()`
+> marks the renderer disposed, and a later `ShutdownAsync` observes that and
+> returns immediately without emitting the hard and soft deletes — so uploaded
+> images and their reserved identifiers stay live in the terminal for the rest
+> of the terminal session. Always await `ShutdownAsync` before disposal when the
+> transport is still usable.
+
+Application implements that ordering with a finite cleanup timeout: it awaits
+hard/soft deletes and flush, then disposes Session's borrowed transport and the
+host lease. A renderer cleanup failure is retained as the lifetime diagnostic
+but cannot skip those later disposal boundaries.
 
 Application selects Kitty lazily at the first render after profile and resize
 publication. The public Image control contributes only semantic fallback cells

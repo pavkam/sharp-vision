@@ -142,17 +142,25 @@ recreated. `CountFormat` (`Func<int, int, string>`, folder count then file
 count) builds the entry-count status text after a successful load;
 `SelectionFormat` (`Func<int, string>`) builds the status text while at least
 one file is selected. `ReadyText` and `LoadingText` (inherited) set the idle and
-in-flight status wording. Every setter validates non-null before mutating, and
-`FilePickerOptions` carries the same values through its `Copy()` snapshot for
-`ShowAsync`.
+in-flight status wording. Every setter validates non-null before mutating.
+`FilePickerOptions` carries the caption and placeholder texts to `ShowAsync`;
+the formatters and status wording are instance properties only.
+
+> [!IMPORTANT]
+>
+> **Implementation gap:** `FilePickerOptions` does not carry `CountFormat`,
+> `SelectionFormat`, `ReadyText`, or `LoadingText`, so a `ShowAsync` caller
+> cannot localize the status texts — only a directly constructed dialog can set
+> them today.
 
 ## Presentation and ownership
 
 `FilePickerDialog.ShowAsync(owner, options, cancellationToken)` requires a
 non-null, undisposed, attached owner and must be called on the owner's
-dispatcher. Passing a container as the owner makes that container the explicit
+dispatcher. Passing an `Overlay` as the owner makes that Overlay the explicit
 host; any other owner uses its owning Screen's private presentation slot.
-Outside a hosted Screen, the outermost container serves as the fallback host, so
+Outside a hosted Screen, the outermost `Overlay` ancestor serves as the fallback
+host — with neither a Screen nor an Overlay ancestor, `ShowAsync` throws — so
 inserting a hosted dialog never rearranges a nested form layout. The helper
 attaches one temporary picker directly to that host, presents the same object
 through `ShowModal(OutsideInteraction.Ignore, initialFocus)`, and returns a
@@ -181,7 +189,8 @@ presentation Overlay. Window containment keeps the complete border box inside
 the host after a resize, including tiny hosts.
 
 One padded Grid uses a single explicit star column, so every row reaches the
-trailing content edge. The grid owns five rows:
+trailing content edge. Five rows stack visually — the metadata row lives inside
+the shared list-area grid rather than the root grid:
 
 1. A bordered parent-directory Button, exactly five cells wide so its themed
    padding leaves `↑` visible in the middle cell, next to a star-sized editable
@@ -244,12 +253,22 @@ link cycles cannot create traversal cycles.
 - Pressing Enter in the location input loads that text's canonical directory.
 - The ListView follows select-then-commit: a single primary pointer click on any
   row - file or directory - only selects it. Committing a row takes Enter, the
-  Open Button, or a second pointer click (a double-click). Committing a
+  or a second pointer click (a double-click); the Open Button runs only the
+  accept path and stays disabled without a file selection. Committing a
   directory navigates into it; committing a file accepts the current file
   selection.
 - ListView selection follows the existing single, Control-toggle, and
   Shift-range semantics. Directory rows can become current or selected visually,
   but `SelectedPaths` filters them out.
+
+> [!NOTE]
+>
+> A modifier-held click never commits. The file list runs the double-click
+> invocation policy, under which Control- or Shift-held multi-clicks stay
+> selection gestures — Ctrl+double-click on a directory does not navigate, and
+> on a file does not accept. Enter behaves the same way under a
+> non-activation-eligible modifier.
+
 - Committing a file accepts the current file selection, whether the commit came
   from Enter, a double-click, or the Open Button. Open is enabled only while at
   least one file is selected.
@@ -328,5 +347,6 @@ The behavior above is verified end to end, so callers can rely on it:
   fallback, updates the frame coherently after a live Theme swap (structural
   geometry stays code-owned unless a local `Style` moves it), and composes with
   every owned-part style property.
-- Every text property updates its retained control in place, is validated before
-  mutation, and is carried through `FilePickerOptions.Copy()` to `ShowAsync`.
+- Every text property updates its retained control in place and is validated
+  before mutation; the caption and placeholder texts are carried through
+  `FilePickerOptions` to `ShowAsync`.

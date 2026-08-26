@@ -142,7 +142,7 @@ input, and the key is left unhandled only once no container along that walk
 moved an offset. PageUp/PageDown and Home/End prefer the vertical axis; on a
 container armed for horizontal scrolling only, they drive the horizontal offset
 instead, so a horizontal-only container still has a fast-travel key rather than
-swallowing all four for no effect. `BringIntoView(Control)` accepts any
+swallowing all four for no effect. `BringIntoView(ControlBase)` accepts any
 descendant reached through owned `ControlBase.Parent` edges and makes the
 smallest two-axis offset change that exposes the descendant's arranged bounds.
 When an armed container sits between the receiver and the descendant, it reveals

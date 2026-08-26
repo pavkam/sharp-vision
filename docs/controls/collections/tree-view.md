@@ -17,42 +17,42 @@ classDiagram
 
 ## API
 
-| Member                        | Type                                               | Default                                   | Description                                                                                                           |
-| ----------------------------- | -------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `Items`                       | `TreeViewItemCollection`                           | Empty                                     | Typed owned root-item collection.                                                                                     |
-| `SelectedItem`                | `TreeViewItem?`                                    | `null`                                    | Read-only; the first selected item in stable tree order.                                                              |
-| `SelectedItems`               | `IReadOnlyList<TreeViewItem>`                      | Empty                                     | Read-only immutable snapshot in stable tree order.                                                                    |
-| `SelectionMode`               | `TreeSelectionMode`                                | `Single`                                  | Allows no, one, or multiple selected items; rejects an undefined value.                                               |
-| `CheckMark`                   | `CheckMark?`                                       | `null`                                    | Shared check-mark layout and glyphs for items that do not override it.                                                |
-| `ActualCheckMark`             | `CheckMark`                                        | `Brackets`, resolved                      | Read-only; the mark items render when they do not locally override it.                                                |
-| `Indent`                      | `int`                                              | `2`                                       | Non-negative cells per visible depth level; rejects a negative value.                                                 |
-| `Style`                       | `TreeViewStyle?`                                   | `null`                                    | Complete local presentation, or null for theme ownership.                                                             |
-| `ActualStyle`                 | `TreeViewStyle`                                    | Resolved                                  | Read-only; the complete local, theme-owned, or code-owned presentation.                                               |
-| `LoadingText`                 | `string`                                           | `"Loading…"`                              | Inline status text an unloaded item's synthetic row shows while its children load.                                    |
-| `LoadFailedText`              | `string`                                           | `"Failed to load. Press Enter to retry."` | Inline status text a failed item's synthetic row shows alongside its retry affordance.                                |
-| `MaxConcurrentChildLoads`     | `int`                                              | `4`                                       | Maximum child-loading requests running at once across every item; additional requests queue.                          |
-| `ScrollBarStyle`              | `ScrollBarStyle?`                                  | `null`                                    | Local generated-bar style; null leaves it to the theme.                                                               |
-| `ActualScrollBarStyle`        | `ScrollBarStyle`                                   | `ThinBlock`, resolved                     | Read-only resolved generated-bar style.                                                                               |
-| `Extent`                      | `Size`                                             | Layout-dependent                          | Read-only committed content extent of the generated scroll container.                                                 |
-| `Viewport`                    | `Size`                                             | Layout-dependent                          | Read-only committed visible extent of the generated scroll container.                                                 |
-| `HorizontalOffset`            | `int`                                              | `0`                                       | Valid horizontal content offset; rejects a value outside the current extent.                                          |
-| `VerticalOffset`              | `int`                                              | `0`                                       | Valid vertical content offset; rejects a value outside the current extent.                                            |
-| `LineSize`                    | `int`                                              | `1`                                       | Non-negative wheel-scroll increment forwarded to the generated scroll container.                                      |
-| `PageOverlap`                 | `int`                                              | `0`                                       | Non-negative cells of context retained between page commands.                                                         |
-| `ScrollBy(x, y, cause)`       | `bool`                                             | —                                         | Scrolls the generated scroll container by signed cell deltas with saturation and endpoint clamping.                   |
-| `BringItemIntoView(item)`     | `bool`                                             | —                                         | Scrolls minimally to expose one owned item.                                                                           |
-| `SelectItem(item)`            | `void`                                             | —                                         | Selects an item owned by this tree, replacing the current selection.                                                  |
-| `SetSelected(item, selected)` | `bool`                                             | —                                         | Adds or removes one owned item from the selection without replacing the rest.                                         |
-| `SelectAll()`                 | `void`                                             | —                                         | Selects every enabled item; requires `Multiple` selection mode.                                                       |
-| `ClearSelection()`            | `void`                                             | —                                         | Clears the current selection.                                                                                         |
-| `ExpandAll()`                 | `void`                                             | —                                         | Expands every item in the tree.                                                                                       |
-| `CollapseAll()`               | `void`                                             | —                                         | Collapses every item in the tree.                                                                                     |
-| `BeginUpdate()`               | `void`                                             | —                                         | Begins a batch of structural changes, deferring the flat-list rebuild until the matching `EndUpdate`; calls may nest. |
-| `EndUpdate()`                 | `void`                                             | —                                         | Ends a batch begun by `BeginUpdate`; rebuilds once, only when it closes the outermost pending batch.                  |
-| `SelectionChanging`           | `EventHandler<TreeViewSelectionChangingEventArgs>` | No subscribers                            | Raised before a caller- or input-driven selection change commits; cancellable.                                        |
-| `SelectionChanged`            | `EventHandler<TreeViewSelectionChangedEventArgs>`  | No subscribers                            | Raised after the selected item changes.                                                                               |
-| `ItemInvoked`                 | `EventHandler<TreeViewItemInvokedEventArgs>`       | No subscribers                            | Raised after an item is activated by keyboard or pointer.                                                             |
-| `ScrollChanged`               | `EventHandler<ScrollChangedEventArgs>`             | No subscribers                            | Forwards the generated scroll container's committed offset changes.                                                   |
+| Member                        | Type                                               | Default                                   | Description                                                                                                                             |
+| ----------------------------- | -------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `Items`                       | `TreeViewItemCollection`                           | Empty                                     | Typed owned root-item collection.                                                                                                       |
+| `SelectedItem`                | `TreeViewItem?`                                    | `null`                                    | The first selected item in stable tree order. Assigning an item selects it through `SelectItem`; assigning `null` clears the selection. |
+| `SelectedItems`               | `IReadOnlyList<TreeViewItem>`                      | Empty                                     | Read-only immutable snapshot in stable tree order.                                                                                      |
+| `SelectionMode`               | `TreeSelectionMode`                                | `Single`                                  | Allows no, one, or multiple selected items; rejects an undefined value.                                                                 |
+| `CheckMark`                   | `CheckMark?`                                       | `null`                                    | Shared check-mark layout and glyphs for items that do not override it.                                                                  |
+| `ActualCheckMark`             | `CheckMark`                                        | `Brackets`, resolved                      | Read-only; the mark items render when they do not locally override it.                                                                  |
+| `Indent`                      | `int`                                              | `2`                                       | Non-negative cells per visible depth level; rejects a negative value.                                                                   |
+| `Style`                       | `TreeViewStyle?`                                   | `null`                                    | Complete local presentation, or null for theme ownership.                                                                               |
+| `ActualStyle`                 | `TreeViewStyle`                                    | Resolved                                  | Read-only; the complete local, theme-owned, or code-owned presentation.                                                                 |
+| `LoadingText`                 | `string`                                           | `"Loading…"`                              | Inline status text an unloaded item's synthetic row shows while its children load.                                                      |
+| `LoadFailedText`              | `string`                                           | `"Failed to load. Press Enter to retry."` | Inline status text a failed item's synthetic row shows alongside its retry affordance.                                                  |
+| `MaxConcurrentChildLoads`     | `int`                                              | `4`                                       | Maximum child-loading requests running at once across every item; additional requests queue.                                            |
+| `ScrollBarStyle`              | `ScrollBarStyle?`                                  | `null`                                    | Local generated-bar style; null leaves it to the theme.                                                                                 |
+| `ActualScrollBarStyle`        | `ScrollBarStyle`                                   | Resolved                                  | Read-only resolved generated-bar style.                                                                                                 |
+| `Extent`                      | `Size`                                             | Layout-dependent                          | Read-only committed content extent of the generated scroll container.                                                                   |
+| `Viewport`                    | `Size`                                             | Layout-dependent                          | Read-only committed visible extent of the generated scroll container.                                                                   |
+| `HorizontalOffset`            | `int`                                              | `0`                                       | Valid horizontal content offset; rejects a value outside the current extent.                                                            |
+| `VerticalOffset`              | `int`                                              | `0`                                       | Valid vertical content offset; rejects a value outside the current extent.                                                              |
+| `LineSize`                    | `int`                                              | `1`                                       | Non-negative wheel-scroll increment forwarded to the generated scroll container.                                                        |
+| `PageOverlap`                 | `int`                                              | `0`                                       | Non-negative cells of context retained between page commands.                                                                           |
+| `ScrollBy(x, y, cause)`       | `bool`                                             | —                                         | Scrolls the generated scroll container by signed cell deltas with saturation and endpoint clamping.                                     |
+| `BringItemIntoView(item)`     | `bool`                                             | —                                         | Scrolls minimally to expose one owned item.                                                                                             |
+| `SelectItem(item)`            | `void`                                             | —                                         | Selects an item owned by this tree, replacing the current selection.                                                                    |
+| `SetSelected(item, selected)` | `bool`                                             | —                                         | Adds or removes one owned item from the selection without replacing the rest.                                                           |
+| `SelectAll()`                 | `void`                                             | —                                         | Selects every enabled item; requires `Multiple` selection mode.                                                                         |
+| `ClearSelection()`            | `void`                                             | —                                         | Clears the current selection.                                                                                                           |
+| `ExpandAll()`                 | `void`                                             | —                                         | Expands every item in the tree.                                                                                                         |
+| `CollapseAll()`               | `void`                                             | —                                         | Collapses every item in the tree.                                                                                                       |
+| `BeginUpdate()`               | `void`                                             | —                                         | Begins a batch of structural changes, deferring the flat-list rebuild until the matching `EndUpdate`; calls may nest.                   |
+| `EndUpdate()`                 | `void`                                             | —                                         | Ends a batch begun by `BeginUpdate`; rebuilds once, only when it closes the outermost pending batch.                                    |
+| `SelectionChanging`           | `EventHandler<TreeViewSelectionChangingEventArgs>` | No subscribers                            | Raised before a caller- or input-driven selection change commits; cancellable.                                                          |
+| `SelectionChanged`            | `EventHandler<TreeViewSelectionChangedEventArgs>`  | No subscribers                            | Raised after the selected item changes.                                                                                                 |
+| `ItemInvoked`                 | `EventHandler<TreeViewItemInvokedEventArgs>`       | No subscribers                            | Raised after an item is activated by keyboard or pointer.                                                                               |
+| `ScrollChanged`               | `EventHandler<ScrollChangedEventArgs>`             | No subscribers                            | Forwards the generated scroll container's committed offset changes.                                                                     |
 
 `SelectionMode` defaults to `Single`. `Multiple` supports Control toggles, Shift
 ranges over enabled visible items, `SelectAll`, `ClearSelection`, and Control+A.
@@ -127,6 +127,9 @@ refusing it would leave the control in a state its own configuration forbids.
 | Primary pointer click on the disclosure glyph | Toggles `IsExpanded`.                                                                                                      |
 | Primary pointer click on the check mark       | Toggles the check state; every cell of the mark is a hit target.                                                           |
 | Primary pointer click elsewhere on the row    | Invokes and applies selection.                                                                                             |
+
+The movement keys repeat while held; Space, Enter, and Control+A fire once per
+key hold.
 
 Each `TreeViewItem` preserves its inherited routed key and pointer events before
 applying row activation. A handler that consumes the event suppresses the
@@ -289,16 +292,26 @@ a reload keeps the same materialized `TreeViewItem` instance, so its
 `IsExpanded`, checked, and selected state survive the reload.
 
 `ChildSource` reassignment - including to null - cancels a pending request and
-evicts (detaches and disposes) any children the loader previously committed. A
-failed retry of a populated node leaves its stale-but-real children in place;
+evicts (detaches and disposes) any children the loader previously committed.
+
+> [!WARNING]
+>
+> That eviction disposes real controls, and the source propagates to every
+> `MayHaveChildren` descendant — one `ChildSource = null` on a populated branch
+> disposes the entire loaded subtree. Any `TreeViewItem` references the
+> application retained into that subtree become disposed objects.
+
+A failed retry of a populated node leaves its stale-but-real children in place;
 the failed status row and its retry affordance appear only once `Children` is
 empty. `TreeView.LoadingText` and `LoadFailedText` configure the synthetic
 status row's inline text; `MaxConcurrentChildLoads` bounds how many requests run
 at once across the whole tree, queuing the rest. The status row itself is never
-a navigation, selection, or check target - `Up`/`Down`/`Home`/`End` skip it, and
-`TreeView.ExpandAll` skips an `Unloaded` branch rather than starting a remote
-load it never promised to trigger. Clicking a failed row, or pressing Enter
-while it is the current item, retries through `ReloadChildrenAsync`.
+a
+
+> navigation, selection, or check target - `Up`/`Down`/`Home`/`End` skip it, and
+> `TreeView.ExpandAll` skips an `Unloaded` branch rather than starting a remote
+> load it never promised to trigger. Clicking a failed row, or pressing Enter
+> while it is the current item, retries through `ReloadChildrenAsync`.
 
 ## Example
 

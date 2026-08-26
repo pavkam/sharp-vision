@@ -68,7 +68,7 @@ negative origin and is then clipped by the normal policy.
 fits and has no authored offsets is centered inside the content box. Every
 arrange clamps its complete border box after the authored offsets resolve —
 including after a resize — without rewriting those offsets. A Window larger than
-the box starts at the leading content edge and clips normally. IsDragging the
+the box starts at the leading content edge and clips normally. Dragging the
 title bar writes the `Left` and `Top` offsets.
 
 ## Hit testing, rendering, and z-order

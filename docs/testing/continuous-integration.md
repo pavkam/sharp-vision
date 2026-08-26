@@ -19,19 +19,22 @@ paying for it once per platform and paying for it serially ahead of the tests it
 cannot affect. As its own job it costs about as much wall-clock time as the test
 phase and now overlaps it entirely. `make lint` runs
 `dotnet format --verify-no-changes`, `prettier --check`, `markdownlint-cli2`,
-the generated-data freshness checks (Unicode tables, FIGlet font manifest), and
-the documentation validators (local links, banned GitHub issue references,
-test-class naming). A lint failure still cannot suppress the build, test,
-coverage, or compatibility-snapshot results, because those run in different jobs
-that neither wait for it nor observe it; and publication still cannot happen
-while lint is failing, because the push job needs both gates.
+the generated-data freshness checks (Unicode tables, FIGlet font manifest,
+syntax definitions), the documentation validators (local links, banned GitHub
+issue references, control-page structure, control-image coverage, test-class
+naming), and the documentation-sample compilation gate, which compiles every
+fenced C# sample against the built libraries. A lint failure still cannot
+suppress the build, test, coverage, or compatibility-snapshot results, because
+those run in different jobs that neither wait for it nor observe it; and
+publication still cannot happen while lint is failing, because the push job
+needs both gates.
 
-The shared composite action runs the Release build, the tests with coverage,
-coverage-report generation, and artifact publication, in that order. Tests run
-on the Microsoft Testing Platform, enforce a discovery minimum, and produce
-xUnit TRX plus Cobertura output. The action publishes the test-result check and
-uploads both the raw TRX files and an HTML/Cobertura/badge coverage report as
-workflow artifacts.
+The shared composite action runs the Release build, the tests with coverage, the
+real-pseudoterminal lane on non-Windows runners, coverage-report generation, and
+artifact publication, in that order. Tests run on the Microsoft Testing
+Platform, enforce a discovery minimum, and produce xUnit TRX plus Cobertura
+output. The action publishes the test-result check and uploads both the raw TRX
+files and an HTML/Cobertura/badge coverage report as workflow artifacts.
 
 The target the action actually runs is `make test-ci`. It also runs
 `npm run test:docs` — the Node unit suite covering the `scripts/` gate layer
@@ -46,8 +49,8 @@ mounted pointer, keyboard, focus, hover, pressed-state, box-model, frame,
 resize, or tiny-bound assertions. The coverage-instrumented UI run disables
 collection parallelization so coverage stays complete and deterministic across
 runners; the ordinary test target keeps the suite's normal parallel execution.
-The terminal and UI coverage commands run one after the other, and a failure in
-either stops the target. The workflow badge in the
+The six per-project coverage commands run one after the other, and a failure in
+any stops the target. The workflow badge in the
 [README](../../README.md#sharpvision) reflects that automation.
 
 Both instrumented suites share one coverage settings file, selected by platform.
@@ -96,7 +99,7 @@ The public API project participates in the solution-wide build and test gates.
 Its [approval workflow](correctness-model.md#public-api-compatibility) requires
 review of the affected library's own surface before a compatibility change can
 go green; it does not require a version change on its own, and a change to one
-library's surface never requires touching the other two.
+library's surface never requires touching the others.
 
 `make restore` first packs the current `SharpVision.Terminal` and `SharpVision`
 projects into an ignored local bootstrap feed. It then restores the full

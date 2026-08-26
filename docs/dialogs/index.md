@@ -45,9 +45,20 @@ already resolve their host and roll back on failure. Calling `Window.ShowModal`
 directly instead bypasses this typed result plumbing and the framework's
 rollback and cancellation handling, and is not a supported alternative.
 
+> [!WARNING]
+>
+> Nothing prevents that call, and the failure mode is severe: a dialog shown
+> through `Window.ShowModal` never receives its completion plumbing, so every
+> later `Complete` or `Cancel` only raises `ResultSelected` — the modal scope is
+> never released, the surface stays mounted and modal indefinitely, and no task
+> ever settles. Always present a dialog through its `ShowAsync` helper or
+> `PresentAsync`.
+
 You can also construct a dialog and mount it yourself as a retained modeless
 surface. In that mode a semantic action leaves the dialog mounted and raises
 `ResultSelected` instead of closing it, and `HasSelectedResult` and
-`SelectedResult` keep the latest selection. A modeless dialog leaves Escape to
-its routed ancestors rather than silently consuming it as a cancellation result.
-Dialogs do not introduce a second layout, input, or rendering framework.
+`SelectedResult` keep the latest selection. A modeless file dialog leaves Escape
+to its routed ancestors rather than silently consuming it as a cancellation
+result; a modeless MessageBox is the exception — its own routed handler consumes
+Escape as a `Cancel` selection. Dialogs do not introduce a second layout, input,
+or rendering framework.

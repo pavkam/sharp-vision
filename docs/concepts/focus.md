@@ -12,13 +12,13 @@ handlers may cancel a requested change. Once a change commits, the manager
 updates its state before the lost and gained notifications fire, so handlers
 always observe the new state consistently.
 
-Each `FocusManager` owns exactly one attached root. `Focus(Control?)` rejects
-controls that belong to another root, and returns false when the target is
-ineligible or the change is cancelled. A committed change updates `Focused` and
-both controls' `IsFocused` state before raising `Lost` and `Gained`. If the tree
-is mutated during the `Changing` event, the target is revalidated before the
-change commits. Cleanup triggered by detach, hide, disable, or disposal cannot
-be cancelled.
+Each `FocusManager` owns exactly one attached root. `Focus(ControlBase?)`
+rejects controls that belong to another root, and returns false when the target
+is ineligible or the change is cancelled. A committed change updates `Focused`
+and both controls' `IsFocused` state before raising `Lost` and `Gained`. If the
+tree is mutated during the `Changing` event, the target is revalidated before
+the change commits. Cleanup triggered by detach, hide, disable, or disposal
+cannot be cancelled.
 
 ```mermaid
 sequenceDiagram
@@ -56,16 +56,18 @@ simply omitted.
 
 ## Navigation
 
-`MoveNext()` and `MoveNext(reverse: true)` walk a deterministic tab order. After
-a key routes unhandled, the shared control default maps a pressed Tab to
-`MoveNext()` and Shift+Tab to `MoveNext(reverse: true)`. A control-specific
-behavior may handle the key first; for example, `TextInput.AcceptsTab` inserts a
-tab character instead of moving focus. Other modifiers are left for explicit
-control behavior to interpret. Explicit and pointer-triggered focus requests go
-through the same `Focus(Control?)` validation path. While modality is active,
-that path rejects targets outside the active plane, and unhandled Tab and
-Shift+Tab follow the
-[plane-wide traversal contract](modality.md#keyboard-text-and-paste).
+`MoveNext()` and `MoveNext(reverse: true)` walk a deterministic tab order, and
+the anchored overload `MoveNext(ControlBase? anchor, bool reverse = false)`
+walks the same order from an explicit starting control — the application's
+post-route Tab command uses it against a stable route anchor. After a key routes
+unhandled, the shared control default maps a pressed Tab to `MoveNext()` and
+Shift+Tab to `MoveNext(reverse: true)`. A control-specific behavior may handle
+the key first; for example, `TextInput.AcceptsTab` inserts a tab character
+instead of moving focus. Other modifiers are left for explicit control behavior
+to interpret. Explicit and pointer-triggered focus requests go through the same
+`Focus(ControlBase?)` validation path. While modality is active, that path
+rejects targets outside the active plane, and unhandled Tab and Shift+Tab follow
+the [plane-wide traversal contract](modality.md#keyboard-text-and-paste).
 
 `MoveNext(reverse)` sorts the eligible members by `TabIndex` and then by stable
 tree order, wraps around at both ends, and uses the same cancellable transaction

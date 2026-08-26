@@ -88,6 +88,9 @@ ListView's selection, scrolling, and surface appearance inside the Popup.
   raises `SelectionChanged`.
 - `SelectedIndex` is `-1` or an index within `Items`; a committed selection
   publishes `PropertyChanged(SelectedIndex)` before `SelectionChanged`.
+  Publication is versioned under synchronous reentry: a `PropertyChanged`
+  observer that commits a newer selection owns `SelectionChanged`, and the
+  interrupted commit raises no further typed event.
 - `AllowNull` enables clearing with Delete or Backspace, and `Placeholder`
   supplies the closed-face text while the selection is empty.
 - `DropDownHeight` is a positive maximum, in terminal cells, for the visible

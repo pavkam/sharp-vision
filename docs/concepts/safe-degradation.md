@@ -37,6 +37,14 @@ requested feature, an inconsistent terminal reply, fallback use, or a cleanup
 failure - to exceptions at safe boundaries. It does not change valid wire bytes,
 parser grammar, timeouts, or capability detection.
 
+> [!IMPORTANT]
+>
+> **Implementation gap:** strict mode is not implemented. No option promotes any
+> diagnostic family to an exception today — every degradation event is reported
+> only through the redacted diagnostic channel, and an application cannot opt
+> into fail-fast behavior. The other pages that reference strict mode describe
+> this same intended, not-yet-available behavior.
+
 ## Expected behavior
 
 For each capability-dependent feature, the preferred path, every fallback step,

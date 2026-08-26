@@ -57,18 +57,21 @@ and otherwise adapts it through the base numeric `Response` callback or a
 synthetic diagnostic, so a sink is never required to implement more than
 `IProtocolSink` to observe every reply in some form. Palette and metrics replies
 adapt through the numeric-response callback when their extension interface is
-absent. A sink without `IStatusResponseSink` or `ICapabilityResponseSink`
-receives one synthetic `DiagnosticCode.Unsupported` DCS diagnostic through its
-inherited input callback instead; that diagnostic has zero offset and discarded
-bytes because the adapted compatibility path has no raw payload. OSC 10/11
-preserve normalized red, green, blue; OSC 4 supplies index, red, green, blue;
-and metrics supply width, height. Kitty graphics APC payloads beginning with `G`
-dispatch to `IKittyGraphicsResponseSink`; absent that interface, the fallback
-reports a redacted unsupported APC diagnostic. Built-in sinks implement every
-extension interface they consume, so discovery still receives the typed value
-rather than the compatibility diagnostic. `IProtocolSink.Sequence` receives
-completed OSC, DCS, APC, PM, and SOS values without a registered typed consumer.
-A recognized response is never emitted again as input or a raw sequence.
+absent. A sink without the matching extension interface for a diagnostic-only
+family — `IStatusResponseSink` or `ICapabilityResponseSink` for DCS replies, and
+`IItermCapabilitiesResponseSink`, `IClipboardReplySink`, or
+`IKittyClipboardPacketSink` for their OSC families — receives one synthetic
+`DiagnosticCode.Unsupported` diagnostic through its inherited input callback
+instead; that diagnostic has zero offset and discarded bytes because the adapted
+compatibility path has no raw payload. OSC 10/11 preserve normalized red, green,
+blue; OSC 4 supplies index, red, green, blue; and metrics supply width, height.
+Kitty graphics APC payloads beginning with `G` dispatch to
+`IKittyGraphicsResponseSink`; absent that interface, the fallback reports a
+redacted unsupported APC diagnostic. Built-in sinks implement every extension
+interface they consume, so discovery still receives the typed value rather than
+the compatibility diagnostic. `IProtocolSink.Sequence` receives completed OSC,
+DCS, APC, PM, and SOS values without a registered typed consumer. A recognized
+response is never emitted again as input or a raw sequence.
 
 Validated queried metrics refine pixel-to-cell inference only after their
 ordered response callback. A complete local resize grid has precedence. Earlier
@@ -124,9 +127,9 @@ Malformed, interrupted, truncated, and oversized sequences retain the
 [parser recovery contract](ecma-48.md#streaming-grammar). An `InputDecoder` sink
 that does not implement `IProtocolSink` receives `DiagnosticCode.Unsupported`
 for a valid reply or string instead of silently losing it. An `IProtocolSink`
-implementation that does not additionally implement `IStatusResponseSink` or
-`ICapabilityResponseSink` receives the synthetic no-payload unsupported
-diagnostic described above instead of silently dropping DECRQSS or XTGETTCAP.
+implementation that does not additionally implement one of the diagnostic-only
+extension interfaces receives the synthetic no-payload unsupported diagnostic
+described above instead of silently dropping that family's replies.
 
 Unknown valid strings are observable through `IProtocolSink.Sequence`; their
 presence does not enable a capability. Strict mode may promote the redacted
@@ -143,21 +146,24 @@ metadata.
 
 `Application` exposes seven events for consuming inbound protocol activity,
 unchanged in ordering by hosting and discovery. `ResponseReceived` raises one
-typed numeric `Response` (DA, DSR, DECRPM, or Kitty keyboard reply) per record.
-`PaletteResponseReceived` raises OSC 4/10/11 colors, `MetricsResponseReceived`
-raises window/cell geometry, `StatusResponseReceived` raises each validated
-DECRQSS result, and `CapabilityResponseReceived` raises each validated XTGETTCAP
-result. All five response events run on the dispatcher in mutual transport
-order. Matched, wrong-identity or otherwise unsolicited, duplicate, and late DCS
-values remain observable; query classification changes capability evidence, not
-event delivery. `CapabilitiesChanged` raises once whenever a new immutable
+typed numeric `Response` (DA, DSR, DECRPM, Kitty keyboard, or xterm
+modifyOtherKeys reply) per record. `PaletteResponseReceived` raises OSC 4/10/11
+colors, `MetricsResponseReceived` raises window/cell geometry,
+`StatusResponseReceived` raises each validated DECRQSS result, and
+`CapabilityResponseReceived` raises each validated XTGETTCAP result. All five
+response events run on the dispatcher in mutual transport order. Matched,
+wrong-identity or otherwise unsolicited, duplicate, and late DCS values remain
+observable; query classification changes capability evidence, not event
+delivery. `CapabilitiesChanged` raises once whenever a new immutable
 `Capabilities` profile becomes active — including the startup negotiation result
 — before any resulting invalidation. `Diagnostic` raises one redacted
 `Diagnostic` for every malformed, unsupported, or otherwise unrouted protocol
 occurrence, containing only its family and discarded byte count, never raw
-payload bytes. These seven events are the complete way an application consumes
-protocol replies and capability changes; there is no lower-level polling
-surface.
+payload bytes. Together with the clipboard service's own
+`IClipboard.KittyClipboardReplyReceived` event, which the
+[Kitty clipboard page](kitty-clipboard.md#supported-features) owns, these are
+the complete way an application consumes protocol replies and capability
+changes; there is no lower-level polling surface.
 
 ## Sources
 

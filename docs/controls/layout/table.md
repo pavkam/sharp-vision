@@ -2,14 +2,15 @@
 
 ## Overview
 
-`Table` is declared `public sealed class Table : ItemsControl`. It owns typed
-rows of ordinary controls and aligns them against titled columns whose widths
-can be fixed, automatic, percentage, or proportional. Cells measure, arrange,
-and render through the normal control pipeline, so marked text, links, buttons,
-and input controls can all appear in a table without a separate rendering model.
-`Rows` and `Columns` are the only semantic mutation surfaces: a private
-scrolling table presenter owns the realized cell controls, so `Table`
-intentionally exposes no general `Children` collection.
+`Table` is declared `public sealed class Table : ItemsControl` and implements
+`IStyled<TableStyle>`. It owns typed rows of ordinary controls and aligns them
+against titled columns whose widths can be fixed, automatic, percentage, or
+proportional. Cells measure, arrange, and render through the normal control
+pipeline, so marked text, links, buttons, and input controls can all appear in a
+table without a separate rendering model. `Rows` and `Columns` are the only
+semantic mutation surfaces: a private scrolling table presenter owns the
+realized cell controls, so `Table` intentionally exposes no general `Children`
+collection.
 
 `SetDataSource` switches a table into an alternative progressive mode that
 requests index-addressed rows on demand instead of owning them upfront — see

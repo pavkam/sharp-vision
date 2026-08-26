@@ -18,18 +18,18 @@ classDiagram
 
 ## API
 
-| Member                | Type                                        | Default                  | Description                                                             |
-| --------------------- | ------------------------------------------- | ------------------------ | ----------------------------------------------------------------------- |
-| `Minimum`             | `int`                                       | `0`                      | The inclusive signed lower endpoint; auto-clamps `Value` when needed.   |
-| `Maximum`             | `int`                                       | `100`                    | The inclusive signed upper endpoint; auto-clamps `Value` when needed.   |
-| `Value`               | `int`                                       | `0`                      | The current value inside the inclusive `Minimum`–`Maximum` range.       |
-| `SmallChange`         | `int`                                       | `1`                      | The non-negative arrow or wheel increment.                              |
-| `LargeChange`         | `int`                                       | `10`                     | The non-negative Page Up or Page Down increment.                        |
-| `Orientation`         | `Orientation`                               | `Orientation.Horizontal` | Chooses left-to-right or bottom-to-top mapping.                         |
-| `Style`               | `SliderStyle?`                              | `null`                   | Optional complete developer-authored presentation.                      |
-| `ActualStyle`         | `SliderStyle`                               | Resolved                 | Read-only; the complete local, theme-owned, or code-owned presentation. |
-| `ChangeBy(int delta)` | `bool`                                      | —                        | Applies a widened, saturating, endpoint-clamped programmatic change.    |
-| `ValueChanged`        | `EventHandler<SliderValueChangedEventArgs>` | No subscribers           | Raised after a changed value commits, after the property notification.  |
+| Member                | Type                                        | Default                  | Description                                                                               |
+| --------------------- | ------------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------- |
+| `Minimum`             | `int`                                       | `0`                      | The inclusive signed lower endpoint; auto-clamps `Value` when needed.                     |
+| `Maximum`             | `int`                                       | `100`                    | The inclusive signed upper endpoint; auto-clamps `Value` when needed.                     |
+| `Value`               | `int`                                       | `0`                      | The current value inside the inclusive `Minimum`–`Maximum` range.                         |
+| `SmallChange`         | `int`                                       | `1`                      | The non-negative arrow or wheel increment.                                                |
+| `LargeChange`         | `int`                                       | `10`                     | The non-negative Page Up or Page Down increment.                                          |
+| `Orientation`         | `Orientation`                               | `Orientation.Horizontal` | Chooses left-to-right or bottom-to-top mapping.                                           |
+| `Style`               | `SliderStyle?`                              | `null`                   | Optional complete developer-authored presentation.                                        |
+| `ActualStyle`         | `SliderStyle`                               | Resolved                 | Read-only; the complete local, theme-owned, or code-owned presentation.                   |
+| `ChangeBy(int delta)` | `bool`                                      | —                        | Applies a widened, saturating, endpoint-clamped programmatic change.                      |
+| `ValueChanged`        | `EventHandler<SliderValueChangedEventArgs>` | No subscribers           | Raised after the property notification, while that commit is still the newest generation. |
 
 `SliderStyle : ControlStyle` is a complete immutable presentation: it owns the
 `FillColor`, `TrackColor`, and `ThumbColor` rail-part `ControlColor`s (required,
@@ -44,7 +44,7 @@ the Theme-owned presentation.
   range. Unlike [`ScrollBar`](../scrolling/scroll-bar.md#behavior), which
   rejects an endpoint change that would exclude `Value`, a Slider endpoint that
   would exclude `Value` instead commits and auto-clamps `Value` to the new
-  endpoint, raising `ValueChanged`.
+  endpoint, raising `ValueChanged` when that clamp is still the newest commit.
 - Direct `Value` assignment outside the current range throws
   `ArgumentOutOfRangeException`.
 - `SmallChange` and `LargeChange` accept non-negative integers; zero is a valid
@@ -52,7 +52,9 @@ the Theme-owned presentation.
 - `ChangeBy` adds with widened arithmetic, clamps to the endpoints, and returns
   whether a changed value committed.
 - `ValueChanged`'s immutable `SliderValueChangedEventArgs` exposes
-  `PreviousValue` and `Value`; a no-op raises no event.
+  `PreviousValue` and `Value`; a no-op raises no event, and a
+  `PropertyChanged(Value)` observer that commits a newer value supersedes the
+  interrupted transition's typed event.
 - `Orientation.Horizontal` is the default and measures 5 by 1 cells;
   `Orientation.Vertical` measures 1 by 5 cells. Explicit layout may safely
   stretch or shrink either axis.

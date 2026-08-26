@@ -56,6 +56,13 @@ unless `TreatControlCAsInput` is set, attach the supplied `Screen`, start the
 application, wait for completion or cancellation, stop cleanly, and restore the
 host terminal state.
 
+> [!NOTE]
+>
+> `TreatControlCAsInput` scopes to Ctrl+C (and Ctrl+\\) only. `SIGTERM` and
+> `SIGHUP` are registered unconditionally on Unix — a process manager's `kill`
+> still drives cooperative shutdown even when the application consumes Ctrl+C as
+> input.
+
 `Application.RunAsync(CancellationToken)` is a lower-level instance convenience
 that any host — console or otherwise — can call once a transport-backed
 `Application` already exists: it awaits `StartAsync`, then `Completion`, then
@@ -63,9 +70,11 @@ that any host — console or otherwise — can call once a transport-backed
 `ConsoleRunStatus` mapping
 (`Redirected`/`UnsupportedTerminal`/`Completed`/`Cancelled`/`Failed`) lives only
 in the console entry points above; the instance method itself is host-agnostic.
-The public `Application` constructor independently rejects a non-usable profile
-before mutating the detached root or creating the renderer, dispatcher, terminal
-services, or session.
+The classification also consults the application's latched signal flag, so a
+signal-driven shutdown reports `Cancelled` rather than `Completed` regardless of
+which cooperative path completed first. The public `Application` constructor
+independently rejects a non-usable profile before mutating the detached root or
+creating the renderer, dispatcher, terminal services, or session.
 
 `StartAsync` raises `Starting` on the dispatcher before `Session.RunAsync` can
 enable a mode. The first resize attaches the root, creates focus, capture, and
@@ -158,8 +167,15 @@ service write does not invalidate the renderer front frame. The described title
 prefix and suffix are both expanded before the UTF-8 payload is queued; an
 incomplete or failed pair publishes no bytes. Control-bearing title payloads are
 rejected before either expansion or queueing. A failed out-of-band transport
-write is an application failure and stops the session; no later frame assumes
-that transport remains usable.
+write is reported as an application failure through `UnhandledException`; left
+unhandled it stops the session.
+
+> [!WARNING]
+>
+> A handler that marks that failure handled keeps the application running — and
+> rendering resumes into the very transport whose write just failed, with
+> unknown terminal state on the other end. Handle an out-of-band write failure
+> only when the transport is known to have survived it.
 
 ## Shutdown
 
@@ -185,7 +201,7 @@ cleanup.
 
 An explicit `Stopping` callback may cancel the request. Closure, a terminal
 fault, or an unhandled application callback forces the same idempotent path.
-IsActive render cancellation during a requested shutdown is not promoted to a
+Active render cancellation during a requested shutdown is not promoted to a
 failure. `Failure` preserves the first primary exception, and
 `LastCleanupException` exposes a later session or synchronized-output cleanup
 failure.
