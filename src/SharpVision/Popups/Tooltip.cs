@@ -67,6 +67,12 @@ public sealed class Tooltip: Popup
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="placement"/> is unknown.</exception>
     public static void SetText(ControlBase anchor, string text, PopupPlacement placement)
     {
+        ArgumentNullException.ThrowIfNull(anchor);
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentOutOfRangeException.ThrowIfNotDefined(
+            placement,
+            nameof(placement),
+            "The popup placement is unknown.");
         SetText(anchor, text);
         GetTooltip(anchor)!.Placement = placement;
     }
@@ -80,6 +86,13 @@ public sealed class Tooltip: Popup
     /// <exception cref="ArgumentOutOfRangeException">The placement is unknown or the delay is invalid.</exception>
     public static void SetText(ControlBase anchor, string text, PopupPlacement placement, TimeSpan showDelay)
     {
+        ArgumentNullException.ThrowIfNull(anchor);
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentOutOfRangeException.ThrowIfNotDefined(
+            placement,
+            nameof(placement),
+            "The popup placement is unknown.");
+        DispatcherTimer.ValidateInterval(showDelay, nameof(showDelay));
         SetText(anchor, text, placement);
         GetTooltip(anchor)!.ShowDelay = showDelay;
     }
@@ -104,6 +117,12 @@ public sealed class Tooltip: Popup
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="placement"/> is unknown.</exception>
     public static void SetContent(ControlBase anchor, ControlBase content, PopupPlacement placement)
     {
+        ArgumentNullException.ThrowIfNull(anchor);
+        ArgumentNullException.ThrowIfNull(content);
+        ArgumentOutOfRangeException.ThrowIfNotDefined(
+            placement,
+            nameof(placement),
+            "The popup placement is unknown.");
         SetContent(anchor, content);
         GetTooltip(anchor)!.Placement = placement;
     }

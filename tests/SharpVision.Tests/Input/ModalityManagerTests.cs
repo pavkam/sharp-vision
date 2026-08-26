@@ -6,6 +6,54 @@ namespace SharpVision.Tests.Input;
 /// <summary>Verifies modal-plane validation, ownership, stacking, and cleanup.</summary>
 public sealed partial class ModalityManagerTests
 {
+    /// <summary>Verifies unhandled in-plane wheel input completes the active outside-interaction policy.</summary>
+    [Theory]
+    [InlineData(OutsideInteraction.Ignore, false, 0)]
+    [InlineData(OutsideInteraction.Ignore, true, 0)]
+    [InlineData(OutsideInteraction.Dismiss, false, 1)]
+    [InlineData(OutsideInteraction.Dismiss, true, 0)]
+    public async Task Pointer_WhenInPlaneWheelCompletesRoute_AppliesPolicyOnlyIfUnhandledAsync(
+        OutsideInteraction policy,
+        bool handleWheel,
+        int expectedDismissals)
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var plane = new ProbeControl { Bounds = new Rect(2, 2, 10, 5) };
+            root.Children.Add(plane);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            using var scope = modality.Enter(plane, policy);
+            var dismissals = 0;
+            scope.DismissRequested += (_, _) => dismissals++;
+            _ = plane.AddHandler(Events.Pointer, (_, eventArgs) =>
+            {
+                if (eventArgs.Phase == RoutingPhase.Bubble && eventArgs.Pointer.Action == PointerAction.Wheel)
+                {
+                    eventArgs.IsHandled = handleWheel;
+                }
+            });
+
+            _ = pointer.Dispatch(new Pointer(
+                new Point(3, 3),
+                pixels: null,
+                Buttons.None,
+                PointerAction.Wheel,
+                wheelX: 0,
+                wheelY: 1,
+                Modifiers.None,
+                isMotion: false,
+                isCellPositionInferred: false));
+
+            dismissals.ShouldBe(expectedDismissals);
+        }, TestContext.Current.CancellationToken);
+    }
+
     #region Construction and plane validation
 
     /// <summary>Verifies constructor dependencies must describe one attached application tree.</summary>

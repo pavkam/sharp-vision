@@ -327,6 +327,19 @@ public sealed class PointerManager: IDisposable
             BreakClickChainOnSwallowedPress(pointer);
         }
 
+        if (failure is null &&
+            pointer.Action == PointerAction.Wheel &&
+            targets.CaptureOwner is null &&
+            !targets.IsOutsideModalPlane &&
+            routedEvent is { IsHandled: false } &&
+            targets.ModalScope is { } inPlaneScope &&
+            ReferenceEquals(targets.Modality?.Active, inPlaneScope))
+        {
+            CaptureFailure(
+                () => targets.Modality.RequestDismiss(inPlaneScope),
+                ref failure);
+        }
+
         CompletePress(pointer);
 
         failure?.Throw();

@@ -79,6 +79,15 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// <param name="value">Whether this Window is active.</param>
     internal void SetActive(bool value)
     {
+        if (!value && IsDisposed)
+        {
+            // A disposal triggered from the activation notification completes before the
+            // serialized manager can drain its fallback request. The dead Window must still
+            // release its internal activation identity, but it cannot publish or invalidate.
+            IsActive = false;
+            return;
+        }
+
         VerifyMutable();
 
         if (IsActive == value)

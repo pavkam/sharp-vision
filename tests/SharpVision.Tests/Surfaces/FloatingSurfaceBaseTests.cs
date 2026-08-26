@@ -10,6 +10,23 @@ using SharpVision.Surfaces;
 /// <summary>Verifies the shared lifecycle and modality contract for elevated surfaces.</summary>
 public sealed class FloatingSurfaceBaseTests
 {
+    /// <summary>Verifies disposal releases subscribers retained by every lifecycle event.</summary>
+    [Fact]
+    public void Dispose_WhenOpenedHasSubscriber_ReleasesSubscriber()
+    {
+        var (surface, listener) = CreateDisposedSurfaceWithOpenedListener();
+
+        for (var attempt = 0; attempt < 5 && listener.IsAlive; attempt++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+        }
+
+        GC.KeepAlive(surface);
+        listener.IsAlive.ShouldBeFalse();
+    }
+
     /// <summary>Verifies the base models single content without exposing panel ownership.</summary>
     [Fact]
     public void Type_WhenInspected_IsContentSurfaceWithoutPublicChildren()
@@ -20,6 +37,16 @@ public sealed class FloatingSurfaceBaseTests
         typeof(Container).IsAssignableFrom(type).ShouldBeFalse();
         type.Namespace.ShouldBe("SharpVision.Surfaces");
         type.GetProperty(nameof(Container.Children)).ShouldBeNull();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static (FloatingSurfaceProbe Surface, WeakReference Listener) CreateDisposedSurfaceWithOpenedListener()
+    {
+        var surface = new FloatingSurfaceProbe();
+        var listener = new FloatingSurfaceOpenedListener();
+        surface.Opened += listener.Handle;
+        surface.Dispose();
+        return (surface, new WeakReference(listener));
     }
 
     /// <summary>Verifies only in-assembly surface families may suppress an already-published Closing event.</summary>

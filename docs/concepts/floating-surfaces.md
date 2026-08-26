@@ -51,6 +51,10 @@ concrete family owns its public open state and chrome:
 - `Tooltip` fixes passive, delayed, non-modal behavior.
 - `Toast` uses `Show(owner)` and `Dismiss()` with a timed, non-modal lifetime.
 
+Disposal releases every shared lifecycle subscription, including `Opened`,
+`CloseRequested`, `Closing`, and `Closed`, so retaining a disposed surface does
+not retain subscriber graphs.
+
 Presenting a Window, or explicitly entering modality, requires an attached,
 available, undisposed surface. A detached Popup may stage `IsOpen = true`: it
 presents - and, under automatic modal behavior, enters modality - when it is

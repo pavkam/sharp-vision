@@ -45,6 +45,10 @@ returns that exact surface, and `ClearTooltip` closes and detaches it; a later
 `Set` call may reuse the anchor's registered framework-part slot with a new
 Tooltip.
 
+Every multi-argument overload validates all arguments before creating,
+reattaching, or mutating a Tooltip. A rejected placement or delay therefore
+preserves the existing anchor, content, placement, timing, and visibility.
+
 ## Triggers and timing
 
 An attached Tooltip listens to its anchor's pointer entry and exit, focus gain

@@ -375,6 +375,7 @@ public abstract class FloatingSurfaceBase: ContentControl
 
         if (reason == ReleaseReason.Disposed)
         {
+            Opened = null;
             CloseRequested = null;
             Closing = null;
             Closed = null;

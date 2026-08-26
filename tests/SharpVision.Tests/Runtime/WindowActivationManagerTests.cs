@@ -218,6 +218,152 @@ public sealed class WindowActivationManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies saturated sibling z-order is renormalized before the target is raised.</summary>
+    [Fact]
+    public async Task Activate_WhenSiblingZIndexIsSaturated_RenormalizesAndRaisesTargetAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var first = new Window();
+            var second = new Window();
+            var notification = new ProbeControl();
+            var root = new Overlay { Children = { first, second, notification } };
+            root.Attach(dispatcher);
+            Overlay.SetZIndex(second, int.MaxValue);
+            Overlay.SetZIndex(notification, int.MaxValue);
+            using var manager = new WindowActivationManager(root);
+
+            _ = manager.Activate(first);
+
+            Overlay.GetZIndex(first).ShouldBeGreaterThan(Overlay.GetZIndex(second));
+            Overlay.GetZIndex(first).ShouldBeLessThan(int.MaxValue);
+            Overlay.GetZIndex(notification).ShouldBe(int.MaxValue);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies callback failure cannot interrupt the committed activation identity.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Activate_WhenIsActiveObserverThrows_LeavesOneCoherentActiveWindowAsync(bool throwWhileDeactivating)
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var first = new Window();
+            var second = new Window();
+            var root = new Overlay { Children = { first, second } };
+            root.Attach(dispatcher);
+            using var manager = new WindowActivationManager(root);
+            _ = manager.Activate(first);
+            var source = throwWhileDeactivating ? first : second;
+            var armed = true;
+            source.PropertyChanged += (_, eventArgs) =>
+            {
+                if (armed && eventArgs.PropertyName == nameof(Window.IsActive))
+                {
+                    armed = false;
+                    throw new InvalidOperationException("activation observer failed");
+                }
+            };
+
+            _ = Should.Throw<InvalidOperationException>(() => manager.Activate(second));
+
+            manager.ActiveWindow.ShouldBeSameAs(second);
+            first.IsActive.ShouldBeFalse();
+            second.IsActive.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies nested activation supersedes the stale outer target from either notification boundary.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Activate_WhenIsActiveObserverReenters_CommitsNewestTargetAsync(bool reenterWhileDeactivating)
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var first = new Window();
+            var second = new Window();
+            var third = new Window();
+            var root = new Overlay { Children = { first, second, third } };
+            root.Attach(dispatcher);
+            using var manager = new WindowActivationManager(root);
+            _ = manager.Activate(first);
+            var source = reenterWhileDeactivating ? first : second;
+            source.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(Window.IsActive))
+                {
+                    _ = manager.Activate(third);
+                }
+            };
+
+            _ = manager.Activate(second);
+
+            manager.ActiveWindow.ShouldBeSameAs(third);
+            first.IsActive.ShouldBeFalse();
+            second.IsActive.ShouldBeFalse();
+            third.IsActive.ShouldBeTrue();
+            Overlay.GetZIndex(third).ShouldBeGreaterThan(Overlay.GetZIndex(second));
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies activation observers cannot strand a target that makes itself unavailable.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task Activate_WhenNewWindowBecomesUnavailableInObserver_RestoresFallbackAsync(int mutation)
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var first = new Window();
+            var second = new Window();
+            var root = new Overlay { Children = { first, second } };
+            root.Attach(dispatcher);
+            using var manager = new WindowActivationManager(root);
+            _ = manager.Activate(first);
+            second.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName != nameof(Window.IsActive) || !second.IsActive)
+                {
+                    return;
+                }
+
+                switch (mutation)
+                {
+                    case 0:
+                        second.Visibility = Visibility.Hidden;
+                        break;
+                    case 1:
+                        second.IsEnabled = false;
+                        break;
+                    case 2:
+                        _ = root.Children.Remove(second);
+                        break;
+                    default:
+                        second.Dispose();
+                        break;
+                }
+            };
+
+            _ = manager.Activate(second);
+
+            manager.ActiveWindow.ShouldBeSameAs(first);
+            first.IsActive.ShouldBeTrue();
+            second.IsActive.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies re-activating the already-topmost Window leaves z-order unchanged.</summary>
     [Fact]
     public async Task Activate_WhenTargetWindowIsAlreadyTopmost_LeavesZIndexUnchangedAsync()

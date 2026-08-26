@@ -2444,11 +2444,9 @@ public sealed class MenuTests
         surface.Application.Modality.Active.ShouldBeSameAs(scope);
     }
 
-    /// <summary>Verifies an unhandled wheel over a sibling top-level item stays inside the active
-    /// menu-bar plane and does not close the session - only a wheel genuinely outside the whole
-    /// menu tree dismisses.</summary>
+    /// <summary>Verifies an unhandled wheel over a sibling top-level item completes menu dismissal.</summary>
     [Fact]
-    public async Task Pointer_WhenWheelCannotScrollArmedMenu_KeepsSessionOpenAsync()
+    public async Task Pointer_WhenWheelCannotScrollArmedMenu_ClosesSessionAsync()
     {
         // Arrange
         var fileMenu = new Menu { Orientation = Orientation.Vertical };
@@ -2475,11 +2473,10 @@ public sealed class MenuTests
             FormattableString.Invariant($"\u001b[<64;{wheelPoint.X + 1};{wheelPoint.Y + 1}M"));
         await surface.SendAsync(wheelReport, "wheel over the same menu bar's sibling top-level item");
 
-        // Assert - the wheel's hit target (file) lies inside the same top-level menu-bar boundary
-        // as the active scope's root, so it is in-plane and swallowed rather than dismissing.
-        editPopup.IsOpen.ShouldBeTrue();
-        scope.IsActive.ShouldBeTrue();
-        surface.Application.Modality.Active.ShouldBeSameAs(scope);
+        // Assert
+        editPopup.IsOpen.ShouldBeFalse();
+        scope.IsActive.ShouldBeFalse();
+        surface.Application.Modality.Active.ShouldBeNull();
     }
 
     #endregion

@@ -112,10 +112,9 @@ public sealed class ComboBoxSurfaceTests
     }
 
     /// <summary>Verifies a wheel with no ListView range to scroll is swallowed rather than
-    /// treated as outside interaction: it neither leaks to the parent's own scroll nor dismisses
-    /// the drop-down, matching mainstream drop-down behavior.</summary>
+    /// completed by modal dismissal without leaking to the parent's own scroll.</summary>
     [Fact]
-    public async Task Input_WhenDropDownWheelCannotScroll_StaysOpenWithoutParentScrollAsync()
+    public async Task Input_WhenDropDownWheelCannotScroll_ClosesWithoutParentScrollAsync()
     {
         // Arrange
         var combo = new ComboBox
@@ -146,13 +145,11 @@ public sealed class ComboBoxSurfaceTests
         // Act
         await surface.Pointer.WheelAsync(list, default, wheelY: -1);
 
-        // Assert - an endpoint/no-range wheel over the open drop-down is swallowed, not treated
-        // as outside interaction: it neither scrolls the enclosing parent nor closes the
-        // drop-down.
+        // Assert
         parent.VerticalOffset.ShouldBe(0);
-        combo.IsOpen.ShouldBeTrue();
-        scope.IsActive.ShouldBeTrue();
-        surface.Application.Modality.Active.ShouldBeSameAs(scope);
+        combo.IsOpen.ShouldBeFalse();
+        scope.IsActive.ShouldBeFalse();
+        surface.Application.Modality.Active.ShouldBeNull();
     }
 
     /// <summary>Verifies an outside wheel closes the modal drop-down without scrolling its parent.</summary>

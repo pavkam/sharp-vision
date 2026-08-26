@@ -3,6 +3,8 @@
 
 namespace SharpVision.Runtime;
 
+using System.Runtime.ExceptionServices;
+
 using Controls.Layout;
 
 using Windows;
@@ -14,7 +16,10 @@ internal sealed class WindowActivationManager: IDisposable
 
     private readonly ControlBase _root;
     private readonly List<Window> _history = [];
+    private bool _hasPendingActivation;
+    private bool _isActivating;
     private bool _isDisposed;
+    private Window? _pendingActivation;
 
     /// <summary>Initializes activation ownership for one attached application root.</summary>
     /// <param name="root">The non-null attached application root.</param>
@@ -81,21 +86,73 @@ internal sealed class WindowActivationManager: IDisposable
 
     private void SetActive(Window? value)
     {
-        if (ReferenceEquals(ActiveWindow, value))
+        if (_isActivating)
         {
+            _pendingActivation = value;
+            _hasPendingActivation = true;
             return;
         }
 
-        if (ActiveWindow is { } previous)
+        _isActivating = true;
+        ExceptionDispatchInfo? failure = null;
+
+        try
+        {
+            var requested = value;
+
+            while (true)
+            {
+                _hasPendingActivation = false;
+                CommitActive(requested, ref failure);
+
+                if (_hasPendingActivation)
+                {
+                    requested = _pendingActivation;
+                    continue;
+                }
+
+                break;
+            }
+        }
+        finally
+        {
+            _pendingActivation = null;
+            _hasPendingActivation = false;
+            _isActivating = false;
+        }
+
+        failure?.Throw();
+    }
+
+    private void CommitActive(Window? value, ref ExceptionDispatchInfo? failure)
+    {
+        if (ReferenceEquals(ActiveWindow, value))
+        {
+            if (value is not null && !value.IsActive)
+            {
+                ExceptionAggregation.Capture(() => value.SetActive(true), ref failure);
+
+                if (!_hasPendingActivation && Available(value) && FindWindow(value) is not null)
+                {
+                    ExceptionAggregation.Capture(() => Raise(value), ref failure);
+                }
+            }
+
+            return;
+        }
+
+        var previous = ActiveWindow;
+
+        if (previous is not null)
         {
             Unsubscribe(previous);
-            previous.SetActive(false);
         }
 
         ActiveWindow = value;
 
         if (value is not null)
         {
+            Subscribe(value);
             _ = _history.Remove(value);
             _history.Insert(0, value);
 
@@ -104,9 +161,31 @@ internal sealed class WindowActivationManager: IDisposable
                 _history.RemoveRange(_maxHistory, _history.Count - _maxHistory);
             }
 
-            value.SetActive(true);
-            Subscribe(value);
-            Raise(value);
+        }
+
+        if (previous is not null)
+        {
+            ExceptionAggregation.Capture(() => previous.SetActive(false), ref failure);
+        }
+
+        if (_hasPendingActivation || !ReferenceEquals(ActiveWindow, value) || value is null)
+        {
+            return;
+        }
+
+        ExceptionAggregation.Capture(() => value.SetActive(true), ref failure);
+
+        if (!_hasPendingActivation &&
+            ReferenceEquals(ActiveWindow, value) &&
+            Available(value) &&
+            FindWindow(value) is not null)
+        {
+            ExceptionAggregation.Capture(() => Raise(value), ref failure);
+        }
+        else if (!_hasPendingActivation)
+        {
+            _pendingActivation = FindNextAvailable();
+            _hasPendingActivation = true;
         }
     }
 
@@ -140,8 +219,31 @@ internal sealed class WindowActivationManager: IDisposable
 
         if (needsRaise)
         {
-            Overlay.SetZIndex(window, maxSiblingZ == int.MaxValue ? int.MaxValue : maxSiblingZ + 1);
+            if (maxSiblingZ == int.MaxValue)
+            {
+                RenormalizeAndRaise(overlay, window);
+            }
+            else
+            {
+                Overlay.SetZIndex(window, maxSiblingZ + 1);
+            }
         }
+    }
+
+    private static void RenormalizeAndRaise(Overlay overlay, Window window)
+    {
+        var ordered = overlay.Children
+            .Where(static child => child is Window)
+            .Where(child => !ReferenceEquals(child, window))
+            .OrderBy(Overlay.GetZIndex)
+            .ToArray();
+
+        for (var index = 0; index < ordered.Length; index++)
+        {
+            Overlay.SetZIndex(ordered[index], index);
+        }
+
+        Overlay.SetZIndex(window, ordered.Length);
     }
 
     // Walks recency order for the next window this manager previously activated that is

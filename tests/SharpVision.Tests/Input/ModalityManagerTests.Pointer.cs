@@ -562,14 +562,11 @@ public sealed partial class ModalityManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies an unhandled in-plane wheel is swallowed under every outside policy instead
-    /// of dismissing the scope - a wheel whose hit lies inside the modal subtree is never outside
-    /// interaction, even when the routed target leaves it unhandled (e.g. a scroll endpoint or a
-    /// short list with no range), matching mainstream drop-down behavior.</summary>
+    /// <summary>Verifies an unhandled in-plane wheel completes the configured post-route policy.</summary>
     [Theory]
     [InlineData(OutsideInteraction.Ignore)]
     [InlineData(OutsideInteraction.Dismiss)]
-    public async Task Dispatch_WhenInPlaneWheelRemainsUnhandled_NeverDismissesAsync(OutsideInteraction policy)
+    public async Task Dispatch_WhenInPlaneWheelRemainsUnhandled_CompletesPolicyAsync(OutsideInteraction policy)
     {
         await using var dispatcher = Dispatcher.Start();
 
@@ -589,7 +586,7 @@ public sealed partial class ModalityManagerTests
             pointer.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Wheel, wheelY: -1))
                 .ShouldBeSameAs(plane);
 
-            dismissals.ShouldBe(0);
+            dismissals.ShouldBe(policy == OutsideInteraction.Dismiss ? 1 : 0);
             scope.IsActive.ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
     }
@@ -622,12 +619,9 @@ public sealed partial class ModalityManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies an armed Container that could not move any offset (a scroll endpoint, or a
-    /// short list with no range) leaves the wheel unhandled but does not dismiss the plane -
-    /// AutoScroll only decides whether the container attempts to scroll, not whether the attempt
-    /// moved anything, and an in-plane wheel hit is never outside interaction.</summary>
+    /// <summary>Verifies an armed Container that cannot move leaves the wheel for modal policy.</summary>
     [Fact]
-    public async Task Dispatch_WhenArmedContainerWheelMovesNoOffset_LeavesRecordUnhandledAndDoesNotDismissAsync()
+    public async Task Dispatch_WhenArmedContainerWheelMovesNoOffset_RequestsDismissalAsync()
     {
         await using var dispatcher = Dispatcher.Start();
 
@@ -647,7 +641,7 @@ public sealed partial class ModalityManagerTests
             pointer.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Wheel, wheelY: -1))
                 .ShouldBeSameAs(plane);
 
-            dismissals.ShouldBe(0);
+            dismissals.ShouldBe(1);
             scope.IsActive.ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
     }

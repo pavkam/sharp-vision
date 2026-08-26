@@ -652,26 +652,16 @@ public sealed partial class ModalityManagerTests
             terminal,
             application,
             EncodePointer(65, modalButtonPoint, 'M'),
-            () => modalWheelRoutes > 0,
-            "unhandled in-plane wheel, swallowed rather than dismissing");
-
-        dismissRequests.ShouldBe(0);
-        scope.IsActive.ShouldBeTrue();
-        application.Modality.Active.ShouldBeSameAs(scope);
-
-        await SendAndWaitAsync(
-            terminal,
-            application,
-            EncodePointer(65, backgroundButtonPoint, 'M'),
-            () => !scope.IsActive,
-            "unhandled outside dismissing wheel");
+            () => modalWheelRoutes > 0 && !scope.IsActive,
+            "unhandled in-plane wheel completes dismiss policy");
 
         dismissRequests.ShouldBe(1);
+        scope.IsActive.ShouldBeFalse();
         backgroundClicks.ShouldBe(0);
         backgroundRoutes.ShouldBe(0);
         application.Modality.Active.ShouldBeNull();
         application.Focus.Focused.ShouldBeSameAs(backgroundEditor);
-        application.Pointer.Position.ShouldBe(backgroundButtonPoint);
+        application.Pointer.Position.ShouldBe(modalButtonPoint);
         application.Pointer.PressOrigin.ShouldBeNull();
 
         await SendAndWaitAsync(

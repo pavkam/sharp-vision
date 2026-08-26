@@ -583,14 +583,12 @@ public sealed partial class ModalityManagerTests
                 ? physical
                 : null;
             var expectedTarget = captured ?? eligiblePhysical;
-            // A wheel hit inside the active plane is never dismiss-eligible, whether or not the
-            // routed target ends up handling it (e.g. a scroll endpoint or a no-range list) -
-            // only a genuinely outside press/wheel qualifies.
             var qualifiesOutside = activeBefore is not null &&
                 captured is null &&
                 eligiblePhysical is null &&
                 action is PointerAction.Press or PointerAction.Wheel;
-            var qualifiesPolicyInput = qualifiesOutside;
+            var qualifiesPolicyInput = qualifiesOutside ||
+                (activeBefore is not null && captured is null && action == PointerAction.Wheel);
             var expectsDismissal = qualifiesPolicyInput &&
                 policies[activeBefore!] == OutsideInteraction.Dismiss;
             var callbacksBefore = dismissalCallbacks;

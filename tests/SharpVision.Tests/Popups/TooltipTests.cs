@@ -182,9 +182,14 @@ public sealed class TooltipTests
     public void SetText_WhenGivenUnknownPlacement_ThrowsArgumentOutOfRangeException()
     {
         using var anchor = new ProbeControl(new Size(6, 1));
+        Tooltip.SetText(anchor, "Original", PopupPlacement.Above);
+        var tooltip = Tooltip.GetTooltip(anchor).ShouldNotBeNull();
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
-            () => Tooltip.SetText(anchor, "Save", (PopupPlacement) 99));
+            () => Tooltip.SetText(anchor, "Replacement", (PopupPlacement) 99));
+
+        tooltip.Text.ShouldBe("Original");
+        tooltip.Placement.ShouldBe(PopupPlacement.Above);
     }
 
     /// <summary>Verifies the placement-and-delay overload of SetText applies text, placement, and
@@ -208,9 +213,15 @@ public sealed class TooltipTests
     public void SetText_WhenGivenInvalidShowDelay_ThrowsArgumentOutOfRangeException()
     {
         using var anchor = new ProbeControl(new Size(6, 1));
+        Tooltip.SetText(anchor, "Original", PopupPlacement.Above, TimeSpan.FromMilliseconds(250));
+        var tooltip = Tooltip.GetTooltip(anchor).ShouldNotBeNull();
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
-            () => Tooltip.SetText(anchor, "Save", PopupPlacement.Below, TimeSpan.Zero));
+            () => Tooltip.SetText(anchor, "Replacement", PopupPlacement.Below, TimeSpan.Zero));
+
+        tooltip.Text.ShouldBe("Original");
+        tooltip.Placement.ShouldBe(PopupPlacement.Above);
+        tooltip.ShowDelay.ShouldBe(TimeSpan.FromMilliseconds(250));
     }
 
     /// <summary>Verifies the placement overload of SetContent applies both content and placement.</summary>
@@ -232,10 +243,16 @@ public sealed class TooltipTests
     public void SetContent_WhenGivenUnknownPlacement_ThrowsArgumentOutOfRangeException()
     {
         using var anchor = new ProbeControl(new Size(6, 1));
+        using var original = new ProbeControl(new Size(3, 1));
         using var content = new ProbeControl(new Size(4, 2));
+        Tooltip.SetContent(anchor, original, PopupPlacement.Above);
+        var tooltip = Tooltip.GetTooltip(anchor).ShouldNotBeNull();
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
             () => Tooltip.SetContent(anchor, content, (PopupPlacement) 99));
+
+        tooltip.Content.ShouldBeSameAs(original);
+        tooltip.Placement.ShouldBe(PopupPlacement.Above);
     }
 
     /// <summary>Verifies every static attached-data method rejects a null anchor.</summary>

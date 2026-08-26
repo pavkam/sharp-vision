@@ -168,6 +168,13 @@ activation clear. The default Window profile maps `IsActive` onto its existing
 `SemanticColor.ActiveBorder`. `ContainsFocus` and `IsFocused` keep their
 independent keyboard-focus meanings.
 
+Activation notifications are serialized: reentrant activation supersedes the
+older request, and a throwing observer is rethrown only after manager identity,
+subscriptions, active flags, and z-order are coherent. When Window z-order
+reaches `int.MaxValue`, sibling Windows are renormalized in their existing
+visual order before the target is raised; non-Window notification layers keep
+their reserved z-index.
+
 ## Presentation and modality
 
 An attached, visible Window is a presented surface. Changing `Visibility` to
