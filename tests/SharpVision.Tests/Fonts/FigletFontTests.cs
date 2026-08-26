@@ -67,6 +67,33 @@ public sealed class FigletFontTests
         _ = Should.Throw<InvalidDataException>(() => FigletFont.Load(stream, "large", limits));
     }
 
+    /// <summary>Verifies the 95 mandatory glyphs alone are checked against the configured glyph
+    /// count limit, instead of only the optional trailing extension/German-block content: a
+    /// minimal font that never reaches any of the later limit-aware loops must still be rejected
+    /// when even its mandatory block alone exceeds the configured limit.</summary>
+    [Fact]
+    public void Load_WhenMandatoryGlyphsAloneExceedGlyphLimit_ThrowsInvalidDataException()
+    {
+        using var stream = Stream(CreateFontWithoutGermanBlock());
+        var limits = new FigletLimits(maxGlyphs: 1);
+
+        _ = Should.Throw<InvalidDataException>(() => FigletFont.Load(stream, "too-few-glyphs", limits));
+    }
+
+    /// <summary>Verifies a minimal font carrying exactly the 95 mandatory glyphs still loads
+    /// successfully when the configured glyph count limit is high enough to admit them - the
+    /// mandatory-block limit check must not reject a font it should accept.</summary>
+    [Fact]
+    public void Load_WhenMandatoryGlyphsFitWithinGlyphLimit_LoadsSuccessfully()
+    {
+        using var stream = Stream(CreateFontWithoutGermanBlock());
+        var limits = new FigletLimits(maxGlyphs: 95);
+
+        var font = FigletFont.Load(stream, "exactly-enough-glyphs", limits);
+
+        font.Render("A").ShouldBe("A");
+    }
+
     /// <summary>Verifies an understated legacy header remains compatible when the encoded row is
     /// still inside the caller's hard safety limit.</summary>
     [Fact]

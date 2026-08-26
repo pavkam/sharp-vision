@@ -97,6 +97,11 @@ internal static class FigletParser
                 glyphs.Add(code, ReadGlyph(lines, ref cursor, height, limits));
             }
 
+            if (glyphs.Count > limits.MaxGlyphs)
+            {
+                throw new InvalidDataException("The FIG-font glyph count exceeds the configured limit.");
+            }
+
             if (lines.Length - cursor >= _additionalCodes.Length * height)
             {
                 // The block carries no tag line of its own, so simply having enough remaining lines
@@ -151,6 +156,18 @@ internal static class FigletParser
                 }
 
                 glyphs[code] = glyph;
+            }
+
+            // The tag-driven loops above never let their own additions push the count past the
+            // limit (each checks glyphs.Count against limits.MaxGlyphs before adding), but the
+            // untagged legacy German-umlaut block above is added unconditionally once detected, so
+            // it alone can still carry the count past the limit. The trailing-data check that
+            // follows catches a different failure: a tag-driven loop stopping early because it hit
+            // the limit while genuine tag/glyph lines remained unconsumed, which no longer shows up
+            // as a raw count overrun since those loops stop at exactly the limit.
+            if (glyphs.Count > limits.MaxGlyphs)
+            {
+                throw new InvalidDataException("The FIG-font glyph count exceeds the configured limit.");
             }
 
             return cursor < lines.Length && lines[cursor..].Any(line => line.Length != 0)
