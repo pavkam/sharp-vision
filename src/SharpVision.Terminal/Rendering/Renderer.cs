@@ -293,12 +293,21 @@ public sealed class Renderer: IDisposable
         ArgumentNullException.ThrowIfNull(back);
         ArgumentNullException.ThrowIfNull(transport);
         ArgumentNullException.ThrowIfNull(profile);
-        ThrowIfDisposed();
-        back.ThrowIfDisposed();
 
         if (Interlocked.CompareExchange(ref _rendering, 1, 0) != 0)
         {
             throw new InvalidOperationException("A frame render is already in progress.");
+        }
+
+        try
+        {
+            ThrowIfDisposed();
+            back.ThrowIfDisposed();
+        }
+        catch
+        {
+            Volatile.Write(ref _rendering, 0);
+            throw;
         }
 
         Frame? replacement = null;

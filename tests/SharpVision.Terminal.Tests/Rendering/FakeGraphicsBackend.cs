@@ -14,6 +14,8 @@ internal sealed class FakeGraphicsBackend: IGraphicsBackend
     private static readonly byte[] _cleanup = "<cleanup>"u8.ToArray();
     private ManualResetEventSlim? _prepareBlock;
     private TaskCompletionSource? _prepareStarted;
+    private ManualResetEventSlim? _disposeBlock;
+    private TaskCompletionSource? _disposeStarted;
 
     /// <summary>Gets full-invalidation flags supplied to prepare calls.</summary>
     internal List<bool> FullPreparations { get; } = [];
@@ -60,6 +62,19 @@ internal sealed class FakeGraphicsBackend: IGraphicsBackend
 
     /// <summary>Releases blocked preparation.</summary>
     internal void ReleasePrepare() => _prepareBlock?.Set();
+
+    /// <summary>Gets a task completed when blocked disposal begins.</summary>
+    internal Task DisposeStarted => _disposeStarted?.Task ?? Task.CompletedTask;
+
+    /// <summary>Blocks subsequent disposal until explicitly released, while it still owns any caller's lock.</summary>
+    internal void BlockDispose()
+    {
+        _disposeBlock = new ManualResetEventSlim(initialState: false);
+        _disposeStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    /// <summary>Releases blocked disposal.</summary>
+    internal void ReleaseDispose() => _disposeBlock?.Set();
 
     /// <inheritdoc />
     public GraphicsBackendResult Prepare(
@@ -138,6 +153,13 @@ internal sealed class FakeGraphicsBackend: IGraphicsBackend
     public void Dispose()
     {
         DisposeCount++;
+        _ = _disposeStarted?.TrySetResult();
+        var disposeBlock = _disposeBlock;
+        disposeBlock?.Wait();
+        _disposeBlock = null;
+        _disposeStarted = null;
+        disposeBlock?.Dispose();
+
         _prepareBlock?.Dispose();
         _prepareBlock = null;
 

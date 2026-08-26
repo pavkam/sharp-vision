@@ -1366,6 +1366,51 @@ public sealed class RendererTests
         AssertGraphicsOrder(transport.Writes.Single());
     }
 
+    /// <summary>
+    /// Verifies a render that races a disposal already holding the exclusion flag always observes a
+    /// clean mutual-exclusion failure, never an <see cref="ObjectDisposedException"/> surfaced from
+    /// partially torn-down state. RenderAsync used to check disposal before claiming the exclusion
+    /// flag, so a Dispose() that ran to completion in the window between the disposed-check and the
+    /// claim could leave a losing render observing disposed dependencies directly. Pinning Dispose()
+    /// mid-flight (after it has claimed the flag and marked the renderer disposed, but before it
+    /// finishes releasing owned state) reproduces exactly that window deterministically: under the
+    /// old check-then-claim order the concurrent render would see the disposed flag already set and
+    /// throw ObjectDisposedException; the fixed claim-then-check order instead loses the exclusion
+    /// race outright and throws a clean InvalidOperationException.
+    /// </summary>
+    [Fact]
+    public async Task RenderAsync_WhenDisposeHoldsRenderingFlag_ThrowsInvalidOperationNeverObjectDisposedAsync()
+    {
+        var backend = new FakeGraphicsBackend();
+        var renderer = new Renderer(backend);
+        await using FakeTransport transport = new();
+        using var frame = new Frame(new Size(1, 1));
+        backend.BlockDispose();
+
+        var disposing = Task.Run(renderer.Dispose);
+        await backend.DisposeStarted;
+
+        try
+        {
+            var thrown = await Should.ThrowAsync<InvalidOperationException>(async () => await renderer.RenderAsync(
+                frame,
+                transport,
+                TerminalCapabilities.Conservative,
+                TestContext.Current.CancellationToken));
+
+            thrown.Message.ShouldBe("A frame render is already in progress.");
+        }
+        finally
+        {
+            backend.ReleaseDispose();
+        }
+
+        await disposing;
+
+        backend.DisposeCount.ShouldBe(1);
+        _ = Should.Throw<ObjectDisposedException>(renderer.Invalidate);
+    }
+
     /// <summary>Verifies renderer disposal releases its backend exactly once.</summary>
     [Fact]
     public void Dispose_WhenBackendExists_DisposesOwnedBackendOnce()
