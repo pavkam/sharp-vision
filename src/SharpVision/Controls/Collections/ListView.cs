@@ -1570,7 +1570,9 @@ public sealed class ListView: ItemsControl
 
         if (eventArgs.IsInitialKeyDown &&
             (eventArgs.Stroke.Code == Code.Enter ||
-             (eventArgs.Stroke.Code == Code.Character && eventArgs.Stroke.Character == new Rune(' '))))
+             (eventArgs.Stroke.Code == Code.Character &&
+              eventArgs.Stroke.Character == new Rune(' ') &&
+              KeyboardModifierPolicy.IsCollectionSelectionEligible(eventArgs.Stroke.Modifiers))))
         {
             eventArgs.IsHandled = ActivateCurrent(
                 ActivationCause.Keyboard,

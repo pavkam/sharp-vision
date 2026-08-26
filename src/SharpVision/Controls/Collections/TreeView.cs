@@ -733,7 +733,8 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
 
         if (eventArgs.IsInitialKeyDown &&
             eventArgs.Stroke.Code == Code.Character &&
-            eventArgs.Stroke.Character == new Rune(' '))
+            eventArgs.Stroke.Character == new Rune(' ') &&
+            KeyboardModifierPolicy.IsCollectionSelectionEligible(eventArgs.Stroke.Modifiers))
         {
             if (_navigator.Current is TreeViewItem { IsCheckable: true } checkable)
             {

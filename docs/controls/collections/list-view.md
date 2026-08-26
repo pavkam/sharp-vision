@@ -141,7 +141,7 @@ Control or Shift only toggles or extends the selection and never raises
 | Home / End                      | Choose the first or last eligible item.                                                                                                  |
 | PageUp / PageDown               | Move by at least one item, otherwise by as many items as fill the committed viewport height minus `PageOverlap`.                         |
 | Mouse wheel                     | Scrolls the composed viewport by `LineSize` cells per notch; never changes the active index.                                             |
-| Space                           | Press-and-release activation; changes the selection without invoking.                                                                    |
+| Space                           | Changes selection without invoking when only Control, Shift, or lock modifiers accompany it; larger chords remain unhandled.             |
 | Enter                           | Invokes without changing the selection.                                                                                                  |
 | Primary pointer release         | Selects and, subject to `ItemInvocation`, invokes.                                                                                       |
 | Control click (`Multiple` mode) | Toggles one index.                                                                                                                       |

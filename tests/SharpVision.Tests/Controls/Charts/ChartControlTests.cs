@@ -279,6 +279,83 @@ public sealed class ChartControlTests
         notifications.ShouldBe([nameof(ChartControlBase.Series)]);
     }
 
+    /// <summary>Verifies every observable chart-model mutation is dispatcher-affine while the
+    /// borrowing chart is attached, rather than racing a later posted enumeration.</summary>
+    [Theory]
+    [InlineData("SeriesMembership")]
+    [InlineData("PointMembership")]
+    [InlineData("SeriesProperty")]
+    [InlineData("PointProperty")]
+    public async Task ObservableData_WhenMutatedOffAttachedDispatcher_ThrowsDeterministicallyAsync(
+        string mutation)
+    {
+        // Arrange
+        var point = new ChartDataPoint("Initial", 1);
+        var series = new ChartSeries("Series", [point]);
+        var source = new ObservableCollection<ChartSeries> { series };
+        var chart = new LineChart { Series = source };
+        await using var dispatcher = Dispatcher.Start();
+        await dispatcher.InvokeAsync(
+            () => chart.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+
+        try
+        {
+            // Act and assert
+            _ = await Should.ThrowAsync<InvalidOperationException>(() => Task.Run(() =>
+            {
+                switch (mutation)
+                {
+                    case "SeriesMembership":
+                        source.Add(new ChartSeries("Added"));
+                        break;
+                    case "PointMembership":
+                        series.Points.Add(new ChartDataPoint("Added", 2));
+                        break;
+                    case "SeriesProperty":
+                        series.Name = "Changed";
+                        break;
+                    case "PointProperty":
+                        point.Value = 2;
+                        break;
+                    default:
+                        throw new UnreachableException();
+                }
+            }, TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            await dispatcher.InvokeAsync(chart.Dispose, TestContext.Current.CancellationToken);
+        }
+    }
+
+    /// <summary>Verifies detachment removes chart-model affinity and disposal releases every
+    /// observable subscription, with no queued refresh left to race either transition.</summary>
+    [Fact]
+    public async Task ObservableData_WhenChartDetachesThenDisposes_AllowsDetachedMutationAndReleasesSubscriptionsAsync()
+    {
+        // Arrange
+        var first = new ChartSeries("First");
+        var source = new ObservableCollection<ChartSeries> { first };
+        var chart = new LineChart { Series = source };
+        await using var dispatcher = Dispatcher.Start();
+        await dispatcher.InvokeAsync(
+            () => chart.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+        await dispatcher.InvokeAsync(chart.Detach, TestContext.Current.CancellationToken);
+        var second = new ChartSeries("Second");
+
+        // Act - detached borrowed data may be updated by its current owner thread.
+        await Task.Run(() => source.Add(second), TestContext.Current.CancellationToken);
+
+        // Assert and act - the detached snapshot updates, then disposal removes subscriptions.
+        chart.Series.ShouldBe([first, second]);
+        chart.Dispose();
+        await Should.NotThrowAsync(() => Task.Run(
+            () => source.Add(new ChartSeries("After disposal")),
+            TestContext.Current.CancellationToken));
+    }
+
     /// <summary>Verifies a changed series <see cref="ChartSeries.Name"/> invalidates measure but
     /// publishes no <see cref="ChartControlBase.Series"/> (or any other) property notification,
     /// since the observer forwards non-membership property changes straight to

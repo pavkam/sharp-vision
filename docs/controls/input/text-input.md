@@ -192,7 +192,9 @@ unconditionally validated `Edit.MoveHome`/`Edit.MoveEnd`.
 - `TextChanging` receives the complete proposed `EditResult` and may cancel it
   before any field changes. After the text, selection, and scroll commit
   atomically, `TextChanged` precedes `SelectionChanged` when both apply.
-  `Submitted` carries the committed single-line text.
+  `Submitted` carries the committed single-line text and is raised only for the
+  initial Enter press. A multiline editor instead inserts a newline for each
+  accepted Enter repeat.
 - Password mode masks the display and keeps secret text out of diagnostics,
   snapshots, and the default clipboard copy. The model still stores the
   caller-provided text; it is not a secure-memory primitive.

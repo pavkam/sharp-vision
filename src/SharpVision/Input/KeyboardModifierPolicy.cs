@@ -13,6 +13,12 @@ internal static class KeyboardModifierPolicy
         Modifiers.CapsLock |
         Modifiers.NumLock;
 
+    private const Modifiers _collectionSelectionModifiers =
+        Modifiers.Control |
+        Modifiers.Shift |
+        Modifiers.CapsLock |
+        Modifiers.NumLock;
+
     private const Modifiers _lockModifiers = Modifiers.CapsLock | Modifiers.NumLock;
 
     /// <summary>Reports whether direct character input carries no application-command modifier.</summary>
@@ -20,6 +26,12 @@ internal static class KeyboardModifierPolicy
     /// <returns>True when only Shift and lock-key state may accompany the character.</returns>
     internal static bool IsTextEntryEligible(Modifiers modifiers) =>
         (modifiers & ~_textEntryModifiers) == 0;
+
+    /// <summary>Reports whether a collection gesture contains only selection and lock modifiers.</summary>
+    /// <param name="modifiers">The decoded modifier state.</param>
+    /// <returns>True when Control, Shift, and lock-key state are the only modifiers present.</returns>
+    internal static bool IsCollectionSelectionEligible(Modifiers modifiers) =>
+        (modifiers & ~_collectionSelectionModifiers) == 0;
 
     /// <summary>Compares a command chord after removing incidental lock-key state.</summary>
     /// <param name="modifiers">The decoded modifier state.</param>

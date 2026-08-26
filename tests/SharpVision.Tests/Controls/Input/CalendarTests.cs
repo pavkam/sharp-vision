@@ -826,6 +826,41 @@ public sealed class CalendarTests
         changes.ShouldBe(1);
     }
 
+    /// <summary>Verifies held navigation repeats while Enter and Space establish an interval
+    /// anchor only once for one physical key hold.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Dispatch_WhenActivationKeyRepeats_ActivatesOnlyInitialPressWhileNavigationRepeats(
+        bool useSpace)
+    {
+        // Arrange
+        using var calendar = new UiCalendar { SelectionMode = CalendarSelectionMode.Interval };
+        var beforeMove = calendar.ActiveDate;
+
+        // Act - navigation remains repeatable.
+        _ = Key(calendar, Code.Right, KeyAction.Repeat);
+        var activationDate = calendar.ActiveDate;
+
+        if (useSpace)
+        {
+            _ = CharacterKey(calendar, new Rune(' '), KeyAction.Press);
+            _ = CharacterKey(calendar, new Rune(' '), KeyAction.Repeat);
+            _ = CharacterKey(calendar, new Rune(' '), KeyAction.Repeat);
+        }
+        else
+        {
+            _ = Key(calendar, Code.Enter);
+            _ = Key(calendar, Code.Enter, KeyAction.Repeat);
+            _ = Key(calendar, Code.Enter, KeyAction.Repeat);
+        }
+
+        // Assert
+        activationDate.ShouldBe(beforeMove.AddDays(1));
+        calendar.IntervalAnchor.ShouldBe(activationDate);
+        calendar.Selection.ShouldBeNull();
+    }
+
     /// <summary>Verifies an unavailable interior date prevents an interval commit.</summary>
     [Fact]
     public void ActivateDate_WhenIntervalCrossesBlockedDate_PreservesAnchor()

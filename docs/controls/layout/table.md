@@ -267,9 +267,10 @@ any further, so the keystroke never escapes to page an enclosing scrollable
 container. Every move — including `Home` and `End` — brings the active cell into
 view.
 
-`Enter` activates the active row, and begins editing when the active cell is an
-editable `TextInput`. While editing, `Enter` commits, `Escape` restores the
-original text, and `Tab` commits and then moves to the next cell. A
+The initial `Enter` press activates the active row, and begins editing when the
+active cell is an editable `TextInput`; held-key repeats neither invoke nor
+reopen editing. While editing, the initial `Enter` press commits, `Escape`
+restores the original text, and `Tab` commits and then moves to the next cell. A
 `TableColumn` marked `isReadOnly` and a read-only `TextInput` both refuse
 editing. `Ctrl+A` selects every row or cell when the active selection mode
 supports it and the stroke matches the exact lock-normalized Control command. An
@@ -280,17 +281,20 @@ rules follow the shared
 and routed handled-state contract.
 
 `SelectRow`, `SelectCell`, `ClearSelection`, and `SelectAll` commit selection
-state and raise `SelectionChanged`. `RowInvoked` reports pointer and keyboard
-activation. `SortBy` cycles a column through ascending, descending, and reset;
-`SetSort` selects an explicit state and raises `SortChanged` when the column or
-direction actually changes — a call that re-applies the currently active column
-and direction raises nothing, matching `SortColumnIndex`'s and `SortDirection`'s
-own change-gated property notifications. Inserting or replacing a row while
-sorted re-splices it into the active order without raising `SortChanged`, since
-the sort settings themselves are unchanged; the row collection's own mutation is
-the signal for that. A supplied `SortKey` is compared with culture-independent
-ordering, and rows with equal keys keep their original insertion order in both
-directions.
+state and raise `SelectionChanged`. After a pointer selection callback returns,
+editing and `RowInvoked` continue only when the exact hit row and cell remain
+owned and available; removal, replacement, clearing, or disposal ends that input
+transaction, while moving the same row preserves its current identity and index.
+`RowInvoked` reports pointer and keyboard activation. `SortBy` cycles a column
+through ascending, descending, and reset; `SetSort` selects an explicit state
+and raises `SortChanged` when the column or direction actually changes — a call
+that re-applies the currently active column and direction raises nothing,
+matching `SortColumnIndex`'s and `SortDirection`'s own change-gated property
+notifications. Inserting or replacing a row while sorted re-splices it into the
+active order without raising `SortChanged`, since the sort settings themselves
+are unchanged; the row collection's own mutation is the signal for that. A
+supplied `SortKey` is compared with culture-independent ordering, and rows with
+equal keys keep their original insertion order in both directions.
 
 `CopySelection()` returns the selected rows or cells as deterministic
 tab-separated text with LF row separators. A host can pass that text to the

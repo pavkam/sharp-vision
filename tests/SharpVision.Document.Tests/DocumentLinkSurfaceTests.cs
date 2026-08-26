@@ -234,6 +234,50 @@ public sealed class DocumentLinkSurfaceTests
         order.ShouldBe(["link", "document", "link", "document"]);
     }
 
+    /// <summary>Verifies Enter and Space repeats are consumed without invoking an active link more
+    /// than once for each physical key hold.</summary>
+    [Fact]
+    public async Task Keyboard_WhenActivationKeysRepeat_InvokesLinkOnlyForInitialPressAsync()
+    {
+        // Arrange
+        var link = new DocumentLink("only");
+        var document = LinkDocument(link);
+        var activations = 0;
+        link.Clicked += (_, _) => activations++;
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => document.Focus().ShouldBeTrue(), "focus document");
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                RouteKey(Code.Enter, character: null, KeyAction.Press);
+                RouteKey(Code.Enter, character: null, KeyAction.Repeat);
+                RouteKey(Code.Enter, character: null, KeyAction.Repeat);
+                RouteKey(Code.Enter, character: null, KeyAction.Release);
+                RouteKey(Code.Character, new Rune(' '), KeyAction.Press);
+                RouteKey(Code.Character, new Rune(' '), KeyAction.Repeat);
+                RouteKey(Code.Character, new Rune(' '), KeyAction.Repeat);
+                RouteKey(Code.Character, new Rune(' '), KeyAction.Release);
+            },
+            "route activation holds");
+
+        // Assert
+        activations.ShouldBe(2);
+
+        void RouteKey(Code code, Rune? character, KeyAction action) =>
+            _ = Router.Route(document, Events.Key, new KeyEventArgs(new Stroke(
+                code,
+                character,
+                nativeCode: 0,
+                Modifiers.None,
+                action)));
+    }
+
     /// <summary>Verifies removing the active link and routing activation in the same dispatcher
     /// turn cannot publish either link notification for the detached node.</summary>
     [Fact]

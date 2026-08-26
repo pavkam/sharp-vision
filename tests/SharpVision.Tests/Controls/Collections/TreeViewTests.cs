@@ -44,6 +44,59 @@ public sealed partial class TreeViewTests
         key.IsHandled.ShouldBe(expectedSelection);
     }
 
+    /// <summary>Verifies Space preserves collection-selection modifiers for ordinary and
+    /// checkable nodes while rejecting application-command modifiers.</summary>
+    [Theory]
+    [InlineData(Modifiers.None, true)]
+    [InlineData(Modifiers.Control, true)]
+    [InlineData(Modifiers.Shift, true)]
+    [InlineData(Modifiers.Control | Modifiers.Shift, true)]
+    [InlineData(Modifiers.CapsLock | Modifiers.NumLock, true)]
+    [InlineData(Modifiers.Alt, false)]
+    [InlineData(Modifiers.Super, false)]
+    [InlineData(Modifiers.Hyper, false)]
+    [InlineData(Modifiers.Meta, false)]
+    [InlineData(Modifiers.Shift | Modifiers.Super, false)]
+    public void Dispatch_WhenSpaceCarriesModifiers_MutatesOnlyForCollectionGesture(
+        Modifiers modifiers,
+        bool expectedMutation)
+    {
+        // Arrange
+        var selectable = new TreeViewItem { Header = "Selectable" };
+        var tree = new TreeView
+        {
+            SelectionMode = TreeSelectionMode.Multiple,
+            Items = { selectable }
+        };
+        var checkable = new TreeViewItem { Header = "Checkable", IsCheckable = true };
+        var checkTree = new TreeView { Items = { checkable } };
+        tree.SelectItem(selectable);
+        tree.ClearSelection();
+        checkTree.SelectItem(checkable);
+        checkTree.ClearSelection();
+        var initialCheckState = checkable.IsChecked;
+        var selectionKey = CharacterKey(tree, new Rune(' '), modifiers);
+        var checkKey = CharacterKey(checkTree, new Rune(' '), modifiers);
+
+        // Assert
+        tree.SelectedItems.ShouldBe(expectedMutation ? [selectable] : []);
+        checkable.IsChecked.ShouldBe(expectedMutation ? true : initialCheckState);
+        selectionKey.IsHandled.ShouldBe(expectedMutation);
+        checkKey.IsHandled.ShouldBe(expectedMutation);
+    }
+
+    private static KeyEventArgs CharacterKey(ControlBase target, Rune character, Modifiers modifiers)
+    {
+        var eventArgs = new KeyEventArgs(new Stroke(
+            Code.Character,
+            character,
+            nativeCode: 0,
+            modifiers,
+            KeyAction.Press));
+        _ = Router.Route(target, Events.Key, eventArgs);
+        return eventArgs;
+    }
+
     /// <summary>Verifies the published selection snapshot cannot be rewritten by a consumer.</summary>
     [Fact]
     public void SelectedItems_WhenConsumerAttemptsMutation_RejectsTheChange()

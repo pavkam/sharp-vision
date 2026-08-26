@@ -59,7 +59,13 @@ internal sealed class ChartExampleModel
 The source property is `IReadOnlyList<ChartSeries>?`. Source replacement and
 observable collection changes update membership; changes to series, point
 collections, labels, values, or colors repaint the existing chart. A null bound
-source becomes an empty chart.
+source becomes an empty chart. Once the chart is attached, every observable
+membership or deep-model notification must be raised on the chart's dispatcher;
+an off-dispatcher notification throws `InvalidOperationException` synchronously
+instead of racing a later borrowed-collection enumeration. Detached charts apply
+notifications synchronously on the caller's thread, and disposed charts release
+all subscriptions. This follows the
+[attached visual-tree ownership rule](../../concepts/threading.md#overview).
 
 ## Example
 
@@ -81,10 +87,10 @@ var chart = new LineChart
 
 Applications can rely on validation occurring before observable mutation,
 automatic ranges remaining finite and non-empty, observable membership and deep
-item changes invalidating the required UI phase, and removed or disposed data
-releasing chart subscriptions. Explicit bounds clip values rather than changing
-the model. Tiny bounds suppress optional labels and legends before data, and all
-text remains clipped at complete grapheme boundaries. Half-cell line
-coordinates, category partitions, and eighth-cell bar extents use widened
-intermediates and clamp at the terminal drawing boundary, so valid integer-sized
-plot geometry remains monotonic instead of wrapping.
+item changes invalidating the required UI phase on the owning dispatcher, and
+removed or disposed data releasing chart subscriptions. Explicit bounds clip
+values rather than changing the model. Tiny bounds suppress optional labels and
+legends before data, and all text remains clipped at complete grapheme
+boundaries. Half-cell line coordinates, category partitions, and eighth-cell bar
+extents use widened intermediates and clamp at the terminal drawing boundary, so
+valid integer-sized plot geometry remains monotonic instead of wrapping.

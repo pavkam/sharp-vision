@@ -966,6 +966,23 @@ public sealed class TextInputTests
         submissions.ShouldBe(1);
     }
 
+    /// <summary>Verifies multiline newline insertion remains intentionally repeatable even though
+    /// single-line submission is single-shot.</summary>
+    [Fact]
+    public void Dispatch_WhenMultilineEnterRepeats_InsertsEachRepeatedNewline()
+    {
+        // Arrange
+        var control = new TextInput { AcceptsReturn = true };
+
+        // Act
+        Key(control, Code.Enter, Modifiers.None);
+        Key(control, Code.Enter, Modifiers.None, KeyAction.Repeat);
+        Key(control, Code.Enter, Modifiers.None, KeyAction.Repeat);
+
+        // Assert
+        control.Text.ShouldBe("\n\n\n");
+    }
+
     /// <summary>Verifies held shortcut reports do not consume multiple undo history entries.</summary>
     [Fact]
     public void Dispatch_WhenUndoShortcutRepeats_UndoesOnlyTheInitialKeyDown()

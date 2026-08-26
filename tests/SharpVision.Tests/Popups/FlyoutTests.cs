@@ -250,9 +250,17 @@ public sealed class FlyoutTests
         closingRaised.ShouldBeFalse();
     }
 
-    /// <summary>Verifies pressing outside the flyout surface and anchor triggers light dismiss.</summary>
-    [Fact]
-    public async Task OutsidePress_WhenOpen_ClosesFlyoutAsync()
+    /// <summary>Verifies an outside press light-dismisses only for the primary button, leaving
+    /// auxiliary-button interactions open and routable.</summary>
+    [Theory]
+    [InlineData(Buttons.Primary, true)]
+    [InlineData(Buttons.Secondary, false)]
+    [InlineData(Buttons.Middle, false)]
+    [InlineData(Buttons.Back, false)]
+    [InlineData(Buttons.Forward, false)]
+    public async Task OutsidePress_WhenButtonVaries_ClosesFlyoutOnlyForPrimaryAsync(
+        Buttons buttons,
+        bool expectedClose)
     {
         await using var dispatcher = Dispatcher.Start();
         await dispatcher.InvokeAsync(() =>
@@ -275,7 +283,7 @@ public sealed class FlyoutTests
             var pointer = new Pointer(
                 outsidePoint,
                 pixels: null,
-                Buttons.Primary,
+                buttons,
                 PointerAction.Press,
                 wheelX: 0,
                 wheelY: 0,
@@ -285,7 +293,8 @@ public sealed class FlyoutTests
             var eventArgs = new PointerEventArgs(pointer);
             _ = Router.Route(root, Events.Pointer, eventArgs);
 
-            flyout.IsOpen.ShouldBeFalse();
+            flyout.IsOpen.ShouldBe(!expectedClose);
+            eventArgs.IsHandled.ShouldBeFalse();
         }, TestContext.Current.CancellationToken);
     }
 

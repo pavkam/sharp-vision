@@ -72,8 +72,10 @@ flyout.ShowAt(triggerButton);
 - The Flyout is a direct Popup with no nested presentation Popup, and `ShowAt`
   validates its argument and uses exactly that anchor.
 - Placement, rendering, and `SurfaceBounds` behave as inherited from Popup.
-- A press outside dismisses the flyout without replaying the press, Escape
-  closes it, and opening transfers focus to the first eligible descendant.
+- A primary press outside dismisses the flyout without replaying the press;
+  secondary, middle, back, and forward presses continue routing without closing
+  it. Escape closes it, and opening transfers focus to the first eligible
+  descendant.
 - Opening one flyout closes a sibling under the same logical root, and moving or
   resizing the anchor closes the open flyout.
 - The lifecycle events fire in their documented order, and detaching or

@@ -9,11 +9,9 @@ using System.ComponentModel;
 /// <summary>Owns one chart's subscriptions to borrowed observable model data.</summary>
 internal sealed class ChartDataObserver: IDisposable
 {
-    private readonly Lock _gate = new();
     private readonly IChartControl _owner;
     private readonly List<ChartDataPoint> _subscribedPoints = [];
     private bool _disposed;
-    private bool _scheduled;
     private IReadOnlyList<ChartSeries> _source = Array.Empty<ChartSeries>();
     private INotifyCollectionChanged? _observableSource;
     private ChartSeries[] _snapshot = [];
@@ -49,12 +47,12 @@ internal sealed class ChartDataObserver: IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
-        if (_disposed)
+        if (Volatile.Read(ref _disposed))
         {
             return;
         }
 
-        _disposed = true;
+        Volatile.Write(ref _disposed, true);
         Unsubscribe();
         _source = Array.Empty<ChartSeries>();
         _snapshot = [];
@@ -181,57 +179,14 @@ internal sealed class ChartDataObserver: IDisposable
 
     private void Schedule(bool refreshMembership, InvalidationImpact impact)
     {
-        if (_disposed)
+        if (Volatile.Read(ref _disposed))
         {
             return;
         }
 
         var dispatcher = _owner.Control.Dispatcher;
-
-        if (dispatcher is null || dispatcher.CheckAccess())
-        {
-            Apply(refreshMembership, impact);
-            return;
-        }
-
-        lock (_gate)
-        {
-            if (_disposed || _scheduled)
-            {
-                return;
-            }
-
-            _scheduled = true;
-        }
-
-        try
-        {
-            // Reached from the caller's own INotifyCollectionChanged/INotifyPropertyChanged
-            // handlers on their model, possibly off-thread, as one subscriber in that model's
-            // multicast invocation list. _scheduled is reset in the catch below, so a swallowed
-            // full queue only means this refresh is dropped and self-heals on the model's next
-            // change notification; propagating would fault the caller's own event dispatch and
-            // could break delivery to its other subscribers, which is worse than one stale chart.
-            dispatcher.Post(() =>
-            {
-                lock (_gate)
-                {
-                    _scheduled = false;
-                }
-
-                if (!_disposed)
-                {
-                    Apply(refreshMembership: true, InvalidationImpact.Measure);
-                }
-            });
-        }
-        catch (Exception exception) when (exception is ObjectDisposedException or InvalidOperationException)
-        {
-            lock (_gate)
-            {
-                _scheduled = false;
-            }
-        }
+        dispatcher?.VerifyAccess();
+        Apply(refreshMembership, impact);
     }
 
     private void Apply(bool refreshMembership, InvalidationImpact impact)

@@ -60,6 +60,7 @@ internal sealed class LightDismiss: IDisposable
 
         if (eventArgs.Phase != RoutingPhase.Preview ||
             eventArgs.Pointer.Action != Terminal.Input.PointerAction.Press ||
+            (eventArgs.Pointer.Buttons & Terminal.Input.Buttons.Primary) == 0 ||
             !_isOpen())
         {
             return;

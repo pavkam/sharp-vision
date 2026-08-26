@@ -772,6 +772,42 @@ public sealed class ListViewTests
         invoked.ShouldBe([0]);
     }
 
+    /// <summary>Verifies Space preserves Control/Shift selection gestures while rejecting
+    /// modifiers reserved for application commands.</summary>
+    [Theory]
+    [InlineData(ListSelectionMode.Single, Modifiers.None, true)]
+    [InlineData(ListSelectionMode.Single, Modifiers.Control, true)]
+    [InlineData(ListSelectionMode.Single, Modifiers.Shift, true)]
+    [InlineData(ListSelectionMode.Single, Modifiers.Alt, false)]
+    [InlineData(ListSelectionMode.Single, Modifiers.Super, false)]
+    [InlineData(ListSelectionMode.Multiple, Modifiers.None, true)]
+    [InlineData(ListSelectionMode.Multiple, Modifiers.Control, true)]
+    [InlineData(ListSelectionMode.Multiple, Modifiers.Shift, true)]
+    [InlineData(ListSelectionMode.Multiple, Modifiers.Control | Modifiers.Shift, true)]
+    [InlineData(ListSelectionMode.Multiple, Modifiers.CapsLock | Modifiers.NumLock, true)]
+    [InlineData(ListSelectionMode.Multiple, Modifiers.Alt, false)]
+    [InlineData(ListSelectionMode.Multiple, Modifiers.Super, false)]
+    [InlineData(ListSelectionMode.Multiple, Modifiers.Hyper, false)]
+    [InlineData(ListSelectionMode.Multiple, Modifiers.Meta, false)]
+    [InlineData(ListSelectionMode.Multiple, Modifiers.Control | Modifiers.Alt, false)]
+    public void Dispatch_WhenSpaceCarriesModifiers_SelectsOnlyForCollectionGesture(
+        ListSelectionMode selectionMode,
+        Modifiers modifiers,
+        bool expectedSelection)
+    {
+        // Arrange
+        var control = new UiListView
+        {
+            SelectionMode = selectionMode,
+            Items = new object?[] { "A", "B" }
+        };
+        var key = CharacterKeyWithModifiers(control, new Rune(' '), modifiers);
+
+        // Assert
+        control.SelectedItems.ShouldBe(expectedSelection ? new object?[] { "A" } : []);
+        key.IsHandled.ShouldBe(expectedSelection);
+    }
+
     /// <summary>Verifies pointer modifiers toggle and range-select in multiple mode.</summary>
     [Fact]
     public async Task Dispatch_WhenPointerUsesModifiers_AppliesToggleAndRangeSelectionAsync()
@@ -1089,6 +1125,21 @@ public sealed class ListViewTests
     private static KeyEventArgs KeyWithModifiers(ControlBase target, Code code, Modifiers modifiers)
     {
         var eventArgs = new KeyEventArgs(new Stroke(code, character: null, nativeCode: 0, modifiers, KeyAction.Press));
+        _ = Router.Route(target, Events.Key, eventArgs);
+        return eventArgs;
+    }
+
+    private static KeyEventArgs CharacterKeyWithModifiers(
+        ControlBase target,
+        Rune character,
+        Modifiers modifiers)
+    {
+        var eventArgs = new KeyEventArgs(new Stroke(
+            Code.Character,
+            character,
+            nativeCode: 0,
+            modifiers,
+            KeyAction.Press));
         _ = Router.Route(target, Events.Key, eventArgs);
         return eventArgs;
     }

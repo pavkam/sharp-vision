@@ -1453,6 +1453,33 @@ public sealed class TableTests
         invoked.ShouldBe([row]);
     }
 
+    /// <summary>Verifies a repeat after Enter commits an edit cannot reopen editing or invoke the
+    /// row during the same physical key hold.</summary>
+    [Fact]
+    public void Dispatch_WhenEditCommitEnterRepeats_CommitsOnceWithoutReopeningOrInvoking()
+    {
+        // Arrange
+        var input = new TextInput { Text = "Before" };
+        var row = new TableRow([input]);
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(row);
+        table.BeginEdit(row, 0).ShouldBeTrue();
+        input.Text = "After";
+        var invoked = 0;
+        table.RowInvoked += (_, _) => invoked++;
+
+        // Act
+        _ = Key(table, Code.Enter);
+        var repeat = Key(table, Code.Enter, action: KeyAction.Repeat);
+
+        // Assert
+        table.IsEditing.ShouldBeFalse();
+        input.Text.ShouldBe("After");
+        invoked.ShouldBe(0);
+        repeat.IsHandled.ShouldBeTrue();
+    }
+
     /// <summary>Verifies Shift-held Enter (a common terminal chord) still activates the current row.</summary>
     [Fact]
     public void Dispatch_WhenEnterHasShiftModifier_StillActivates()
@@ -1602,6 +1629,101 @@ public sealed class TableTests
         // Assert
         table.SelectedRows.ShouldBe(expectedSelection ? [first, second] : [first]);
         key.IsHandled.ShouldBe(expectedSelection);
+    }
+
+    /// <summary>Verifies pointer selection revalidates exact row ownership after a synchronous
+    /// selection callback removes, replaces, clears, reorders, or disposes the target.</summary>
+    [Theory]
+    [InlineData(TableSelectionMode.Row, "Remove", 1)]
+    [InlineData(TableSelectionMode.Row, "Remove", 2)]
+    [InlineData(TableSelectionMode.Row, "Replace", 1)]
+    [InlineData(TableSelectionMode.Row, "Replace", 2)]
+    [InlineData(TableSelectionMode.Row, "Clear", 1)]
+    [InlineData(TableSelectionMode.Row, "Clear", 2)]
+    [InlineData(TableSelectionMode.Row, "Reorder", 1)]
+    [InlineData(TableSelectionMode.Row, "Reorder", 2)]
+    [InlineData(TableSelectionMode.Row, "Dispose", 1)]
+    [InlineData(TableSelectionMode.Row, "Dispose", 2)]
+    [InlineData(TableSelectionMode.Cell, "Remove", 1)]
+    [InlineData(TableSelectionMode.Cell, "Remove", 2)]
+    [InlineData(TableSelectionMode.Cell, "Replace", 1)]
+    [InlineData(TableSelectionMode.Cell, "Replace", 2)]
+    [InlineData(TableSelectionMode.Cell, "Clear", 1)]
+    [InlineData(TableSelectionMode.Cell, "Clear", 2)]
+    [InlineData(TableSelectionMode.Cell, "Reorder", 1)]
+    [InlineData(TableSelectionMode.Cell, "Reorder", 2)]
+    [InlineData(TableSelectionMode.Cell, "Dispose", 1)]
+    [InlineData(TableSelectionMode.Cell, "Dispose", 2)]
+    public void Dispatch_WhenSelectionCallbackMutatesHitRow_ContinuesOnlyForSameOwnedIdentity(
+        TableSelectionMode selectionMode,
+        string mutation,
+        int clickCount)
+    {
+        // Arrange
+        var target = new TableRow([new TextInput { Text = "Target" }]);
+        var remaining = new TableRow([new TextInput { Text = "Remaining" }]);
+        var replacement = new TableRow([new TextInput { Text = "Replacement" }]);
+        var table = new Table { SelectionMode = selectionMode };
+        table.Columns.Add(TableColumn.Fixed("Name", 12));
+        table.Rows.Add(target);
+        table.Rows.Add(remaining);
+        new LayoutEngine().Layout(table, new Size(16, 8));
+        var mutated = false;
+        var invocations = new List<TableRowInvokedEventArgs>();
+        table.RowInvoked += (_, eventArgs) => invocations.Add(eventArgs);
+        table.SelectionChanged += (_, _) =>
+        {
+            if (mutated)
+            {
+                return;
+            }
+
+            mutated = true;
+
+            switch (mutation)
+            {
+                case "Remove":
+                    _ = table.Rows.Remove(target);
+                    break;
+                case "Replace":
+                    table.Rows[0] = replacement;
+                    break;
+                case "Clear":
+                    table.Rows.Clear();
+                    break;
+                case "Reorder":
+                    _ = table.Rows.Remove(target);
+                    table.Rows.Add(target);
+                    break;
+                case "Dispose":
+                    table.Dispose();
+                    break;
+                default:
+                    throw new UnreachableException();
+            }
+        };
+        var pointer = PointerPress(new Point(1, 2), clickCount);
+
+        // Act and assert
+        _ = Should.NotThrow(() => Router.Route(table, Events.Pointer, pointer));
+        mutated.ShouldBeTrue();
+
+        if (mutation == "Reorder")
+        {
+            var invoked = invocations.ShouldHaveSingleItem();
+            invoked.Row.ShouldBeSameAs(target);
+            invoked.RowIndex.ShouldBe(1);
+            table.IsEditing.ShouldBe(clickCount == 2);
+        }
+        else
+        {
+            invocations.ShouldBeEmpty();
+
+            if (!table.IsDisposed)
+            {
+                table.IsEditing.ShouldBeFalse();
+            }
+        }
     }
 
     private static void Key(TextInput control, Code code) =>

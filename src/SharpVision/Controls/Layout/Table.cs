@@ -1336,6 +1336,12 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         if (SelectionMode is TableSelectionMode.Row or TableSelectionMode.MultipleRows)
         {
             SelectRow(row, modifiers);
+
+            if (!IsPointerTargetAvailable(row, column))
+            {
+                return;
+            }
+
             SetActive(row, column);
         }
         else
@@ -1343,13 +1349,32 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             SelectCell(row, column, modifiers);
         }
 
+        if (!IsPointerTargetAvailable(row, column))
+        {
+            return;
+        }
+
         if (eventArgs.ClickCount >= 2)
         {
             _ = BeginEdit(row, column);
+
+            if (!IsPointerTargetAvailable(row, column))
+            {
+                return;
+            }
         }
 
         RowInvoked?.Invoke(this, new TableRowInvokedEventArgs(row, Rows.IndexOf(row), ActivationCause.Pointer));
     }
+
+    [Pure]
+    private bool IsPointerTargetAvailable(TableRow row, [NonNegativeValue] int columnIndex) =>
+        !IsDisposed &&
+        Rows.IndexOf(row) >= 0 &&
+        columnIndex >= 0 &&
+        columnIndex < Columns.Count &&
+        columnIndex < row.Cells.Count &&
+        !row.Cells[columnIndex].IsDisposed;
 
     private void OnProgressivePointerRouted(Point point)
     {

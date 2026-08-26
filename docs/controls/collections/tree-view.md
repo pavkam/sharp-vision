@@ -114,19 +114,19 @@ refusing it would leave the control in a state its own configuration forbids.
 
 ## Navigation
 
-| Input                                         | Result                                                                                                                  |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Up / Down                                     | Moves to the previous or next item in linear depth-first order; does not wrap.                                          |
-| Left                                          | Collapses an expanded item with children; otherwise selects and moves to its parent.                                    |
-| Right                                         | Expands a collapsed item with children; otherwise selects and moves to its first visible child.                         |
-| Home / End                                    | Selects the first or last visible item.                                                                                 |
-| PageUp / PageDown                             | Moves by items filling the committed viewport height minus `PageOverlap`, accumulating each realized item's own height. |
-| Space                                         | Toggles the current checkable item's check state; otherwise toggles or replaces selection of the current item.          |
-| Enter                                         | Activates the current item, applies selection, and raises `ItemInvoked` for an activation-eligible modifier state.      |
-| Control+A (`Multiple` mode)                   | Selects every enabled item for the exact lock-normalized Control command; larger chords remain unhandled.               |
-| Primary pointer click on the disclosure glyph | Toggles `IsExpanded`.                                                                                                   |
-| Primary pointer click on the check mark       | Toggles the check state; every cell of the mark is a hit target.                                                        |
-| Primary pointer click elsewhere on the row    | Invokes and applies selection.                                                                                          |
+| Input                                         | Result                                                                                                                     |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Up / Down                                     | Moves to the previous or next item in linear depth-first order; does not wrap.                                             |
+| Left                                          | Collapses an expanded item with children; otherwise selects and moves to its parent.                                       |
+| Right                                         | Expands a collapsed item with children; otherwise selects and moves to its first visible child.                            |
+| Home / End                                    | Selects the first or last visible item.                                                                                    |
+| PageUp / PageDown                             | Moves by items filling the committed viewport height minus `PageOverlap`, accumulating each realized item's own height.    |
+| Space                                         | Toggles check state or selection when only Control, Shift, or lock modifiers accompany it; larger chords remain unhandled. |
+| Enter                                         | Activates the current item, applies selection, and raises `ItemInvoked` for an activation-eligible modifier state.         |
+| Control+A (`Multiple` mode)                   | Selects every enabled item for the exact lock-normalized Control command; larger chords remain unhandled.                  |
+| Primary pointer click on the disclosure glyph | Toggles `IsExpanded`.                                                                                                      |
+| Primary pointer click on the check mark       | Toggles the check state; every cell of the mark is a hit target.                                                           |
+| Primary pointer click elsewhere on the row    | Invokes and applies selection.                                                                                             |
 
 Each `TreeViewItem` preserves its inherited routed key and pointer events before
 applying row activation. A handler that consumes the event suppresses the

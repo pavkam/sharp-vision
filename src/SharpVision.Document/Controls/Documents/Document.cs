@@ -1197,7 +1197,9 @@ public sealed class Document:
             (stroke.Code == Code.Enter ||
              (stroke.Code == Code.Character && stroke.Character == new Rune(' '))))
         {
-            eventArgs.IsHandled = stroke.Modifiers.IsActivationEligible() && ActivateLink();
+            eventArgs.IsHandled =
+                stroke.Modifiers.IsActivationEligible() &&
+                (!eventArgs.IsInitialKeyDown || ActivateLink());
             return;
         }
 

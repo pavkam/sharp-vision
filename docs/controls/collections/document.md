@@ -534,7 +534,7 @@ behavior. At either end, the unhandled Tab leaves the whole document subtree.
 | -------------------------------------- | ----------------------------------------------------------------------------- |
 | Tab                                    | Moves to the next enabled link and scrolls it into view.                      |
 | Shift+Tab                              | Moves to the previous enabled link and scrolls it into view.                  |
-| Enter / Space                          | Activates the focused link for an activation-eligible modifier state.         |
+| Enter / Space                          | Activates the focused link once on the initial activation-eligible press.     |
 | Up / Down                              | Scrolls by `LineSize` lines.                                                  |
 | Page Up / Page Down                    | Scrolls by the viewport height minus `PageOverlap`, and by at least one line. |
 | Home / End                             | Scrolls to the first or last line.                                            |
@@ -557,7 +557,8 @@ during the walk, and a document with no enabled links never consumes Tab at all.
 
 Activating a link raises that link's own `Clicked` first, then the document's
 `LinkClicked` with the same link. A keyboard activation and a pointer activation
-produce the identical pair of events.
+produce the identical pair of events. Held Enter or Space repeats are consumed
+without repeating either event; scrolling keys remain repeatable.
 
 A primary press records a potential click without handling the event, stealing
 child capture, or activating a link. Crossing the shared one-cell drag threshold
