@@ -298,6 +298,63 @@ public sealed class SliderTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a focus callback may dispose the pressed slider without the pointer path
+    /// committing a value or starting capture afterward.</summary>
+    [Fact]
+    public async Task Dispatch_WhenGotFocusDisposesSlider_StopsPointerContinuationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var slider = new Slider { Bounds = new Rect(0, 0, 11, 1), Maximum = 100 };
+            slider.Attach(dispatcher);
+            using FocusManager focus = new(slider);
+            using PointerManager pointer = new(slider);
+            slider.GotFocus += (_, _) => slider.Dispose();
+
+            _ = pointer.Dispatch(Pointer(new Point(5, 0), PointerAction.Press));
+
+            slider.IsDisposed.ShouldBeTrue();
+            slider.Value.ShouldBe(0);
+            pointer.Captured.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a throwing IsFocused observer cannot skip Slider's mandatory blur hook,
+    /// which cancels its active press and pointer capture.</summary>
+    [Fact]
+    public async Task Focus_WhenBlurPropertyObserverThrows_StillCancelsSliderDragAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new Stack();
+            var slider = new Slider { Bounds = new Rect(0, 0, 11, 1), Maximum = 100 };
+            var next = new Button { Text = "Next" };
+            root.Children.Add(slider);
+            root.Children.Add(next);
+            root.Attach(dispatcher);
+            using FocusManager focus = new(root);
+            using PointerManager pointer = new(root);
+            focus.Focus(slider).ShouldBeTrue();
+            _ = pointer.Dispatch(Pointer(new Point(5, 0), PointerAction.Press));
+            slider.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(ControlBase.IsFocused) && !slider.IsFocused)
+                {
+                    throw new InvalidOperationException("blur observer failed");
+                }
+            };
+
+            _ = Should.Throw<InvalidOperationException>(() => focus.Focus(next));
+
+            slider.IsPressed.ShouldBeFalse();
+            pointer.Captured.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies an auxiliary release cannot terminate an active primary slider drag.</summary>
     [Fact]
     public async Task Dispatch_WhenSecondaryReleaseArrivesDuringPrimaryDrag_PreservesCaptureAndContinuesAsync()

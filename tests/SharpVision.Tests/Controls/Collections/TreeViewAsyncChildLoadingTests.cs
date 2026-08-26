@@ -7,6 +7,77 @@ namespace SharpVision.Tests.Controls.Collections;
 /// generation-guarded cancellation, atomic commits, validation, and admission control.</summary>
 public sealed partial class TreeViewTests
 {
+    /// <summary>Verifies the deferred attach callback from one dispatcher cannot start a request
+    /// after the item migrates, while the new attachment's callback still starts exactly once.</summary>
+    [Fact]
+    public async Task AttachedLoad_WhenItemMigratesBeforeDeferredCallback_IgnoresPreviousDispatcherAsync()
+    {
+        await using var previousDispatcher = Dispatcher.Start();
+        await using var currentDispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null);
+        var item = new TreeViewItem("Root") { ChildSource = source };
+        var tree = new TreeView { Items = { item } };
+        var detached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var attached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim releasePrevious = new();
+        using ManualResetEventSlim releaseCurrent = new();
+        previousDispatcher.Post(() =>
+        {
+            tree.Attach(previousDispatcher);
+            tree.Detach();
+            detached.SetResult();
+            releasePrevious.Wait();
+        });
+        await detached.Task.WaitAsync(TestContext.Current.CancellationToken);
+        currentDispatcher.Post(() =>
+        {
+            tree.Attach(currentDispatcher);
+            attached.SetResult();
+            releaseCurrent.Wait();
+        });
+        await attached.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        releasePrevious.Set();
+        await previousDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        source.Requests.ShouldBeEmpty();
+
+        releaseCurrent.Set();
+        await currentDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        source.Requests.ShouldBe([null]);
+        await currentDispatcher.InvokeAsync(tree.Dispose, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies detachment cancels an in-flight generation, reattachment starts a current
+    /// request, and the ignored old completion cannot replace the new tree state.</summary>
+    [Fact]
+    public async Task ChildLoad_WhenItemMigratesBeforeCompletion_IgnoresPreviousGenerationAsync()
+    {
+        await using var previousDispatcher = Dispatcher.Start();
+        await using var currentDispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var stale = source.DeferNext(null);
+        source.AddChildren(null, new TreeViewChildDescription("fresh", "Fresh"));
+        var item = new TreeViewItem("Root") { ChildSource = source };
+        var tree = new TreeView { Items = { item } };
+        await previousDispatcher.InvokeAsync(() => tree.Attach(previousDispatcher), TestContext.Current.CancellationToken);
+        await previousDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        source.Requests.Count.ShouldBe(1);
+        await previousDispatcher.InvokeAsync(tree.Detach, TestContext.Current.CancellationToken);
+        await currentDispatcher.InvokeAsync(() => tree.Attach(currentDispatcher), TestContext.Current.CancellationToken);
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        _ = stale.TrySetResult([new TreeViewChildDescription("stale", "Stale")]);
+        await previousDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        item.Children.ShouldHaveSingleItem().Header.ShouldBe("Fresh");
+        source.Requests.Count.ShouldBe(2);
+        await currentDispatcher.InvokeAsync(tree.Dispose, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies expansion invariant work survives either public expansion observer
     /// throwing after the state commits.</summary>
     [Theory]

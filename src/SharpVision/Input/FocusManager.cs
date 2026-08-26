@@ -464,7 +464,11 @@ public sealed class FocusManager: IDisposable
         var previous = Focused;
         Focused = null;
 
-        CaptureFailure(() => previous?.SetFocused(false), ref failure);
+        if (previous is { IsDisposed: false, Dispatcher: not null })
+        {
+            CaptureFailure(() => previous.SetFocused(false), ref failure);
+        }
+
         previous?.CommitFocusFact(false);
         CaptureFailure(() => Root.SetFocusOwner(null), ref failure);
         Changing = null;
@@ -584,48 +588,53 @@ public sealed class FocusManager: IDisposable
                         previous.PublishLostFocus();
 
                         for (var index = previousPath.Count - 1;
-                            index >= commonLength && !IsDisposed;
+                            index >= commonLength && IsCommittedTargetValid(control);
                             index--)
                         {
                             previousPath[index].PublishFocusLeft();
                         }
 
-                        if (!IsDisposed)
+                        if (IsCommittedTargetValid(control))
                         {
                             Lost?.Invoke(this, changed);
                         }
                     }
 
-                    if (!IsDisposed && control is not null)
+                    if (IsCommittedTargetValid(control) && control is not null)
                     {
                         for (var index = commonLength;
-                            index < currentPath.Count && !IsDisposed;
+                            index < currentPath.Count && IsCommittedTargetValid(control);
                             index++)
                         {
                             currentPath[index].PublishFocusEntered();
                         }
 
-                        if (!IsDisposed)
+                        if (IsCommittedTargetValid(control))
                         {
                             control.PublishGotFocus();
                         }
+
+                        committed = IsCommittedTargetValid(control);
 
                         // Only Tab/Shift+Tab traversal and access-key-driven focus move a target
                         // the caller never directly interacted with, so only those two reveal it.
                         // A pointer press already proved the target was visible, and a
                         // programmatic ControlBase.Focus() call leaves that choice to the caller.
-                        if (!IsDisposed && reason == FocusReason.Keyboard)
+                        if (IsCommittedTargetValid(control) && reason == FocusReason.Keyboard)
                         {
                             control.RevealForKeyboardFocus();
                         }
 
-                        if (!IsDisposed)
+                        if (IsCommittedTargetValid(control))
                         {
                             Gained?.Invoke(this, changed);
                         }
                     }
+                    else if (control is null)
+                    {
+                        committed = IsCommittedTargetValid(null);
+                    }
 
-                    committed = !IsDisposed;
                     outcomeKnown = true;
                 }
             }
@@ -708,6 +717,15 @@ public sealed class FocusManager: IDisposable
 
         return committed && !IsDisposed;
     }
+
+    private bool IsCommittedTargetValid(ControlBase? control) =>
+        !IsDisposed &&
+        (control is null
+            ? Focused is null
+            : ReferenceEquals(Focused, control) &&
+              IsMember(control) &&
+              IsAllowed(control) &&
+              IsEligible(control));
 
     private void PumpPendingRequests()
     {

@@ -616,6 +616,32 @@ public sealed class FocusManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies target invalidation from GotFocus stops reveal and manager-level gained
+    /// publication and reports that the requested focus did not survive.</summary>
+    [Fact]
+    public async Task Focus_WhenGotFocusDetachesTarget_DoesNotPublishGainedAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var target = new ProbeControl { IsFocusable = true };
+            root.Children.Add(target);
+            root.Attach(dispatcher);
+            using var manager = new FocusManager(root);
+            var gained = 0;
+            manager.Gained += (_, _) => gained++;
+            target.GotFocus += (_, _) => root.Children.Remove(target).ShouldBeTrue();
+
+            manager.Focus(target).ShouldBeFalse();
+
+            gained.ShouldBe(0);
+            manager.Focused.ShouldBeNull();
+            target.IsFocused.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a throwing focus-state callback cannot skip the rest of manager disposal.</summary>
     [Fact]
     public async Task Dispose_WhenFocusedStateCallbackThrows_CompletesCleanupThenRethrowsAsync()

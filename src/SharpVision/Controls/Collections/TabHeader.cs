@@ -112,13 +112,30 @@ internal sealed class TabHeader: InputBase
         {
             if (current is TabControl tabs)
             {
-                _ = tabs.Focus();
+                if (!tabs.Focus() || !ReferenceEquals(FindTabControl(), tabs))
+                {
+                    return false;
+                }
+
                 Activate(ActivationCause.Keyboard);
                 return true;
             }
         }
 
         return false;
+    }
+
+    private TabControl? FindTabControl()
+    {
+        for (var current = Parent; current is not null; current = current.Parent)
+        {
+            if (current is TabControl tabs)
+            {
+                return tabs;
+            }
+        }
+
+        return null;
     }
 
     /// <inheritdoc/>

@@ -251,6 +251,11 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             return;
         }
 
+        if (key.Stroke.Modifiers != Modifiers.None)
+        {
+            return;
+        }
+
         eventArgs.IsHandled = key.IsInitialKeyDown && key.Stroke.Code == Code.Delete
             ? _selectedIndex >= 0 && RequestClose(ItemAt(_selectedIndex))
             : TryNavigate(key.Stroke.Code);
@@ -487,10 +492,9 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         // item and header keep their identity, subscriptions, and presentation
         // state, and the selected item's identity never changes, so no
         // SelectionChanged fires — only the numeric SelectedIndex may shift.
-        RemoveItemControlAt(oldIndex);
-        _headers.Children.RemoveAt(oldIndex);
-        InsertItemControl(newIndex, item);
-        _headers.Children.Insert(newIndex, header);
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(() => MoveItemControl(oldIndex, newIndex), ref failure);
+        ExceptionAggregation.Capture(() => _headers.Children.Move(oldIndex, newIndex), ref failure);
 
         var previousSelectedIndex = _selectedIndex;
 
@@ -514,6 +518,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         }
 
         ApplyPresentation();
+        failure?.Throw();
     }
 
     /// <summary>Requests closure of a closeable tab and removes it when not cancelled.</summary>

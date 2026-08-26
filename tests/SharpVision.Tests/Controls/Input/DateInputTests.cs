@@ -928,6 +928,41 @@ public sealed class DateInputTests
         control.Value.ShouldBe(new DateOnly(2026, 4, 15));
     }
 
+    /// <summary>Verifies a focus callback may dispose the input without the pointer path handling
+    /// the obsolete segment action afterward.</summary>
+    [Fact]
+    public async Task Dispatch_WhenGotFocusDisposesDateInput_StopsPointerContinuationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var control = new DateInput
+            {
+                Value = new DateOnly(2026, 3, 15),
+                Bounds = new Rect(0, 0, 12, 1)
+            };
+            control.Attach(dispatcher);
+            using FocusManager focus = new(control);
+            using PointerManager pointer = new(control);
+            control.GotFocus += (_, _) => control.Dispose();
+            var press = new Pointer(
+                new Point(1, 0),
+                pixels: null,
+                Buttons.Primary,
+                PointerAction.Press,
+                wheelX: 0,
+                wheelY: 0,
+                Modifiers.None,
+                isMotion: false,
+                isCellPositionInferred: false);
+
+            _ = pointer.Dispatch(press);
+
+            control.IsDisposed.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
     #endregion
 
     #region Segment clamp arithmetic

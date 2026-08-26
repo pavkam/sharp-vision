@@ -453,7 +453,13 @@ public sealed class CurrencyInput: InputBase
 
         if (!IsFocused)
         {
+            var dispatcher = Dispatcher;
             _ = RequestFocus();
+
+            if (!CanContinueAfterFocus(dispatcher))
+            {
+                return;
+            }
         }
 
         // The rendered text is the currency-composed display (symbol plus sign plus digits), not

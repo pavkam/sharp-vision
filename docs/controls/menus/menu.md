@@ -37,7 +37,8 @@ classDiagram
   collection, and the indexer rejects a replacement that is neither type.
   Inserting, removing, replacing, or moving an entry keeps the identity of an
   already-selected entry: `SelectedIndex` shifts silently when the change does
-  not affect it.
+  not affect it. `Move` is an in-place identity reorder and does not detach,
+  reparent, blur, or reattach the entry.
 - `Orientation` and `Spacing` control horizontal or vertical geometry. `Spacing`
   defaults to zero, so vertical flyout entries occupy adjacent rows; horizontal
   bars can opt into additional separation.

@@ -103,6 +103,26 @@ public sealed class ControlCollection: IList<ControlBase>, IReadOnlyList<Control
     /// <param name="items">The non-null candidate sequence.</param>
     internal void ReplaceAll(IEnumerable<ControlBase> items) => _slot.ReplaceAll(items);
 
+    /// <summary>Atomically reorders one retained child without changing ownership or availability.</summary>
+    /// <param name="oldIndex">The current zero-based position.</param>
+    /// <param name="newIndex">The destination zero-based position.</param>
+    internal void Move(int oldIndex, int newIndex)
+    {
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual((uint) oldIndex, (uint) Count);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual((uint) newIndex, (uint) Count);
+
+        if (oldIndex == newIndex)
+        {
+            return;
+        }
+
+        var next = new List<ControlBase>(_slot.Items);
+        var item = next[oldIndex];
+        next.RemoveAt(oldIndex);
+        next.Insert(newIndex, item);
+        _slot.ReplaceAll(next);
+    }
+
     /// <inheritdoc/>
     public bool Remove(ControlBase item) => _slot.Remove(item);
 

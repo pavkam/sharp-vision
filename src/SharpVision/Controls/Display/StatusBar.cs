@@ -124,9 +124,7 @@ public sealed class StatusBar: ItemsControl
             return;
         }
 
-        var item = ItemAt(oldIndex);
-        RemoveItemControlAt(oldIndex);
-        InsertItemControl(newIndex, item);
+        MoveItemControl(oldIndex, newIndex);
     }
 
     /// <summary>Gets the position of one item, or -1 when it is not owned by this bar.</summary>

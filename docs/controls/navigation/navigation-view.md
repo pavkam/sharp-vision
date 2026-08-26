@@ -64,6 +64,8 @@ classDiagram
 - `Header` is hidden when null or empty.
 - `Items` and `FooterItems` accept `NavigationViewItem`, `NavigationViewGroup`,
   and `NavigationViewSeparator` through the same typed overloads.
+- Moving an entry within either collection reorders the existing identity
+  without detaching, reparenting, blurring, or reattaching it.
 - `SelectItem` rejects null and items owned by another navigation view.
 - `SelectionChanged` fires after a committed selection change. If an
   `IsSelected` or `SelectedItem` observer synchronously selects another item,

@@ -695,9 +695,30 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         }
 
         SetActive(row, columnIndex);
-        _edit = new TableEditState(row, columnIndex, editor, editor.Text);
+        var dispatcher = Dispatcher;
+        var edit = new TableEditState(row, columnIndex, editor, editor.Text);
+        _edit = edit;
         editor.Submitted += OnEditorSubmitted;
         _ = editor.Focus();
+
+        if (!CanContinueAfterFocus(dispatcher) ||
+            !ReferenceEquals(_edit, edit) ||
+            editor.IsDisposed ||
+            !Rows.Contains(row))
+        {
+            if (ReferenceEquals(_edit, edit))
+            {
+                if (!editor.IsDisposed)
+                {
+                    editor.Submitted -= OnEditorSubmitted;
+                }
+
+                _edit = null;
+            }
+
+            return false;
+        }
+
         editor.Select(0, editor.Text.Length);
         NotifyPropertyChanged(nameof(IsEditing), InvalidationImpact.None);
         return true;

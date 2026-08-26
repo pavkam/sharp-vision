@@ -530,7 +530,13 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
             return;
         }
 
+        var dispatcher = Dispatcher;
         _ = RequestFocus();
+
+        if (!CanContinueAfterFocus(dispatcher))
+        {
+            return;
+        }
 
         var bounds = CalendarBounds;
         if (cells.Y == bounds.Y && cells.X == bounds.X)

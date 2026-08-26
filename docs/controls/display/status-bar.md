@@ -52,7 +52,8 @@ per-part presentation lives on `StatusBarItem` instead.
 `Items` supports `Add`, `Insert`, `Remove`, `RemoveAt`, `Move`, `IndexOf`,
 `Clear`, a settable indexer, and enumeration. Removing, clearing, or replacing
 an item detaches it without disposing it; disposing the bar disposes any items
-it still owns.
+it still owns. `Move` preserves continuous ownership and attachment of the same
+item identity; it does not synthesize parent or focus lifecycle changes.
 
 ### StatusBarItem
 

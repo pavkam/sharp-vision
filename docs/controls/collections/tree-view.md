@@ -283,13 +283,17 @@ commits a newer expansion, source, or loading state, that newer transaction owns
 all later flattening and request work; the superseded transaction cannot start a
 request or reuse its disposed cancellation token. A throwing observer does not
 skip the still-current structural or request work, and its first failure is
-re-thrown only after those invariants are established. Every child request is
-validated before it commits: a null result or element, a duplicate key, a key
-that would create a cycle with an ancestor, or a header containing a terminal
-control character is rejected without mutating `Children` or `ChildState`, and
-the rejection surfaces through `LastChildLoadError`. A stable key reused across
-a reload keeps the same materialized `TreeViewItem` instance, so its
-`IsExpanded`, checked, and selected state survive the reload.
+re-thrown only after those invariants are established. Deferred starts and
+in-flight results belong to the exact dispatcher attachment that created them.
+Detaching cancels and restores a pending load; reattaching may begin a new load,
+while callbacks from the previous attachment cannot mutate the item or consume
+the new attachment's concurrency slot. Every child request is validated before
+it commits: a null result or element, a duplicate key, a key that would create a
+cycle with an ancestor, or a header containing a terminal control character is
+rejected without mutating `Children` or `ChildState`, and the rejection surfaces
+through `LastChildLoadError`. A stable key reused across a reload keeps the same
+materialized `TreeViewItem` instance, so its `IsExpanded`, checked, and selected
+state survive the reload.
 
 `ChildSource` reassignment - including to null - cancels a pending request and
 evicts (detaches and disposes) any children the loader previously committed.

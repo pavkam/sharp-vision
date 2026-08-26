@@ -130,6 +130,11 @@ internal static class RadioGroupCoordinator
                 return false;
             }
 
+            if (!Members(value).Contains(target))
+            {
+                return false;
+            }
+
             target.SelectInGroup(ActivationCause.Keyboard);
             return true;
         }

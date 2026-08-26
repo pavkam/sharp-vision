@@ -6,11 +6,12 @@ namespace SharpVision.Controls.Collections;
 using System.Runtime.ExceptionServices;
 
 using SharpVision.Controls.Input;
+using SharpVision.Runtime;
 using SharpVision.Terminal.Input;
 
 /// <summary>Defines one selectable, optionally expandable entry in a <see cref="TreeView"/>.</summary>
 [PublicAPI]
-public sealed class TreeViewItem: ControlBase
+public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
 {
     // These dimensions are terminal-cell invariants for the compact tree row chrome.
     private const int _rowHeightCells = 1;
@@ -684,12 +685,17 @@ public sealed class TreeViewItem: ControlBase
         if (IsExpanded && ChildState == TreeViewChildState.Unloaded)
         {
             var dispatcher = Dispatcher!;
+            var attachmentVersion = AttachmentVersion;
 
             try
             {
                 dispatcher.Post(() =>
                 {
-                    if (!IsDisposed && IsExpanded && ChildState == TreeViewChildState.Unloaded)
+                    if (!IsDisposed &&
+                        ReferenceEquals(Dispatcher, dispatcher) &&
+                        AttachmentVersion == attachmentVersion &&
+                        IsExpanded &&
+                        ChildState == TreeViewChildState.Unloaded)
                     {
                         _ = BeginLoad();
                     }
@@ -702,9 +708,26 @@ public sealed class TreeViewItem: ControlBase
     }
 
     /// <inheritdoc/>
+    void IDispatcherAttachmentObserver.OnDispatcherAttached()
+    {
+    }
+
+    /// <inheritdoc/>
+    void IDispatcherAttachmentObserver.OnDispatcherDetached() =>
+        CancelPendingChildLoadSubtree(notifyTree: false);
+
+    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
-        base.OnUnavailable(reason);
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+
+        if (reason == ReleaseReason.Detached)
+        {
+            ExceptionAggregation.Capture(
+                () => CancelPendingChildLoadSubtree(notifyTree: false),
+                ref failure);
+        }
 
         if (reason == ReleaseReason.Disposed)
         {
@@ -713,6 +736,8 @@ public sealed class TreeViewItem: ControlBase
             CheckStateChanged = null;
             ChildStateChanged = null;
         }
+
+        failure?.Throw();
     }
 
     /// <inheritdoc/>
@@ -1208,14 +1233,14 @@ public sealed class TreeViewItem: ControlBase
 
             var result = await source.GetChildrenAsync(context, cancellationToken).ConfigureAwait(false);
 
-            PostOrReportFault(dispatcher, () => CommitChildLoad(generation, result));
+            PostOrReportFault(dispatcher, () => CommitChildLoad(dispatcher, source, generation, result));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception exception)
         {
-            PostOrReportFault(dispatcher, () => CommitChildLoadFailure(generation, exception));
+            PostOrReportFault(dispatcher, () => CommitChildLoadFailure(dispatcher, source, generation, exception));
         }
         finally
         {
@@ -1232,7 +1257,9 @@ public sealed class TreeViewItem: ControlBase
                 // runs, can already have overwritten _slotWait with a newer generation's live
                 // handle; unconditionally nulling it here would strand that generation
                 // awaiting a TaskCompletionSource nobody will ever complete.
-                if (wait is not null && ReferenceEquals(_slotWait, wait))
+                if (ReferenceEquals(Dispatcher, dispatcher) &&
+                    wait is not null &&
+                    ReferenceEquals(_slotWait, wait))
                 {
                     _slotWait = null;
                 }
@@ -1254,16 +1281,23 @@ public sealed class TreeViewItem: ControlBase
         _ = wait?.TrySetResult();
     }
 
-    private void CommitChildLoad(long generation, IReadOnlyList<TreeViewChildDescription>? result)
+    private void CommitChildLoad(
+        Dispatcher dispatcher,
+        ITreeViewChildSource source,
+        long generation,
+        IReadOnlyList<TreeViewChildDescription>? result)
     {
-        if (generation != _loadGeneration || IsDisposed || Dispatcher is null)
+        if (generation != _loadGeneration ||
+            IsDisposed ||
+            !ReferenceEquals(Dispatcher, dispatcher) ||
+            !ReferenceEquals(ChildSource, source))
         {
             return;
         }
 
         if (!TryValidate(result, out var failure))
         {
-            CommitChildLoadFailure(generation, failure);
+            CommitChildLoadFailure(dispatcher, source, generation, failure);
             return;
         }
 
@@ -1286,9 +1320,16 @@ public sealed class TreeViewItem: ControlBase
         ReleaseCompletedLoad();
     }
 
-    private void CommitChildLoadFailure(long generation, Exception exception)
+    private void CommitChildLoadFailure(
+        Dispatcher dispatcher,
+        ITreeViewChildSource source,
+        long generation,
+        Exception exception)
     {
-        if (generation != _loadGeneration || IsDisposed || Dispatcher is null)
+        if (generation != _loadGeneration ||
+            IsDisposed ||
+            !ReferenceEquals(Dispatcher, dispatcher) ||
+            !ReferenceEquals(ChildSource, source))
         {
             return;
         }

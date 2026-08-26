@@ -190,6 +190,12 @@ public abstract class ItemsControl: ControlBase
         GetItemsHost().Children.ReplaceAll(controls);
     }
 
+    /// <summary>Atomically reorders one realized control without detaching it.</summary>
+    /// <param name="oldIndex">The current zero-based position.</param>
+    /// <param name="newIndex">The destination zero-based position.</param>
+    internal void MoveItemControl(int oldIndex, int newIndex) =>
+        GetItemsHost().Children.Move(oldIndex, newIndex);
+
     /// <summary>Responds after one complete realized-control snapshot is structurally committed.</summary>
     /// <remarks>
     /// The callback also runs after child-initiated disposal. It runs during guarded structural

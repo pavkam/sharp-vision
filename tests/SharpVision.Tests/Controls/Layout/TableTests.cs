@@ -1401,6 +1401,30 @@ public sealed class TableTests
         table.BeginEdit(row, 1).ShouldBeFalse();
     }
 
+    /// <summary>Verifies a synchronous focus callback may dispose the table without the edit path
+    /// selecting or publishing a transaction against the obsolete editor afterward.</summary>
+    [Fact]
+    public async Task BeginEdit_WhenGotFocusDisposesTable_StopsEditContinuationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var editor = new TextInput { Text = "before" };
+            var row = new TableRow([editor]);
+            var table = new Table();
+            table.Columns.Add(TableColumn.Auto("Editable"));
+            table.Rows.Add(row);
+            table.Attach(dispatcher);
+            using FocusManager focus = new(table);
+            editor.GotFocus += (_, _) => table.Dispose();
+
+            table.BeginEdit(row, 0).ShouldBeFalse();
+
+            table.IsDisposed.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies edit-completion observers may remove, clear, replace, or dispose the
     /// captured row without the completed transaction trying to activate that obsolete object.</summary>
     [Theory]

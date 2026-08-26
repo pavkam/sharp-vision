@@ -669,7 +669,13 @@ public sealed class DateInput: InputBase
 
         if (!IsFocused)
         {
+            var dispatcher = Dispatcher;
             _ = RequestFocus();
+
+            if (!CanContinueAfterFocus(dispatcher))
+            {
+                return;
+            }
         }
 
         eventArgs.IsHandled = true;

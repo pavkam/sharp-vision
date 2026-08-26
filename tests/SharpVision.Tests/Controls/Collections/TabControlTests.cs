@@ -558,6 +558,63 @@ public sealed class TabControlTests
         tabs.SelectedIndex.ShouldBe(0);
     }
 
+    /// <summary>Verifies the unmodified Delete command closes the selected closeable tab.</summary>
+    [Fact]
+    public void Keyboard_WhenPlainDeleteIsPressed_ClosesSelectedTab()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        second.IsClosable = true;
+        var tabs = Create(first, second);
+        tabs.SelectedIndex = 1;
+
+        Key(tabs, Code.Delete);
+
+        tabs.Items.ShouldBe([first]);
+        tabs.SelectedIndex.ShouldBe(0);
+    }
+
+    /// <summary>Verifies every plain tab command remains available to application shortcuts when
+    /// any incidental modifier accompanies its decoded key.</summary>
+    [Theory]
+    [InlineData(Code.Left, Modifiers.Shift)]
+    [InlineData(Code.Left, Modifiers.Alt)]
+    [InlineData(Code.Left, Modifiers.Control)]
+    [InlineData(Code.Left, Modifiers.Shift | Modifiers.Control)]
+    [InlineData(Code.Right, Modifiers.Shift)]
+    [InlineData(Code.Right, Modifiers.Alt)]
+    [InlineData(Code.Right, Modifiers.Control)]
+    [InlineData(Code.Right, Modifiers.Shift | Modifiers.Control)]
+    [InlineData(Code.Home, Modifiers.Shift)]
+    [InlineData(Code.Home, Modifiers.Alt)]
+    [InlineData(Code.Home, Modifiers.Control)]
+    [InlineData(Code.Home, Modifiers.Shift | Modifiers.Control)]
+    [InlineData(Code.End, Modifiers.Shift)]
+    [InlineData(Code.End, Modifiers.Alt)]
+    [InlineData(Code.End, Modifiers.Control)]
+    [InlineData(Code.End, Modifiers.Shift | Modifiers.Control)]
+    [InlineData(Code.Delete, Modifiers.Shift)]
+    [InlineData(Code.Delete, Modifiers.Alt)]
+    [InlineData(Code.Delete, Modifiers.Control)]
+    [InlineData(Code.Delete, Modifiers.Shift | Modifiers.Control)]
+    public void Keyboard_WhenTabCommandHasModifier_LeavesSelectionAndItemsUnchanged(
+        Code code,
+        Modifiers modifiers)
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        second.IsClosable = true;
+        var tabs = Create(first, second);
+        tabs.SelectedIndex = 1;
+        var key = new KeyEventArgs(new Stroke(code, null, 0, modifiers, KeyAction.Press));
+
+        _ = Router.Route(tabs, Events.Key, key);
+
+        key.IsHandled.ShouldBeFalse();
+        tabs.SelectedIndex.ShouldBe(1);
+        tabs.Items.ShouldBe([first, second]);
+    }
+
     /// <summary>Verifies dynamic header text changes propagate to the rendered header.</summary>
     [Fact]
     public void Header_WhenChanged_UpdatesDisplayedHeader()
@@ -1102,7 +1159,11 @@ public sealed class TabControlTests
         var tabs = Create(first, selected, third);
         tabs.SelectedIndex = 1;
         var changes = new List<TabSelectionChangedEventArgs>();
+        var pageParentChanges = 0;
+        var headerParentChanges = 0;
         tabs.SelectionChanged += (_, args) => changes.Add(args);
+        selected.ParentChanged += (_, _) => pageParentChanges++;
+        tabs.HeaderAt(1).ParentChanged += (_, _) => headerParentChanges++;
 
         tabs.Items.Move(1, 2);
 
@@ -1110,6 +1171,8 @@ public sealed class TabControlTests
         tabs.SelectedIndex.ShouldBe(2);
         tabs.SelectedItem.ShouldBeSameAs(selected);
         changes.ShouldBeEmpty();
+        pageParentChanges.ShouldBe(0);
+        headerParentChanges.ShouldBe(0);
         tabs.HeaderAt(2).Text.ShouldBe("Selected");
     }
 

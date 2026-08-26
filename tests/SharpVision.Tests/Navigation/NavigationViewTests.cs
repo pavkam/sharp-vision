@@ -1972,6 +1972,8 @@ public sealed class NavigationViewTests
         nav.Items.Add(b);
         nav.Items.Add(c);
         nav.SelectItem(a);
+        var parentChanges = 0;
+        a.ParentChanged += (_, _) => parentChanges++;
 
         nav.Items.Move(0, 2);
 
@@ -1980,6 +1982,7 @@ public sealed class NavigationViewTests
         nav.Items[1].ShouldBeSameAs(c);
         nav.Items[2].ShouldBeSameAs(a);
         nav.SelectedItem.ShouldBeSameAs(a);
+        parentChanges.ShouldBe(0);
     }
 
     /// <summary>Verifies an out-of-range Move throws before mutating the collection.</summary>

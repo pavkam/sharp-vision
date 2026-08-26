@@ -373,9 +373,7 @@ public sealed class NavigationView: CompositeControlBase
             return;
         }
 
-        var entry = stack.Children[oldIndex];
-        stack.Children.RemoveAt(oldIndex);
-        stack.Children.Insert(newIndex, entry);
+        stack.Children.Move(oldIndex, newIndex);
     }
 
     /// <summary>Gets the position of one entry within a section, or -1 when not owned there.</summary>
@@ -601,8 +599,18 @@ public sealed class NavigationView: CompositeControlBase
             return false;
         }
 
-        _ = Focus();
+        if (!Focus() || !ReferenceEquals(item.FindNavigationView(), this))
+        {
+            return false;
+        }
+
         _ = _navigator.SetCurrent(item);
+
+        if (!ReferenceEquals(item.FindNavigationView(), this))
+        {
+            return false;
+        }
+
         item.ActivateFromOwner(ActivationCause.Keyboard);
         return true;
     }
@@ -619,8 +627,18 @@ public sealed class NavigationView: CompositeControlBase
             return false;
         }
 
-        _ = Focus();
+        if (!Focus() || !ReferenceEquals(group.FindNavigationView(), this))
+        {
+            return false;
+        }
+
         NotifyGroupInvoked(group);
+
+        if (!ReferenceEquals(group.FindNavigationView(), this))
+        {
+            return false;
+        }
+
         group.IsExpanded = !group.IsExpanded;
         return true;
     }

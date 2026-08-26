@@ -1714,12 +1714,15 @@ public sealed class MenuTests
         menu.Items.Add(selected);
         menu.Items.Add(third);
         menu.SelectedIndex = 1;
+        var parentChanges = 0;
+        selected.ParentChanged += (_, _) => parentChanges++;
 
         menu.Items.RemoveAt(2);
 
         menu.Items.ShouldBe([first, selected]);
         menu.SelectedIndex.ShouldBe(1);
         menu.SelectedItem.ShouldBeSameAs(selected);
+        parentChanges.ShouldBe(0);
     }
 
     /// <summary>Verifies removing an entry before the selected one preserves the selection's

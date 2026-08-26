@@ -52,7 +52,9 @@ classDiagram
 `Move`, `IndexOf`, and `Clear` operations for `TabItem`, plus a settable typed
 indexer and enumeration. Null, duplicate, attached, disposed, and cyclic
 candidates are rejected before ownership changes. Removal and replacement detach
-without disposing.
+without disposing. `Move` reorders the existing page and header identities in
+place: neither control detaches, changes parent, loses focus, nor crosses an
+attachment lifecycle boundary.
 
 ## Behavior
 
@@ -89,16 +91,18 @@ programmatic selection; it does not add a second scrollbar row to the tab strip.
 | Input                               | Result                                                                                                         |
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | Primary pointer release on a header | Selects that page.                                                                                             |
-| Left / Right                        | Moves and selects with wrapping, skipping pages that are effectively hidden or disabled.                       |
-| Home / End                          | Chooses the first or last eligible page.                                                                       |
-| Delete                              | Requests closure of the selected closeable page, once per key hold — a held Delete never closes a second page. |
+| Unmodified Left / Right             | Moves and selects with wrapping, skipping pages that are effectively hidden or disabled.                       |
+| Unmodified Home / End               | Chooses the first or last eligible page.                                                                       |
+| Unmodified Delete                   | Requests closure of the selected closeable page, once per key hold — a held Delete never closes a second page. |
 
 Pointer focus resolves to the `TabControl`, while hover and pressed state stay
 local to the hit header. A selected header combines `VisualState.Selected` with
 its own hover, pressed, or disabled state; hovering the page or the owner does
 not recolor the strip. Keys outside the tab-navigation command set remain
 available to inherited routed input, and a handler that consumes a navigation
-key suppresses the built-in selection change.
+key suppresses the built-in selection change. Shift, Alt, Control, and combined
+modifier variants of the tab commands remain unhandled for application
+shortcuts.
 
 ## TabItem
 

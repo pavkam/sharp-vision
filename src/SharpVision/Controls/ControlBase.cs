@@ -1951,6 +1951,16 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                Rune.ToUpperInvariant(declared) == Rune.ToUpperInvariant(key);
     }
 
+    /// <summary>Gets whether input may continue after a synchronous focus request returned through
+    /// public focus callbacks.</summary>
+    /// <param name="dispatcher">The dispatcher attachment captured before requesting focus.</param>
+    /// <returns>True when lifetime, attachment, visibility, and enabled state remain current.</returns>
+    internal bool CanContinueAfterFocus(Dispatcher? dispatcher) =>
+        !IsDisposed &&
+        ReferenceEquals(Dispatcher, dispatcher) &&
+        EffectiveIsVisible &&
+        EffectiveIsEnabled;
+
     /// <summary>Invokes the protected access-key seam after manager eligibility validation.</summary>
     /// <param name="key">The matched Unicode scalar.</param>
     /// <returns>True when the control accepts the semantic action.</returns>
@@ -2004,8 +2014,12 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         }
 
         InvalidateVisualStateCore();
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFocused)));
-        OnFocusChanged(value);
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(
+            () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFocused))),
+            ref failure);
+        ExceptionAggregation.Capture(() => OnFocusChanged(value), ref failure);
+        failure?.Throw();
     }
 
     /// <summary>Repairs the manager-owned focus fact without publishing user callbacks.</summary>

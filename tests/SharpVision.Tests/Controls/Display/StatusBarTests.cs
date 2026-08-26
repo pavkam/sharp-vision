@@ -444,10 +444,13 @@ public sealed class StatusBarTests
         bar.Items.Add(first);
         bar.Items.Add(second);
         bar.Items.Add(third);
+        var parentChanges = 0;
+        first.ParentChanged += (_, _) => parentChanges++;
 
         bar.Items.Move(0, 2);
 
         bar.Items.ShouldBe([second, third, first]);
+        parentChanges.ShouldBe(0);
     }
 
     /// <summary>Verifies an out-of-range move index throws before mutating the collection.</summary>

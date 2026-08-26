@@ -20,6 +20,15 @@ tree is mutated during the `Changing` event, the target is revalidated before
 the change commits. Cleanup triggered by detach, hide, disable, or disposal
 cannot be cancelled.
 
+Every synchronous focus callback is an invalidation boundary. The manager
+revalidates the committed target after each control and manager notification; an
+obsolete, detached, hidden, disabled, or disposed target cannot receive a later
+notification. Input handlers that request focus apply the same rule before
+continuing their pointer, keyboard, access-key, selection, or edit action.
+`IsFocused` property observers cannot skip a control's mandatory focus-change
+hook: both callbacks run, and the first failure is rethrown after focus-state
+cleanup has completed.
+
 ```mermaid
 sequenceDiagram
     participant Caller

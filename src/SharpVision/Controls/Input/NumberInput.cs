@@ -418,7 +418,13 @@ public sealed class NumberInput: InputBase
 
         if (!IsFocused)
         {
+            var dispatcher = Dispatcher;
             _ = RequestFocus();
+
+            if (!CanContinueAfterFocus(dispatcher))
+            {
+                return;
+            }
         }
 
         // A click that lands on an affix column (outside the value's own deflated box) still

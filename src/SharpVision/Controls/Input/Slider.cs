@@ -375,7 +375,14 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
             return;
         }
 
+        var dispatcher = Dispatcher;
         _ = RequestFocus();
+
+        if (!CanContinueAfterFocus(dispatcher))
+        {
+            return;
+        }
+
         _ = Commit(ValueAt(cells, bounds, length));
         eventArgs.IsHandled = true;
 

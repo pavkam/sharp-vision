@@ -255,7 +255,14 @@ internal sealed class ColorPlane: ControlBase
             return;
         }
 
+        var dispatcher = Dispatcher;
         _ = RequestFocus();
+
+        if (!CanContinueAfterFocus(dispatcher))
+        {
+            return;
+        }
+
         Select(cells);
         eventArgs.IsHandled = true;
         _ = _drag.TryStart(cells);

@@ -621,14 +621,12 @@ public sealed class Menu: ItemsControl
             return;
         }
 
-        var item = ItemAt(oldIndex);
-
         _isHandlingKnownMutation = true;
+        ExceptionDispatchInfo? failure = null;
 
         try
         {
-            RemoveItemControlAt(oldIndex);
-            InsertItemControl(newIndex, item);
+            ExceptionAggregation.Capture(() => MoveItemControl(oldIndex, newIndex), ref failure);
         }
         finally
         {
@@ -655,6 +653,8 @@ public sealed class Menu: ItemsControl
             NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Render);
             NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
         }
+
+        failure?.Throw();
     }
 
     /// <summary>Clears items and subscriptions.</summary>
