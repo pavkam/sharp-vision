@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Input;
 
+using System.Runtime.ExceptionServices;
+
 using Popups;
 
 using SharpVision.Terminal.Input;
@@ -42,7 +44,9 @@ public sealed class DateTimeInput: InputBase
             ['t'] = TemporalSegmentKind.AmPmDesignator
         };
 
+#pragma warning disable IDE0032 // Production code owns the field directly; tests observe it through a read-only invariant seam.
     private readonly Calendar _calendar;
+#pragma warning restore IDE0032
     private readonly Popup _popup;
     private readonly SegmentFieldBehavior _segments;
 
@@ -278,11 +282,7 @@ public sealed class DateTimeInput: InputBase
         {
             ArgumentException.ThrowIfAboveMaximum(value, Maximum, nameof(value), "Minimum cannot exceed Maximum.");
 
-            if (SetProperty(ref field, value, InvalidationImpact.Render))
-            {
-                SyncCalendarBounds();
-                ClampCurrentValue();
-            }
+            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Render, RepairBoundState);
         }
     } = DateTime.MinValue;
 
@@ -297,11 +297,7 @@ public sealed class DateTimeInput: InputBase
         {
             ArgumentException.ThrowIfBelowMinimum(value, Minimum, nameof(value), "Maximum cannot be less than Minimum.");
 
-            if (SetProperty(ref field, value, InvalidationImpact.Render))
-            {
-                SyncCalendarBounds();
-                ClampCurrentValue();
-            }
+            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Render, RepairBoundState);
         }
     } = DateTime.MaxValue;
 
@@ -371,6 +367,9 @@ public sealed class DateTimeInput: InputBase
 
     /// <summary>Gets the resolved presentation of the owned Calendar.</summary>
     public CalendarStyle ActualCalendarStyle => _calendar.ActualStyle;
+
+    /// <summary>Gets the retained calendar for proving bound synchronization invariants.</summary>
+    internal Calendar OwnedCalendar => _calendar;
 
     /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inside the
     /// field box and strictly inboard of the drop-down indicator.</summary>
@@ -832,15 +831,28 @@ public sealed class DateTimeInput: InputBase
         }
     }
 
+    private void RepairBoundState()
+    {
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(SyncCalendarBounds, ref failure);
+        ExceptionAggregation.Capture(ClampCurrentValue, ref failure);
+        failure?.Throw();
+    }
+
     private void SyncCalendarBounds()
     {
-        _calendar.MinimumDate = Minimum > DateTime.MinValue
-            ? DateOnly.FromDateTime(Minimum)
-            : DateOnly.MinValue;
-
-        _calendar.MaximumDate = Maximum < DateTime.MaxValue
-            ? DateOnly.FromDateTime(Maximum)
-            : DateOnly.MaxValue;
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(
+            () => _calendar.MinimumDate = Minimum > DateTime.MinValue
+                ? DateOnly.FromDateTime(Minimum)
+                : DateOnly.MinValue,
+            ref failure);
+        ExceptionAggregation.Capture(
+            () => _calendar.MaximumDate = Maximum < DateTime.MaxValue
+                ? DateOnly.FromDateTime(Maximum)
+                : DateOnly.MaxValue,
+            ref failure);
+        failure?.Throw();
     }
 
     /// <summary>Pushes a date into the owned Calendar's selection under a re-entrancy guard.</summary>

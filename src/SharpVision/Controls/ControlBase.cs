@@ -3038,6 +3038,47 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         return true;
     }
 
+    /// <summary>Commits and publishes one property, then runs required dependent work even when a
+    /// property observer throws, rethrowing the first failure after the continuation completes.</summary>
+    /// <typeparam name="T">The property value type.</typeparam>
+    /// <param name="field">The current backing field.</param>
+    /// <param name="value">The validated replacement value.</param>
+    /// <param name="impact">The validated earliest affected phase.</param>
+    /// <param name="continuation">Required invariant repair or dependent-state synchronization.</param>
+    /// <param name="propertyName">The non-empty property name supplied by the compiler.</param>
+    /// <returns>Whether a changed value was committed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="continuation"/> or
+    /// <paramref name="propertyName"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="propertyName"/> is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NotifyPropertyChangedInvocator]
+    private protected bool SetPropertyAndContinue<T>(
+        ref T field,
+        T value,
+        InvalidationImpact impact,
+        Action continuation,
+        [CallerMemberName] string? propertyName = null)
+    {
+        ArgumentNullException.ThrowIfNull(continuation);
+        ValidateImpact(impact);
+        ArgumentException.ThrowIfNullOrEmpty(propertyName);
+        VerifyMutable();
+
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            return false;
+        }
+
+        field = value;
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(() => NotifyPropertyChanged(propertyName, impact), ref failure);
+        ExceptionAggregation.Capture(continuation, ref failure);
+        failure?.Throw();
+        return true;
+    }
+
     /// <summary>Initializes the single primary complete-style slot owned by this control.</summary>
     /// <typeparam name="TStyle">The small immutable complete style value.</typeparam>
     /// <param name="definition">The immutable primary-style policy.</param>

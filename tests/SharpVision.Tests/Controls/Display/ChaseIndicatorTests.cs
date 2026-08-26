@@ -6,6 +6,63 @@ namespace SharpVision.Tests.Controls.Display;
 /// <summary>Verifies ChaseIndicator defaults, validation, layout, and width policy.</summary>
 public sealed class ChaseIndicatorTests
 {
+    /// <summary>Verifies trail storage follows the committed length even when its notification throws.</summary>
+    [Fact]
+    public void TrailLength_WhenPropertyObserverThrows_StillResizesTrail()
+    {
+        // Arrange
+        var indicator = new ChaseIndicator { TrailLength = 4 };
+        indicator.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ChaseIndicator.TrailLength))
+            {
+                throw new InvalidOperationException("observer failure");
+            }
+        };
+
+        // Act
+        _ = Should.Throw<InvalidOperationException>(() => indicator.TrailLength = 0);
+
+        // Assert
+        indicator.TrailLength.ShouldBe(0);
+        indicator.TrailCapacity.ShouldBe(0);
+    }
+
+    /// <summary>Verifies fade and movement timing are rescheduled from committed values even when
+    /// their property notifications throw.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Timing_WhenPropertyObserverThrows_StillReschedules(bool fade)
+    {
+        // Arrange
+        var indicator = new ChaseIndicator { TrailLength = fade ? 2 : 0 };
+        var propertyName = fade ? nameof(ChaseIndicator.FadeDuration) : nameof(ChaseIndicator.Interval);
+        indicator.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == propertyName)
+            {
+                throw new InvalidOperationException("observer failure");
+            }
+        };
+
+        // Act
+        _ = Should.Throw<InvalidOperationException>(() =>
+        {
+            if (fade)
+            {
+                indicator.FadeDuration = TimeSpan.FromMilliseconds(20);
+            }
+            else
+            {
+                indicator.Interval = TimeSpan.FromMilliseconds(300);
+            }
+        });
+
+        // Assert
+        indicator.ScheduledInterval.ShouldBe(TimeSpan.FromMilliseconds(fade ? 20 : 300));
+    }
+
     /// <summary>Verifies local style ownership overrides Theme fallback and clearing restores it.</summary>
     [Fact]
     public void Style_WhenThemeAndLocalValuesChange_UsesDocumentedPrecedence()

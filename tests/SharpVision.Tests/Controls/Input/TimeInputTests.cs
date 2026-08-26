@@ -6,6 +6,41 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves the detached public TimeInput contract, clamping, and rendering.</summary>
 public sealed class TimeInputTests
 {
+    /// <summary>Verifies both time endpoints repair the committed value after a throwing observer.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Bounds_WhenPropertyObserverThrows_StillClampValue(bool minimum)
+    {
+        // Arrange
+        var value = minimum ? new TimeOnly(10, 0) : new TimeOnly(18, 0);
+        using var control = new TimeInput { Value = value };
+        var propertyName = minimum ? nameof(TimeInput.Minimum) : nameof(TimeInput.Maximum);
+        control.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == propertyName)
+            {
+                throw new InvalidOperationException("observer failure");
+            }
+        };
+
+        // Act
+        _ = Should.Throw<InvalidOperationException>(() =>
+        {
+            if (minimum)
+            {
+                control.Minimum = new TimeOnly(12, 0);
+            }
+            else
+            {
+                control.Maximum = new TimeOnly(16, 0);
+            }
+        });
+
+        // Assert
+        control.Value.ShouldBe(minimum ? new TimeOnly(12, 0) : new TimeOnly(16, 0));
+    }
+
     #region Properties
 
     /// <summary>Verifies a null value is accepted when AllowNull is enabled.</summary>

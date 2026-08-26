@@ -33,7 +33,10 @@ Changing the effective glyph pair resets the animation phase, and so does
 changing `Movement` or `Length`. Spacing, trail, timing, and color changes
 preserve the current phase, and an appearance-only Theme change repaints without
 losing it. The trail history never grows beyond `min(TrailLength, Length - 1)`
-entries.
+entries. `TrailLength`, `FadeDuration`, and `Interval` reconfigure retained
+trail storage or timer scheduling after publication even when a
+`PropertyChanged` observer throws; the observer failure is rethrown only after
+the committed timing state is coherent.
 
 ## Presets and glyphs
 

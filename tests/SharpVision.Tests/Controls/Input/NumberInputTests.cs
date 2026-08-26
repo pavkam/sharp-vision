@@ -7,6 +7,40 @@ namespace SharpVision.Tests.Controls.Input;
 /// formatting.</summary>
 public sealed class NumberInputTests
 {
+    /// <summary>Verifies both endpoint setters repair the committed numeric value after a throwing observer.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Bounds_WhenPropertyObserverThrows_StillClampValue(bool minimum)
+    {
+        // Arrange
+        using var control = new NumberInput { Value = minimum ? 10m : 90m };
+        var propertyName = minimum ? nameof(NumberInput.Minimum) : nameof(NumberInput.Maximum);
+        control.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == propertyName)
+            {
+                throw new InvalidOperationException("observer failure");
+            }
+        };
+
+        // Act
+        _ = Should.Throw<InvalidOperationException>(() =>
+        {
+            if (minimum)
+            {
+                control.Minimum = 20m;
+            }
+            else
+            {
+                control.Maximum = 80m;
+            }
+        });
+
+        // Assert
+        control.Value.ShouldBe(minimum ? 20m : 80m);
+    }
+
     #region Defaults
 
     /// <summary>Verifies construct when created has documented defaults.</summary>

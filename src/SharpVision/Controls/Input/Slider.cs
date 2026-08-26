@@ -60,13 +60,11 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
         {
             ArgumentException.ThrowIfAboveMaximum(value, Maximum, nameof(value), "Minimum cannot exceed Maximum.");
 
-            if (SetProperty(ref field, value, InvalidationImpact.Render))
-            {
-                if (_value < value)
-                {
-                    _ = Commit(value);
-                }
-            }
+            _ = SetPropertyAndContinue(
+                ref field,
+                value,
+                InvalidationImpact.Render,
+                () => _ = _value < value && Commit(value));
         }
     }
 
@@ -81,13 +79,11 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
         {
             ArgumentException.ThrowIfBelowMinimum(value, Minimum, nameof(value), "Maximum cannot be below Minimum.");
 
-            if (SetProperty(ref field, value, InvalidationImpact.Render))
-            {
-                if (_value > value)
-                {
-                    _ = Commit(value);
-                }
-            }
+            _ = SetPropertyAndContinue(
+                ref field,
+                value,
+                InvalidationImpact.Render,
+                () => _ = _value > value && Commit(value));
         }
     } = 100;
 

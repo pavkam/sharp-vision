@@ -44,6 +44,57 @@ public sealed class ProgressBarTests
         bar.Value.ShouldBe(10);
     }
 
+    /// <summary>Verifies overflow-safe normalization preserves the midpoint and endpoints of the
+    /// widest accepted finite range.</summary>
+    [Theory]
+    [InlineData(-1.7976931348623157E+308, 0)]
+    [InlineData(0, 0.5)]
+    [InlineData(1.7976931348623157E+308, 1)]
+    public void ResolveRatio_WhenFiniteRangeSpanOverflows_MapsExactPosition(double value, double expected)
+    {
+        // Act
+        var ratio = ProgressBar.ResolveRatio(-double.MaxValue, double.MaxValue, value);
+
+        // Assert
+        ratio.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies both orientations and both resolution modes consume the same stable
+    /// midpoint ratio for an overflowing finite span.</summary>
+    [Theory]
+    [InlineData(Orientation.Horizontal, false)]
+    [InlineData(Orientation.Horizontal, true)]
+    [InlineData(Orientation.Vertical, false)]
+    [InlineData(Orientation.Vertical, true)]
+    public void Render_WhenFiniteRangeSpanOverflows_FillsHalf(
+        Orientation orientation,
+        bool useSubCellResolution)
+    {
+        // Arrange
+        var bar = new ProgressBar
+        {
+            Minimum = -double.MaxValue,
+            Maximum = double.MaxValue,
+            Value = 0,
+            Orientation = orientation,
+            UseSubCellResolution = useSubCellResolution
+        };
+        new LayoutEngine().Layout(bar, new Size(4, 4));
+        using Frame frame = new(new Size(4, 4));
+
+        // Act
+        bar.Render(frame.Canvas);
+
+        // Assert
+        var filled = orientation == Orientation.Horizontal
+            ? FrameOracle.Get(frame, new Point(1, 0))
+            : FrameOracle.Get(frame, new Point(0, 2));
+        var empty = orientation == Orientation.Horizontal
+            ? FrameOracle.Get(frame, new Point(2, 0))
+            : FrameOracle.Get(frame, new Point(0, 1));
+        filled.ShouldNotBe(empty);
+    }
+
     /// <summary>Verifies endpoint changes clamp before ordered property notifications.</summary>
     [Fact]
     public void Minimum_WhenRaisedAboveValue_ClampsBeforeNotifications()

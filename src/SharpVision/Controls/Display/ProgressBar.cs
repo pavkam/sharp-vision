@@ -209,8 +209,7 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
             return;
         }
 
-        var range = Maximum - Minimum;
-        var ratio = range > 0 ? Math.Clamp((Value - Minimum) / range, 0, 1) : 0;
+        var ratio = ResolveRatio(Minimum, Maximum, Value);
 
         if (Orientation == Orientation.Horizontal)
         {
@@ -230,6 +229,38 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
                 inherited.WithForeground(ResolveColor(actualStyle.TrackColor)),
                 ratio);
         }
+    }
+
+    /// <summary>Normalizes one finite value across ordered finite endpoints without overflowing
+    /// subtraction for opposite-sign extreme ranges.</summary>
+    [Pure]
+    internal static double ResolveRatio(double minimum, double maximum, double value)
+    {
+        if (maximum <= minimum || value <= minimum)
+        {
+            return 0;
+        }
+
+        if (value >= maximum)
+        {
+            return 1;
+        }
+
+        var range = maximum - minimum;
+
+        if (double.IsFinite(range))
+        {
+            return Math.Clamp((value - minimum) / range, 0, 1);
+        }
+
+        var scale = Math.Max(Math.Abs(minimum), Math.Abs(maximum));
+        var normalizedMinimum = minimum / scale;
+        var normalizedMaximum = maximum / scale;
+        var normalizedValue = value / scale;
+        return Math.Clamp(
+            (normalizedValue - normalizedMinimum) / (normalizedMaximum - normalizedMinimum),
+            0,
+            1);
     }
 
     private void RenderHorizontal(

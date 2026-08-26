@@ -6,6 +6,40 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies Slider range state, semantic geometry, and direct input behavior.</summary>
 public sealed class SliderTests
 {
+    /// <summary>Verifies both endpoint setters restore the value invariant after a throwing observer.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Bounds_WhenPropertyObserverThrows_StillClampValue(bool minimum)
+    {
+        // Arrange
+        var slider = new Slider { Value = minimum ? 10 : 90 };
+        var propertyName = minimum ? nameof(Slider.Minimum) : nameof(Slider.Maximum);
+        slider.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == propertyName)
+            {
+                throw new InvalidOperationException("observer failure");
+            }
+        };
+
+        // Act
+        _ = Should.Throw<InvalidOperationException>(() =>
+        {
+            if (minimum)
+            {
+                slider.Minimum = 20;
+            }
+            else
+            {
+                slider.Maximum = 80;
+            }
+        });
+
+        // Assert
+        slider.Value.ShouldBe(minimum ? 20 : 80);
+    }
+
     /// <summary>Verifies documented range, presentation, alignment, and interaction defaults.</summary>
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()

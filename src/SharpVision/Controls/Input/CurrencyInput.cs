@@ -134,10 +134,7 @@ public sealed class CurrencyInput: InputBase
         {
             ArgumentException.ThrowIfAboveMaximum(value, Maximum, nameof(value), "Minimum cannot exceed Maximum.");
 
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                _coordinator.RepairValue();
-            }
+            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Measure, _coordinator.RepairValue);
         }
     } = decimal.MinValue;
 
@@ -153,10 +150,7 @@ public sealed class CurrencyInput: InputBase
         {
             ArgumentException.ThrowIfBelowMinimum(value, Minimum, nameof(value), "Maximum cannot be less than Minimum.");
 
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                _coordinator.RepairValue();
-            }
+            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Measure, _coordinator.RepairValue);
         }
     } = decimal.MaxValue;
 

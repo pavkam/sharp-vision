@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Input;
 
+using System.Runtime.ExceptionServices;
+
 using SharpVision.Terminal.Input;
 
 /// <summary>Displays one Gregorian month for single-date or inclusive-interval selection.</summary>
@@ -155,11 +157,11 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         {
             ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The selection mode is unknown.");
 
-            if (SetProperty(ref field, value, InvalidationImpact.Render))
-            {
-                SetIntervalAnchor(null);
-                _ = CommitSelection(null);
-            }
+            _ = SetPropertyAndContinue(
+                ref field,
+                value,
+                InvalidationImpact.Render,
+                () => _ = CommitSelection(null));
         }
     }
 
@@ -228,10 +230,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         {
             ArgumentException.ThrowIfAboveMaximum(value, MaximumDate, nameof(value), "MinimumDate cannot exceed MaximumDate.");
 
-            if (SetProperty(ref field, value, InvalidationImpact.Render))
-            {
-                RepairState();
-            }
+            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Render, RepairState);
         }
     } = DateOnly.MinValue;
 
@@ -246,10 +245,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         {
             ArgumentException.ThrowIfBelowMinimum(value, MinimumDate, nameof(value), "MaximumDate cannot precede MinimumDate.");
 
-            if (SetProperty(ref field, value, InvalidationImpact.Render))
-            {
-                RepairState();
-            }
+            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Render, RepairState);
         }
     } = DateOnly.MaxValue;
 
@@ -345,19 +341,21 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
     /// <summary>Invalidates rendered date state after an owned blocked-range mutation.</summary>
     internal void OnBlockedDatesChanged()
     {
+        ExceptionDispatchInfo? failure = null;
+
         if (_selection is { } selection && BlockedDates.Intersects(selection))
         {
-            _ = CommitSelection(null);
+            ExceptionAggregation.Capture(() => _ = CommitSelection(null), ref failure);
         }
 
         if (_intervalAnchor is { } anchor && BlockedDates.Contains(anchor))
         {
-            SetIntervalAnchor(null);
+            ExceptionAggregation.Capture(() => SetIntervalAnchor(null), ref failure);
         }
 
-        RepairActiveDate();
-
-        Invalidate(InvalidationImpact.Render);
+        ExceptionAggregation.Capture(RepairActiveDate, ref failure);
+        ExceptionAggregation.Capture(() => Invalidate(InvalidationImpact.Render), ref failure);
+        failure?.Throw();
     }
 
     /// <summary>Activates one selectable date through the current selection mode.</summary>
@@ -1018,7 +1016,8 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
             }
         }
 
-        SetIntervalAnchor(null);
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(() => SetIntervalAnchor(null), ref failure);
         var previous = _selection;
 
         // The active-date move - and the DisplayMonth repage SetActiveDate always performs -
@@ -1028,42 +1027,53 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         // is too late.
         if (previous == value)
         {
+            failure?.Throw();
             return false;
         }
 
         if (value is { } committed)
         {
-            SetActiveDate(committed.Start);
+            ExceptionAggregation.Capture(() => SetActiveDate(committed.Start), ref failure);
         }
 
-        _ = SetProperty(ref _selection, value, InvalidationImpact.Render, nameof(Selection));
-        SelectionChanged?.Invoke(this, new CalendarSelectionChangedEventArgs(previous, value));
+        ExceptionAggregation.Capture(
+            () => _ = SetProperty(ref _selection, value, InvalidationImpact.Render, nameof(Selection)),
+            ref failure);
+        ExceptionAggregation.Capture(
+            () => SelectionChanged?.Invoke(this, new CalendarSelectionChangedEventArgs(previous, value)),
+            ref failure);
+        failure?.Throw();
         return true;
     }
 
-    private void SetActiveDate(DateOnly value)
-    {
-        _ = SetProperty(ref _activeDate, value, InvalidationImpact.Render, nameof(ActiveDate));
-        DisplayMonth = value;
-    }
+    private void SetActiveDate(DateOnly value) =>
+        _ = SetPropertyAndContinue(
+            ref _activeDate,
+            value,
+            InvalidationImpact.Render,
+            () => DisplayMonth = value,
+            nameof(ActiveDate));
 
     private void SetIntervalAnchor(DateOnly? value) =>
         _ = SetProperty(ref _intervalAnchor, value, InvalidationImpact.Render, nameof(IntervalAnchor));
 
     private void RepairState()
     {
+        ExceptionDispatchInfo? failure = null;
+
         if (_selection is { } selection &&
             (selection.Start < MinimumDate || selection.End > MaximumDate))
         {
-            _ = CommitSelection(null);
+            ExceptionAggregation.Capture(() => _ = CommitSelection(null), ref failure);
         }
 
         if (_intervalAnchor is { } anchor && (anchor < MinimumDate || anchor > MaximumDate))
         {
-            SetIntervalAnchor(null);
+            ExceptionAggregation.Capture(() => SetIntervalAnchor(null), ref failure);
         }
 
-        RepairActiveDate();
+        ExceptionAggregation.Capture(RepairActiveDate, ref failure);
+        failure?.Throw();
     }
 
     private void RepairActiveDate()

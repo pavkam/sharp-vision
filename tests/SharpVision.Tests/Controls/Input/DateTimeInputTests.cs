@@ -7,6 +7,44 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves the detached public DateTimeInput contract, clamping, and rendering.</summary>
 public sealed class DateTimeInputTests
 {
+    /// <summary>Verifies both date-time endpoints repair the value and retained calendar after a throwing observer.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Bounds_WhenPropertyObserverThrows_StillRepairDependentState(bool minimum)
+    {
+        // Arrange
+        var value = minimum ? new DateTime(2026, 7, 10, 10, 0, 0) : new DateTime(2026, 7, 20, 10, 0, 0);
+        var bound = minimum ? new DateTime(2026, 7, 12, 12, 0, 0) : new DateTime(2026, 7, 18, 12, 0, 0);
+        using var control = new DateTimeInput { Value = value };
+        var propertyName = minimum ? nameof(DateTimeInput.Minimum) : nameof(DateTimeInput.Maximum);
+        control.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == propertyName)
+            {
+                throw new InvalidOperationException("observer failure");
+            }
+        };
+
+        // Act
+        _ = Should.Throw<InvalidOperationException>(() =>
+        {
+            if (minimum)
+            {
+                control.Minimum = bound;
+            }
+            else
+            {
+                control.Maximum = bound;
+            }
+        });
+
+        // Assert
+        control.Value.ShouldBe(bound);
+        control.OwnedCalendar.MinimumDate.ShouldBe(DateOnly.FromDateTime(control.Minimum));
+        control.OwnedCalendar.MaximumDate.ShouldBe(DateOnly.FromDateTime(control.Maximum));
+    }
+
     #region Properties
 
     /// <summary>Verifies a null value is accepted when AllowNull is enabled.</summary>

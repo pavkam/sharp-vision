@@ -23,7 +23,6 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
     private Rune _phaseActive;
     private Rune _phaseInactive;
     private bool _hasPhaseGlyphs;
-    private TimeSpan _scheduledInterval;
     private readonly AnimationTimer _animation;
     private readonly StyleSlot<ChaseIndicatorStyle> _style;
 
@@ -143,11 +142,7 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
 
-            if (SetProperty(ref field, value, InvalidationImpact.Render))
-            {
-                ResizeTrail();
-                ScheduleNext();
-            }
+            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Render, ReconfigureTrail);
         }
     } = 2;
 
@@ -163,10 +158,7 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
         {
             DispatcherTimer.ValidateInterval(value, nameof(value));
 
-            if (SetProperty(ref field, value, InvalidationImpact.Render))
-            {
-                ScheduleNext();
-            }
+            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Render, ScheduleNext);
         }
     } = TimeSpan.FromMilliseconds(400);
 
@@ -181,13 +173,15 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
         set
         {
             DispatcherTimer.ValidateInterval(value, nameof(value));
-            if (SetProperty(ref field, value, InvalidationImpact.None))
-            {
-                _movementElapsedTicks = 0;
-                ScheduleNext();
-            }
+            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.None, RestartInterval);
         }
     } = TimeSpan.FromMilliseconds(200);
+
+    /// <summary>Gets retained trail capacity for proving it follows the committed public length.</summary>
+    internal int TrailCapacity => _trailFirstPositions.Length;
+
+    /// <summary>Gets the most recently configured timer interval for proving property repair ordering.</summary>
+    internal TimeSpan ScheduledInterval { get; private set; }
 
     /// <summary>Gets or sets whether attached playback advances automatically.</summary>
     /// <remarks>Pausing retains the current position; resuming starts one complete interval.</remarks>
@@ -340,8 +334,8 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
         base.OnAttached();
         Debug.Assert(Dispatcher is not null, "An attached chase indicator owns a dispatcher.");
         SetLastTimestamp();
-        _scheduledInterval = NextInterval();
-        _animation.Interval = _scheduledInterval;
+        ScheduledInterval = NextInterval();
+        _animation.Interval = ScheduledInterval;
         _animation.Attach(Dispatcher);
     }
 
@@ -443,6 +437,18 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
         _trailSecondPositions = secondPositions;
         _trailStartedAt = startedAt;
         _trailCount = capacity;
+    }
+
+    private void ReconfigureTrail()
+    {
+        ResizeTrail();
+        ScheduleNext();
+    }
+
+    private void RestartInterval()
+    {
+        _movementElapsedTicks = 0;
+        ScheduleNext();
     }
 
     private void AddTrail(int firstPosition, int secondPosition)
@@ -569,8 +575,8 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
 
     private void ScheduleNext()
     {
-        _scheduledInterval = NextInterval();
-        _animation.Interval = _scheduledInterval;
+        ScheduledInterval = NextInterval();
+        _animation.Interval = ScheduledInterval;
     }
 
     private void DrawPosition(

@@ -32,7 +32,9 @@ public sealed class DateInput: InputBase
             ['y'] = TemporalSegmentKind.Year
         };
 
+#pragma warning disable IDE0032 // Production code owns the field directly; tests observe it through a read-only invariant seam.
     private readonly Calendar _calendar;
+#pragma warning restore IDE0032
     private readonly Popup _popup;
     private readonly SegmentFieldBehavior _segments;
     private DateOnly? _value;
@@ -220,11 +222,7 @@ public sealed class DateInput: InputBase
         {
             ArgumentException.ThrowIfAboveMaximum(value, Maximum, nameof(value), "Minimum cannot exceed Maximum.");
 
-            if (SetProperty(ref field, value, InvalidationImpact.None))
-            {
-                _calendar.MinimumDate = value;
-                RepairValue();
-            }
+            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.None, SynchronizeBoundsAndRepairValue);
         }
     } = DateOnly.MinValue;
 
@@ -239,11 +237,7 @@ public sealed class DateInput: InputBase
         {
             ArgumentException.ThrowIfBelowMinimum(value, Minimum, nameof(value), "Maximum cannot precede Minimum.");
 
-            if (SetProperty(ref field, value, InvalidationImpact.None))
-            {
-                _calendar.MaximumDate = value;
-                RepairValue();
-            }
+            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.None, SynchronizeBoundsAndRepairValue);
         }
     } = DateOnly.MaxValue;
 
@@ -313,6 +307,9 @@ public sealed class DateInput: InputBase
 
     /// <summary>Gets the resolved presentation of the owned Calendar.</summary>
     public CalendarStyle ActualCalendarStyle => _calendar.ActualStyle;
+
+    /// <summary>Gets the retained calendar for proving bound synchronization invariants.</summary>
+    internal Calendar OwnedCalendar => _calendar;
 
     /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inside the
     /// field box and strictly inboard of the drop-down indicator.</summary>
@@ -945,6 +942,15 @@ public sealed class DateInput: InputBase
 
     [Pure]
     private DateOnly ClampDate(DateOnly date) => date.Clamp(Minimum, Maximum);
+
+    private void SynchronizeBoundsAndRepairValue()
+    {
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(() => _calendar.MinimumDate = Minimum, ref failure);
+        ExceptionAggregation.Capture(() => _calendar.MaximumDate = Maximum, ref failure);
+        ExceptionAggregation.Capture(RepairValue, ref failure);
+        failure?.Throw();
+    }
 
     private void RepairValue()
     {

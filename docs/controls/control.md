@@ -309,20 +309,24 @@ dependencies, ancestor propagation, dispatcher scheduling, retries, and frame
 coordination. `ControlBase` exposes the authoring seams that let derived
 controls participate without exposing pending phase flags.
 
-| Seam                                       | Use                                                             |
-| ------------------------------------------ | --------------------------------------------------------------- |
-| `SetProperty(ref field, value, impact)`    | Commit one ordinary CLR property and raise `PropertyChanged`.   |
-| `NotifyPropertyChanged(name, impact)`      | Publish a coordinated mutation after all related fields commit. |
-| `Invalidate(InvalidationImpact)`           | Request phase work without a property notification.             |
-| `InvalidateVisualState()`                  | Clear resolved appearance caches after semantic state changes.  |
-| `SetVisualStateProperty(ref field, value)` | Commit a property that changes `GetAppearanceState()`.          |
+| Seam                                                                         | Use                                                                                              |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `SetProperty(ref field, value, impact)`                                      | Commit one ordinary CLR property and raise `PropertyChanged`.                                    |
+| Private-protected `SetPropertyAndContinue(ref field, value, impact, action)` | Preserve notification order, then complete dependent work before rethrowing an observer failure. |
+| `NotifyPropertyChanged(name, impact)`                                        | Publish a coordinated mutation after all related fields commit.                                  |
+| `Invalidate(InvalidationImpact)`                                             | Request phase work without a property notification.                                              |
+| `InvalidateVisualState()`                                                    | Clear resolved appearance caches after semantic state changes.                                   |
+| `SetVisualStateProperty(ref field, value)`                                   | Commit a property that changes `GetAppearanceState()`.                                           |
 
 Each seam validates dispatcher access, lifetime, arguments, and the selected
 impact before changing any observable state. Assigning an equivalent value is a
 no-op. A real change commits the value and requests the phase work before
 notifying observers, so callbacks see both the new value and its pending update.
-Specialized visual-state changes compute their strongest impact from the active
-style rather than assuming that every state transition is render-only.
+Properties with dependent retained state continue that repair after a throwing
+observer and only then rethrow the first callback failure, so the committed
+public value cannot outlive its invariant repair. Specialized visual-state
+changes compute their strongest impact from the active style rather than
+assuming that every state transition is render-only.
 
 ## Access-key extension points
 

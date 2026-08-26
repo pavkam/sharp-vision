@@ -216,10 +216,7 @@ public sealed class TimeInput: InputBase
         {
             ArgumentException.ThrowIfAboveMaximum(value, Maximum, nameof(value), "Minimum cannot exceed Maximum.");
 
-            if (SetProperty(ref field, value, InvalidationImpact.Render))
-            {
-                ClampCurrentValue();
-            }
+            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Render, ClampCurrentValue);
         }
     } = TimeOnly.MinValue;
 
@@ -234,10 +231,7 @@ public sealed class TimeInput: InputBase
         {
             ArgumentException.ThrowIfBelowMinimum(value, Minimum, nameof(value), "Maximum cannot be less than Minimum.");
 
-            if (SetProperty(ref field, value, InvalidationImpact.Render))
-            {
-                ClampCurrentValue();
-            }
+            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Render, ClampCurrentValue);
         }
     } = TimeOnly.MaxValue;
 

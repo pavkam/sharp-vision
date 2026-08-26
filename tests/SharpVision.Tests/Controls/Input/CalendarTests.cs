@@ -1092,6 +1092,110 @@ public sealed class CalendarTests
         calendar.ActiveDate.ShouldBe(new DateOnly(2026, 7, 15));
     }
 
+    /// <summary>Verifies tightening either bound completes selection and active-date repair after
+    /// the bound's property notification throws.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Bounds_WhenPropertyObserverThrows_StillRepairDependentState(bool minimum)
+    {
+        // Arrange
+        var selected = minimum ? new DateOnly(2026, 7, 10) : new DateOnly(2026, 7, 20);
+        var bound = minimum ? new DateOnly(2026, 7, 12) : new DateOnly(2026, 7, 18);
+        using var calendar = new UiCalendar { Selection = new DateInterval(selected, selected) };
+        var propertyName = minimum ? nameof(UiCalendar.MinimumDate) : nameof(UiCalendar.MaximumDate);
+        calendar.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == propertyName)
+            {
+                throw new InvalidOperationException("observer failure");
+            }
+        };
+
+        // Act
+        _ = Should.Throw<InvalidOperationException>(() =>
+        {
+            if (minimum)
+            {
+                calendar.MinimumDate = bound;
+            }
+            else
+            {
+                calendar.MaximumDate = bound;
+            }
+        });
+
+        // Assert
+        calendar.Selection.ShouldBeNull();
+        calendar.ActiveDate.ShouldBe(bound);
+        calendar.DisplayMonth.ShouldBe(new DateOnly(bound.Year, bound.Month, 1));
+    }
+
+    /// <summary>Verifies changing selection policy clears its obsolete interval state after a
+    /// throwing property observer.</summary>
+    [Fact]
+    public void SelectionMode_WhenPropertyObserverThrows_StillClearsPendingState()
+    {
+        // Arrange
+        using var calendar = new UiCalendar { SelectionMode = CalendarSelectionMode.Interval };
+        _ = calendar.ActivateDate(new DateOnly(2026, 7, 12));
+        calendar.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(UiCalendar.SelectionMode))
+            {
+                throw new InvalidOperationException("observer failure");
+            }
+        };
+
+        // Act
+        _ = Should.Throw<InvalidOperationException>(() => calendar.SelectionMode = CalendarSelectionMode.Select);
+
+        // Assert
+        calendar.IntervalAnchor.ShouldBeNull();
+        calendar.Selection.ShouldBeNull();
+    }
+
+    /// <summary>Verifies blocked-date repair reaches the active date after a throwing selection callback.</summary>
+    [Fact]
+    public void Block_WhenSelectionObserverThrows_StillRepairsActiveDate()
+    {
+        // Arrange
+        var date = new DateOnly(2026, 7, 12);
+        using var calendar = new UiCalendar { Selection = new DateInterval(date, date) };
+        calendar.SelectionChanged += (_, _) => throw new InvalidOperationException("observer failure");
+
+        // Act
+        _ = Should.Throw<InvalidOperationException>(() => calendar.BlockedDates.Block(date));
+
+        // Assert
+        calendar.Selection.ShouldBeNull();
+        calendar.BlockedDates.Contains(calendar.ActiveDate).ShouldBeFalse();
+    }
+
+    /// <summary>Verifies blocked-date repair reaches the active date after a throwing anchor callback.</summary>
+    [Fact]
+    public void Block_WhenIntervalAnchorObserverThrows_StillRepairsActiveDate()
+    {
+        // Arrange
+        var date = new DateOnly(2026, 7, 12);
+        using var calendar = new UiCalendar { SelectionMode = CalendarSelectionMode.Interval };
+        _ = calendar.ActivateDate(date);
+        calendar.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(UiCalendar.IntervalAnchor))
+            {
+                throw new InvalidOperationException("observer failure");
+            }
+        };
+
+        // Act
+        _ = Should.Throw<InvalidOperationException>(() => calendar.BlockedDates.Block(date));
+
+        // Assert
+        calendar.IntervalAnchor.ShouldBeNull();
+        calendar.BlockedDates.Contains(calendar.ActiveDate).ShouldBeFalse();
+    }
+
     /// <summary>Verifies Culture rejects a null assignment.</summary>
     [Fact]
     public void Culture_WhenAssignedNull_ThrowsBeforeMutation()

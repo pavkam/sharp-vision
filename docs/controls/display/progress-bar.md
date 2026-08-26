@@ -37,7 +37,8 @@ coherent, already-clamped state: `PropertyChanged(Minimum)` or
 history; a clamp that leaves `Value` unchanged raises neither. The event args
 expose the committed value as `Value`, matching the other range controls.
 
-Determinate rendering normalizes `(Value - Minimum) / (Maximum - Minimum)` and
+Determinate rendering normalizes the value with overflow-safe scaled arithmetic
+when opposite-sign finite endpoints would produce an infinite direct span, then
 fills `floor(normalized * axisCells)` complete cells; at the maximum, every cell
 is filled. The remaining cells use the code-owned empty-progress glyph.
 Horizontal fill grows from the left, vertical fill from the bottom.
