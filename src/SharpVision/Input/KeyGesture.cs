@@ -76,15 +76,42 @@ public readonly record struct KeyGesture
     /// <returns>
     /// True when <paramref name="stroke"/> is a <see cref="KeyAction.Press"/> whose code,
     /// character (for <see cref="Code.Character"/>), and modifiers - lock keys excluded - match
-    /// this gesture exactly.
+    /// this gesture exactly. A bare press of a modifier key (for example <see cref="Code.LeftShift"/>)
+    /// also sets that key's own <see cref="Modifiers"/> flag on <paramref name="stroke"/>, so that one
+    /// flag is excluded from the comparison for such codes; every other code compares modifiers as-is.
     /// </returns>
     [Pure]
-    public bool Matches(in Stroke stroke) =>
-        stroke.Action == KeyAction.Press &&
-        stroke.Code == Code &&
-        KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers) &&
-        (Code != Code.Character ||
-         (stroke.Character is { } character && Rune.ToUpperInvariant(character) == Character));
+    public bool Matches(in Stroke stroke)
+    {
+        var strokeModifiers = SelfSettingModifier(Code) is { } selfModifier
+            ? stroke.Modifiers & ~selfModifier
+            : stroke.Modifiers;
+
+        return stroke.Action == KeyAction.Press &&
+            stroke.Code == Code &&
+            KeyboardModifierPolicy.MatchesCommand(strokeModifiers, Modifiers) &&
+            (Code != Code.Character ||
+             (stroke.Character is { } character && Rune.ToUpperInvariant(character) == Character));
+    }
+
+    /// <summary>
+    /// Maps a bare-modifier logical code to the single <see cref="Modifiers"/> flag that
+    /// pressing it inherently sets on its own <see cref="Stroke"/>.
+    /// </summary>
+    /// <param name="code">The logical key to classify.</param>
+    /// <returns>
+    /// The self-set flag for a Left/Right Shift, Control, Alt, Super, Hyper, or Meta code; otherwise
+    /// null. The ISO Level3/Level5 Shift codes have no corresponding <see cref="Modifiers"/>
+    /// bit, so they are not self-conflicting and are not included here.
+    /// </returns>
+    private static Modifiers? SelfSettingModifier(Code code) =>
+        code is Code.LeftShift or Code.RightShift ? Modifiers.Shift :
+        code is Code.LeftControl or Code.RightControl ? Modifiers.Control :
+        code is Code.LeftAlt or Code.RightAlt ? Modifiers.Alt :
+        code is Code.LeftSuper or Code.RightSuper ? Modifiers.Super :
+        code is Code.LeftHyper or Code.RightHyper ? Modifiers.Hyper :
+        code is Code.LeftMeta or Code.RightMeta ? Modifiers.Meta :
+        null;
 
     /// <summary>Formats this gesture as conventional display text, for example "Ctrl+Shift+S".</summary>
     /// <returns>The non-null, non-empty display text.</returns>

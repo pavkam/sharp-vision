@@ -92,4 +92,73 @@ public sealed class KeyGestureTests
         lower.GetHashCode().ShouldBe(upper.GetHashCode());
         lower.ToString().ShouldBe(upper.ToString());
     }
+
+    /// <summary>
+    /// Verifies a bare modifier-key gesture matches a stroke for that same key, even though
+    /// pressing the key alone already sets its own matching <see cref="Modifiers"/> flag.
+    /// </summary>
+    [Fact]
+    public void Matches_WhenCodeIsBareModifierKey_IgnoresTheKeysOwnModifierFlag()
+    {
+        var gesture = new KeyGesture(Code.LeftShift);
+        var stroke = new Stroke(Code.LeftShift, null, 57441, Modifiers.Shift, KeyAction.Press);
+
+        gesture.Matches(stroke).ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies a bare modifier-key gesture still requires exact equality on any other modifier:
+    /// only the key's own flag is excluded from the comparison, not every modifier.
+    /// </summary>
+    [Fact]
+    public void Matches_WhenBareModifierKeyStrokeCarriesAnUnrelatedModifier_DoesNotMatch()
+    {
+        var gesture = new KeyGesture(Code.LeftShift);
+        var stroke = new Stroke(Code.LeftShift, null, 57441, Modifiers.Shift | Modifiers.Control, KeyAction.Press);
+
+        gesture.Matches(stroke).ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Verifies a modifier-key gesture that itself requires an additional modifier still matches once
+    /// the key's own self-set flag is excluded, leaving only the required modifier to compare.
+    /// </summary>
+    [Fact]
+    public void Matches_WhenBareModifierKeyGestureRequiresAnotherModifier_MatchesOnceOwnFlagIsExcluded()
+    {
+        var gesture = new KeyGesture(Code.LeftShift, Modifiers.Control);
+        var stroke = new Stroke(Code.LeftShift, null, 57441, Modifiers.Shift | Modifiers.Control, KeyAction.Press);
+
+        gesture.Matches(stroke).ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies the ISO Level3/Level5 Shift codes - which have no corresponding <see cref="Modifiers"/>
+    /// flag - compare modifiers exactly like any ordinary named key, since no self-conflict is possible.
+    /// </summary>
+    [Fact]
+    public void Matches_WhenCodeIsIsoLevelShift_ComparesModifiersExactly()
+    {
+        var gesture = new KeyGesture(Code.IsoLevel3Shift);
+        var matchingStroke = new Stroke(Code.IsoLevel3Shift, null, 57453, Modifiers.None, KeyAction.Press);
+        var nonMatchingStroke = new Stroke(Code.IsoLevel3Shift, null, 57453, Modifiers.Control, KeyAction.Press);
+
+        gesture.Matches(matchingStroke).ShouldBeTrue();
+        gesture.Matches(nonMatchingStroke).ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Verifies an ordinary non-modifier-key gesture is unaffected by the self-modifier exclusion:
+    /// it still requires exact modifier equality.
+    /// </summary>
+    [Fact]
+    public void Matches_WhenCodeIsNotAModifierKey_ComparesModifiersExactly()
+    {
+        var gesture = new KeyGesture(Code.F5, Modifiers.Control);
+        var matchingStroke = new Stroke(Code.F5, null, 0, Modifiers.Control, KeyAction.Press);
+        var nonMatchingStroke = new Stroke(Code.F5, null, 0, Modifiers.Control | Modifiers.Shift, KeyAction.Press);
+
+        gesture.Matches(matchingStroke).ShouldBeTrue();
+        gesture.Matches(nonMatchingStroke).ShouldBeFalse();
+    }
 }

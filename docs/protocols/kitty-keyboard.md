@@ -49,21 +49,19 @@ base-layout Runes, modifiers, and action; up to 32 validated associated text
 scalars follow as ordered `Text` values.
 
 Escape, Enter, Tab, Backspace, lock keys, Print Screen, Pause, Menu, F13-F35,
-the keypad block, and the media transport and volume keys have named logical
-codes. The keypad Begin/center key maps to the same `Code.Begin` used for the
-legacy keypad-5-with-NumLock-off key. Other valid PUA functional values remain
+the keypad block, the media transport and volume keys, and the modifier-as-key
+block (bare presses of Left/Right Shift, Control, Alt, Super, Hyper, Meta, and
+the ISO Level3/Level5 Shift keys) have named logical codes. The keypad
+Begin/center key maps to the same `Code.Begin` used for the legacy
+keypad-5-with-NumLock-off key. Other valid PUA functional values remain
 `Code.Unknown` with their native number.
 
-> [!IMPORTANT]
->
-> **Implementation gap:** the modifier-as-key block of the functional range
-> (bare presses of Left/Right Shift, Control, Alt, Super, Hyper, Meta, and
-> similar) has no named logical codes and decodes to `Code.Unknown` with only
-> its native number preserved. Mapping these requires resolving a design
-> conflict first: a bare modifier press already sets the matching `Modifiers`
-> flag on its own `Stroke`, which would make a same-modifier exact-match
-> `KeyGesture`/`KeyboardModifierPolicy` binding for that key never match, unlike
-> every other named key.
+A bare modifier press already sets the matching `Modifiers` flag on its own
+`Stroke` - unlike every other named key, whose code and modifiers are
+independent - so `KeyGesture.Matches` excludes a Left/Right Shift, Control, Alt,
+Super, Hyper, or Meta code's own flag from its modifier comparison. The ISO
+Level3/Level5 Shift codes have no corresponding `Modifiers` bit, so no exclusion
+is needed for them.
 
 Impossible scalars, modifier values outside 1-256, event values outside 1-3,
 extra groups, DEL and C1 control codepoints (0x7F-0x9F) in associated text, and

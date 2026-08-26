@@ -348,17 +348,38 @@ internal sealed class KittyKeyDecoder
                 return Code.RaiseVolume;
             case 57440:
                 return Code.MuteVolume;
+            case 57441:
+                return Code.LeftShift;
+            case 57442:
+                return Code.LeftControl;
+            case 57443:
+                return Code.LeftAlt;
+            case 57444:
+                return Code.LeftSuper;
+            case 57445:
+                return Code.LeftHyper;
+            case 57446:
+                return Code.LeftMeta;
+            case 57447:
+                return Code.RightShift;
+            case 57448:
+                return Code.RightControl;
+            case 57449:
+                return Code.RightAlt;
+            case 57450:
+                return Code.RightSuper;
+            case 57451:
+                return Code.RightHyper;
+            case 57452:
+                return Code.RightMeta;
+            case 57453:
+                return Code.IsoLevel3Shift;
+            case 57454:
+                return Code.IsoLevel5Shift;
             default:
                 break;
         }
 
-        // 57441-57454 (Kitty's modifier-as-key codepoints, e.g. bare Left-Shift/Left-Control)
-        // are deliberately left unmapped here and fall through to Code.Unknown below. Mapping
-        // them to dedicated Code members would let a modifier key satisfy an exact-modifier
-        // KeyGesture/KeyboardModifierPolicy match (e.g. a bare Code.LeftShift binding), because
-        // pressing that key already sets the corresponding Modifiers flag on this same Stroke -
-        // unlike every other named key, whose Code and Modifiers are independent. Resolving that
-        // conflict needs a self-modifier exclusion policy, which is a separate design decision.
         if (native is >= 57344 and <= 63743 ||
             !Rune.TryCreate(native, out var rune) ||
             Rune.GetUnicodeCategory(rune) == UnicodeCategory.Control)

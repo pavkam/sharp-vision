@@ -683,6 +683,20 @@ namespace SharpVision.Terminal.Input
         LowerVolume = 124,
         RaiseVolume = 125,
         MuteVolume = 126,
+        LeftShift = 127,
+        LeftControl = 128,
+        LeftAlt = 129,
+        LeftSuper = 130,
+        LeftHyper = 131,
+        LeftMeta = 132,
+        RightShift = 133,
+        RightControl = 134,
+        RightAlt = 135,
+        RightSuper = 136,
+        RightHyper = 137,
+        RightMeta = 138,
+        IsoLevel3Shift = 139,
+        IsoLevel5Shift = 140,
     }
     public sealed class InputDecoder : System.IDisposable
     {

@@ -860,20 +860,30 @@ public sealed class InputDecoderTests
     }
 
     /// <summary>
-    /// Verifies the modifier-as-key codepoints immediately following the media range remain
-    /// unmapped, pinning the deferred scope of the functional key range.
+    /// Verifies all modifier-as-key codepoints (bare presses of a modifier key, reported as their
+    /// own key rather than as a modifier on another key) map from the Kitty native range.
     /// </summary>
     [Theory]
-    [InlineData(57441)]
-    [InlineData(57442)]
-    [InlineData(57454)]
-    public void Decode_WhenModifierAsKeyCode_PreservesNativeCodeAsUnknown(int native)
+    [InlineData(57441, Code.LeftShift)]
+    [InlineData(57442, Code.LeftControl)]
+    [InlineData(57443, Code.LeftAlt)]
+    [InlineData(57444, Code.LeftSuper)]
+    [InlineData(57445, Code.LeftHyper)]
+    [InlineData(57446, Code.LeftMeta)]
+    [InlineData(57447, Code.RightShift)]
+    [InlineData(57448, Code.RightControl)]
+    [InlineData(57449, Code.RightAlt)]
+    [InlineData(57450, Code.RightSuper)]
+    [InlineData(57451, Code.RightHyper)]
+    [InlineData(57452, Code.RightMeta)]
+    [InlineData(57453, Code.IsoLevel3Shift)]
+    [InlineData(57454, Code.IsoLevel5Shift)]
+    public void Decode_WhenModifierAsKeyCodeInKittyRange_MapsCorrectModifierKey(int native, Code code)
     {
         var sink = Decode(Encoding.ASCII.GetBytes($"[{native}u"));
 
-        var stroke = sink.Strokes.Single();
-        stroke.Code.ShouldBe(Code.Unknown);
-        stroke.NativeCode.ShouldBe(native);
+        sink.Strokes.Single().ShouldBe(
+            new Stroke(code, null, native, Modifiers.None, KeyAction.Press));
     }
 
     // ── Shifted and base layout keys ──────────────────────────────────────

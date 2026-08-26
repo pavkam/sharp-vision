@@ -386,5 +386,47 @@ public enum Code
     RaiseVolume = 125,
 
     /// <summary>The mute-volume key.</summary>
-    MuteVolume = 126
+    MuteVolume = 126,
+
+    /// <summary>The left Shift key, pressed alone rather than as a modifier on another key.</summary>
+    LeftShift = 127,
+
+    /// <summary>The left Control key, pressed alone rather than as a modifier on another key.</summary>
+    LeftControl = 128,
+
+    /// <summary>The left Alt key, pressed alone rather than as a modifier on another key.</summary>
+    LeftAlt = 129,
+
+    /// <summary>The left Super key, pressed alone rather than as a modifier on another key.</summary>
+    LeftSuper = 130,
+
+    /// <summary>The left Hyper key, pressed alone rather than as a modifier on another key.</summary>
+    LeftHyper = 131,
+
+    /// <summary>The left Meta key, pressed alone rather than as a modifier on another key.</summary>
+    LeftMeta = 132,
+
+    /// <summary>The right Shift key, pressed alone rather than as a modifier on another key.</summary>
+    RightShift = 133,
+
+    /// <summary>The right Control key, pressed alone rather than as a modifier on another key.</summary>
+    RightControl = 134,
+
+    /// <summary>The right Alt key, pressed alone rather than as a modifier on another key.</summary>
+    RightAlt = 135,
+
+    /// <summary>The right Super key, pressed alone rather than as a modifier on another key.</summary>
+    RightSuper = 136,
+
+    /// <summary>The right Hyper key, pressed alone rather than as a modifier on another key.</summary>
+    RightHyper = 137,
+
+    /// <summary>The right Meta key, pressed alone rather than as a modifier on another key.</summary>
+    RightMeta = 138,
+
+    /// <summary>The ISO Level3 Shift key.</summary>
+    IsoLevel3Shift = 139,
+
+    /// <summary>The ISO Level5 Shift key.</summary>
+    IsoLevel5Shift = 140
 }
