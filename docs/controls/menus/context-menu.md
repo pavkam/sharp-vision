@@ -75,9 +75,10 @@ var contextMenu = new ContextMenu(
   nothing, and detaching or replacing it from `Opening` supersedes that show
   request even if the same menu is reattached before the callback returns.
   `Opening`, `Closing`, and `Closed` fire in order, `Close` is idempotent, and
-  disposing the menu cleans it up. Directly disposing the adopted `Menu` also
-  closes and disposes the coordinator; subsequent `Items` access rejects the
-  retired relationship instead of exposing the disposed menu.
+  disposing the coordinator closes and disposes its popup, adopted menu, and
+  item subtree. Directly disposing the adopted `Menu` also retires the
+  coordinator; every subsequent public operation rejects the disposed
+  relationship instead of exposing or reopening retained presentation state.
 - The open surface is placed relative to the root, clips to it, renders with
   menu appearance, and draws elevated above ordinary content.
 - Right-click opens the menu on its owning control, keyboard navigation works

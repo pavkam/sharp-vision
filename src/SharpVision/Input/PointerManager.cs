@@ -256,9 +256,27 @@ public sealed class PointerManager: IDisposable
                 (pointer.Action == PointerAction.Press &&
                     (pointer.Buttons & Buttons.Primary) != 0))
             {
-                CaptureFailure(
-                    () => targets.Modality?.RequestDismiss(targets.ModalScope!),
-                    ref failure);
+                var lightDismissed = false;
+                ExceptionDispatchInfo? lightDismissFailure = null;
+
+                if (pointer.Action == PointerAction.Press)
+                {
+                    CaptureFailure(
+                        () => lightDismissed = targets.Modality?.TryLightDismiss(pointer) == true,
+                        ref lightDismissFailure);
+                }
+
+                if (!lightDismissed && lightDismissFailure is null)
+                {
+                    CaptureFailure(
+                        () => targets.Modality?.RequestDismiss(targets.ModalScope!),
+                        ref failure);
+                }
+
+                if (lightDismissFailure is not null)
+                {
+                    CaptureFailure(lightDismissFailure.Throw, ref failure);
+                }
             }
 
             failure?.Throw();

@@ -3,6 +3,8 @@
 
 namespace SharpVision.Menus;
 
+using System.Runtime.ExceptionServices;
+
 using Popups;
 
 /// <summary>Displays a vertical menu at an arbitrary cell position with light dismiss.</summary>
@@ -68,7 +70,14 @@ public class ContextMenu: IDisposable
     }
 
     /// <summary>Gets whether the context menu is currently open.</summary>
-    public bool IsOpen => _popup.IsOpen;
+    public bool IsOpen
+    {
+        get
+        {
+            VerifyNotDisposed();
+            return _popup.IsOpen;
+        }
+    }
 
     internal ControlBase Presentation => _popup;
 
@@ -81,8 +90,16 @@ public class ContextMenu: IDisposable
     /// </remarks>
     public PopupChrome PopupChrome
     {
-        get => _popup.Style;
-        set => _popup.Style = value;
+        get
+        {
+            VerifyNotDisposed();
+            return _popup.Style;
+        }
+        set
+        {
+            VerifyNotDisposed();
+            _popup.Style = value;
+        }
     }
 
     /// <summary>Returns the popup's border and shadow to <see cref="PopupChrome"/> ownership.</summary>
@@ -97,7 +114,9 @@ public class ContextMenu: IDisposable
     /// </remarks>
     public void Show(int row, int col)
     {
-        if (_isDisposed || _popup.Parent is null)
+        VerifyNotDisposed();
+
+        if (_popup.Parent is null)
         {
             return;
         }
@@ -117,6 +136,8 @@ public class ContextMenu: IDisposable
     /// <summary>Programmatically closes the context menu.</summary>
     public void Close()
     {
+        VerifyNotDisposed();
+
         if (_popup.IsOpen)
         {
             _popup.IsOpen = false;
@@ -140,16 +161,21 @@ public class ContextMenu: IDisposable
         }
 
         _isDisposed = true;
-        _lightDismiss?.Dispose();
+        _presentationVersion++;
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(() => _lightDismiss?.Dispose(), ref failure);
+        _lightDismiss = null;
         _popup.Closing -= OnPopupClosing;
         _popup.Closed -= OnPopupClosed;
         _popup.ContentDisposalRequested -= OnContentDisposalRequested;
         _popup.PropertyChanged -= OnPopupPropertyChanged;
         _popup.ParentChanged -= OnPopupParentChanged;
         Menu.ItemInvoked -= OnMenuItemInvoked;
+        ExceptionAggregation.Capture(_popup.Dispose, ref failure);
         Opening = null;
         Closing = null;
         Closed = null;
+        failure?.Throw();
     }
 
     private void OnContentDisposalRequested(object? sender, OwnedContentDisposalEventArgs eventArgs)
@@ -206,4 +232,6 @@ public class ContextMenu: IDisposable
             _popup.FixedOrigin = null;
         }
     }
+
+    private void VerifyNotDisposed() => ObjectDisposedException.ThrowIf(_isDisposed, this);
 }

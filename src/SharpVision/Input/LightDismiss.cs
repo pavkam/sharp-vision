@@ -3,17 +3,13 @@
 
 namespace SharpVision.Input;
 
+using System.Runtime.ExceptionServices;
 
-/// <summary>Registers a preview pointer handler that dismisses a popup on outside press.</summary>
+/// <summary>Consumes an outside primary press and dismisses one non-modal floating surface.</summary>
 /// <remarks>
-/// This handler answers only while no modal plane is active. It registers on the application root,
-/// and <c>Router.RouteCore</c> ends a route at the active plane's boundary - so with a dialog up,
-/// a press inside that dialog routes no higher than the dialog and never reaches this handler.
-/// Dismissal is not lost: an open popup joins the active scope as a secondary root, so
-/// <c>ModalityManager.RequestDismiss</c> closes it through <c>Popup.OnModalDismissRequested</c>
-/// instead. Do not "repair" this by re-registering below the boundary or by hoisting the route -
-/// both mechanisms would then fire for one press. <c>LightDismissModalityTests</c> pins each
-/// mechanism in its own configuration.
+/// Routed presses register at the active plane boundary containing the anchor. Presses outside that
+/// plane are intercepted by modality before its older outside-dismiss policy runs. Both paths consume
+/// the press, close only this younger surface, and restore focus captured before opening.
 /// </remarks>
 internal sealed class LightDismiss: IDisposable
 {
@@ -21,6 +17,10 @@ internal sealed class LightDismiss: IDisposable
     private readonly Func<bool> _isOpen;
     private readonly Func<Rect> _surfaceBounds;
     private readonly Action _dismiss;
+    private readonly FocusManager? _focusOwner;
+    private readonly ControlBase? _focusBeforeOpen;
+    private readonly ModalityManager? _modality;
+    private readonly ControlBase? _routeBoundary;
     private IDisposable? _registration;
 
     public LightDismiss(
@@ -38,6 +38,8 @@ internal sealed class LightDismiss: IDisposable
         _isOpen = isOpen;
         _surfaceBounds = surfaceBounds;
         _dismiss = dismiss;
+        _focusOwner = surface.FocusOwner;
+        _focusBeforeOpen = _focusOwner?.Focused;
 
         var root = surface;
         while (root.Parent is { } parent)
@@ -45,42 +47,76 @@ internal sealed class LightDismiss: IDisposable
             root = parent;
         }
 
-        _registration = root.AddHandler(Events.Pointer, OnPointer);
+        _modality = surface.ModalityOwner;
+        _routeBoundary = anchor is null
+            ? null
+            : _modality?.BoundaryFor(anchor);
+        _registration = (_routeBoundary ?? root).AddHandler(Events.Pointer, OnPointer);
+
+        if (_routeBoundary is not null)
+        {
+            _modality?.RegisterLightDismiss(this);
+        }
     }
 
     public void Dispose()
     {
+        _modality?.UnregisterLightDismiss(this);
         _registration?.Dispose();
         _registration = null;
+    }
+
+    /// <summary>Dismisses for one eligible press while this registration still belongs to the active plane.</summary>
+    /// <param name="pointer">The decoded pointer input.</param>
+    /// <returns>True when the input was consumed by this surface.</returns>
+    internal bool TryDismiss(Terminal.Input.Pointer pointer)
+    {
+        if (_routeBoundary is not null &&
+            (_anchor is null || !ReferenceEquals(_modality?.BoundaryFor(_anchor), _routeBoundary)))
+        {
+            return false;
+        }
+
+        if (pointer.Action != Terminal.Input.PointerAction.Press ||
+            (pointer.Buttons & Terminal.Input.Buttons.Primary) == 0 ||
+            !_isOpen() ||
+            pointer.Cells is not { } cells ||
+            _surfaceBounds().Contains(cells) ||
+            (_anchor is not null && _anchor.Bounds.Contains(cells)))
+        {
+            return false;
+        }
+
+        DismissAndRestoreFocus();
+        return true;
     }
 
     private void OnPointer(object? sender, PointerEventArgs eventArgs)
     {
         _ = sender;
 
-        if (eventArgs.Phase != RoutingPhase.Preview ||
-            eventArgs.Pointer.Action != Terminal.Input.PointerAction.Press ||
-            (eventArgs.Pointer.Buttons & Terminal.Input.Buttons.Primary) == 0 ||
-            !_isOpen())
+        if (eventArgs.Phase != RoutingPhase.Preview || !TryDismiss(eventArgs.Pointer))
         {
             return;
         }
 
-        if (eventArgs.Pointer.Cells is not { } cells)
+        eventArgs.IsHandled = true;
+    }
+
+    private void DismissAndRestoreFocus()
+    {
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(_dismiss, ref failure);
+
+        if (_focusBeforeOpen is not null &&
+            !_focusBeforeOpen.IsDisposed &&
+            _focusBeforeOpen.Dispatcher is not null &&
+            _focusBeforeOpen.EffectiveIsVisible &&
+            _focusBeforeOpen.EffectiveIsEnabled)
         {
-            return;
+            ExceptionAggregation.Capture(() => _ = _focusOwner?.Focus(_focusBeforeOpen), ref failure);
         }
 
-        if (_surfaceBounds().Contains(cells))
-        {
-            return;
-        }
-
-        if (_anchor is not null && _anchor.Bounds.Contains(cells))
-        {
-            return;
-        }
-
-        _dismiss();
+        failure?.Throw();
     }
 }

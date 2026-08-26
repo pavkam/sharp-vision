@@ -6,6 +6,98 @@ namespace SharpVision.Tests.Popups;
 /// <summary>Verifies anchored popup visibility, placement, and dismissal behavior.</summary>
 public sealed class PopupTests
 {
+    /// <summary>Verifies attached presentation rejects every anchor relation that cannot remain
+    /// coherent in the popup's owning tree.</summary>
+    [Fact]
+    public async Task IsOpen_WhenAnchorIsDetachedForeignOrOwnedByPopup_RejectsPresentationAtomicallyAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var valid = new Button { Text = "Valid" };
+            var content = new Button { Text = "Content" };
+            var popup = new Popup { Content = content };
+            var root = new Overlay { Children = { valid, popup } };
+            var foreign = new Button { Text = "Foreign" };
+            root.Attach(dispatcher);
+            foreign.Attach(dispatcher);
+
+            foreach (var invalid in new ControlBase[] { new Button(), foreign, popup, content })
+            {
+                popup.Anchor = invalid;
+
+                _ = Should.Throw<ArgumentException>(() => popup.IsOpen = true);
+
+                popup.IsOpen.ShouldBeFalse();
+                content.Visibility.ShouldBe(Visibility.Collapsed);
+                popup.SurfaceBounds.ShouldBe(default);
+            }
+
+            popup.Anchor = valid;
+            popup.IsOpen = true;
+            popup.IsOpen.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an invalid anchor replacement is rejected before an open popup mutates
+    /// either its anchor or presentation state.</summary>
+    [Fact]
+    public async Task Anchor_WhenOpenAndReplacementIsDetached_LeavesExistingPresentationUnchangedAsync()
+    {
+        var anchor = new Button { Text = "Anchor" };
+        var popup = new Popup { Anchor = anchor, Content = new ControlText("Menu") };
+        var root = new Overlay { Children = { anchor, popup } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(18, 7),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => popup.IsOpen = true, "open Popup with valid anchor");
+
+        _ = await Should.ThrowAsync<ArgumentException>(() =>
+            surface.UpdateAsync(() => popup.Anchor = new Button(), "reject detached anchor"));
+
+        popup.Anchor.ShouldBeSameAs(anchor);
+        popup.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a disposed anchor is distinguished from a merely invalid tree relation.</summary>
+    [Fact]
+    public async Task IsOpen_WhenAnchorIsDisposed_ThrowsObjectDisposedExceptionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var anchor = new Button();
+            anchor.Dispose();
+            var popup = new Popup { Anchor = anchor, Content = new ControlText("Menu") };
+            var root = new Overlay { Children = { popup } };
+            root.Attach(dispatcher);
+
+            _ = Should.Throw<ObjectDisposedException>(() => popup.IsOpen = true);
+
+            popup.IsOpen.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies owned popup families may anchor to an ancestor in the same attached tree.</summary>
+    [Fact]
+    public async Task IsOpen_WhenAnchorIsPopupAncestor_PresentsNormallyAsync()
+    {
+        var popup = new Popup { Content = new ControlText("Menu") };
+        var anchor = new Overlay { Children = { popup } };
+        popup.Anchor = anchor;
+        await using var surface = await ComponentSurface.MountAsync(
+            anchor,
+            new Size(18, 7),
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => popup.IsOpen = true, "open Popup anchored to ancestor");
+
+        popup.IsOpen.ShouldBeTrue();
+        popup.SurfaceBounds.ShouldNotBe(default);
+    }
     /// <summary>Verifies an opaque popup owns the dedicated application-window background,
     /// distinct from ordinary Control/Container content, plus the standard themed border
     /// color.</summary>

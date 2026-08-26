@@ -739,21 +739,19 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         // a Closing handler already does (guarded below), or the reentrant call re-enters
         // RaiseCloseRequested and invokes the same handler again with no bound on the recursion.
         _isRequestingClose = true;
-
-        if (!RaiseCloseRequested())
-        {
-            _isRequestingClose = false;
-            return;
-        }
-
-        var wasPresented = IsSurfacePresented;
-        var closedHandlers = CaptureClosedHandlers();
-        var visibilityTouchedByHandler = false;
-        void OnVisibilityChangedDuringClosing(object? sender, EventArgs eventArgs) => visibilityTouchedByHandler = true;
         ExceptionDispatchInfo? failure = null;
 
         try
         {
+            if (!RaiseCloseRequested())
+            {
+                return;
+            }
+
+            var wasPresented = IsSurfacePresented;
+            var closedHandlers = CaptureClosedHandlers();
+            var visibilityTouchedByHandler = false;
+            void OnVisibilityChangedDuringClosing(object? sender, EventArgs eventArgs) => visibilityTouchedByHandler = true;
             VisibilityChanged += OnVisibilityChangedDuringClosing;
 
             try

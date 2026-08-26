@@ -289,8 +289,8 @@ public sealed class TextInputContextMenuTests
         control.Text.ShouldBe("A");
     }
 
-    /// <summary>Verifies disposing the context menu unsubscribes its item handlers so a later
-    /// activation no longer forwards to the owning control.</summary>
+    /// <summary>Verifies disposing the context menu retires its owned items so later activation
+    /// cannot forward to the owning control.</summary>
     [Fact]
     public void Dispose_WhenCalled_StopsForwardingItemActivationToOwningControl()
     {
@@ -303,8 +303,8 @@ public sealed class TextInputContextMenuTests
 
         // Act
         menu.Dispose();
-        cut.PerformInvoke();
-        undo.PerformInvoke();
+        _ = Should.Throw<ObjectDisposedException>(cut.PerformInvoke);
+        _ = Should.Throw<ObjectDisposedException>(undo.PerformInvoke);
 
         // Assert
         control.Text.ShouldBe("abcdef");

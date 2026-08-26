@@ -294,8 +294,113 @@ public sealed class FlyoutTests
             _ = Router.Route(root, Events.Pointer, eventArgs);
 
             flyout.IsOpen.ShouldBe(!expectedClose);
-            eventArgs.IsHandled.ShouldBeFalse();
+            eventArgs.IsHandled.ShouldBe(expectedClose);
         }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a dismissing press is consumed before background press state, activation,
+    /// or pointer focus can escape the transient surface.</summary>
+    [Fact]
+    public async Task OutsidePress_WhenBackgroundButtonIsTargeted_DismissesWithoutReplayAndRestoresFocusAsync()
+    {
+        var background = new Button { Text = "Background" };
+        var anchor = new Button
+        {
+            Text = "Anchor",
+            Width = Length.Cells(8),
+            Height = Length.Cells(1),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var flyout = new Flyout { Anchor = anchor, Content = new Button { Text = "Action" } };
+        var root = new Overlay { Children = { background, anchor, flyout } };
+        var clicked = 0;
+        background.Click += (_, _) => clicked++;
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(
+            () => surface.Application.Focus.Focus(anchor).ShouldBeTrue(),
+            "focus Flyout anchor");
+        await surface.UpdateAsync(() => flyout.IsOpen = true, "open Flyout");
+
+        await surface.Pointer.MoveToAsync(new Point(20, 6));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+
+        flyout.IsOpen.ShouldBeFalse();
+        clicked.ShouldBe(0);
+        background.IsPressed.ShouldBeFalse();
+        surface.Application.Focus.Focused.ShouldBeSameAs(anchor);
+    }
+
+    /// <summary>Verifies a flyout anchored inside an older modal plane dismisses from either side
+    /// of that plane without activating the pressed control or dismissing the older scope.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task OutsidePress_WhenAnchorIsInsideModalPlane_DismissesOnlyFlyoutAsync(bool pressInsidePlane)
+    {
+        var background = new Button { Text = "Background" };
+        var anchor = new Button
+        {
+            Text = "Anchor",
+            Width = Length.Cells(6),
+            Height = Length.Cells(1),
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
+        var peer = new Button
+        {
+            Text = "Peer",
+            Width = Length.Cells(6),
+            Height = Length.Cells(1),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom
+        };
+        var plane = new Overlay
+        {
+            Width = Length.Cells(20),
+            Height = Length.Cells(6),
+            Children = { anchor, peer }
+        };
+        var flyout = new Flyout { Anchor = anchor, Content = new Button { Text = "Action" } };
+        var root = new Overlay { Children = { background, plane, flyout } };
+        var backgroundClicks = 0;
+        var peerClicks = 0;
+        background.Click += (_, _) => backgroundClicks++;
+        peer.Click += (_, _) => peerClicks++;
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 8),
+            TestContext.Current.CancellationToken);
+        ModalScope? scope = null;
+        await surface.UpdateAsync(
+            () => scope = surface.Application.Modality.Enter(
+                plane,
+                OutsideInteraction.Dismiss,
+                anchor),
+            "enter older modal plane");
+        await surface.UpdateAsync(() => flyout.IsOpen = true, "open Flyout inside modal plane");
+
+        if (pressInsidePlane)
+        {
+            await surface.Pointer.ClickAsync(peer);
+        }
+        else
+        {
+            await surface.Pointer.MoveToAsync(new Point(26, 6));
+            await surface.Pointer.PressAsync();
+            await surface.Pointer.ReleaseAsync();
+        }
+
+        flyout.IsOpen.ShouldBeFalse();
+        scope.ShouldNotBeNull().IsActive.ShouldBeTrue();
+        surface.Application.Modality.Active.ShouldBeSameAs(scope);
+        peerClicks.ShouldBe(0);
+        backgroundClicks.ShouldBe(0);
+        surface.Application.Focus.Focused.ShouldBeSameAs(anchor);
+        await surface.UpdateAsync(scope.Dispose, "exit older modal plane");
     }
 
     /// <summary>Verifies pressing Escape closes an open flyout when CloseOnEscape is true.</summary>

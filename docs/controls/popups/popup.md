@@ -46,7 +46,7 @@ classDiagram
 | Member                                                                                         | Type                                           | Default                         | Description                                                                                                   |
 | ---------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | Inherited `Content`                                                                            | `ControlBase?`                                 | `null`                          | Holds one owned surface child and collapses it while closed.                                                  |
-| `Anchor`                                                                                       | `ControlBase?`                                 | `null`                          | The optional sibling anchor used to place the open surface.                                                   |
+| `Anchor`                                                                                       | `ControlBase?`                                 | `null`                          | The optional attached sibling or ancestor used to place the open surface.                                     |
 | `Placement`                                                                                    | `PopupPlacement`                               | `Below`                         | The preferred anchor-relative placement; flips to the opposite side when it does not fit.                     |
 | `IsOpen`                                                                                       | `bool`                                         | `false`                         | Controls the visible surface and the configured automatic modal lifetime.                                     |
 | `ModalBehavior`                                                                                | `PopupModalBehavior`                           | `Auto`                          | Selects automatic Dismiss modality or owner-managed modality.                                                 |
@@ -100,6 +100,13 @@ a root resize already runs; [`Tooltip`](tooltip.md#overview) uses that default,
 while [`Flyout`](flyout.md#overview) overrides it to dismiss instead of chasing
 the anchor's new position, matching light dismiss's assumption that its captured
 bounds stay valid only for a stationary anchor.
+
+Detached construction may stage any `Anchor`. Presentation validates it
+transactionally: the anchor must be live, attached to the popup's dispatcher,
+and in the same retained tree. A sibling or ancestor is valid; the popup itself
+and its descendants are rejected. Invalid opening leaves `IsOpen`, content
+visibility, and `SurfaceBounds` closed, while an invalid replacement on an open
+popup leaves the existing anchor and presentation untouched.
 
 Placement constrains the framed surface to the popup host. The content occupies
 only the deflated interior. A root resize runs normal layout again, so an open

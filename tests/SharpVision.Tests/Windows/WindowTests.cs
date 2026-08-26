@@ -986,6 +986,31 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a failing close-request observer cannot leave the reentrancy guard armed
+    /// and silently discard the next legitimate close request.</summary>
+    [Fact]
+    public void CloseRequested_WhenHandlerFails_AllowsACompleteRetry()
+    {
+        using var window = new Window();
+        var expected = new InvalidOperationException("close observer failed");
+        var first = true;
+        var closing = 0;
+        window.CloseRequested += (_, _) =>
+        {
+            if (first)
+            {
+                first = false;
+                throw expected;
+            }
+        };
+        window.Closing += (_, _) => closing++;
+
+        Should.Throw<InvalidOperationException>(window.Close).ShouldBeSameAs(expected);
+        Should.NotThrow(window.Close);
+
+        closing.ShouldBe(1);
+    }
+
     /// <summary>Verifies the public Close() method runs the same veto, Closing, and default-collapse
     /// sequence as Escape and the close affordance.</summary>
     [Fact]

@@ -19,6 +19,7 @@ public sealed class ModalityManager: IDisposable
     private readonly Queue<(ModalScope Scope, bool RestoreFocus, ControlBase? ExcludedSubtree)> _pendingUnwinds = new();
     private readonly List<ControlBase> _unwindExclusions = [];
     private readonly List<ControlBase> _unavailableSubtrees = [];
+    private readonly List<LightDismiss> _lightDismissHandlers = [];
     private readonly FocusManager _focus;
     private readonly PointerManager _pointer;
     private ExceptionDispatchInfo? _unwindFailure;
@@ -412,6 +413,48 @@ public sealed class ModalityManager: IDisposable
         scope.PublishDismissRequested();
     }
 
+    /// <summary>Registers a younger non-modal surface that may consume presses outside the active plane.</summary>
+    /// <param name="handler">The non-null light-dismiss handler.</param>
+    internal void RegisterLightDismiss(LightDismiss handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        VerifyAccess();
+        _lightDismissHandlers.Add(handler);
+    }
+
+    /// <summary>Removes a previously registered non-modal surface.</summary>
+    /// <param name="handler">The non-null light-dismiss handler.</param>
+    internal void UnregisterLightDismiss(LightDismiss handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+
+        if (!_isDisposed)
+        {
+            VerifyAccess();
+        }
+
+        _ = _lightDismissHandlers.Remove(handler);
+    }
+
+    /// <summary>Lets the youngest eligible non-modal surface consume one outside-plane press.</summary>
+    /// <param name="pointer">The decoded pointer input.</param>
+    /// <returns>True when a light-dismiss surface consumed the press.</returns>
+    internal bool TryLightDismiss(Terminal.Input.Pointer pointer)
+    {
+        VerifyAccess();
+        var snapshot = _lightDismissHandlers.ToArray();
+
+        for (var index = snapshot.Length - 1; index >= 0; index--)
+        {
+            if (snapshot[index].TryDismiss(pointer))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>Unwinds all scopes for application shutdown without restoring focus.</summary>
     internal void Shutdown() => DisposeCore(restoreFocus: false, verifyAccess: true);
 
@@ -462,6 +505,7 @@ public sealed class ModalityManager: IDisposable
         }
 
         _isDisposed = true;
+        _lightDismissHandlers.Clear();
         _releaseOwnershipWhenUnwound = true;
         var activeIndex = FindFirstActiveIndex();
 

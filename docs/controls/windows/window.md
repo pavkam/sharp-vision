@@ -127,7 +127,9 @@ and, by default, collapses itself before raising `Closed`. A `Closing` handler
 that itself changes `Visibility` — hiding it to a different state, restoring it,
 or disposing the Window — takes responsibility for the outcome instead of the
 default collapse. `Close()` runs the identical sequence programmatically,
-regardless of `CanClose`, matching Escape and modal outside-dismissal.
+regardless of `CanClose`, matching Escape and modal outside-dismissal. A failing
+`CloseRequested` observer propagates its exception without poisoning the
+reentrancy guard, so a later close request can retry normally.
 
 Pointer ancestry does not restyle the Window face, frame, or shadow. The close
 mark can still react independently while its target is hovered or pressed.

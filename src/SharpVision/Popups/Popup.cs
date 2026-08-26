@@ -78,13 +78,23 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         _ = current?.Visibility = IsOpen ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    /// <summary>Gets or sets the optional sibling anchor used to place the open surface.</summary>
+    /// <summary>Gets or sets the optional attached tree member used to place the open surface.</summary>
+    /// <remarks>An ancestor anchor is valid; the popup itself and its descendants are not.</remarks>
+    /// <exception cref="ArgumentException">An open popup receives a detached or foreign anchor, itself, or one of its descendants.</exception>
     /// <exception cref="InvalidOperationException">The attached popup is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The popup is disposed.</exception>
+    /// <exception cref="ObjectDisposedException">The popup or an anchor assigned while open is disposed.</exception>
     public ControlBase? Anchor
     {
         get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Arrange);
+        set
+        {
+            if (IsOpen && Dispatcher is not null)
+            {
+                ValidateAnchorForPresentation(value);
+            }
+
+            _ = SetProperty(ref field, value, InvalidationImpact.Arrange);
+        }
     }
 
     /// <summary>Gets or sets the preferred anchor-relative placement.</summary>
@@ -196,8 +206,8 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     /// <exception cref="InvalidOperationException">
     /// The attached popup is mutated off-dispatcher, an open-state transition is reentered, or modal entry fails.
     /// </exception>
-    /// <exception cref="ArgumentException">The attached popup is not an eligible modal root.</exception>
-    /// <exception cref="ObjectDisposedException">The popup is disposed.</exception>
+    /// <exception cref="ArgumentException">The attached popup is not an eligible modal root or has an invalid anchor relation.</exception>
+    /// <exception cref="ObjectDisposedException">The popup or its anchor is disposed.</exception>
     /// <exception cref="Exception">A focus, scope, pointer-cleanup, or user callback fails after committed cleanup.</exception>
     public bool IsOpen
     {
@@ -769,6 +779,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     {
         try
         {
+            ValidateAnchorForPresentation(Anchor);
             OpenSurface(() => CommitOpenState(suppressFocusOnOpen, notifyOpenState));
         }
         catch (Exception exception)
@@ -785,6 +796,51 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
             ExceptionAggregation.Capture(CollapseContent, ref failure);
             failure!.Throw();
+        }
+    }
+
+    private void ValidateAnchorForPresentation(ControlBase? anchor)
+    {
+        if (anchor is null)
+        {
+            return;
+        }
+
+        ObjectDisposedException.ThrowIf(anchor.IsDisposed, anchor);
+
+        if (anchor.Dispatcher is null)
+        {
+            throw new ArgumentException("An open Popup anchor must be attached.", nameof(anchor));
+        }
+
+        if (!ReferenceEquals(anchor.Dispatcher, Dispatcher))
+        {
+            throw new ArgumentException("An open Popup anchor must use the Popup dispatcher.", nameof(anchor));
+        }
+
+        for (var current = anchor; current is not null; current = current.Parent)
+        {
+            if (ReferenceEquals(current, this))
+            {
+                throw new ArgumentException("A Popup cannot anchor to itself or its descendants.", nameof(anchor));
+            }
+        }
+
+        var popupRoot = (ControlBase) this;
+        while (popupRoot.Parent is { } popupParent)
+        {
+            popupRoot = popupParent;
+        }
+
+        var anchorRoot = anchor;
+        while (anchorRoot.Parent is { } anchorParent)
+        {
+            anchorRoot = anchorParent;
+        }
+
+        if (!ReferenceEquals(anchorRoot, popupRoot))
+        {
+            throw new ArgumentException("An open Popup anchor must belong to the same tree.", nameof(anchor));
         }
     }
 

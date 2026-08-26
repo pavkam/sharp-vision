@@ -26,7 +26,7 @@ public sealed class ContextMenuTests
         menu.Dispose();
 
         _ = Should.Throw<ObjectDisposedException>(() => _ = context.Items);
-        context.IsOpen.ShouldBeFalse();
+        _ = Should.Throw<ObjectDisposedException>(() => _ = context.IsOpen);
     }
 
     /// <summary>Verifies defaults after construction.</summary>
@@ -231,11 +231,10 @@ public sealed class ContextMenuTests
         menu.IsOpen.ShouldBeFalse();
     }
 
-    /// <summary>Verifies Dispose unsubscribes from the owned popup's Closing/Closed events, so a
-    /// disposed ContextMenu no longer republishes its own Closing/Closed when the underlying popup
-    /// it never released still transitions afterward.</summary>
+    /// <summary>Verifies Dispose closes and disposes the complete owned presentation subtree and
+    /// rejects every later public operation.</summary>
     [Fact]
-    public void Dispose_WhenCalled_UnsubscribesFromPopupEvents()
+    public void Dispose_WhenOpen_DisposesPresentationAndRejectsReuse()
     {
         using var button = new Button { Text = "Host" };
         var menu = new ContextMenu();
@@ -243,16 +242,17 @@ public sealed class ContextMenuTests
         button.ContextMenu = menu;
         menu.Show(0, 0);
         var popup = (Popup) menu.Presentation;
-        var closingRaised = 0;
-        var closedRaised = 0;
-        menu.Closing += (_, _) => closingRaised++;
-        menu.Closed += (_, _) => closedRaised++;
+        var content = menu.Menu;
 
         menu.Dispose();
-        popup.IsOpen = false;
 
-        closingRaised.ShouldBe(0);
-        closedRaised.ShouldBe(0);
+        popup.IsDisposed.ShouldBeTrue();
+        content.IsDisposed.ShouldBeTrue();
+        popup.Parent.ShouldBeNull();
+        _ = Should.Throw<ObjectDisposedException>(() => menu.Show(0, 0));
+        _ = Should.Throw<ObjectDisposedException>(menu.Close);
+        _ = Should.Throw<ObjectDisposedException>(() => _ = menu.IsOpen);
+        _ = Should.Throw<ObjectDisposedException>(() => _ = menu.PopupChrome);
     }
 
     /// <summary>Verifies disposing twice is a no-op, matching every other IDisposable in the library.</summary>
