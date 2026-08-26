@@ -98,6 +98,17 @@ public sealed class Application:
     private int _processSignalsDisposed;
     private volatile bool _signalRequestedStopBeforeStart;
 
+    // Set synchronously, on the signal-handling thread, at the very top of every
+    // RequestCooperativeStop invocation - unlike _signalRequestedStopBeforeStart above, which only
+    // latches before StartAsync. A caller such as ConsoleApplication.RunCoreAsync that registers its
+    // own independent, unsynchronized CooperativeShutdownSignals scope around this instance's own
+    // cannot rely on its own signal callback (e.g. one that cancels a linked token) racing ahead of
+    // - or behind - this instance's RequestCooperativeStop/StopAsync chain: the OS invokes both
+    // registrations for the same signal with no ordering guarantee between them. Exposing this flag
+    // lets such a caller classify the run's outcome as signal-driven regardless of which of the two
+    // independent callbacks happens to finish its own side effects first.
+    private volatile bool _stopRequestedBySignal;
+
     private Theme _theme = ThemeCatalog.Dark;
 
     private FocusManager? FocusValue { get; set; }
@@ -412,6 +423,22 @@ public sealed class Application:
     /// <summary>Gets completion after stopped callbacks finish.</summary>
     public Task Completion => _completion.Task;
 
+    /// <summary>
+    /// Gets whether a process signal ever drove this instance's own <see cref="RequestCooperativeStop"/>
+    /// callback, set synchronously on the signal-handling thread. Only meaningful when this instance
+    /// was constructed with a non-null <c>observeProcessSignals</c> (see the constructor's remarks);
+    /// otherwise this instance never registers that callback and the flag stays false.
+    /// </summary>
+    /// <remarks>
+    /// A caller such as <see cref="ConsoleApplication"/> that registers its own independent
+    /// <see cref="CooperativeShutdownSignals"/> scope around this instance cannot rely on the
+    /// ordering between its own signal callback and this instance's - the OS invokes both for the
+    /// same signal with no guarantee which finishes its side effects first (see
+    /// <see cref="RequestCooperativeStop"/>). Checking this flag alongside its own token lets it
+    /// classify the run as signal-driven regardless of that race.
+    /// </remarks>
+    internal bool StopRequestedBySignal => _stopRequestedBySignal;
+
     /// <summary>Starts terminal modes and waits for initial committed UI state.</summary>
     /// <param name="cancellationToken">Cancels the startup wait.</param>
     /// <exception cref="InvalidOperationException">The application was already started.</exception>
@@ -549,6 +576,8 @@ public sealed class Application:
     /// </remarks>
     private void RequestCooperativeStop()
     {
+        _stopRequestedBySignal = true;
+
         if (Volatile.Read(ref _startState) == 0)
         {
             _signalRequestedStopBeforeStart = true;

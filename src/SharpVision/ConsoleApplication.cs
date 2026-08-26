@@ -176,7 +176,7 @@ public static class ConsoleApplication
 
         return application.Failure is not null
             ? ConsoleRunStatus.Failed
-            : cancellation.IsCancellationRequested
+            : cancellation.IsCancellationRequested || application.StopRequestedBySignal
                 ? ConsoleRunStatus.Cancelled
                 : ConsoleRunStatus.Completed;
     }
