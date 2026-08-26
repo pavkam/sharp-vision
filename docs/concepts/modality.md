@@ -62,7 +62,10 @@ root on the active stack: an exact duplicate, an ancestor of an existing root,
 or a descendant already covered by an existing root is rejected. `Enter` follows
 a different stack rule: it rejects an exact duplicate of an active root but
 permits a younger scope rooted at a child inside its suspended parent plane. A
-menu opened inside a modal window is the ordinary example.
+menu opened inside a modal window is the ordinary example. After a root joins
+the plane, the retained physical pointer cell is immediately re-hit-tested, so
+stationary hover and enter/exit state match the expanded plane without waiting
+for another terminal record.
 
 The application publishes one modality manager through the same staged ownership
 attachment as focus and capture. A child inserted at runtime inherits it, and

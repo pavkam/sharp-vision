@@ -60,13 +60,14 @@ internal sealed class AccessKeyManager
 
         if (_modality.Active is null)
         {
-            Collect(_root, key, matches);
+            Collect(_root, _root, key, matches);
         }
         else
         {
             for (var index = 0; index < _modality.ActiveRootCount; index++)
             {
-                Collect(_modality.ActiveRootAt(index), key, matches);
+                var boundary = _modality.ActiveRootAt(index);
+                Collect(boundary, boundary, key, matches);
             }
         }
 
@@ -91,13 +92,17 @@ internal sealed class AccessKeyManager
         return false;
     }
 
-    private static void Collect(ControlBase control, Rune key, List<ControlBase> matches)
+    private static void Collect(
+        ControlBase control,
+        ControlBase boundary,
+        Rune key,
+        List<ControlBase> matches)
     {
         var matched = control.MatchesAccessKey(key);
 
         if (matched &&
             (control is not IAccessKeyCaption ||
-             (!IsPressableCaption(control) && !HasMatchingAncestor(control.Parent, key))))
+             (!IsPressableCaption(control) && !HasMatchingAncestor(control.Parent, boundary, key))))
         {
             matches.Add(control);
         }
@@ -106,17 +111,22 @@ internal sealed class AccessKeyManager
         {
             var child = control.OwnedControlAt(index);
 
-            Collect(child, key, matches);
+            Collect(child, boundary, key, matches);
         }
     }
 
-    private static bool HasMatchingAncestor(ControlBase? control, Rune key)
+    private static bool HasMatchingAncestor(ControlBase? control, ControlBase boundary, Rune key)
     {
         for (var current = control; current is not null; current = current.Parent)
         {
             if (current.MatchesAccessKey(key))
             {
                 return true;
+            }
+
+            if (ReferenceEquals(current, boundary))
+            {
+                break;
             }
         }
 

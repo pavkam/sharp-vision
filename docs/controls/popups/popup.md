@@ -92,13 +92,15 @@ visible while open, or collapsed while closed.
 
 `Anchor` and `Placement` define the position. `Below`, `Above`, `Right`, and
 `Left` use the anchored edge, and when the preferred side does not fit, the
-popup flips to the natural opposite side before clamping. An open popup follows
-its `Anchor` when a foreign sibling's own layout moves it — a preceding sibling
-growing, a container resizing it, and so on — not just when the popup's own root
-resizes. The base response re-resolves placement, the same flip-and-clamp logic
-a root resize already runs; [`Tooltip`](tooltip.md#overview) uses that default,
-while [`Flyout`](flyout.md#overview) overrides it to dismiss instead of chasing
-the anchor's new position, matching light dismiss's assumption that its captured
+popup flips to the natural opposite side before clamping. Side-fit arithmetic is
+widened, so saturated rectangle edges cannot wrap and select the wrong side. An
+open popup follows its `Anchor` when a foreign sibling's own layout moves it — a
+preceding sibling growing, a container resizing it, and so on — not just when
+the popup's own root resizes. The base response re-resolves placement, the same
+flip-and-clamp logic a root resize already runs;
+[`Tooltip`](tooltip.md#overview) uses that default, while
+[`Flyout`](flyout.md#overview) overrides it to dismiss instead of chasing the
+anchor's new position, matching light dismiss's assumption that its captured
 bounds stay valid only for a stationary anchor.
 
 Detached construction may stage any `Anchor`. Presentation validates it

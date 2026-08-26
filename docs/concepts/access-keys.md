@@ -80,6 +80,9 @@ stroke. There is no mutable registration table that has to be kept in sync with
 caption, enabled, visibility, ownership, popup, or modal changes. Traversal is a
 deterministic preorder walk over the registered ownership slots. When a modal
 plane is active, its insertion-ordered plane roots replace the application root.
+Each plane root is also the boundary for caption-ancestor deduplication: a
+matching ancestor outside that root cannot suppress an in-plane caption, while a
+matching ancestor inside it still prevents a duplicate semantic candidate.
 
 Detached, disposed, hidden, collapsed, disabled, `UseMnemonic = false`, and
 out-of-plane controls are excluded. A private or public `Text` caption owned by

@@ -283,6 +283,7 @@ public sealed class ModalityManager: IDisposable
         ValidatePlaneRoot(root, nameof(root));
         ValidateDisjoint(root, nameof(root));
         scope.AddRoot(root);
+        _pointer.ReconcileHover();
     }
 
     /// <summary>Ends one active scope and every younger scope in reverse order.</summary>

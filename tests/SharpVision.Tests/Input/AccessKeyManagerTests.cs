@@ -164,6 +164,45 @@ public sealed class AccessKeyManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies caption deduplication stops at each active modal root.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Process_WhenMatchingCaptionAncestorCrossesModalBoundary_UsesOnlyInPlaneAncestorAsync(
+        bool matchingInsidePlane)
+    {
+        await using var dispatcher = Dispatcher.Start();
+        await dispatcher.InvokeAsync(() =>
+        {
+            var target = new TextInput { TabIndex = 1 };
+            var inPlaneAncestorTarget = new TextInput { TabIndex = 0 };
+            var caption = new ControlText
+            {
+                Content = "&Run",
+                UseMnemonic = true,
+                AccessKeyTarget = target
+            };
+            var planeContent = new Stack
+            {
+                Children = { inPlaneAncestorTarget, caption, target }
+            };
+            ControlBase plane = matchingInsidePlane
+                ? new GroupBox { HeaderText = "&Run", Content = planeContent }
+                : planeContent;
+            var outer = new GroupBox { HeaderText = "&Run", Content = plane };
+            var root = new Stack { Children = { outer } };
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            using var scope = modality.Enter(plane);
+            var manager = new AccessKeyManager(root, focus, modality);
+
+            manager.Process(Alt('r')).ShouldBeTrue();
+            focus.Focused.ShouldBe(matchingInsidePlane ? inPlaneAncestorTarget : target);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies non-Alt and ControlBase-modified Alt characters remain available to routed behavior.</summary>
     [Fact]
     public async Task Process_WhenModifiersAreNotAccessKeyShape_DeclinesStrokeAsync()

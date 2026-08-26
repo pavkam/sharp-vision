@@ -684,6 +684,33 @@ public sealed partial class ModalityManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies including a root re-hit-tests the retained physical pointer cell.</summary>
+    [Fact]
+    public async Task Include_WhenPointerIsStationaryOverNewRoot_ReconcilesHoverImmediatelyAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 30, 8) };
+            var primary = new ProbeControl { Bounds = new Rect(0, 0, 8, 6) };
+            var included = new ProbeControl { Bounds = new Rect(12, 0, 8, 6) };
+            root.Children.Add(primary);
+            root.Children.Add(included);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            using var scope = modality.Enter(primary);
+            _ = pointer.Dispatch(CreatePointer(new Point(14, 2), PointerAction.Move));
+            pointer.Hovered.ShouldBeNull();
+
+            scope.Include(included);
+
+            pointer.Hovered.ShouldBeSameAs(included);
+            included.IsPointerOver.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies only qualifying outside records request one dismissal for a multi-root plane.</summary>
     [Fact]
     public async Task Dispatch_WhenOutsideInteractionDismisses_RequestsOncePerPrimaryPressOrWheelAsync()

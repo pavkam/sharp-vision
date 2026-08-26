@@ -394,7 +394,8 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
     #region Layout and rendering
 
-    private PopupPlacement _resolvedPlacement = PopupPlacement.Below;
+    /// <summary>Gets the placement selected by the latest arranged open presentation.</summary>
+    internal PopupPlacement ResolvedPlacement { get; private set; } = PopupPlacement.Below;
 
     /// <inheritdoc/>
     /// <inheritdoc/>
@@ -472,13 +473,13 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         {
             x = origin.X;
             y = origin.Y;
-            _resolvedPlacement = Placement;
+            ResolvedPlacement = Placement;
             resolvedFrame = preferredFrame;
         }
         else
         {
             var placement = ConstrainToRoot ? ResolvePlacement(bounds, anchor, desired) : Placement;
-            _resolvedPlacement = placement;
+            ResolvedPlacement = placement;
             resolvedFrame = SurfaceFrame(placement);
 
             // A flip to the opposite side can reserve a different amount of frame space than the
@@ -1099,14 +1100,14 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         // flips before clamping so its framed surface remains legible.
         return Placement switch
         {
-            PopupPlacement.Below when anchor.Bottom + desired.Height > bounds.Bottom &&
-                                      anchor.Y - desired.Height >= bounds.Y => PopupPlacement.Above,
-            PopupPlacement.Above when anchor.Y - desired.Height < bounds.Y &&
-                                      anchor.Bottom + desired.Height <= bounds.Bottom => PopupPlacement.Below,
-            PopupPlacement.Right when anchor.Right + desired.Width > bounds.Right &&
-                                      anchor.X - desired.Width >= bounds.X => PopupPlacement.Left,
-            PopupPlacement.Left when anchor.X - desired.Width < bounds.X &&
-                                     anchor.Right + desired.Width <= bounds.Right => PopupPlacement.Right,
+            PopupPlacement.Below when (long) anchor.Bottom + desired.Height > bounds.Bottom &&
+                                      (long) anchor.Y - desired.Height >= bounds.Y => PopupPlacement.Above,
+            PopupPlacement.Above when (long) anchor.Y - desired.Height < bounds.Y &&
+                                      (long) anchor.Bottom + desired.Height <= bounds.Bottom => PopupPlacement.Below,
+            PopupPlacement.Right when (long) anchor.Right + desired.Width > bounds.Right &&
+                                      (long) anchor.X - desired.Width >= bounds.X => PopupPlacement.Left,
+            PopupPlacement.Left when (long) anchor.X - desired.Width < bounds.X &&
+                                     (long) anchor.Right + desired.Width <= bounds.Right => PopupPlacement.Right,
             _ => Placement
         };
     }
@@ -1142,8 +1143,8 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         var downArrow = ResolveAnchor(anchors.DownGlyph);
         var leftArrow = ResolveAnchor(anchors.LeftGlyph);
         var rightArrow = ResolveAnchor(anchors.RightGlyph);
-        var frame = SurfaceFrame(_resolvedPlacement);
-        var indicatorEdge = ShowAnchorIndicator ? _resolvedPlacement : (PopupPlacement?) null;
+        var frame = SurfaceFrame(ResolvedPlacement);
+        var indicatorEdge = ShowAnchorIndicator ? ResolvedPlacement : (PopupPlacement?) null;
         var anchorMid = Anchor is { } anchorCtl
             ? indicatorEdge is PopupPlacement.Below or PopupPlacement.Above
                 ? anchorCtl.Bounds.X + (anchorCtl.Bounds.Width / 2)

@@ -1597,6 +1597,42 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies extreme accepted pointer coordinates saturate outward resizing at the parent bounds.</summary>
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Drag_WhenResizeMoveUsesExtremeCoordinates_ClampsToAvailableMaximumAsync(
+        bool extremeX,
+        bool extremeY)
+    {
+        await using var dispatcher = Dispatcher.Start();
+        await dispatcher.InvokeAsync(() =>
+        {
+            var canvas = new Overlay();
+            var window = new Window
+            {
+                Width = Length.Cells(10),
+                Height = Length.Cells(4),
+                CanResize = true,
+                CanMove = false
+            };
+            canvas.Children.Add(window);
+            new LayoutEngine().Layout(canvas, new Size(20, 10));
+            canvas.Attach(dispatcher);
+            using PointerManager capture = new(canvas);
+            var corner = new Point(window.Bounds.Right - 1, window.Bounds.Bottom - 1);
+            _ = capture.Dispatch(Pointer(corner, PointerAction.Press));
+
+            _ = capture.Dispatch(Pointer(new Point(
+                extremeX ? int.MaxValue : corner.X,
+                extremeY ? int.MaxValue : corner.Y), PointerAction.Move));
+
+            window.Width.ShouldBe(Length.Cells(extremeX ? 20 : 10));
+            window.Height.ShouldBe(Length.Cells(extremeY ? 10 : 4));
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies resize stops after a Width callback disposes, detaches, disables, or
     /// reanchors the active window instead of applying the remainder of the stale transaction.</summary>
     [Theory]

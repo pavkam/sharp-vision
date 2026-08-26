@@ -701,6 +701,61 @@ public sealed class DialogTests
         surface.Application.Modality.Active.ShouldBeNull();
     }
 
+    /// <summary>Verifies pending detached completion prevents cross-dispatcher reattachment.</summary>
+    [Fact]
+    public async Task Detach_WhenCompletionIsPending_RejectsReattachmentToAnotherDispatcherAsync()
+    {
+        await using var secondDispatcher = Dispatcher.Start();
+        var secondRoot = new Overlay();
+        await secondDispatcher.InvokeAsync(
+            () => secondRoot.Attach(secondDispatcher),
+            TestContext.Current.CancellationToken);
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            TestContext.Current.CancellationToken);
+        var dialog = new TestDialog();
+        Task<bool>? pending = null;
+        Exception? reattachFailure = null;
+        var detached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releaseCompletion = new ManualResetEventSlim();
+        await surface.UpdateAsync(
+            () => pending = dialog.Present(opener, initialFocus: null, CancellationToken.None),
+            "present dialog before detachment");
+
+        var detachUpdate = surface.Application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                surface.Application.Dispatcher.Post(() => releaseCompletion.Wait());
+                _ = dialog.Parent.ShouldBeOfType<Overlay>().Children.Remove(dialog);
+                detached.SetResult();
+            },
+            TestContext.Current.CancellationToken);
+
+        await detached.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        try
+        {
+            await secondDispatcher.InvokeAsync(
+                () => secondRoot.Children.Add(dialog),
+                TestContext.Current.CancellationToken);
+        }
+        catch (Exception exception)
+        {
+            reattachFailure = exception;
+        }
+
+        releaseCompletion.Set();
+        await detachUpdate;
+
+        _ = reattachFailure.ShouldBeOfType<InvalidOperationException>();
+        (await pending!).ShouldBeFalse();
+        dialog.IsDisposed.ShouldBeTrue();
+        dialog.Parent.ShouldBeNull();
+    }
+
     /// <summary>A minimal Dialog subclass exposing the protected ControlBase-based PresentAsync overload
     /// and Complete/Cancel to same-assembly tests, mirroring the shape of an externally-derived
     /// dialog without requiring the packed-package consumer harness for these behavioral checks.</summary>

@@ -897,8 +897,8 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             var originalTop = Overlay.GetTop(this);
             var originalRight = Overlay.GetRight(this);
             var originalBottom = Overlay.GetBottom(this);
-            var deltaX = cells.X - _resizePointerOrigin.X;
-            var deltaY = cells.Y - _resizePointerOrigin.Y;
+            var deltaX = (long) cells.X - _resizePointerOrigin.X;
+            var deltaY = (long) cells.Y - _resizePointerOrigin.Y;
             var clientBounds = Parent?.ContentBounds ?? default;
             var (floorWidth, floorHeight) = ChromeResizeFloor();
             var minWidth = Math.Max(MinWidth, floorWidth);
@@ -911,11 +911,11 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             // bound up to at least minWidth/minHeight (in addition to the lower bound already
             // being minWidth/minHeight) keeps Math.Clamp's [low, high] arguments ordered in that
             // case, instead of throwing ArgumentException on the very first resize drag.
-            var width = Math.Clamp(
+            var width = (int) Math.Clamp(
                 _resizeWindowOrigin.Width + deltaX,
                 minWidth,
                 Math.Max(minWidth, Math.Min(MaxWidth, maximumWidth)));
-            var height = Math.Clamp(
+            var height = (int) Math.Clamp(
                 _resizeWindowOrigin.Height + deltaY,
                 minHeight,
                 Math.Max(minHeight, Math.Min(MaxHeight, maximumHeight)));

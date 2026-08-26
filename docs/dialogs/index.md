@@ -64,3 +64,8 @@ modeless file dialog leaves Escape to its routed ancestors rather than silently
 consuming it as a cancellation result; a modeless MessageBox is the exception —
 its own routed handler consumes Escape as a `Cancel` selection. Dialogs do not
 introduce a second layout, input, or rendering framework.
+
+A presented dialog detached while completion is queued cannot attach to another
+dispatcher until the original completion transaction finishes. Attachment
+validation rejects that ownership change before the new tree mutates; the old
+presentation then settles and disposes on its original dispatcher.

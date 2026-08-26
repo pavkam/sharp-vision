@@ -480,6 +480,21 @@ public abstract class Dialog<TResult>: Window
         }
     }
 
+    /// <inheritdoc/>
+    internal override void ValidateAttachment()
+    {
+        base.ValidateAttachment();
+
+        lock (_completionGate)
+        {
+            if (_completed && _completion is not null && !_isFinishingCompletion)
+            {
+                throw new InvalidOperationException(
+                    "A dialog cannot be reattached while presentation completion is pending.");
+            }
+        }
+    }
+
     private void OnScopeExited(object? sender, EventArgs eventArgs)
     {
         var dispatcher = Dispatcher;

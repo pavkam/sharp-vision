@@ -1145,6 +1145,41 @@ public sealed class PopupTests
         FrameOracle.Get(frame, point).ShouldBe("m");
     }
 
+    /// <summary>Verifies saturated anchor edges still flip to the fitting opposite side.</summary>
+    [Theory]
+    [InlineData(PopupPlacement.Right, PopupPlacement.Left)]
+    [InlineData(PopupPlacement.Below, PopupPlacement.Above)]
+    public void Arrange_WhenAnchorEdgeIsNearIntegerMaximum_ResolvesOppositePlacement(
+        PopupPlacement preferred,
+        PopupPlacement expected)
+    {
+        var rootBounds = new Rect(int.MaxValue - 20, int.MaxValue - 10, 20, 10);
+        var anchor = new ProbeControl
+        {
+            Bounds = preferred == PopupPlacement.Right
+                ? new Rect(int.MaxValue - 3, int.MaxValue - 8, 3, 1)
+                : new Rect(int.MaxValue - 18, int.MaxValue - 2, 2, 2)
+        };
+        var child = new ProbeControl(new Size(4, 2));
+        var popup = new Popup { Anchor = anchor, Content = child, Placement = preferred, IsOpen = true };
+        var root = new TraversalOwner { Bounds = rootBounds };
+        root.AddNormal(anchor);
+        root.AddPopup(popup);
+        popup.Measure(new Constraint(rootBounds.Width, rootBounds.Height));
+
+        popup.Arrange(rootBounds, widthResolved: true, heightResolved: true);
+
+        popup.ResolvedPlacement.ShouldBe(expected);
+        if (expected == PopupPlacement.Left)
+        {
+            popup.SurfaceBounds.Right.ShouldBeLessThanOrEqualTo(anchor.Bounds.X);
+        }
+        else
+        {
+            popup.SurfaceBounds.Bottom.ShouldBeLessThanOrEqualTo(anchor.Bounds.Y);
+        }
+    }
+
     /// <summary>Verifies a real popup in a non-Container popup slot renders once and owns elevated hit testing.</summary>
     [Fact]
     public void Render_WhenNonContainerOwnsPopupLayer_PromotesOpenSurfaceOnly()
