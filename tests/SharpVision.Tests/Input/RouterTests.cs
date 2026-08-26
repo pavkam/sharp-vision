@@ -287,7 +287,6 @@ public sealed class RouterTests
             "old-Preview",
             "target-Preview",
             "target-Bubble",
-            "target-default",
             "old-Bubble",
             "old-default"
         ]);
@@ -302,6 +301,58 @@ public sealed class RouterTests
             "new-Bubble",
             "new-default"
         ]);
+    }
+
+    /// <summary>Verifies stable-route observers still receive bubble delivery after preview
+    /// invalidates the target, while the stale target's interactive default is suppressed.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Route_WhenPreviewInvalidatesInteractiveTarget_SkipsItsDefault(bool dispose)
+    {
+        var root = new ProbeContainer();
+        var target = new Button { Text = "Action" };
+        root.Children.Add(target);
+        var bubbleCalls = 0;
+        var activations = 0;
+        target.Click += (_, _) => activations++;
+        _ = target.AddHandler(Events.Key, (_, eventArgs) =>
+        {
+            if (eventArgs.Phase == RoutingPhase.Bubble)
+            {
+                bubbleCalls++;
+            }
+        }, handledEventsToo: true);
+        _ = root.AddHandler(Events.Key, (_, eventArgs) =>
+        {
+            if (eventArgs.Phase != RoutingPhase.Preview)
+            {
+                return;
+            }
+
+            if (dispose)
+            {
+                target.Dispose();
+            }
+            else
+            {
+                _ = root.Children.Remove(target);
+            }
+        });
+        var input = new KeyEventArgs(new Stroke(
+            Code.Enter,
+            character: null,
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press));
+
+        Should.NotThrow(() =>
+        {
+            _ = Router.Route(target, Events.Key, input);
+        });
+
+        bubbleCalls.ShouldBe(dispose ? 0 : 1);
+        activations.ShouldBe(0);
     }
 
     /// <summary>Verifies handlers added mid-route begin on the next route.</summary>

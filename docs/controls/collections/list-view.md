@@ -140,11 +140,13 @@ activation, matching Enter's always-commits behavior. `DoubleClick` raises it
 only when the pointer activation is itself a lock-normalized plain multi-click —
 a second primary press on the same row within the terminal's multi-click window;
 a lone click still applies selection without invoking, and a multi-click held
-with Control, Shift, Alt, Super, Meta, or Hyper never raises `ItemInvoked`.
-Selection callbacks are also an identity boundary: invocation continues only
-while the exact activated realized row remains owned. Clearing, replacing, or
-inserting items in a way that replaces that row abandons the pending invocation
-instead of indexing its former position.
+with Control, Shift, Alt, Super, Meta, or Hyper never raises `ItemInvoked`. Each
+held pointer press retains its own modifiers and click count until release; an
+intervening keyboard activation or navigation command cannot reclassify that
+physical gesture. Selection callbacks are also an identity boundary: invocation
+continues only while the exact activated realized row remains owned. Clearing,
+replacing, or inserting items in a way that replaces that row abandons the
+pending invocation instead of indexing its former position.
 
 ## Interaction and layout
 

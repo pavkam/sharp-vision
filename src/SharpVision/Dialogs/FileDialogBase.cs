@@ -572,7 +572,8 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
 
         if (eventArgs.Phase == RoutingPhase.Bubble &&
             eventArgs.IsInitialKeyDown &&
-            eventArgs.Stroke.Code == Code.Backspace)
+            eventArgs.Stroke.Code == Code.Backspace &&
+            KeyboardModifierPolicy.MatchesCommand(eventArgs.Stroke.Modifiers, Modifiers.None))
         {
             NavigateParent();
             eventArgs.IsHandled = true;

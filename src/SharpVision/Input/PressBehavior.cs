@@ -19,6 +19,7 @@ internal sealed class PressBehavior
     private readonly Action<bool> _setPressed;
     private readonly Action<ActivationCause> _activate;
     private readonly Func<bool> _keyReleasesExpected;
+    private bool _pointerInside;
     private bool _pointerHeld;
     private bool _spaceHeld;
 
@@ -90,7 +91,8 @@ internal sealed class PressBehavior
     {
         _spaceHeld = false;
         _pointerHeld = false;
-        _setPressed(false);
+        _pointerInside = false;
+        UpdatePressed();
         if (releaseCapture && _hasPointerCapture())
         {
             _releasePointerCapture();
@@ -129,7 +131,7 @@ internal sealed class PressBehavior
                         return;
                     }
 
-                    _setPressed(false);
+                    UpdatePressed();
                     if (_isAvailable() && _canCompleteSpace())
                     {
                         _activate(ActivationCause.Keyboard);
@@ -164,7 +166,7 @@ internal sealed class PressBehavior
                 // un-consuming the stroke.
                 eventArgs.IsHandled = true;
                 _spaceHeld = false;
-                _setPressed(false);
+                UpdatePressed();
                 if (_isAvailable() &&
                     stroke.Modifiers.IsActivationEligible() &&
                     _canCompleteSpace())
@@ -202,7 +204,7 @@ internal sealed class PressBehavior
                     return;
                 }
 
-                _setPressed(false);
+                UpdatePressed();
 
                 if (_isAvailable())
                 {
@@ -220,7 +222,8 @@ internal sealed class PressBehavior
         {
             var wasHeld = _pointerHeld;
             _pointerHeld = false;
-            _setPressed(false);
+            _pointerInside = false;
+            UpdatePressed();
 
             if (_hasPointerCapture())
             {
@@ -240,7 +243,7 @@ internal sealed class PressBehavior
         {
             if (pointer.Action == PointerAction.Press)
             {
-                _setPressed(false);
+                UpdatePressed();
             }
 
             return;
@@ -262,7 +265,8 @@ internal sealed class PressBehavior
             }
 
             _pointerHeld = true;
-            _setPressed(true);
+            _pointerInside = true;
+            UpdatePressed();
             eventArgs.IsHandled = true;
             return;
         }
@@ -272,11 +276,11 @@ internal sealed class PressBehavior
             return;
         }
 
-        _setPressed(inside);
         eventArgs.IsHandled = true;
         if (PointerButtonTransition.IsPrimaryRelease(pointer))
         {
             _pointerHeld = false;
+            _pointerInside = false;
             if (_hasPointerCapture())
             {
                 _releasePointerCapture();
@@ -287,11 +291,18 @@ internal sealed class PressBehavior
                 return;
             }
 
-            _setPressed(false);
+            UpdatePressed();
             if (inside && _isAvailable())
             {
                 _activate(ActivationCause.Pointer);
             }
+
+            return;
         }
+
+        _pointerInside = inside;
+        UpdatePressed();
     }
+
+    private void UpdatePressed() => _setPressed(_spaceHeld || (_pointerHeld && _pointerInside));
 }

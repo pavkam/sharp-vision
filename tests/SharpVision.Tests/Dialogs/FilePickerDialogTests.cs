@@ -178,6 +178,49 @@ public sealed class FilePickerDialogTests
         OwnedTree.Find<TextInput>(dialog).ShouldNotBeNull().Text.ShouldBe(directory);
     }
 
+    /// <summary>Verifies parent navigation is an exact lock-normalized Backspace command, leaving
+    /// application-command chords available to the mounted route.</summary>
+    [Theory]
+    [InlineData(Modifiers.None, true)]
+    [InlineData(Modifiers.CapsLock, true)]
+    [InlineData(Modifiers.NumLock, true)]
+    [InlineData(Modifiers.CapsLock | Modifiers.NumLock, true)]
+    [InlineData(Modifiers.Control, false)]
+    [InlineData(Modifiers.Alt, false)]
+    [InlineData(Modifiers.Super, false)]
+    [InlineData(Modifiers.Hyper, false)]
+    [InlineData(Modifiers.Meta, false)]
+    [InlineData(Modifiers.Control | Modifiers.Shift | Modifiers.CapsLock, false)]
+    public async Task OnListKey_WhenBackspaceCarriesModifiers_NavigatesOnlyForPlainCommandAsync(
+        Modifiers modifiers,
+        bool expectedNavigation)
+    {
+        var parent = Path.GetFullPath(Path.Combine(Path.GetTempPath(), $"picker-parent-{modifiers}"));
+        var child = Path.Combine(parent, "child");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(parent);
+        source.AddDirectory(child);
+        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = child }, source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(100, 40),
+            TestContext.Current.CancellationToken);
+        await DialogWait.UntilAsync(surface, dialog, () => !dialog.IsLoading);
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+        await surface.UpdateAsync(
+            () => surface.Application.Focus.Focus(list).ShouldBeTrue(),
+            "focus file list");
+
+        await surface.Keyboard.PressAsync(Code.Backspace, modifiers);
+
+        if (expectedNavigation)
+        {
+            await DialogWait.UntilAsync(surface, dialog, () => !dialog.IsLoading && dialog.CurrentDirectory == parent);
+        }
+
+        dialog.CurrentDirectory.ShouldBe(expectedNavigation ? parent : child);
+    }
+
     /// <summary>Verifies a single pointer click on a file selects it and enables Open without
     /// completing the dialog - select-then-commit means one click only proposes a choice, and the
     /// Open button (a keyboard Enter, or a second click) is still required to commit it.</summary>

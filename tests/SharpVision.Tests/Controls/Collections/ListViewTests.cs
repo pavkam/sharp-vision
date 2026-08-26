@@ -819,6 +819,35 @@ public sealed class ListViewTests
         invocations.ShouldBe(0);
     }
 
+    /// <summary>Verifies selector-owned keyboard activation cannot overwrite the immutable
+    /// pointer metadata captured for a held row's later double-click completion.</summary>
+    [Fact]
+    public async Task Dispatch_WhenKeyboardActivationOccursDuringSecondPointerPress_PreservesPointerMetadataAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = new UiListView
+        {
+            Items = ["A"],
+            ItemInvocation = ListItemInvocation.DoubleClick
+        };
+        var invocations = new List<ActivationCause>();
+        control.ItemInvoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            control.Attach(dispatcher);
+            new LayoutEngine().Layout(control, new Size(10, 2));
+            using PointerManager pointer = new(control);
+            Click(pointer, new Point(0, 0), Modifiers.None);
+            _ = pointer.Dispatch(Pointer(new Point(0, 0), PointerAction.Press, Modifiers.None));
+
+            _ = KeyWithModifiers(control, Code.Enter, Modifiers.Control);
+            _ = pointer.Dispatch(Pointer(new Point(0, 0), PointerAction.Release, Modifiers.None));
+        }, TestContext.Current.CancellationToken);
+
+        invocations.ShouldBe([ActivationCause.Pointer]);
+    }
+
     /// <summary>Verifies an incidental Control modifier on Enter still moves the active item but
     /// does not raise ItemInvoked - only the invocation is gated, not selection tracking.</summary>
     [Fact]

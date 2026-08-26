@@ -249,7 +249,9 @@ link cycles cannot create traversal cycles.
   successful load, focus moves to the ListView if the location input still owns
   it.
 - The bordered `↑` Button, and Backspace pressed in the ListView, navigate to
-  the parent directory. The Button disables at a root.
+  the parent directory. Backspace matches a plain command after ignoring Caps
+  Lock and Num Lock; Control, Alt, Super, Hyper, Meta, and larger chords remain
+  unhandled. The Button disables at a root.
 - Pressing Enter in the location input loads that text's canonical directory.
 - The ListView follows select-then-commit: a single primary pointer click on any
   row - file or directory - only selects it. Committing a row takes Enter or a

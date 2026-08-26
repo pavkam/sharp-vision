@@ -22,8 +22,11 @@ public sealed class PressBehaviorTests
     private static KeyEventArgs Enter(KeyAction action, Modifiers modifiers = Modifiers.None) => new(
         new Stroke(Code.Enter, character: null, 0, modifiers, action));
 
-    private static PointerEventArgs Pointer(Buttons buttons, PointerAction action) => new(new Pointer(
-        new Point(5, 0),
+    private static PointerEventArgs Pointer(
+        Buttons buttons,
+        PointerAction action,
+        Point? cells = null) => new(new Pointer(
+        cells ?? new Point(5, 0),
         pixels: null,
         buttons,
         action,
@@ -314,7 +317,74 @@ public sealed class PressBehaviorTests
 
         behavior.Handle(Pointer(Buttons.Primary, PointerAction.Release));
         captured.ShouldBeFalse();
-        pressed.ShouldBe([true, true, false]);
+        pressed.ShouldBe([true, false]);
         activations.ShouldBe([ActivationCause.Pointer]);
+    }
+
+    /// <summary>Verifies completing either of two overlapping input holds preserves the visual
+    /// pressed state owned by the source that remains live.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Handle_WhenKeyboardAndPointerHoldsOverlap_CompletingOnePreservesTheOther(bool keyboardFirst)
+    {
+        List<ActivationCause> activations = [];
+        List<bool> pressed = [];
+        var behavior = Create(releasesExpected: true, activations, pressed);
+
+        if (keyboardFirst)
+        {
+            behavior.Handle(Space(KeyAction.Press));
+            behavior.Handle(Pointer(Buttons.Primary, PointerAction.Press));
+            behavior.Handle(Pointer(Buttons.Primary, PointerAction.Release));
+
+            pressed[^1].ShouldBeTrue();
+            behavior.Handle(Space(KeyAction.Release));
+        }
+        else
+        {
+            behavior.Handle(Pointer(Buttons.Primary, PointerAction.Press));
+            behavior.Handle(Space(KeyAction.Press));
+            behavior.Handle(Space(KeyAction.Release));
+
+            pressed[^1].ShouldBeTrue();
+            behavior.Handle(Pointer(Buttons.Primary, PointerAction.Release));
+        }
+
+        pressed[^1].ShouldBeFalse();
+        activations.ShouldBe(keyboardFirst
+            ? [ActivationCause.Pointer, ActivationCause.Keyboard]
+            : [ActivationCause.Keyboard, ActivationCause.Pointer]);
+    }
+
+    /// <summary>Verifies pointer-inside state composes with a live keyboard hold and every
+    /// cancellation boundary clears all gesture sources together.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Handle_WhenOverlappingHoldMovesOutsideAndCancels_DerivesPressedStateFromAllSources(bool focusLoss)
+    {
+        List<ActivationCause> activations = [];
+        List<bool> pressed = [];
+        var behavior = Create(releasesExpected: true, activations, pressed);
+        behavior.Handle(Space(KeyAction.Press));
+        behavior.Handle(Pointer(Buttons.Primary, PointerAction.Press));
+
+        behavior.Handle(Pointer(Buttons.Primary, PointerAction.Move, new Point(20, 0)));
+        pressed[^1].ShouldBeTrue();
+        behavior.Handle(Pointer(Buttons.Primary, PointerAction.Move));
+        behavior.Handle(Space(KeyAction.Release));
+        pressed[^1].ShouldBeTrue();
+
+        if (focusLoss)
+        {
+            behavior.FocusChanged(focused: false);
+        }
+        else
+        {
+            behavior.CaptureLost();
+        }
+
+        pressed[^1].ShouldBeFalse();
     }
 }

@@ -126,7 +126,11 @@ before preview begins. Reparenting a control or adding new handlers therefore
 affects the next route, never the bubble already in flight. IsDisposed
 registrations stop immediately. Both the ancestry and the per-control handler
 snapshots use cleared pooled storage, so they do not retain controls or
-delegates.
+delegates. Bubble observers still see that stable snapshot after preview
+reparents or detaches a member, but concrete defaults run only while the member
+and the remainder of its captured ownership chain are still live. A disposed,
+detached, or reparented target therefore cannot mutate or activate through a
+stale continuation.
 
 `OriginalSource` remains the initiating target. `Source` starts at that target
 and can be changed through `Retarget`, but only while dispatch is active. The

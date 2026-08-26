@@ -149,8 +149,10 @@ separator, file rows use `·`, and names are markup-escaped and ellipsized.
 - When modality begins, focus starts in the filename input, and the first
   successful load leaves it there.
 - The parent Button, and Backspace pressed in the file list, navigate to the
-  parent directory. Pressing Enter in the directory input loads that text's
-  canonical path.
+  parent directory. Backspace matches a plain command after ignoring Caps Lock
+  and Num Lock; Control, Alt, Super, Hyper, Meta, and larger chords remain
+  unhandled. Pressing Enter in the directory input loads that text's canonical
+  path.
 - The file list follows select-then-commit: a single primary pointer click on
   any row - file or directory - only selects it. Committing a row takes Enter or
   a second pointer click (a double-click); the Save Button runs only the save

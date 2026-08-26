@@ -1467,7 +1467,10 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
 
             eventArgs.IsHandled = true;
         }
-        else if (eventArgs.Stroke.Code == Code.Tab && AcceptsTab && !IsReadOnly)
+        else if (eventArgs.Stroke.Code == Code.Tab &&
+                 KeyboardModifierPolicy.IsTextEntryEligible(eventArgs.Stroke.Modifiers) &&
+                 AcceptsTab &&
+                 !IsReadOnly)
         {
             _ = Insert("\t");
             eventArgs.IsHandled = true;

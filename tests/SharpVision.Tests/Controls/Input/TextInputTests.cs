@@ -555,6 +555,38 @@ public sealed class TextInputTests
         raised.ShouldBe(1);
     }
 
+    /// <summary>Verifies AcceptsTab treats Tab as editable text only when no application-command
+    /// modifier accompanies it; Shift and lock state remain ordinary text-entry state.</summary>
+    [Theory]
+    [InlineData(Modifiers.None, true)]
+    [InlineData(Modifiers.Shift, true)]
+    [InlineData(Modifiers.CapsLock, true)]
+    [InlineData(Modifiers.NumLock, true)]
+    [InlineData(Modifiers.Shift | Modifiers.CapsLock | Modifiers.NumLock, true)]
+    [InlineData(Modifiers.Control, false)]
+    [InlineData(Modifiers.Alt, false)]
+    [InlineData(Modifiers.Super, false)]
+    [InlineData(Modifiers.Hyper, false)]
+    [InlineData(Modifiers.Meta, false)]
+    [InlineData(Modifiers.Control | Modifiers.Shift | Modifiers.CapsLock, false)]
+    public void Dispatch_WhenAcceptsTabCarriesModifiers_InsertsOnlyForTextEntryState(
+        Modifiers modifiers,
+        bool expectedInsert)
+    {
+        var control = new TextInput { Text = "value", AcceptsTab = true };
+        var eventArgs = new KeyEventArgs(new Stroke(
+            Code.Tab,
+            character: null,
+            nativeCode: 0,
+            modifiers,
+            KeyAction.Press));
+
+        Route(control, eventArgs, Events.Key);
+
+        control.Text.ShouldBe(expectedInsert ? "value\t" : "value");
+        eventArgs.IsHandled.ShouldBe(expectedInsert);
+    }
+
     /// <summary>Verifies navigation, extension, word movement, and deletion use grapheme boundaries.</summary>
     [Fact]
     public void Dispatch_WhenEditingKeysArrive_UsesDirectionalGraphemeSelection()

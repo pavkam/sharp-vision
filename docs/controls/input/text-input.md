@@ -227,8 +227,10 @@ remain available to inherited routed input.
 ### Keyboard
 
 - An unhandled Tab moves focus through the owning manager's tab order, while
-  `AcceptsTab` handles Tab locally and inserts it. Shift+Tab moves backward when
-  the editor does not accept tabs.
+  `AcceptsTab` handles Tab locally and inserts it when only Shift, Caps Lock, or
+  Num Lock accompanies the stroke. Control, Alt, Super, Hyper, or Meta keeps Tab
+  unhandled and never edits the document. Shift+Tab moves backward when the
+  editor does not accept tabs.
 - Space-independent text events insert decoded `Rune` values.
 - Shift extends the selection from the retained anchor, Control switches to word
   movement, and Up/Down map the rendered caret column to the nearest grapheme
@@ -238,7 +240,8 @@ remain available to inherited routed input.
   unhandled under the shared
   [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy).
 - Enter inserts LF only when `AcceptsReturn` is set; otherwise it submits.
-- Tab inserts only when `AcceptsTab` is set.
+- Tab inserts only when `AcceptsTab` is set and the stroke carries text-entry
+  modifiers rather than an application-command chord.
 
 ### Clipboard
 

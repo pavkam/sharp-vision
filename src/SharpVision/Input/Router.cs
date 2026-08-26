@@ -147,7 +147,7 @@ public static class Router
 
                 current.InvokeHandlers(routedEvent, eventArgs, sequence);
 
-                if (!eventArgs.IsHandled)
+                if (!eventArgs.IsHandled && IsDefaultEligible(route, index, depth))
                 {
                     // A node's own default runs immediately after its bubble
                     // handlers. This prevents an ancestor widget default from
@@ -170,5 +170,19 @@ public static class Router
         }
 
         return result;
+    }
+
+    private static bool IsDefaultEligible(ControlBase[] route, int index, int depth)
+    {
+        for (var position = index; position < depth; position++)
+        {
+            if (route[position].IsDisposed ||
+                (position + 1 < depth && !ReferenceEquals(route[position].Parent, route[position + 1])))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

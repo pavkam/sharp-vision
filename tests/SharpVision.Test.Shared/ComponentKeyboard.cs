@@ -65,6 +65,9 @@ public sealed class ComponentKeyboard
                 (Code.PageUp, Modifiers.None) => _surface.SendAsync("\u001b[5~"u8.ToArray(), "press PageUp"),
                 (Code.PageDown, Modifiers.None) => _surface.SendAsync("\u001b[6~"u8.ToArray(), "press PageDown"),
                 (Code.Backspace, Modifiers.None) => _surface.SendAsync(new byte[] { 0x7f }, "press Backspace"),
+                (Code.Backspace, _) => _surface.SendAsync(
+                    Encoding.ASCII.GetBytes($"\u001b[127;{KittyModifiers(modifiers)}u"),
+                    $"press {modifiers}+Backspace"),
                 (Code.Delete, Modifiers.None) => _surface.SendAsync("\u001b[3~"u8.ToArray(), "press Delete"),
                 (Code.Enter, Modifiers.None) => _surface.SendAsync("\u001b[13u"u8.ToArray(), "press Enter"),
                 _ => throw new NotSupportedException(

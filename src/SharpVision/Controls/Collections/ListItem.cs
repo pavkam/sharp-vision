@@ -17,6 +17,8 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
 {
     private readonly PressBehavior _interaction;
+    private int _pointerClickCount;
+    private Modifiers _pointerModifiers;
 
     /// <summary>Initializes one indexed detached realized control.</summary>
     /// <param name="index">The non-negative stable item index.</param>
@@ -130,6 +132,13 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
 
     private void Activate(ActivationCause cause)
     {
+        if (cause == ActivationCause.Pointer)
+        {
+            LastKey = null;
+            LastModifiers = _pointerModifiers;
+            LastClickCount = _pointerClickCount;
+        }
+
         if (IsAvailable)
         {
             Activated?.Invoke(this, new ActivationEventArgs(cause));
@@ -168,9 +177,11 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
         }
         else if (eventArgs is PointerEventArgs { Pointer.Action: PointerAction.Press } pointer)
         {
-            LastModifiers = pointer.Pointer.Modifiers;
+            _pointerModifiers = pointer.Pointer.Modifiers;
+            _pointerClickCount = pointer.ClickCount;
+            LastModifiers = _pointerModifiers;
             LastKey = null;
-            LastClickCount = pointer.ClickCount;
+            LastClickCount = _pointerClickCount;
         }
 
         base.OnEvent(eventArgs);

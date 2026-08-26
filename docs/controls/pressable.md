@@ -100,6 +100,11 @@ the owned caption child was the original hit target. Pointer motion updates the
 pressed state by containment: releasing inside the bounds activates once, and
 releasing outside cancels.
 
+Keyboard and pointer holds are independent sources of one derived pressed state.
+Completing either source clears only that source; the control remains pressed
+while the other source is still held and, for a pointer hold, inside. Focus
+loss, capture loss, and other cancellation boundaries clear both sources.
+
 The rectangle used for that containment test is
 [`InteractionBounds`](input-base.md#api), a `protected virtual` seam that
 defaults to `Bounds`. A derived control that paints its pressed face translated
