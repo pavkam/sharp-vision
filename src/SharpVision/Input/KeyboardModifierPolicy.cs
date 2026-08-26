@@ -39,4 +39,10 @@ internal static class KeyboardModifierPolicy
     /// <returns>True when the normalized decoded state equals <paramref name="expected"/>.</returns>
     internal static bool MatchesCommand(Modifiers modifiers, Modifiers expected) =>
         (modifiers & ~_lockModifiers) == expected;
+
+    /// <summary>Reports whether Tab carries only direction and incidental lock-key state.</summary>
+    /// <param name="modifiers">The decoded modifier state.</param>
+    /// <returns>True for forward or Shift-reverse traversal after lock normalization.</returns>
+    internal static bool IsTabTraversalEligible(Modifiers modifiers) =>
+        MatchesCommand(modifiers, Modifiers.None) || MatchesCommand(modifiers, Modifiers.Shift);
 }

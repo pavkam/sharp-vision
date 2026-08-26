@@ -8,6 +8,7 @@ internal sealed class DragBehavior
 {
     private readonly Func<Rect> _contentBounds;
     private readonly Func<bool> _isAvailable;
+    private readonly Func<bool> _canMutate;
     private readonly Func<bool> _requestFocus;
     private readonly Func<bool> _capturePointer;
     private readonly Func<bool> _hasCapture;
@@ -18,6 +19,7 @@ internal sealed class DragBehavior
     public DragBehavior(
         Func<Rect> contentBounds,
         Func<bool> isAvailable,
+        Func<bool> canMutate,
         Func<bool> requestFocus,
         Func<bool> capturePointer,
         Func<bool> hasCapture,
@@ -26,6 +28,7 @@ internal sealed class DragBehavior
     {
         ArgumentNullException.ThrowIfNull(contentBounds);
         ArgumentNullException.ThrowIfNull(isAvailable);
+        ArgumentNullException.ThrowIfNull(canMutate);
         ArgumentNullException.ThrowIfNull(requestFocus);
         ArgumentNullException.ThrowIfNull(capturePointer);
         ArgumentNullException.ThrowIfNull(hasCapture);
@@ -33,6 +36,7 @@ internal sealed class DragBehavior
         ArgumentNullException.ThrowIfNull(setPressed);
         _contentBounds = contentBounds;
         _isAvailable = isAvailable;
+        _canMutate = canMutate;
         _requestFocus = requestFocus;
         _capturePointer = capturePointer;
         _hasCapture = hasCapture;
@@ -65,8 +69,13 @@ internal sealed class DragBehavior
     /// <summary>Cancels an active drag.</summary>
     public void Cancel(bool releaseCapture)
     {
+        var wasDragging = IsDragging;
         IsDragging = false;
-        _setPressed(false);
+
+        if (wasDragging && _canMutate())
+        {
+            _setPressed(false);
+        }
 
         if (releaseCapture && _hasCapture())
         {

@@ -604,6 +604,11 @@ public abstract class InputBase: ControlBase
         }
     }
 
+    /// <summary>Gets the current owned-popup request version for continuation validation.</summary>
+    internal ulong PopupTransitionVersion => _popupCoordinator is { } coordinator
+        ? coordinator.TransitionVersion
+        : throw new InvalidOperationException("The popup capability is not enabled.");
+
     /// <summary>Called after the owned popup opens.</summary>
     protected virtual void OnDropDownOpened()
     {

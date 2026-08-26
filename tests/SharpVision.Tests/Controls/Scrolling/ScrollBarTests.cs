@@ -373,6 +373,89 @@ public sealed class ScrollBarTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies release-time value callbacks can invalidate the drag owner without stale
+    /// cleanup mutating it again.</summary>
+    [Theory]
+    [InlineData("property", "dispose")]
+    [InlineData("property", "detach")]
+    [InlineData("property", "hide")]
+    [InlineData("property", "release")]
+    [InlineData("value", "dispose")]
+    [InlineData("value", "detach")]
+    [InlineData("value", "hide")]
+    [InlineData("value", "release")]
+    public async Task Dispatch_WhenReleaseCallbackInvalidatesDrag_CleanupIsIdempotentAsync(
+        string notification,
+        string mutation)
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new Overlay { Bounds = new Rect(0, 0, 20, 5) };
+            var control = new ScrollBar
+            {
+                Bounds = new Rect(0, 0, 12, 1),
+                Orientation = Orientation.Horizontal,
+                Maximum = 100
+            };
+            root.Children.Add(control);
+            root.Attach(dispatcher);
+            using PointerManager pointer = new(root);
+            var mutated = false;
+
+            void Mutate()
+            {
+                if (mutated)
+                {
+                    return;
+                }
+
+                mutated = true;
+
+                switch (mutation)
+                {
+                    case "dispose":
+                        control.Dispose();
+                        break;
+                    case "detach":
+                        root.Children.Remove(control).ShouldBeTrue();
+                        break;
+                    case "hide":
+                        control.Visibility = Visibility.Hidden;
+                        break;
+                    case "release":
+                        pointer.Release();
+                        break;
+                    default:
+                        throw new UnreachableException();
+                }
+            }
+
+            control.PropertyChanged += (_, eventArgs) =>
+            {
+                if (notification == "property" && eventArgs.PropertyName == nameof(ScrollBar.Value))
+                {
+                    Mutate();
+                }
+            };
+            control.ValueChanged += (_, _) =>
+            {
+                if (notification == "value")
+                {
+                    Mutate();
+                }
+            };
+            _ = pointer.Dispatch(Pointer(new Point(1, 0), PointerAction.Press));
+
+            Action release = () => _ = pointer.Dispatch(Pointer(new Point(10, 0), PointerAction.Release));
+
+            release.ShouldNotThrow();
+            mutated.ShouldBeTrue();
+            pointer.Captured.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies an auxiliary release cannot terminate an active primary thumb drag.</summary>
     [Fact]
     public async Task Dispatch_WhenSecondaryReleaseArrivesDuringThumbDrag_PreservesCaptureAndContinuesAsync()

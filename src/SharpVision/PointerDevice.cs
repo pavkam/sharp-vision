@@ -28,7 +28,7 @@ public sealed class PointerDevice
     /// <summary>Gets the last observed zero-based pixel position, or null.</summary>
     public Point? PixelPosition { get; private set; }
 
-    /// <summary>Gets the buttons held as of the last pointer.</summary>
+    /// <summary>Gets the accumulated physical buttons held as of the last pointer.</summary>
     public Buttons Buttons { get; private set; }
 
     /// <summary>Gets the modifiers active as of the last pointer.</summary>
@@ -40,7 +40,7 @@ public sealed class PointerDevice
     /// <summary>Gets the current interactive hover target, or null when the pointer is over non-interactive content.</summary>
     public ControlBase? Hovered => _capture()?.Hovered;
 
-    /// <summary>Gets the control where the raw active pointer press began, or null.</summary>
+    /// <summary>Gets the origin of the oldest surviving raw pointer press, or null.</summary>
     public ControlBase? PressOrigin => _capture()?.PressOrigin;
 
     /// <summary>Gets the exclusive capture target, or null.</summary>
@@ -48,7 +48,17 @@ public sealed class PointerDevice
 
     internal void Observe(in Pointer pointer)
     {
-        Buttons = pointer.Buttons;
+        Buttons = pointer.Action switch
+        {
+            PointerAction.Press => Buttons | pointer.Buttons,
+            PointerAction.Release when pointer.Buttons == Buttons.None => Buttons.None,
+            PointerAction.Release => Buttons & ~pointer.Buttons,
+            PointerAction.Move when pointer.Buttons == Buttons.None => Buttons.None,
+            PointerAction.Move => Buttons | pointer.Buttons,
+            PointerAction.Leave => Buttons.None,
+            PointerAction.Wheel => Buttons,
+            _ => throw new UnreachableException()
+        };
         Modifiers = pointer.Modifiers;
         LastAction = pointer.Action;
 

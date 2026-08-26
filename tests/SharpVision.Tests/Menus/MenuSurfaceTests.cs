@@ -330,6 +330,31 @@ public sealed class MenuSurfaceTests
         first.IsPointerOver.ShouldBeTrue();
     }
 
+    /// <summary>Verifies lock-key state remains incidental to forward and reverse menu Tab navigation.</summary>
+    [Theory]
+    [InlineData(Modifiers.CapsLock, 1)]
+    [InlineData(Modifiers.NumLock, 1)]
+    [InlineData(Modifiers.CapsLock | Modifiers.NumLock, 1)]
+    [InlineData(Modifiers.Shift | Modifiers.CapsLock, 2)]
+    [InlineData(Modifiers.Shift | Modifiers.NumLock, 2)]
+    public async Task Input_WhenMenuTabCarriesLockState_MovesSelectionAsync(Modifiers modifiers, int expectedIndex)
+    {
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        menu.Items.Add(new MenuItem { Text = "One" });
+        menu.Items.Add(new MenuItem { Text = "Two" });
+        menu.Items.Add(new MenuItem { Text = "Three" });
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(10, 3),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        menu.SelectedIndex.ShouldBe(0);
+
+        await surface.Keyboard.PressAsync(Code.Tab, modifiers);
+
+        menu.SelectedIndex.ShouldBe(expectedIndex);
+    }
+
     /// <summary>Verifies a mounted Menu inherits Disabled from a disabled ancestor rather than
     /// only from its own IsEnabled flag, and resumes Normal once re-enabled.</summary>
     [Fact]

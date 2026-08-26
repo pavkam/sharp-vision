@@ -51,6 +51,9 @@ public sealed class ComponentKeyboard
             {
                 (Code.Tab, Modifiers.None) => _surface.SendAsync("\t"u8.ToArray(), "press Tab"),
                 (Code.Tab, Modifiers.Shift) => _surface.SendAsync("\u001b[Z"u8.ToArray(), "press Shift+Tab"),
+                (Code.Tab, _) => _surface.SendAsync(
+                    Encoding.ASCII.GetBytes($"\u001b[9;{KittyModifiers(modifiers)}u"),
+                    $"press {modifiers}+Tab"),
                 (Code.Escape, Modifiers.None) => _surface.SendAsync("\u001b[27u"u8.ToArray(), "press Escape"),
                 (Code.Up, Modifiers.None) => _surface.SendAsync("\u001b[A"u8.ToArray(), "press Up"),
                 (Code.Down, Modifiers.None) => _surface.SendAsync("\u001b[B"u8.ToArray(), "press Down"),
@@ -68,6 +71,8 @@ public sealed class ComponentKeyboard
                     $"Component keyboard encoding for {modifiers}+{code} is not supported.")
             };
     }
+
+    private static int KittyModifiers(Modifiers modifiers) => 1 + (int) modifiers;
 
     /// <summary>Types non-empty printable text through its owned UTF-8 terminal bytes.</summary>
     /// <param name="value">The non-null text containing no terminal controls.</param>

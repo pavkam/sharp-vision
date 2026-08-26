@@ -14,6 +14,7 @@ public sealed class DragBehaviorTests
     private DragBehavior CreateBehavior(bool available = true) => new(
         () => _bounds,
         () => available,
+        () => true,
         () =>
         {
             _focused = true;
@@ -39,6 +40,7 @@ public sealed class DragBehaviorTests
             () => true,
             () => true,
             () => true,
+            () => true,
             () => { },
             _ => { }));
     }
@@ -50,6 +52,7 @@ public sealed class DragBehaviorTests
         // Arrange & Act & Assert
         _ = Should.Throw<ArgumentNullException>(() => new DragBehavior(
             () => _bounds,
+            () => true,
             () => true,
             () => true,
             () => true,
@@ -114,6 +117,7 @@ public sealed class DragBehaviorTests
         // Arrange
         var drag = new DragBehavior(
             () => _bounds,
+            () => true,
             () => true,
             () => true,
             () => false,

@@ -592,6 +592,25 @@ public sealed class DateTimeInputTests
         key.IsHandled.ShouldBeFalse();
     }
 
+    /// <summary>Verifies command-modified Tab preserves an open calendar for shortcut routing.</summary>
+    [Theory]
+    [InlineData(Modifiers.Control)]
+    [InlineData(Modifiers.Alt)]
+    [InlineData(Modifiers.Super)]
+    [InlineData(Modifiers.Meta)]
+    [InlineData(Modifiers.Hyper)]
+    [InlineData(Modifiers.Control | Modifiers.Shift)]
+    public void Dispatch_WhenOpenTabHasCommandModifier_PreservesPopup(Modifiers modifiers)
+    {
+        using var input = new DateTimeInput { IsOpen = true };
+        var key = Key(Code.Tab, modifiers);
+
+        _ = Router.Route(input, Events.Key, key);
+
+        input.IsOpen.ShouldBeTrue();
+        key.IsHandled.ShouldBeFalse();
+    }
+
     /// <summary>Verifies selecting a date from the popup preserves the value's time-zone interpretation.</summary>
     [Fact]
     public void Popup_WhenDateIsSelected_PreservesDateTimeKind()

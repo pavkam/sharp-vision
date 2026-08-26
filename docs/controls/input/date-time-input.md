@@ -5,6 +5,10 @@
 `DateTimeInput` combines date and time segment editing with an optional Calendar
 popup.
 
+Plain Tab or Shift+Tab closes the open popup and continues application
+traversal. Caps Lock and Num Lock are incidental state; a Tab carrying Control,
+Alt, Super, Hyper, or Meta remains unhandled and leaves the popup open.
+
 Exact Alt+Down opens the popup; lock-key state is ignored, but every additional
 command modifier leaves the chord unhandled for an application or host shortcut.
 

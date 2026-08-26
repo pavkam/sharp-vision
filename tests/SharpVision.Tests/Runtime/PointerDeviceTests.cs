@@ -42,4 +42,50 @@ public sealed class PointerDeviceTests
 
         device.Position.ShouldBeNull();
     }
+
+    /// <summary>Verifies transition-style press and release records accumulate and remove the
+    /// physical held-button set instead of replacing it with the latest selector.</summary>
+    [Fact]
+    public void Observe_WhenButtonTransitionsOverlap_TracksHeldState()
+    {
+        var device = new PointerDevice(() => null);
+
+        device.Observe(Pointer(Buttons.Primary, PointerAction.Press));
+        device.Observe(Pointer(Buttons.Middle, PointerAction.Press));
+
+        device.Buttons.ShouldBe(Buttons.Primary | Buttons.Middle);
+
+        device.Observe(Pointer(Buttons.Middle, PointerAction.Release));
+
+        device.Buttons.ShouldBe(Buttons.Primary);
+
+        device.Observe(Pointer(Buttons.Primary, PointerAction.Release));
+
+        device.Buttons.ShouldBe(Buttons.None);
+    }
+
+    /// <summary>Verifies a legacy buttonless release clears the held state because the protocol
+    /// cannot identify a narrower transition.</summary>
+    [Fact]
+    public void Observe_WhenLegacyReleaseHasNoButton_ClearsHeldState()
+    {
+        var device = new PointerDevice(() => null);
+        device.Observe(Pointer(Buttons.Primary, PointerAction.Press));
+        device.Observe(Pointer(Buttons.Middle, PointerAction.Press));
+
+        device.Observe(Pointer(Buttons.None, PointerAction.Release));
+
+        device.Buttons.ShouldBe(Buttons.None);
+    }
+
+    private static Pointer Pointer(Buttons buttons, PointerAction action) => new(
+        new Point(1, 1),
+        pixels: null,
+        buttons,
+        action,
+        wheelX: 0,
+        wheelY: 0,
+        Modifiers.None,
+        isMotion: action == PointerAction.Move,
+        isCellPositionInferred: false);
 }

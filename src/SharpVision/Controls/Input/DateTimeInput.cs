@@ -501,7 +501,9 @@ public sealed class DateTimeInput: InputBase
                 return;
             }
 
-            if (openKey.IsInitialKeyDown && stroke.Code == Code.Tab)
+            if (openKey.IsInitialKeyDown &&
+                stroke.Code == Code.Tab &&
+                KeyboardModifierPolicy.IsTabTraversalEligible(stroke.Modifiers))
             {
                 IsOpen = false;
                 return;

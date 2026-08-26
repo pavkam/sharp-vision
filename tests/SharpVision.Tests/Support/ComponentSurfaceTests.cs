@@ -218,6 +218,31 @@ public sealed class ComponentSurfaceTests
         surface.ShouldHaveState(bar, VisualState.Focused | VisualState.IsPointerOver);
     }
 
+    /// <summary>Verifies transition-style SGR reports accumulate physical held-button state through
+    /// the real decoder and application dispatch path.</summary>
+    [Fact]
+    public async Task Pointer_WhenSgrButtonTransitionsOverlap_TracksPhysicalHeldStateAsync()
+    {
+        // Arrange
+        var text = new ControlText("target");
+        await using var surface = await ComponentSurface.MountAsync(
+            text,
+            new Size(6, 1),
+            TestContext.Current.CancellationToken);
+
+        // Act and assert both held
+        await surface.SendAsync("\u001b[<0;1;1M"u8.ToArray(), "press primary pointer");
+        await surface.SendAsync("\u001b[<1;1;1M"u8.ToArray(), "press middle pointer");
+        surface.Application.Pointer.Buttons.ShouldBe(Buttons.Primary | Buttons.Middle);
+
+        // Act and assert independent release
+        await surface.SendAsync("\u001b[<1;1;1m"u8.ToArray(), "release middle pointer");
+        surface.Application.Pointer.Buttons.ShouldBe(Buttons.Primary);
+
+        await surface.SendAsync("\u001b[<0;1;1m"u8.ToArray(), "release primary pointer");
+        surface.Application.Pointer.Buttons.ShouldBe(Buttons.None);
+    }
+
     /// <summary>Verifies invalid relative pointer requests fail before any terminal action is emitted.</summary>
     [Fact]
     public async Task Pointer_WhenRelativeActionIsInvalid_RejectsTheRequestBeforeInputAsync()
@@ -289,6 +314,35 @@ public sealed class ComponentSurfaceTests
 
         // Assert
         surface.ShouldHaveFocus(first);
+    }
+
+    /// <summary>Verifies enhanced-protocol lock state does not change Tab traversal direction.</summary>
+    [Theory]
+    [InlineData(Modifiers.CapsLock)]
+    [InlineData(Modifiers.NumLock)]
+    [InlineData(Modifiers.CapsLock | Modifiers.NumLock)]
+    [InlineData(Modifiers.Shift | Modifiers.CapsLock)]
+    [InlineData(Modifiers.Shift | Modifiers.NumLock)]
+    [InlineData(Modifiers.Shift | Modifiers.CapsLock | Modifiers.NumLock)]
+    public async Task Keyboard_WhenTabCarriesLockState_TraversesInRequestedDirectionAsync(Modifiers modifiers)
+    {
+        var first = new Button { Text = "First" };
+        var second = new Button { Text = "Second" };
+        var root = new Stack { Children = { first, second } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(16, 4),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        if ((modifiers & Modifiers.Shift) != 0)
+        {
+            await surface.Keyboard.PressAsync(Code.Tab);
+        }
+
+        await surface.Keyboard.PressAsync(Code.Tab, modifiers);
+
+        surface.ShouldHaveFocus((modifiers & Modifiers.Shift) != 0 ? first : second);
     }
 
     /// <summary>Verifies terminal leave clears hover, press, and capture without clearing logical focus.</summary>

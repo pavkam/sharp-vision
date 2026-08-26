@@ -9,6 +9,10 @@ While the popup is open, arrow, Page Up, Page Down, Home, and End keys navigate
 the calendar. Enter or Space commits its active date, and Escape closes the
 popup without changing the value.
 
+Plain Tab or Shift+Tab closes the open popup and continues application
+traversal. Caps Lock and Num Lock are incidental state; a Tab carrying Control,
+Alt, Super, Hyper, or Meta remains unhandled and leaves the popup open.
+
 Exact Alt+Down or unmodified F4 opens the popup; lock-key state is ignored, but
 any additional command modifier leaves the chord unhandled for an application or
 host shortcut.

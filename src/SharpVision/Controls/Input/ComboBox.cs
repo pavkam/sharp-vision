@@ -442,7 +442,9 @@ public sealed class ComboBox: InputBase
                 return;
             }
 
-            if (keyEventArgs.IsInitialKeyDown && stroke.Code == Code.Tab)
+            if (keyEventArgs.IsInitialKeyDown &&
+                stroke.Code == Code.Tab &&
+                KeyboardModifierPolicy.IsTabTraversalEligible(stroke.Modifiers))
             {
                 IsOpen = false;
                 return;
@@ -494,8 +496,16 @@ public sealed class ComboBox: InputBase
     private void OnItemInvoked(object? sender, ItemInvokedEventArgs eventArgs)
     {
         _ = sender;
+        var popupVersion = PopupTransitionVersion;
         _list.SelectedIndex = eventArgs.Index;
-        IsOpen = false;
+
+        if (!IsDisposed &&
+            PopupTransitionVersion == popupVersion &&
+            _selectedIndex == eventArgs.Index &&
+            _list.SelectedIndex == eventArgs.Index)
+        {
+            IsOpen = false;
+        }
     }
 
     private void OnSelectionChanged(object? sender, ListSelectionChangedEventArgs eventArgs)

@@ -256,7 +256,7 @@ public sealed class Menu: ItemsControl
             ? SingleSelectionIndex.FindWrapped(_selectedIndex, -1, ItemControlCount, Available)
             : key.Stroke.Code == next
                 ? SingleSelectionIndex.FindWrapped(_selectedIndex, 1, ItemControlCount, Available)
-                : key.Stroke.Code == Code.Tab && (key.Stroke.Modifiers & ~Modifiers.Shift) == 0
+                : key.Stroke.Code == Code.Tab && KeyboardModifierPolicy.IsTabTraversalEligible(key.Stroke.Modifiers)
                     ? SingleSelectionIndex.FindWrapped(_selectedIndex, (key.Stroke.Modifiers & Modifiers.Shift) == 0 ? 1 : -1, ItemControlCount, Available)
                     : -1;
 

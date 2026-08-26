@@ -654,6 +654,25 @@ public sealed class DateInputTests
         key.IsHandled.ShouldBeFalse();
     }
 
+    /// <summary>Verifies command-modified Tab preserves an open calendar for shortcut routing.</summary>
+    [Theory]
+    [InlineData(Modifiers.Control)]
+    [InlineData(Modifiers.Alt)]
+    [InlineData(Modifiers.Super)]
+    [InlineData(Modifiers.Meta)]
+    [InlineData(Modifiers.Hyper)]
+    [InlineData(Modifiers.Control | Modifiers.Shift)]
+    public void Dispatch_WhenOpenTabHasCommandModifier_PreservesPopup(Modifiers modifiers)
+    {
+        using var input = new DateInput { IsOpen = true };
+        var key = KeyEvent(Code.Tab, modifiers);
+
+        _ = Router.Route(input, Events.Key, key);
+
+        input.IsOpen.ShouldBeTrue();
+        key.IsHandled.ShouldBeFalse();
+    }
+
     /// <summary>Verifies PopupChrome applies to the owned Calendar popup without leaking it, and
     /// ResetPopupChrome returns it to the PopupChrome appearance.</summary>
     [Fact]

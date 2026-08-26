@@ -120,7 +120,9 @@ observer commits a newer selection, the superseded transaction publishes neither
 its remaining property notifications nor its stale `SelectionChanged`. Mode or
 item-realization changes invalidate pending proposals even when the selected
 index set was already empty, and a reentrant change to `None` mode rejects any
-pending non-empty proposal.
+pending non-empty proposal. If a synchronous selection callback disposes the
+ListView, the committed notification completes but dependent active-index and
+reveal work stops at that lifetime boundary.
 
 A successfully committed non-negative `SelectedIndex`, or a selected index
 committed through `SetSelected`, also becomes `ActiveIndex` and is minimally

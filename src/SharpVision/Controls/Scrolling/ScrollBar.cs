@@ -25,7 +25,8 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
         _style = InitializeStyle(ScrollBarStyle.Definition);
         _drag = new DragBehavior(
             () => Bounds,
-            () => EffectiveIsEnabled && EffectiveIsVisible,
+            () => !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible,
+            () => !IsDisposed,
             () =>
             {
                 _ = FocusOwner?.Focus(this);

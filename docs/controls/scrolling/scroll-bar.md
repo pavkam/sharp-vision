@@ -108,6 +108,8 @@ var position = new ScrollBar
   fallback.
 - Keyboard, pointer, and wheel input move the value as described, with
   unconsumed endpoint wheel events bubbling to ancestors and drags cancelling
-  cleanly.
+  cleanly. Release cleanup is idempotent when a value or property callback
+  detaches, hides, disposes, or explicitly releases capture: it clears live
+  pressed state once and never mutates a disposed bar.
 - Tiny tracks degrade safely, generated hosts forward styles to their bars as
   documented, and the rendered output matches exact cells.

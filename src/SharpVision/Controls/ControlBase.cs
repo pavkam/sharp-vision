@@ -1951,7 +1951,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                     Modifiers: var modifiers
                 }
             } &&
-            (modifiers & ~Modifiers.Shift) == 0)
+            KeyboardModifierPolicy.IsTabTraversalEligible(modifiers))
         {
             eventArgs.IsHandled = true;
             eventArgs.RequestPostRouteCommand(

@@ -282,6 +282,11 @@ public sealed class ListView: ItemsControl
             HashSet<int> next = value < 0 ? [] : [value];
             var accepted = ApplySelection(next, cancellable: true) || _selection.SetEquals(next);
 
+            if (IsDisposed)
+            {
+                return;
+            }
+
             if (accepted && _selection.SetEquals(next) && value >= 0)
             {
                 CommitProgrammaticSelectionTarget(value);

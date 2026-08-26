@@ -14,7 +14,10 @@ using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
 public sealed class PointerManager: IDisposable
 {
     private static readonly TimeSpan _multiClickInterval = TimeSpan.FromMilliseconds(500);
+    private static readonly Buttons[] _trackedButtons =
+        [Buttons.Primary, Buttons.Middle, Buttons.Secondary, Buttons.Back, Buttons.Forward];
     private readonly HashSet<ControlBase> _appliedHoverPath = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<Buttons, (ControlBase? Target, long Sequence)> _pressOrigins = [];
     private readonly List<ControlBase> _pathBuffer = [];
     private readonly List<ControlBase> _exitBuffer = [];
     private readonly TimeProvider _timeProvider;
@@ -27,6 +30,7 @@ public sealed class PointerManager: IDisposable
     private int _clickCount;
     private ControlBase? _hoverBoundary;
     private Point? _lastPointerCells;
+    private long _pressSequence;
 
     #region Construction and state
 
@@ -87,7 +91,7 @@ public sealed class PointerManager: IDisposable
     /// <summary>Gets the current hover target, or null.</summary>
     public ControlBase? Hovered { get; private set; }
 
-    /// <summary>Gets the raw pointer-down origin, or null.</summary>
+    /// <summary>Gets the origin of the oldest surviving raw pointer-down transition, or null.</summary>
     /// <remarks>This is gesture bookkeeping only; semantic pressed state belongs to <see cref="PressBehavior"/>.</remarks>
     public ControlBase? PressOrigin { get; private set; }
 
@@ -269,7 +273,7 @@ public sealed class PointerManager: IDisposable
 
         if (pointer is { Action: PointerAction.Press, Cells: not null })
         {
-            PressOrigin = target;
+            BeginPress(pointer.Buttons, target);
 
             if ((pointer.Buttons & Buttons.Primary) != 0)
             {
@@ -280,10 +284,7 @@ public sealed class PointerManager: IDisposable
 
                 if (failure is not null)
                 {
-                    if (ReferenceEquals(PressOrigin, target))
-                    {
-                        PressOrigin = null;
-                    }
+                    EndPress(pointer.Buttons);
 
                     failure.Throw();
                 }
@@ -293,10 +294,7 @@ public sealed class PointerManager: IDisposable
 
                 if (!IsInteractionSnapshotValid(targets))
                 {
-                    if (ReferenceEquals(PressOrigin, target))
-                    {
-                        PressOrigin = null;
-                    }
+                    EndPress(pointer.Buttons);
 
                     failure?.Throw();
                     return null;
@@ -304,10 +302,7 @@ public sealed class PointerManager: IDisposable
 
                 if (failure is not null)
                 {
-                    if (ReferenceEquals(PressOrigin, target))
-                    {
-                        PressOrigin = null;
-                    }
+                    EndPress(pointer.Buttons);
 
                     failure.Throw();
                 }
@@ -340,10 +335,64 @@ public sealed class PointerManager: IDisposable
 
     private void CompletePress(Pointer pointer)
     {
-        if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
+        if (pointer.Action == PointerAction.Leave ||
+            (pointer.Action == PointerAction.Release && pointer.Buttons == Buttons.None))
         {
-            PressOrigin = null;
+            ClearPressState();
         }
+        else if (pointer.Action == PointerAction.Release)
+        {
+            EndPress(pointer.Buttons);
+        }
+    }
+
+    private void BeginPress(Buttons buttons, ControlBase? target)
+    {
+        foreach (var button in _trackedButtons)
+        {
+            if ((buttons & button) != 0 && !_pressOrigins.ContainsKey(button))
+            {
+                _pressOrigins.Add(button, (target, ++_pressSequence));
+            }
+        }
+
+        UpdatePressOrigin();
+    }
+
+    private void EndPress(Buttons buttons)
+    {
+        foreach (var button in _trackedButtons)
+        {
+            if ((buttons & button) != 0)
+            {
+                _ = _pressOrigins.Remove(button);
+            }
+        }
+
+        UpdatePressOrigin();
+    }
+
+    private void ClearPressState()
+    {
+        _pressOrigins.Clear();
+        PressOrigin = null;
+    }
+
+    private void UpdatePressOrigin()
+    {
+        ControlBase? target = null;
+        var sequence = long.MaxValue;
+
+        foreach (var origin in _pressOrigins.Values)
+        {
+            if (origin.Sequence < sequence)
+            {
+                target = origin.Target;
+                sequence = origin.Sequence;
+            }
+        }
+
+        PressOrigin = target;
     }
 
     /// <summary>
@@ -412,7 +461,7 @@ public sealed class PointerManager: IDisposable
         Root.VerifyMutable();
         Captured = null;
         SetPointerPath(control: null, boundary: null);
-        PressOrigin = null;
+        ClearPressState();
         _lastClickTarget = null;
         Root.SetCaptureOwner(null);
         IsDisposed = true;
@@ -426,7 +475,7 @@ public sealed class PointerManager: IDisposable
         Debug.Assert(IsMember(subtree), "Unavailable subtrees belong to the capture root.");
         Debug.Assert(Enum.IsDefined(reason), "Implicit capture release requires a defined reason.");
 
-        if (IsWithin(Captured, subtree) || IsWithin(Hovered, subtree) || IsWithin(PressOrigin, subtree))
+        if (IsWithin(Captured, subtree) || IsWithin(Hovered, subtree) || HasPressOriginWithin(subtree))
         {
             Cancel(reason, subtree);
         }
@@ -458,7 +507,7 @@ public sealed class PointerManager: IDisposable
             : null;
         var hoverBoundary = Hovered is null ? null : scope.BoundaryFor(Hovered);
         var hoverTarget = hoverBoundary is null ? null : Hovered;
-        var clearPressed = PressOrigin is not null && scope.BoundaryFor(PressOrigin) is null;
+        var clearPressed = HasPressOriginOutside(scope);
 
         if (captured is null &&
             ReferenceEquals(Hovered, hoverTarget) &&
@@ -545,6 +594,7 @@ public sealed class PointerManager: IDisposable
         Debug.Assert(ReferenceEquals(Root.CaptureOwner, this), "Root disposal severs this manager's ownership.");
 
         Root.SetCaptureOwner(null);
+        ClearPressState();
         IsDisposed = true;
     }
 
@@ -555,7 +605,7 @@ public sealed class PointerManager: IDisposable
 
         var captured = IsWithin(Captured, subtree) ? Captured : null;
         var clearHover = IsWithin(Hovered, subtree);
-        var clearPressed = IsWithin(PressOrigin, subtree);
+        var clearPressed = HasPressOriginWithin(subtree);
 
         Cancel(
             reason,
@@ -593,7 +643,7 @@ public sealed class PointerManager: IDisposable
 
             if (clearPressed)
             {
-                PressOrigin = null;
+                ClearPressState();
                 _lastClickTarget = null;
             }
 
@@ -625,6 +675,34 @@ public sealed class PointerManager: IDisposable
         {
             CancellationDepth--;
         }
+    }
+
+    [Pure]
+    private bool HasPressOriginWithin(ControlBase subtree)
+    {
+        foreach (var origin in _pressOrigins.Values)
+        {
+            if (IsWithin(origin.Target, subtree))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    [Pure]
+    private bool HasPressOriginOutside(ModalScope scope)
+    {
+        foreach (var origin in _pressOrigins.Values)
+        {
+            if (origin.Target is not null && scope.BoundaryFor(origin.Target) is null)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void PublishCaptureLoss(ControlBase captured, PointerCaptureLossReason reason)

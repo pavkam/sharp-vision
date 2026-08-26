@@ -141,13 +141,15 @@ before the next ancestor is considered. This ordering is owned by the shared
 dispatch seam, so a control override cannot accidentally omit inherited input
 events or run its default after one of them handles the input. It also prevents
 an ancestor widget's default from preempting a nested editor. A pressed Tab with
-no modifiers other than Shift requests one post-route application traversal; the
-application executes that command exactly once from the stable route anchor. The
-same path enters the first eligible tab stop when no control was focused. A
-control that owns Tab semantics, such as a `TextInput` with `AcceptsTab`,
-handles the key before this fallback runs. Exceptions propagate after route
-state and pooled storage are cleaned up. Under modality, the fallback traverses
-and wraps only within the [active plane](modality.md#keyboard-text-and-paste).
+no command modifier requests one post-route application traversal; Shift selects
+reverse traversal, while Caps Lock and Num Lock are ignored. Control, Alt,
+Super, Hyper, or Meta excludes the stroke from traversal. The application
+executes an eligible command exactly once from the stable route anchor. The same
+path enters the first eligible tab stop when no control was focused. A control
+that owns Tab semantics, such as a `TextInput` with `AcceptsTab`, handles the
+key before this fallback runs. Exceptions propagate after route state and pooled
+storage are cleaned up. Under modality, the fallback traverses and wraps only
+within the [active plane](modality.md#keyboard-text-and-paste).
 
 An unhandled pressed Alt character then enters the application
 [access-key fallback](access-keys.md#dispatch-precedence). Access-key discovery
@@ -229,6 +231,12 @@ remains an ordinary click.
 Pointer events preserve screen cells, optional pixels, the inferred cell
 position, buttons, wheel delta, modifiers, and the action. Local coordinates are
 derived from committed transforms at each route element.
+
+Each press origin is retained per physical button. `PressOrigin` is the oldest
+surviving raw press, advances to the next surviving origin when that button is
+released, and clears completely on buttonless release, pointer leave, or
+lifecycle cancellation. An unrelated release cannot replace or erase the origin
+of a still-held button.
 
 A primary press, drag, selection, or move/resize transaction completes only on
 an explicit primary release or on the buttonless release form emitted by a
@@ -355,12 +363,15 @@ they own tree state, `Pointer` is always readable: it is constructed once in the
 `Application` constructor and never throws. `Position` (the last zero-based cell
 position) and `PixelPosition` (the last zero-based pixel position, when the wire
 supplied one) are `null` before the first pointer arrives and are cleared on
-`PointerAction.Leave`. `Buttons`, `Modifiers`, and `LastAction` reflect the most
-recently dispatched pointer. `Hovered`, `PressOrigin`, and `Captured` delegate
-live to `PointerManager` and are `null` until the tree attaches.
-`Application.Dispatch` updates the device from every `RecordKind.Pointer` record
-before routing it, so a caller reading `Pointer` in the middle of a callback
-sees the same state the router just used.
+`PointerAction.Leave`. `Buttons` accumulates physical held state: presses add
+their identified buttons, identified releases remove only those buttons, and a
+buttonless release or leave clears the set. Held-button motion can add reported
+state, buttonless motion clears it, and wheel records preserve it. `Modifiers`
+and `LastAction` reflect the most recently dispatched pointer. `Hovered`,
+`PressOrigin`, and `Captured` delegate live to `PointerManager` and are `null`
+until the tree attaches. `Application.Dispatch` updates the device from every
+`RecordKind.Pointer` record before routing it, so a caller reading `Pointer` in
+the middle of a callback sees the same state the router just used.
 
 `Application.HasFocus` is a `bool` that tracks whether the terminal window
 currently reports focus. It defaults to `true` (assume focused until told

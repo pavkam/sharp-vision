@@ -290,6 +290,76 @@ public sealed class ComboBoxTests
         selectionChanges.ShouldBe(1);
     }
 
+    /// <summary>Verifies selection callbacks own newer popup, lifetime, and replacement-selection
+    /// decisions made before item invocation attempts its ordinary close.</summary>
+    [Theory]
+    [InlineData("reopen")]
+    [InlineData("dispose")]
+    [InlineData("replace-selection")]
+    public void ActivateCurrent_WhenSelectionCallbackInvalidatesContinuation_PreservesNewestDecision(
+        string mutation)
+    {
+        var box = new ComboBox { Items = ["One", "Two", "Three"], DropDownHeight = 4, IsOpen = true };
+        new LayoutEngine().Layout(box, new Size(24, 12));
+        var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
+        var list = popup.Content.ShouldBeOfType<UiListView>();
+        list.MoveCurrent(Code.Down).ShouldBeTrue();
+        box.SelectionChanged += (_, _) =>
+        {
+            switch (mutation)
+            {
+                case "reopen":
+                    box.IsOpen = false;
+                    box.IsOpen = true;
+                    break;
+                case "dispose":
+                    box.Dispose();
+                    break;
+                case "replace-selection":
+                    box.SelectedIndex = 2;
+                    break;
+                default:
+                    throw new UnreachableException();
+            }
+        };
+
+        _ = list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, Modifiers.None);
+
+        if (mutation == "reopen")
+        {
+            box.IsOpen.ShouldBeTrue();
+        }
+        else if (mutation == "replace-selection")
+        {
+            box.SelectedIndex.ShouldBe(2);
+            box.IsOpen.ShouldBeTrue();
+        }
+        else
+        {
+            box.IsDisposed.ShouldBeTrue();
+        }
+    }
+
+    /// <summary>Verifies command-modified Tab leaves an open ComboBox unchanged for shortcut
+    /// routing instead of closing without traversal.</summary>
+    [Theory]
+    [InlineData(Modifiers.Control)]
+    [InlineData(Modifiers.Alt)]
+    [InlineData(Modifiers.Super)]
+    [InlineData(Modifiers.Meta)]
+    [InlineData(Modifiers.Hyper)]
+    [InlineData(Modifiers.Control | Modifiers.Shift)]
+    public void Dispatch_WhenOpenTabHasCommandModifier_PreservesPopup(Modifiers modifiers)
+    {
+        var box = new ComboBox { Items = ["One", "Two"], IsOpen = true };
+        var key = Key(Code.Tab, modifiers);
+
+        _ = Router.Route(box, Events.Key, key);
+
+        box.IsOpen.ShouldBeTrue();
+        key.IsHandled.ShouldBeFalse();
+    }
+
     /// <summary>Verifies a SelectedIndex assignment silently vetoed by the internal list's own
     /// SelectionChanging handler (while the drop-down is open, so the veto is genuine) is
     /// rolled back rather than reported through SelectionChanged as if it had taken effect.</summary>

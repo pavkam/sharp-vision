@@ -25,6 +25,7 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
         _drag = new DragBehavior(
             () => ContentBounds,
             () => EffectiveIsEnabled && EffectiveIsVisible,
+            () => !IsDisposed,
             RequestFocus,
             CapturePointer,
             () => HasPointerCapture,

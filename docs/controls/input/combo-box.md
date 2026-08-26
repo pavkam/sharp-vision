@@ -91,6 +91,10 @@ ListView's selection, scrolling, and surface appearance inside the Popup.
   Publication is versioned under synchronous reentry: a `PropertyChanged`
   observer that commits a newer selection owns `SelectionChanged`, and the
   interrupted commit raises no further typed event.
+- Item invocation closes the popup only if its synchronous selection callbacks
+  leave the same selection and popup transition current. A callback that reopens
+  or closes the popup, selects another item, or disposes the ComboBox owns that
+  newer decision; the interrupted invocation performs no stale close.
 - `AllowNull` enables clearing with Delete or Backspace, and `Placeholder`
   supplies the closed-face text while the selection is empty.
 - `DropDownHeight` is a positive maximum, in terminal cells, for the visible
@@ -145,12 +149,14 @@ the ComboBox plane closes the drop-down and is consumed.
 
 ### Keyboard navigation inside the popup
 
-The popup and the inner ListView never enter sequential traversal. Tab closes or
-commits the popup and then continues once through application traversal. The
-arrow keys (Up/Down/Left/Right), Home, End, Page Up, and Page Down move between
-items through the ListView's own keyboard handler. Initial and repeated key-down
-input share that path, so holding a navigation key continues moving the current
-row and keeps it visible while the ComboBox retains focus.
+The popup and the inner ListView never enter sequential traversal. Plain Tab or
+Shift+Tab, with optional Caps Lock or Num Lock state, closes or commits the
+popup and then continues once through application traversal. A Tab carrying
+Control, Alt, Super, Hyper, or Meta remains unhandled and leaves the popup open.
+The arrow keys (Up/Down/Left/Right), Home, End, Page Up, and Page Down move
+between items through the ListView's own keyboard handler. Initial and repeated
+key-down input share that path, so holding a navigation key continues moving the
+current row and keeps it visible while the ComboBox retains focus.
 
 Printable Unicode scalars provide basic case-insensitive type-to-select. The
 search starts after the current item, wraps around once, and falls back to the

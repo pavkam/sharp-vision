@@ -62,6 +62,66 @@ public sealed class PointerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies the oldest surviving raw press remains the public origin while two
+    /// different buttons are released in either order.</summary>
+    [Theory]
+    [InlineData(Buttons.Primary, Buttons.Secondary)]
+    [InlineData(Buttons.Secondary, Buttons.Primary)]
+    public async Task Dispatch_WhenButtonPressesOverlap_PreservesOldestSurvivingOriginAsync(
+        Buttons firstButton,
+        Buttons secondButton)
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var first = new ProbeControl { Bounds = new Rect(0, 0, 8, 8) };
+            var second = new ProbeControl { Bounds = new Rect(10, 0, 8, 8) };
+            root.Children.Add(first);
+            root.Children.Add(second);
+            root.Attach(dispatcher);
+            using var manager = new PointerManager(root);
+
+            _ = manager.Dispatch(CreatePointer(new Point(2, 2), firstButton, PointerAction.Press));
+            _ = manager.Dispatch(CreatePointer(new Point(12, 2), secondButton, PointerAction.Press));
+
+            manager.PressOrigin.ShouldBeSameAs(first);
+
+            _ = manager.Dispatch(CreatePointer(new Point(2, 2), firstButton, PointerAction.Release));
+
+            manager.PressOrigin.ShouldBeSameAs(second);
+
+            _ = manager.Dispatch(CreatePointer(new Point(12, 2), secondButton, PointerAction.Release));
+
+            manager.PressOrigin.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies releasing a newer auxiliary press leaves the older primary origin live.</summary>
+    [Fact]
+    public async Task Dispatch_WhenNewerAuxiliaryPressReleases_PreservesPrimaryOriginAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var first = new ProbeControl { Bounds = new Rect(0, 0, 8, 8) };
+            var second = new ProbeControl { Bounds = new Rect(10, 0, 8, 8) };
+            root.Children.Add(first);
+            root.Children.Add(second);
+            root.Attach(dispatcher);
+            using var manager = new PointerManager(root);
+            _ = manager.Dispatch(CreatePointer(new Point(2, 2), Buttons.Primary, PointerAction.Press));
+            _ = manager.Dispatch(CreatePointer(new Point(12, 2), Buttons.Middle, PointerAction.Press));
+
+            _ = manager.Dispatch(CreatePointer(new Point(12, 2), Buttons.Middle, PointerAction.Release));
+
+            manager.PressOrigin.ShouldBeSameAs(first);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies capture receives pixel-only input with unavailable local cells.</summary>
     [Fact]
     public async Task Dispatch_WhenPixelOnlyPointerIsCaptured_RoutesWithoutLocalCellsAsync()
@@ -871,6 +931,17 @@ public sealed class PointerTests
         cells,
         pixels: null,
         Buttons.Primary,
+        action,
+        wheelX: 0,
+        wheelY: 0,
+        Modifiers.None,
+        isMotion: action == PointerAction.Move,
+        isCellPositionInferred: false);
+
+    private static Pointer CreatePointer(Point cells, Buttons buttons, PointerAction action) => new(
+        cells,
+        pixels: null,
+        buttons,
         action,
         wheelX: 0,
         wheelY: 0,

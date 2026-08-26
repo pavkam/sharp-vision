@@ -18,6 +18,7 @@ internal sealed class ColorPlane: ControlBase
         _drag = new DragBehavior(
             () => ContentBounds,
             () => EffectiveIsEnabled && EffectiveIsVisible,
+            () => !IsDisposed,
             RequestFocus,
             CapturePointer,
             () => HasPointerCapture,

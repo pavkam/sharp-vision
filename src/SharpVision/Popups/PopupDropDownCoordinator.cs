@@ -100,6 +100,9 @@ internal sealed class PopupDropDownCoordinator
     /// <summary>Gets whether the owned popup is currently open.</summary>
     public bool IsOpen => _popup.IsOpen;
 
+    /// <summary>Gets the monotonically increasing public or internal open-state request version.</summary>
+    internal ulong TransitionVersion { get; private set; }
+
     /// <summary>Opens or closes the owned popup, no-op when already at the requested state.</summary>
     /// <param name="value">True to open the popup; false to close it.</param>
     /// <exception cref="InvalidOperationException">The owner is mutated off-dispatcher.</exception>
@@ -108,6 +111,7 @@ internal sealed class PopupDropDownCoordinator
     public void SetOpen(bool value)
     {
         _owner.VerifyMutable();
+        TransitionVersion++;
 
         if (_popup.IsOpen != value)
         {
