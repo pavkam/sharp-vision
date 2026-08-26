@@ -1401,6 +1401,66 @@ public sealed class TableTests
         table.BeginEdit(row, 1).ShouldBeFalse();
     }
 
+    /// <summary>Verifies edit-completion observers may remove, clear, replace, or dispose the
+    /// captured row without the completed transaction trying to activate that obsolete object.</summary>
+    [Theory]
+    [InlineData("remove", false)]
+    [InlineData("clear", false)]
+    [InlineData("replace", false)]
+    [InlineData("dispose", false)]
+    [InlineData("remove", true)]
+    [InlineData("clear", true)]
+    [InlineData("replace", true)]
+    [InlineData("dispose", true)]
+    public void CommitEdit_WhenCompletionCallbackInvalidatesRow_StopsAfterCommittedEdit(
+        string mutation,
+        bool submitWithEnter)
+    {
+        var editor = new TextInput { Text = "before" };
+        var row = new TableRow([editor]);
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Editable"));
+        table.Rows.Add(row);
+        table.BeginEdit(row, 0).ShouldBeTrue();
+        table.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName != nameof(Table.IsEditing) || table.IsEditing)
+            {
+                return;
+            }
+
+            switch (mutation)
+            {
+                case "remove":
+                    _ = table.Rows.Remove(row);
+                    break;
+                case "clear":
+                    table.Rows.Clear();
+                    break;
+                case "replace":
+                    table.Rows[0] = new TableRow([new ControlText("replacement")]);
+                    break;
+                case "dispose":
+                    editor.Dispose();
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unknown mutation '{mutation}'.");
+            }
+        };
+
+        if (submitWithEnter)
+        {
+            var key = new KeyEventArgs(new Stroke(Code.Enter, default, 0, Modifiers.None, KeyAction.Press));
+            _ = Should.NotThrow(() => Router.Route(editor, Events.Key, key));
+        }
+        else
+        {
+            table.CommitEdit().ShouldBeTrue();
+        }
+
+        table.IsEditing.ShouldBeFalse();
+    }
+
     /// <summary>Verifies an incidental Control modifier on Enter does not activate the current row,
     /// and leaves the stroke unhandled so a shortcut bound to the modified combination still sees it.</summary>
     [Fact]

@@ -704,13 +704,25 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     {
         ArgumentNullException.ThrowIfNull(item);
 
-        if (!ReferenceEquals(item.FindTreeView(), this))
+        if (!OwnsInvokedItem(item))
         {
             return;
         }
 
         _ = _navigator.SetCurrent(item);
+
+        if (!OwnsInvokedItem(item))
+        {
+            return;
+        }
+
         _ = ApplyInputSelection(item, modifiers);
+
+        if (!OwnsInvokedItem(item))
+        {
+            return;
+        }
+
         ItemInvoked?.Invoke(this, new TreeViewItemInvokedEventArgs(item, cause));
     }
 
@@ -919,11 +931,17 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
         if (_navigator.Current is TreeViewItem item)
         {
             item.ActivateFromOwner(ActivationCause.Keyboard);
+
+            if (!OwnsInvokedItem(item))
+            {
+                return true;
+            }
+
             _ = ApplyInputSelection(item, modifiers);
 
             // An incidental modifier still applies selection above, but does not commit an
             // invocation the user did not intend.
-            if (modifiers.IsActivationEligible())
+            if (modifiers.IsActivationEligible() && OwnsInvokedItem(item))
             {
                 ItemInvoked?.Invoke(this, new TreeViewItemInvokedEventArgs(item, ActivationCause.Keyboard));
             }
@@ -933,6 +951,9 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
 
         return false;
     }
+
+    private bool OwnsInvokedItem(TreeViewItem item) =>
+        !item.IsDisposed && ReferenceEquals(item.FindTreeView(), this);
 
     private void CommitCurrent(ControlBase current, Modifiers modifiers)
     {
@@ -1043,9 +1064,14 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
             return false;
         }
 
+        _ = selection.RemoveWhere(item => item.IsDisposed || !_ownedItemsSet.Contains(item));
+
         foreach (var item in _selectedItems)
         {
-            item.CommitSelection(selection.Contains(item));
+            if (!item.IsDisposed)
+            {
+                item.CommitSelection(selection.Contains(item));
+            }
         }
 
         foreach (var item in selection)

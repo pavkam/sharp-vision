@@ -692,15 +692,36 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         var generation = ++_loadGeneration;
         var cancellation = new CancellationTokenSource();
         _loadCancellation = cancellation;
-        SetLoading(true);
-        SetStatus(LoadingText);
         var dispatcher = Dispatcher;
-        var task = FileSystem.GetEntriesAsync(
-            directory,
-            _filters[FilterIndex],
-            ShowHidden,
-            cancellation.Token);
-        LastLoadObservation = ObserveLoadAsync(task, dispatcher, directory, generation, cancellation.Token);
+
+        try
+        {
+            SetLoading(true);
+
+            if (!IsCurrentLoad(generation, cancellation, dispatcher))
+            {
+                return;
+            }
+
+            SetStatus(LoadingText);
+
+            if (!IsCurrentLoad(generation, cancellation, dispatcher))
+            {
+                return;
+            }
+
+            var task = FileSystem.GetEntriesAsync(
+                directory,
+                _filters[FilterIndex],
+                ShowHidden,
+                cancellation.Token);
+            LastLoadObservation = ObserveLoadAsync(task, dispatcher, directory, generation, cancellation.Token);
+        }
+        catch
+        {
+            AbortStartingLoad(generation, cancellation);
+            throw;
+        }
     }
 
     /// <summary>
@@ -818,10 +839,34 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
 
         _upButton.IsEnabled = FileSystem.GetParent(directory) is not null;
         OnLoadCommitted(_entries);
+
+        if (!IsCurrentLoad(generation, _loadCancellation, Dispatcher))
+        {
+            return;
+        }
+
+        ReleaseCompletedLoad();
         SetLoading(false);
+
+        if (generation != _loadGeneration || IsDisposed || Dispatcher is null)
+        {
+            return;
+        }
+
         SnapshotStatus = CountStatus(_entries);
         SetStatus(pathDisplayed ? SnapshotStatus : "Cannot display this directory's name. " + SnapshotStatus);
+
+        if (generation != _loadGeneration || IsDisposed || Dispatcher is null)
+        {
+            return;
+        }
+
         NotifyPropertyChanged(nameof(CurrentDirectory), InvalidationImpact.None);
+
+        if (generation != _loadGeneration || IsDisposed || Dispatcher is null)
+        {
+            return;
+        }
 
         if (_initialFocusPending)
         {
@@ -832,8 +877,6 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
                 _ = FocusOwner?.Focus(GetInitialLoadFocusTarget());
             }
         }
-
-        ReleaseCompletedLoad();
     }
 
     private void CommitLoadFailure(Exception exception, long generation)
@@ -843,9 +886,40 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
             return;
         }
 
-        SetLoading(false);
-        SetStatus($"Cannot open directory: {exception.Message}");
         ReleaseCompletedLoad();
+        SetLoading(false);
+
+        if (generation != _loadGeneration || IsDisposed || Dispatcher is null)
+        {
+            return;
+        }
+
+        SetStatus($"Cannot open directory: {exception.Message}");
+    }
+
+    private bool IsCurrentLoad(
+        long generation,
+        CancellationTokenSource? cancellation,
+        Dispatcher? dispatcher) =>
+        generation == _loadGeneration &&
+        cancellation is not null &&
+        ReferenceEquals(_loadCancellation, cancellation) &&
+        !IsDisposed &&
+        dispatcher is not null &&
+        ReferenceEquals(Dispatcher, dispatcher);
+
+    private void AbortStartingLoad(long generation, CancellationTokenSource cancellation)
+    {
+        if (generation != _loadGeneration || !ReferenceEquals(_loadCancellation, cancellation))
+        {
+            return;
+        }
+
+        _loadGeneration++;
+        _loadCancellation = null;
+        IsLoading = false;
+        cancellation.Cancel();
+        cancellation.Dispose();
     }
 
     private void CancelLoad()

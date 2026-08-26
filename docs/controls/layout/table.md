@@ -210,7 +210,10 @@ completely untouched.
 Off-dispatcher `Changed` notifications are marshalled to the table's exact
 dispatcher attachment generation. Detaching or migrating the table before a
 queued notification runs discards that obsolete callback; it cannot reload a
-controller through the previous dispatcher.
+controller through the previous dispatcher. Fetch success, cancellation, and
+failure completions use the same attachment token and pending-range membership,
+so a failed request removed during migration cannot be resurrected or retried by
+the former dispatcher.
 
 A progressive table addresses rows by zero-based logical `int` index and by a
 caller-supplied stable key (`ITableDataSource<T>.GetKey`), independent of
@@ -281,11 +284,13 @@ active cell is an editable `TextInput`; held-key repeats neither invoke nor
 reopen editing. While editing, the initial `Enter` press commits, `Escape`
 restores the original text, and `Tab` commits and then moves to the next cell. A
 `TableColumn` marked `isReadOnly` and a read-only `TextInput` both refuse
-editing. `Ctrl+A` selects every row or cell when the active selection mode
-supports it and the stroke matches the exact lock-normalized Control command. An
-ancestor that handles preview key or pointer input suppresses all Table
-defaults; deliberate handled-events observers still receive the record. These
-rules follow the shared
+editing. Edit completion publishes `IsEditing` after clearing the transaction;
+if that callback removes, clears, replaces, or disposes the edited cell, the
+completed outer operation does not reactivate the obsolete row. `Ctrl+A` selects
+every row or cell when the active selection mode supports it and the stroke
+matches the exact lock-normalized Control command. An ancestor that handles
+preview key or pointer input suppresses all Table defaults; deliberate
+handled-events observers still receive the record. These rules follow the shared
 [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy)
 and routed handled-state contract.
 

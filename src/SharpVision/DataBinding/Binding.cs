@@ -26,6 +26,8 @@ public sealed class Binding: IDisposable
     private bool _refreshSourceAfterTarget;
     private bool _sourceDirty;
     private bool _sourceScheduled;
+    private Dispatcher? _scheduledDispatcher;
+    private long _scheduledAttachmentVersion;
     private CollectionObserver? _collectionObserver;
     private PropertyPathObserver? _sourceObserver;
     private PropertyChangedEventHandler? _targetHandler;
@@ -141,6 +143,19 @@ public sealed class Binding: IDisposable
         if (_refreshAfterItems && !IsDisposed)
         {
             ApplySourceToTarget();
+        }
+    }
+
+    /// <summary>Schedules any source notification retained while the target was detached.</summary>
+    internal void OnTargetAttached() => ScheduleSourceUpdate();
+
+    /// <summary>Invalidates scheduling state owned by the target's former dispatcher attachment.</summary>
+    internal void OnTargetDetached()
+    {
+        lock (_gate)
+        {
+            _sourceScheduled = false;
+            _scheduledDispatcher = null;
         }
     }
 
@@ -349,9 +364,17 @@ public sealed class Binding: IDisposable
         }
     }
 
-    private void DrainSourceUpdates(Dispatcher dispatcher)
+    private void DrainSourceUpdates(Dispatcher dispatcher, long attachmentVersion)
     {
         Debug.Assert(dispatcher.CheckAccess(), "A posted binding update runs on its target dispatcher.");
+
+        if (!ReferenceEquals(Target.Dispatcher, dispatcher) ||
+            Target.BindingAttachmentVersion != attachmentVersion)
+        {
+            ClearScheduled(dispatcher, attachmentVersion);
+            ScheduleSourceUpdate();
+            return;
+        }
 
         try
         {
@@ -361,7 +384,7 @@ public sealed class Binding: IDisposable
                 {
                     if (IsDisposed)
                     {
-                        _sourceScheduled = false;
+                        ClearScheduledCore();
                         return;
                     }
 
@@ -370,11 +393,19 @@ public sealed class Binding: IDisposable
 
                 ApplySourceToTarget();
 
+                if (!ReferenceEquals(Target.Dispatcher, dispatcher) ||
+                    Target.BindingAttachmentVersion != attachmentVersion)
+                {
+                    ClearScheduled(dispatcher, attachmentVersion);
+                    ScheduleSourceUpdate();
+                    return;
+                }
+
                 lock (_gate)
                 {
                     if (!_sourceDirty)
                     {
-                        _sourceScheduled = false;
+                        ClearScheduledCore();
                         return;
                     }
                 }
@@ -382,11 +413,7 @@ public sealed class Binding: IDisposable
         }
         catch
         {
-            lock (_gate)
-            {
-                _sourceScheduled = false;
-            }
-
+            ClearScheduled(dispatcher, attachmentVersion);
             throw;
         }
 
@@ -401,36 +428,21 @@ public sealed class Binding: IDisposable
         // source change is not left believing a drain is already pending forever.
         try
         {
-            dispatcher.Post(() => DrainSourceUpdates(dispatcher));
+            dispatcher.Post(() => DrainSourceUpdates(dispatcher, attachmentVersion));
         }
         catch (ObjectDisposedException)
         {
-            lock (_gate)
-            {
-                _sourceScheduled = false;
-            }
+            ClearScheduled(dispatcher, attachmentVersion);
         }
         catch (InvalidOperationException)
         {
-            lock (_gate)
-            {
-                _sourceScheduled = false;
-            }
-
+            ClearScheduled(dispatcher, attachmentVersion);
             throw;
         }
     }
 
     private void OnSourceInvalidated()
     {
-        var dispatcher = Target.Dispatcher;
-
-        if (dispatcher is null || dispatcher.CheckAccess())
-        {
-            ApplySourceToTarget();
-            return;
-        }
-
         lock (_gate)
         {
             if (IsDisposed)
@@ -439,13 +451,49 @@ public sealed class Binding: IDisposable
             }
 
             _sourceDirty = true;
+        }
 
-            if (_sourceScheduled)
+        if (Target.Dispatcher is null && Target.BindingAttachmentVersion == 0)
+        {
+            lock (_gate)
+            {
+                _sourceDirty = false;
+            }
+
+            ApplySourceToTarget();
+            return;
+        }
+
+        ScheduleSourceUpdate();
+    }
+
+    private void ScheduleSourceUpdate()
+    {
+        var dispatcher = Target.Dispatcher;
+
+        if (dispatcher is null)
+        {
+            return;
+        }
+
+        var attachmentVersion = Target.BindingAttachmentVersion;
+
+        lock (_gate)
+        {
+            if (IsDisposed || !_sourceDirty || _sourceScheduled)
             {
                 return;
             }
 
             _sourceScheduled = true;
+            _scheduledDispatcher = dispatcher;
+            _scheduledAttachmentVersion = attachmentVersion;
+        }
+
+        if (dispatcher.CheckAccess())
+        {
+            DrainSourceUpdates(dispatcher, attachmentVersion);
+            return;
         }
 
         // Unlike DrainSourceUpdates' own self-repost above, this call runs from an arbitrary
@@ -461,14 +509,26 @@ public sealed class Binding: IDisposable
         // Application.ObserveRenderAsync/ObserveOutOfBandAsync already bridge.
         PostOrReportFault(
             dispatcher,
-            () => DrainSourceUpdates(dispatcher),
-            () =>
+            () => DrainSourceUpdates(dispatcher, attachmentVersion),
+            () => ClearScheduled(dispatcher, attachmentVersion));
+    }
+
+    private void ClearScheduled(Dispatcher dispatcher, long attachmentVersion)
+    {
+        lock (_gate)
+        {
+            if (ReferenceEquals(_scheduledDispatcher, dispatcher) &&
+                _scheduledAttachmentVersion == attachmentVersion)
             {
-                lock (_gate)
-                {
-                    _sourceScheduled = false;
-                }
-            });
+                ClearScheduledCore();
+            }
+        }
+    }
+
+    private void ClearScheduledCore()
+    {
+        _sourceScheduled = false;
+        _scheduledDispatcher = null;
     }
 
     /// <summary>Posts <paramref name="action"/> as the source-to-target drain reached from a

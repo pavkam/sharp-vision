@@ -212,6 +212,13 @@ generation number. When a request completes, it posts an immutable entry
 snapshot to the dispatcher; completions that are cancelled, stale, detached, or
 disposed can no longer touch any control.
 
+Loading-state publication is a transaction boundary. A start observer that
+throws releases the unstarted request and restores `IsLoading`; an observer that
+detaches, closes, or disposes the dialog stops the start before filesystem work.
+Success and recoverable-failure completions release their request before
+publishing `IsLoading = false`, then revalidate the dialog before status, focus,
+or retained-child work continues.
+
 Every committed snapshot is ordered directories first, then by name using
 case-insensitive ordinal comparison with an ordinal tie-breaker. The dialog
 applies this rule at its own boundary in addition to the local filesystem

@@ -1141,6 +1141,67 @@ public sealed partial class TreeViewTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies item and selection callbacks can invalidate the activated item without a
+    /// later selection or tree-level invocation publishing that obsolete ownership.</summary>
+    [Theory]
+    [InlineData("item", false)]
+    [InlineData("item", true)]
+    [InlineData("changing", false)]
+    [InlineData("changing", true)]
+    [InlineData("changed", false)]
+    [InlineData("changed", true)]
+    public async Task Invocation_WhenCallbackInvalidatesItem_StopsBeforeTreeEventAsync(
+        string callback,
+        bool dispose)
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var tree = new TreeView();
+            var item = new TreeViewItem { Header = "A" };
+            tree.Items.Add(item);
+            tree.Attach(dispatcher);
+            using FocusManager focus = new(tree);
+            focus.Focus(tree).ShouldBeTrue();
+            var treeInvocations = 0;
+            tree.ItemInvoked += (_, _) => treeInvocations++;
+            Action invalidate = dispose
+                ? item.Dispose
+                : () =>
+                {
+                    if (ReferenceEquals(item.FindTreeView(), tree))
+                    {
+                        tree.Items.Remove(item).ShouldBeTrue();
+                    }
+                };
+
+            if (callback == "item")
+            {
+                item.Invoked += (_, _) => invalidate();
+                var enter = new KeyEventArgs(new Stroke(
+                    Code.Enter, default, nativeCode: 0, Modifiers.None, KeyAction.Press));
+                _ = Router.Route(tree, Events.Key, enter);
+            }
+            else
+            {
+                if (callback == "changing")
+                {
+                    tree.SelectionChanging += (_, _) => invalidate();
+                }
+                else
+                {
+                    tree.SelectionChanged += (_, _) => invalidate();
+                }
+
+                tree.NotifyItemInvoked(item, ActivationCause.Pointer);
+            }
+
+            treeInvocations.ShouldBe(0);
+            tree.Dispose();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies Left arrow collapses an expanded parent or navigates to the parent item.</summary>
     [Fact]
     public async Task Dispatch_WhenLeftKeyPressed_CollapsesOrNavigatesToParentAsync()

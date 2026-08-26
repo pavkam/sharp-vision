@@ -147,6 +147,14 @@ marks the binding dirty and posts at most one callback. Notifications coalesce,
 and the callback reads the latest complete path value instead of replaying
 intermediate values.
 
+A queued callback is bound to the target's exact dispatcher attachment. If the
+target detaches or migrates before it runs, the old callback is inert and the
+dirty latest value waits for or reschedules through the current attachment. A
+worker notification received while a previously attached target is detached
+never writes that target from the worker thread; reattachment performs the
+catch-up synchronization. A target that has never been attached retains the
+ordinary synchronous detached-control behavior.
+
 A notification that arrives while the callback is executing requests one
 additional latest-value pass. Sustained publication yields through another
 single callback each time. A worker-thread notification that finds the
@@ -159,9 +167,9 @@ or a target dispatcher that is genuinely disposed - drops the pending update and
 clears the scheduled state, so a later, unsaturated notification can still
 schedule. Binding retains no unbounded event history.
 
-Detached targets update synchronously; concurrent mutation of a single detached
-control remains unsupported. Explicitly disposing an attached binding is
-dispatcher-affine.
+Never-attached targets update synchronously; concurrent mutation of a single
+detached control remains unsupported. Explicitly disposing an attached binding
+is dispatcher-affine.
 
 Responsiveness is held to a concrete bar: 10,000 worker notifications sent while
 the dispatcher is busy result in one latest target assignment, and the same

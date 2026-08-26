@@ -628,6 +628,58 @@ public sealed class TableDataControllerSurfaceTests
         await previousDispatcher.InvokeAsync(previousRoot.Dispose, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a failed fetch queued on a former dispatcher cannot resurrect its removed
+    /// pending range or schedule a retry after the table migrates to a new attachment.</summary>
+    [Fact]
+    public async Task FetchFailure_WhenTableMigratesBeforeQueuedCallback_IgnoresPreviousDispatcherAsync()
+    {
+        await using var previousDispatcher = Dispatcher.Start();
+        await using var currentDispatcher = Dispatcher.Start();
+        var table = CreateHost();
+        var source = CreateSource(20);
+        source.Gate();
+        source.HonorCancellation = false;
+        var previousRoot = new Overlay { Children = { table } };
+        var currentRoot = new Overlay();
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var detached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim failed = new();
+        using ManualResetEventSlim release = new();
+        previousDispatcher.Post(() =>
+        {
+            previousRoot.Attach(previousDispatcher);
+            table.SetDataSource(source, BuildRow, 1);
+            ready.SetResult();
+            failed.Wait();
+            previousRoot.Children.Remove(table).ShouldBeTrue();
+            detached.SetResult();
+            release.Wait();
+        });
+        await ready.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var request = source.Requests.ShouldHaveSingleItem();
+
+        source.Fail(request.StartIndex);
+        failed.Set();
+        await detached.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var pendingBeforeStaleCallback = await currentDispatcher.InvokeAsync(() =>
+        {
+            currentRoot.Children.Add(table);
+            currentRoot.Attach(currentDispatcher);
+            return table.ProgressiveController!.PendingCount;
+        }, TestContext.Current.CancellationToken);
+
+        release.Set();
+        await previousDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        await currentDispatcher.InvokeAsync(() =>
+        {
+            table.ProgressiveController!.PendingCount.ShouldBe(pendingBeforeStaleCallback);
+            currentRoot.Dispose();
+        }, TestContext.Current.CancellationToken);
+        previousDispatcher.FatalException.ShouldBeNull();
+        await previousDispatcher.InvokeAsync(previousRoot.Dispose, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies the public <see cref="Table.Reload"/> path actually repaints an
     /// already-realized row whose backing item changed at the same key/index and scroll position -
     /// not only placeholder/error cells - proving the fix must touch <c>Reload()</c>'s own

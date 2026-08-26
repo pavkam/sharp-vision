@@ -719,7 +719,12 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         edit.Editor.Submitted -= OnEditorSubmitted;
         _edit = null;
         NotifyPropertyChanged(nameof(IsEditing), InvalidationImpact.None);
-        SetActive(edit.Row, edit.ColumnIndex);
+
+        if (!IsDisposed && !edit.Editor.IsDisposed && Rows.Contains(edit.Row))
+        {
+            SetActive(edit.Row, edit.ColumnIndex);
+        }
+
         return true;
     }
 

@@ -610,13 +610,21 @@ internal sealed class TableDataController: IDisposable
         try
         {
             var dispatcher = _owner.Dispatcher;
+            var attachmentVersion = _owner.ProgressiveAttachmentVersion;
 
             if (dispatcher is null)
             {
                 return;
             }
 
-            await dispatcher.InvokeAsync(action).ConfigureAwait(false);
+            await dispatcher.InvokeAsync(() =>
+            {
+                if (ReferenceEquals(_owner.Dispatcher, dispatcher) &&
+                    _owner.ProgressiveAttachmentVersion == attachmentVersion)
+                {
+                    action();
+                }
+            }).ConfigureAwait(false);
         }
         catch (ObjectDisposedException)
         {
@@ -636,7 +644,10 @@ internal sealed class TableDataController: IDisposable
             return;
         }
 
-        _ = _pending.Remove(range);
+        if (!_pending.Remove(range))
+        {
+            return;
+        }
         UpdateLoadState();
     }
 
@@ -680,7 +691,7 @@ internal sealed class TableDataController: IDisposable
 
         if (failure is not null)
         {
-            OnFetchFailed(range, request, failure);
+            OnFetchFailed(range, request, failure, rangeAlreadyRemoved: true);
             return;
         }
 
@@ -720,14 +731,21 @@ internal sealed class TableDataController: IDisposable
         RewindowFollowingCommit();
     }
 
-    private void OnFetchFailed(PendingRange range, TableDataRequest request, Exception failure)
+    private void OnFetchFailed(
+        PendingRange range,
+        TableDataRequest request,
+        Exception failure,
+        bool rangeAlreadyRemoved = false)
     {
         if (_disposed)
         {
             return;
         }
 
-        _ = _pending.Remove(range);
+        if (!rangeAlreadyRemoved && !_pending.Remove(range))
+        {
+            return;
+        }
 
         if (range.Generation != _generation)
         {

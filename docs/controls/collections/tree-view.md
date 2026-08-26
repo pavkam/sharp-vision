@@ -131,7 +131,10 @@ refusing it would leave the control in a state its own configuration forbids.
 Each `TreeViewItem` preserves its inherited routed key and pointer events before
 applying row activation. A handler that consumes the event suppresses the
 built-in row action. Every `ItemInvoked` event reports one defined keyboard,
-pointer, or programmatic activation cause.
+pointer, or programmatic activation cause. Item invocation and selection
+callbacks may remove or dispose the candidate; keyboard and pointer activation
+revalidate ownership after each callback and never publish a tree-level
+invocation for an obsolete item.
 
 Hierarchy depth is caller-controlled and has no fixed limit. Ownership
 propagation, cycle detection, flattening, expand and collapse, item collection,

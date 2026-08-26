@@ -78,6 +78,10 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// </remarks>
     private protected long AttachmentVersion { get; private set; }
 
+    /// <summary>Gets the committed dispatcher-attachment generation used by bindings to reject
+    /// queued source work captured under an earlier owner.</summary>
+    internal long BindingAttachmentVersion => AttachmentVersion;
+
     /// <summary>Gets the attached dispatcher's clock, or the system clock while detached.</summary>
     private protected TimeProvider TimeProvider => Dispatcher?.TimeProvider ?? TimeProvider.System;
 
@@ -4023,6 +4027,11 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             ExceptionAggregation.Capture(observer.OnDispatcherAttached, ref failure);
         }
 
+        if (_bindingRegistry is { } bindingRegistry)
+        {
+            ExceptionAggregation.Capture(bindingRegistry.OnDispatcherAttached, ref failure);
+        }
+
         ExceptionAggregation.Capture(OnAttached, ref failure);
         failure?.Throw();
     }
@@ -4035,6 +4044,11 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         if (this is IDispatcherAttachmentObserver observer)
         {
             ExceptionAggregation.Capture(observer.OnDispatcherDetached, ref failure);
+        }
+
+        if (_bindingRegistry is { } bindingRegistry)
+        {
+            ExceptionAggregation.Capture(bindingRegistry.OnDispatcherDetached, ref failure);
         }
 
         ExceptionAggregation.Capture(OnDetached, ref failure);

@@ -38,6 +38,24 @@ internal sealed class ControlBindingRegistry
         _ = _bindings.Remove(binding);
     }
 
+    /// <summary>Reschedules dirty source updates after the target commits a dispatcher attachment.</summary>
+    public void OnDispatcherAttached()
+    {
+        foreach (var binding in _bindings.ToArray())
+        {
+            binding.OnTargetAttached();
+        }
+    }
+
+    /// <summary>Invalidates queued source updates captured under the target's former dispatcher.</summary>
+    public void OnDispatcherDetached()
+    {
+        foreach (var binding in _bindings.ToArray())
+        {
+            binding.OnTargetDetached();
+        }
+    }
+
     /// <summary>Releases every binding while retaining the first cleanup failure.</summary>
     public void DisposeAll()
     {

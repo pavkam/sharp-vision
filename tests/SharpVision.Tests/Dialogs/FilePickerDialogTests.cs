@@ -1484,6 +1484,174 @@ public sealed class FilePickerDialogTests
         await surface.UpdateAsync(static () => { }, "settle deferred reload");
     }
 
+    /// <summary>Verifies start observers may detach or dispose the dialog before filesystem work
+    /// exists without letting the abandoned start transaction continue into retained children.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LoadStart_WhenLoadingObserverInvalidatesDialog_DoesNotStartRequestAsync(bool dispose)
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-start-invalidated"));
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory);
+        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
+        await dispatcher.InvokeAsync(() => dialog.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        for (var attempt = 0; attempt < 10 && dialog.IsLoading; attempt++)
+        {
+            await Task.Delay(10, TestContext.Current.CancellationToken);
+            await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        }
+
+        dialog.IsLoading.ShouldBeFalse();
+        var previousObservation = dialog.LastLoadObservation;
+        _ = source.DeferNext(directory);
+        var hidden = OwnedTree.Find<CheckBox>(dialog).ShouldNotBeNull();
+        dialog.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(FilePickerDialog.IsLoading) && dialog.IsLoading)
+            {
+                if (dispose)
+                {
+                    dialog.Dispose();
+                }
+                else
+                {
+                    dialog.Detach();
+                }
+            }
+        };
+
+        await dispatcher.InvokeAsync(
+            () => { hidden.IsChecked = !hidden.IsChecked; },
+            TestContext.Current.CancellationToken);
+
+        dialog.LastLoadObservation.ShouldBeSameAs(previousObservation);
+
+        if (!dialog.IsDisposed)
+        {
+            await dispatcher.InvokeAsync(dialog.Dispose, TestContext.Current.CancellationToken);
+        }
+    }
+
+    /// <summary>Verifies a throwing start observer rewinds loading state and releases the request
+    /// transaction before preserving the subscriber's original exception.</summary>
+    [Fact]
+    public async Task LoadStart_WhenLoadingObserverThrows_DoesNotStrandLoadingStateAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-start-throws"));
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory);
+        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
+        dialog.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(FilePickerDialog.IsLoading) && dialog.IsLoading)
+            {
+                throw new InvalidOperationException("loading observer failed");
+            }
+        };
+
+        var failure = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await dispatcher.InvokeAsync(() => dialog.Attach(dispatcher), TestContext.Current.CancellationToken));
+
+        failure.Message.ShouldBe("loading observer failed");
+        dialog.IsLoading.ShouldBeFalse();
+        dialog.LastLoadObservation.ShouldBeNull();
+        await dispatcher.InvokeAsync(dialog.Dispose, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies both successful and recoverable failed completions stop immediately when
+    /// the IsLoading observer detaches or disposes their dialog.</summary>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task LoadCompletion_WhenLoadingObserverInvalidatesDialog_StopsSafelyAsync(
+        bool fail,
+        bool dispose)
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-completion-invalidated"));
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory);
+        var completion = source.DeferNext(directory);
+        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
+        var invalidated = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        dialog.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName != nameof(FilePickerDialog.IsLoading) || dialog.IsLoading)
+            {
+                return;
+            }
+
+            if (dispose)
+            {
+                dialog.Dispose();
+            }
+            else
+            {
+                dialog.Detach();
+            }
+
+            _ = invalidated.TrySetResult();
+        };
+        await dispatcher.InvokeAsync(() => dialog.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        _ = fail
+            ? completion.TrySetException(new UnauthorizedAccessException("blocked"))
+            : completion.TrySetResult([]);
+
+        await invalidated.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        dispatcher.FatalException.ShouldBeNull();
+
+        if (!dialog.IsDisposed)
+        {
+            await dispatcher.InvokeAsync(dialog.Dispose, TestContext.Current.CancellationToken);
+        }
+    }
+
+    /// <summary>Verifies success and failure completions release their request and commit
+    /// IsLoading=false before preserving a completion observer's thrown exception.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LoadCompletion_WhenLoadingObserverThrows_DoesNotStrandLoadingStateAsync(bool fail)
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-completion-throws"));
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory);
+        var completion = source.DeferNext(directory);
+        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
+        var unhandled = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+        dispatcher.UnhandledException += (_, eventArgs) =>
+        {
+            eventArgs.IsHandled = true;
+            _ = unhandled.TrySetResult(eventArgs.Exception);
+        };
+        dialog.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(FilePickerDialog.IsLoading) && !dialog.IsLoading)
+            {
+                throw new InvalidOperationException("completion observer failed");
+            }
+        };
+        await dispatcher.InvokeAsync(() => dialog.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        _ = fail
+            ? completion.TrySetException(new UnauthorizedAccessException("blocked"))
+            : completion.TrySetResult([]);
+        var failure = await unhandled.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        failure.Message.ShouldBe("completion observer failed");
+        dialog.IsLoading.ShouldBeFalse();
+        await dispatcher.InvokeAsync(dialog.Dispose, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a custom folder/file count formatter builds the Status text committed after
     /// a successful directory load, in place of the default "N folders · M files" wording.</summary>
     [Fact]

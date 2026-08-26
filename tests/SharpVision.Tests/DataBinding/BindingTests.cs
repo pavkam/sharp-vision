@@ -707,6 +707,81 @@ public sealed partial class BindingTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a source drain captured on one dispatcher is inert after migration while
+    /// the dirty latest value catches up through the newly committed attachment.</summary>
+    [Fact]
+    public async Task Source_WhenQueuedTargetMigrates_ReschedulesOnCurrentDispatcherAsync()
+    {
+        await using var previousDispatcher = Dispatcher.Start();
+        await using var currentDispatcher = Dispatcher.Start();
+        var model = new BindingModel { Name = "Before" };
+        var target = new ControlText();
+        var previousRoot = new Overlay { Children = { target } };
+        var currentRoot = new Overlay();
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var detached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim changed = new();
+        using ManualResetEventSlim release = new();
+        previousDispatcher.Post(() =>
+        {
+            previousRoot.Attach(previousDispatcher);
+            _ = target.Bind(model, source => source.Name);
+            ready.SetResult();
+            changed.Wait();
+            previousRoot.Children.Remove(target).ShouldBeTrue();
+            detached.SetResult();
+            release.Wait();
+        });
+        await ready.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        model.Name = "After";
+        changed.Set();
+        await detached.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await currentDispatcher.InvokeAsync(() =>
+        {
+            currentRoot.Children.Add(target);
+            currentRoot.Attach(currentDispatcher);
+            target.Content.ShouldBe("After");
+        }, TestContext.Current.CancellationToken);
+
+        release.Set();
+        await previousDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        previousDispatcher.FatalException.ShouldBeNull();
+        await currentDispatcher.InvokeAsync(currentRoot.Dispose, TestContext.Current.CancellationToken);
+        await previousDispatcher.InvokeAsync(previousRoot.Dispose, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies worker notifications remain dirty while detached and never mutate the
+    /// target until a new dispatcher attachment owns the catch-up assignment.</summary>
+    [Fact]
+    public async Task Source_WhenChangedOnWorkerWhileDetached_WaitsForReattachmentAsync()
+    {
+        await using var previousDispatcher = Dispatcher.Start();
+        await using var currentDispatcher = Dispatcher.Start();
+        var model = new BindingModel { Name = "Before" };
+        var target = new ControlText();
+        var previousRoot = new Overlay { Children = { target } };
+        var currentRoot = new Overlay();
+        await previousDispatcher.InvokeAsync(() =>
+        {
+            previousRoot.Attach(previousDispatcher);
+            _ = target.Bind(model, source => source.Name);
+            previousRoot.Children.Remove(target).ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+
+        await Task.Run(() => { model.Name = "After"; }, TestContext.Current.CancellationToken);
+
+        target.Content.ShouldBe("Before");
+        await currentDispatcher.InvokeAsync(() =>
+        {
+            currentRoot.Children.Add(target);
+            currentRoot.Attach(currentDispatcher);
+            target.Content.ShouldBe("After");
+            currentRoot.Dispose();
+        }, TestContext.Current.CancellationToken);
+        await previousDispatcher.InvokeAsync(previousRoot.Dispose, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a source change that races the owning dispatcher stopping is dropped
     /// instead of throwing into the thread that mutated the source model.</summary>
     [Fact]

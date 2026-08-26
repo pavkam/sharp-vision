@@ -187,7 +187,11 @@ caller's responsibility. Enumeration runs away from the dispatcher and posts
 only the newest immutable snapshot back to it. Attached properties, controls,
 focus, layout, completion, and the overwrite-confirmation continuation are
 dispatcher-affine. A continuation captured before reattachment is ignored rather
-than posting completion through its previous dispatcher.
+than posting completion through its previous dispatcher. Directory-load start
+and completion observers use the same transactional loading boundary as the file
+picker: thrown start callbacks restore idle state, and detach, close, or
+disposal callbacks stop later filesystem, status, focus, and retained-child
+work.
 
 ## Theming
 
