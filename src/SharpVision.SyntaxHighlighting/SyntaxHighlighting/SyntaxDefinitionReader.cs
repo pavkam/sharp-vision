@@ -85,12 +85,12 @@ public static class SyntaxDefinitionReader
             return contexts.Count == 0
                 ? throw new FormatException("A syntax definition must declare at least one <context>.")
                 : new SyntaxDefinition(
-                    name: RequiredAttribute(language, "name"),
+                    name: RequiredNonWhitespaceAttribute(language, "name"),
                     alternativeNames: SplitList(Attribute(language, "alternativeNames")),
                     section: RequiredAttribute(language, "section"),
                     extensions: SplitList(RequiredAttribute(language, "extensions")),
                     mimeTypes: SplitList(Attribute(language, "mimetype")),
-                    version: ParseRequiredInt(language, "version"),
+                    version: ParseRequiredNonNegativeInt(language, "version"),
                     kateVersion: kateVersion,
                     priority: TryParseInt(Attribute(language, "priority")),
                     author: Attribute(language, "author") ?? string.Empty,
@@ -143,7 +143,7 @@ public static class SyntaxDefinitionReader
 
         foreach (var list in highlighting.Elements("list"))
         {
-            var name = RequiredAttribute(list, "name");
+            var name = RequiredNonWhitespaceAttribute(list, "name");
             var children = new List<(bool IsInclude, string Value)>();
 
             foreach (var child in list.Elements())
@@ -248,7 +248,7 @@ public static class SyntaxDefinitionReader
 
         foreach (var itemData in itemDatas.Elements("itemData"))
         {
-            var name = RequiredAttribute(itemData, "name");
+            var name = RequiredNonWhitespaceAttribute(itemData, "name");
             var defaultStyle = ParseDefaultStyle(RequiredAttribute(itemData, "defStyleNum"));
             result[name] = new SyntaxItemData(name, defaultStyle);
         }
@@ -303,7 +303,7 @@ public static class SyntaxDefinitionReader
 
         foreach (var context in contextsElement.Elements("context"))
         {
-            var name = RequiredAttribute(context, "name");
+            var name = RequiredNonWhitespaceAttribute(context, "name");
             var attributeName = ResolveAttributeName(context, itemDataSet, name);
             var lineEndContext = SyntaxContextSwitch.Parse(Attribute(context, "lineEndContext"));
             var lineEmptyAttribute = Attribute(context, "lineEmptyContext");
@@ -517,8 +517,10 @@ public static class SyntaxDefinitionReader
             comments.Add(
                 new SyntaxCommentDefinition(
                     kind,
-                    RequiredAttribute(comment, "start"),
-                    Attribute(comment, "end"),
+                    RequiredNonWhitespaceAttribute(comment, "start"),
+                    kind == SyntaxCommentKind.MultiLine
+                        ? RequiredNonWhitespaceAttribute(comment, "end")
+                        : Attribute(comment, "end"),
                     Attribute(comment, "region"),
                     Attribute(comment, "position") == "afterwhitespace"));
         }
@@ -554,6 +556,14 @@ public static class SyntaxDefinitionReader
     private static string RequiredAttribute(XElement element, string name) =>
         Attribute(element, name) ?? throw new FormatException($"'{element.Name.LocalName}' is missing required attribute '{name}'.");
 
+    private static string RequiredNonWhitespaceAttribute(XElement element, string name)
+    {
+        var value = RequiredAttribute(element, name);
+        return !string.IsNullOrWhiteSpace(value)
+            ? value
+            : throw new FormatException($"'{element.Name.LocalName}' attribute '{name}' must not be empty or whitespace.");
+    }
+
     private static char RequiredChar(XElement element, string name)
     {
         var value = RequiredAttribute(element, name);
@@ -586,6 +596,14 @@ public static class SyntaxDefinitionReader
         return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
             ? parsed
             : throw new FormatException($"'{element.Name.LocalName}' attribute '{name}' is not a valid integer: '{value}'.");
+    }
+
+    private static int ParseRequiredNonNegativeInt(XElement element, string name)
+    {
+        var value = ParseRequiredInt(element, name);
+        return value >= 0
+            ? value
+            : throw new FormatException($"'{element.Name.LocalName}' attribute '{name}' must not be negative.");
     }
 
     private static int? TryParseInt(string? value) =>

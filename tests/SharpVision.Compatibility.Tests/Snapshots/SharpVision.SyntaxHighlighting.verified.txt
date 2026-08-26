@@ -255,6 +255,7 @@ namespace SharpVision.SyntaxHighlighting
         public SharpVision.SyntaxHighlighting.SyntaxDefinition GetDefinition(string name) { }
         public SharpVision.SyntaxHighlighting.SyntaxGrammar GetGrammar(string name) { }
         public SharpVision.SyntaxHighlighting.SyntaxDefinitionInfo GetInfo(string name) { }
+        public SharpVision.SyntaxHighlighting.SyntaxDefinitionCatalog Overlay(SharpVision.SyntaxHighlighting.SyntaxDefinitionCatalog additions) { }
         public static SharpVision.SyntaxHighlighting.SyntaxDefinitionCatalog FromDirectory(string path) { }
     }
     public readonly struct SyntaxDefinitionInfo : System.IEquatable<SharpVision.SyntaxHighlighting.SyntaxDefinitionInfo>
@@ -310,6 +311,7 @@ namespace SharpVision.SyntaxHighlighting
     {
         public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxGrammarContext> Contexts { get; }
         public SharpVision.SyntaxHighlighting.SyntaxDefinition Definition { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxGrammarDiagnostic> Diagnostics { get; }
         public static SharpVision.SyntaxHighlighting.SyntaxGrammar Compile(SharpVision.SyntaxHighlighting.SyntaxDefinition definition, System.Func<string, SharpVision.SyntaxHighlighting.SyntaxDefinition?>? resolveDefinition = null) { }
     }
     public sealed class SyntaxGrammarContext
@@ -322,6 +324,18 @@ namespace SharpVision.SyntaxHighlighting
         public string Name { get; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxCompiledRule> Rules { get; }
         public bool StopEmptyLineContextSwitchLoop { get; }
+    }
+    public sealed class SyntaxGrammarDiagnostic
+    {
+        public SharpVision.SyntaxHighlighting.SyntaxGrammarDiagnosticKind Kind { get; }
+        public string Reference { get; }
+        public string SourceDefinition { get; }
+    }
+    public enum SyntaxGrammarDiagnosticKind
+    {
+        MissingDefinition = 0,
+        MissingContext = 1,
+        MissingKeywordList = 2,
     }
     public sealed class SyntaxHighlightResult
     {

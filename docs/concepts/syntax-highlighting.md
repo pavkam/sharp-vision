@@ -77,6 +77,10 @@ check or the escape-sequence grammar `HlCStringChar` and `HlCChar` share - was
 verified line-for-line against the upstream KSyntaxHighlighting C++ source, not
 inferred from the XML format documentation alone.
 
+`DetectIdentifier` evaluates Unicode scalars, accepting letters at the start and
+every decimal-digit, letter-number, or other-number category afterward;
+supplementary-plane continuations are never split into UTF-16 surrogate halves.
+
 Indentation folding measures tabs as one cell, matching `CodeView` rendering. If
 malformed look-ahead or fallthrough rules revisit one offset without consuming
 text, tokenization follows at most 1,024 context transitions before styling the
@@ -98,9 +102,10 @@ entry remains a reference type because no valid target exists without a grammar.
 A cross-definition reference (`IncludeRules`, a context switch, or a keyword
 `<include>`) that names a definition or context the current
 `SyntaxDefinitionCatalog` cannot resolve degrades to contributing nothing for
-that one reference, the same graceful behavior upstream KSyntaxHighlighting
-applies (a logged warning, not a load failure) - one missing embedded-language
-definition never breaks highlighting of everything else in a document.
+that one reference. The owning `SyntaxGrammar.Diagnostics` entry records the
+source definition, declared reference, and whether the missing target was a
+definition, context, or keyword list; safe degradation is therefore observable
+without process-global logging or an exception that discards the usable grammar.
 
 `RegExpr` supports PCRE2 constructs used by the shipped KDE corpus, including
 possessive quantifiers, subroutine and back references, branch-reset groups,
@@ -134,6 +139,18 @@ by this package. See the `SharpVision.SyntaxHighlighting` package's own
 `THIRD-PARTY-NOTICES.md` for the complete per-file list and
 `extern/kde-syntax-highlighting/README.md` for the full audit methodology.
 
+Licensing excludes dependencies used by 34 otherwise-redistributable roots, so
+those embedded grammars are explicitly partial: Cabal, COBOL, CoffeeScript, D2,
+Dockerfile, Earthfile, Elixir/EEx, Elixir/HEEx, Elvish, Expect, InnoSetup, Jam,
+Java Module, JavaScript React (JSX), Mermaid, Mustache/Handlebars (HTML), OORS,
+Org Mode, PIO Assembler, PureScript, QML, R documentation, Raku, RenPy, RPM
+Spec, SAS, SASS, SubRip Subtitles, TypeScript, TypeScript React (TSX), Web Video
+Text Tracks, XHTML, YARA, and Zsh. The corpus contract freezes both this set and
+its 192 missing-definition reference occurrences, while grammar diagnostics
+expose the exact loss to applications. Adding a dependency, changing a
+reference, or growing this partial set therefore requires an explicit inventory
+update.
+
 The 160th, C#, is a first-party definition original to SharpVision itself rather
 than redistributed from upstream: upstream's own C# definition carries no stated
 license at all and cannot be redistributed, so SharpVision wrote its own from
@@ -150,6 +167,12 @@ are parsed once from bounded streams during catalog construction; the catalog
 retains only their immutable definitions, not a second complete XML string. When
 several extension globs match, the greatest KDE `priority` wins, with the
 ordinal language name as a deterministic tie-break.
+
+`baseCatalog.Overlay(additions)` creates a new immutable combined catalog.
+Definitions in `additions` win exact-name collisions, while every other base
+definition remains available; the combined compiler resolves cross-definition
+references across both inputs. This lets an application supply one excluded
+dependency or private language without copying the complete embedded catalog.
 
 ## Theming
 

@@ -29,6 +29,49 @@ public sealed class SyntaxDefinitionReaderTests
         _ = Should.Throw<FormatException>(() => SyntaxDefinitionReader.Read(xml));
     }
 
+    /// <summary>Verifies an empty language identity is rejected before a catalog can key it.</summary>
+    [Fact]
+    public void Read_WhenLanguageNameIsWhitespace_ThrowsFormatException()
+    {
+        var xml = _minimal.Replace("name=\"Mini\"", "name=\" \"", StringComparison.Ordinal);
+
+        _ = Should.Throw<FormatException>(() => SyntaxDefinitionReader.Read(xml));
+    }
+
+    /// <summary>Verifies a negative definition revision is rejected before model construction.</summary>
+    [Fact]
+    public void Read_WhenVersionIsNegative_ThrowsFormatException()
+    {
+        var xml = _minimal.Replace("version=\"1\"", "version=\"-1\"", StringComparison.Ordinal);
+
+        _ = Should.Throw<FormatException>(() => SyntaxDefinitionReader.Read(xml));
+    }
+
+    /// <summary>Verifies names used as context, list, and item-data keys cannot be empty.</summary>
+    [Theory]
+    [InlineData("<context name=\"Normal\"", "<context name=\"\"")]
+    [InlineData("<list name=\"keywords\"", "<list name=\"\"")]
+    [InlineData("<itemData name=\"Normal Text\"", "<itemData name=\"\"")]
+    public void Read_WhenRequiredDeclarationNameIsEmpty_ThrowsFormatException(string original, string replacement)
+    {
+        var xml = _minimal.Replace(original, replacement, StringComparison.Ordinal);
+
+        _ = Should.Throw<FormatException>(() => SyntaxDefinitionReader.Read(xml));
+    }
+
+    /// <summary>Verifies multi-line comment metadata requires both non-empty delimiters.</summary>
+    [Theory]
+    [InlineData("<comment name=\"multiLine\" start=\"\" end=\"*/\"/>")]
+    [InlineData("<comment name=\"multiLine\" start=\"/*\"/>")]
+    [InlineData("<comment name=\"multiLine\" start=\"/*\" end=\"\"/>")]
+    public void Read_WhenMultiLineCommentDelimiterIsMissingOrEmpty_ThrowsFormatException(string comment)
+    {
+        var general = $"<general><comments>{comment}</comments></general></language>";
+        var xml = _minimal.Replace("</language>", general, StringComparison.Ordinal);
+
+        _ = Should.Throw<FormatException>(() => SyntaxDefinitionReader.Read(xml));
+    }
+
     private const string _minimal = """
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE language>

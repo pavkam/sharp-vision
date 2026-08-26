@@ -55,13 +55,18 @@ ones and why. Any other KDE-format XML file, including one of the definitions
 this package does not embed, can be loaded from an application's own files:
 
 ```csharp
-var catalog = SyntaxDefinitionCatalog.FromDirectory("/path/to/syntax/definitions");
+var external = SyntaxDefinitionCatalog.FromDirectory("/path/to/syntax/definitions");
+var catalog = SyntaxDefinitionCatalog.Default.Overlay(external);
 var view = new CodeView { Catalog = catalog, Language = "Python" };
 ```
 
 This mirrors upstream Kate's own local-file pickup model for syntax definitions.
-Definitions must declare `kateversion`; SharpVision accepts format versions
-through 6.22 and rejects newer definitions before adding them to the catalog.
+Overlay definitions replace exact-name built-ins and otherwise augment them, so
+cross-definition references resolve across both sources. Any safely omitted
+definition, context, or keyword list remains observable through
+`SyntaxGrammar.Diagnostics`. Definitions must declare `kateversion`; SharpVision
+accepts format versions through 6.22 and rejects newer definitions before adding
+them to the catalog.
 
 ## Attribution
 

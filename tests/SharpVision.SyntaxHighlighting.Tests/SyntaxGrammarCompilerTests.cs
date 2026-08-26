@@ -10,6 +10,39 @@ namespace SharpVision.SyntaxHighlighting.Tests;
 /// </summary>
 public sealed class SyntaxGrammarCompilerTests
 {
+    /// <summary>Verifies every safely omitted reference remains observable through structured diagnostics.</summary>
+    [Fact]
+    public void Compile_WhenReferencesCannotResolve_ReportsStructuredDiagnostics()
+    {
+        const string xml = """
+            <language name="Host" section="Sources" extensions="*.host" version="1" kateversion="5.0">
+              <highlighting>
+                <contexts>
+                  <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                    <DetectChar attribute="Normal Text" context="##Absent" char="a"/>
+                    <DetectChar attribute="Normal Text" context="Unknown" char="b"/>
+                    <keyword attribute="Normal Text" context="#stay" String="missing"/>
+                  </context>
+                </contexts>
+                <itemDatas>
+                  <itemData name="Normal Text" defStyleNum="dsNormal"/>
+                </itemDatas>
+              </highlighting>
+            </language>
+            """;
+
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(xml));
+
+        grammar.Diagnostics.Count.ShouldBe(3);
+        grammar.Diagnostics.ShouldAllBe(diagnostic => diagnostic.SourceDefinition == "Host");
+        grammar.Diagnostics.ShouldContain(diagnostic =>
+            diagnostic.Kind == SyntaxGrammarDiagnosticKind.MissingDefinition && diagnostic.Reference == "##Absent");
+        grammar.Diagnostics.ShouldContain(diagnostic =>
+            diagnostic.Kind == SyntaxGrammarDiagnosticKind.MissingContext && diagnostic.Reference == "Unknown");
+        grammar.Diagnostics.ShouldContain(diagnostic =>
+            diagnostic.Kind == SyntaxGrammarDiagnosticKind.MissingKeywordList && diagnostic.Reference == "missing");
+    }
+
     /// <summary>Verifies a null definition is rejected with ArgumentNullException.</summary>
     [Fact]
     public void Compile_WhenDefinitionIsNull_ThrowsArgumentNullException() =>

@@ -467,16 +467,47 @@ public sealed class SyntaxCompiledRule
 
     private static SyntaxRuleMatch MatchIdentifier(ReadOnlySpan<char> line, int offset)
     {
-        if (offset >= line.Length || (!char.IsLetter(line[offset]) && line[offset] != '_'))
+        if (offset >= line.Length)
         {
             return SyntaxRuleMatch.None;
         }
 
-        var end = offset + 1;
-
-        while (end < line.Length && (char.IsLetterOrDigit(line[end]) || line[end] == '_'))
+        if (line[offset] == '_')
         {
-            end++;
+            return MatchIdentifierContinuation(line, offset, 1);
+        }
+
+        _ = Rune.DecodeFromUtf16(line[offset..], out var first, out var firstLength);
+
+        return Rune.IsLetter(first)
+            ? MatchIdentifierContinuation(line, offset, firstLength)
+            : SyntaxRuleMatch.None;
+    }
+
+    private static SyntaxRuleMatch MatchIdentifierContinuation(ReadOnlySpan<char> line, int offset, int firstLength)
+    {
+        var end = offset + firstLength;
+
+        while (end < line.Length)
+        {
+            if (line[end] == '_')
+            {
+                end++;
+                continue;
+            }
+
+            _ = Rune.DecodeFromUtf16(line[end..], out var rune, out var runeLength);
+            var category = Rune.GetUnicodeCategory(rune);
+
+            if (!Rune.IsLetter(rune) &&
+                category is not UnicodeCategory.DecimalDigitNumber and
+                not UnicodeCategory.LetterNumber and
+                not UnicodeCategory.OtherNumber)
+            {
+                break;
+            }
+
+            end += runeLength;
         }
 
         return new SyntaxRuleMatch(end - offset, []);

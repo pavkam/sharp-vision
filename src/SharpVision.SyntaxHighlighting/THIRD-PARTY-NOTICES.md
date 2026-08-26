@@ -23,9 +23,10 @@ including the 250 files this package does not redistribute because they carry no
 stated license, an empty one, an ambiguous bare `"BSD"` value, or a copyleft
 license. The excluded set notably includes several very widely used definitions
 upstream ships under GPL/LGPL or with no stated license, such as C, C#, Python,
-PHP, Lua, MATLAB, Objective-C, Pascal, and JSON — see
-`SyntaxDefinitionCatalog.FromFile`/ `FromDirectory` to load one of those (or any
-other KDE-format definition) from an application's own files instead.
+PHP, Lua, MATLAB, Objective-C, Pascal, and JSON — use
+`SyntaxDefinitionCatalog.FromDirectory` and overlay that catalog onto `Default`
+to load one of those (or any other KDE-format definition) from an application's
+own files instead.
 
 The complete license text for each SPDX identifier below is packaged as
 `licenses/<identifier>.txt`; the four `Public-Domain` files carry no separate

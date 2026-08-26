@@ -40,6 +40,8 @@ internal sealed class SyntaxGrammarCompiler
                 _ = grammar.GetOrResolveContext(i, this, _resolving);
             }
 
+            grammar.ResolveAllKeywordLists(this);
+            grammar.SealDiagnostics();
             return grammar;
         }
         catch

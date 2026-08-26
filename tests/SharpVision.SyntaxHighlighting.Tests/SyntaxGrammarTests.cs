@@ -6,7 +6,7 @@ namespace SharpVision.SyntaxHighlighting.Tests;
 /// <summary>Verifies compiled grammar collections are immutable.</summary>
 public sealed class SyntaxGrammarTests
 {
-    /// <summary>Verifies compiled contexts, rules, resolved pushes, and captures reject mutation.</summary>
+    /// <summary>Verifies compiled contexts, diagnostics, rules, resolved pushes, and captures reject mutation.</summary>
     [Fact]
     public void Collections_WhenCompiled_RejectMutationAtEveryGrammarBoundary()
     {
@@ -28,6 +28,7 @@ public sealed class SyntaxGrammarTests
         var match = rule.TryMatch("x", 0, []);
 
         ShouldRejectMutation(grammar.Contexts);
+        ShouldRejectMutation(grammar.Diagnostics);
         ShouldRejectMutation(grammar.Contexts[0].Rules);
         ShouldRejectMutation(rule.ResolvedTarget.Pushes);
         ShouldRejectMutation(match.Captures);

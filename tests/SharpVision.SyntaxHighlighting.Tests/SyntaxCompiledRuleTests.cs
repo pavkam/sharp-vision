@@ -27,6 +27,40 @@ public sealed class SyntaxCompiledRuleTests
     private static SyntaxCompiledRule IntegerRule() =>
         SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_integerLanguage)).Contexts[0].Rules[0];
 
+    /// <summary>Gets representative Unicode number categories accepted after an identifier start.</summary>
+    public static TheoryData<string> UnicodeIdentifierNumberContinuations() =>
+        ["a1b", "a\u2160b", "a\u00B2b", "a\U00010107b"];
+
+    /// <summary>Verifies DetectIdentifier follows Qt letter-or-number scalar categories without
+    /// splitting either BMP or supplementary-plane number continuations.</summary>
+    [Theory]
+    [MemberData(nameof(UnicodeIdentifierNumberContinuations))]
+    public void TryMatch_WhenIdentifierContainsUnicodeNumberContinuation_MatchesCompleteIdentifier(string identifier)
+    {
+        const string xml = """
+            <language name="Identifier" section="Sources" extensions="*.id" version="1" kateversion="5.0">
+              <highlighting>
+                <contexts>
+                  <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                    <DetectIdentifier attribute="Identifier" context="#stay"/>
+                  </context>
+                </contexts>
+                <itemDatas>
+                  <itemData name="Normal Text" defStyleNum="dsNormal"/>
+                  <itemData name="Identifier" defStyleNum="dsVariable"/>
+                </itemDatas>
+              </highlighting>
+            </language>
+            """;
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(xml));
+
+        var result = SyntaxTokenizer.Tokenize(grammar, identifier);
+
+        var token = result.Lines.ShouldHaveSingleItem().Tokens.ShouldHaveSingleItem();
+        token.Length.ShouldBe(identifier.Length);
+        token.Style.ShouldBe(SyntaxDefaultStyle.Variable);
+    }
+
     /// <summary>Gets representative KDE/PCRE2 constructs and text they must match.</summary>
     public static TheoryData<string, string, int> KdeRegularExpressionCases() =>
         new()

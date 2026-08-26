@@ -11,6 +11,30 @@ namespace SharpVision.SyntaxHighlighting.Tests;
 /// </summary>
 public sealed class SyntaxDefinitionCorpusTests
 {
+    /// <summary>Freezes the explicitly supported partial-definition inventory so embedded
+    /// dependency loss cannot grow or change without a reviewed catalog decision.</summary>
+    [Fact]
+    public void Default_WhenDependenciesAreUnavailable_MatchesPublishedPartialSupportInventory()
+    {
+        var catalog = SyntaxDefinitionCatalog.Default;
+        var diagnostics = catalog.Names
+            .SelectMany(name => catalog.GetGrammar(name).Diagnostics)
+            .Where(static diagnostic => diagnostic.Kind == SyntaxGrammarDiagnosticKind.MissingDefinition)
+            .ToArray();
+        var affected = diagnostics.Select(static diagnostic => diagnostic.SourceDefinition).Distinct().Order().ToArray();
+
+        diagnostics.Length.ShouldBe(192);
+        affected.ShouldBe(
+        [
+            "Cabal", "COBOL", "CoffeeScript", "D2", "Dockerfile", "Earthfile", "Elixir/EEx",
+            "Elixir/HEEx", "Elvish", "Expect", "InnoSetup", "Jam", "Java Module",
+            "JavaScript React (JSX)", "Mermaid", "Mustache/Handlebars (HTML)", "OORS",
+            "Org Mode", "PIO Assembler", "PureScript", "QML", "R documentation", "Raku",
+            "RenPy", "RPM Spec", "SAS", "SASS", "SubRip Subtitles", "TypeScript",
+            "TypeScript React (TSX)", "Web Video Text Tracks", "XHTML", "YARA", "Zsh",
+        ]);
+    }
+
     /// <summary>Gets every embedded definition's name as a theory data source.</summary>
     public static TheoryData<string> AllEmbeddedNames() =>
         [.. SyntaxDefinitionCatalog.Default.Names];

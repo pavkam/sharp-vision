@@ -75,6 +75,7 @@ public sealed class SyntaxDefinitionCatalogTests
         _ = Should.Throw<ArgumentNullException>(() => catalog.GetDefinition(null!));
         _ = Should.Throw<ArgumentNullException>(() => catalog.GetGrammar(null!));
         _ = Should.Throw<ArgumentNullException>(() => SyntaxDefinitionCatalog.FromDirectory(null!));
+        _ = Should.Throw<ArgumentNullException>(() => catalog.Overlay(null!));
     }
 
     /// <summary>
@@ -167,6 +168,67 @@ public sealed class SyntaxDefinitionCatalogTests
             catalog.Names.ShouldBe(["ExternalTest"]);
             catalog.GetInfo("ExternalTest").License.ShouldBe(string.Empty);
             _ = catalog.GetGrammar("ExternalTest");
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    /// <summary>Verifies one external catalog augments the embedded inventory and can resolve a
+    /// cross-definition target through the combined compilation session.</summary>
+    [Fact]
+    public void Overlay_WhenExternalDefinitionReferencesBuiltIn_ResolvesBothCatalogs()
+    {
+        var directory = Directory.CreateTempSubdirectory("sharpvision-syntax-overlay-");
+
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(directory.FullName, "external.xml"),
+                """
+                <language name="ExternalTest" section="Sources" extensions="*.ext" version="1" kateversion="5.0">
+                  <highlighting>
+                    <contexts>
+                      <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                        <DetectChar attribute="Normal Text" context="Normal##Rust" char="x"/>
+                      </context>
+                    </contexts>
+                    <itemDatas>
+                      <itemData name="Normal Text" defStyleNum="dsNormal"/>
+                    </itemDatas>
+                  </highlighting>
+                </language>
+                """);
+            var external = SyntaxDefinitionCatalog.FromDirectory(directory.FullName);
+
+            var catalog = SyntaxDefinitionCatalog.Default.Overlay(external);
+
+            catalog.Names.ShouldContain("Rust");
+            catalog.Names.ShouldContain("ExternalTest");
+            var target = catalog.GetGrammar("ExternalTest").Contexts[0].Rules[0].ResolvedTarget.Pushes.ShouldHaveSingleItem();
+            target.Grammar.ShouldBeSameAs(catalog.GetGrammar("Rust"));
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    /// <summary>Verifies overlay definitions replace same-name base entries deterministically.</summary>
+    [Fact]
+    public void Overlay_WhenAdditionHasSameName_AdditionTakesPrecedence()
+    {
+        var directory = Directory.CreateTempSubdirectory("sharpvision-syntax-overlay-precedence-");
+
+        try
+        {
+            File.WriteAllText(Path.Combine(directory.FullName, "rust.xml"), CreateLanguage("Rust", "*.replacement"));
+            var additions = SyntaxDefinitionCatalog.FromDirectory(directory.FullName);
+
+            var catalog = SyntaxDefinitionCatalog.Default.Overlay(additions);
+
+            catalog.GetDefinition("Rust").Extensions.ShouldBe(["*.replacement"]);
         }
         finally
         {

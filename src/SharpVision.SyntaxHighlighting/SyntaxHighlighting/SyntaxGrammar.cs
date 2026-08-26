@@ -16,6 +16,9 @@ public sealed class SyntaxGrammar
     private readonly SyntaxGrammarContext[] _contexts;
     private readonly Dictionary<string, int> _indexByName;
     private readonly SyntaxWordDelimiters _baseDelimiters;
+    private readonly List<SyntaxGrammarDiagnostic> _diagnostics = [];
+    private readonly Dictionary<string, IReadOnlyList<string>> _resolvedKeywordWords = new(StringComparer.Ordinal);
+    private IReadOnlyList<SyntaxGrammarDiagnostic>? _diagnosticsView;
 
     /// <summary>Initializes the shell for one definition's compiled grammar.</summary>
     /// <param name="definition">The non-null source definition.</param>
@@ -35,6 +38,17 @@ public sealed class SyntaxGrammar
 
     /// <summary>Gets the source definition this grammar compiles.</summary>
     public SyntaxDefinition Definition { get; }
+
+    /// <summary>Gets the immutable unresolved-reference diagnostics produced while compiling this
+    /// definition. Each entry describes a construct omitted through safe degradation.</summary>
+    public IReadOnlyList<SyntaxGrammarDiagnostic> Diagnostics
+    {
+        get
+        {
+            Debug.Assert(_diagnosticsView is not null, "SyntaxGrammarCompiler seals diagnostics before publishing a grammar.");
+            return _diagnosticsView ?? SyntaxReadOnlyList<SyntaxGrammarDiagnostic>.Empty;
+        }
+    }
 
     /// <summary>
     /// Gets the compiled contexts, in the source definition's declaration order;
@@ -63,7 +77,8 @@ public sealed class SyntaxGrammar
     /// definition, consulted for a cross-definition <c>IncludeRules</c> or context switch such as
     /// <c>Normal##JavaScript</c>. When null, or when it returns null for a requested name, that
     /// reference resolves to nothing rather than failing the whole compilation, the same graceful
-    /// degradation <see cref="SyntaxContextTarget"/> documents.
+    /// degradation <see cref="SyntaxContextTarget"/> documents; <see cref="Diagnostics"/> records
+    /// each omitted reference.
     /// </param>
     /// <returns>The fully compiled, immutable grammar.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="definition"/> is null.</exception>
@@ -163,20 +178,36 @@ public sealed class SyntaxGrammar
             ? itemData.DefaultStyle
             : null;
 
-    private SyntaxContextTargetEntry? ResolveReferenceEntry(SyntaxContextReference reference, SyntaxGrammarCompiler compiler)
+    private SyntaxContextTargetEntry? ResolveReferenceEntry(
+        SyntaxContextReference reference,
+        SyntaxGrammarCompiler compiler,
+        bool reportDiagnostic = true)
     {
         var grammar = reference.DefinitionName is null ? this : compiler.Resolve(reference.DefinitionName);
 
         if (grammar is null)
         {
+            if (reportDiagnostic)
+            {
+                AddDiagnostic(SyntaxGrammarDiagnosticKind.MissingDefinition, FormatReference(reference));
+            }
+
             return null;
         }
 
         var contextName = reference.ContextName.Length == 0 ? grammar.Definition.Contexts[0].Name : reference.ContextName;
 
-        return grammar.TryGetContextIndex(contextName, out var index)
-            ? new SyntaxContextTargetEntry(grammar, index)
-            : null;
+        if (grammar.TryGetContextIndex(contextName, out var index))
+        {
+            return new SyntaxContextTargetEntry(grammar, index);
+        }
+
+        if (reportDiagnostic)
+        {
+            AddDiagnostic(SyntaxGrammarDiagnosticKind.MissingContext, FormatReference(reference));
+        }
+
+        return null;
     }
 
     private SyntaxGrammarContext? ResolveReference(SyntaxContextReference reference, SyntaxGrammarCompiler compiler, HashSet<(SyntaxGrammar Grammar, int Index)> resolving)
@@ -230,12 +261,11 @@ public sealed class SyntaxGrammar
 
             if (!Definition.KeywordLists.TryGetValue(listName, out var list))
             {
+                AddDiagnostic(SyntaxGrammarDiagnosticKind.MissingKeywordList, listName);
                 return null;
             }
 
-            var words = list.CrossDefinitionIncludes.Count == 0
-                ? list.Words
-                : ResolveKeywordWords(list, compiler, [$"{Definition.Name}\0{listName}"]);
+            var words = ResolveKeywordWords(list, compiler);
             var caseSensitive = rule.KeywordCaseSensitiveOverride ?? Definition.General.CaseSensitiveKeywords;
             keywordMatcher = new SyntaxKeywordMatcher(words, caseSensitive, delimiters);
         }
@@ -273,7 +303,7 @@ public sealed class SyntaxGrammar
                 continue;
             }
 
-            var target = ResolveReferenceEntry(reference, compiler);
+            var target = ResolveReferenceEntry(reference, compiler, reportDiagnostic: false);
 
             if (target is { } entry &&
                 entry.Grammar.ContextConsumesDynamicCaptures(entry.ContextIndex, compiler, visited))
@@ -292,7 +322,19 @@ public sealed class SyntaxGrammar
     /// compilation cannot resolve, or one that would revisit an already-visited list, is skipped
     /// rather than rejected.
     /// </summary>
-    private static List<string> ResolveKeywordWords(SyntaxKeywordList list, SyntaxGrammarCompiler compiler, HashSet<string> visited)
+    private IReadOnlyList<string> ResolveKeywordWords(SyntaxKeywordList list, SyntaxGrammarCompiler compiler)
+    {
+        if (_resolvedKeywordWords.TryGetValue(list.Name, out var cached))
+        {
+            return cached;
+        }
+
+        var words = ResolveKeywordWordsCore(list, compiler, [$"{Definition.Name}\0{list.Name}"]);
+        _resolvedKeywordWords[list.Name] = words;
+        return words;
+    }
+
+    private List<string> ResolveKeywordWordsCore(SyntaxKeywordList list, SyntaxGrammarCompiler compiler, HashSet<string> visited)
     {
         var words = new List<string>(list.Words);
 
@@ -315,14 +357,54 @@ public sealed class SyntaxGrammar
 
             var targetGrammar = compiler.Resolve(definitionName);
 
-            if (targetGrammar is not null && targetGrammar.Definition.KeywordLists.TryGetValue(listName, out var targetList))
+            if (targetGrammar is null)
             {
-                words.AddRange(ResolveKeywordWords(targetList, compiler, visited));
+                AddDiagnostic(SyntaxGrammarDiagnosticKind.MissingDefinition, raw);
+                continue;
+            }
+
+            if (!targetGrammar.Definition.KeywordLists.TryGetValue(listName, out var targetList))
+            {
+                AddDiagnostic(SyntaxGrammarDiagnosticKind.MissingKeywordList, raw);
+                continue;
+            }
+
+            if (targetGrammar._resolvedKeywordWords.TryGetValue(targetList.Name, out var targetWords))
+            {
+                words.AddRange(targetWords);
+            }
+            else
+            {
+                words.AddRange(targetGrammar.ResolveKeywordWordsCore(targetList, compiler, visited));
             }
         }
 
         return words;
     }
+
+    /// <summary>Resolves every declared keyword-list include before diagnostics are sealed.</summary>
+    /// <param name="compiler">The shared compiler used for cross-definition lookup.</param>
+    internal void ResolveAllKeywordLists(SyntaxGrammarCompiler compiler)
+    {
+        foreach (var list in Definition.KeywordLists.Values)
+        {
+            _ = ResolveKeywordWords(list, compiler);
+        }
+    }
+
+    /// <summary>Freezes diagnostics after every context has resolved.</summary>
+    internal void SealDiagnostics() => _diagnosticsView ??= new SyntaxReadOnlyList<SyntaxGrammarDiagnostic>(_diagnostics);
+
+    private void AddDiagnostic(SyntaxGrammarDiagnosticKind kind, string reference)
+    {
+        Debug.Assert(_diagnosticsView is null, "Diagnostics cannot change after grammar publication.");
+        _diagnostics.Add(new SyntaxGrammarDiagnostic(kind, Definition.Name, reference));
+    }
+
+    private static string FormatReference(SyntaxContextReference reference) =>
+        reference.DefinitionName is null
+            ? reference.ContextName
+            : $"{reference.ContextName}##{reference.DefinitionName}";
 
     private SyntaxContextTarget ResolveTarget(SyntaxContextSwitch source, SyntaxGrammarCompiler compiler)
     {

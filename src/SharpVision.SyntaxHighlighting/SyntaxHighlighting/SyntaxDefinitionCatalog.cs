@@ -21,7 +21,8 @@ using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
 /// stated license and cannot be redistributed.
 /// <see cref="FromDirectory"/> builds a catalog from caller-supplied files with the same lookup,
 /// parsing, and compilation surface, mirroring how upstream Kate itself picks up additional
-/// syntax definitions from the local file system.
+/// syntax definitions from the local file system. <see cref="Overlay"/> combines it immutably
+/// with an existing catalog while giving the added definitions exact-name precedence.
 /// </remarks>
 [PublicAPI]
 public sealed class SyntaxDefinitionCatalog
@@ -30,7 +31,7 @@ public sealed class SyntaxDefinitionCatalog
 
     private readonly Dictionary<string, SyntaxDefinitionInfo> _entries;
     private readonly IReadOnlyList<string> _detectionNames;
-    private readonly Func<SyntaxDefinitionCatalog, SyntaxDefinitionInfo, string> _readXml;
+    private readonly Func<SyntaxDefinitionCatalog, SyntaxDefinitionInfo, SyntaxDefinition> _loadDefinition;
     private readonly Dictionary<string, Lazy<SyntaxDefinition>> _definitions = new(StringComparer.Ordinal);
     private readonly Lock _definitionGate = new();
     private readonly Lock _grammarGate = new();
@@ -41,11 +42,11 @@ public sealed class SyntaxDefinitionCatalog
 
     private SyntaxDefinitionCatalog(
         Dictionary<string, SyntaxDefinitionInfo> entries,
-        Func<SyntaxDefinitionCatalog, SyntaxDefinitionInfo, string> readXml,
+        Func<SyntaxDefinitionCatalog, SyntaxDefinitionInfo, SyntaxDefinition> loadDefinition,
         IReadOnlyDictionary<string, SyntaxDefinition>? definitions = null)
     {
         _entries = entries;
-        _readXml = readXml;
+        _loadDefinition = loadDefinition;
         Names = Array.AsReadOnly(entries.Keys.Order(StringComparer.Ordinal).ToArray());
         _detectionNames = Array.AsReadOnly(
             Names.OrderByDescending(name => entries[name].Priority ?? 0).ToArray());
@@ -117,6 +118,29 @@ public sealed class SyntaxDefinitionCatalog
             : throw new ArgumentException("The directory contains no .xml syntax-definition files.", nameof(path));
     }
 
+    /// <summary>Creates an immutable catalog overlay in which <paramref name="additions"/>
+    /// augments this catalog and replaces any definition with the same exact name.</summary>
+    /// <param name="additions">The non-null catalog whose entries take precedence.</param>
+    /// <returns>A new catalog resolving definitions and cross-definition references across both inputs.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="additions"/> is null.</exception>
+    [MustUseReturnValue]
+    public SyntaxDefinitionCatalog Overlay(SyntaxDefinitionCatalog additions)
+    {
+        ArgumentNullException.ThrowIfNull(additions);
+        var entries = new Dictionary<string, SyntaxDefinitionInfo>(_entries, StringComparer.Ordinal);
+
+        foreach (var (name, info) in additions._entries)
+        {
+            entries[name] = info;
+        }
+
+        return new SyntaxDefinitionCatalog(
+            entries,
+            (_, info) => additions._entries.ContainsKey(info.Name)
+                ? additions.GetDefinition(info.Name)
+                : GetDefinition(info.Name));
+    }
+
     /// <summary>Gets preserved catalog and provenance metadata for one exact name.</summary>
     /// <param name="name">The non-null exact case-sensitive language name.</param>
     /// <returns>The immutable metadata record.</returns>
@@ -181,11 +205,7 @@ public sealed class SyntaxDefinitionCatalog
             if (!_definitions.TryGetValue(name, out lazy!))
             {
                 lazy = new Lazy<SyntaxDefinition>(
-                    () =>
-                    {
-                        _ = Interlocked.Increment(ref _definitionParseCount);
-                        return SyntaxDefinitionReader.Read(_readXml(this, info));
-                    },
+                    () => _loadDefinition(this, info),
                     LazyThreadSafetyMode.ExecutionAndPublication);
                 _definitions.Add(name, lazy);
             }
@@ -252,7 +272,7 @@ public sealed class SyntaxDefinitionCatalog
 
         return entries.Count != 160
             ? throw new InvalidDataException("The embedded syntax-definition manifest must contain exactly 160 definitions.")
-            : new SyntaxDefinitionCatalog(entries, ReadEmbeddedXml);
+            : new SyntaxDefinitionCatalog(entries, LoadEmbeddedDefinition);
     }
 
     private static SyntaxDefinitionCatalog CreateDirectoryCatalog(
@@ -270,7 +290,7 @@ public sealed class SyntaxDefinitionCatalog
         return catalog;
     }
 
-    private static string ReadEmbeddedXml(SyntaxDefinitionCatalog self, SyntaxDefinitionInfo info)
+    private static SyntaxDefinition LoadEmbeddedDefinition(SyntaxDefinitionCatalog self, SyntaxDefinitionInfo info)
     {
         var assembly = typeof(SyntaxDefinitionCatalog).Assembly;
         var resourceName = $"SharpVision.SyntaxHighlighting.Resources.Syntax.{info.File}";
@@ -300,7 +320,8 @@ public sealed class SyntaxDefinitionCatalog
         var preamble = Encoding.UTF8.Preamble;
         var content = bytes.AsSpan().StartsWith(preamble) ? bytes.AsSpan(preamble.Length) : bytes.AsSpan();
 
-        return Encoding.UTF8.GetString(content);
+        _ = Interlocked.Increment(ref self._definitionParseCount);
+        return SyntaxDefinitionReader.Read(Encoding.UTF8.GetString(content));
     }
 
     private static SyntaxDefinitionInfo ToInfo(SyntaxDefinition definition, string file) =>
