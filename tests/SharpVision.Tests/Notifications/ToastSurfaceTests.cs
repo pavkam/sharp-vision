@@ -139,6 +139,30 @@ public sealed class ToastSurfaceTests
         toast.Parent.ShouldBeNull();
     }
 
+    /// <summary>Verifies application-modified Escape does not dismiss a focused Toast.</summary>
+    [Fact]
+    public async Task Keyboard_WhenEscapeIsCommandModified_LeavesToastOpenAsync()
+    {
+        var root = new Overlay();
+        using var toast = CreateDismissibleToast();
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 10),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(
+            () =>
+            {
+                toast.Show(root);
+                _ = toast.Focus();
+            },
+            "show and focus dismissible Toast");
+
+        await surface.Keyboard.PressAsync(Code.Escape, Modifiers.Control);
+
+        toast.IsOpen.ShouldBeTrue();
+        toast.Parent.ShouldBeSameAs(root);
+    }
+
     /// <summary>Verifies the close glyph uses shared capture-aware pointer activation.</summary>
     [Fact]
     public async Task Pointer_WhenCloseAffordanceIsClicked_DismissesAsync()

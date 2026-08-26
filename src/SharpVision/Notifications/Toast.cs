@@ -489,8 +489,8 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
             {
                 Stroke.Action: KeyAction.Press,
                 Stroke.Code: Code.Escape,
-                Stroke.Modifiers: Modifiers.None
-            })
+                Stroke.Modifiers: var modifiers
+            } && modifiers.IsActivationEligible())
         {
             eventArgs.IsHandled = true;
             Dismiss();

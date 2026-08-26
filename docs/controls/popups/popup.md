@@ -166,7 +166,9 @@ A closed popup neither draws its surface nor participates in hit testing. An
 open popup routes pointer and keyboard input to its content through normal
 routing, and its frame itself is also a hit-testable surface. `CloseOnEscape`
 defaults to true and closes an open popup when Escape bubbles up from its
-content. The FIGlet showcase picker demonstrates the composition as
+content with activation-eligible modifiers. Shift and lock state remain
+eligible; application-command modifiers bubble without closing the popup. The
+FIGlet showcase picker demonstrates the composition as
 `ComboBox → Popup → ListView`.
 
 Popup owns generic elevation, placement fallback, the default Dismiss modality,

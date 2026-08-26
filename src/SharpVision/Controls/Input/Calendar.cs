@@ -470,17 +470,21 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
             return;
         }
 
+        var navigationEligible = KeyboardModifierPolicy.MatchesCommand(
+            stroke.Modifiers,
+            Modifiers.None);
+
 #pragma warning disable IDE0072 // Unknown or unsupported keys intentionally remain unhandled.
         var handled = stroke.Code switch
         {
-            Code.Left => MoveByDays(-1),
-            Code.Right => MoveByDays(1),
-            Code.Up => MoveByDays(-7),
-            Code.Down => MoveByDays(7),
-            Code.Home => MoveToWeekEdge(end: false),
-            Code.End => MoveToWeekEdge(end: true),
-            Code.PageUp => MoveByMonth(-1),
-            Code.PageDown => MoveByMonth(1),
+            Code.Left when navigationEligible => MoveByDays(-1),
+            Code.Right when navigationEligible => MoveByDays(1),
+            Code.Up when navigationEligible => MoveByDays(-7),
+            Code.Down when navigationEligible => MoveByDays(7),
+            Code.Home when navigationEligible => MoveToWeekEdge(end: false),
+            Code.End when navigationEligible => MoveToWeekEdge(end: true),
+            Code.PageUp when navigationEligible => MoveByMonth(-1),
+            Code.PageDown when navigationEligible => MoveByMonth(1),
             Code.Enter => eventArgs.IsInitialKeyDown &&
                 stroke.Modifiers.IsActivationEligible() && ActivateDate(ActiveDate),
             Code.Character when eventArgs.IsInitialKeyDown && stroke.Character == new Rune(' ') =>

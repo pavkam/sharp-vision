@@ -93,6 +93,7 @@ bounds.
 
 The plane is one focus stop. Left/Right adjust saturation by one percentage
 point, Up/Down adjust value, and Home/End jump to the saturation endpoints. A
+movement key accepts lock state but no Shift or application-command modifier. A
 primary press, and captured movement after it, map the committed cell
 coordinates to both normalized axes. Other keys remain unhandled for inherited
 routing and focus traversal. The hue and RGB parts use the complete

@@ -242,6 +242,7 @@ public sealed class Menu: ItemsControl
         var sessionOwner = FindSessionOwner();
         if (key.IsInitialKeyDown &&
             key.Stroke.Code == Code.Escape &&
+            key.Stroke.Modifiers.IsActivationEligible() &&
             ReferenceEquals(sessionOwner, this) &&
             sessionOwner.IsSessionArmed)
         {

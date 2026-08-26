@@ -1244,7 +1244,8 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
                 return;
             }
 
-            if (stroke.Code == TerminalInput.Code.Escape)
+            if (stroke.Code == TerminalInput.Code.Escape &&
+                stroke.Modifiers.IsActivationEligible())
             {
                 if (eventArgs.IsInitialKeyDown)
                 {

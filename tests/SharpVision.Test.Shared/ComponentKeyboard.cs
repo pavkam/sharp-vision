@@ -55,6 +55,9 @@ public sealed class ComponentKeyboard
                     Encoding.ASCII.GetBytes($"\u001b[9;{KittyModifiers(modifiers)}u"),
                     $"press {modifiers}+Tab"),
                 (Code.Escape, Modifiers.None) => _surface.SendAsync("\u001b[27u"u8.ToArray(), "press Escape"),
+                (Code.Escape, _) => _surface.SendAsync(
+                    Encoding.ASCII.GetBytes($"\u001b[27;{KittyModifiers(modifiers)}u"),
+                    "press modified Escape"),
                 (Code.Up, Modifiers.None) => _surface.SendAsync("\u001b[A"u8.ToArray(), "press Up"),
                 (Code.Down, Modifiers.None) => _surface.SendAsync("\u001b[B"u8.ToArray(), "press Down"),
                 (Code.Left, Modifiers.None) => _surface.SendAsync("\u001b[D"u8.ToArray(), "press Left"),

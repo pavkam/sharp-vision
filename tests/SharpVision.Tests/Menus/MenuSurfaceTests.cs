@@ -587,6 +587,11 @@ public sealed class MenuSurfaceTests
         menu.SelectedIndex.ShouldBe(1);
         surface.ShouldHaveFocus(editMenu);
 
+        // Act and assert application-modified Escape remains available to ancestors.
+        await surface.Keyboard.PressAsync(Code.Escape, Modifiers.Control);
+        editPopup.IsOpen.ShouldBeTrue();
+        surface.ShouldHaveFocus(editMenu);
+
         // Act close
         await surface.Keyboard.PressAsync(Code.Escape);
 

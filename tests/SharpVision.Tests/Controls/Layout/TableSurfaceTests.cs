@@ -605,6 +605,10 @@ public sealed class TableSurfaceTests
         table.ActiveColumnIndex.ShouldBe(1);
         await surface.Keyboard.PressAsync(Code.Enter);
         await surface.UpdateAsync(() => secondCell.Text = "discarded", "edit second Table cell");
+        await surface.Keyboard.PressAsync(Code.Escape, Modifiers.Control);
+        secondCell.Text.ShouldBe("discarded");
+        table.IsEditing.ShouldBeTrue();
+
         await surface.Keyboard.PressAsync(Code.Escape);
         secondCell.Text.ShouldBe("two");
         table.IsEditing.ShouldBeFalse();

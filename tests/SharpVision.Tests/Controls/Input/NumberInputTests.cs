@@ -568,6 +568,21 @@ public sealed class NumberInputTests
         raised.ShouldBe(0);
     }
 
+    /// <summary>Verifies command-modified Escape leaves the pending numeric edit available to commit.</summary>
+    [Fact]
+    public void Escape_WhenCommandModified_LeavesPendingEditUnhandled()
+    {
+        using var control = new NumberInput { Value = 4m };
+        TypeCharacter(control, '9');
+        var escape = Key(Code.Escape, Modifiers.Control);
+
+        _ = Router.Route(control, Events.Key, escape);
+        _ = Router.Route(control, Events.Key, Key(Code.Enter));
+
+        escape.IsHandled.ShouldBeFalse();
+        control.Value.ShouldBe(9m);
+    }
+
     #endregion
 
     #region Stepping and jumping
@@ -989,11 +1004,11 @@ public sealed class NumberInputTests
 
     #region Helpers
 
-    private static KeyEventArgs Key(Code code) => new(new Stroke(
+    private static KeyEventArgs Key(Code code, Modifiers modifiers = Modifiers.None) => new(new Stroke(
         code,
         default,
         nativeCode: 0,
-        Modifiers.None,
+        modifiers,
         KeyAction.Press));
 
     private static void TypeCharacter(NumberInput control, char character) =>

@@ -463,7 +463,9 @@ public sealed class CommandPalette: CompositeControlBase
             return;
         }
 
-        if (eventArgs.IsInitialKeyDown && eventArgs.Stroke.Code == Code.Escape)
+        if (eventArgs.IsInitialKeyDown &&
+            eventArgs.Stroke.Code == Code.Escape &&
+            eventArgs.Stroke.Modifiers.IsActivationEligible())
         {
             Close();
             eventArgs.IsHandled = true;

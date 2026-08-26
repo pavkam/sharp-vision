@@ -226,12 +226,14 @@ The Calendar is one focus stop with `TabNavigation.None`.
 | Wheel up / down      | Display the previous / next month.                                                                        |
 
 Initial key presses and navigation repeats are accepted; release is ignored.
-Enter and Space activate only on the initial press, so one held key cannot
-advance the interval state machine more than once. A movement or wheel command
-that cannot move within the bounds is left unhandled so an ancestor can respond.
-Keys outside the Calendar command set also remain available to inherited routed
-input. Header and day hit testing uses the committed `ContentBounds`, so border,
-padding, clipping, and tiny allocations never create invisible targets.
+Movement keys accept lock state but no Shift or application-command modifier;
+unsupported chords remain unhandled without moving `ActiveDate`. Enter and Space
+activate only on the initial press, so one held key cannot advance the interval
+state machine more than once. A movement or wheel command that cannot move
+within the bounds is left unhandled so an ancestor can respond. Keys outside the
+Calendar command set also remain available to inherited routed input. Header and
+day hit testing uses the committed `ContentBounds`, so border, padding,
+clipping, and tiny allocations never create invisible targets.
 
 ## Example
 

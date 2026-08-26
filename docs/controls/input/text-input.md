@@ -239,7 +239,11 @@ remain available to inherited routed input.
   exact Control command after lock-key normalization, so larger chords remain
   unhandled under the shared
   [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy).
-- Enter inserts LF only when `AcceptsReturn` is set; otherwise it submits.
+- Enter inserts LF only when `AcceptsReturn` is set; otherwise it submits. A
+  read-only multiline editor handles eligible Enter without inserting or
+  submitting, while a read-only single-line editor still submits its value.
+- Enter, Backspace, and Delete accept text-entry modifiers (Shift and lock
+  state) and leave application-command chords unhandled without changing text.
 - Tab inserts only when `AcceptsTab` is set and the stroke carries text-entry
   modifiers rather than an application-command chord.
 

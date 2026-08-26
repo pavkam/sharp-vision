@@ -390,6 +390,9 @@ public sealed class MessageBoxTests
                     handledEventsToo: true);
             },
             "show dismissible MessageBox");
+        await surface.Keyboard.PressAsync(Code.Escape, Modifiers.Control);
+        pending!.IsCompleted.ShouldBeFalse();
+
         await surface.Keyboard.PressAsync(Code.Escape);
 
         // Assert

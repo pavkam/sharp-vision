@@ -408,7 +408,9 @@ public sealed class ComboBox: InputBase
         {
             var stroke = keyEventArgs.Stroke;
 
-            if (keyEventArgs.IsInitialKeyDown && stroke.Code == Code.Escape)
+            if (keyEventArgs.IsInitialKeyDown &&
+                stroke.Code == Code.Escape &&
+                stroke.Modifiers.IsActivationEligible())
             {
                 IsOpen = false;
                 eventArgs.IsHandled = true;

@@ -681,6 +681,21 @@ public sealed class CurrencyInputTests
         raised.ShouldBe(0);
     }
 
+    /// <summary>Verifies command-modified Escape leaves the pending currency edit available to commit.</summary>
+    [Fact]
+    public void Escape_WhenCommandModified_LeavesPendingEditUnhandled()
+    {
+        using var control = new CurrencyInput { Value = 4m };
+        TypeCharacter(control, '9');
+        var escape = Key(Code.Escape, Modifiers.Control);
+
+        _ = Router.Route(control, Events.Key, escape);
+        _ = Router.Route(control, Events.Key, Key(Code.Enter));
+
+        escape.IsHandled.ShouldBeFalse();
+        control.Value.ShouldBe(9m);
+    }
+
     /// <summary>Verifies commit when only a sign is typed does not commit garbage, because a lone
     /// sign is a valid partial edit state but never a complete parseable number.</summary>
     [Fact]
@@ -1239,11 +1254,11 @@ public sealed class CurrencyInputTests
 
     #region Helpers
 
-    private static KeyEventArgs Key(Code code) => new(new Stroke(
+    private static KeyEventArgs Key(Code code, Modifiers modifiers = Modifiers.None) => new(new Stroke(
         code,
         default,
         nativeCode: 0,
-        Modifiers.None,
+        modifiers,
         KeyAction.Press));
 
     private static void TypeCharacter(CurrencyInput control, char character) =>

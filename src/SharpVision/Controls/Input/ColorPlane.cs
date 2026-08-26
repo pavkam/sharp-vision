@@ -189,7 +189,8 @@ internal sealed class ColorPlane: ControlBase
 
     private void Handle(KeyEventArgs eventArgs)
     {
-        if (!eventArgs.IsKeyDown)
+        if (!eventArgs.IsKeyDown ||
+            !KeyboardModifierPolicy.MatchesCommand(eventArgs.Stroke.Modifiers, Modifiers.None))
         {
             return;
         }

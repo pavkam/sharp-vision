@@ -984,6 +984,70 @@ public sealed class TextInputTests
         submitted.Text.ShouldBe("value");
     }
 
+    /// <summary>Verifies read-only state suppresses mutation without changing whether Enter is a
+    /// multiline editing command or a single-line submission command.</summary>
+    [Theory]
+    [InlineData(false, false, "value", 1)]
+    [InlineData(false, true, "value", 1)]
+    [InlineData(true, false, "value\n", 0)]
+    [InlineData(true, true, "value", 0)]
+    public void Dispatch_WhenEnterModeAndReadOnlyStateVary_PreservesEditorMode(
+        bool acceptsReturn,
+        bool isReadOnly,
+        string expectedText,
+        int expectedSubmissions)
+    {
+        var control = new TextInput
+        {
+            Text = "value",
+            AcceptsReturn = acceptsReturn,
+            IsReadOnly = isReadOnly
+        };
+        var submissions = 0;
+        control.Submitted += (_, _) => submissions++;
+
+        Key(control, Code.Enter, Modifiers.None);
+
+        control.Text.ShouldBe(expectedText);
+        submissions.ShouldBe(expectedSubmissions);
+    }
+
+    /// <summary>Verifies Enter, Backspace, and Delete accept only text-entry modifier state and
+    /// leave application-command chords unhandled without mutation or submission.</summary>
+    [Theory]
+    [InlineData(Code.Enter, Modifiers.Control)]
+    [InlineData(Code.Enter, Modifiers.Alt)]
+    [InlineData(Code.Enter, Modifiers.Super)]
+    [InlineData(Code.Enter, Modifiers.Hyper)]
+    [InlineData(Code.Enter, Modifiers.Meta)]
+    [InlineData(Code.Backspace, Modifiers.Control)]
+    [InlineData(Code.Backspace, Modifiers.Alt)]
+    [InlineData(Code.Backspace, Modifiers.Super)]
+    [InlineData(Code.Delete, Modifiers.Control)]
+    [InlineData(Code.Delete, Modifiers.Alt)]
+    [InlineData(Code.Delete, Modifiers.Super | Modifiers.Shift | Modifiers.CapsLock)]
+    public void Dispatch_WhenEditingCommandCarriesApplicationModifiers_LeavesTextAndRouteUnchanged(
+        Code code,
+        Modifiers modifiers)
+    {
+        var control = new TextInput { Text = "value", CaretIndex = 2, AcceptsReturn = true };
+        var submissions = 0;
+        control.Submitted += (_, _) => submissions++;
+        var eventArgs = new KeyEventArgs(new Stroke(
+            code,
+            character: null,
+            nativeCode: 0,
+            modifiers,
+            KeyAction.Press));
+
+        Route(control, eventArgs, Events.Key);
+
+        control.Text.ShouldBe("value");
+        control.CaretIndex.ShouldBe(2);
+        submissions.ShouldBe(0);
+        eventArgs.IsHandled.ShouldBeFalse();
+    }
+
     /// <summary>Verifies a held Enter cannot submit the same single-line value repeatedly.</summary>
     [Fact]
     public void Dispatch_WhenEnterRepeats_RaisesSubmittedOnlyForTheInitialKeyDown()

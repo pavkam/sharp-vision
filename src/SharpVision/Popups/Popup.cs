@@ -545,8 +545,9 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         if (IsOpen && CloseOnEscape && eventArgs is KeyEventArgs
             {
                 IsInitialKeyDown: true,
-                Stroke.Code: Code.Escape
-            })
+                Stroke.Code: Code.Escape,
+                Stroke.Modifiers: var modifiers
+            } && modifiers.IsActivationEligible())
         {
             IsOpen = false;
             eventArgs.IsHandled = true;

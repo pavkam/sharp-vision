@@ -218,6 +218,12 @@ classification serves collection selection gestures: Control and Shift stay
 eligible alongside the lock keys, so extending or toggling a selection with
 those modifiers held remains a selection gesture rather than a command.
 
+Scalar navigation is an exact unmodified named command: arrow, Page Up/Down,
+Home, and End accept lock state but reject Shift and every application-command
+modifier. Escape dismissal instead follows activation eligibility, accepting
+Shift and lock state while leaving Control, Alt, Super, Hyper, Meta, and larger
+chords unhandled before any close, cancellation, or rollback occurs.
+
 ## Pointer capture and coordinates
 
 Capture is exclusive per pointer source and supports press, drag, scrollbar,

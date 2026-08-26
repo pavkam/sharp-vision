@@ -630,7 +630,10 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
                 button.PerformClick();
                 eventArgs.IsHandled = true;
             }
-            else if (key.Stroke.Code == Code.Escape && CloseOnEscape && CanClose)
+            else if (key.Stroke.Code == Code.Escape &&
+                     key.Stroke.Modifiers.IsActivationEligible() &&
+                     CloseOnEscape &&
+                     CanClose)
             {
                 RequestClose();
                 eventArgs.IsHandled = true;

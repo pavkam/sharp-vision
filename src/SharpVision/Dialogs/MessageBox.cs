@@ -495,7 +495,8 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
 
         if (eventArgs.Phase == RoutingPhase.Bubble &&
             eventArgs.IsInitialKeyDown &&
-            eventArgs.Stroke.Code == Code.Escape)
+            eventArgs.Stroke.Code == Code.Escape &&
+            eventArgs.Stroke.Modifiers.IsActivationEligible())
         {
             eventArgs.IsHandled = Cancel();
         }

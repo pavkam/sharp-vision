@@ -412,7 +412,7 @@ public sealed class CurrencyInput: InputBase
             Code.Home => _coordinator.JumpToBound(minimum: true, EffectiveDecimalPlaces),
             Code.End => _coordinator.JumpToBound(minimum: false, EffectiveDecimalPlaces),
             Code.Enter => _coordinator.CommitBuffer(),
-            Code.Escape => _coordinator.RevertBuffer(),
+            Code.Escape when stroke.Modifiers.IsActivationEligible() => _coordinator.RevertBuffer(),
             Code.Backspace => _buffer.Backspace(),
             Code.Delete => _buffer.Delete(),
             Code.Left => _buffer.MovePrevious(extend: false),

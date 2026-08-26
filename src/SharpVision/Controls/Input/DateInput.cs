@@ -432,7 +432,9 @@ public sealed class DateInput: InputBase
         {
             var stroke = openKey.Stroke;
 
-            if (openKey.IsInitialKeyDown && stroke.Code == Code.Escape)
+            if (openKey.IsInitialKeyDown &&
+                stroke.Code == Code.Escape &&
+                stroke.Modifiers.IsActivationEligible())
             {
                 IsOpen = false;
                 eventArgs.IsHandled = true;

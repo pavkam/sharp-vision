@@ -1435,11 +1435,13 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
 
         EditResult? result = null;
 
-        if (eventArgs.Stroke.Code == Code.Backspace && !IsReadOnly)
+        var textEntryEligible = KeyboardModifierPolicy.IsTextEntryEligible(eventArgs.Stroke.Modifiers);
+
+        if (eventArgs.Stroke.Code == Code.Backspace && textEntryEligible && !IsReadOnly)
         {
             result = Edit.Backspace(Text, CommittedTextSelection);
         }
-        else if (eventArgs.Stroke.Code == Code.Delete && !IsReadOnly)
+        else if (eventArgs.Stroke.Code == Code.Delete && textEntryEligible && !IsReadOnly)
         {
             result = Edit.Delete(Text, CommittedTextSelection);
         }
@@ -1451,11 +1453,14 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
             return;
         }
 
-        if (eventArgs.Stroke.Code == Code.Enter)
+        if (eventArgs.Stroke.Code == Code.Enter && textEntryEligible)
         {
-            if (AcceptsReturn && !IsReadOnly)
+            if (AcceptsReturn)
             {
-                _ = Insert("\n");
+                if (!IsReadOnly)
+                {
+                    _ = Insert("\n");
+                }
             }
             else
             {

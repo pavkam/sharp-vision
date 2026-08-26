@@ -74,10 +74,11 @@ draw outside their bounds.
 
 Wheel events are handled only when they actually change the value. Arrow keys
 and the directional buttons move by `SmallChange`; the Page keys and clicks on
-the track move by `LargeChange`; Home and End jump to the endpoints. Dragging
-the thumb captures the pointer, and both cell and pixel pointer reports map
-through the same geometry. Keys outside the scrollbar command set remain
-available to inherited routed input.
+the track move by `LargeChange`; Home and End jump to the endpoints. Keyboard
+movement accepts lock state but no Shift or application-command modifier;
+unsupported chords remain unhandled. Dragging the thumb captures the pointer,
+and both cell and pixel pointer reports map through the same geometry. Keys
+outside the scrollbar command set remain available to inherited routed input.
 
 ## Example
 
