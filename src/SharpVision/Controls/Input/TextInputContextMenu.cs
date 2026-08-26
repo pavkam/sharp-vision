@@ -5,9 +5,11 @@ namespace SharpVision.Controls.Input;
 
 using Menus;
 
+using Runtime;
+
 /// <summary>Provides a default context menu with clipboard and editing commands for <see cref="TextInput"/>.</summary>
 [PublicAPI]
-public sealed class TextInputContextMenu: ContextMenu
+public sealed class TextInputContextMenu: ContextMenu, IClipboardWriterContextMenu
 {
     private readonly TextInput _textInput;
     private readonly MenuItem _cutItem;
@@ -51,6 +53,13 @@ public sealed class TextInputContextMenu: ContextMenu
     }
 
     internal Action<string>? ClipboardWriter { get; set; }
+
+    /// <inheritdoc/>
+    Action<string>? IClipboardWriterContextMenu.ClipboardWriter
+    {
+        get => ClipboardWriter;
+        set => ClipboardWriter = value;
+    }
 
     internal Func<string>? ClipboardReader { get; set; }
 

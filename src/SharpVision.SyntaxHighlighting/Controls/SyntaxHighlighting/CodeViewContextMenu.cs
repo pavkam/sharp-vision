@@ -4,6 +4,7 @@
 namespace SharpVision.Controls.SyntaxHighlighting;
 
 using SharpVision.Menus;
+using SharpVision.Runtime;
 
 /// <summary>Provides a default context menu with copy, selection, and folding commands for <see cref="CodeView"/>.</summary>
 /// <remarks>
@@ -13,13 +14,16 @@ using SharpVision.Menus;
 /// else, or with null to disable the right-click menu entirely.
 /// </remarks>
 [PublicAPI]
-public sealed class CodeViewContextMenu: ContextMenu
+public sealed class CodeViewContextMenu: ContextMenu, IClipboardWriterContextMenu
 {
     private readonly CodeView _owner;
     private readonly MenuItem _copyItem;
     private readonly MenuItem _selectAllItem;
     private readonly MenuItem _collapseAllItem;
     private readonly MenuItem _expandAllItem;
+
+    /// <inheritdoc/>
+    Action<string>? IClipboardWriterContextMenu.ClipboardWriter { get; set; }
 
     /// <summary>Initializes a context menu bound to one owning code view.</summary>
     /// <param name="owner">The non-null owning code view.</param>
@@ -65,6 +69,19 @@ public sealed class CodeViewContextMenu: ContextMenu
     {
         _ = sender;
         _ = e;
+        var text = _owner.CopySelection();
+
+        if (text.Length == 0)
+        {
+            return;
+        }
+
+        if (((IClipboardWriterContextMenu) this).ClipboardWriter is { } writer)
+        {
+            writer(text);
+            return;
+        }
+
         _owner.RequestClipboardCopy();
     }
 

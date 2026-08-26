@@ -618,6 +618,58 @@ public sealed class CodeViewSurfaceTests
         surface.Cell(new Point(2, 0)).Style.Foreground.ShouldNotBe(surface.Cell(new Point(5, 0)).Style.Foreground);
     }
 
+    /// <summary>Verifies token boundaries inside a terminal grapheme never split the cluster that
+    /// rendering commits to a cell; the style owning its first UTF-16 code unit owns it whole.</summary>
+    [Fact]
+    public async Task Render_WhenTokenBoundariesSplitExtendedGraphemes_DrawsEveryClusterAtomicallyAsync()
+    {
+        var directory = Directory.CreateTempSubdirectory("sharpvision-code-view-graphemes-");
+
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(directory.FullName, "graphemes.xml"),
+                """
+                <language name="Graphemes" section="Sources" extensions="*.g" version="1" kateversion="5.0">
+                  <highlighting>
+                    <contexts>
+                      <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                        <DetectChar attribute="Accent" context="#stay" char="e"/>
+                        <StringDetect attribute="Accent" context="#stay" String="❤"/>
+                        <StringDetect attribute="Accent" context="#stay" String="👩"/>
+                        <StringDetect attribute="Accent" context="#stay" String="🇵"/>
+                      </context>
+                    </contexts>
+                    <itemDatas>
+                      <itemData name="Normal Text" defStyleNum="dsNormal"/>
+                      <itemData name="Accent" defStyleNum="dsKeyword"/>
+                    </itemDatas>
+                  </highlighting>
+                </language>
+                """);
+            var view = new CodeView
+            {
+                Catalog = SyntaxDefinitionCatalog.FromDirectory(directory.FullName),
+                Language = "Graphemes",
+                Code = "e\u0301 ❤️ 👩‍💻 🇵🇹",
+            };
+            await using var surface = await ComponentSurface.MountAsync(
+                view,
+                new Size(20, 2),
+                TestThemes.BorderlessContainer,
+                TestContext.Current.CancellationToken);
+
+            surface.Cell(new Point(2, 0)).Text.ShouldBe("e\u0301");
+            surface.Cell(new Point(4, 0)).Text.ShouldBe("❤️");
+            surface.Cell(new Point(7, 0)).Text.ShouldBe("👩‍💻");
+            surface.Cell(new Point(10, 0)).Text.ShouldBe("🇵🇹");
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
     /// <summary>Verifies a tab character contributes exactly one cell to the committed horizontal
     /// extent - the same one cell <c>DrawSlice</c> substitutes and draws for it - rather than the
     /// zero cells a raw, unsubstituted measurement would count it as.</summary>
@@ -1158,6 +1210,57 @@ public sealed class CodeViewSurfaceTests
         await surface.Pointer.RightClickAsync(view, new Point(2, 0));
 
         menu.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies the default context-menu Copy command uses the same application clipboard
+    /// route as Ctrl+C without requiring the legacy detached-control delegate.</summary>
+    [Fact]
+    public async Task ContextMenu_WhenCopyIsInvoked_UsesApplicationClipboardRouteAsync()
+    {
+        var view = new CodeView { Code = "abcdef", Height = Length.Cells(1) };
+        var target = new TextInput { Height = Length.Cells(1) };
+        var root = new Stack { Children = { view, target } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 2),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        var menu = view.ContextMenu.ShouldBeOfType<CodeViewContextMenu>();
+        await surface.UpdateAsync(() => view.SetSelection(new Selection(1, 4)), "select code to copy");
+
+        await surface.Pointer.RightClickAsync(view, new Point(3, 0));
+        await surface.UpdateAsync(
+            () => menu.Items[0].ShouldBeOfType<MenuItem>().PerformInvoke(),
+            "invoke default code copy command");
+        await surface.UpdateAsync(() => target.Focus().ShouldBeTrue(), "focus paste target");
+        await surface.SendAsync(Encoding.ASCII.GetBytes("\u001b[118;5u"), "press terminal Control+V");
+
+        target.Text.ShouldBe("bcd");
+    }
+
+    /// <summary>Verifies repeated common caret navigation reuses the immutable complete selection
+    /// map instead of re-enumerating every grapheme in a large source document.</summary>
+    [Fact]
+    public async Task Keyboard_WhenNavigatingLargeDocument_ReusesCompleteSelectionMapAsync()
+    {
+        var view = new CodeView
+        {
+            Code = string.Join('\n', Enumerable.Repeat("0123456789", 10_000)),
+            Height = Length.Cells(3),
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 3),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => view.Focus().ShouldBeTrue(), "focus large code view");
+
+        await surface.Keyboard.PressAsync(Code.Right);
+        var buildsAfterWarmNavigation = view.TextSelectionMapBuildCount;
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        buildsAfterWarmNavigation.ShouldBeGreaterThan(0);
+        view.TextSelectionMapBuildCount.ShouldBe(buildsAfterWarmNavigation);
     }
 
     /// <summary>Verifies real terminal Ctrl+C publishes the focused embedded CodeView selection

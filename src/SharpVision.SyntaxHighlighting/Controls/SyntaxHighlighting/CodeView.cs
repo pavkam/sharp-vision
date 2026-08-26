@@ -36,15 +36,9 @@ using TextSelection = Selection;
 /// tab-stop expansion.
 /// </para>
 /// <para>
-/// <b>Known limitation:</b> horizontal position bookkeeping for drawing, horizontal scrolling,
-/// and pointer hit-testing currently tracks a token's UTF-16 char count as its column, not its
-/// measured terminal cell width, even though the committed horizontal <see cref="Extent"/> is
-/// already grapheme-and-width aware. A line containing a two-cell-wide grapheme cluster (an East
-/// Asian wide character, a wide emoji, or fullwidth punctuation, all plausible inside a string
-/// literal, comment, or identifier) can therefore mis-position every subsequent token on that
-/// line, slice a cluster in half when the horizontal scroll offset lands inside it, or resolve a
-/// click past such a cluster to the wrong character offset. Plain ASCII and narrow-only text are
-/// unaffected.
+/// Rendering, scrolling, hit testing, and selection share extended-grapheme cell geometry. When a
+/// tokenizer style boundary falls inside one cluster, the token containing the cluster's first
+/// UTF-16 code unit owns the complete indivisible rendered cluster.
 /// </para>
 /// </remarks>
 [PublicAPI]
@@ -52,7 +46,8 @@ public sealed class CodeView:
     CompositeControlBase,
     IStyled<CodeViewStyle>,
     ISelectableTextViewport,
-    IClipboardCopySource
+    IClipboardCopySource,
+    IDispatcherAttachmentObserver
 {
     private const int _foldGutterWidth = 2;
 
@@ -70,11 +65,18 @@ public sealed class CodeView:
     private int _extentWidth;
     private int? _pendingRevealOffset;
     private List<int>? _pendingRevealProjection;
-    private bool _pendingRevealPosted;
+    private Dispatcher? _pendingRevealDispatcher;
+    private TextSelectionMap? _textSelectionMap;
+    private List<int>? _textSelectionMapProjection;
+    private Rect _textSelectionMapViewport;
 
     /// <summary>Gets how many projected source lines the most recent selectable snapshot inspected.
     /// This test seam proves projection work remains bounded by the clipped viewport.</summary>
     internal int LastSelectableTextSnapshotInspectedLineCount { get; private set; }
+
+    /// <summary>Gets how many complete immutable selection maps this instance has built. This test
+    /// seam proves repeated navigation reuses projection geometry until its inputs change.</summary>
+    internal int TextSelectionMapBuildCount { get; private set; }
 
     /// <summary>Initializes an empty, unstyled read-only code view.</summary>
     public CodeView()
@@ -525,10 +527,10 @@ public sealed class CodeView:
 
     /// <summary>
     /// Gets or sets the delegate <see cref="RequestClipboardCopy"/> forwards <see cref="CopySelection"/>'s
-    /// result to, invoked by the default <see cref="CodeViewContextMenu"/>'s Copy item and by
-    /// a detached or manually routed Ctrl+C command. Left null by default. An attached control is
-    /// discovered through <see cref="IClipboardCopySource"/> by <see cref="Application"/>, so its
-    /// ordinary Ctrl+C command uses the application's clipboard path without this delegate.
+    /// result to for a detached default <see cref="CodeViewContextMenu"/> or a manually routed
+    /// Ctrl+C command. Left null by default. An attached control is discovered through
+    /// <see cref="IClipboardCopySource"/> by <see cref="Application"/>, and the application also
+    /// supplies its clipboard route to the default context menu before opening it.
     /// </summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -616,6 +618,57 @@ public sealed class CodeView:
         }
 
         return new SelectableTextSnapshot(NormalizedCode, glyphs, isAuthoritative: true);
+    }
+
+    /// <inheritdoc/>
+    internal override TextSelectionMap GetTextSelectionMap()
+    {
+        var viewport = SelectableTextViewportAbsolute();
+        var localViewport = new Rect(
+            viewport.X - Bounds.X,
+            viewport.Y - Bounds.Y,
+            viewport.Width,
+            viewport.Height);
+
+        if (_textSelectionMap is { } cached &&
+            ReferenceEquals(_textSelectionMapProjection, _visibleLines) &&
+            _textSelectionMapViewport == localViewport)
+        {
+            return cached;
+        }
+
+        var glyphs = new List<TextSelectionGlyph>();
+        var originX = localViewport.X + GutterWidth;
+        var originY = localViewport.Y;
+
+        for (var visibleIndex = 0; visibleIndex < _visibleLines.Count; visibleIndex++)
+        {
+            var sourceLine = _visibleLines[visibleIndex];
+            var text = _lines[sourceLine];
+            var lineStart = LineStartOffset(sourceLine);
+            var x = 0;
+
+            foreach (var grapheme in Graphemes.Enumerate(text))
+            {
+                var cluster = text.AsSpan(grapheme.Offset, grapheme.Length);
+                var width = CodeClusterWidth(cluster);
+
+                if (width > 0)
+                {
+                    glyphs.Add(new TextSelectionGlyph(
+                        new TextSelection(lineStart + grapheme.Offset, lineStart + grapheme.Offset + grapheme.Length),
+                        new Rect(originX + x, originY + visibleIndex, width, 1)));
+                }
+
+                x += width;
+            }
+        }
+
+        _textSelectionMap = new TextSelectionMap(NormalizedCode, [.. glyphs], [], _visibleLines.Count);
+        _textSelectionMapProjection = _visibleLines;
+        _textSelectionMapViewport = localViewport;
+        TextSelectionMapBuildCount++;
+        return _textSelectionMap;
     }
 
     /// <inheritdoc/>
@@ -762,19 +815,42 @@ public sealed class CodeView:
     {
         base.ArrangeOverride(bounds);
 
-        if (_pendingRevealOffset.HasValue && !_pendingRevealPosted && Dispatcher is { } dispatcher)
+        if (!_pendingRevealOffset.HasValue)
         {
-            _pendingRevealPosted = true;
+            return;
+        }
+
+        if (Dispatcher is not { } dispatcher)
+        {
+            ProcessPendingReveal(expectedDispatcher: null);
+            return;
+        }
+
+        if (_pendingRevealDispatcher is null)
+        {
+            _pendingRevealDispatcher = dispatcher;
 
             try
             {
-                dispatcher.Post(ProcessPendingReveal);
+                dispatcher.Post(() => ProcessPendingReveal(dispatcher));
             }
             catch
             {
-                _pendingRevealPosted = false;
+                _pendingRevealDispatcher = null;
                 throw;
             }
+        }
+    }
+
+    /// <inheritdoc/>
+    void IDispatcherAttachmentObserver.OnDispatcherDetached() => _pendingRevealDispatcher = null;
+
+    /// <inheritdoc/>
+    void IDispatcherAttachmentObserver.OnDispatcherAttached()
+    {
+        if (_pendingRevealOffset.HasValue)
+        {
+            _content.RequestInvalidate(InvalidationImpact.Measure);
         }
     }
 
@@ -825,10 +901,35 @@ public sealed class CodeView:
         var offset = HorizontalOffset;
         var column = 0;
 
-        foreach (var token in tokens)
+        if (text.Length > 0)
         {
-            var tokenStyle = ResolvedStyle.WithForeground(ResolveColor(style.ColorFor(token.Style), Theme));
-            DrawSlice(canvas, text.AsSpan(token.Start, token.Length), tokenStyle, x, y, ref column, offset, BackgroundMode.Transparent);
+            Debug.Assert(tokens.Count > 0, "Tokenization covers every non-empty source line.");
+            var tokenIndex = 0;
+            var runStart = 0;
+            var runStyle = tokens[0].Style;
+
+            foreach (var grapheme in Graphemes.Enumerate(text))
+            {
+                while (tokenIndex + 1 < tokens.Count && grapheme.Offset >= tokens[tokenIndex].Start + tokens[tokenIndex].Length)
+                {
+                    tokenIndex++;
+                }
+
+                var ownerStyle = tokens[tokenIndex].Style;
+
+                if (ownerStyle == runStyle)
+                {
+                    continue;
+                }
+
+                var resolved = ResolvedStyle.WithForeground(ResolveColor(style.ColorFor(runStyle), Theme));
+                DrawSlice(canvas, text.AsSpan(runStart, grapheme.Offset - runStart), resolved, x, y, ref column, offset, BackgroundMode.Transparent);
+                runStart = grapheme.Offset;
+                runStyle = ownerStyle;
+            }
+
+            var finalStyle = ResolvedStyle.WithForeground(ResolveColor(style.ColorFor(runStyle), Theme));
+            DrawSlice(canvas, text.AsSpan(runStart), finalStyle, x, y, ref column, offset, BackgroundMode.Transparent);
         }
 
         if (IsFoldingEnabled && IsFolded(sourceLine))
@@ -897,9 +998,15 @@ public sealed class CodeView:
 
     #region Keyboard input
 
-    private void ProcessPendingReveal()
+    private void ProcessPendingReveal(Dispatcher? expectedDispatcher)
     {
-        _pendingRevealPosted = false;
+        if (!ReferenceEquals(_pendingRevealDispatcher, expectedDispatcher) ||
+            !ReferenceEquals(Dispatcher, expectedDispatcher))
+        {
+            return;
+        }
+
+        _pendingRevealDispatcher = null;
 
         if (_pendingRevealOffset is not { } offset || _pendingRevealProjection is not { } projection)
         {
@@ -1132,6 +1239,9 @@ public sealed class CodeView:
         CancelTextSelectionGesture(releaseCapture: true);
         _pendingRevealOffset = null;
         _pendingRevealProjection = null;
+        _pendingRevealDispatcher = null;
+        _textSelectionMap = null;
+        _textSelectionMapProjection = null;
         NormalizedCode = Code.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
         _lines = NormalizedCode.Split('\n');
         _lineStartOffsets = new int[_lines.Length + 1];
@@ -1172,6 +1282,8 @@ public sealed class CodeView:
 
     private void RebuildVisibleLines()
     {
+        _textSelectionMap = null;
+        _textSelectionMapProjection = null;
         var hidden = new bool[_lines.Length];
 
         // Collapsed ranges only actually hide lines while folding is visible; the collapsed

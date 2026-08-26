@@ -9,6 +9,7 @@ using System.Runtime.ExceptionServices;
 using DataBinding;
 
 using SharpVision.Menus;
+using SharpVision.Runtime;
 using SharpVision.Terminal.Input;
 
 using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
@@ -3799,10 +3800,32 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>Publishes this control's already committed attachment.</summary>
-    internal void PublishAttached() => OnAttached();
+    internal void PublishAttached()
+    {
+        ExceptionDispatchInfo? failure = null;
+
+        if (this is IDispatcherAttachmentObserver observer)
+        {
+            ExceptionAggregation.Capture(observer.OnDispatcherAttached, ref failure);
+        }
+
+        ExceptionAggregation.Capture(OnAttached, ref failure);
+        failure?.Throw();
+    }
 
     /// <summary>Publishes this control's already committed detachment.</summary>
-    internal void PublishDetached() => OnDetached();
+    internal void PublishDetached()
+    {
+        ExceptionDispatchInfo? failure = null;
+
+        if (this is IDispatcherAttachmentObserver observer)
+        {
+            ExceptionAggregation.Capture(observer.OnDispatcherDetached, ref failure);
+        }
+
+        ExceptionAggregation.Capture(OnDetached, ref failure);
+        failure?.Throw();
+    }
 
     private void CommitAndPublishContext(
         Dispatcher? dispatcher,

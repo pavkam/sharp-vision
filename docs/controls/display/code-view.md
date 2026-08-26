@@ -118,22 +118,30 @@ normalized source as authoritative semantic text. Its snapshot exposes geometry
 only for complete graphemes currently visible through the clipped text viewport;
 folded and scrolled-off lines remain semantic but have no stale rectangles. A
 wide grapheme is mapped as one owner, and one-cell tabs preserve their source
-offsets. Snapshot work is bounded to the projected viewport rows.
+offsets. Snapshot work is bounded to the projected viewport rows. Common
+keyboard and pointer selection reuse one immutable complete geometry index until
+the source, fold projection, gutter, or viewport geometry changes, so repeated
+navigation does not rebuild document-sized maps.
 
 As an `ISelectableTextViewport`, the view can reveal one validated semantic
 offset and scroll by requested cell deltas. Revealing an offset inside a
 collapsed range expands every containing fold, waits for the new projection,
-then scrolls vertically and horizontally to the final source cell. A callback
-that changes code or makes the control unavailable cancels the stale reveal.
+then scrolls vertically and horizontally to the final source cell. Detached
+layout completes that after-layout work synchronously. Attached work belongs to
+the dispatcher that scheduled it; detaching or moving the control invalidates
+that callback and lets the current attachment finish the still-pending reveal. A
+callback that changes code or makes the control unavailable cancels the stale
+reveal.
 
 `CopySelection()` is pure. When an attached `CodeView` or one of its descendants
 owns focus, Ctrl+C reaches the nearest `IClipboardCopySource` through
 `Application` and publishes that result through
 `Application.Terminal.Clipboard`. `ClipboardWriter` remains useful for a
-detached view, manually routed Ctrl+C, or the default context menu's Copy item;
-it is not required for ordinary attached clipboard routing. The application
-still publishes an empty nearest result rather than falling through to an
-ancestor.
+detached view, manually routed Ctrl+C, or its detached default context menu.
+When attached, the default context menu's Copy command receives the same
+application clipboard publication route as Ctrl+C, so no delegate setup is
+required. The application still publishes an empty nearest result rather than
+falling through to an ancestor.
 
 When embedded through `DocumentBlockControl`, the owner depends on focus:
 
@@ -199,13 +207,15 @@ var copied = view.CopySelection();
 | Surface             | Exact syntax roles, complete selected grapheme owners, clipped snapshots, fold projection, and viewport scrolling. |
 
 - Every token is styled purely by its `SyntaxDefaultStyle` role; a syntax
-  definition's own optional literal color hints are never read.
+  definition's own optional literal color hints are never read. A token boundary
+  inside an extended grapheme does not split rendering: the token containing the
+  first UTF-16 code unit styles the complete cluster.
 - Normalization uses LF, selection never splits a grapheme, tabs occupy one
   semantic character and one displayed cell, and long lines never wrap.
 - Folded and offscreen source remains copyable while contributing no stale hit
   geometry.
-- Selection reveal expands containing folds and stops safely across reentrant
-  mutation or lifecycle changes.
+- Selection reveal expands containing folds, completes after detached layout,
+  and stops safely across reentrant mutation or dispatcher lifecycle changes.
 - A cross-definition reference (embedding another language) that cannot be
   resolved degrades to no highlighting for that reference instead of failing the
   whole document.

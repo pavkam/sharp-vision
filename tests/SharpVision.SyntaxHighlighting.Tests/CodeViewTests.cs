@@ -4,10 +4,92 @@
 namespace SharpVision.SyntaxHighlighting.Tests;
 
 using SharpVision.Controls;
+using SharpVision.Threading;
 
 /// <summary>Verifies CodeView content, selection, and folding behavior.</summary>
 public sealed class CodeViewTests
 {
+    /// <summary>Verifies a reveal deferred by fold expansion completes at the detached layout
+    /// boundary even though no dispatcher exists to run a posted continuation.</summary>
+    [Fact]
+    public void RevealSelectableTextOffset_WhenDetachedFoldExpands_CompletesDuringArrange()
+    {
+        var view = new CodeView
+        {
+            Code = "fn main() {\n    01234567890123456789\n}\nafter",
+            Language = "Rust",
+            Width = Length.Cells(8),
+            Height = Length.Cells(2),
+        };
+        var foldStart = Enumerable.Range(0, 4).First(view.IsFoldStart);
+        view.SetFolded(foldStart, true).ShouldBeTrue();
+        var target = view.Code.IndexOf("89", StringComparison.Ordinal) + 1;
+
+        view.RevealSelectableTextOffset(target).ShouldBeTrue();
+        view.Measure(new Constraint(8, 2));
+        view.Arrange(new Rect(0, 0, 8, 2));
+
+        view.HorizontalOffset.ShouldBeGreaterThan(0);
+        view.RevealSelectableTextOffset(target).ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a reveal continuation queued by a prior dispatcher cannot consume or
+    /// mutate pending state after the view attaches to a replacement dispatcher.</summary>
+    [Fact]
+    public async Task RevealSelectableTextOffset_WhenReattached_IgnoresPriorDispatcherContinuationAsync()
+    {
+        await using var first = Dispatcher.Start(name: "code-view-reveal-first");
+        await using var second = Dispatcher.Start(name: "code-view-reveal-second");
+        var view = new CodeView
+        {
+            Code = "fn main() {\n    01234567890123456789\n}\nafter",
+            Language = "Rust",
+            Width = Length.Cells(8),
+            Height = Length.Cells(2),
+        };
+        Exception? firstFailure = null;
+        first.UnhandledException += (_, eventArgs) =>
+        {
+            firstFailure = eventArgs.Exception;
+            eventArgs.IsHandled = true;
+        };
+        var detached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releaseFirstDispatcher = new ManualResetEventSlim();
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        var firstTransition = first.InvokeAsync(() =>
+        {
+            view.Attach(first);
+            var foldStart = Enumerable.Range(0, 4).First(view.IsFoldStart);
+            view.SetFolded(foldStart, true).ShouldBeTrue();
+            var target = view.Code.IndexOf("89", StringComparison.Ordinal) + 1;
+            view.RevealSelectableTextOffset(target).ShouldBeTrue();
+            view.Measure(new Constraint(8, 2));
+            view.Arrange(new Rect(0, 0, 8, 2));
+            view.Detach();
+            detached.SetResult();
+            releaseFirstDispatcher.Wait(cancellationToken);
+        }, cancellationToken).AsTask();
+        await detached.Task.WaitAsync(cancellationToken);
+        await second.InvokeAsync(() => view.Attach(second), cancellationToken);
+        releaseFirstDispatcher.Set();
+        await firstTransition;
+        await first.InvokeAsync(static () => { }, cancellationToken);
+
+        firstFailure.ShouldBeNull();
+        await second.InvokeAsync(() =>
+        {
+            view.Invalidate(Invalidation.Measure);
+            view.Measure(new Constraint(8, 2));
+            view.Arrange(new Rect(0, 0, 8, 2));
+        }, cancellationToken);
+        await second.InvokeAsync(() =>
+        {
+            view.HorizontalOffset.ShouldBeGreaterThan(0);
+            view.Detach();
+        }, cancellationToken);
+    }
+
     private const string _rustSnippet = "fn main() {\n    let x = 1;\n}\n";
 
     /// <summary>Verifies content and clipboard mutations each notify exactly once after the new

@@ -1194,10 +1194,19 @@ public sealed class Application:
 
         for (var target = eventArgs.OriginalSource; target is not null; target = target.Parent)
         {
+            if (target.ContextMenu is IClipboardWriterContextMenu clipboardMenu)
+            {
+                clipboardMenu.ClipboardWriter = PublishClipboard;
+            }
+
             if (target is TextInput { ContextMenu: TextInputContextMenu contextMenu })
             {
-                contextMenu.ClipboardWriter = PublishClipboard;
                 contextMenu.ClipboardReader = () => _clipboardText;
+                return;
+            }
+
+            if (target.ContextMenu is IClipboardWriterContextMenu)
+            {
                 return;
             }
         }
