@@ -72,6 +72,57 @@ public sealed class SyntaxDefinitionReaderTests
         _ = Should.Throw<FormatException>(() => SyntaxDefinitionReader.Read(xml));
     }
 
+    /// <summary>Verifies repeated schema-permitted general sections accumulate in document order.</summary>
+    [Fact]
+    public void Read_WhenGeneralSectionsRepeat_AccumulatesAndAppliesLaterOptions()
+    {
+        const string general = """
+            <general>
+              <keywords casesensitive="true" additionalDeliminator="@" weakDeliminator="-"/>
+              <comments><comment name="singleLine" start="//"/></comments>
+              <emptyLines><emptyLine regexpr="first"/></emptyLines>
+              <folding indentationsensitive="false"/>
+              <keywords casesensitive="false" additionalDeliminator="#-" weakDeliminator="+"/>
+              <comments><comment name="multiLine" start="/*" end="*/"/></comments>
+              <emptyLines><emptyLine regexpr="second"/></emptyLines>
+              <folding indentationsensitive="true"/>
+            </general>
+            </language>
+            """;
+        var xml = _minimal.Replace("</language>", general, StringComparison.Ordinal);
+
+        var options = SyntaxDefinitionReader.Read(xml).General;
+
+        options.CaseSensitiveKeywords.ShouldBeFalse();
+        options.AdditionalDeliminator.ShouldBe("@#");
+        options.WeakDeliminator.ShouldBe("+");
+        SyntaxWordDelimiters.Default
+            .With(options.AdditionalDeliminator, options.WeakDeliminator)
+            .Contains('-')
+            .ShouldBeTrue();
+        options.Comments.Select(static comment => comment.Kind)
+            .ShouldBe([SyntaxCommentKind.SingleLine, SyntaxCommentKind.MultiLine]);
+        options.EmptyLineRules.Select(static rule => rule.Pattern).ShouldBe(["first", "second"]);
+        options.Folding.IndentationSensitive.ShouldBeTrue();
+    }
+
+    /// <summary>Gets representative schema-invalid root and highlighting structures.</summary>
+    public static TheoryData<string> InvalidDocumentStructures() =>
+    [
+        _minimal.Replace("name=\"Mini\"", "name=\"Mini\" unknown=\"value\"", StringComparison.Ordinal),
+        _minimal.Replace("<highlighting>", "<highlighting unknown=\"value\">", StringComparison.Ordinal),
+        _minimal.Replace("<highlighting>", "<highlighting><bogus/>", StringComparison.Ordinal),
+        _minimal.Replace("<highlighting>", "<general/><highlighting>", StringComparison.Ordinal),
+        _minimal.Replace("</highlighting>", "</highlighting><highlighting/>", StringComparison.Ordinal),
+        _minimal.Replace("</language>", "<general/><general/></language>", StringComparison.Ordinal),
+    ];
+
+    /// <summary>Verifies unknown content, ordering violations, and duplicate singleton sections fail fast.</summary>
+    [Theory]
+    [MemberData(nameof(InvalidDocumentStructures))]
+    public void Read_WhenDocumentStructureViolatesSchema_ThrowsFormatException(string xml) =>
+        _ = Should.Throw<FormatException>(() => SyntaxDefinitionReader.Read(xml));
+
     private const string _minimal = """
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE language>

@@ -306,9 +306,6 @@ public sealed class SyntaxTokenizerTests
 
     private const string _indentationLanguage = """
         <language name="Indented" section="Sources" extensions="*.i" version="1" kateversion="5.0">
-          <general>
-            <folding indentationsensitive="true"/>
-          </general>
           <highlighting>
             <contexts>
               <context name="Normal" attribute="Normal Text" lineEndContext="#stay"/>
@@ -317,6 +314,9 @@ public sealed class SyntaxTokenizerTests
               <itemData name="Normal Text" defStyleNum="dsNormal"/>
             </itemDatas>
           </highlighting>
+          <general>
+            <folding indentationsensitive="true"/>
+          </general>
         </language>
         """;
 
@@ -508,9 +508,6 @@ public sealed class SyntaxTokenizerTests
 
     private const string _coincidentFoldRangesLanguage = """
         <language name="CoincidentFolds" section="Sources" extensions="*.c" version="1" kateversion="5.0">
-          <general>
-            <folding indentationsensitive="true"/>
-          </general>
           <highlighting>
             <contexts>
               <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
@@ -522,6 +519,9 @@ public sealed class SyntaxTokenizerTests
               <itemData name="Normal Text" defStyleNum="dsNormal"/>
             </itemDatas>
           </highlighting>
+          <general>
+            <folding indentationsensitive="true"/>
+          </general>
         </language>
         """;
 
@@ -547,12 +547,6 @@ public sealed class SyntaxTokenizerTests
 
     private const string _invalidEmptyLinePatternLanguage = """
         <language name="InvalidEmptyLine" section="Sources" extensions="*.i" version="1" kateversion="5.0">
-          <general>
-            <folding indentationsensitive="true"/>
-            <emptyLines>
-              <emptyLine regexpr="(unterminated"/>
-            </emptyLines>
-          </general>
           <highlighting>
             <contexts>
               <context name="Normal" attribute="Normal Text" lineEndContext="#stay"/>
@@ -561,6 +555,12 @@ public sealed class SyntaxTokenizerTests
               <itemData name="Normal Text" defStyleNum="dsNormal"/>
             </itemDatas>
           </highlighting>
+          <general>
+            <folding indentationsensitive="true"/>
+            <emptyLines>
+              <emptyLine regexpr="(unterminated"/>
+            </emptyLines>
+          </general>
         </language>
         """;
 
@@ -582,12 +582,6 @@ public sealed class SyntaxTokenizerTests
 
     private const string _pcreEmptyLinePatternLanguage = """
         <language name="PcreEmptyLine" section="Sources" extensions="*.p" version="1" kateversion="5.0">
-          <general>
-            <folding indentationsensitive="true"/>
-            <emptyLines>
-              <emptyLine regexpr="^a++$"/>
-            </emptyLines>
-          </general>
           <highlighting>
             <contexts>
               <context name="Normal" attribute="Normal Text" lineEndContext="#stay"/>
@@ -596,6 +590,12 @@ public sealed class SyntaxTokenizerTests
               <itemData name="Normal Text" defStyleNum="dsNormal"/>
             </itemDatas>
           </highlighting>
+          <general>
+            <folding indentationsensitive="true"/>
+            <emptyLines>
+              <emptyLine regexpr="^a++$"/>
+            </emptyLines>
+          </general>
         </language>
         """;
 
@@ -615,12 +615,6 @@ public sealed class SyntaxTokenizerTests
 
     private const string _catastrophicEmptyLinePatternLanguage = """
         <language name="CatastrophicEmptyLine" section="Sources" extensions="*.c" version="1" kateversion="5.0">
-          <general>
-            <folding indentationsensitive="true"/>
-            <emptyLines>
-              <emptyLine regexpr="^(a+)+b$"/>
-            </emptyLines>
-          </general>
           <highlighting>
             <contexts>
               <context name="Normal" attribute="Normal Text" lineEndContext="#stay"/>
@@ -629,6 +623,12 @@ public sealed class SyntaxTokenizerTests
               <itemData name="Normal Text" defStyleNum="dsNormal"/>
             </itemDatas>
           </highlighting>
+          <general>
+            <folding indentationsensitive="true"/>
+            <emptyLines>
+              <emptyLine regexpr="^(a+)+b$"/>
+            </emptyLines>
+          </general>
         </language>
         """;
 

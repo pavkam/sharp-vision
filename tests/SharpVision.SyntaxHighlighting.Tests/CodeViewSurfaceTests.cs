@@ -730,11 +730,11 @@ public sealed class CodeViewSurfaceTests
                 Path.Combine(directory.FullName, "indented.xml"),
                 """
                 <language name="Indented" section="Sources" extensions="*.i" version="1" kateversion="5.0">
-                  <general><folding indentationsensitive="true"/></general>
                   <highlighting>
                     <contexts><context name="Normal" attribute="Normal Text" lineEndContext="#stay"/></contexts>
                     <itemDatas><itemData name="Normal Text" defStyleNum="dsNormal"/></itemDatas>
                   </highlighting>
+                  <general><folding indentationsensitive="true"/></general>
                 </language>
                 """);
             var view = new CodeView
@@ -1174,6 +1174,64 @@ public sealed class CodeViewSurfaceTests
         await surface.Pointer.ClickAsync(view, new Point(0, foldStart));
 
         view.IsFolded(foldStart).ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a primary press joined to another held button is not treated as the
+    /// exclusive one-shot fold command.</summary>
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task Pointer_WhenPrimaryPressIsChorded_DoesNotToggleTheFoldAsync(int heldButton)
+    {
+        var view = new CodeView { Code = "fn f() {\n    g();\n}\n", Language = "Rust" };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 4),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        var foldStart = Enumerable.Range(0, 3).First(view.IsFoldStart);
+        var point = await surface.ResolvePointAsync(view, new Point(0, foldStart));
+        var chord = Buttons.Primary | (heldButton == 1 ? Buttons.Middle : Buttons.Secondary);
+        var eventArgs = new PointerEventArgs(new Pointer(
+            point,
+            pixels: null,
+            chord,
+            PointerAction.Press,
+            wheelX: 0,
+            wheelY: 0,
+            Modifiers.None,
+            isMotion: false,
+            isCellPositionInferred: false));
+
+        await surface.UpdateAsync(
+            () => Router.Route(view, Events.Pointer, eventArgs),
+            "route chorded primary press over fold gutter");
+
+        view.IsFolded(foldStart).ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a collapsed fold's inline indicator participates in horizontal extent
+    /// and can be reached by scrolling to the end.</summary>
+    [Fact]
+    public async Task Fold_WhenCollapsed_IncludesReachableIndicatorInHorizontalExtentAsync()
+    {
+        var view = new CodeView { Code = "a {\n  b\n}\n", Language = "Rust" };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(8, 4),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        var foldStart = Enumerable.Range(0, 3).First(view.IsFoldStart);
+        var expandedWidth = view.Extent.Width;
+
+        await surface.UpdateAsync(() => view.SetFolded(foldStart, true), "collapse short fold");
+
+        view.Extent.Width.ShouldBe(expandedWidth + 6);
+        await surface.UpdateAsync(
+            () => view.HorizontalOffset = view.Extent.Width - view.Viewport.Width,
+            "scroll to collapsed indicator");
+        var firstRow = string.Concat(Enumerable.Range(0, 8).Select(x => surface.Cell(new Point(x, 0)).Text));
+        firstRow.ShouldContain("(...)");
     }
 
     /// <summary>Verifies clicking within the gutter does not also move the text caret.</summary>

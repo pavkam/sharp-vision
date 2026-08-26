@@ -71,7 +71,9 @@ public static class SyntaxDefinitionReader
                 throw new FormatException($"Expected a root <language> element, found <{language.Name.LocalName}>.");
             }
 
+            ValidateLanguageStructure(language);
             var highlighting = RequiredChild(language, "highlighting");
+            ValidateHighlightingStructure(highlighting);
             var keywordLists = ReadKeywordLists(highlighting);
             var itemDataSet = ReadItemDataSet(highlighting);
             var contexts = ReadContexts(highlighting, itemDataSet);
@@ -501,52 +503,158 @@ public static class SyntaxDefinitionReader
                 emptyLineRules: []);
         }
 
-        var folding = general.Element("folding");
-        var keywords = general.Element("keywords");
-        var comments = new List<SyntaxCommentDefinition>();
-
-        foreach (var comment in general.Element("comments")?.Elements("comment") ?? [])
+        if (general.HasAttributes)
         {
-            var kind = RequiredAttribute(comment, "name") switch
-            {
-                "singleLine" => SyntaxCommentKind.SingleLine,
-                "multiLine" => SyntaxCommentKind.MultiLine,
-                var other => throw new FormatException($"Unknown comment kind '{other}'."),
-            };
-
-            comments.Add(
-                new SyntaxCommentDefinition(
-                    kind,
-                    RequiredNonWhitespaceAttribute(comment, "start"),
-                    kind == SyntaxCommentKind.MultiLine
-                        ? RequiredNonWhitespaceAttribute(comment, "end")
-                        : Attribute(comment, "end"),
-                    Attribute(comment, "region"),
-                    Attribute(comment, "position") == "afterwhitespace"));
+            throw new FormatException("<general> does not accept attributes.");
         }
 
+        var indentationSensitive = false;
+        var caseSensitiveKeywords = languageCaseSensitiveDefault;
+        var delimiters = SyntaxWordDelimiters.Default;
+        var delimiterCandidates = new List<char>();
+        var comments = new List<SyntaxCommentDefinition>();
         var emptyLineRules = new List<SyntaxEmptyLineRule>();
 
-        foreach (var emptyLine in general.Element("emptyLines")?.Elements("emptyLine") ?? [])
+        foreach (var section in general.Elements())
         {
-            emptyLineRules.Add(
-                new SyntaxEmptyLineRule(
-                    RequiredAttribute(emptyLine, "regexpr"),
-                    ParseBool(Attribute(emptyLine, "casesensitive"), defaultValue: true)));
+            switch (section.Name.LocalName)
+            {
+                case "folding":
+                    indentationSensitive = ParseBool(Attribute(section, "indentationsensitive"));
+                    break;
+                case "keywords":
+                    if (Attribute(section, "casesensitive") is { } rawCaseSensitive)
+                    {
+                        caseSensitiveKeywords = ParseBool(rawCaseSensitive);
+                    }
+
+                    var weakDeliminator = Attribute(section, "weakDeliminator") ?? string.Empty;
+                    var additionalDeliminator = Attribute(section, "additionalDeliminator") ?? string.Empty;
+
+                    // KDE applies each pair immediately, so a later addition can restore a
+                    // delimiter weakened by an earlier section. Preserve that encounter order,
+                    // then encode the final set as one public definition-level delta.
+                    foreach (var candidate in additionalDeliminator.Concat(weakDeliminator))
+                    {
+                        if (!delimiterCandidates.Contains(candidate))
+                        {
+                            delimiterCandidates.Add(candidate);
+                        }
+                    }
+
+                    delimiters = delimiters.With(additionalDeliminator, weakDeliminator);
+                    break;
+                case "comments":
+                    foreach (var comment in section.Elements("comment"))
+                    {
+                        var kind = RequiredAttribute(comment, "name") switch
+                        {
+                            "singleLine" => SyntaxCommentKind.SingleLine,
+                            "multiLine" => SyntaxCommentKind.MultiLine,
+                            var other => throw new FormatException($"Unknown comment kind '{other}'."),
+                        };
+
+                        comments.Add(
+                            new SyntaxCommentDefinition(
+                                kind,
+                                RequiredNonWhitespaceAttribute(comment, "start"),
+                                kind == SyntaxCommentKind.MultiLine
+                                    ? RequiredNonWhitespaceAttribute(comment, "end")
+                                    : Attribute(comment, "end"),
+                                Attribute(comment, "region"),
+                                Attribute(comment, "position") == "afterwhitespace"));
+                    }
+
+                    break;
+                case "emptyLines":
+                    foreach (var emptyLine in section.Elements("emptyLine"))
+                    {
+                        emptyLineRules.Add(
+                            new SyntaxEmptyLineRule(
+                                RequiredAttribute(emptyLine, "regexpr"),
+                                ParseBool(Attribute(emptyLine, "casesensitive"), defaultValue: true)));
+                    }
+
+                    break;
+                case "spellchecking":
+                    // Spellchecking metadata is part of the KDE schema but outside this
+                    // syntax-tokenization package's public model.
+                    break;
+                default:
+                    throw new FormatException($"Unknown <general> child <{section.Name.LocalName}>.");
+            }
         }
 
         return new SyntaxGeneralOptions(
-            folding: new SyntaxFoldingOptions(ParseBool(Attribute(folding, "indentationsensitive"))),
+            folding: new SyntaxFoldingOptions(indentationSensitive),
             comments: comments,
-            caseSensitiveKeywords: ParseBool(Attribute(keywords, "casesensitive"), defaultValue: languageCaseSensitiveDefault),
-            weakDeliminator: Attribute(keywords, "weakDeliminator") ?? string.Empty,
-            additionalDeliminator: Attribute(keywords, "additionalDeliminator") ?? string.Empty,
+            caseSensitiveKeywords: caseSensitiveKeywords,
+            weakDeliminator: string.Concat(delimiterCandidates.Where(
+                candidate => SyntaxWordDelimiters.Default.Contains(candidate) && !delimiters.Contains(candidate))),
+            additionalDeliminator: string.Concat(delimiterCandidates.Where(
+                candidate => !SyntaxWordDelimiters.Default.Contains(candidate) && delimiters.Contains(candidate))),
             emptyLineRules: emptyLineRules);
     }
 
     #endregion
 
     #region XML helpers
+
+    private static void ValidateLanguageStructure(XElement language)
+    {
+        string[] allowedAttributes =
+        [
+            "name", "alternativeNames", "section", "extensions", "version", "kateversion",
+            "style", "mimetype", "casesensitive", "priority", "author", "license", "indenter",
+            "hidden", "generated",
+        ];
+
+        foreach (var attribute in language.Attributes().Where(static attribute => !attribute.IsNamespaceDeclaration))
+        {
+            if (attribute.Name is { LocalName: "noNamespaceSchemaLocation", NamespaceName: "http://www.w3.org/2001/XMLSchema-instance" })
+            {
+                continue;
+            }
+
+            if (attribute.Name.NamespaceName.Length != 0 ||
+                !allowedAttributes.Contains(attribute.Name.LocalName, StringComparer.Ordinal))
+            {
+                throw new FormatException($"Unknown <language> attribute '{attribute.Name.LocalName}'.");
+            }
+        }
+
+        var children = language.Elements().ToArray();
+
+        if (children.Length is < 1 or > 2 ||
+            children[0].Name.LocalName != "highlighting" ||
+            (children.Length == 2 && children[1].Name.LocalName != "general"))
+        {
+            throw new FormatException("<language> must contain exactly one <highlighting> followed by at most one <general>.");
+        }
+    }
+
+    private static void ValidateHighlightingStructure(XElement highlighting)
+    {
+        if (highlighting.HasAttributes)
+        {
+            throw new FormatException("<highlighting> does not accept attributes.");
+        }
+
+        var children = highlighting.Elements().ToArray();
+        var index = 0;
+
+        while (index < children.Length && children[index].Name.LocalName == "list")
+        {
+            index++;
+        }
+
+        if (index >= children.Length || children[index++].Name.LocalName != "contexts" ||
+            index >= children.Length || children[index++].Name.LocalName != "itemDatas" ||
+            index != children.Length)
+        {
+            throw new FormatException("<highlighting> must contain zero or more <list> elements, one <contexts>, then one <itemDatas>.");
+        }
+    }
 
     private static XElement RequiredChild(XElement parent, string name) =>
         parent.Element(name) ?? throw new FormatException($"'{parent.Name.LocalName}' is missing required child <{name}>.");

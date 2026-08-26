@@ -58,6 +58,14 @@ and the reader accepts format versions through 6.22; a missing, malformed, or
 newer value fails before a directory catalog can publish the definition. This
 keeps ignored future attributes from masquerading as compatible syntax.
 
+The reader enforces the schema's root envelope: one `highlighting` section,
+followed by at most one `general` section, with only the declared root and
+`highlighting` attributes and children. Unknown content, duplicate singleton
+sections, and invalid ordering fail with `FormatException` instead of being
+silently discarded. Within `general`, every schema-permitted repeated section is
+processed in document order: comments and empty-line rules append, delimiter
+changes accumulate, and later scalar settings take precedence.
+
 The reader and grammar compiler support every rule element the schema defines:
 `keyword`, `Float`, `HlCOct`, `HlCHex`, `Int`, `DetectChar`, `Detect2Chars`,
 `AnyChar`, `StringDetect`, `WordDetect`, `RegExpr`, `LineContinue`,

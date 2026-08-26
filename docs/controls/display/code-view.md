@@ -163,10 +163,13 @@ also detects the changed source text and clears its stale combined selection.
 A fold range comes from a grammar's region markers or indentation folding.
 Collapsing hides lines strictly inside the range while preserving `Code`, token
 offsets, and `Selection`. The start line remains visible and displays a
-collapsed indicator. Clicking its gutter glyph toggles the fold without moving
-the caret. Nested collapsed ranges are projected with range-boundary deltas and
-one line scan, keeping collapse and folding re-enable work linear in the number
-of folds plus source lines rather than repeatedly marking shared interiors.
+collapsed indicator. The indicator contributes to `Extent.Width`, so every cell
+remains reachable by horizontal scrolling. An exclusive primary-button press on
+the gutter glyph toggles the fold without moving the caret; a chord containing
+another held button is not a fold command. Nested collapsed ranges are projected
+with range-boundary deltas and one line scan, keeping collapse and folding
+re-enable work linear in the number of folds plus source lines rather than
+repeatedly marking shared interiors.
 
 Setting `IsFoldingEnabled` false removes the gutter and shows every line while
 retaining stored fold states; restoring it resumes those states. Selection and
@@ -223,10 +226,11 @@ var copied = view.CopySelection();
 - A cross-definition reference (embedding another language) that cannot be
   resolved degrades to no highlighting for that reference instead of failing the
   whole document.
-- A primary click inside the fold gutter toggles that line's fold instead of
-  moving the caret; `IsFoldingEnabled = false` reserves no gutter cells and
-  shows every line while preserving each fold's recorded state for when it is
-  re-enabled.
+- An exclusive primary click inside the fold gutter toggles that line's fold
+  instead of moving the caret; multi-button chords do not toggle. The collapsed
+  indicator contributes to the horizontal extent and remains scroll-reachable.
+  `IsFoldingEnabled = false` reserves no gutter cells and shows every line while
+  preserving each fold's recorded state for when it is re-enabled.
 - An embedded drag transfers ownership only after the shared one-cell threshold;
   a stationary gutter click remains a fold action.
 - Theme and local style changes repaint syntax, selection, and gutter roles

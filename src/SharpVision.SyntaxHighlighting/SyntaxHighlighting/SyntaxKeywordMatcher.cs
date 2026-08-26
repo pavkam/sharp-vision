@@ -7,8 +7,7 @@ namespace SharpVision.SyntaxHighlighting;
 /// Matches one word, scanned up to the next <see cref="SyntaxWordDelimiters"/> boundary, against a
 /// resolved <see cref="SyntaxKeywordList"/> using its resolved case sensitivity.
 /// </summary>
-[PublicAPI]
-public sealed class SyntaxKeywordMatcher
+internal sealed class SyntaxKeywordMatcher
 {
     private readonly HashSet<string> _words;
     private readonly SyntaxWordDelimiters _delimiters;
@@ -35,7 +34,7 @@ public sealed class SyntaxKeywordMatcher
     /// <paramref name="offset"/> is negative or greater than <paramref name="line"/>'s length.
     /// </exception>
     [Pure]
-    public int Match(ReadOnlySpan<char> line, int offset) => MatchWithSkip(line, offset).Length;
+    internal int Match(ReadOnlySpan<char> line, int offset) => MatchWithSkip(line, offset).Length;
 
     /// <summary>
     /// Attempts to match one keyword starting exactly at <paramref name="offset"/>, additionally

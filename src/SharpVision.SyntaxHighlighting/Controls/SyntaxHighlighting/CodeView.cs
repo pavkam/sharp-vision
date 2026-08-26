@@ -50,6 +50,7 @@ public sealed class CodeView:
     IDispatcherAttachmentObserver
 {
     private const int _foldGutterWidth = 2;
+    private const string _foldIndicator = " (...)";
 
     private readonly CodeViewContent _content;
     private readonly LayoutStack _stack;
@@ -955,7 +956,7 @@ public sealed class CodeView:
         if (reachedLineEnd && IsFoldingEnabled && IsFolded(sourceLine))
         {
             var indicatorStyle = ResolvedStyle.WithForeground(ResolveColor(style.GutterColor, Theme));
-            DrawSlice(canvas, " (...)", indicatorStyle, x, y, ref column, HorizontalOffset, BackgroundMode.Transparent);
+            DrawSlice(canvas, _foldIndicator, indicatorStyle, x, y, ref column, HorizontalOffset, BackgroundMode.Transparent);
         }
 
     }
@@ -1204,7 +1205,7 @@ public sealed class CodeView:
                 Buttons: var buttons,
                 Cells: { } pressedCells
             } &&
-            (buttons & Buttons.Primary) != 0 &&
+            buttons == Buttons.Primary &&
             IsFoldingEnabled &&
             TryToggleFoldAt(pressedCells))
         {
@@ -1378,7 +1379,10 @@ public sealed class CodeView:
 
         foreach (var line in _visibleLines)
         {
-            _extentWidth = Math.Max(_extentWidth, GutterWidth + MeasureCodeCells(_lines[line]));
+            var indicatorWidth = IsFoldingEnabled && IsFolded(line) ? _foldIndicator.Length : 0;
+            _extentWidth = Math.Max(
+                _extentWidth,
+                GutterWidth + MeasureCodeCells(_lines[line]) + indicatorWidth);
         }
     }
 

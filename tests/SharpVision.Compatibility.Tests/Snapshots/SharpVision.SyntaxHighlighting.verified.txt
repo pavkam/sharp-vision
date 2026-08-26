@@ -357,10 +357,6 @@ namespace SharpVision.SyntaxHighlighting
         public string Name { get; }
         public System.Collections.Generic.IReadOnlyList<string> Words { get; }
     }
-    public sealed class SyntaxKeywordMatcher
-    {
-        public int Match(System.ReadOnlySpan<char> line, int offset) { }
-    }
     public sealed class SyntaxRule
     {
         public string AdditionalDeliminator { get; }
