@@ -83,4 +83,11 @@ public sealed record CapabilityOverrides
 
     /// <summary>Gets an optional overline override.</summary>
     public bool? Overline { get; init; }
+
+    /// <summary>
+    /// Gets an optional OSC 9 / OSC 777 desktop-notification override. There is no reliable
+    /// environment or query signal for this protocol, so this explicit opt-in is the only way to
+    /// make notification evidence authoritative.
+    /// </summary>
+    public bool? Notifications { get; init; }
 }

@@ -24,6 +24,9 @@ public interface ITerminalServices
     /// </summary>
     public bool IsTitleSupported { get; }
 
+    /// <summary>Gets the OSC 9 / OSC 777 desktop-notification interface.</summary>
+    public INotifications Notifications { get; }
+
     /// <summary>
     /// Sets the window title through proven built-in OSC 2 or the active described
     /// <c>TS</c>/<c>fsl</c> pair.

@@ -10,7 +10,7 @@ using Terminal.Kitty.Clipboard;
 using KittyClipboardWriter = Terminal.Kitty.Clipboard.KittyClipboardWriter;
 
 /// <summary>Encodes implemented output protocols and posts them through the ordered write path.</summary>
-internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IDisposable
+internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, INotifications, IDisposable
 {
     // Kitty OSC 5522 metadata reserves ':' and ';' as field and payload separators, so a MIME
     // type cannot carry a ";charset=" parameter the way OSC 52 or HTTP would.
@@ -43,6 +43,9 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
 
     /// <inheritdoc/>
     public IClipboard Clipboard => this;
+
+    /// <inheritdoc/>
+    public INotifications Notifications => this;
 
     /// <inheritdoc/>
     public bool IsTitleSupported
@@ -81,6 +84,14 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
             }
         }
     }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Reports authoritative evidence for desktop notifications. There is no reliable environment
+    /// or query signal for this protocol, so only an explicit
+    /// <see cref="CapabilityOverrides.Notifications"/> opt-in can ever make this true.
+    /// </remarks>
+    bool INotifications.IsSupported => _application.Capabilities.Notifications.Authoritative;
 
     /// <inheritdoc/>
     public void Ring()
@@ -150,6 +161,66 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, ID
         destination.Write(title);
         destination.Write(suffix.Span);
         _application.PostOutOfBand(destination.WrittenMemory);
+    }
+
+    /// <inheritdoc/>
+    public void Notify(string body)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+
+        if (!((INotifications) this).IsSupported)
+        {
+            return;
+        }
+
+        var byteCount = Encoding.UTF8.GetByteCount(body);
+        var destination = new ArrayBufferWriter<byte>(byteCount + 8);
+        var rented = ArrayPool<byte>.Shared.Rent(Math.Max(1, byteCount));
+
+        try
+        {
+            var written = Encoding.UTF8.GetBytes(body, rented);
+            Osc.Notify(new ProtocolWriter(destination), rented.AsSpan(0, written));
+            _application.PostOutOfBand(destination.WrittenMemory);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(rented, clearArray: true);
+        }
+    }
+
+    /// <inheritdoc/>
+    public void Notify(string title, string body)
+    {
+        ArgumentNullException.ThrowIfNull(title);
+        ArgumentNullException.ThrowIfNull(body);
+
+        if (!((INotifications) this).IsSupported)
+        {
+            return;
+        }
+
+        var titleByteCount = Encoding.UTF8.GetByteCount(title);
+        var bodyByteCount = Encoding.UTF8.GetByteCount(body);
+        var destination = new ArrayBufferWriter<byte>(titleByteCount + bodyByteCount + 16);
+        var titleRented = ArrayPool<byte>.Shared.Rent(Math.Max(1, titleByteCount));
+        var bodyRented = ArrayPool<byte>.Shared.Rent(Math.Max(1, bodyByteCount));
+
+        try
+        {
+            var titleWritten = Encoding.UTF8.GetBytes(title, titleRented);
+            var bodyWritten = Encoding.UTF8.GetBytes(body, bodyRented);
+            Osc.Notify(
+                new ProtocolWriter(destination),
+                titleRented.AsSpan(0, titleWritten),
+                bodyRented.AsSpan(0, bodyWritten));
+            _application.PostOutOfBand(destination.WrittenMemory);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(titleRented, clearArray: true);
+            ArrayPool<byte>.Shared.Return(bodyRented, clearArray: true);
+        }
     }
 
     private ProgramExpander Expander()

@@ -43,7 +43,8 @@ internal static class OverrideEvidenceAdapter
                     ItermImages = Apply(capabilities.ItermImages, overrides.ItermImages),
                     StyledUnderlines = Apply(capabilities.StyledUnderlines, overrides.StyledUnderlines),
                     UnderlineColor = Apply(capabilities.UnderlineColor, overrides.UnderlineColor),
-                    Overline = Apply(capabilities.Overline, overrides.Overline)
+                    Overline = Apply(capabilities.Overline, overrides.Overline),
+                    Notifications = Apply(capabilities.Notifications, overrides.Notifications)
                 };
         }
     }

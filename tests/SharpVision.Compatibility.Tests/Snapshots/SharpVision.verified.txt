@@ -169,12 +169,19 @@
         void Request(SharpVision.Terminal.Clipboard.Selection selection = 0);
         void Write(System.ReadOnlySpan<char> text, SharpVision.Terminal.Clipboard.Selection selection = 0);
     }
+    public interface INotifications
+    {
+        bool IsSupported { get; }
+        void Notify(string body);
+        void Notify(string title, string body);
+    }
     public interface ITerminalServices
     {
         SharpVision.IBell Bell { get; }
         SharpVision.IClipboard Clipboard { get; }
         SharpVision.Terminal.Capabilities.Description Description { get; }
         bool IsTitleSupported { get; }
+        SharpVision.INotifications Notifications { get; }
         void SetTitle(string title);
     }
     public sealed class KittyClipboardReplyEventArgs : System.EventArgs

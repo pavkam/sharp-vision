@@ -50,5 +50,8 @@ public enum TerminalProtocol
     Overline,
 
     /// <summary>xterm modifyOtherKeys enhanced keyboard input.</summary>
-    XtermKeyboard
+    XtermKeyboard,
+
+    /// <summary>OSC 9 / OSC 777 desktop notifications.</summary>
+    Notifications
 }

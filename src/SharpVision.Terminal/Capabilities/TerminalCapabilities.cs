@@ -114,6 +114,13 @@ public sealed record TerminalCapabilities
     /// <summary>Gets overline rendition support.</summary>
     public Feature Overline { get; init; } = Feature.Unknown;
 
+    /// <summary>
+    /// Gets OSC 9 / OSC 777 desktop-notification support. There is no reliable environment or
+    /// query signal for this protocol, so only an explicit <see cref="CapabilityOverrides.Notifications"/>
+    /// opt-in can ever make this evidence authoritative.
+    /// </summary>
+    public Feature Notifications { get; init; } = Feature.Unknown;
+
     /// <summary>Gets the support evidence for one optional protocol.</summary>
     /// <param name="protocol">The protocol to query.</param>
     /// <returns>The feature evidence.</returns>
@@ -136,6 +143,7 @@ public sealed record TerminalCapabilities
         TerminalProtocol.StyledUnderlines => StyledUnderlines,
         TerminalProtocol.UnderlineColor => UnderlineColor,
         TerminalProtocol.Overline => Overline,
+        TerminalProtocol.Notifications => Notifications,
         _ => throw new ArgumentOutOfRangeException(nameof(protocol), protocol, "The terminal protocol is unknown.")
     };
 
@@ -156,6 +164,7 @@ public sealed record TerminalCapabilities
         new(TerminalProtocol.ItermImages, ItermImages),
         new(TerminalProtocol.StyledUnderlines, StyledUnderlines),
         new(TerminalProtocol.UnderlineColor, UnderlineColor),
-        new(TerminalProtocol.Overline, Overline)
+        new(TerminalProtocol.Overline, Overline),
+        new(TerminalProtocol.Notifications, Notifications)
     ];
 }

@@ -18,25 +18,28 @@ sensitive query responses.
 ## Supported features
 
 Typed support covers selectors 0/2 for titles, 4/10/11 for palette/default color
-queries where capabilities allow, 8 for hyperlinks, 52 for clipboard text, and
-5522 through the dedicated
+queries where capabilities allow, 8 for hyperlinks, 9/777 for desktop
+notifications, 52 for clipboard text, and 5522 through the dedicated
 [Kitty clipboard contract](kitty-clipboard.md#overview). Shell-integration
 prompt marks (OSC 133) and working-directory reports (OSC 7) are out of scope:
 they describe a shell session rather than a full-screen application.
 
-> [!IMPORTANT]
->
-> **Implementation gap:** the desktop-notification selectors have no typed
-> support. Neither OSC 9 nor OSC 777 has a typed encoder or terminal service, so
-> an application cannot raise a terminal notification through
-> `Application.Terminal`.
+Desktop notifications are opt-in only: there is no reliable environment or query
+signal for OSC 9 / OSC 777 support, so `Application.Terminal.Notifications` is
+authorized exclusively by an explicit `CapabilityOverrides.Notifications`
+override, never by environment or default evidence.
 
 ## Typed API and behavior
 
 `Osc` implements selectors 0 and 2 for titles, selector 8 hyperlink open/close,
-selector 4 palette queries, selectors 10 and 11 default-color queries, and the
-selector 1337 iTerm2 capability query. The raw `ProtocolWriter` validates the
-complete payload before advancing an `IBufferWriter<byte>` and always emits ST.
+selectors 9 and 777 for desktop notifications, selector 4 palette queries,
+selectors 10 and 11 default-color queries, and the selector 1337 iTerm2
+capability query. `Osc.Notify(writer, body)` writes a bare OSC 9 payload;
+`Osc.Notify(writer, title, body)` writes an OSC 777 payload framed as
+`notify;title;body`, the urxvt/foot convention. The raw `ProtocolWriter`
+validates the complete payload before advancing an `IBufferWriter<byte>` and
+always emits ST.
+
 `XtermResponses.TryOsc` decodes one bounded OSC 4 index/color pair or one OSC
 10/11 default color into an immutable `PaletteResponse`. Palette indices are
 limited to 0 through 255. Each RGB component contains one through four

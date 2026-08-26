@@ -1185,6 +1185,109 @@ public sealed class TerminalServicesTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>
+    /// Verifies notifications are wired through <see cref="INotifications"/> and gated on an
+    /// explicit opt-in override: since there is no reliable environment or query signal for OSC 9
+    /// / OSC 777 support, an authoritative override is the only way to make it supported, and once
+    /// it is, both the body-only and titled overloads emit the exact documented bytes.
+    /// </summary>
+    [Fact]
+    public async Task Notify_WhenOverrideIsAuthoritative_EmitsExactBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { Notifications = supported }
+        };
+        List<string> written = [];
+        var complete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += memory =>
+        {
+            written.Add(Encoding.ASCII.GetString(memory.Span));
+            var joined = string.Concat(written);
+
+            if (joined.Contains("]9;hello", StringComparison.Ordinal) &&
+                joined.Contains("]777;notify;title;hello", StringComparison.Ordinal))
+            {
+                _ = complete.TrySetResult();
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.Notifications.IsSupported.ShouldBeTrue();
+        application.Terminal.Notifications.Notify("hello");
+        application.Terminal.Notifications.Notify("title", "hello");
+        await complete.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// Verifies desktop notifications are unsupported and byte-quiet without any override, matching
+    /// the authoritative-origin gate every other optional protocol follows: the conservative
+    /// profile's default unknown evidence never authorizes notification output.
+    /// </summary>
+    [Fact]
+    public async Task Notify_WhenNoOverrideIsSet_IsUnsupportedAndByteQuietAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var before = terminal.Writes.Count;
+
+        application.Terminal.Notifications.IsSupported.ShouldBeFalse();
+        application.Terminal.Notifications.Notify("ignored");
+        application.Terminal.Notifications.Notify("ignored", "ignored");
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        terminal.Writes.Count.ShouldBe(before);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// Verifies an explicit override set to false still leaves notifications unsupported and
+    /// byte-quiet, proving the gate checks the override's resulting support state rather than
+    /// merely whether an override was supplied.
+    /// </summary>
+    [Fact]
+    public async Task Notify_WhenOverrideIsExplicitlyFalse_IsUnsupportedAndByteQuietAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var unsupported = new Feature(CapabilitySupport.Unsupported, Origin.Override);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { Notifications = unsupported }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var before = terminal.Writes.Count;
+
+        application.Terminal.Notifications.IsSupported.ShouldBeFalse();
+        application.Terminal.Notifications.Notify("ignored");
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        terminal.Writes.Count.ShouldBe(before);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies both notify overloads validate their string arguments unconditionally,
+    /// even when notifications are unsupported, matching <c>SetTitle</c>'s null-check ordering.</summary>
+    [Fact]
+    public async Task Notify_WhenArgumentIsNull_ThrowsArgumentNullExceptionAsync()
+    {
+        await using FakeTerminal terminal = new();
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+
+        _ = Should.Throw<ArgumentNullException>(() => application.Terminal.Notifications.Notify(null!));
+        _ = Should.Throw<ArgumentNullException>(() => application.Terminal.Notifications.Notify(null!, "body"));
+        _ = Should.Throw<ArgumentNullException>(() => application.Terminal.Notifications.Notify("title", null!));
+    }
+
     /// <summary>Verifies the terminal services facade and its members are non-null once constructed.</summary>
     [Fact]
     public async Task Terminal_WhenConstructed_IsNonNullAsync()
@@ -1195,6 +1298,7 @@ public sealed class TerminalServicesTests
         _ = application.Terminal.ShouldNotBeNull();
         _ = application.Terminal.Bell.ShouldNotBeNull();
         _ = application.Terminal.Clipboard.ShouldNotBeNull();
+        _ = application.Terminal.Notifications.ShouldNotBeNull();
     }
 
     /// <summary>The regression this file exists to pin: stopping with a transaction in flight must

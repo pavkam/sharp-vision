@@ -25,6 +25,70 @@ public sealed class OscTests
     }
 
     /// <summary>
+    /// Verifies body-only and titled notification payload grammar.
+    /// </summary>
+    [Fact]
+    public void Notify_WhenTextIsValid_WritesExactBytes()
+    {
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new ProtocolWriter(destination);
+
+        Osc.Notify(writer, "body only"u8);
+        Osc.Notify(writer, "title"u8, "body"u8);
+
+        byte[] expected = [.. WrapOsc("9", "body only"), .. WrapOsc("777", "notify;title;body")];
+        destination.WrittenSpan.ToArray().ShouldBe(expected);
+    }
+
+    /// <summary>
+    /// Verifies a titled notification payload exceeding the stack limit rents from the array pool.
+    /// </summary>
+    [Fact]
+    public void Notify_WhenTitledPayloadExceedsStackLimit_WritesExactBytes()
+    {
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new ProtocolWriter(destination);
+        var title = new string('t', 300);
+        var body = new string('b', 300);
+
+        Osc.Notify(writer, Encoding.UTF8.GetBytes(title), Encoding.UTF8.GetBytes(body));
+
+        destination.WrittenSpan.ToArray().ShouldBe(WrapOsc("777", $"notify;{title};{body}"));
+    }
+
+    /// <summary>
+    /// Verifies both notification overloads reject control bytes and DEL before writing.
+    /// </summary>
+    [Fact]
+    public void Notify_WhenValueIsInvalid_ThrowsBeforeWriting()
+    {
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new ProtocolWriter(destination);
+
+        _ = Should.Throw<ArgumentException>(() => Osc.Notify(writer, [(byte) 'a', 0x07]));
+        _ = Should.Throw<ArgumentException>(() => Osc.Notify(writer, [(byte) 'a', 0x7f]));
+        _ = Should.Throw<ArgumentException>(() => Osc.Notify(writer, [0x07], "body"u8));
+        _ = Should.Throw<ArgumentException>(() => Osc.Notify(writer, "title"u8, [0x7f]));
+
+        destination.WrittenCount.ShouldBe(0);
+    }
+
+    /// <summary>
+    /// Builds the exact bytes a decimal-selector OSC command with the given payload should
+    /// produce: ESC, ']', the selector, ';', the UTF-8 payload, and the ST terminator.
+    /// </summary>
+    private static byte[] WrapOsc(string selector, string payload)
+    {
+        List<byte> bytes = [0x1b, (byte) ']'];
+        bytes.AddRange(Encoding.ASCII.GetBytes(selector));
+        bytes.Add((byte) ';');
+        bytes.AddRange(Encoding.UTF8.GetBytes(payload));
+        bytes.Add(0x1b);
+        bytes.Add(0x5c);
+        return [.. bytes];
+    }
+
+    /// <summary>
     /// Verifies hyperlink open and close payload grammar.
     /// </summary>
     [Fact]

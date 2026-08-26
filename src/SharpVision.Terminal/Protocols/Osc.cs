@@ -31,6 +31,48 @@ public static class Osc
     /// <exception cref="ArgumentException"><paramref name="title"/> contains a control byte.</exception>
     public static void Title(ProtocolWriter writer, ReadOnlySpan<byte> title) => writer.Osc(2, title);
 
+    /// <summary>Raises a desktop notification with a body only, using OSC 9.</summary>
+    /// <param name="writer">The validated protocol writer.</param>
+    /// <param name="body">Borrowed UTF-8 notification body bytes without controls.</param>
+    /// <exception cref="ArgumentException"><paramref name="body"/> contains a control byte.</exception>
+    public static void Notify(ProtocolWriter writer, ReadOnlySpan<byte> body) => writer.Osc(9, body);
+
+    /// <summary>Raises a desktop notification with a title and body, using OSC 777.</summary>
+    /// <param name="writer">The validated protocol writer.</param>
+    /// <param name="title">Borrowed UTF-8 notification title bytes without controls.</param>
+    /// <param name="body">Borrowed UTF-8 notification body bytes without controls.</param>
+    /// <exception cref="ArgumentException">A value contains a control byte.</exception>
+    /// <exception cref="OverflowException">The combined payload length exceeds <see cref="int.MaxValue"/>.</exception>
+    public static void Notify(ProtocolWriter writer, ReadOnlySpan<byte> title, ReadOnlySpan<byte> body)
+    {
+        var length = checked("notify;"u8.Length + title.Length + 1 + body.Length);
+        var rented = length > _stackPayloadLimit
+            ? ArrayPool<byte>.Shared.Rent(length)
+            : null;
+        var payload = rented is null
+            ? stackalloc byte[length]
+            : rented.AsSpan();
+
+        try
+        {
+            var position = 0;
+            "notify;"u8.CopyTo(payload);
+            position += "notify;"u8.Length;
+            title.CopyTo(payload[position..]);
+            position += title.Length;
+            payload[position++] = (byte) ';';
+            body.CopyTo(payload[position..]);
+            writer.Osc(777, payload[..length]);
+        }
+        finally
+        {
+            if (rented is not null)
+            {
+                ArrayPool<byte>.Shared.Return(rented, clearArray: true);
+            }
+        }
+    }
+
     /// <summary>Opens an OSC 8 hyperlink.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="uri">Borrowed UTF-8 target bytes; the library never opens it.</param>

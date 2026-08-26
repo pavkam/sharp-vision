@@ -137,7 +137,8 @@ public sealed class DiscoveryPipelineTests
             ColorDepth = ColorDepth.Monochrome,
             StyledUnderlines = false,
             UnderlineColor = true,
-            Overline = true
+            Overline = true,
+            Notifications = true
         };
 
         var capabilities = DiscoveryPipeline.Default.Detect(
@@ -156,6 +157,8 @@ public sealed class DiscoveryPipelineTests
         capabilities.UnderlineColor.ShouldBe(
             new Feature(CapabilitySupport.Supported, Origin.Override));
         capabilities.Overline.ShouldBe(
+            new Feature(CapabilitySupport.Supported, Origin.Override));
+        capabilities.Notifications.ShouldBe(
             new Feature(CapabilitySupport.Supported, Origin.Override));
     }
 

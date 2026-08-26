@@ -93,6 +93,7 @@ namespace SharpVision.Terminal.Capabilities
         public bool? KittyClipboard { get; init; }
         public bool? KittyGraphics { get; init; }
         public bool? KittyKeyboard { get; init; }
+        public bool? Notifications { get; init; }
         public bool? Osc52 { get; init; }
         public bool? Overline { get; init; }
         public bool? PixelMouse { get; init; }
@@ -341,6 +342,7 @@ namespace SharpVision.Terminal.Capabilities
         public SharpVision.Terminal.Capabilities.Feature KittyClipboard { get; init; }
         public SharpVision.Terminal.Capabilities.Feature KittyGraphics { get; init; }
         public SharpVision.Terminal.Capabilities.Feature KittyKeyboard { get; init; }
+        public SharpVision.Terminal.Capabilities.Feature Notifications { get; init; }
         public SharpVision.Terminal.Capabilities.Feature Osc52 { get; init; }
         public SharpVision.Terminal.Capabilities.Feature Overline { get; init; }
         public SharpVision.Terminal.Capabilities.Feature PixelMouse { get; init; }
@@ -381,6 +383,7 @@ namespace SharpVision.Terminal.Capabilities
         UnderlineColor = 12,
         Overline = 13,
         XtermKeyboard = 14,
+        Notifications = 15,
     }
 }
 namespace SharpVision.Terminal.Clipboard
@@ -1153,6 +1156,8 @@ namespace SharpVision.Terminal.Protocols
     {
         public static void CloseHyperlink(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
         public static void IconAndTitle(SharpVision.Terminal.Protocols.ProtocolWriter writer, System.ReadOnlySpan<byte> title) { }
+        public static void Notify(SharpVision.Terminal.Protocols.ProtocolWriter writer, System.ReadOnlySpan<byte> body) { }
+        public static void Notify(SharpVision.Terminal.Protocols.ProtocolWriter writer, System.ReadOnlySpan<byte> title, System.ReadOnlySpan<byte> body) { }
         public static void OpenHyperlink(SharpVision.Terminal.Protocols.ProtocolWriter writer, System.ReadOnlySpan<byte> uri, System.ReadOnlySpan<byte> id = default) { }
         public static void QueryBackground(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
         public static void QueryForeground(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
