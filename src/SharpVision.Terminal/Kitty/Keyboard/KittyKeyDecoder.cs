@@ -261,10 +261,104 @@ internal sealed class KittyKeyDecoder
                 var mapped = function.TryGet(out var functionCode);
                 Debug.Assert(mapped, "Kitty's named function range maps to F13 through F35.");
                 return functionCode;
+            case 57399:
+                return Code.Keypad0;
+            case 57400:
+                return Code.Keypad1;
+            case 57401:
+                return Code.Keypad2;
+            case 57402:
+                return Code.Keypad3;
+            case 57403:
+                return Code.Keypad4;
+            case 57404:
+                return Code.Keypad5;
+            case 57405:
+                return Code.Keypad6;
+            case 57406:
+                return Code.Keypad7;
+            case 57407:
+                return Code.Keypad8;
+            case 57408:
+                return Code.Keypad9;
+            case 57409:
+                return Code.KeypadDecimal;
+            case 57410:
+                return Code.KeypadDivide;
+            case 57411:
+                return Code.KeypadMultiply;
+            case 57412:
+                return Code.KeypadSubtract;
+            case 57413:
+                return Code.KeypadAdd;
+            case 57414:
+                return Code.KeypadEnter;
+            case 57415:
+                return Code.KeypadEqual;
+            case 57416:
+                return Code.KeypadSeparator;
+            case 57417:
+                return Code.KeypadLeft;
+            case 57418:
+                return Code.KeypadRight;
+            case 57419:
+                return Code.KeypadUp;
+            case 57420:
+                return Code.KeypadDown;
+            case 57421:
+                return Code.KeypadPageUp;
+            case 57422:
+                return Code.KeypadPageDown;
+            case 57423:
+                return Code.KeypadHome;
+            case 57424:
+                return Code.KeypadEnd;
+            case 57425:
+                return Code.KeypadInsert;
+            case 57426:
+                return Code.KeypadDelete;
+            case 57427:
+                // Kitty's keypad Begin/center key shares the same logical identity as the
+                // legacy keypad-5-with-NumLock-off "Begin" key, so it reuses Code.Begin
+                // rather than a separate keypad-specific member.
+                return Code.Begin;
+            case 57428:
+                return Code.MediaPlay;
+            case 57429:
+                return Code.MediaPause;
+            case 57430:
+                return Code.MediaPlayPause;
+            case 57431:
+                return Code.MediaReverse;
+            case 57432:
+                return Code.MediaStop;
+            case 57433:
+                return Code.MediaFastForward;
+            case 57434:
+                return Code.MediaRewind;
+            case 57435:
+                return Code.MediaTrackNext;
+            case 57436:
+                return Code.MediaTrackPrevious;
+            case 57437:
+                return Code.MediaRecord;
+            case 57438:
+                return Code.LowerVolume;
+            case 57439:
+                return Code.RaiseVolume;
+            case 57440:
+                return Code.MuteVolume;
             default:
                 break;
         }
 
+        // 57441-57454 (Kitty's modifier-as-key codepoints, e.g. bare Left-Shift/Left-Control)
+        // are deliberately left unmapped here and fall through to Code.Unknown below. Mapping
+        // them to dedicated Code members would let a modifier key satisfy an exact-modifier
+        // KeyGesture/KeyboardModifierPolicy match (e.g. a bare Code.LeftShift binding), because
+        // pressing that key already sets the corresponding Modifiers flag on this same Stroke -
+        // unlike every other named key, whose Code and Modifiers are independent. Resolving that
+        // conflict needs a self-modifier exclusion policy, which is a separate design decision.
         if (native is >= 57344 and <= 63743 ||
             !Rune.TryCreate(native, out var rune) ||
             Rune.GetUnicodeCategory(rune) == UnicodeCategory.Control)

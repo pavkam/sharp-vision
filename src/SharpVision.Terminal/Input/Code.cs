@@ -263,5 +263,128 @@ public enum Code
     F62 = 84,
 
     /// <summary>Function key F63.</summary>
-    F63 = 85
+    F63 = 85,
+
+    /// <summary>The keypad 0 key.</summary>
+    Keypad0 = 86,
+
+    /// <summary>The keypad 1 key.</summary>
+    Keypad1 = 87,
+
+    /// <summary>The keypad 2 key.</summary>
+    Keypad2 = 88,
+
+    /// <summary>The keypad 3 key.</summary>
+    Keypad3 = 89,
+
+    /// <summary>The keypad 4 key.</summary>
+    Keypad4 = 90,
+
+    /// <summary>The keypad 5 key.</summary>
+    Keypad5 = 91,
+
+    /// <summary>The keypad 6 key.</summary>
+    Keypad6 = 92,
+
+    /// <summary>The keypad 7 key.</summary>
+    Keypad7 = 93,
+
+    /// <summary>The keypad 8 key.</summary>
+    Keypad8 = 94,
+
+    /// <summary>The keypad 9 key.</summary>
+    Keypad9 = 95,
+
+    /// <summary>The keypad decimal separator key.</summary>
+    KeypadDecimal = 96,
+
+    /// <summary>The keypad divide key.</summary>
+    KeypadDivide = 97,
+
+    /// <summary>The keypad multiply key.</summary>
+    KeypadMultiply = 98,
+
+    /// <summary>The keypad subtract key.</summary>
+    KeypadSubtract = 99,
+
+    /// <summary>The keypad add key.</summary>
+    KeypadAdd = 100,
+
+    /// <summary>The keypad Enter key.</summary>
+    KeypadEnter = 101,
+
+    /// <summary>The keypad equal key.</summary>
+    KeypadEqual = 102,
+
+    /// <summary>The keypad separator key.</summary>
+    KeypadSeparator = 103,
+
+    /// <summary>The keypad left cursor key.</summary>
+    KeypadLeft = 104,
+
+    /// <summary>The keypad right cursor key.</summary>
+    KeypadRight = 105,
+
+    /// <summary>The keypad up cursor key.</summary>
+    KeypadUp = 106,
+
+    /// <summary>The keypad down cursor key.</summary>
+    KeypadDown = 107,
+
+    /// <summary>The keypad Page Up key.</summary>
+    KeypadPageUp = 108,
+
+    /// <summary>The keypad Page Down key.</summary>
+    KeypadPageDown = 109,
+
+    /// <summary>The keypad Home key.</summary>
+    KeypadHome = 110,
+
+    /// <summary>The keypad End key.</summary>
+    KeypadEnd = 111,
+
+    /// <summary>The keypad Insert key.</summary>
+    KeypadInsert = 112,
+
+    /// <summary>The keypad Delete key.</summary>
+    KeypadDelete = 113,
+
+    /// <summary>The media Play key.</summary>
+    MediaPlay = 114,
+
+    /// <summary>The media Pause key.</summary>
+    MediaPause = 115,
+
+    /// <summary>The media Play/Pause key.</summary>
+    MediaPlayPause = 116,
+
+    /// <summary>The media Reverse key.</summary>
+    MediaReverse = 117,
+
+    /// <summary>The media Stop key.</summary>
+    MediaStop = 118,
+
+    /// <summary>The media Fast Forward key.</summary>
+    MediaFastForward = 119,
+
+    /// <summary>The media Rewind key.</summary>
+    MediaRewind = 120,
+
+    /// <summary>The media next-track key.</summary>
+    MediaTrackNext = 121,
+
+    /// <summary>The media previous-track key.</summary>
+    MediaTrackPrevious = 122,
+
+    /// <summary>The media Record key.</summary>
+    MediaRecord = 123,
+
+    /// <summary>The lower-volume key.</summary>
+    LowerVolume = 124,
+
+    /// <summary>The raise-volume key.</summary>
+    RaiseVolume = 125,
+
+    /// <summary>The mute-volume key.</summary>
+    MuteVolume = 126
 }

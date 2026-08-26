@@ -785,6 +785,97 @@ public sealed class InputDecoderTests
             new Stroke(code, null, native, Modifiers.None, KeyAction.Press));
     }
 
+    // ── Keypad and media keys via Kitty range ─────────────────────────────
+
+    /// <summary>
+    /// Verifies a representative sample of keypad functional keys map from the Kitty native
+    /// range, including the digits, the arithmetic and navigation keys, and the boundary values.
+    /// </summary>
+    [Theory]
+    [InlineData(57399, Code.Keypad0)]
+    [InlineData(57400, Code.Keypad1)]
+    [InlineData(57408, Code.Keypad9)]
+    [InlineData(57409, Code.KeypadDecimal)]
+    [InlineData(57410, Code.KeypadDivide)]
+    [InlineData(57411, Code.KeypadMultiply)]
+    [InlineData(57412, Code.KeypadSubtract)]
+    [InlineData(57413, Code.KeypadAdd)]
+    [InlineData(57414, Code.KeypadEnter)]
+    [InlineData(57415, Code.KeypadEqual)]
+    [InlineData(57416, Code.KeypadSeparator)]
+    [InlineData(57417, Code.KeypadLeft)]
+    [InlineData(57418, Code.KeypadRight)]
+    [InlineData(57419, Code.KeypadUp)]
+    [InlineData(57420, Code.KeypadDown)]
+    [InlineData(57421, Code.KeypadPageUp)]
+    [InlineData(57422, Code.KeypadPageDown)]
+    [InlineData(57423, Code.KeypadHome)]
+    [InlineData(57424, Code.KeypadEnd)]
+    [InlineData(57425, Code.KeypadInsert)]
+    [InlineData(57426, Code.KeypadDelete)]
+    public void Decode_WhenKeypadKeyInKittyRange_MapsCorrectKeypadKey(int native, Code code)
+    {
+        var sink = Decode(Encoding.ASCII.GetBytes($"[{native}u"));
+
+        sink.Strokes.Single().ShouldBe(
+            new Stroke(code, null, native, Modifiers.None, KeyAction.Press));
+    }
+
+    /// <summary>
+    /// Verifies the Kitty keypad Begin/center key reuses the existing <see cref="Code.Begin"/>
+    /// logical code rather than a dedicated keypad-specific member.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenKeypadBeginCode_MapsToExistingBeginCode()
+    {
+        var sink = Decode(Encoding.ASCII.GetBytes($"[57427u"));
+
+        sink.Strokes.Single().ShouldBe(
+            new Stroke(Code.Begin, null, 57427, Modifiers.None, KeyAction.Press));
+    }
+
+    /// <summary>
+    /// Verifies all media transport and volume keys map from the Kitty native range.
+    /// </summary>
+    [Theory]
+    [InlineData(57428, Code.MediaPlay)]
+    [InlineData(57429, Code.MediaPause)]
+    [InlineData(57430, Code.MediaPlayPause)]
+    [InlineData(57431, Code.MediaReverse)]
+    [InlineData(57432, Code.MediaStop)]
+    [InlineData(57433, Code.MediaFastForward)]
+    [InlineData(57434, Code.MediaRewind)]
+    [InlineData(57435, Code.MediaTrackNext)]
+    [InlineData(57436, Code.MediaTrackPrevious)]
+    [InlineData(57437, Code.MediaRecord)]
+    [InlineData(57438, Code.LowerVolume)]
+    [InlineData(57439, Code.RaiseVolume)]
+    [InlineData(57440, Code.MuteVolume)]
+    public void Decode_WhenMediaKeyInKittyRange_MapsCorrectMediaKey(int native, Code code)
+    {
+        var sink = Decode(Encoding.ASCII.GetBytes($"[{native}u"));
+
+        sink.Strokes.Single().ShouldBe(
+            new Stroke(code, null, native, Modifiers.None, KeyAction.Press));
+    }
+
+    /// <summary>
+    /// Verifies the modifier-as-key codepoints immediately following the media range remain
+    /// unmapped, pinning the deferred scope of the functional key range.
+    /// </summary>
+    [Theory]
+    [InlineData(57441)]
+    [InlineData(57442)]
+    [InlineData(57454)]
+    public void Decode_WhenModifierAsKeyCode_PreservesNativeCodeAsUnknown(int native)
+    {
+        var sink = Decode(Encoding.ASCII.GetBytes($"[{native}u"));
+
+        var stroke = sink.Strokes.Single();
+        stroke.Code.ShouldBe(Code.Unknown);
+        stroke.NativeCode.ShouldBe(native);
+    }
+
     // ── Shifted and base layout keys ──────────────────────────────────────
 
     /// <summary>

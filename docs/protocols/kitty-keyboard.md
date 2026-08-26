@@ -48,17 +48,22 @@ preserves the main logical code, native number, optional shifted and PC-101
 base-layout Runes, modifiers, and action; up to 32 validated associated text
 scalars follow as ordered `Text` values.
 
-Escape, Enter, Tab, Backspace, lock keys, Print Screen, Pause, Menu, and F13-F35
-have named logical codes. Other valid PUA functional values remain
+Escape, Enter, Tab, Backspace, lock keys, Print Screen, Pause, Menu, F13-F35,
+the keypad block, and the media transport and volume keys have named logical
+codes. The keypad Begin/center key maps to the same `Code.Begin` used for the
+legacy keypad-5-with-NumLock-off key. Other valid PUA functional values remain
 `Code.Unknown` with their native number.
 
 > [!IMPORTANT]
 >
-> **Implementation gap:** the keypad, media, and modifier-key blocks of the
-> functional range have no named logical codes. Keys such as keypad Enter, the
-> keypad arrows, and the media transport keys decode to `Code.Unknown` with only
-> their native number preserved, so applications cannot bind them as typed
-> codes.
+> **Implementation gap:** the modifier-as-key block of the functional range
+> (bare presses of Left/Right Shift, Control, Alt, Super, Hyper, Meta, and
+> similar) has no named logical codes and decodes to `Code.Unknown` with only
+> its native number preserved. Mapping these requires resolving a design
+> conflict first: a bare modifier press already sets the matching `Modifiers`
+> flag on its own `Stroke`, which would make a same-modifier exact-match
+> `KeyGesture`/`KeyboardModifierPolicy` binding for that key never match, unlike
+> every other named key.
 
 Impossible scalars, modifier values outside 1-256, event values outside 1-3,
 extra groups, DEL and C1 control codepoints (0x7F-0x9F) in associated text, and
