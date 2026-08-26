@@ -22,6 +22,7 @@ public sealed class SyntaxDefinition
     /// <param name="extensions">Non-null file-glob patterns identifying documents of this language.</param>
     /// <param name="mimeTypes">Non-null MIME types identifying documents of this language.</param>
     /// <param name="version">The definition's own non-negative revision number.</param>
+    /// <param name="kateVersion">The minimum Kate syntax engine version required by the definition.</param>
     /// <param name="priority">The relative priority among multiple usable definitions for one document, or null.</param>
     /// <param name="author">The non-null declared author.</param>
     /// <param name="license">The non-null declared license.</param>
@@ -39,6 +40,7 @@ public sealed class SyntaxDefinition
         IReadOnlyList<string> extensions,
         IReadOnlyList<string> mimeTypes,
         int version,
+        Version kateVersion,
         int? priority,
         string author,
         string license,
@@ -60,6 +62,7 @@ public sealed class SyntaxDefinition
         Extensions = new SyntaxReadOnlyList<string>(extensions);
         MimeTypes = new SyntaxReadOnlyList<string>(mimeTypes);
         Version = version;
+        KateVersion = kateVersion;
         Priority = priority;
         Author = author;
         License = license;
@@ -88,6 +91,9 @@ public sealed class SyntaxDefinition
 
     /// <summary>Gets the definition's own revision number.</summary>
     public int Version { get; }
+
+    /// <summary>Gets the minimum Kate syntax engine version required by this definition.</summary>
+    public Version KateVersion { get; }
 
     /// <summary>Gets the relative priority among multiple usable definitions for one document, or null.</summary>
     public int? Priority { get; }

@@ -60,6 +60,8 @@ var view = new CodeView { Catalog = catalog, Language = "Python" };
 ```
 
 This mirrors upstream Kate's own local-file pickup model for syntax definitions.
+Definitions must declare `kateversion`; SharpVision accepts format versions
+through 6.22 and rejects newer definitions before adding them to the catalog.
 
 ## Attribution
 

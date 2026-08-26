@@ -78,6 +78,15 @@ public sealed class CodeView:
     /// seam proves repeated navigation reuses projection geometry until its inputs change.</summary>
     internal int TextSelectionMapBuildCount { get; private set; }
 
+    /// <summary>Gets how many graphemes the most recent visible snapshot inspected.</summary>
+    internal int LastSelectableTextSnapshotInspectedGraphemeCount { get; private set; }
+
+    /// <summary>Gets how many range and line operations the last fold projection rebuild performed.</summary>
+    internal int LastFoldVisibilityOperationCount { get; private set; }
+
+    /// <summary>Gets how many graphemes the most recent render inspected after horizontal clipping.</summary>
+    internal int LastRenderInspectedGraphemeCount { get; private set; }
+
     /// <summary>Initializes an empty, unstyled read-only code view.</summary>
     public CodeView()
     {
@@ -344,6 +353,7 @@ public sealed class CodeView:
     {
         VerifyMutable();
         LastSelectableTextSnapshotInspectedLineCount = 0;
+        LastSelectableTextSnapshotInspectedGraphemeCount = 0;
 
         if (!EffectiveIsVisible)
         {
@@ -380,6 +390,7 @@ public sealed class CodeView:
 
             foreach (var grapheme in Graphemes.Enumerate(line))
             {
+                LastSelectableTextSnapshotInspectedGraphemeCount++;
                 var cluster = line.AsSpan(grapheme.Offset, grapheme.Length);
                 var width = CodeClusterWidth(cluster);
                 var absolute = new Rect(
@@ -399,6 +410,11 @@ public sealed class CodeView:
                             absolute.Y - Bounds.Y,
                             absolute.Width,
                             absolute.Height)));
+                }
+
+                if (absolute.X >= clip.Right)
+                {
+                    break;
                 }
 
                 cells += width;
@@ -859,6 +875,7 @@ public sealed class CodeView:
     /// <param name="bounds">The content surface bounds.</param>
     internal void RenderProjectedContent(TerminalCanvas canvas, Rect bounds)
     {
+        LastRenderInspectedGraphemeCount = 0;
         var first = Math.Max(0, canvas.Bounds.Y - bounds.Y);
         var last = Math.Min(_visibleLines.Count, canvas.Bounds.Bottom - bounds.Y);
         var style = ActualStyle;
@@ -898,44 +915,47 @@ public sealed class CodeView:
     {
         var text = _lines[sourceLine];
         var tokens = _result.Lines[sourceLine].Tokens;
-        var offset = HorizontalOffset;
         var column = 0;
+        var tokenIndex = 0;
+        var reachedLineEnd = true;
 
-        if (text.Length > 0)
+        foreach (var grapheme in Graphemes.Enumerate(text))
         {
+            LastRenderInspectedGraphemeCount++;
             Debug.Assert(tokens.Count > 0, "Tokenization covers every non-empty source line.");
-            var tokenIndex = 0;
-            var runStart = 0;
-            var runStyle = tokens[0].Style;
 
-            foreach (var grapheme in Graphemes.Enumerate(text))
+            while (tokenIndex + 1 < tokens.Count && grapheme.Offset >= tokens[tokenIndex].Start + tokens[tokenIndex].Length)
             {
-                while (tokenIndex + 1 < tokens.Count && grapheme.Offset >= tokens[tokenIndex].Start + tokens[tokenIndex].Length)
-                {
-                    tokenIndex++;
-                }
-
-                var ownerStyle = tokens[tokenIndex].Style;
-
-                if (ownerStyle == runStyle)
-                {
-                    continue;
-                }
-
-                var resolved = ResolvedStyle.WithForeground(ResolveColor(style.ColorFor(runStyle), Theme));
-                DrawSlice(canvas, text.AsSpan(runStart, grapheme.Offset - runStart), resolved, x, y, ref column, offset, BackgroundMode.Transparent);
-                runStart = grapheme.Offset;
-                runStyle = ownerStyle;
+                tokenIndex++;
             }
 
-            var finalStyle = ResolvedStyle.WithForeground(ResolveColor(style.ColorFor(runStyle), Theme));
-            DrawSlice(canvas, text.AsSpan(runStart), finalStyle, x, y, ref column, offset, BackgroundMode.Transparent);
+            var cluster = text.AsSpan(grapheme.Offset, grapheme.Length);
+            var width = CodeClusterWidth(cluster);
+            var drawX = x + column - HorizontalOffset;
+
+            if ((long) drawX + width > canvas.Bounds.Right)
+            {
+                reachedLineEnd = false;
+                break;
+            }
+
+            // A viewport offset can land inside a wide cluster. Skip that complete owner rather
+            // than asking the canvas to clip and expose only its trailing cell.
+            if (column >= HorizontalOffset)
+            {
+                var resolved = ResolvedStyle.WithForeground(ResolveColor(style.ColorFor(tokens[tokenIndex].Style), Theme));
+                _ = cluster is ['\t']
+                    ? canvas.Draw(" ", new Point(drawX, y), resolved, background: BackgroundMode.Transparent)
+                    : canvas.Draw(cluster, new Point(drawX, y), resolved, background: BackgroundMode.Transparent);
+            }
+
+            column += width;
         }
 
-        if (IsFoldingEnabled && IsFolded(sourceLine))
+        if (reachedLineEnd && IsFoldingEnabled && IsFolded(sourceLine))
         {
             var indicatorStyle = ResolvedStyle.WithForeground(ResolveColor(style.GutterColor, Theme));
-            DrawSlice(canvas, " (...)", indicatorStyle, x, y, ref column, offset, BackgroundMode.Transparent);
+            DrawSlice(canvas, " (...)", indicatorStyle, x, y, ref column, HorizontalOffset, BackgroundMode.Transparent);
         }
 
     }
@@ -967,6 +987,7 @@ public sealed class CodeView:
 
         foreach (var grapheme in Graphemes.Enumerate(raw))
         {
+            LastRenderInspectedGraphemeCount++;
             if (skippedCells >= cellsToSkip)
             {
                 break;
@@ -981,8 +1002,31 @@ public sealed class CodeView:
             return;
         }
 
-        var visible = raw[visibleStart..];
         var drawX = x + tokenStartColumn + skippedCells - horizontalOffset;
+        var visibleLength = 0;
+        var visibleCells = 0;
+
+        foreach (var grapheme in Graphemes.Enumerate(raw[visibleStart..]))
+        {
+            LastRenderInspectedGraphemeCount++;
+            var cluster = raw.Slice(visibleStart + grapheme.Offset, grapheme.Length);
+            var width = CodeClusterWidth(cluster);
+
+            if ((long) drawX + visibleCells + width > canvas.Bounds.Right)
+            {
+                break;
+            }
+
+            visibleCells += width;
+            visibleLength = grapheme.Offset + grapheme.Length;
+        }
+
+        if (visibleLength == 0)
+        {
+            return;
+        }
+
+        var visible = raw.Slice(visibleStart, visibleLength);
 
         var buffer = visible.Length <= 512 ? stackalloc char[visible.Length] : new char[visible.Length];
 
@@ -1284,7 +1328,8 @@ public sealed class CodeView:
     {
         _textSelectionMap = null;
         _textSelectionMapProjection = null;
-        var hidden = new bool[_lines.Length];
+        LastFoldVisibilityOperationCount = 0;
+        var hiddenDeltas = new int[_lines.Length + 1];
 
         // Collapsed ranges only actually hide lines while folding is visible; the collapsed
         // bookkeeping in _foldedStartLines is preserved either way, ready to resume the moment
@@ -1298,18 +1343,29 @@ public sealed class CodeView:
                     isTrackedFoldStart,
                     "SetFolded and CollapseAll only ever add a line already present in _foldStartRanges, and RebuildProjection clears _foldedStartLines every time it rebuilds _foldStartRanges, so the two collections never drift apart.");
 
-                for (var i = range.StartLine + 1; i <= range.EndLine && i < hidden.Length; i++)
+                var hiddenStart = Math.Min(_lines.Length, range.StartLine + 1);
+                var hiddenEnd = Math.Min(_lines.Length, range.EndLine + 1);
+
+                if (hiddenStart < hiddenEnd)
                 {
-                    hidden[i] = true;
+                    hiddenDeltas[hiddenStart]++;
+                    hiddenDeltas[hiddenEnd]--;
                 }
+
+                LastFoldVisibilityOperationCount++;
             }
         }
 
         _visibleLines = [];
 
+        var hiddenDepth = 0;
+
         for (var i = 0; i < _lines.Length; i++)
         {
-            if (!hidden[i])
+            hiddenDepth += hiddenDeltas[i];
+            LastFoldVisibilityOperationCount++;
+
+            if (hiddenDepth == 0)
             {
                 _visibleLines.Add(i);
             }

@@ -149,7 +149,9 @@ public sealed class SyntaxCompiledRuleTests
               <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
                 <RegExpr attribute="Normal Text" context="Body" String="(\w+)=(\w+);(\w+)" dynamic="false"/>
               </context>
-              <context name="Body" attribute="Normal Text" lineEndContext="#stay"/>
+              <context name="Body" attribute="Normal Text" lineEndContext="#stay">
+                <StringDetect attribute="Normal Text" context="#stay" String="%1" dynamic="true"/>
+              </context>
             </contexts>
             <itemDatas>
               <itemData name="Normal Text" defStyleNum="dsNormal"/>
@@ -183,7 +185,10 @@ public sealed class SyntaxCompiledRuleTests
           <highlighting>
             <contexts>
               <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
-                <RegExpr attribute="Normal Text" context="#stay" String="(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)"/>
+                <RegExpr attribute="Normal Text" context="Body" String="(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)"/>
+              </context>
+              <context name="Body" attribute="Normal Text" lineEndContext="#stay">
+                <StringDetect attribute="Normal Text" context="#stay" String="%9" dynamic="true"/>
               </context>
             </contexts>
             <itemDatas>
@@ -208,6 +213,41 @@ public sealed class SyntaxCompiledRuleTests
         match.Success.ShouldBeTrue();
         match.Captures.Count.ShouldBe(9);
         match.Captures[8].ShouldBe("i");
+    }
+
+    /// <summary>Verifies grouped regexes skip capture materialization when their target has no dynamic rules.</summary>
+    [Fact]
+    public void TryMatch_WhenTargetDoesNotConsumeCaptures_ReturnsNoCaptureValues()
+    {
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(
+            _capturingGroupLanguage.Replace("context=\"Body\"", "context=\"#stay\"", StringComparison.Ordinal)));
+
+        grammar.Contexts[0].Rules[0].TryMatch("key=value;tail", 0, []).Captures.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies dynamic rules spliced from an included context still receive captures.</summary>
+    [Fact]
+    public void TryMatch_WhenTargetIncludesDynamicRule_PreservesCaptureValues()
+    {
+        var xml = _capturingGroupLanguage
+            .Replace(
+                "<StringDetect attribute=\"Normal Text\" context=\"#stay\" String=\"%1\" dynamic=\"true\"/>",
+                "<IncludeRules context=\"DynamicBody\"/>",
+                StringComparison.Ordinal)
+            .Replace(
+                "</contexts>",
+                """
+                    <context name="DynamicBody" attribute="Normal Text" lineEndContext="#stay">
+                      <StringDetect attribute="Normal Text" context="#stay" String="%1" dynamic="true"/>
+                    </context>
+                  </contexts>
+                """,
+                StringComparison.Ordinal);
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(xml));
+
+        var match = grammar.Contexts[0].Rules[0].TryMatch("key=value;tail", 0, []);
+
+        match.Captures.ShouldBe(["key", "value", "tail"]);
     }
 
     private const string _invalidPatternLanguage = """

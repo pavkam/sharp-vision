@@ -592,6 +592,23 @@ public sealed class CodeViewTests
         starts.ShouldAllBe(line => !view.IsFolded(line));
     }
 
+    /// <summary>Verifies nested collapsed ranges are projected with one range update and one line
+    /// scan apiece instead of repeatedly marking every enclosing interior.</summary>
+    [Fact]
+    public void CollapseAll_WhenFoldsAreDeeplyNested_RebuildsVisibilityLinearly()
+    {
+        const int depth = 300;
+        var code = string.Concat(Enumerable.Repeat("if (true) {\n", depth)) +
+                   string.Concat(Enumerable.Repeat("}\n", depth));
+        var view = new CodeView { Code = code, Language = "Rust" };
+        view.FoldRanges.Count.ShouldBeGreaterThanOrEqualTo(depth);
+
+        view.CollapseAll();
+
+        view.LastFoldVisibilityOperationCount.ShouldBeLessThanOrEqualTo(
+            view.FoldRanges.Count + (depth * 2) + 1);
+    }
+
     /// <summary>Verifies the style resolves every default-style role to a non-transparent color.</summary>
     [Fact]
     public void ActualStyle_WhenResolved_ProvidesEveryRoleColor()

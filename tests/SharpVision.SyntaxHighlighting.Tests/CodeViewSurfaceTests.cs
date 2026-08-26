@@ -312,6 +312,30 @@ public sealed class CodeViewSurfaceTests
         view.LastSelectableTextSnapshotInspectedLineCount.ShouldBeGreaterThan(0);
     }
 
+    /// <summary>Verifies a narrow viewport bounds snapshot and render work before a huge line tail.</summary>
+    [Fact]
+    public async Task Render_WhenLineHasHugeOffscreenTail_InspectsOnlyViewportGraphemesAsync()
+    {
+        var view = new CodeView { Code = new string('x', 1_000_000), IsFoldingEnabled = false };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(8, 2),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                view.ScrollSelectableTextViewport(3, 0).ShouldBeTrue();
+                _ = GetSelectableSnapshot(view);
+            },
+            "scroll and snapshot narrow long line");
+
+        view.LastSelectableTextSnapshotInspectedGraphemeCount.ShouldBeLessThanOrEqualTo(12);
+        view.LastRenderInspectedGraphemeCount.ShouldBeLessThanOrEqualTo(12);
+        surface.Cell(new Point(5, 0)).Text.ShouldBe("x");
+    }
+
     /// <summary>Verifies horizontal viewport movement keeps rendered and selectable geometry aligned.</summary>
     [Fact]
     public async Task SelectableTextViewport_WhenScrolledHorizontally_AlignsRenderedAndProjectedCodeAsync()

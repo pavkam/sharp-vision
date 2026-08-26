@@ -118,10 +118,12 @@ normalized source as authoritative semantic text. Its snapshot exposes geometry
 only for complete graphemes currently visible through the clipped text viewport;
 folded and scrolled-off lines remain semantic but have no stale rectangles. A
 wide grapheme is mapped as one owner, and one-cell tabs preserve their source
-offsets. Snapshot work is bounded to the projected viewport rows. Common
-keyboard and pointer selection reuse one immutable complete geometry index until
-the source, fold projection, gutter, or viewport geometry changes, so repeated
-navigation does not rebuild document-sized maps.
+offsets. Snapshot and render work stop after the projected viewport rows and
+rightmost visible complete grapheme, so a huge offscreen line tail is neither
+walked nor copied into a frame-sized temporary buffer. Common keyboard and
+pointer selection reuse one immutable complete geometry index until the source,
+fold projection, gutter, or viewport geometry changes, so repeated navigation
+does not rebuild document-sized maps.
 
 As an `ISelectableTextViewport`, the view can reveal one validated semantic
 offset and scroll by requested cell deltas. Revealing an offset inside a
@@ -162,7 +164,9 @@ A fold range comes from a grammar's region markers or indentation folding.
 Collapsing hides lines strictly inside the range while preserving `Code`, token
 offsets, and `Selection`. The start line remains visible and displays a
 collapsed indicator. Clicking its gutter glyph toggles the fold without moving
-the caret.
+the caret. Nested collapsed ranges are projected with range-boundary deltas and
+one line scan, keeping collapse and folding re-enable work linear in the number
+of folds plus source lines rather than repeatedly marking shared interiors.
 
 Setting `IsFoldingEnabled` false removes the gutter and shows every line while
 retaining stored fold states; restoring it resumes those states. Selection and

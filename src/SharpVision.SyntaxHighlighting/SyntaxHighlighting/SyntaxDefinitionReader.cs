@@ -24,6 +24,7 @@ using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
 [PublicAPI]
 public static class SyntaxDefinitionReader
 {
+    private static readonly Version _supportedKateVersion = new(6, 22);
     private const int _maxCharactersFromEntities = 4_000_000;
     private const int _maxCharactersInDocument = 16_000_000;
 
@@ -75,6 +76,7 @@ public static class SyntaxDefinitionReader
             var itemDataSet = ReadItemDataSet(highlighting);
             var contexts = ReadContexts(highlighting, itemDataSet);
             var general = ReadGeneral(language.Element("general"), language);
+            var kateVersion = ParseKateVersion(language);
 
             // SyntaxDefinition's own constructor also enforces this, but only as internal
             // defense in depth: this reader is the sole caller, and it must surface every
@@ -89,6 +91,7 @@ public static class SyntaxDefinitionReader
                     extensions: SplitList(RequiredAttribute(language, "extensions")),
                     mimeTypes: SplitList(Attribute(language, "mimetype")),
                     version: ParseRequiredInt(language, "version"),
+                    kateVersion: kateVersion,
                     priority: TryParseInt(Attribute(language, "priority")),
                     author: Attribute(language, "author") ?? string.Empty,
                     license: Attribute(language, "license") ?? string.Empty,
@@ -103,6 +106,20 @@ public static class SyntaxDefinitionReader
         {
             throw new FormatException($"The syntax definition is not well-formed XML: {exception.Message}", exception);
         }
+    }
+
+    private static Version ParseKateVersion(XElement language)
+    {
+        var raw = RequiredAttribute(language, "kateversion");
+
+        var version = Version.TryParse(raw, out var parsed) && parsed.Major >= 0 && parsed.Minor >= 0
+            ? parsed
+            : throw new FormatException($"Attribute 'kateversion' value '{raw}' is not a valid version.");
+
+        return version <= _supportedKateVersion
+            ? version
+            : throw new FormatException(
+                $"Syntax definition requires Kate format {version}, newer than supported {_supportedKateVersion}.");
     }
 
     #region Document loading

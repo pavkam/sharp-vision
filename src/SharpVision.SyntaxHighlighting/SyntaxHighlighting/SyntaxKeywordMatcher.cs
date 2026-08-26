@@ -72,6 +72,8 @@ public sealed class SyntaxKeywordMatcher
             return (0, offset);
         }
 
-        return _words.Contains(line[offset..end].ToString()) ? (end - offset, end) : (0, end);
+        return _words.GetAlternateLookup<ReadOnlySpan<char>>().Contains(line[offset..end])
+            ? (end - offset, end)
+            : (0, end);
     }
 }

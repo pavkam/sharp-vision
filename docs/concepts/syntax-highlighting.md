@@ -52,6 +52,12 @@ the underlying algorithm.
 
 ## Supported format surface
 
+Every definition must declare its minimum engine format through the required
+`kateversion` attribute. `SyntaxDefinition.KateVersion` preserves that value,
+and the reader accepts format versions through 6.22; a missing, malformed, or
+newer value fails before a directory catalog can publish the definition. This
+keeps ignored future attributes from masquerading as compatible syntax.
+
 The reader and grammar compiler support every rule element the schema defines:
 `keyword`, `Float`, `HlCOct`, `HlCHex`, `Int`, `DetectChar`, `Detect2Chars`,
 `AnyChar`, `StringDetect`, `WordDetect`, `RegExpr`, `LineContinue`,
@@ -109,6 +115,11 @@ Capture-substituted dynamic expressions retain a 64-entry least-recently-used
 working set per rule; distinct heredoc delimiters and similar user-controlled
 captures therefore cannot create process-lifetime cache growth. Indentation
 folding's `emptyLine` expressions use the same dialect and budgets.
+
+Keyword candidates are matched directly from their source spans without
+allocating temporary strings. A successful grouped regular expression only
+materializes capture values when the resolved target context consumes them
+through a dynamic rule, including a rule spliced through `IncludeRules`.
 
 ## The embedded catalog and licensing
 

@@ -238,6 +238,7 @@ namespace SharpVision.SyntaxHighlighting
         public bool Hidden { get; }
         public string? Indenter { get; }
         public System.Collections.Generic.IReadOnlyDictionary<string, SharpVision.SyntaxHighlighting.SyntaxItemData> ItemDataSet { get; }
+        public System.Version KateVersion { get; }
         public System.Collections.Generic.IReadOnlyDictionary<string, SharpVision.SyntaxHighlighting.SyntaxKeywordList> KeywordLists { get; }
         public string License { get; }
         public System.Collections.Generic.IReadOnlyList<string> MimeTypes { get; }

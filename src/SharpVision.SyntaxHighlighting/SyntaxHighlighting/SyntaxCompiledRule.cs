@@ -29,6 +29,7 @@ public sealed class SyntaxCompiledRule
     private readonly PcreRegex? _staticRegex;
     private readonly SyntaxRegularExpressionCache? _dynamicRegexCache;
     private readonly bool _regularExpressionIsValid = true;
+    private readonly bool _capturesRequired;
 
     /// <summary>Initializes a compiled rule.</summary>
     /// <param name="source">The non-null parsed rule this instance compiles.</param>
@@ -43,18 +44,21 @@ public sealed class SyntaxCompiledRule
     /// <param name="keywordMatcher">
     /// The resolved keyword matcher for a <see cref="SyntaxRuleKind.Keyword"/> rule, otherwise null.
     /// </param>
+    /// <param name="capturesRequired">Whether the resolved target consumes regular-expression captures.</param>
     internal SyntaxCompiledRule(
         SyntaxRule source,
         SyntaxDefaultStyle? resolvedStyle,
         SyntaxContextTarget resolvedTarget,
         SyntaxWordDelimiters delimiters,
-        SyntaxKeywordMatcher? keywordMatcher)
+        SyntaxKeywordMatcher? keywordMatcher,
+        bool capturesRequired)
     {
         Source = source;
         ResolvedStyle = resolvedStyle;
         ResolvedTarget = resolvedTarget;
         _delimiters = delimiters;
         _keywordMatcher = keywordMatcher;
+        _capturesRequired = capturesRequired;
 
         if (source.Kind == SyntaxRuleKind.RegularExpression)
         {
@@ -533,7 +537,7 @@ public sealed class SyntaxCompiledRule
             return new SyntaxRuleMatch(skipOffset: match.Index);
         }
 
-        if (match.Groups.Count <= 1)
+        if (!_capturesRequired || match.Groups.Count <= 1)
         {
             return new SyntaxRuleMatch(match.Length, []);
         }

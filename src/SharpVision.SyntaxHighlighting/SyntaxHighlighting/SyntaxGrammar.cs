@@ -240,7 +240,49 @@ public sealed class SyntaxGrammar
             keywordMatcher = new SyntaxKeywordMatcher(words, caseSensitive, delimiters);
         }
 
-        return new SyntaxCompiledRule(rule, style, target, delimiters, keywordMatcher);
+        var capturesRequired = target.Pushes.Any(entry =>
+            entry.Grammar.ContextConsumesDynamicCaptures(entry.ContextIndex, compiler, []));
+        return new SyntaxCompiledRule(rule, style, target, delimiters, keywordMatcher, capturesRequired);
+    }
+
+    /// <summary>Determines whether one source context, including transitively spliced rules,
+    /// consumes captures supplied by the rule that enters it.</summary>
+    /// <param name="index">The context index to inspect.</param>
+    /// <param name="compiler">The shared compiler used to resolve cross-definition includes.</param>
+    /// <param name="visited">The contexts already inspected in this include traversal.</param>
+    /// <returns>True when the compiled context can contain a dynamic rule.</returns>
+    private bool ContextConsumesDynamicCaptures(
+        int index,
+        SyntaxGrammarCompiler compiler,
+        HashSet<(SyntaxGrammar Grammar, int Index)> visited)
+    {
+        if (!visited.Add((this, index)))
+        {
+            return false;
+        }
+
+        foreach (var rule in Definition.Contexts[index].Rules)
+        {
+            if (rule.Dynamic)
+            {
+                return true;
+            }
+
+            if (rule.Kind != SyntaxRuleKind.IncludeRules || rule.IncludeContext is not { } reference)
+            {
+                continue;
+            }
+
+            var target = ResolveReferenceEntry(reference, compiler);
+
+            if (target is { } entry &&
+                entry.Grammar.ContextConsumesDynamicCaptures(entry.ContextIndex, compiler, visited))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

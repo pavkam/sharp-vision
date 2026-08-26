@@ -6,6 +6,29 @@ namespace SharpVision.SyntaxHighlighting.Tests;
 /// <summary>Verifies KDE syntax-definition XML parsing, validation, and error handling.</summary>
 public sealed class SyntaxDefinitionReaderTests
 {
+    /// <summary>Verifies the required minimum engine version is preserved in parsed metadata.</summary>
+    [Fact]
+    public void Read_WhenKateVersionIsSupported_PreservesMinimumVersion() =>
+        SyntaxDefinitionReader.Read(_minimal).KateVersion.ShouldBe(new Version(5, 0));
+
+    /// <summary>Verifies definitions cannot omit the schema-required engine version.</summary>
+    [Fact]
+    public void Read_WhenKateVersionIsMissing_ThrowsFormatException()
+    {
+        var xml = _minimal.Replace(" kateversion=\"5.0\"", string.Empty, StringComparison.Ordinal);
+
+        _ = Should.Throw<FormatException>(() => SyntaxDefinitionReader.Read(xml));
+    }
+
+    /// <summary>Verifies definitions requiring a newer engine format are rejected before publication.</summary>
+    [Fact]
+    public void Read_WhenKateVersionIsNewerThanSupported_ThrowsFormatException()
+    {
+        var xml = _minimal.Replace("kateversion=\"5.0\"", "kateversion=\"99.0\"", StringComparison.Ordinal);
+
+        _ = Should.Throw<FormatException>(() => SyntaxDefinitionReader.Read(xml));
+    }
+
     private const string _minimal = """
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE language>

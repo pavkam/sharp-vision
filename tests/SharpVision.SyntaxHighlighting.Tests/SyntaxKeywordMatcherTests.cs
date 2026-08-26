@@ -78,4 +78,23 @@ public sealed class SyntaxKeywordMatcherTests
 
         matcher.Match("IF", 0).ShouldBe(2);
     }
+
+    /// <summary>Verifies candidate lookup compares the source span without allocating a temporary string.</summary>
+    [Fact]
+    public void Match_WhenRepeatedAfterWarmup_AllocatesNoCandidateStrings()
+    {
+        var matcher = new SyntaxKeywordMatcher(["keyword"], caseSensitive: true, SyntaxWordDelimiters.Default);
+        _ = matcher.Match("identifier", 0);
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var matches = 0;
+
+        for (var index = 0; index < 1_000; index++)
+        {
+            matches += matcher.Match("identifier", 0);
+        }
+
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        matches.ShouldBe(0);
+        allocated.ShouldBe(0);
+    }
 }
