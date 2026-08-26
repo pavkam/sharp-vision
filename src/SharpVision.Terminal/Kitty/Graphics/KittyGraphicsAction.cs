@@ -17,5 +17,11 @@ public enum KittyGraphicsAction
     Place,
 
     /// <summary>Deletes one retained image and its placements.</summary>
-    Delete
+    Delete,
+
+    /// <summary>Transmits one animation frame's data for an already transmitted image.</summary>
+    TransmitFrame,
+
+    /// <summary>Controls animation playback state and loop count for an already transmitted image.</summary>
+    Animate
 }

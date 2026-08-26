@@ -63,7 +63,8 @@ public static class KittyGraphicsWriter
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(destination);
 
-        if (command.Action is not KittyGraphicsAction.Query and not KittyGraphicsAction.Transmit ||
+        if (command.Action is not KittyGraphicsAction.Query and not KittyGraphicsAction.Transmit
+            and not KittyGraphicsAction.TransmitFrame ||
             encodedPayload.Length > _encodedChunkBytes ||
             !encodedPayload.IsCanonicalBase64())
         {
@@ -89,7 +90,7 @@ public static class KittyGraphicsWriter
     }
 
     /// <summary>Writes a complete direct payload as independently framed Kitty chunks.</summary>
-    /// <param name="command">A non-null transmit or query command.</param>
+    /// <param name="command">A non-null transmit, frame transmission, or query command.</param>
     /// <param name="payload">The complete borrowed raw source.</param>
     /// <param name="destination">The non-null synchronous destination.</param>
     /// <param name="maxPayloadBytes">The positive finite total source bound.</param>
@@ -106,9 +107,12 @@ public static class KittyGraphicsWriter
         ArgumentNullException.ThrowIfNull(destination);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxPayloadBytes);
 
-        if (command.Action is not KittyGraphicsAction.Transmit and not KittyGraphicsAction.Query)
+        if (command.Action is not KittyGraphicsAction.Transmit and not KittyGraphicsAction.Query
+            and not KittyGraphicsAction.TransmitFrame)
         {
-            throw new ArgumentException("Only query and transmit actions carry direct data.", nameof(command));
+            throw new ArgumentException(
+                "Only query, transmit, and frame transmission actions carry direct data.",
+                nameof(command));
         }
 
         if (payload.Length > maxPayloadBytes)
@@ -146,7 +150,7 @@ public static class KittyGraphicsWriter
             var encodedLength = Encode(payload.Slice(offset, length), encoded);
             var chunk = first
                 ? command.WithMore(more)
-                : KittyGraphicsCommand.Continuation(more, command.Quiet);
+                : KittyGraphicsCommand.Continuation(command.Action, more, command.Quiet);
             WriteEncodedCore(chunk, encoded[..encodedLength], destination);
             offset += length;
             first = false;
@@ -306,6 +310,75 @@ public static class KittyGraphicsWriter
                 : position;
         }
 
+        if (command.Action == KittyGraphicsAction.TransmitFrame && command.ImageId == 0)
+        {
+            position = AppendField(destination, position, (byte) 'm', command.More ? 1 : 0);
+
+            return command.Quiet == 0
+                ? position
+                : AppendField(destination, position, (byte) 'q', command.Quiet);
+        }
+
+        if (command.Action == KittyGraphicsAction.TransmitFrame)
+        {
+            position = AppendLiteralField(destination, position, (byte) 'a', (byte) 'f');
+            position = AppendField(destination, position, (byte) 'f', (int) command.Format);
+            position = AppendLiteralField(destination, position, (byte) 't', (byte) 'd');
+
+            if (command.Format is KittyGraphicsFormat.Rgb or KittyGraphicsFormat.Rgba)
+            {
+                position = AppendField(destination, position, (byte) 's', command.PixelSize.Width);
+                position = AppendField(destination, position, (byte) 'v', command.PixelSize.Height);
+            }
+
+            if (command.BaseFrameId != 0)
+            {
+                position = AppendField(destination, position, (byte) 'c', command.BaseFrameId);
+            }
+
+            if (command.FrameOffset.X != 0)
+            {
+                position = AppendField(destination, position, (byte) 'x', command.FrameOffset.X);
+            }
+
+            if (command.FrameOffset.Y != 0)
+            {
+                position = AppendField(destination, position, (byte) 'y', command.FrameOffset.Y);
+            }
+
+            if (command.FrameGap != 0)
+            {
+                position = AppendField(destination, position, (byte) 'z', command.FrameGap);
+            }
+
+            position = AppendField(destination, position, (byte) 'i', command.ImageId);
+
+            if (command.More)
+            {
+                position = AppendField(destination, position, (byte) 'm', 1);
+            }
+
+            return command.Quiet == 0
+                ? position
+                : AppendField(destination, position, (byte) 'q', command.Quiet);
+        }
+
+        if (command.Action == KittyGraphicsAction.Animate)
+        {
+            position = AppendLiteralField(destination, position, (byte) 'a', (byte) 'a');
+            position = AppendField(destination, position, (byte) 'i', command.ImageId);
+            position = AppendField(destination, position, (byte) 's', (int) command.Control);
+
+            if (command.LoopCount != 0)
+            {
+                position = AppendField(destination, position, (byte) 'v', command.LoopCount);
+            }
+
+            return command.Quiet == 0
+                ? position
+                : AppendField(destination, position, (byte) 'q', command.Quiet);
+        }
+
         position = AppendLiteralField(destination, position, (byte) 'a', (byte) 'd');
         position = AppendLiteralField(
             destination,
@@ -392,11 +465,13 @@ public static class KittyGraphicsWriter
 
     private static void ValidatePayload(KittyGraphicsCommand command, ReadOnlySpan<byte> payload)
     {
-        if (command.Action is KittyGraphicsAction.Place or KittyGraphicsAction.Delete)
+        if (command.Action is KittyGraphicsAction.Place or KittyGraphicsAction.Delete or KittyGraphicsAction.Animate)
         {
             if (!payload.IsEmpty)
             {
-                throw new ArgumentException("Placement and delete commands cannot carry data.", nameof(payload));
+                throw new ArgumentException(
+                    "Placement, delete, and animation control commands cannot carry data.",
+                    nameof(payload));
             }
 
             return;

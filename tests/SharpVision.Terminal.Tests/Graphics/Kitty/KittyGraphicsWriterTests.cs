@@ -256,6 +256,225 @@ public sealed class KittyGraphicsWriterTests
 
     #endregion
 
+    #region Frame transmission and animation control
+
+    /// <summary>Verifies minimal frame transmission bytes carry the frame action, dimensions, and identity.</summary>
+    [Fact]
+    public void WriteTransmission_WhenFrameIsMinimal_EmitsCanonicalBytes()
+    {
+        var output = new ArrayBufferWriter<byte>();
+        var command = KittyGraphicsCommand.TransmitFrame(
+            imageId: 7,
+            new Size(1, 1),
+            KittyGraphicsFormat.Rgba,
+            quiet: 2);
+
+        KittyGraphicsWriter.WriteTransmission(command, [1, 2, 3, 4], output);
+
+        output.WrittenSpan.ToArray().ShouldBe(
+            "\u001b_Ga=f,f=32,t=d,s=1,v=1,i=7,q=2;AQIDBA==\u001b\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies frame composition fields encode base frame, offset, and gap exactly.</summary>
+    [Fact]
+    public void WriteTransmission_WhenFrameComposesOnBaseFrame_EmitsExactCompositionFields()
+    {
+        var output = new ArrayBufferWriter<byte>();
+        var command = KittyGraphicsCommand.TransmitFrame(
+            imageId: 7,
+            new Size(1, 1),
+            KittyGraphicsFormat.Rgba,
+            baseFrameId: 3,
+            offset: new Point(2, 4),
+            frameGap: 40,
+            quiet: 2);
+
+        KittyGraphicsWriter.WriteTransmission(command, [1, 2, 3, 4], output);
+
+        output.WrittenSpan.ToArray().ShouldBe(
+            "\u001b_Ga=f,f=32,t=d,s=1,v=1,c=3,x=2,y=4,z=40,i=7,q=2;AQIDBA==\u001b\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies a negative frame gap is preserved verbatim as a gapless frame marker.</summary>
+    [Fact]
+    public void WriteTransmission_WhenFrameGapIsNegative_EmitsGaplessMarker()
+    {
+        var output = new ArrayBufferWriter<byte>();
+        var command = KittyGraphicsCommand.TransmitFrame(
+            imageId: 7,
+            new Size(1, 1),
+            KittyGraphicsFormat.Rgba,
+            frameGap: -1,
+            quiet: 2);
+
+        KittyGraphicsWriter.WriteTransmission(command, [1, 2, 3, 4], output);
+
+        output.WrittenSpan.ToArray().ShouldBe(
+            "\u001b_Ga=f,f=32,t=d,s=1,v=1,z=-1,i=7,q=2;AQIDBA==\u001b\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies large raw frame data chunks exactly like a normal transmission, with minimal continuation.</summary>
+    [Fact]
+    public void WriteTransmission_WhenFramePayloadNeedsChunks_UsesFiniteOfficialChunkGrammar()
+    {
+        var output = new ArrayBufferWriter<byte>();
+        var payload = new byte[4_096];
+        payload.AsSpan().Fill(1);
+        var command = KittyGraphicsCommand.TransmitFrame(
+            imageId: 8,
+            new Size(1_024, 1),
+            KittyGraphicsFormat.Rgba,
+            quiet: 1);
+
+        KittyGraphicsWriter.WriteTransmission(command, payload, output);
+
+        var bytes = output.WrittenSpan;
+        var second = bytes.IndexOf("\u001b_Gm=0,q=1;"u8);
+        second.ShouldBeGreaterThan(0);
+        var firstPayloadStart = bytes.IndexOf((byte) ';') + 1;
+        var firstPayloadEnd = bytes[..second].LastIndexOf("\u001b\\"u8);
+        (firstPayloadEnd - firstPayloadStart).ShouldBe(4_096);
+        ((firstPayloadEnd - firstPayloadStart) & 3).ShouldBe(0);
+        bytes[..firstPayloadStart].ToArray().ShouldBe(
+            "\u001b_Ga=f,f=32,t=d,s=1024,v=1,i=8,m=1,q=1;"u8.ToArray());
+    }
+
+    /// <summary>Verifies a structurally valid large PNG frame is chunked without bypassing validation.</summary>
+    [Fact]
+    public void WriteTransmission_WhenValidPngFrameNeedsChunks_ValidatesAndChunksPayload()
+    {
+        var output = new ArrayBufferWriter<byte>();
+        var payload = CreatePngPayload(3_073);
+        var command = KittyGraphicsCommand.TransmitFrame(9, new Size(1, 1), KittyGraphicsFormat.Png);
+
+        KittyGraphicsWriter.WriteTransmission(command, payload, output);
+
+        var bytes = output.WrittenSpan;
+        bytes.IndexOf("\u001b_Gm=0,q=2;"u8).ShouldBeGreaterThan(0);
+        bytes[..(bytes.IndexOf((byte) ';') + 1)].ToArray().ShouldBe(
+            "\u001b_Ga=f,f=100,t=d,i=9,m=1,q=2;"u8.ToArray());
+    }
+
+    /// <summary>Verifies direct-only policy rejects file, temporary-file, and shared-memory media for frames.</summary>
+    [Theory]
+    [InlineData(KittyGraphicsMedium.File)]
+    [InlineData(KittyGraphicsMedium.TemporaryFile)]
+    [InlineData(KittyGraphicsMedium.SharedMemory)]
+    public void TransmitFrame_WhenMediumIsNotDirect_ThrowsNotSupportedException(KittyGraphicsMedium medium)
+    {
+        _ = Should.Throw<NotSupportedException>(() => KittyGraphicsCommand.TransmitFrame(
+            1,
+            new Size(1, 1),
+            KittyGraphicsFormat.Rgba,
+            medium: medium));
+    }
+
+    /// <summary>Verifies unsupported RGB frame data and zlib metadata cannot enter the writer.</summary>
+    [Fact]
+    public void TransmitFrame_WhenFormatOrCompressionIsUnsupported_ThrowsNotSupportedException()
+    {
+        _ = Should.Throw<NotSupportedException>(() => KittyGraphicsCommand.TransmitFrame(
+            1,
+            new Size(1, 1),
+            KittyGraphicsFormat.Rgb));
+        _ = Should.Throw<NotSupportedException>(() => KittyGraphicsCommand.TransmitFrame(
+            1,
+            new Size(1, 1),
+            KittyGraphicsFormat.Rgba,
+            compression: KittyGraphicsCompression.Zlib));
+    }
+
+    /// <summary>Verifies a negative frame offset is rejected before output.</summary>
+    [Fact]
+    public void TransmitFrame_WhenOffsetIsNegative_ThrowsArgumentOutOfRangeException()
+    {
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => KittyGraphicsCommand.TransmitFrame(
+            1,
+            new Size(1, 1),
+            KittyGraphicsFormat.Rgba,
+            offset: new Point(-1, 0)));
+    }
+
+    /// <summary>Verifies animation control encodes the sub-action, image identity, and quiet mode exactly.</summary>
+    [Fact]
+    public void Write_WhenAnimationRunsWithoutLoopOverride_EmitsExactBytes()
+    {
+        var output = new ArrayBufferWriter<byte>();
+
+        KittyGraphicsWriter.Write(
+            KittyGraphicsCommand.Animate(7, KittyGraphicsAnimationControl.Run),
+            [],
+            output);
+
+        output.WrittenSpan.ToArray().ShouldBe("\u001b_Ga=a,i=7,s=3,q=2\u001b\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies a nonzero loop count and suppressed quiet mode both encode exactly.</summary>
+    [Fact]
+    public void Write_WhenAnimationStopsWithLoopCountAndByteQuiet_EmitsExactBytes()
+    {
+        var output = new ArrayBufferWriter<byte>();
+
+        KittyGraphicsWriter.Write(
+            KittyGraphicsCommand.Animate(7, KittyGraphicsAnimationControl.Stop, loopCount: 5, quiet: 0),
+            [],
+            output);
+
+        output.WrittenSpan.ToArray().ShouldBe("\u001b_Ga=a,i=7,s=1,v=5\u001b\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies the wait-for-new-frames sub-action encodes its distinct value.</summary>
+    [Fact]
+    public void Write_WhenAnimationWaitsForNewFrames_EmitsExactBytes()
+    {
+        var output = new ArrayBufferWriter<byte>();
+
+        KittyGraphicsWriter.Write(
+            KittyGraphicsCommand.Animate(7, KittyGraphicsAnimationControl.WaitForNewFrames),
+            [],
+            output);
+
+        output.WrittenSpan.ToArray().ShouldBe("\u001b_Ga=a,i=7,s=2,q=2\u001b\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies animation control cannot carry payload data.</summary>
+    [Fact]
+    public void Write_WhenAnimationCarriesPayload_ThrowsArgumentException()
+    {
+        var output = new ArrayBufferWriter<byte>();
+
+        _ = Should.Throw<ArgumentException>(() => KittyGraphicsWriter.Write(
+            KittyGraphicsCommand.Animate(7, KittyGraphicsAnimationControl.Run),
+            [1],
+            output));
+    }
+
+    /// <summary>Verifies an undefined control sub-action and a negative loop count are rejected before output.</summary>
+    [Fact]
+    public void Animate_WhenControlOrLoopCountIsInvalid_ThrowsArgumentOutOfRangeException()
+    {
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => KittyGraphicsCommand.Animate(1, (KittyGraphicsAnimationControl) 99));
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => KittyGraphicsCommand.Animate(1, KittyGraphicsAnimationControl.Run, loopCount: -1));
+    }
+
+    /// <summary>Verifies animation control rejects encoded-payload writes, matching placement and delete.</summary>
+    [Fact]
+    public void WriteEncoded_WhenActionIsAnimate_WritesNothing()
+    {
+        var output = new ArrayBufferWriter<byte>();
+
+        _ = Should.Throw<ArgumentException>(() => KittyGraphicsWriter.WriteEncoded(
+            KittyGraphicsCommand.Animate(1, KittyGraphicsAnimationControl.Run),
+            "AAAA"u8,
+            output));
+
+        output.WrittenCount.ShouldBe(0);
+    }
+
+    #endregion
+
     #region Checked encoded input
 
     /// <summary>Verifies malformed pre-encoded Base64 never mutates the destination.</summary>

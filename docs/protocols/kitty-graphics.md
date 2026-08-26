@@ -23,10 +23,16 @@ externally managed lifetimes that SharpVision does not trust.
 
 > [!IMPORTANT]
 >
-> **Implementation gap:** two documented Kitty graphics protocol features have
-> no implementation yet: neither animation nor Unicode placeholder presentation
-> has a typed surface, so every placement is a cursor-anchored direct-data
-> upload.
+> **Implementation gap:** Unicode placeholder presentation has no typed surface.
+> Frame transmission (`a=f`) and animation playback control (`a=a`) now have a
+> typed, validated, byte-exact wire surface — see
+> [Frame transmission and animation control](#frame-transmission-and-animation-control-protocol-surface-only)
+> — but the renderer does not consume it: `KittyGraphicsBackend.Prepare` and the
+> `Frame`/`Placement` diff model that drives it have no concept of a retained
+> animated image, so every placement remains a cursor-anchored single-image
+> direct-data upload. Driving actual animated rendering — backend and renderer
+> integration plus a higher-level animated `Image` control — remains a
+> documented follow-up.
 
 ## Supported features
 
@@ -79,11 +85,11 @@ emitted. One image finishes all chunks before another graphics command begins.
 The backend uses quiet mode 2 and never opens a terminal-supplied path.
 
 `KittyGraphicsWriter.WriteEncoded` is a checked public convenience, not a way
-around validation. It accepts only query or transmit commands, decodes at most
-3,072 bytes, requires an exact canonical re-encoding, and validates the decoded
-query, RGB/RGBA, or complete PNG shape before mutating the destination. Complete
-raw transmission always validates payload shape before chunking; there is no
-public validation bypass.
+around validation. It accepts only query, transmit, or frame transmission
+commands, decodes at most 3,072 bytes, requires an exact canonical re-encoding,
+and validates the decoded query, RGB/RGBA, or complete PNG shape before mutating
+the destination. Complete raw transmission always validates payload shape before
+chunking; there is no public validation bypass.
 
 Placements carry the exact source pixel rectangle, destination cell width and
 height, stable image/placement pair, deterministic frame-order z-index, and
@@ -97,6 +103,40 @@ requirement is part of backend selection.
 Updating the same semantic placement reuses its image/placement pair. Removing
 one placement of a shared image uses `a=d,d=i,i=...,p=...`. Removing the last
 use sends `a=d,d=I,i=...`, which frees image data and all its placements.
+
+## Frame transmission and animation control (protocol surface only)
+
+`KittyGraphicsCommand.TransmitFrame` builds `a=f` frame data commands and
+`KittyGraphicsCommand.Animate` builds `a=a` playback control commands;
+`KittyGraphicsWriter` encodes both with the same validated, byte-exact, chunked
+framing as `Transmit`. This is a typed protocol surface only: no renderer or
+backend consumes these commands yet, so constructing and writing them produces
+correct wire bytes with no visible effect until backend and renderer integration
+lands.
+
+`TransmitFrame` reuses `f` (format), `t=d` (direct medium only), and `s`/`v`
+(raw RGB/RGBA frame-rectangle dimensions, omitted for PNG) exactly like
+`Transmit`, chunked through the same 3,072-byte raw/4,096-byte encoded bounds
+with metadata-minimal `m`/`q` continuation chunks. Frame-specific fields are
+optional and omitted at their protocol default: `c` is the nonzero base frame
+this frame composites onto (default: transparent black), `x`/`y` is the
+non-negative pixel offset where the frame data is placed within the image
+(default: `0,0`), and `z` is the gap in milliseconds before the next frame,
+where zero is ignored and a negative value creates a gapless frame. Every
+`TransmitFrame` call creates a new frame; editing an already-transmitted frame
+(the protocol's `r` key) is not exposed.
+
+`Animate` always emits `i` (image identifier) and `s` (the playback sub-action:
+`1` stops, `2` runs but waits for new frames, `3` runs), and emits `v` (the raw
+Kitty loop count — zero is ignored, one plays infinitely, and a larger value
+plays that many loops minus one) only when nonzero. Selecting a specific frame
+as current (the protocol's `a=a` `c` key) is not exposed. `Animate` never
+carries payload data, matching `Place` and `Delete`.
+
+Primary source for frame and animation key semantics: the "Animation" section of
+the
+[Kitty terminal graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/),
+verified 2026-08-26 against the current published specification text.
 
 ## Bounds, ownership, and failure
 
@@ -163,15 +203,16 @@ mutation.
 
 Exact-byte tests cover the query, valid RGB/RGBA/PNG payloads across chunk
 boundaries, zlib-compressed transmission and its determinism, placements,
-updates, soft and hard deletion, response quiet modes, and rejected malformed,
-noncanonical, or shape-invalid Base64. Successful and printable-error replies,
-malformed duplicate recovery, and enabled 8-bit APC framing run at every
-possible transport split; numeric overflow, canonical IDs, bounds, duplicate
-correlation, and redaction are also covered. Real backend-to-renderer tests
-prove image caching, byte-quiet commit, stable ID reuse, last-use deletion,
-cursor restoration, uncertain tombstone recovery, allocation-free cleanup
-commit, per-delete tmux routing, Screen rejection, and explicit shutdown after
-success or partial failure.
+updates, soft and hard deletion, frame transmission with and without composition
+fields, animation playback control sub-actions and loop count, response quiet
+modes, and rejected malformed, noncanonical, or shape-invalid Base64. Successful
+and printable-error replies, malformed duplicate recovery, and enabled 8-bit APC
+framing run at every possible transport split; numeric overflow, canonical IDs,
+bounds, duplicate correlation, and redaction are also covered. Real
+backend-to-renderer tests prove image caching, byte-quiet commit, stable ID
+reuse, last-use deletion, cursor restoration, uncertain tombstone recovery,
+allocation-free cleanup commit, per-delete tmux routing, Screen rejection, and
+explicit shutdown after success or partial failure.
 
 Local emulator evidence on 2026-07-20 found Kitty 0.46.2 installed, but the test
 process had no `KITTY_PID` and standard input was not a TTY. A live frontend
