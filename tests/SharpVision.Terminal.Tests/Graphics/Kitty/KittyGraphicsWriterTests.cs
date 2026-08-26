@@ -161,6 +161,42 @@ public sealed class KittyGraphicsWriterTests
         first.WrittenSpan.ToArray().ShouldBe(second.WrittenSpan.ToArray());
     }
 
+    /// <summary>Verifies the two lower-level entry points reject a zlib-compressed command, since
+    /// neither can compress a raw payload or validate an already-compressed one: only
+    /// <c>WriteTransmission</c> owns the compression step.</summary>
+    [Fact]
+    public void Write_WhenCommandIsCompressed_ThrowsArgumentException()
+    {
+        var size = new Size(1, 1);
+        var raw = new byte[4];
+        var command = KittyGraphicsCommand.Transmit(
+            imageId: 13,
+            size,
+            KittyGraphicsFormat.Rgba,
+            compression: KittyGraphicsCompression.Zlib);
+
+        _ = Should.Throw<ArgumentException>(() => KittyGraphicsWriter.Write(command, raw, new ArrayBufferWriter<byte>()));
+    }
+
+    /// <summary>Verifies <c>WriteEncoded</c> also rejects a zlib-compressed command for the same
+    /// reason as <c>Write</c>.</summary>
+    [Fact]
+    public void WriteEncoded_WhenCommandIsCompressed_ThrowsArgumentException()
+    {
+        var size = new Size(1, 1);
+        var encoded = Convert.ToBase64String(new byte[4]);
+        var command = KittyGraphicsCommand.Transmit(
+            imageId: 14,
+            size,
+            KittyGraphicsFormat.Rgba,
+            compression: KittyGraphicsCompression.Zlib);
+
+        _ = Should.Throw<ArgumentException>(() => KittyGraphicsWriter.WriteEncoded(
+            command,
+            Encoding.ASCII.GetBytes(encoded),
+            new ArrayBufferWriter<byte>()));
+    }
+
     #endregion
 
     #region Commands and policy
@@ -329,7 +365,7 @@ public sealed class KittyGraphicsWriterTests
         KittyGraphicsWriter.WriteTransmission(command, payload, output);
 
         var bytes = output.WrittenSpan;
-        var second = bytes.IndexOf("\u001b_Gm=0,q=1;"u8);
+        var second = bytes.IndexOf("\u001b_Ga=f,m=0,q=1;"u8);
         second.ShouldBeGreaterThan(0);
         var firstPayloadStart = bytes.IndexOf((byte) ';') + 1;
         var firstPayloadEnd = bytes[..second].LastIndexOf("\u001b\\"u8);
@@ -350,7 +386,7 @@ public sealed class KittyGraphicsWriterTests
         KittyGraphicsWriter.WriteTransmission(command, payload, output);
 
         var bytes = output.WrittenSpan;
-        bytes.IndexOf("\u001b_Gm=0,q=2;"u8).ShouldBeGreaterThan(0);
+        bytes.IndexOf("\u001b_Ga=f,m=0,q=2;"u8).ShouldBeGreaterThan(0);
         bytes[..(bytes.IndexOf((byte) ';') + 1)].ToArray().ShouldBe(
             "\u001b_Ga=f,f=100,t=d,i=9,m=1,q=2;"u8.ToArray());
     }

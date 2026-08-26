@@ -26,7 +26,9 @@ public static class KittyGraphicsWriter
     /// <param name="payload">The complete borrowed raw payload.</param>
     /// <param name="destination">The non-null synchronous destination.</param>
     /// <exception cref="ArgumentNullException">A reference is null.</exception>
-    /// <exception cref="ArgumentException">Payload shape does not match the command.</exception>
+    /// <exception cref="ArgumentException">
+    /// Payload shape does not match the command, or the command requests zlib compression.
+    /// </exception>
     public static void Write(
         KittyGraphicsCommand command,
         ReadOnlySpan<byte> payload,
@@ -34,6 +36,7 @@ public static class KittyGraphicsWriter
     {
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(destination);
+        ThrowIfCompressed(command);
         ValidatePayload(command, payload);
 
         if (payload.Length > _rawChunkBytes)
@@ -52,8 +55,8 @@ public static class KittyGraphicsWriter
     /// <param name="destination">The non-null synchronous destination.</param>
     /// <exception cref="ArgumentNullException">A reference is null.</exception>
     /// <exception cref="ArgumentException">
-    /// The action cannot carry data, or the encoded payload is malformed, noncanonical, oversized,
-    /// or does not match the command's required raw shape.
+    /// The action cannot carry data, the command requests zlib compression, or the encoded payload
+    /// is malformed, noncanonical, oversized, or does not match the command's required raw shape.
     /// </exception>
     public static void WriteEncoded(
         KittyGraphicsCommand command,
@@ -62,6 +65,7 @@ public static class KittyGraphicsWriter
     {
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(destination);
+        ThrowIfCompressed(command);
 
         if (command.Action is not KittyGraphicsAction.Query and not KittyGraphicsAction.Transmit
             and not KittyGraphicsAction.TransmitFrame ||
@@ -127,8 +131,9 @@ public static class KittyGraphicsWriter
             // Compression applies only to the wire bytes chunked here: ValidatePayload above already
             // checked the caller's raw pre-compression shape against the command's declared
             // dimensions, so the raw payload is compressed once and the compressed bytes are then
-            // chunked exactly like raw bytes are below. Write and WriteEncoded receive already-framed
-            // wire bytes with no raw/compressed distinction to make, so they are untouched.
+            // chunked exactly like raw bytes are below. Write and WriteEncoded reject a compressed
+            // command outright (see ThrowIfCompressed) rather than take this path, since neither has
+            // a place to compress raw bytes or to validate already-compressed ones.
             WriteCompressedChunks(command, payload, destination);
             return;
         }
@@ -312,6 +317,7 @@ public static class KittyGraphicsWriter
 
         if (command.Action == KittyGraphicsAction.TransmitFrame && command.ImageId == 0)
         {
+            position = AppendLiteralField(destination, position, (byte) 'a', (byte) 'f');
             position = AppendField(destination, position, (byte) 'm', command.More ? 1 : 0);
 
             return command.Quiet == 0
@@ -426,7 +432,7 @@ public static class KittyGraphicsWriter
             var encodedLength = Encode(compressed.AsSpan(offset, length), encoded);
             var chunk = first
                 ? command.WithMore(more)
-                : KittyGraphicsCommand.Continuation(more, command.Quiet);
+                : KittyGraphicsCommand.Continuation(command.Action, more, command.Quiet);
             WriteEncodedCore(chunk, encoded[..encodedLength], destination);
             offset += length;
             first = false;
@@ -461,6 +467,22 @@ public static class KittyGraphicsWriter
             "A payload that decoded via Base64.DecodeFromUtf8 with status Done and full " +
             "consumption is necessarily canonical, so re-encoding it must reproduce the exact " +
             "input bytes.");
+    }
+
+    private static void ThrowIfCompressed(KittyGraphicsCommand command)
+    {
+        if (command.Compression == KittyGraphicsCompression.Zlib)
+        {
+            // Write and WriteEncoded pass their payload straight through: there is no step where
+            // raw bytes could be compressed before framing, or compressed bytes could be validated
+            // against the command's declared uncompressed shape. Only WriteTransmission's dedicated
+            // compression path can honor an o=z command without emitting bytes that contradict
+            // their own metadata (claiming zlib framing over bytes that are not actually compressed,
+            // or the reverse).
+            throw new ArgumentException(
+                "Zlib-compressed commands can only be written through WriteTransmission.",
+                nameof(command));
+        }
     }
 
     private static void ValidatePayload(KittyGraphicsCommand command, ReadOnlySpan<byte> payload)

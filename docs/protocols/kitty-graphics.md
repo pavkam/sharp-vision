@@ -89,7 +89,11 @@ around validation. It accepts only query, transmit, or frame transmission
 commands, decodes at most 3,072 bytes, requires an exact canonical re-encoding,
 and validates the decoded query, RGB/RGBA, or complete PNG shape before mutating
 the destination. Complete raw transmission always validates payload shape before
-chunking; there is no public validation bypass.
+chunking; there is no public validation bypass. Neither `WriteEncoded` nor
+`Write` accepts a zlib-compressed command: only `WriteTransmission` compresses
+the raw payload before framing, so those two lower-level entry points reject
+`o=z` commands outright rather than emit metadata that contradicts the bytes
+they were given.
 
 Placements carry the exact source pixel rectangle, destination cell width and
 height, stable image/placement pair, deterministic frame-order z-index, and
@@ -116,10 +120,12 @@ lands.
 
 `TransmitFrame` reuses `f` (format), `t=d` (direct medium only), and `s`/`v`
 (raw RGB/RGBA frame-rectangle dimensions, omitted for PNG) exactly like
-`Transmit`, chunked through the same 3,072-byte raw/4,096-byte encoded bounds
-with metadata-minimal `m`/`q` continuation chunks. Frame-specific fields are
-optional and omitted at their protocol default: `c` is the nonzero base frame
-this frame composites onto (default: transparent black), `x`/`y` is the
+`Transmit`, chunked through the same 3,072-byte raw/4,096-byte encoded bounds.
+Unlike a plain transmission, every frame continuation chunk re-asserts `a=f`
+alongside `m`/`q`, because the protocol's default action for an unmarked
+continuation chunk is a plain transmission, not a frame. Frame-specific fields
+are optional and omitted at their protocol default: `c` is the nonzero base
+frame this frame composites onto (default: transparent black), `x`/`y` is the
 non-negative pixel offset where the frame data is placed within the image
 (default: `0,0`), and `z` is the gap in milliseconds before the next frame,
 where zero is ignored and a negative value creates a gapless frame. Every
