@@ -51,7 +51,8 @@ internal static class ChartRenderer
         }
 
         var ratio = Ratio(range, value);
-        return plot.Bottom - 1 - (int) Math.Round(ratio * (plot.Height - 1), MidpointRounding.AwayFromZero);
+        var offset = (long) Math.Round(ratio * (plot.Height - 1), MidpointRounding.AwayFromZero);
+        return ClampCoordinate(plot.Bottom - 1L - offset);
     }
 
     /// <summary>Maps one ordered point index to an inclusive horizontal plot cell.</summary>
@@ -60,9 +61,9 @@ internal static class ChartRenderer
     {
         return plot.Width <= 1 || count <= 1
             ? plot.X
-            : plot.X + (int) Math.Round(
+            : ClampCoordinate(plot.X + (long) Math.Round(
                 (double) index / (count - 1) * (plot.Width - 1),
-                MidpointRounding.AwayFromZero);
+                MidpointRounding.AwayFromZero));
     }
 
     /// <summary>Maps one ordered point to inclusive half-cell coordinates, doubling both axes'
@@ -71,18 +72,23 @@ internal static class ChartRenderer
     [Pure]
     internal static Point MapHalf(ChartScaleRange range, int index, int count, double value, Rect plot)
     {
+        var doubledX = (long) plot.X * 2;
+        var doubledWidth = (long) plot.Width * 2;
         var x = plot.Width <= 1 || count <= 1
-            ? plot.X * 2
-            : (plot.X * 2) + (int) Math.Round(
-                (double) index / (count - 1) * ((plot.Width * 2) - 1),
+            ? doubledX
+            : doubledX + (long) Math.Round(
+                (double) index / (count - 1) * (doubledWidth - 1),
                 MidpointRounding.AwayFromZero);
         var ratio = Ratio(range, value);
+        var doubledY = (long) plot.Y * 2;
+        var doubledBottom = (long) plot.Bottom * 2;
+        var doubledHeight = (long) plot.Height * 2;
         var y = plot.Height <= 1
-            ? plot.Y * 2
-            : (plot.Bottom * 2) - 1 - (int) Math.Round(
-                ratio * ((plot.Height * 2) - 1),
+            ? doubledY
+            : doubledBottom - 1 - (long) Math.Round(
+                ratio * (doubledHeight - 1),
                 MidpointRounding.AwayFromZero);
-        return new Point(x, y);
+        return new Point(ClampCoordinate(x), ClampCoordinate(y));
     }
 
     /// <summary>Creates a terminal style using the resolved authored series color.</summary>
@@ -218,8 +224,9 @@ internal static class ChartRenderer
         for (var pointIndex = 0; pointIndex < series.Points.Count; pointIndex++)
         {
             var point = series.Points[pointIndex];
-            var half = MapHalf(context.Range, pointIndex, series.Points.Count, point.Value, plot);
-            var current = new Point(half.X >> 1, half.Y >> 1);
+            var current = new Point(
+                MapX(pointIndex, series.Points.Count, plot),
+                MapY(context.Range, point.Value, plot));
             canvas.DrawRune(
                 context.Chart.ActualStyle.Glyphs.Point,
                 current,
@@ -247,9 +254,24 @@ internal static class ChartRenderer
         }
 
         var ratio = Ratio(range, value);
-        var valueEighths = (int) Math.Round(ratio * extent * 8, MidpointRounding.AwayFromZero);
-        return Math.Abs(valueEighths - (zeroCells * 8));
+        var valueEighths = (long) Math.Round(ratio * extent * 8, MidpointRounding.AwayFromZero);
+        var distance = Math.Abs(valueEighths - ((long) zeroCells * 8));
+        return (int) Math.Min(int.MaxValue, distance);
     }
+
+    /// <summary>Scales a normalized ratio to eighth-cell units and clamps once to the drawing
+    /// primitive's coordinate contract.</summary>
+    [Pure]
+    [NonNegativeValue]
+    internal static int ScaleEighths(double ratio, int extent) =>
+        (int) Math.Clamp(
+            Math.Round(ratio * extent * 8, MidpointRounding.AwayFromZero),
+            0,
+            int.MaxValue);
+
+    [Pure]
+    private static int ClampCoordinate(long value) =>
+        (int) Math.Clamp(value, int.MinValue, int.MaxValue);
 
     [Pure]
     private static ChartPlotLayout ResolveLayout(IChartControl chart)

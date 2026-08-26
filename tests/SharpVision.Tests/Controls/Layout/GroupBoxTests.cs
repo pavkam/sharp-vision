@@ -44,6 +44,24 @@ public sealed class GroupBoxTests
         content.Bounds.ShouldBe(new Rect(1, 1, 10, 2));
     }
 
+    /// <summary>Verifies the retained header's relative inset saturates within a parent whose
+    /// right edge reaches the integer coordinate limit.</summary>
+    [Fact]
+    public void Arrange_WhenBoundsSaturateAtIntegerMaximum_KeepsHeaderOrdered()
+    {
+        // Arrange
+        var header = new ControlText("Header");
+        var group = new GroupBox { Header = header };
+        group.Measure(new Constraint(10, 3));
+
+        // Act
+        group.Arrange(new Rect(int.MaxValue - 1, 0, 10, 3));
+
+        // Assert
+        header.Bounds.X.ShouldBeGreaterThanOrEqualTo(group.Bounds.X);
+        header.Bounds.Right.ShouldBeLessThanOrEqualTo(group.Bounds.Right);
+    }
+
     /// <summary>Verifies content replacement releases the previous child and commits the next owned child.</summary>
     [Fact]
     public void Content_WhenReplaced_TransfersTheSingleOwnedSlot()

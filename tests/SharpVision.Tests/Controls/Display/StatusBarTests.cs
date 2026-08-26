@@ -263,6 +263,25 @@ public sealed class StatusBarTests
         position.Bounds.ShouldBe(new Rect(20, 0, 4, 1));
     }
 
+    /// <summary>Verifies trailing item origins saturate at the parent's right edge instead of
+    /// wrapping when a valid rectangle extends beyond the integer coordinate range.</summary>
+    [Fact]
+    public void Arrange_WhenBoundsSaturateAtIntegerMaximum_KeepsTrailingItemOrdered()
+    {
+        // Arrange
+        using var bar = new StatusBar();
+        var item = Item("Ready", StatusBarItemAlignment.Right);
+        bar.Items.Add(item);
+        bar.Measure(new Constraint(10, 1));
+
+        // Act
+        bar.Arrange(new Rect(int.MaxValue - 2, 0, 10, 1));
+
+        // Assert
+        item.Bounds.X.ShouldBeGreaterThanOrEqualTo(bar.Bounds.X);
+        item.Bounds.Right.ShouldBeLessThanOrEqualTo(bar.Bounds.Right);
+    }
+
     /// <summary>Verifies trailing status survives first while leading status yields in a tiny viewport.</summary>
     [Fact]
     public void Arrange_WhenWidthIsTight_PreservesTrailingEdgeBeforeLeadingItems()

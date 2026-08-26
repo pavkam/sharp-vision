@@ -415,8 +415,8 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     {
         var editor = _editorBounds == default ? Bounds : _editorBounds;
         return new Rect(
-            editor.X + bounds.X - (WordWrap ? 0 : HorizontalOffset),
-            editor.Y + bounds.Y - VerticalOffset,
+            editor.X.Add(bounds.X).Add(-(WordWrap ? 0 : HorizontalOffset)),
+            editor.Y.Add(bounds.Y).Add(-VerticalOffset),
             bounds.Width,
             bounds.Height);
     }
@@ -426,7 +426,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     {
         for (var row = 0; row < _visualLines.Length; row++)
         {
-            var screenY = bounds.Y + row - VerticalOffset;
+            var screenY = bounds.Y.Add(row).Add(-VerticalOffset);
 
             if (screenY < bounds.Y || screenY >= bounds.Bottom)
             {
@@ -452,7 +452,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
                     glyphs,
                     line.Offset + grapheme.Offset,
                     grapheme.Length,
-                    bounds.X + x,
+                    bounds.X.Add(x),
                     screenY,
                     width);
                 x += width;
@@ -483,8 +483,8 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
                 glyphs,
                 grapheme.Offset,
                 grapheme.Length,
-                bounds.X + x - HorizontalOffset,
-                bounds.Y + y - VerticalOffset,
+                bounds.X.Add(x).Add(-HorizontalOffset),
+                bounds.Y.Add(y).Add(-VerticalOffset),
                 width);
             x += width;
         }
@@ -801,9 +801,9 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
                 }
 
                 var width = UnicodeWidth.Measure(cluster, CellPolicy.AmbiguousWidth).Cells;
-                var point = new Point(bounds.X + px, bounds.Y);
+                var point = new Point(bounds.X.Add(px), bounds.Y);
 
-                if (point.X + width > bounds.X + bounds.Width)
+                if (point.X.Add(width) > bounds.Right)
                 {
                     break;
                 }
@@ -835,9 +835,9 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     {
         for (var i = 0; i < _visualLines.Length; i++)
         {
-            var screenY = bounds.Y + i - VerticalOffset;
+            var screenY = bounds.Y.Add(i).Add(-VerticalOffset);
 
-            if (screenY < bounds.Y || screenY >= bounds.Y + bounds.Height)
+            if (screenY < bounds.Y || screenY >= bounds.Bottom)
             {
                 continue;
             }
@@ -856,7 +856,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
                 }
 
                 var width = ClusterWidth(c, x);
-                var point = new Point(bounds.X + x, screenY);
+                var point = new Point(bounds.X.Add(x), screenY);
                 var style = ResolvedStyle;
 
                 if (PasswordCharacter is { } mask)
@@ -880,8 +880,8 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         {
             Position(CommittedTextSelection.Caret, out var caretX, out var caretY);
             var position = new Point(
-                bounds.X + caretX,
-                bounds.Y + caretY - VerticalOffset);
+                bounds.X.Add(caretX),
+                bounds.Y.Add(caretY).Add(-VerticalOffset));
 
             if (bounds.Contains(position) && canvas.Bounds.Contains(position))
             {
@@ -908,8 +908,8 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
 
             var width = ClusterWidth(cluster, x);
             var point = new Point(
-                bounds.X + x - HorizontalOffset,
-                bounds.Y + y - VerticalOffset);
+                bounds.X.Add(x).Add(-HorizontalOffset),
+                bounds.Y.Add(y).Add(-VerticalOffset));
             var style = ResolvedStyle;
 
             if (PasswordCharacter is { } mask)
@@ -932,8 +932,8 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         {
             Position(CommittedTextSelection.Caret, out var caretX, out var caretY);
             var position = new Point(
-                bounds.X + caretX - HorizontalOffset,
-                bounds.Y + caretY - VerticalOffset);
+                bounds.X.Add(caretX).Add(-HorizontalOffset),
+                bounds.Y.Add(caretY).Add(-VerticalOffset));
 
             if (bounds.Contains(position) && canvas.Bounds.Contains(position))
             {
@@ -1733,11 +1733,11 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
             _vertical.Visibility = vertical ? Visibility.Visible : Visibility.Collapsed;
             ArrangeChild(
                 _horizontal,
-                new Rect(bounds.X, bounds.Y + viewport.Height, viewport.Width, 0),
+                new Rect(bounds.X, bounds.Y.Add(viewport.Height), viewport.Width, 0),
                 ResolvedAxes.Both);
             ArrangeChild(
                 _vertical,
-                new Rect(bounds.X + viewport.Width, bounds.Y, vertical ? 1 : 0, viewport.Height),
+                new Rect(bounds.X.Add(viewport.Width), bounds.Y, vertical ? 1 : 0, viewport.Height),
                 ResolvedAxes.Both);
             HorizontalOffset = 0;
             Configure(_horizontal, 0, viewport.Width, 0);
@@ -1770,11 +1770,11 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         _vertical.Visibility = vert ? Visibility.Visible : Visibility.Collapsed;
         ArrangeChild(
             _horizontal,
-            new Rect(bounds.X, bounds.Y + vp.Height, vp.Width, horizontal ? 1 : 0),
+            new Rect(bounds.X, bounds.Y.Add(vp.Height), vp.Width, horizontal ? 1 : 0),
             ResolvedAxes.Both);
         ArrangeChild(
             _vertical,
-            new Rect(bounds.X + vp.Width, bounds.Y, vert ? 1 : 0, vp.Height),
+            new Rect(bounds.X.Add(vp.Width), bounds.Y, vert ? 1 : 0, vp.Height),
             ResolvedAxes.Both);
         Configure(_horizontal, Math.Max(0, _contentWidth - vp.Width + 1), vp.Width, HorizontalOffset);
         Configure(_vertical, Math.Max(0, _contentHeight - vp.Height + 1), vp.Height, VerticalOffset);
@@ -2036,7 +2036,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     {
         for (var index = 0; index < count; index++)
         {
-            _ = canvas.Draw(" ", new Point(point.X + index, point.Y), style);
+            _ = canvas.Draw(" ", new Point(point.X.Add(index), point.Y), style);
         }
     }
 

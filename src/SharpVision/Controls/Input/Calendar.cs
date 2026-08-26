@@ -732,7 +732,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
 
         if (bounds.Width > _minimumHeaderWidth)
         {
-            var titleBounds = new Rect(bounds.X + _headerHeight, bounds.Y, bounds.Width - _minimumHeaderWidth, _headerHeight);
+            var titleBounds = new Rect(bounds.X.Add(_headerHeight), bounds.Y, bounds.Width - _minimumHeaderWidth, _headerHeight);
             DrawCentered(row, titleBounds, DisplayMonth.ToString("MMMM yyyy", Culture), ResolvedStyle);
         }
     }
@@ -752,7 +752,11 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         {
             var day = (DayOfWeek) ((first + column) % _columnCount);
             var label = Culture.DateTimeFormat.GetAbbreviatedDayName(day);
-            var cell = new Rect(bounds.X + (column * _cellWidth), bounds.Y + _weekdayRowOffset, _cellWidth, _headerHeight);
+            var cell = new Rect(
+                bounds.X.Add(column.Multiply(_cellWidth)),
+                bounds.Y.Add(_weekdayRowOffset),
+                _cellWidth,
+                _headerHeight);
             _ = Text.Layout.Format(
                 label,
                 2,
@@ -763,7 +767,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
             var line = lines[0];
             _ = canvas.Clip(cell).Draw(
                 label.AsSpan(line.Offset, line.Length),
-                new Point(cell.X + 1, cell.Y),
+                new Point(cell.X.Add(1), cell.Y),
                 style);
         }
     }
@@ -780,7 +784,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
 
         for (var week = 0; week < _weekCount; week++)
         {
-            var y = bounds.Y + _dateGridOffset + week;
+            var y = bounds.Y.Add(_dateGridOffset).Add(week);
 
             if (y >= bounds.Bottom)
             {
@@ -797,7 +801,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
                 }
 
                 var date = DateOnly.FromDayNumber(dayNumber);
-                var cell = new Rect(bounds.X + (column * _cellWidth), y, _cellWidth, 1);
+                var cell = new Rect(bounds.X.Add(column.Multiply(_cellWidth)), y, _cellWidth, 1);
                 var style = ResolveDateStyle(date);
                 canvas.Clear(cell, style);
 
@@ -836,7 +840,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
             var style = ResolveDateStyle(date, span);
             _ = canvas.Clip(cell).Draw(
                 cluster,
-                new Point(cell.X + cells, cell.Y),
+                new Point(cell.X.Add(cells), cell.Y),
                 style,
                 background: span?.Background.HasValue == true
                     ? BackgroundMode.Opaque
@@ -967,7 +971,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         var line = lines[0];
         _ = canvas.Clip(bounds).Draw(
             value.AsSpan(line.Offset, line.Length),
-            new Point(bounds.X + line.Leading, bounds.Y),
+            new Point(bounds.X.Add(line.Leading), bounds.Y),
             style);
     }
 

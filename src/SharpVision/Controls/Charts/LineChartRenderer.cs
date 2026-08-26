@@ -35,7 +35,9 @@ internal static class LineChartRenderer
             {
                 var point = series.Points[pointIndex];
                 var half = ChartRenderer.MapHalf(context.Range, pointIndex, series.Points.Count, point.Value, plot);
-                var current = new Point(half.X >> 1, half.Y >> 1);
+                var current = new Point(
+                    ChartRenderer.MapX(pointIndex, series.Points.Count, plot),
+                    ChartRenderer.MapY(context.Range, point.Value, plot));
                 var style = ChartRenderer.ResolveSeriesStyle(context, series, point, seriesIndex);
 
                 if (quadrant)

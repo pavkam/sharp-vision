@@ -226,6 +226,66 @@ public sealed class TableDataControllerTests
         source.LoadCallCount.ShouldBe(4);
     }
 
+    /// <summary>Verifies a throwing failure observer cannot strand a visible gap after the failed
+    /// request releases one of the controller's four admission slots.</summary>
+    [Fact]
+    public async Task LoadFailed_WhenObserverThrows_StillRewindowsAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var table = CreateHost();
+        var source = CreateSource(1000);
+        source.Gate();
+        await using var surface = await ComponentSurface.MountAsync(
+            table, new Size(20, 2), clock, TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+
+        foreach (var height in new[] { 4, 6, 8, 10 })
+        {
+            await surface.ResizeAsync(new Size(20, height));
+        }
+
+        var failedStart = source.Requests[0].StartIndex;
+        table.LoadFailed += (_, _) => throw new InvalidOperationException("observer failure");
+
+        // Act: two failures schedule retries; the third exhausts the range and invokes the observer.
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            await surface.UpdateAsync(() => source.Fail(failedStart), $"fail attempt {attempt}");
+            await WaitUntilDispatcherStateAsync(
+                surface,
+                () => table.ProgressiveController!.ScheduledRetryCount == 1);
+            await surface.AdvanceAsync(TimeSpan.FromMilliseconds(250), $"retry attempt {attempt}");
+            var expectedCalls = 5 + attempt;
+            await WaitUntilDispatcherStateAsync(surface, () => source.LoadCallCount >= expectedCalls);
+        }
+
+        await surface.UpdateAsync(() => source.Fail(failedStart), "exhaust failed range");
+
+        await WaitUntilDispatcherStateAsync(surface, () => source.LoadCallCount >= 7);
+
+        // Assert: the uncovered fifth range was admitted in the observer-invocation finally path.
+        source.LoadCallCount.ShouldBe(7);
+        source.HeldCount.ShouldBe(4);
+    }
+
+    private static async Task WaitUntilDispatcherStateAsync(ComponentSurface surface, Func<bool> predicate)
+    {
+        for (var attempt = 0; attempt < 1000; attempt++)
+        {
+            if (await surface.Application.Dispatcher.InvokeAsync(
+                    predicate,
+                    TestContext.Current.CancellationToken))
+            {
+                return;
+            }
+
+            await Task.Yield();
+        }
+
+        throw new TimeoutException("The dispatcher state did not settle within the bounded yield loop.");
+    }
+
     #endregion
 
     #region Rewindow stride

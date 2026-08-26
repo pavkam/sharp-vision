@@ -187,7 +187,11 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
                 var width = cluster.Length == 1 && cluster[0] == '\t'
                     ? TextLayout.TabSize - (x % TextLayout.TabSize)
                     : UnicodeWidth.Measure(cluster, AmbiguousWidth).Cells;
-                var absolute = new Rect(bounds.X + line.Leading + x, bounds.Y + row, width, 1);
+                var absolute = new Rect(
+                    bounds.X.Add(line.Leading).Add(x),
+                    bounds.Y.Add(row),
+                    width,
+                    1);
 
                 if (width > 0 && SelectableTextAggregation.ContainsCompleteGlyph(clip, absolute))
                 {
@@ -408,7 +412,7 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
 
     private void RenderLine(TerminalCanvas canvas, Rect bounds, Line line, int row)
     {
-        var origin = new Point(bounds.X + line.Leading, bounds.Y + row);
+        var origin = new Point(bounds.X.Add(line.Leading), bounds.Y.Add(row));
         var cells = 0;
         var spanIndex = SpanIndexAt(line.Offset);
         var runOffset = line.Offset;
@@ -429,7 +433,7 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
             }
 
             var span = runSpanIndex >= 0 ? _spans[runSpanIndex] : default;
-            var position = new Point(origin.X + cells, origin.Y);
+            var position = new Point(origin.X.Add(cells), origin.Y);
             var result = canvas.Draw(
                 _display.AsSpan(runOffset, runLength),
                 position,
@@ -479,7 +483,7 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
             var themed = ControlGlyphs.Text.Ellipsis;
             canvas.DrawRune(
                 ActualStyle.EllipsisGlyph.Resolve(themed.Fallback, AmbiguousWidth),
-                new Point(bounds.X + line.Leading + cells, bounds.Y + row),
+                new Point(bounds.X.Add(line.Leading).Add(cells), bounds.Y.Add(row)),
                 ResolveSpanStyle(span),
                 ResolveBackgroundMode(span));
         }

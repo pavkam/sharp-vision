@@ -84,4 +84,7 @@ automatic ranges remaining finite and non-empty, observable membership and deep
 item changes invalidating the required UI phase, and removed or disposed data
 releasing chart subscriptions. Explicit bounds clip values rather than changing
 the model. Tiny bounds suppress optional labels and legends before data, and all
-text remains clipped at complete grapheme boundaries.
+text remains clipped at complete grapheme boundaries. Half-cell line
+coordinates, category partitions, and eighth-cell bar extents use widened
+intermediates and clamp at the terminal drawing boundary, so valid integer-sized
+plot geometry remains monotonic instead of wrapping.

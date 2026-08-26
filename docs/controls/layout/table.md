@@ -233,10 +233,12 @@ attempts — and is never focusable, never enters `SelectedKeys` on its own, and
 is skipped by `CopySelection` until it actually loads. `LoadFailed` fires
 exactly once per exhausted range, and `LoadState` (`Idle`, `Loading`, or
 `Failed`) aggregates every in-flight and failed range table-wide, raising
-`LoadStateChanged` on each committed transition. A failed range recovers
-automatically once it scrolls far enough away and back (cache eviction clears
-its error), or explicitly through `Reload()`, which discards every cached row
-and re-fetches the current window from scratch. Requests coalesce: an
+`LoadStateChanged` on each committed transition. Failure observers run after the
+failed range commits; even when an observer throws, the table first reconciles
+the visible window and admits any work released by that range. A failed range
+recovers automatically once it scrolls far enough away and back (cache eviction
+clears its error), or explicitly through `Reload()`, which discards every cached
+row and re-fetches the current window from scratch. Requests coalesce: an
 already-cached or already-pending index is never re-requested, and at most four
 ranges fetch concurrently.
 

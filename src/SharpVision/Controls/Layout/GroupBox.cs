@@ -74,7 +74,7 @@ public sealed class GroupBox: HeaderedContentControl
         if (Header is { } header)
         {
             var titleRect = Bounds.Width > 3
-                ? new Rect(Bounds.X + 2, Bounds.Y, Bounds.Width - 3, 1)
+                ? new Rect(Bounds.X.Add(2), Bounds.Y, Bounds.Width - 3, 1)
                 : default;
             ArrangeChild(header, titleRect, ResolvedAxes.Height);
         }
@@ -123,10 +123,10 @@ public sealed class GroupBox: HeaderedContentControl
         // below; a DisplayText header instead paints directly here and needs the same check.
         if (Header is { EffectiveIsVisible: true } header && Bounds.Width > 3)
         {
-            var title = canvas.Clip(new Rect(Bounds.X + 1, Bounds.Y, Bounds.Width - 2, 1));
+            var title = canvas.Clip(new Rect(Bounds.X.Add(1), Bounds.Y, Bounds.Width - 2, 1));
             var start = title.Draw(
                 " ".AsSpan(),
-                new Point(Bounds.X + 1, Bounds.Y),
+                new Point(Bounds.X.Add(1), Bounds.Y),
                 border,
                 background: bg);
 
@@ -142,7 +142,7 @@ public sealed class GroupBox: HeaderedContentControl
                     EffectiveIsEnabled ? Theme?.Hotkey ?? Color.Default : null);
                 _ = title.Draw(
                     " ".AsSpan(),
-                    new Point(start.Final.X + cells, start.Final.Y),
+                    new Point(start.Final.X.Add(cells), start.Final.Y),
                     border,
                     background: bg);
             }
@@ -151,7 +151,7 @@ public sealed class GroupBox: HeaderedContentControl
                 header.Render(canvas);
                 _ = title.Draw(
                     " ".AsSpan(),
-                    new Point(start.Final.X + header.Bounds.Width, start.Final.Y),
+                    new Point(start.Final.X.Add(header.Bounds.Width), start.Final.Y),
                     border,
                     background: bg);
             }

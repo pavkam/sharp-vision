@@ -198,6 +198,29 @@ internal sealed class FakeTableDataSource<T>: ITableDataSource<T>
         }
     }
 
+    /// <summary>Faults the oldest still-held request matching a start index, if any.</summary>
+    /// <param name="startIndex">The held request's start index.</param>
+    public void Fail(int startIndex)
+    {
+        HeldEntry? entry = null;
+
+        lock (_gate)
+        {
+            var index = _held.FindIndex(candidate => candidate.Request.StartIndex == startIndex);
+
+            if (index >= 0)
+            {
+                entry = _held[index];
+                _held.RemoveAt(index);
+            }
+        }
+
+        if (entry is not null)
+        {
+            _ = entry.Completion.TrySetException(new InvalidOperationException("Simulated held fetch failure."));
+        }
+    }
+
     /// <summary>Completes every currently held request, in issue order.</summary>
     public void ReleaseAll()
     {

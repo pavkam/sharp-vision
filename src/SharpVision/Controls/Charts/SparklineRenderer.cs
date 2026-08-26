@@ -30,8 +30,8 @@ internal static class SparklineRenderer
         {
             var point = series.Points[first + index];
             var ratio = ChartRenderer.Ratio(context.Range, point.Value);
-            var eighths = (int) Math.Round(ratio * plot.Height * 8, MidpointRounding.AwayFromZero);
-            var x = plot.X + index;
+            var eighths = ChartRenderer.ScaleEighths(ratio, plot.Height);
+            var x = plot.X.Add(index);
             var style = ChartRenderer.ResolveSeriesStyle(context, series, point, seriesIndex: 0);
 
             if (fractional)

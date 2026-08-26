@@ -124,7 +124,7 @@ public sealed class StatusBarItem: ContentControl, IStyled<StatusBarItemStyle>
         var (left, right) = Insets(bounds.Width);
         ArrangeChild(
             content,
-            new Rect(bounds.X + left, bounds.Y, bounds.Width - left - right, bounds.Height),
+            new Rect(bounds.X.Add(left), bounds.Y, bounds.Width - left - right, bounds.Height),
             ResolvedAxes.Both);
     }
 

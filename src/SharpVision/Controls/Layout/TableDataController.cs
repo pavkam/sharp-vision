@@ -102,6 +102,10 @@ internal sealed class TableDataController: IDisposable
     [NonNegativeValue]
     public int PendingCount => _pending.Count;
 
+    /// <summary>Gets the number of pending ranges currently waiting on a retry timer. This
+    /// diagnostic seam proves retry admission ordering without exposing mutable scheduler state.</summary>
+    internal int ScheduledRetryCount => _pending.Count(static range => range.RetryTimer is not null);
+
     /// <summary>Gets the realized row at a logical index, or null when unrealized.</summary>
     /// <param name="logicalIndex">The zero-based logical index.</param>
     [Pure]
@@ -748,8 +752,16 @@ internal sealed class TableDataController: IDisposable
         }
 
         UpdateLoadState();
-        LoadFailed?.Invoke(_owner, new TableLoadFailedEventArgs(request, failure));
-        RewindowFollowingCommit();
+        try
+        {
+            LoadFailed?.Invoke(_owner, new TableLoadFailedEventArgs(request, failure));
+        }
+        finally
+        {
+            // Observers may throw, but they cannot leave the controller below its admission
+            // budget with newly-visible gaps stranded until another unrelated layout pass.
+            RewindowFollowingCommit();
+        }
     }
 
     private void ScheduleRetry(PendingRange range)

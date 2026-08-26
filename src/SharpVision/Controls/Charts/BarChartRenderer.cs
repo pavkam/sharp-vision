@@ -319,23 +319,27 @@ internal static class BarChartRenderer
         return count;
     }
 
+    /// <summary>Maps one slot to its centered cell using overflow-safe proportional arithmetic.</summary>
     [Pure]
-    private static int CenterSlot(int slot, int slotCount, int origin, int extent) =>
+    internal static int CenterSlot(int slot, int slotCount, int origin, int extent) =>
         extent <= 1
             ? origin
-            : origin + Math.Min(extent - 1, ((slot * 2) + 1) * extent / (slotCount * 2));
+            : origin.Add((int) Math.Min(
+                (long) extent - 1,
+                (((long) slot * 2) + 1) * extent / ((long) slotCount * 2)));
 
     // Each category owns a contiguous, disjoint cell band, so one category's bars can never land
     // on another's rows or columns and a category label always sits inside its own group. The old
     // global slot spread mapped two adjacent slots to one cell whenever the plot was shorter than
     // the slot count, and the later series then silently overdrew the earlier one - with the
     // labels placed independently, the label could end up naming a bar from a different group.
+    /// <summary>Partitions an extent into one contiguous category band without intermediate overflow.</summary>
     [Pure]
-    private static (int Start, int Length) CategoryBand(int category, int categoryCount, int origin, int extent)
+    internal static (int Start, int Length) CategoryBand(int category, int categoryCount, int origin, int extent)
     {
-        var start = origin + (category * extent / categoryCount);
-        var end = origin + ((category + 1) * extent / categoryCount);
-        return (start, end - start);
+        var start = origin.Add((int) ((long) category * extent / categoryCount));
+        var end = origin.Add((int) ((long) (category + 1) * extent / categoryCount));
+        return (start, Math.Max(0, end - start));
     }
 
     // Within a roomy band the series keep the historical centered spread; within a squeezed band

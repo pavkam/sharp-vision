@@ -39,6 +39,12 @@ resulting extents saturated at zero. Horizontal and vertical alignment and the
 visible/hidden/collapsed participation modes use the corresponding enums in
 `SharpVision.Layout`.
 
+Relative control coordinates are composed into absolute coordinates with
+saturating integer arithmetic. A child, glyph, hit target, or caret behind a
+small clip therefore remains ordered against a parent whose valid logical
+rectangle reaches either integer boundary; it cannot wrap into the opposite side
+of the coordinate space.
+
 ## Passes and rounding
 
 ```mermaid

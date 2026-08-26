@@ -74,7 +74,7 @@ internal sealed class StatusBarHost: Container
             }
 
             var extent = Math.Min(OuterWidth(item), remaining);
-            var origin = bounds.X + remaining - extent;
+            var origin = bounds.X.Add(remaining - extent);
 
             ArrangeChild(item, new Rect(origin, bounds.Y, extent, bounds.Height), ResolvedAxes.Width);
 
@@ -102,7 +102,7 @@ internal sealed class StatusBarHost: Container
             if (leftArranged > 0)
             {
                 var gap = Math.Min(Spacing, remaining);
-                leftOrigin += gap;
+                leftOrigin = leftOrigin.Add(gap);
                 remaining -= gap;
             }
 
@@ -110,7 +110,7 @@ internal sealed class StatusBarHost: Container
 
             ArrangeChild(item, new Rect(leftOrigin, bounds.Y, extent, bounds.Height), ResolvedAxes.Width);
 
-            leftOrigin += extent;
+            leftOrigin = leftOrigin.Add(extent);
             remaining -= extent;
             leftArranged++;
         }

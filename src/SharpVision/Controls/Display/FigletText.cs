@@ -94,7 +94,7 @@ public sealed class FigletText: ControlBase
         {
             _ = canvas.Draw(
                 _lines[row],
-                new Point(bounds.X, bounds.Y + row),
+                new Point(bounds.X, bounds.Y.Add(row)),
                 style,
                 background: BackgroundMode.Transparent);
         }

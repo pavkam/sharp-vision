@@ -46,4 +46,101 @@ public sealed class ChartRendererTests
         // Assert
         eighths.ShouldBe(0);
     }
+
+    /// <summary>Verifies doubled chart coordinates saturate at the drawing primitive's integer
+    /// boundary instead of wrapping to the opposite side of the canvas.</summary>
+    [Fact]
+    public void MapHalf_WhenPlotGeometryExceedsHalfIntegerRange_SaturatesWithoutWrapping()
+    {
+        // Arrange
+        var range = new ChartScaleRange(0, 1);
+        var plot = new Rect(int.MaxValue - 10, int.MaxValue - 10, int.MaxValue, int.MaxValue);
+
+        // Act
+        var first = ChartRenderer.MapHalf(range, 0, 2, 1, plot);
+        var last = ChartRenderer.MapHalf(range, 1, 2, 0, plot);
+
+        // Assert
+        first.X.ShouldBe(int.MaxValue);
+        first.Y.ShouldBe(0);
+        last.X.ShouldBe(int.MaxValue);
+        last.Y.ShouldBe(int.MaxValue);
+    }
+
+    /// <summary>Verifies eighth-cell scaling clamps only after using a wide intermediate.</summary>
+    [Fact]
+    public void ScaleEighths_WhenExtentExceedsDrawingRange_SaturatesWithoutWrapping()
+    {
+        // Arrange
+        const int extent = int.MaxValue;
+
+        // Act
+        var eighths = ChartRenderer.ScaleEighths(1, extent);
+
+        // Assert
+        eighths.ShouldBe(int.MaxValue);
+    }
+
+    /// <summary>Verifies an eighth-cell distance whose exact value exceeds the drawing contract
+    /// saturates rather than overflowing during subtraction or absolute-value conversion.</summary>
+    [Fact]
+    public void ExtentEighths_WhenDistanceExceedsDrawingRange_SaturatesWithoutWrapping()
+    {
+        // Arrange
+        var range = new ChartScaleRange(-1, 1);
+
+        // Act
+        var eighths = ChartRenderer.ExtentEighths(range, 1, int.MaxValue, int.MinValue);
+
+        // Assert
+        eighths.ShouldBe(int.MaxValue);
+    }
+
+    /// <summary>Verifies close values retain their exact sub-cell distance when both absolute
+    /// eighth-cell positions exceed the drawing primitive's integer range.</summary>
+    [Fact]
+    public void ExtentEighths_WhenAbsolutePositionsExceedDrawingRange_PreservesSmallDistance()
+    {
+        // Arrange
+        var range = new ChartScaleRange(-1, 1);
+        const int extent = int.MaxValue;
+        var zeroCells = (int) Math.Round(extent / 2.0, MidpointRounding.AwayFromZero);
+
+        // Act
+        var eighths = ChartRenderer.ExtentEighths(range, -0.02, extent, zeroCells);
+
+        // Assert
+        eighths.ShouldBe(171798696);
+    }
+
+    /// <summary>Verifies category slot centering retains monotonic coordinates at maximum extent.</summary>
+    [Fact]
+    public void CenterSlot_WhenProductsExceedIntegerRange_RemainsOrdered()
+    {
+        // Arrange
+        const int count = int.MaxValue;
+
+        // Act
+        var first = BarChartRenderer.CenterSlot(0, count, 0, int.MaxValue);
+        var last = BarChartRenderer.CenterSlot(count - 1, count, 0, int.MaxValue);
+
+        // Assert
+        first.ShouldBe(0);
+        last.ShouldBe(int.MaxValue - 1);
+    }
+
+    /// <summary>Verifies category partitioning uses wide products and preserves the final band.</summary>
+    [Fact]
+    public void CategoryBand_WhenProductsExceedIntegerRange_PreservesFinalBand()
+    {
+        // Arrange
+        const int count = int.MaxValue;
+
+        // Act
+        var band = BarChartRenderer.CategoryBand(count - 1, count, 0, int.MaxValue);
+
+        // Assert
+        band.Start.ShouldBe(int.MaxValue - 1);
+        band.Length.ShouldBe(1);
+    }
 }
