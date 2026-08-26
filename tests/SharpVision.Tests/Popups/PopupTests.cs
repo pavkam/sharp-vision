@@ -6,6 +6,120 @@ namespace SharpVision.Tests.Popups;
 /// <summary>Verifies anchored popup visibility, placement, and dismissal behavior.</summary>
 public sealed class PopupTests
 {
+    /// <summary>Verifies every Popup family releases common and family presentation state when an
+    /// Opened observer fails, then remains reusable.</summary>
+    [Fact]
+    public async Task IsOpen_WhenOpenedObserverFails_AllPopupFamiliesRollbackAndReopenAsync()
+    {
+        var anchor = new Button { Text = "Anchor" };
+        Popup[] popups =
+        [
+            new Popup { Anchor = anchor, Content = new ControlText("Popup") },
+            new Flyout { Anchor = anchor, Content = new ControlText("Flyout") },
+            new Tooltip { Anchor = anchor, Content = new ControlText("Tooltip") }
+        ];
+        var root = new Overlay { Children = { anchor } };
+
+        foreach (var popup in popups)
+        {
+            root.Children.Add(popup);
+        }
+
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+
+        foreach (var popup in popups)
+        {
+            var expected = new InvalidOperationException("opened failed");
+            void Failing(object? sender, EventArgs eventArgs)
+            {
+                _ = sender;
+                _ = eventArgs;
+                throw expected;
+            }
+
+            popup.Opened += Failing;
+
+            var thrown = await Should.ThrowAsync<InvalidOperationException>(() =>
+                surface.UpdateAsync(() => popup.IsOpen = true, "fail Popup-family Opened observer"));
+
+            thrown.ShouldBeSameAs(expected);
+            popup.IsOpen.ShouldBeFalse();
+            popup.SurfaceBounds.ShouldBe(default);
+            popup.Content.ShouldNotBeNull().Visibility.ShouldBe(Visibility.Collapsed);
+            popup.Opened -= Failing;
+            await surface.UpdateAsync(() => popup.IsOpen = true, "reopen Popup family after failure");
+            popup.IsOpen.ShouldBeTrue();
+            await surface.UpdateAsync(() => popup.IsOpen = false, "close reopened Popup family");
+        }
+    }
+
+    /// <summary>Verifies sibling closure uses stable identities when a closing popup removes itself
+    /// from the collection being traversed.</summary>
+    [Fact]
+    public async Task IsOpen_WhenClosingSiblingRemovesItself_StillClosesRemainingPopupSnapshotAsync()
+    {
+        var first = new Popup
+        {
+            Content = new ControlText("First"),
+            SuppressCloseOtherPopups = true
+        };
+        var second = new Popup
+        {
+            Content = new ControlText("Second"),
+            SuppressCloseOtherPopups = true
+        };
+        var opening = new Popup { Content = new ControlText("Opening") };
+        var root = new Overlay { Children = { first, second, opening } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(
+            () =>
+            {
+                first.IsOpen = true;
+                second.IsOpen = true;
+            },
+            "open retained Popup siblings");
+        first.Closing += (_, _) => _ = root.Children.Remove(first);
+
+        await surface.UpdateAsync(() => opening.IsOpen = true, "open exclusive Popup");
+
+        first.IsOpen.ShouldBeFalse();
+        second.IsOpen.ShouldBeFalse();
+        opening.IsOpen.ShouldBeTrue();
+        root.Children.ShouldNotContain(first);
+    }
+
+    /// <summary>Verifies a sibling callback may open a third popup without reentering the popup
+    /// currently being established; the outermost opening transaction remains the survivor.</summary>
+    [Fact]
+    public async Task IsOpen_WhenClosingSiblingOpensThirdPopup_OpeningTransactionWinsDeterministicallyAsync()
+    {
+        var first = new Popup
+        {
+            Content = new ControlText("First"),
+            SuppressCloseOtherPopups = true
+        };
+        var opening = new Popup { Content = new ControlText("Opening") };
+        var third = new Popup { Content = new ControlText("Third") };
+        var root = new Overlay { Children = { first, opening, third } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => first.IsOpen = true, "open first Popup");
+        first.Closing += (_, _) => third.IsOpen = true;
+
+        await surface.UpdateAsync(() => opening.IsOpen = true, "open Popup across reentrant sibling opening");
+
+        first.IsOpen.ShouldBeFalse();
+        opening.IsOpen.ShouldBeTrue();
+        third.IsOpen.ShouldBeFalse();
+    }
     /// <summary>Verifies attached presentation rejects every anchor relation that cannot remain
     /// coherent in the popup's owning tree.</summary>
     [Fact]

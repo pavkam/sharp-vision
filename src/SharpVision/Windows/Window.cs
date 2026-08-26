@@ -1035,7 +1035,9 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 
         if (Visibility == Visibility.Visible && !IsSurfacePresented)
         {
-            OpenSurface(() => SurfaceBounds = Bounds);
+            ExceptionDispatchInfo? failure = null;
+            ExceptionAggregation.Capture(() => OpenSurface(() => SurfaceBounds = Bounds), ref failure);
+            var presentationVersion = SurfacePresentationVersion;
 
             // Mirrors the Shown notification OnWindowPropertyChanged raises for an explicit
             // Visibility transition: the default-Visible field initializer never runs the
@@ -1051,14 +1053,20 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             // first; RunAttachFocusFallback re-checks state on the later tick it actually
             // runs on and backs off if a modal became active (or Visibility/attachment
             // changed) in the meantime.
-            Shown?.Invoke(this, EventArgs.Empty);
+            if (CanContinueShownPresentation(presentationVersion))
+            {
+                ExceptionAggregation.Capture(() => Shown?.Invoke(this, EventArgs.Empty), ref failure);
+            }
+
             var dispatcher = Dispatcher;
 
-            if (dispatcher is not null)
+            if (dispatcher is not null && CanContinueShownPresentation(presentationVersion))
             {
                 var attachmentVersion = AttachmentVersion;
                 dispatcher.Post(() => RunAttachFocusFallback(dispatcher, attachmentVersion));
             }
+
+            failure?.Throw();
         }
     }
 
@@ -1112,20 +1120,42 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         // RequestClose is not rejected as a repeat of an already-completed close.
         _closedSinceVisible = false;
 
-        if (Dispatcher is not null && !IsSurfacePresented)
-        {
-            OpenSurface(() => SurfaceBounds = Bounds);
-        }
+        ExceptionDispatchInfo? failure = null;
 
-        Shown?.Invoke(this, EventArgs.Empty);
-
-        if (_isShowingModal)
+        if (Dispatcher is null)
         {
+            ExceptionAggregation.Capture(() => Shown?.Invoke(this, EventArgs.Empty), ref failure);
+            failure?.Throw();
             return;
         }
 
-        ApplyVisibleFocusFallback();
+        if (!IsSurfacePresented)
+        {
+            ExceptionAggregation.Capture(() => OpenSurface(() => SurfaceBounds = Bounds), ref failure);
+        }
+
+        var presentationVersion = SurfacePresentationVersion;
+
+        if (CanContinueShownPresentation(presentationVersion))
+        {
+            ExceptionAggregation.Capture(() => Shown?.Invoke(this, EventArgs.Empty), ref failure);
+        }
+
+        if (!_isShowingModal && CanContinueShownPresentation(presentationVersion))
+        {
+            ExceptionAggregation.Capture(ApplyVisibleFocusFallback, ref failure);
+        }
+
+        failure?.Throw();
     }
+
+    [Pure]
+    private bool CanContinueShownPresentation(long presentationVersion) =>
+        !IsDisposed &&
+        Dispatcher is not null &&
+        Visibility == Visibility.Visible &&
+        IsSurfacePresented &&
+        SurfacePresentationVersion == presentationVersion;
 
     /// <summary>Focuses the first eligible focusable descendant, or this Window itself when none
     /// is eligible.</summary>

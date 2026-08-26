@@ -185,6 +185,11 @@ focuses the first eligible descendant, or the Window itself. Changing visibility
 away from visible exits any active surface scope and performs the common focus,
 capture, bounds, and lifecycle cleanup.
 
+An `Opened` observer that hides, detaches, or disposes the Window invalidates
+that presentation and suppresses its later `Shown` and focus work. When `Opened`
+or `Shown` throws without invalidating the same presentation, required later
+stages still complete and the earliest callback failure is rethrown.
+
 Initial focus posted during attachment belongs to that exact attachment
 generation and dispatcher. If the Window detaches or migrates before the queue
 drains, the older callback is ignored; only work posted by the current owner may

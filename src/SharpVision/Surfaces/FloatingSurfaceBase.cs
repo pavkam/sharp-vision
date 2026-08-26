@@ -20,10 +20,10 @@ public abstract class FloatingSurfaceBase: ContentControl
 {
     private ModalScope? _modalScope;
     private bool _isClosing;
+    private bool _isRequestingClose;
     private bool _isEnteringModal;
     private bool _isOpening;
     private bool _openingInvalidated;
-    private long _presentationVersion;
 
     #region Surface lifecycle
 
@@ -57,6 +57,9 @@ public abstract class FloatingSurfaceBase: ContentControl
 
     /// <summary>Gets whether this surface currently owns one active application modality scope.</summary>
     protected bool HasActiveSurfaceModal => _modalScope is { IsActive: true };
+
+    /// <summary>Gets the identity of the current common presentation transaction.</summary>
+    internal long SurfacePresentationVersion { get; private set; }
 
     /// <summary>Raises the inherited opened notification after the surface becomes presented.</summary>
     protected void RaiseSurfaceOpened() => Opened?.Invoke(this, EventArgs.Empty);
@@ -164,7 +167,7 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <returns><see langword="true"/> when a presented surface was closed; otherwise false.</returns>
     /// <remarks>
     /// Cleanup continues after callback failures. After all stages complete, the earliest failure is rethrown.
-    /// Repeated closure after committed cleanup is harmless.
+    /// Repeated closure after committed cleanup or synchronously from <see cref="CloseRequested"/> is harmless.
     /// </remarks>
     /// <exception cref="ArgumentNullException">A callback is null.</exception>
     /// <exception cref="InvalidOperationException">
@@ -221,9 +224,23 @@ public abstract class FloatingSurfaceBase: ContentControl
             return false;
         }
 
-        if (!RaiseCloseRequested())
+        if (_isRequestingClose)
         {
             return false;
+        }
+
+        _isRequestingClose = true;
+
+        try
+        {
+            if (!RaiseCloseRequested())
+            {
+                return false;
+            }
+        }
+        finally
+        {
+            _isRequestingClose = false;
         }
 
         _isClosing = true;
@@ -312,7 +329,7 @@ public abstract class FloatingSurfaceBase: ContentControl
         ClearInactiveModalScope();
         var modality = ModalityOwner ?? throw new InvalidOperationException(
             "A modal floating surface must belong to an attached application tree.");
-        var presentationVersion = _presentationVersion;
+        var presentationVersion = SurfacePresentationVersion;
         _isEnteringModal = true;
 
         try
@@ -325,7 +342,7 @@ public abstract class FloatingSurfaceBase: ContentControl
             }
 
             if (!IsSurfacePresented ||
-                presentationVersion != _presentationVersion ||
+                presentationVersion != SurfacePresentationVersion ||
                 Dispatcher is null ||
                 !ReferenceEquals(ModalityOwner, modality))
             {
@@ -429,7 +446,8 @@ public abstract class FloatingSurfaceBase: ContentControl
         IncrementPresentationVersion();
     }
 
-    private void IncrementPresentationVersion() => _presentationVersion = unchecked(_presentationVersion + 1);
+    private void IncrementPresentationVersion() =>
+        SurfacePresentationVersion = unchecked(SurfacePresentationVersion + 1);
 
     [Pure]
     private static bool RemovesPresentation(ReleaseReason reason) => reason switch

@@ -77,7 +77,9 @@ custom styles control that fill through `Face.Background`.
 A dismissible focused Toast handles Escape, Enter, and Space. The close glyph
 uses capture-aware pointer press and release semantics. Every route, including
 the display timeout, raises `CloseRequested` first; cancellation leaves the
-Toast open and suppresses `Closing` and `Closed`.
+Toast open and suppresses `Closing` and `Closed`. A synchronous repeated
+`Dismiss()` from that request is absorbed by the shared request guard, so one
+request produces at most one close lifecycle.
 
 ## Example
 
@@ -115,5 +117,8 @@ toast.Show(uploadButton);
   semantic preset colors render as complete terminal cells.
 - Showing preserves existing focus and modality; successful dismissal removes
   the identical Toast object and publishes `Closing` before `Closed`.
+- A failing `Opened` observer rolls back the stack registration, public open
+  state, animation state, and common presentation so the Toast can be shown
+  again.
 - Detach, hide, and disposal release timers, pointer state, and coordinator
   references without leaving a stale stack reservation.

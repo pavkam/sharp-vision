@@ -81,7 +81,8 @@ flyout.ShowAt(triggerButton);
   background control or dismiss an older modal plane. Escape closes it, and
   opening transfers focus to the first eligible descendant.
 - Opening one flyout closes a sibling under the same logical root, and moving or
-  resizing the anchor closes the open flyout.
+  resizing the anchor closes the open flyout. Sibling closure snapshots and
+  revalidates retained identities across callback-driven tree mutation.
 - The lifecycle events fire in their documented order, and detaching or
   disposing the flyout cleans it up.
 - Final rendering resolves to the expected semantic cells.

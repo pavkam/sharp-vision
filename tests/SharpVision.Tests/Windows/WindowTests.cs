@@ -138,6 +138,83 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an Opened observer that makes a Window unavailable suppresses Shown and
+    /// automatic focus for the invalidated presentation.</summary>
+    [Fact]
+    public async Task Opened_WhenObserverHidesWindow_SuppressesShownAndFocusAsync()
+    {
+        var background = new Button { Text = "Background" };
+        var action = new Button { Text = "Action" };
+        var window = new Window { Content = action, Visibility = Visibility.Collapsed };
+        var root = new Overlay { Children = { background, window } };
+        var shown = 0;
+        window.Opened += (_, _) => window.Visibility = Visibility.Collapsed;
+        window.Shown += (_, _) => shown++;
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 12),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(
+            () => surface.Application.Focus.Focus(background).ShouldBeTrue(),
+            "focus Window background");
+
+        await surface.UpdateAsync(() => window.Visibility = Visibility.Visible, "invalidate Window from Opened");
+
+        window.Visibility.ShouldBe(Visibility.Collapsed);
+        window.SurfaceBounds.ShouldBe(default);
+        shown.ShouldBe(0);
+        surface.Application.Focus.Focused.ShouldBeSameAs(background);
+    }
+
+    /// <summary>Verifies an Opened failure preserves a committed Window while Shown and focus still
+    /// complete before the earliest callback failure is rethrown.</summary>
+    [Fact]
+    public async Task Opened_WhenObserverFails_CompletesShownAndFocusBeforeRethrowAsync()
+    {
+        var action = new Button { Text = "Action" };
+        var window = new Window { Content = action, Visibility = Visibility.Collapsed };
+        var root = new Overlay { Children = { window } };
+        var expected = new InvalidOperationException("opened failed");
+        var shown = 0;
+        window.Opened += (_, _) => throw expected;
+        window.Shown += (_, _) => shown++;
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 12),
+            TestContext.Current.CancellationToken);
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(() =>
+            surface.UpdateAsync(() => window.Visibility = Visibility.Visible, "fail Window Opened observer"));
+
+        thrown.ShouldBeSameAs(expected);
+        window.Visibility.ShouldBe(Visibility.Visible);
+        shown.ShouldBe(1);
+        surface.Application.Focus.Focused.ShouldBeSameAs(action);
+    }
+
+    /// <summary>Verifies a Shown failure cannot skip the focus stage of an otherwise valid
+    /// presentation.</summary>
+    [Fact]
+    public async Task Shown_WhenObserverFails_StillAppliesVisibleFocusFallbackAsync()
+    {
+        var action = new Button { Text = "Action" };
+        var window = new Window { Content = action, Visibility = Visibility.Collapsed };
+        var root = new Overlay { Children = { window } };
+        var expected = new InvalidOperationException("shown failed");
+        window.Shown += (_, _) => throw expected;
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 12),
+            TestContext.Current.CancellationToken);
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(() =>
+            surface.UpdateAsync(() => window.Visibility = Visibility.Visible, "fail Window Shown observer"));
+
+        thrown.ShouldBeSameAs(expected);
+        window.Visibility.ShouldBe(Visibility.Visible);
+        surface.Application.Focus.Focused.ShouldBeSameAs(action);
+    }
+
     /// <summary>Verifies deferred focus posted by an earlier attachment cannot enter the focus
     /// manager installed by a later dispatcher attachment.</summary>
     [Fact]

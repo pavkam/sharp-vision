@@ -8,6 +8,53 @@ using ReflectionBindingFlags = System.Reflection.BindingFlags;
 /// <summary>Verifies flyout visibility, light dismiss, and anchor placement.</summary>
 public sealed class FlyoutTests
 {
+    /// <summary>Verifies Flyout exclusion snapshots the owned tree before a closing sibling removes
+    /// itself and invalidates live child indices.</summary>
+    [Fact]
+    public async Task IsOpen_WhenClosingSiblingRemovesItself_CompletesStableTraversalAsync()
+    {
+        var anchor = new Button { Text = "Anchor" };
+        var first = new Flyout { Anchor = anchor, Content = new ControlText("First") };
+        var opening = new Flyout { Anchor = anchor, Content = new ControlText("Opening") };
+        var trailing = new Button { Text = "Trailing" };
+        var root = new Overlay { Children = { anchor, first, opening, trailing } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => first.IsOpen = true, "open first Flyout");
+        first.Closing += (_, _) => _ = root.Children.Remove(first);
+
+        await surface.UpdateAsync(() => opening.IsOpen = true, "open replacement Flyout");
+
+        first.IsOpen.ShouldBeFalse();
+        opening.IsOpen.ShouldBeTrue();
+        root.Children.ShouldContain(trailing);
+    }
+
+    /// <summary>Verifies reentrant Flyout opening from a sibling callback cannot close the Flyout
+    /// whose opening transaction caused that callback.</summary>
+    [Fact]
+    public async Task IsOpen_WhenClosingSiblingOpensThirdFlyout_OpeningTransactionWinsDeterministicallyAsync()
+    {
+        var anchor = new Button { Text = "Anchor" };
+        var first = new Flyout { Anchor = anchor, Content = new ControlText("First") };
+        var opening = new Flyout { Anchor = anchor, Content = new ControlText("Opening") };
+        var third = new Flyout { Anchor = anchor, Content = new ControlText("Third") };
+        var root = new Overlay { Children = { anchor, first, opening, third } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => first.IsOpen = true, "open first Flyout");
+        first.Closing += (_, _) => third.IsOpen = true;
+
+        await surface.UpdateAsync(() => opening.IsOpen = true, "open Flyout across reentrant sibling opening");
+
+        first.IsOpen.ShouldBeFalse();
+        opening.IsOpen.ShouldBeTrue();
+        third.IsOpen.ShouldBeFalse();
+    }
     /// <summary>Verifies a newly constructed flyout has expected defaults for all properties.</summary>
     [Fact]
     public void Constructor_WhenCreated_HasExpectedDefaults()

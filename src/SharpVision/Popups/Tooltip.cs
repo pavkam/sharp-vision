@@ -3,6 +3,8 @@
 
 namespace SharpVision.Popups;
 
+using System.Runtime.ExceptionServices;
+
 using DisplayText = Controls.Display.Text;
 
 /// <summary>Displays passive anchored popup content after a configurable pointer or focus delay.</summary>
@@ -141,14 +143,17 @@ public sealed class Tooltip: Popup
     /// <summary>Removes any tooltip associated with the specified control.</summary>
     /// <param name="anchor">The non-null control to clear.</param>
     /// <exception cref="ArgumentNullException"><paramref name="anchor"/> is null.</exception>
+    /// <exception cref="Exception">A close callback fails after association and ownership cleanup completes.</exception>
     public static void ClearTooltip(ControlBase anchor)
     {
         ArgumentNullException.ThrowIfNull(anchor);
 
         if (_attachedTooltips.TryGetValue(anchor, out var tooltip))
         {
-            tooltip.Detach(anchor, clearOwnership: true);
-            _ = _attachedTooltips.Remove(anchor);
+            ExceptionDispatchInfo? failure = null;
+            ExceptionAggregation.Capture(() => tooltip.Detach(anchor, clearOwnership: true), ref failure);
+            ExceptionAggregation.Capture(() => _ = _attachedTooltips.Remove(anchor), ref failure);
+            failure?.Throw();
         }
     }
 
@@ -291,22 +296,29 @@ public sealed class Tooltip: Popup
 
     private void Detach(ControlBase anchor, bool clearOwnership)
     {
-        CancelShowTimer();
-        CancelHideTimer();
-        Hide();
-        anchor.PointerEntered -= OnAnchorPointerEntered;
-        anchor.PointerExited -= OnAnchorPointerExited;
-        anchor.GotFocus -= OnAnchorGotFocus;
-        anchor.LostFocus -= OnAnchorLostFocus;
-        anchor.PointerPressed -= OnAnchorPointerPressed;
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(CancelShowTimer, ref failure);
+        ExceptionAggregation.Capture(CancelHideTimer, ref failure);
+        ExceptionAggregation.Capture(Hide, ref failure);
+        ExceptionAggregation.Capture(
+            () =>
+            {
+                anchor.PointerEntered -= OnAnchorPointerEntered;
+                anchor.PointerExited -= OnAnchorPointerExited;
+                anchor.GotFocus -= OnAnchorGotFocus;
+                anchor.LostFocus -= OnAnchorLostFocus;
+                anchor.PointerPressed -= OnAnchorPointerPressed;
+            },
+            ref failure);
 
         if (clearOwnership)
         {
-            _ = OwningSlot?.Remove(this);
+            ExceptionAggregation.Capture(() => _ = OwningSlot?.Remove(this), ref failure);
         }
 
         _attachedAnchor = null;
-        Anchor = null;
+        ExceptionAggregation.Capture(() => Anchor = null, ref failure);
+        failure?.Throw();
     }
 
     private void OnAnchorPointerEntered(object? sender, EventArgs eventArgs)
@@ -588,18 +600,21 @@ public sealed class Tooltip: Popup
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
+        ExceptionDispatchInfo? failure = null;
+
         if (reason == ReleaseReason.Disposed)
         {
             if (_attachedAnchor is { } anchor)
             {
-                Detach(anchor, clearOwnership: false);
-                _ = _attachedTooltips.Remove(anchor);
+                ExceptionAggregation.Capture(() => Detach(anchor, clearOwnership: false), ref failure);
+                ExceptionAggregation.Capture(() => _ = _attachedTooltips.Remove(anchor), ref failure);
             }
 
-            ReleaseTimers();
+            ExceptionAggregation.Capture(ReleaseTimers, ref failure);
         }
 
-        base.OnUnavailable(reason);
+        ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+        failure?.Throw();
     }
 
     #endregion

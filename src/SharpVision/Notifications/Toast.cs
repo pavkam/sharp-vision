@@ -219,6 +219,7 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
     /// <exception cref="ArgumentException">The owner has no presentation host.</exception>
     /// <exception cref="InvalidOperationException">The Toast is already open, already owned, detached after mounting, or accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The Toast or owner is disposed.</exception>
+    /// <exception cref="Exception">An opening callback fails after presentation rollback completes.</exception>
     public void Show(ControlBase owner)
     {
         ArgumentNullException.ThrowIfNull(owner);
@@ -243,17 +244,33 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
                 StartPresentationTimers();
             }
         }
-        catch
+        catch (Exception exception)
         {
+            var failure = ExceptionDispatchInfo.Capture(exception);
+            ExceptionAggregation.Capture(ReleasePresentation, ref failure);
+
+            if (IsOpen)
+            {
+                IsOpen = false;
+                AnimationProgress = 0;
+                ExceptionAggregation.Capture(
+                    () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None),
+                    ref failure);
+                ExceptionAggregation.Capture(
+                    () => NotifyPropertyChanged(nameof(AnimationProgress), InvalidationImpact.None),
+                    ref failure);
+            }
+
             _coordinator = null;
-            coordinator.Remove(this);
-            throw;
+            ExceptionAggregation.Capture(() => coordinator.Remove(this), ref failure);
+            failure!.Throw();
         }
     }
 
     /// <summary>Requests dismissal; a closed Toast is unchanged.</summary>
     /// <exception cref="InvalidOperationException">The attached Toast is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The Toast is disposed.</exception>
+    /// <exception cref="Exception">A close callback fails.</exception>
     public void Dismiss()
     {
         VerifyMutable();

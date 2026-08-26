@@ -137,6 +137,55 @@ public sealed class PopupDropDownCoordinatorTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies the shared coordinator used by ComboBox, DateInput, and DateTimeInput can
+    /// recover when owner PropertyChanged publication fails from the popup's Opened callback.</summary>
+    [Fact]
+    public async Task SetOpen_WhenOpenedPropertyPublicationFails_RollsBackAndRemainsReusableAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var owner = new ProbeContainer { IsFocusable = true };
+            var content = new ProbeControl();
+            using var popup = new Popup();
+            owner.Children.Add(content);
+            owner.Children.Add(popup);
+            root.Children.Add(owner);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            var fail = true;
+            var expected = new InvalidOperationException("owner PropertyChanged failed");
+            var coordinator = Create(
+                owner,
+                popup,
+                content,
+                raiseOpenedPropertyChanged: () =>
+                {
+                    if (fail)
+                    {
+                        throw expected;
+                    }
+                });
+
+            var thrown = Should.Throw<InvalidOperationException>(() => coordinator.SetOpen(true));
+            thrown.ShouldBeSameAs(expected);
+
+            popup.IsOpen.ShouldBeFalse();
+            popup.SurfaceBounds.ShouldBe(default);
+            coordinator.IsOpen.ShouldBeFalse();
+            modality.Active.ShouldBeNull();
+            fail = false;
+            coordinator.SetOpen(true);
+            popup.IsOpen.ShouldBeTrue();
+            coordinator.IsOpen.ShouldBeTrue();
+            _ = modality.Active.ShouldNotBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a modal-entry failure - here an owner that is not an eligible initial-focus
     /// target - force-closes the popup it had just opened and propagates the failure before
     /// DropDownOpened is ever raised, instead of reporting an open drop-down that never actually

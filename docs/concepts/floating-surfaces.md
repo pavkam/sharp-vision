@@ -61,6 +61,12 @@ presents - and, under automatic modal behavior, enters modality - when it is
 later attached. A surface cannot present twice or reenter an opening or closing
 transaction.
 
+`Opened` runs after the common presentation commit. Popup-family and Toast
+opening treat an observer failure as a failed public open and roll back both
+family and common presentation state; Window keeps the committed presentation
+and completes its later `Shown` and focus stages before rethrowing the earliest
+failure.
+
 Before any of that commits, `FloatingSurfaceBase` raises `CloseRequested` with a
 `SurfaceCloseRequestedEventArgs.Cancel` flag a handler can set to veto the
 request: nothing changes, and neither `Closing` nor `Closed` follows. Popup-
@@ -76,7 +82,10 @@ from Window's close affordance, `CloseOnEscape`, and modal dismiss. The
 hand-rolled path still raises `CloseRequested` first via the same
 `FloatingSurfaceBase.RaiseCloseRequested` helper the engine uses and is guarded
 so repeated closure after committed cleanup raises nothing, honoring the same
-idempotency and veto contract the engine already guarantees.
+idempotency and veto contract the engine already guarantees. Repeating the same
+close request synchronously from `CloseRequested` is a no-op; the outer request
+remains authoritative, while reentry from the later `Closing` transaction
+remains invalid.
 
 Toast raises the same vetoable request before manual, keyboard, pointer, or
 timer dismissal. Showing does not enter modality or transfer focus. Its display

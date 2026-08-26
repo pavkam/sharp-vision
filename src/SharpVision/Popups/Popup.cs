@@ -157,7 +157,8 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     private bool _isOpen;
     private bool _isOpeningModal;
 
-    private bool _isOpenTransitioning;
+    /// <summary>Gets whether this popup is inside its public open-state transition.</summary>
+    private protected bool IsOpenTransitioning { get; private set; }
     private ControlBase? _availabilityAncestor;
     private ModalScope? _modalCallbackScope;
     private ControlBase? _subscribedReflowAnchor;
@@ -278,7 +279,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         {
             ArgumentOutOfRangeException.ThrowIfNotDefined(outsideInteraction, nameof(outsideInteraction), "The outside-interaction policy is unknown.");
 
-            if (_isOpenTransitioning)
+            if (IsOpenTransitioning)
             {
                 throw new InvalidOperationException("Popup modal presentation cannot begin during an open-state transition.");
             }
@@ -734,7 +735,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     {
         VerifyMutable();
 
-        if (_isOpenTransitioning)
+        if (IsOpenTransitioning)
         {
             throw new InvalidOperationException("Popup open-state transitions cannot be reentered.");
         }
@@ -744,7 +745,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
             return;
         }
 
-        _isOpenTransitioning = true;
+        IsOpenTransitioning = true;
         try
         {
             if (value)
@@ -771,7 +772,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         }
         finally
         {
-            _isOpenTransitioning = false;
+            IsOpenTransitioning = false;
         }
     }
 
@@ -785,6 +786,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         catch (Exception exception)
         {
             var failure = ExceptionDispatchInfo.Capture(exception);
+            ExceptionAggregation.Capture(ReleasePresentation, ref failure);
 
             if (_isOpen)
             {
@@ -863,6 +865,11 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
         ExceptionAggregation.Capture(() => MakeContentAvailable(suppressFocusOnOpen), ref failure);
         ExceptionAggregation.Capture(OnContentAvailable, ref failure);
+
+        if (!SuppressCloseOtherPopups)
+        {
+            ExceptionAggregation.Capture(() => CloseOtherPopups(this), ref failure);
+        }
 
         if (failure is null)
         {
@@ -978,7 +985,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         // initial placement Arrange that follows opening - responding here too would reenter
         // family logic (Flyout's IsOpen = false) in the middle of the very IsOpen = true call
         // that is still on the stack, which SetOpen's reentrancy guard rejects.
-        if (IsOpen && !_isOpenTransitioning)
+        if (IsOpen && !IsOpenTransitioning)
         {
             OnAnchorReflow();
         }
@@ -1259,19 +1266,36 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
     private static void CloseDescendantPopups(ControlBase control, Popup except)
     {
+        var candidates = new List<Popup>();
+        CollectDescendantPopups(control, candidates);
+
+        foreach (var popup in candidates)
+        {
+            if (popup.IsOpen &&
+                !ReferenceEquals(popup, except) &&
+                !popup.IsOpenTransitioning &&
+                !IsAncestorOf(popup, except) &&
+                ModalityManager.IsWithin(popup, control))
+            {
+                popup.IsOpen = false;
+            }
+        }
+    }
+
+    private static void CollectDescendantPopups(ControlBase control, List<Popup> candidates)
+    {
         var count = control.OwnedControlCount;
 
         for (var index = 0; index < count; index++)
         {
             var child = control.OwnedControlAt(index);
 
-            if (child is Popup { IsOpen: true } popup && !ReferenceEquals(popup, except) &&
-                !IsAncestorOf(popup, except))
+            if (child is Popup { IsOpen: true } popup)
             {
-                popup.IsOpen = false;
+                candidates.Add(popup);
             }
 
-            CloseDescendantPopups(child, except);
+            CollectDescendantPopups(child, candidates);
         }
     }
 

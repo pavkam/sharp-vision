@@ -506,6 +506,101 @@ public sealed class ToastSurfaceTests
         root.Children.ShouldNotContain(toast);
     }
 
+    /// <summary>Verifies a CloseRequested observer can repeat the same dismissal request without
+    /// recursion or duplicate lifecycle publication.</summary>
+    [Fact]
+    public async Task Dismiss_WhenCloseRequestedObserverReenters_CompletesOnceAsync()
+    {
+        var root = new Overlay();
+        using var toast = CreateToast("one", ToastPosition.TopLeft);
+        var requested = 0;
+        var closed = 0;
+        toast.CloseRequested += (_, _) =>
+        {
+            requested++;
+            toast.Dismiss();
+        };
+        toast.Closed += (_, _) => closed++;
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 10),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => toast.Show(root), "show Toast");
+
+        await surface.UpdateAsync(toast.Dismiss, "dismiss Toast reentrantly");
+
+        requested.ShouldBe(1);
+        closed.ShouldBe(1);
+        toast.IsOpen.ShouldBeFalse();
+        toast.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies a failing request observer releases the shared request guard so the same
+    /// Toast can be dismissed by a later request.</summary>
+    [Fact]
+    public async Task Dismiss_WhenCloseRequestedObserverFails_AllowsLaterRetryAsync()
+    {
+        var root = new Overlay();
+        using var toast = CreateToast("one", ToastPosition.TopLeft);
+        var fail = true;
+        var expected = new InvalidOperationException("close request failed");
+        toast.CloseRequested += (_, _) =>
+        {
+            if (fail)
+            {
+                fail = false;
+                throw expected;
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 10),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => toast.Show(root), "show Toast");
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(() =>
+            surface.UpdateAsync(toast.Dismiss, "fail Toast close request"));
+        thrown.ShouldBeSameAs(expected);
+        toast.IsOpen.ShouldBeTrue();
+        await surface.UpdateAsync(toast.Dismiss, "retry Toast dismissal");
+
+        toast.IsOpen.ShouldBeFalse();
+        toast.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies Toast rolls back both common and public open state when Opened fails and
+    /// can be shown again afterward.</summary>
+    [Fact]
+    public async Task Show_WhenOpenedObserverFails_RollsBackAndRemainsReusableAsync()
+    {
+        var root = new Overlay();
+        using var toast = CreateToast("one", ToastPosition.TopLeft);
+        var expected = new InvalidOperationException("opened failed");
+        void Failing(object? sender, EventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            throw expected;
+        }
+
+        toast.Opened += Failing;
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 10),
+            TestContext.Current.CancellationToken);
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(() =>
+            surface.UpdateAsync(() => toast.Show(root), "fail Toast Opened observer"));
+
+        thrown.ShouldBeSameAs(expected);
+        toast.IsOpen.ShouldBeFalse();
+        toast.SurfaceBounds.ShouldBe(default);
+        toast.Parent.ShouldBeNull();
+        toast.Opened -= Failing;
+        await surface.UpdateAsync(() => toast.Show(root), "show Toast after Opened failure");
+        toast.IsOpen.ShouldBeTrue();
+    }
+
     /// <summary>Verifies an Opened subscriber may synchronously dismiss without Show restarting timers.</summary>
     [Theory]
     [InlineData(0)]

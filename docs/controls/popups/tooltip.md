@@ -120,5 +120,6 @@ Tooltip.SetText(
   Popup's rounded frame, and a theme's `styles.tooltip` entry can still override
   it.
 - The first open frame has committed geometry and renders its text, the
-  lifecycle cleans up as documented, and disposal leaves no retained anchor or
-  timer subscriptions.
+  lifecycle cleans up as documented, and clear or disposal releases association,
+  ownership, anchor, relayout, and timer subscriptions even when a close
+  observer fails; the earliest failure is rethrown after cleanup.

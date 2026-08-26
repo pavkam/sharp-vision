@@ -71,6 +71,13 @@ public sealed class Flyout: Popup
     /// <inheritdoc/>
     internal override void OnAnchorReflow() => IsOpen = false;
 
+    /// <inheritdoc/>
+    internal override void OnContentAvailable()
+    {
+        base.OnContentAvailable();
+        CloseOtherFlyouts();
+    }
+
     private void StartLightDismiss()
     {
         CloseOtherFlyouts();
@@ -103,18 +110,35 @@ public sealed class Flyout: Popup
 
     private static void CloseDescendantFlyouts(ControlBase control, Flyout except)
     {
+        var candidates = new List<Flyout>();
+        CollectDescendantFlyouts(control, candidates);
+
+        foreach (var flyout in candidates)
+        {
+            if (flyout.IsOpen &&
+                !ReferenceEquals(flyout, except) &&
+                !flyout.IsOpenTransitioning &&
+                ModalityManager.IsWithin(flyout, control))
+            {
+                flyout.IsOpen = false;
+            }
+        }
+    }
+
+    private static void CollectDescendantFlyouts(ControlBase control, List<Flyout> candidates)
+    {
         var count = control.OwnedControlCount;
 
         for (var index = 0; index < count; index++)
         {
             var child = control.OwnedControlAt(index);
 
-            if (child is Flyout { IsOpen: true } flyout && !ReferenceEquals(flyout, except))
+            if (child is Flyout { IsOpen: true } flyout)
             {
-                flyout.IsOpen = false;
+                candidates.Add(flyout);
             }
 
-            CloseDescendantFlyouts(child, except);
+            CollectDescendantFlyouts(child, candidates);
         }
     }
 }

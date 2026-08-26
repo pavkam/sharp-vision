@@ -307,6 +307,62 @@ public sealed class TooltipTests
         OwnedTree.FindAll<Popup>(anchor).ShouldBeEmpty();
     }
 
+    /// <summary>Verifies a failing close observer cannot abort attached-tooltip association,
+    /// ownership, presentation, timer, or base disposal cleanup.</summary>
+    [Fact]
+    public async Task ClearTooltip_WhenCloseRequestedObserverFails_CompletesCleanupBeforeRethrowAsync()
+    {
+        var anchor = new Button { Text = "Anchor" };
+        Tooltip.SetText(anchor, "Save");
+        var tooltip = Tooltip.GetTooltip(anchor).ShouldNotBeNull();
+        await using var surface = await ComponentSurface.MountAsync(
+            anchor,
+            new Size(18, 7),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => tooltip.IsOpen = true, "show attached Tooltip");
+        var expected = new InvalidOperationException("close request failed");
+        tooltip.CloseRequested += (_, _) => throw expected;
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(() =>
+            surface.UpdateAsync(() => Tooltip.ClearTooltip(anchor), "clear failing Tooltip"));
+
+        thrown.ShouldBeSameAs(expected);
+        Tooltip.GetTooltip(anchor).ShouldBeNull();
+        tooltip.Parent.ShouldBeNull();
+        tooltip.Anchor.ShouldBeNull();
+        tooltip.SurfaceBounds.ShouldBe(default);
+        OwnedTree.FindAll<Popup>(anchor).ShouldBeEmpty();
+        tooltip.Dispose();
+        tooltip.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies direct disposal completes the same association and base cleanup when its
+    /// attempted close callback fails.</summary>
+    [Fact]
+    public async Task Dispose_WhenCloseRequestedObserverFails_CompletesCleanupBeforeRethrowAsync()
+    {
+        var anchor = new Button { Text = "Anchor" };
+        Tooltip.SetText(anchor, "Save");
+        var tooltip = Tooltip.GetTooltip(anchor).ShouldNotBeNull();
+        await using var surface = await ComponentSurface.MountAsync(
+            anchor,
+            new Size(18, 7),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => tooltip.IsOpen = true, "show attached Tooltip");
+        var expected = new InvalidOperationException("close request failed");
+        tooltip.CloseRequested += (_, _) => throw expected;
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(() =>
+            surface.UpdateAsync(tooltip.Dispose, "dispose failing Tooltip"));
+
+        thrown.ShouldBeSameAs(expected);
+        Tooltip.GetTooltip(anchor).ShouldBeNull();
+        tooltip.IsDisposed.ShouldBeTrue();
+        tooltip.Parent.ShouldBeNull();
+        tooltip.SurfaceBounds.ShouldBe(default);
+        OwnedTree.FindAll<Popup>(anchor).ShouldBeEmpty();
+    }
+
     /// <summary>Verifies clearing then setting reuses the anchor's empty tooltip ownership part.</summary>
     [Fact]
     public void SetText_WhenTooltipWasCleared_AttachesReplacementToReusablePart()

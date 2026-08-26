@@ -258,9 +258,14 @@ popup.IsOpen = true;
   surfaces until their input routes complete.
 - `ModalBehavior` validates its values, anchor chrome renders connected and
   indicated variants, and `SuppressCloseOtherPopups` keeps sibling popups open.
+- Sibling exclusion snapshots identities before publishing close callbacks and
+  revalidates ownership before each close, so callback-driven tree mutation
+  cannot skip or index past a sibling.
 - Focus discovery crosses private slots on open, and closing restores focus.
-- Callback failures never abort the transition, the first failure is the one
-  rethrown, and reentering `IsOpen` from a callback is rejected.
+- A failing `Opened` observer rolls back public and common presentation state so
+  the same instance can reopen. Later callback failures complete cleanup, the
+  first failure is rethrown, and reentering `IsOpen` from a callback is
+  rejected.
 - Ownership rules hold, a root resize repositions the open surface, and closed
   layout clears stale geometry; final rendering is deterministic down to the
   exact cells.
