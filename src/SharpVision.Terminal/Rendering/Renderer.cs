@@ -24,7 +24,7 @@ public sealed class Renderer: IDisposable
     private static readonly byte[] _synchronizedEnd = EncodeSynchronizedOutput(enabled: false);
 
     private readonly BoundedBufferWriter _buffer;
-    private readonly IGraphicsBackend? _backend;
+    private IGraphicsBackend? _backend;
     private Interpreter _interpreter;
     private readonly TimeSpan _cleanupTimeout;
     private readonly TimeProvider _timeProvider;
@@ -664,6 +664,56 @@ public sealed class Renderer: IDisposable
 
         Debug.Assert(_front is not null, "A reusable front frame must exist.");
         _front.CopyFrom(back);
+    }
+
+    /// <summary>Reselects the owned graphics backend from republished capability evidence.</summary>
+    /// <remarks>
+    /// <para>
+    /// A host that reconstructs its renderer through the capability-driven constructor selects a
+    /// graphics backend exactly once, at construction. When capability evidence changes later in the
+    /// session - for example a delayed authoritative confirmation of Kitty support - nothing
+    /// reconsiders that choice unless a caller invokes this method. The previously selected backend
+    /// is disposed and <see cref="GraphicsBackendSelector.Create"/> runs again against the new
+    /// evidence and the same route the renderer was originally constructed with; the route itself
+    /// never changes at runtime.
+    /// </para>
+    /// <para>
+    /// This does not by itself force a redraw. A caller that swaps the backend is responsible for
+    /// invalidating the renderer (directly, or by deferring to the next render boundary) so the next
+    /// frame is encoded against the newly selected backend instead of silently reusing stale front
+    /// state prepared under the previous one.
+    /// </para>
+    /// </remarks>
+    /// <param name="capabilities">The non-null re-negotiated capability evidence.</param>
+    /// <param name="route">The same multiplexer route originally supplied to this renderer, if any.</param>
+    /// <returns>
+    /// <see langword="true"/> when the backend was disposed and reselected; <see langword="false"/>
+    /// when a render was currently in progress and the existing backend was left untouched, since
+    /// swapping it mid-transaction could commit or invalidate the wrong instance.
+    /// </returns>
+    /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> is null.</exception>
+    /// <exception cref="ObjectDisposedException">The renderer is disposed.</exception>
+    internal bool UpdateGraphicsBackend(TerminalCapabilities capabilities, MultiplexerRoute? route)
+    {
+        ArgumentNullException.ThrowIfNull(capabilities);
+        ThrowIfDisposed();
+
+        if (Interlocked.CompareExchange(ref _rendering, 1, 0) != 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            _backend?.Dispose();
+            _backend = GraphicsBackendSelector.Create(capabilities, route);
+        }
+        finally
+        {
+            Volatile.Write(ref _rendering, 0);
+        }
+
+        return true;
     }
 
     private void DisposeOwnedState()

@@ -2006,6 +2006,48 @@ public sealed partial class ApplicationTests
         }
     }
 
+    /// <summary>
+    /// Verifies a later profile republish that newly authorizes Kitty support reconsiders the
+    /// renderer's frozen backend choice and starts graphics output that never ran at construction.
+    /// </summary>
+    [Fact]
+    public async Task Profile_WhenKittySupportIsGranted_ActivatesGraphicsOutputAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(1, 1), new Size(2, 3)));
+        await using Application application = new(
+            new Image { Source = Rgba(), AlternateText = "F" },
+            terminal,
+            terminal,
+            Options());
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var writeCount = terminal.Writes.Count;
+        var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.FrameRendered += OnFrameRendered;
+        var granted = TerminalCapabilities.Conservative with
+        {
+            KittyGraphics = new Feature(CapabilitySupport.Supported, Origin.Override)
+        };
+
+        application.Profile(granted);
+        await rendered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        application.FrameRendered -= OnFrameRendered;
+
+        var bytes = terminal.Writes.Skip(writeCount).SelectMany(static value => value).ToArray();
+        bytes.AsSpan().IndexOf("a=t,"u8).ShouldBeGreaterThanOrEqualTo(0);
+        bytes.AsSpan().IndexOf("a=p,"u8).ShouldBeGreaterThanOrEqualTo(0);
+        application.Capabilities.ShouldBeSameAs(granted);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        return;
+
+        void OnFrameRendered(object? sender, FrameRenderedEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            _ = rendered.TrySetResult();
+        }
+    }
+
     /// <summary>Verifies profile revocation waits for an in-flight Kitty transaction to commit.</summary>
     [Fact]
     public async Task Profile_WhenKittyFlushIsPaused_CommitsThenRemovesOnNextFrameAsync()

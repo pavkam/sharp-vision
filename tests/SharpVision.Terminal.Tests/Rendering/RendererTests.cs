@@ -781,6 +781,103 @@ public sealed class RendererTests
         Encoding.UTF8.GetString(actualTransport.Writes.Single()).ShouldContain("text");
     }
 
+    /// <summary>Verifies republished capability evidence disposes the previous backend and reselects.</summary>
+    [Fact]
+    public async Task UpdateGraphicsBackend_WhenCapabilitiesChange_DisposesAndReselectsBackendAsync()
+    {
+        var initialBackend = new FakeGraphicsBackend();
+        using Renderer renderer = new(initialBackend);
+        await using FakeTransport transport = new();
+        using var before = CreateGraphicsFrame(withImage: true);
+
+        _ = await renderer.RenderAsync(
+            before,
+            transport,
+            TerminalCapabilities.Conservative,
+            TestContext.Current.CancellationToken);
+
+        Encoding.UTF8.GetString(transport.Writes.Single()).ShouldContain("<place>");
+
+        var changed = renderer.UpdateGraphicsBackend(TerminalCapabilities.Conservative, route: null);
+
+        changed.ShouldBeTrue();
+        initialBackend.DisposeCount.ShouldBe(1);
+
+        using var after = CreateGraphicsFrame(withImage: true, "other");
+        _ = await renderer.RenderAsync(
+            after,
+            transport,
+            TerminalCapabilities.Conservative,
+            TestContext.Current.CancellationToken);
+
+        // TerminalCapabilities.Conservative authorizes no graphics protocol, so the reselected
+        // backend is null and the fake's marker no longer appears in subsequent output.
+        Encoding.UTF8.GetString(transport.Writes[^1]).ShouldNotContain("<place>");
+    }
+
+    /// <summary>Verifies capability evidence actually reaching Kitty authorization activates the protocol.</summary>
+    [Fact]
+    public async Task UpdateGraphicsBackend_WhenCapabilitiesGainKittySupport_EmitsKittyGraphicsAsync()
+    {
+        using Renderer renderer = new(TerminalCapabilities.Conservative);
+        await using FakeTransport transport = new();
+        using var before = CreateGraphicsFrame(withImage: true);
+
+        _ = await renderer.RenderAsync(
+            before,
+            transport,
+            TerminalCapabilities.Conservative,
+            TestContext.Current.CancellationToken);
+
+        Encoding.UTF8.GetString(transport.Writes.Single()).ShouldNotContain("_G");
+
+        var kittyCapabilities = TerminalCapabilities.Conservative with
+        {
+            KittyGraphics = new Feature(CapabilitySupport.Supported, Origin.Query)
+        };
+
+        renderer.UpdateGraphicsBackend(kittyCapabilities, route: null).ShouldBeTrue();
+
+        using var after = CreateGraphicsFrame(withImage: true, "other");
+        _ = await renderer.RenderAsync(
+            after,
+            transport,
+            kittyCapabilities,
+            TestContext.Current.CancellationToken);
+
+        Encoding.UTF8.GetString(transport.Writes[^1]).ShouldContain("_G");
+    }
+
+    /// <summary>Verifies backend reselection is skipped while a frame render is in flight.</summary>
+    [Fact]
+    public async Task UpdateGraphicsBackend_WhenRenderIsInFlight_LeavesBackendUnchangedAsync()
+    {
+        var backend = new FakeGraphicsBackend();
+        using var renderer = new Renderer(backend);
+        await using var transport = new FakeTransport();
+        using var frame = CreateGraphicsFrame(withImage: true);
+        transport.Block();
+        var render = renderer.RenderAsync(
+            frame,
+            transport,
+            TerminalCapabilities.Conservative,
+            CancellationToken.None).AsTask();
+        await transport.WriteStarted;
+
+        var duringRender = renderer.UpdateGraphicsBackend(TerminalCapabilities.Conservative, route: null);
+
+        transport.Release();
+        _ = await render;
+
+        duringRender.ShouldBeFalse();
+        backend.DisposeCount.ShouldBe(0);
+
+        var afterRender = renderer.UpdateGraphicsBackend(TerminalCapabilities.Conservative, route: null);
+
+        afterRender.ShouldBeTrue();
+        backend.DisposeCount.ShouldBe(1);
+    }
+
     /// <summary>Verifies resize reconstructs unchanged graphics and commits the new exact front.</summary>
     [Fact]
     public async Task RenderAsync_WhenFrameSizeChanges_ReconstructsGraphicsAndCommitsExactFrontAsync()
