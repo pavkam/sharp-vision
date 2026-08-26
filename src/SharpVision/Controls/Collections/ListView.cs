@@ -873,6 +873,19 @@ public sealed class ListView: ItemsControl
                 InsertItemControl(FindRealizedInsertPosition(index), listItem);
                 listItem.Activated += OnActivated;
                 listItem.AvailabilityChanged += OnItemAvailabilityChanged;
+                _availability[index] = listItem.IsAvailable;
+
+                if (!listItem.IsAvailable)
+                {
+                    var itemCount = _items.Count;
+                    RepairIneligibleIndex(index);
+
+                    if (IsDisposed || _items.Count != itemCount || !ReferenceEquals(ItemAt(index), listItem))
+                    {
+                        return;
+                    }
+                }
+
                 listItem.CommitSelection(_selection.Contains(index));
 
                 if (index == ActiveIndex)

@@ -72,4 +72,16 @@ public sealed class ColorRampTests
 
         Should.NotThrow(() => ramp.Render(frame.Canvas));
     }
+
+    /// <summary>Verifies a huge logical ramp renders only columns inside the canvas clip.</summary>
+    [Fact]
+    public void Render_WhenHugeBoundsAreClipped_CompletesForVisibleColumnsOnly()
+    {
+        var ramp = new ColorRamp { Bounds = new Rect(0, 0, int.MaxValue, 1) };
+        using var frame = new Frame(new Size(2, 1));
+
+        Should.NotThrow(() => ramp.Render(frame.Canvas));
+
+        frame.GetCell(new Point(1, 0)).Style.Background.ShouldNotBe(Color.Default);
+    }
 }

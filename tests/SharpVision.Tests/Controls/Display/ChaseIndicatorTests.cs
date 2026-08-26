@@ -129,6 +129,33 @@ public sealed class ChaseIndicatorTests
         indicator.FadeDuration.ShouldBe(TimeSpan.FromMilliseconds(400));
     }
 
+    /// <summary>Verifies retained trail storage has a fixed public bound and rejects larger values
+    /// before observable state changes.</summary>
+    [Fact]
+    public void TrailLength_WhenAboveMaximum_ThrowsBeforeMutation()
+    {
+        var indicator = new ChaseIndicator { Length = int.MaxValue };
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => indicator.TrailLength = ChaseIndicator.MaximumTrailLength + 1);
+
+        indicator.TrailLength.ShouldBe(2);
+        indicator.TrailCapacity.ShouldBe(2);
+    }
+
+    /// <summary>Verifies the maximum retained trail allocates exactly the bounded capacity.</summary>
+    [Fact]
+    public void TrailLength_WhenAtMaximum_AllocatesBoundedCapacity()
+    {
+        var indicator = new ChaseIndicator
+        {
+            Length = int.MaxValue,
+            TrailLength = ChaseIndicator.MaximumTrailLength
+        };
+
+        indicator.TrailCapacity.ShouldBe(ChaseIndicator.MaximumTrailLength);
+    }
+
     /// <summary>Verifies desired width follows the configured track length.</summary>
     [Fact]
     public void Layout_WhenLengthChanges_UsesTrackLengthByOneCell()

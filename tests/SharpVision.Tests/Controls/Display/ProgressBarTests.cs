@@ -530,6 +530,18 @@ public sealed class ProgressBarTests
         }
     }
 
+    /// <summary>Verifies a huge indeterminate surface performs work only for the canvas clip.</summary>
+    [Fact]
+    public void Render_WhenHugeBoundsAreClipped_CompletesForVisibleCellsOnly()
+    {
+        var bar = new ProgressBar { IsIndeterminate = true, Bounds = new Rect(0, 0, int.MaxValue, int.MaxValue) };
+        using var frame = new Frame(new Size(2, 2));
+
+        Should.NotThrow(() => bar.Render(frame.Canvas));
+
+        FrameOracle.Get(frame, new Point(1, 1)).ShouldNotBe(" ");
+    }
+
     /// <summary>Verifies rendering at Value = 0 produces a fully empty bar.</summary>
     [Fact]
     public void Render_WhenValueIsZero_ProducesEmptyBar()

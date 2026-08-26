@@ -26,8 +26,8 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
     // row measures and renders its own affixes against its own live bounds, so this gap has no
     // shared style to come from; TreeViewItem owns it the same way it owns _checkGapCells above.
     private const int _affixGapCells = 1;
-    // The indent span is filled on the stack up to this many cells; a deeper nesting than this
-    // falls back to a heap array instead, so an adversarially deep tree cannot blow the stack.
+    // Only the canvas-visible part of indentation is materialized. Ordinary terminal widths stay
+    // on the stack while an unusually wide but finite frame uses a clip-sized heap buffer.
     private const int _indentStackAllocLimitCells = 256;
 
     private bool _isSelected;
@@ -568,23 +568,13 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         }
 
         var indent = FindTreeView()?.Indent ?? _defaultIndentCells;
-        var indentCells = Depth * indent;
+        var indentCells = ResolveIndentCells(Depth, indent);
         var clipped = canvas.Clip(bounds);
+        var x = RenderIndentation(clipped, bounds, indentCells, style);
 
-        var x = bounds.X;
-
-        if (indentCells > 0)
+        if (x >= clipped.Bounds.Right || bounds.Y < clipped.Bounds.Y || bounds.Y >= clipped.Bounds.Bottom)
         {
-            var indentSpan = indentCells <= _indentStackAllocLimitCells
-                ? stackalloc char[indentCells]
-                : new char[indentCells];
-            indentSpan.Fill(' ');
-            var leading = clipped.Draw(
-                indentSpan,
-                new Point(x, bounds.Y),
-                style,
-                background: BackgroundMode.Transparent);
-            x = leading.Final.X;
+            return;
         }
 
         if (HasChildren)
@@ -674,7 +664,7 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
             } && (buttons & Buttons.Primary) != 0 && Bounds.Contains(cells))
         {
             var indent = FindTreeView()?.Indent ?? _defaultIndentCells;
-            var glyphX = ContentBounds.X + (Depth * indent);
+            var glyphX = ResolveIndentedX(ContentBounds.X, Depth, indent);
 
             if (HasChildren && cells.X == glyphX)
             {
@@ -683,11 +673,11 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
                 return;
             }
 
-            var checkX = glyphX + _disclosureWidthCells + _checkGapCells;
+            var checkX = glyphX.Add(_disclosureWidthCells).Add(_checkGapCells);
 
             // A bracket mark occupies three cells, so any cell of the mark toggles it. Testing
             // only the first cell made two thirds of a bracket mark unclickable.
-            if (IsCheckable && cells.X >= checkX && cells.X < checkX + ActualCheckMark.Width)
+            if (IsCheckable && cells.X >= checkX && cells.X < checkX.Add(ActualCheckMark.Width))
             {
                 SetCheckState(IsChecked != true, ActivationCause.Pointer, propagate: true);
                 eventArgs.IsHandled = true;
@@ -698,6 +688,53 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
             FindTreeView()?.NotifyItemInvoked(this, ActivationCause.Pointer, pointer.Modifiers);
             eventArgs.IsHandled = true;
         }
+    }
+
+    /// <summary>Resolves one depth/indent product without wrapping terminal geometry.</summary>
+    /// <param name="depth">The non-negative nesting depth.</param>
+    /// <param name="indent">The non-negative cells per depth.</param>
+    /// <returns>The saturated indentation width.</returns>
+    internal static int ResolveIndentCells(int depth, int indent) => depth.Multiply(indent);
+
+    /// <summary>Resolves an indented absolute coordinate without wrapping.</summary>
+    /// <param name="origin">The row content origin.</param>
+    /// <param name="depth">The non-negative nesting depth.</param>
+    /// <param name="indent">The non-negative cells per depth.</param>
+    /// <returns>The saturated glyph coordinate.</returns>
+    internal static int ResolveIndentedX(int origin, int depth, int indent) =>
+        origin.Add(ResolveIndentCells(depth, indent));
+
+    /// <summary>Draws only the visible portion of a logical indentation run.</summary>
+    /// <param name="canvas">The row-clipped destination canvas.</param>
+    /// <param name="bounds">The row's content bounds.</param>
+    /// <param name="indentCells">The saturated logical indentation width.</param>
+    /// <param name="style">The resolved row style.</param>
+    /// <returns>The saturated coordinate following the complete logical indentation.</returns>
+    internal static int RenderIndentation(
+        TerminalCanvas canvas,
+        Rect bounds,
+        int indentCells,
+        TerminalStyle style)
+    {
+        if (indentCells > 0)
+        {
+            var visible = canvas.Bounds.Intersect(new Rect(bounds.X, bounds.Y, indentCells, _rowHeightCells));
+
+            if (visible.Width > 0 && visible.Height > 0)
+            {
+                var indentSpan = visible.Width <= _indentStackAllocLimitCells
+                    ? stackalloc char[visible.Width]
+                    : new char[visible.Width];
+                indentSpan.Fill(' ');
+                _ = canvas.Draw(
+                    indentSpan,
+                    new Point(visible.X, bounds.Y),
+                    style,
+                    background: BackgroundMode.Transparent);
+            }
+        }
+
+        return bounds.X.Add(indentCells);
     }
 
     /// <inheritdoc/>

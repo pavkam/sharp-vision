@@ -340,6 +340,18 @@ public sealed class ColorPlaneTests
         raised.ShouldBe(0);
     }
 
+    /// <summary>Verifies a huge logical color plane shades only the visible canvas cells.</summary>
+    [Fact]
+    public void Render_WhenHugeBoundsAreClipped_CompletesForVisibleCellsOnly()
+    {
+        var plane = new ColorPlane { Bounds = new Rect(0, 0, int.MaxValue, int.MaxValue) };
+        using var frame = new Frame(new Size(2, 2));
+
+        Should.NotThrow(() => plane.Render(frame.Canvas));
+
+        frame.GetCell(new Point(1, 1)).Style.Background.ShouldNotBe(Color.Default);
+    }
+
     private static KeyEventArgs Key(ColorPlane plane, Code code, KeyAction action = KeyAction.Press)
     {
         var eventArgs = new KeyEventArgs(new Stroke(code, character: null, nativeCode: 0, Modifiers.None, action));

@@ -23,29 +23,29 @@ classDiagram
 
 ## API
 
-| Member                        | Type                                              | Default          | Description                                                                                                                                                   |
-| ----------------------------- | ------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Json`                        | `string`                                          | `"null"`         | Complete non-null JSON document text; parsed completely before any observable state changes.                                                                  |
-| `Indent`                      | `int`                                             | `2`              | Non-negative cells added for each visible nesting level; the line projection is rebuilt before the property publishes, and a reentrant newer value owns both. |
-| `SelectedPath`                | `string?`                                         | `null`           | Read-only; RFC 6901 pointer of the selected key or array index.                                                                                               |
-| `Style`                       | `JsonViewStyle?`                                  | `null`           | Gets or sets the complete local presentation.                                                                                                                 |
-| `ActualStyle`                 | `JsonViewStyle`                                   | Resolved         | Read-only; the complete local, theme-owned, or code-owned presentation.                                                                                       |
-| `ScrollBars`                  | `ScrollBars`                                      | `Both`           | Axes that may expose generated scrollbars.                                                                                                                    |
-| `ShowScrollBars`              | `ShowScrollBars`                                  | `WhenNeeded`     | Visibility policy for generated scrollbars.                                                                                                                   |
-| `ScrollBarStyle`              | `ScrollBarStyle?`                                 | `null`           | Complete local style for generated scrollbars.                                                                                                                |
-| `ActualScrollBarStyle`        | `ScrollBarStyle`                                  | Resolved         | Read-only resolved generated-scrollbar style.                                                                                                                 |
-| `Extent`                      | `Size`                                            | Layout-dependent | Read-only committed content extent.                                                                                                                           |
-| `Viewport`                    | `Size`                                            | Layout-dependent | Read-only committed visible extent.                                                                                                                           |
-| `HorizontalOffset`            | `int`                                             | `0`              | Valid horizontal content offset; rejects a value outside the current extent.                                                                                  |
-| `VerticalOffset`              | `int`                                             | `0`              | Valid vertical content offset; rejects a value outside the current extent.                                                                                    |
-| `LineSize`                    | `int`                                             | `1`              | Non-negative wheel-scroll cell increment.                                                                                                                     |
-| `PageOverlap`                 | `int`                                             | `0`              | Non-negative cells of context retained between page commands.                                                                                                 |
-| `ScrollBy(x, y, cause)`       | `bool`                                            | —                | Applies signed cell deltas with saturation and endpoint clamping.                                                                                             |
-| `SetExpanded(path, expanded)` | `bool`                                            | —                | Changes one non-root container entry's disclosure state; returns whether it changed.                                                                          |
-| `ExpandAll()`                 | `void`                                            | —                | Expands every object and array entry.                                                                                                                         |
-| `CollapseAll()`               | `void`                                            | —                | Collapses every non-root object and array entry.                                                                                                              |
-| `SelectionChanged`            | `EventHandler<JsonViewSelectionChangedEventArgs>` | No subscribers   | Reports the previous and committed pointer.                                                                                                                   |
-| `ScrollChanged`               | `EventHandler<ScrollChangedEventArgs>`            | No subscribers   | Reports the settled offset, extent, and viewport for one layout pass.                                                                                         |
+| Member                        | Type                                              | Default          | Description                                                                                               |
+| ----------------------------- | ------------------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------- |
+| `Json`                        | `string`                                          | `"null"`         | Complete non-null JSON document text; parsed completely before any observable state changes.              |
+| `Indent`                      | `int`                                             | `2`              | Zero through 4096 cells per visible nesting level; each materialized line prefix is capped at 4096 cells. |
+| `SelectedPath`                | `string?`                                         | `null`           | Read-only; RFC 6901 pointer of the selected key or array index.                                           |
+| `Style`                       | `JsonViewStyle?`                                  | `null`           | Gets or sets the complete local presentation.                                                             |
+| `ActualStyle`                 | `JsonViewStyle`                                   | Resolved         | Read-only; the complete local, theme-owned, or code-owned presentation.                                   |
+| `ScrollBars`                  | `ScrollBars`                                      | `Both`           | Axes that may expose generated scrollbars.                                                                |
+| `ShowScrollBars`              | `ShowScrollBars`                                  | `WhenNeeded`     | Visibility policy for generated scrollbars.                                                               |
+| `ScrollBarStyle`              | `ScrollBarStyle?`                                 | `null`           | Complete local style for generated scrollbars.                                                            |
+| `ActualScrollBarStyle`        | `ScrollBarStyle`                                  | Resolved         | Read-only resolved generated-scrollbar style.                                                             |
+| `Extent`                      | `Size`                                            | Layout-dependent | Read-only committed content extent.                                                                       |
+| `Viewport`                    | `Size`                                            | Layout-dependent | Read-only committed visible extent.                                                                       |
+| `HorizontalOffset`            | `int`                                             | `0`              | Valid horizontal content offset; rejects a value outside the current extent.                              |
+| `VerticalOffset`              | `int`                                             | `0`              | Valid vertical content offset; rejects a value outside the current extent.                                |
+| `LineSize`                    | `int`                                             | `1`              | Non-negative wheel-scroll cell increment.                                                                 |
+| `PageOverlap`                 | `int`                                             | `0`              | Non-negative cells of context retained between page commands.                                             |
+| `ScrollBy(x, y, cause)`       | `bool`                                            | —                | Applies signed cell deltas with saturation and endpoint clamping.                                         |
+| `SetExpanded(path, expanded)` | `bool`                                            | —                | Changes one non-root container entry's disclosure state; returns whether it changed.                      |
+| `ExpandAll()`                 | `void`                                            | —                | Expands every object and array entry.                                                                     |
+| `CollapseAll()`               | `void`                                            | —                | Collapses every non-root object and array entry.                                                          |
+| `SelectionChanged`            | `EventHandler<JsonViewSelectionChangedEventArgs>` | No subscribers   | Reports the previous and committed pointer.                                                               |
+| `ScrollChanged`               | `EventHandler<ScrollChangedEventArgs>`            | No subscribers   | Reports the settled offset, extent, and viewport for one layout pass.                                     |
 
 `JsonViewStyle`, reached through `Style`/`ActualStyle`, colors object keys,
 array indices, strings, numbers, booleans, null, punctuation, disclosure glyphs,
@@ -53,11 +53,13 @@ and selected tokens through `ControlColor`. Its defaults use semantic
 `SemanticColor` roles, so built-in and custom themes remain authoritative.
 
 `Json` rejects null with `ArgumentNullException` and malformed text — including
-an object with duplicate keys — with `JsonException`; `Indent` rejects a
-negative value. All non-empty object and array entries start expanded. Replacing
-`Json` selects the first property or array entry in depth-first source order and
-resets the document's disclosure model. A scalar root and an empty container
-have no selection.
+an object with duplicate keys — with `JsonException`; `Indent` rejects values
+outside zero through 4096 before changing the property or projection. Nested
+indentation saturates at a 4096-cell materialized prefix per line, bounding
+memory independently of off-screen logical depth. All non-empty object and array
+entries start expanded. Replacing `Json` selects the first property or array
+entry in depth-first source order and resets the document's disclosure model. A
+scalar root and an empty container have no selection.
 
 ## Wrapping
 

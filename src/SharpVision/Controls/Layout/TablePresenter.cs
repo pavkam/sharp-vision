@@ -449,7 +449,9 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
         Rune glyph,
         TerminalStyle style)
     {
-        for (var y = ContentSlot.Y; y < ContentSlot.Bottom; y++)
+        var visible = canvas.Bounds.Intersect(ContentSlot);
+
+        for (var y = visible.Y; y < visible.Bottom; y++)
         {
             canvas.DrawRune(glyph, new Point(x, y), style, BackgroundMode.Transparent);
         }
@@ -462,7 +464,9 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
         Rune cross,
         TerminalStyle style)
     {
-        for (var x = ContentSlot.X; x < ContentSlot.Right; x++)
+        var visible = canvas.Bounds.Intersect(ContentSlot);
+
+        for (var x = visible.X; x < visible.Right; x++)
         {
             canvas.DrawRune(
                 IsColumnSeparator(x) ? cross : horizontal,

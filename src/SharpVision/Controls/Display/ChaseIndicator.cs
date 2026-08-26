@@ -9,6 +9,9 @@ using Terminal.Rendering;
 [PublicAPI]
 public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
 {
+    /// <summary>Gets the maximum retained movement frames supported by one indicator.</summary>
+    internal const int MaximumTrailLength = 4096;
+
     private static readonly TimeSpan _maximumFadeRefresh = TimeSpan.FromMilliseconds(50);
     private static readonly long _minimumTimerTicks = TimeSpan.TicksPerMillisecond;
 
@@ -132,7 +135,7 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
     }
 
     /// <summary>Gets or sets the number of preceding movement frames shown as a fading trail.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative or exceeds 4096.</exception>
     /// <exception cref="InvalidOperationException">The attached indicator is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The indicator is disposed of.</exception>
     public int TrailLength
@@ -141,6 +144,7 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(value, MaximumTrailLength);
 
             _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Render, ReconfigureTrail);
         }

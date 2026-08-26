@@ -211,6 +211,35 @@ public sealed class JsonViewTests
         view.Indent.ShouldBe(4);
     }
 
+    /// <summary>Verifies indentation beyond the bounded projection policy is rejected before the
+    /// public value or generated lines can diverge.</summary>
+    [Fact]
+    public void Indent_WhenAboveMaximum_ThrowsBeforeMutation()
+    {
+        var view = new JsonView { Json = /*lang=json,strict*/ "{\"outer\":{\"value\":1}}" };
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => view.Indent = JsonView.MaximumIndent + 1);
+
+        view.Indent.ShouldBe(2);
+        view.Json.ShouldBe(/*lang=json,strict*/ "{\"outer\":{\"value\":1}}");
+    }
+
+    /// <summary>Verifies the largest supported indent remains bounded across nested projection.</summary>
+    [Fact]
+    public void Indent_WhenAtMaximum_ProjectsNestedContentWithinBound()
+    {
+        var view = new JsonView
+        {
+            Json = /*lang=json,strict*/ "{\"outer\":{\"inner\":{\"value\":1}}}",
+            Indent = JsonView.MaximumIndent
+        };
+
+        view.Measure(new Constraint(null, null));
+
+        view.Indent.ShouldBe(JsonView.MaximumIndent);
+        view.DesiredSize.Width.ShouldBeLessThanOrEqualTo(JsonView.MaximumProjectedIndentationCells + 20);
+    }
+
     /// <summary>Verifies cached source lines rebuild from the newest reentrant indentation.</summary>
     [Fact]
     public void Indent_WhenPropertyObserverCommitsNewerValue_RebuildsNewestProjection()

@@ -1432,6 +1432,33 @@ public sealed class ListViewTests
         control.RowHeight.ShouldBe(4);
     }
 
+    /// <summary>Verifies first realization repairs a previously selected virtual row whose
+    /// template is already unavailable.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SelectedIndex_WhenUnrealizedTemplateIsInitiallyUnavailable_RepairsSelection(bool collapsed)
+    {
+        const int target = 30;
+        var control = new UiListView
+        {
+            RowHeight = 1,
+            Items = Enumerable.Range(0, 40).Cast<object?>().ToArray(),
+            ItemTemplate = item => new ControlText(item?.ToString() ?? string.Empty)
+            {
+                IsEnabled = collapsed || (int) item! != target,
+                Visibility = collapsed && (int) item! == target ? Visibility.Collapsed : Visibility.Visible
+            }
+        };
+        new LayoutEngine().Layout(control, new Size(10, 5));
+
+        control.SelectedIndex = target;
+
+        control.SelectedIndex.ShouldBe(-1);
+        control.SelectedItems.ShouldBeEmpty();
+        control.ActiveIndex.ShouldNotBe(target);
+    }
+
     /// <summary>Verifies a horizontally scrolled, fixed-RowHeight virtualized ListView renders its
     /// realized rows at the offset-shifted screen position - regression for Rewindow computing
     /// each row's X from the un-shifted RowOrigin.X alone, unlike its own Y arithmetic, which

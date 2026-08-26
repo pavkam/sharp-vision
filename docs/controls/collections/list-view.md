@@ -215,6 +215,9 @@ results, file listings); leave it `null` for everything else.
   independent of which rows happen to be realized, so they behave identically in
   both modes — including for an index currently outside the window, which is
   optimistically treated as eligible until a realized row proves otherwise.
+  First realization caches actual availability before presentation; an already
+  disabled or collapsed row is removed from selection and active state through
+  the same non-cancellable repair used for a later availability transition.
 - A ListView that relies on auto-width sizing (no explicit `Width` and no
   `HorizontalAlignment.Stretch` parent slot) while windowed can see its own
   measured width jitter across a scroll, the same accepted tradeoff virtualizing

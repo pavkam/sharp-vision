@@ -21,6 +21,12 @@ using TextOverflow = Text.Overflow;
 [PublicAPI]
 public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
 {
+    /// <summary>Gets the largest caller-configurable indentation step retained by the projection.</summary>
+    internal const int MaximumIndent = 4096;
+
+    /// <summary>Gets the maximum indentation prefix materialized for any projected line.</summary>
+    internal const int MaximumProjectedIndentationCells = 4096;
+
     private JsonViewNode _root;
     private List<JsonViewNode> _visibleNodes = [];
     private List<JsonViewLine> _sourceLines = [];
@@ -115,7 +121,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     } = "null";
 
     /// <summary>Gets or sets the number of terminal cells reserved for each nesting level.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative or exceeds 4096.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     [NonNegativeValue]
@@ -125,6 +131,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(value, MaximumIndent);
 
             _ = SetPropertyAndSynchronize(
                 ref field,
@@ -803,7 +810,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
         {
             var node = parent.Children[index];
             var comma = index + 1 < parent.Children.Count ? "," : string.Empty;
-            var indentation = new string(' ', depth * indent);
+            var indentation = BuildIndentation(depth, indent);
             var label = node.Label ?? string.Empty;
 
             if (!node.IsContainer || node.Children.Count == 0)
@@ -848,7 +855,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
                 node));
             AppendChildLines(node, depth + 1, indent, lines);
             lines.Add(new JsonViewLine(
-                new string(' ', (depth + 1) * indent),
+                BuildIndentation((long) depth + 1, indent),
                 string.Empty,
                 string.Empty,
                 close,
@@ -856,6 +863,13 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
                 null,
                 null));
         }
+    }
+
+    [Pure]
+    private static string BuildIndentation(long depth, int indent)
+    {
+        var cells = Math.Min(MaximumProjectedIndentationCells, depth * indent);
+        return new string(' ', (int) cells);
     }
 
     [Pure]

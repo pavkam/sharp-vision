@@ -116,5 +116,8 @@ var bar = new ProgressBar
 - Zero and tiny bounds degrade safely; mutation, resize, and appearance
   inheritance behave as documented; the control stays out of hit testing; and
   the rendered output matches exact final cells.
+- Determinate, fractional, and indeterminate loops visit only the intersection
+  of logical bounds and the current canvas clip, while fill ratios remain based
+  on the complete logical extent.
 - `ProgressBarSurfaceTests` demonstrates the terminal-visible determinate and
   indeterminate states through a mounted application.

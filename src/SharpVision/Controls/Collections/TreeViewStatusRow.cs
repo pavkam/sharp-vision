@@ -28,9 +28,6 @@ internal sealed class TreeViewStatusRow: ControlBase
     // TreeViewItem row reserves before its header text.
     private const int _statusGlyphWidthCells = 1;
     private const int _headerLeadingSpaceCells = 1;
-    // The indent span is filled on the stack up to this many cells; a deeper nesting than this
-    // falls back to a heap array instead, so an adversarially deep tree cannot blow the stack.
-    private const int _indentStackAllocLimitCells = 256;
     private readonly TreeViewItem _owner;
 
     /// <summary>Initializes a status row owned by one tree view item.</summary>
@@ -118,22 +115,13 @@ internal sealed class TreeViewStatusRow: ControlBase
 
         var statusStyle = style.WithForeground(ResolveColor(StatusColor));
         var indent = _owner.FindTreeView()?.Indent ?? 2;
-        var indentCells = Depth * indent;
+        var indentCells = TreeViewItem.ResolveIndentCells(Depth, indent);
         var clipped = canvas.Clip(bounds);
-        var x = bounds.X;
+        var x = TreeViewItem.RenderIndentation(clipped, bounds, indentCells, style);
 
-        if (indentCells > 0)
+        if (x >= clipped.Bounds.Right || bounds.Y < clipped.Bounds.Y || bounds.Y >= clipped.Bounds.Bottom)
         {
-            var indentSpan = indentCells <= _indentStackAllocLimitCells
-                ? stackalloc char[indentCells]
-                : new char[indentCells];
-            indentSpan.Fill(' ');
-            var leading = clipped.Draw(
-                indentSpan,
-                new Point(x, bounds.Y),
-                style,
-                background: BackgroundMode.Transparent);
-            x = leading.Final.X;
+            return;
         }
 
         canvas.DrawRune(

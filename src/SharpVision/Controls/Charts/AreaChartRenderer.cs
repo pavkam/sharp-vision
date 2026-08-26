@@ -69,9 +69,11 @@ internal static class AreaChartRenderer
 
         var segment = 0;
 
-        for (var x = plot.X; x < plot.Right; x++)
+        var visiblePlot = canvas.Bounds.Intersect(plot);
+
+        for (var x = visiblePlot.X; x < visiblePlot.Right; x++)
         {
-            var center = (x * 2) + 0.5;
+            var center = (x * 2.0) + 0.5;
 
             if (center < halfX[0] - 1 || center > halfX[count - 1] + 1)
             {

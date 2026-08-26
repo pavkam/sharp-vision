@@ -86,6 +86,22 @@ public sealed class SeparatorTests
         FrameOracle.Get(frame, new Point(0, 2)).ShouldBe("│");
     }
 
+    /// <summary>Verifies a huge vertical separator iterates only the visible canvas rows.</summary>
+    [Fact]
+    public void Render_WhenHugeVerticalBoundsAreClipped_CompletesForVisibleRowsOnly()
+    {
+        var separator = new Separator
+        {
+            Orientation = Orientation.Vertical,
+            Bounds = new Rect(0, 0, 1, int.MaxValue)
+        };
+        using var frame = new Frame(new Size(1, 2));
+
+        Should.NotThrow(() => separator.Render(frame.Canvas));
+
+        FrameOracle.Get(frame, new Point(0, 1)).ShouldBe("│");
+    }
+
     /// <summary>Verifies the horizontal separator fills only the first row when bounds are multi-row.</summary>
     [Fact]
     public void Render_WhenHorizontalWithMultipleRows_FillsOnlyFirstRow()

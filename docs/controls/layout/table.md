@@ -385,9 +385,11 @@ translated content rectangle is the single origin for headers, grid lines,
 cells, and hit testing. Table chrome renders through the same viewport-clipped
 content canvas before the owned scrollbars render above it, so horizontal,
 vertical, and combined offsets can never separate a header or divider from its
-row controls. IsRunning origins are signed, because scrolling can move content
-above or left of zero; only extents and gaps keep the non-negative accumulation
-invariant.
+row controls. Grid lines and progressive placeholder fills iterate only that
+canvas intersection, so a tiny viewport never performs work proportional to an
+off-screen table extent. IsRunning origins are signed, because scrolling can
+move content above or left of zero; only extents and gaps keep the non-negative
+accumulation invariant.
 
 A header-only table measures and renders just its padded header. It reserves no
 phantom data-row spacing or grid divider until the first row is present.

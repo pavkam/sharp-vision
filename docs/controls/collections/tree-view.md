@@ -25,7 +25,7 @@ classDiagram
 | `SelectionMode`               | `TreeSelectionMode`                                | `Single`                                  | Allows no, one, or multiple selected items; rejects an undefined value.                                                                 |
 | `CheckMark`                   | `CheckMark?`                                       | `null`                                    | Shared check-mark layout and glyphs for items that do not override it.                                                                  |
 | `ActualCheckMark`             | `CheckMark`                                        | `Brackets`, resolved                      | Read-only; the mark items render when they do not locally override it.                                                                  |
-| `Indent`                      | `int`                                              | `2`                                       | Non-negative cells per visible depth level; rejects a negative value.                                                                   |
+| `Indent`                      | `int`                                              | `2`                                       | Non-negative cells per visible depth level; rejects a negative value and saturates derived geometry.                                    |
 | `Style`                       | `TreeViewStyle?`                                   | `null`                                    | Complete local presentation, or null for theme ownership.                                                                               |
 | `ActualStyle`                 | `TreeViewStyle`                                    | Resolved                                  | Read-only; the complete local, theme-owned, or code-owned presentation.                                                                 |
 | `LoadingText`                 | `string`                                           | `"Loading…"`                              | Inline status text an unloaded item's synthetic row shows while its children load.                                                      |
@@ -150,6 +150,10 @@ mutation through a shared memo rather than once per affected item, which keeps a
 single toggle linear in the nodes it touches instead of quadratic. A structural
 change replaces the visible presentation as one validated snapshot instead of
 clearing it and re-adding every item, and an unchanged flat list costs nothing.
+Depth/indent multiplication and pointer coordinates saturate instead of
+wrapping. Real and synthetic status rows materialize only the indentation cells
+inside the current canvas clip, so an off-screen extreme indent cannot drive an
+off-screen-sized allocation.
 
 ## TreeViewItem
 

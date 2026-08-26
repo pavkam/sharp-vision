@@ -25,14 +25,16 @@ internal sealed class ColorRamp: ControlBase
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
         var bounds = ContentBounds;
+        var visible = canvas.Bounds.Intersect(bounds);
 
-        for (var x = 0; x < bounds.Width; x++)
+        for (var absoluteX = visible.X; absoluteX < visible.Right; absoluteX++)
         {
-            var hue = bounds.Width <= 1 ? 0 : x * 359 / (bounds.Width - 1);
+            var x = absoluteX - bounds.X;
+            var hue = bounds.Width <= 1 ? 0 : (int) ((long) x * 359 / (bounds.Width - 1));
             var color = Color.FromHsv(hue, 1, 1);
             canvas.DrawRune(
                 new Rune(' '),
-                new Point(bounds.X + x, bounds.Y),
+                new Point(absoluteX, bounds.Y),
                 new TerminalStyle(Color.Default, color));
         }
     }

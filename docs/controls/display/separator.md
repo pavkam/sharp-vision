@@ -73,6 +73,8 @@ var separator = new Separator
 
 - Horizontal and vertical lines render as documented, and zero bounds draw
   nothing.
+- Repeated glyph work is limited to the current canvas clip even when the
+  separator's logical extent is much larger than the terminal viewport.
 - Orientation changes, resize, and appearance inheritance behave as described;
   the control stays out of hit testing; and the rendered output matches exact
   final cells.

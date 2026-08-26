@@ -70,7 +70,8 @@ public sealed class Separator: ControlBase, IStyled<SeparatorStyle>
         else
         {
             var glyph = style.VerticalGlyph.Resolve(new Rune('|'), CellPolicy.AmbiguousWidth);
-            for (var y = Bounds.Y; y < Bounds.Bottom; y++)
+            var visible = canvas.Bounds.Intersect(Bounds);
+            for (var y = visible.Y; y < visible.Bottom; y++)
             {
                 canvas.DrawRune(glyph, new Point(Bounds.X, y), s, BackgroundMode.Transparent);
             }

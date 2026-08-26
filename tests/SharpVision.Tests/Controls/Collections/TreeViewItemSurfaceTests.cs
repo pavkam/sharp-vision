@@ -190,6 +190,29 @@ public sealed class TreeViewItemSurfaceTests
         surface.Cell(new Point(x0 + indent + 2, 1)).Text.ShouldBe("C");
     }
 
+    /// <summary>Verifies extreme tree and synthetic-row indentation saturates one shared geometry
+    /// calculation and renders only the visible canvas cells.</summary>
+    [Fact]
+    public void Render_WhenIndentIsExtreme_ClipsWithoutOverflowOrUnboundedAllocation()
+    {
+        var root = new TreeViewItem { Header = "Root" };
+        var child = new TreeViewItem { Header = "Child", Depth = 1 };
+        root.Children.Add(child);
+        var tree = CreateTree(3);
+        tree.Indent = int.MaxValue;
+        tree.Items.Add(root);
+        child.Bounds = new Rect(0, 0, int.MaxValue, 1);
+        var status = new TreeViewStatusRow(root) { Depth = 1, Bounds = child.Bounds };
+        using var frame = new Frame(new Size(3, 1));
+
+        child.Render(frame.Canvas);
+        status.Render(frame.Canvas);
+
+        TreeViewItem.ResolveIndentCells(1, int.MaxValue).ShouldBe(int.MaxValue);
+        TreeViewItem.ResolveIndentedX(1, int.MaxValue, int.MaxValue).ShouldBe(int.MaxValue);
+        frame.GetCell(new Point(2, 0)).ShouldBe(CellInfo.Blank);
+    }
+
     /// <summary>Verifies custom disclosure glyphs authored on the owning tree's
     /// <see cref="TreeViewStyle"/> render in both expanded and collapsed states, instead of the
     /// code-owned <c>ControlGlyphs.Disclosure</c> default - the same custom-glyph coverage

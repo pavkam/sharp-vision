@@ -22,7 +22,7 @@ classDiagram
 | `Length`       | `int`                  | `5`                              | Track positions; rejects fewer than two or a spaced extent overflow.    |
 | `Orientation`  | `Orientation`          | `Orientation.Horizontal`         | Draws the track horizontally or vertically.                             |
 | `Spacing`      | `int`                  | `0`                              | Blank cells between adjacent positions; rejects a negative value.       |
-| `TrailLength`  | `int`                  | `2`                              | Preceding frames shown as a fading trail; rejects a negative value.     |
+| `TrailLength`  | `int`                  | `2`                              | Preceding frames shown as a fading trail; accepts zero through 4096.    |
 | `FadeDuration` | `TimeSpan`             | `TimeSpan.FromMilliseconds(400)` | Duration for one abandoned head frame to reach the trail color.         |
 | `Interval`     | `TimeSpan`             | `TimeSpan.FromMilliseconds(200)` | Duration between position advances.                                     |
 | `IsPlaying`    | `bool`                 | `true`                           | Enables automatic playback while the control is attached.               |
@@ -32,11 +32,13 @@ classDiagram
 Changing the effective glyph pair resets the animation phase, and so does
 changing `Movement` or `Length`. Spacing, trail, timing, and color changes
 preserve the current phase, and an appearance-only Theme change repaints without
-losing it. The trail history never grows beyond `min(TrailLength, Length - 1)`
-entries. `TrailLength`, `FadeDuration`, and `Interval` reconfigure retained
-trail storage or timer scheduling after publication even when a
-`PropertyChanged` observer throws; the observer failure is rethrown only after
-the committed timing state is coherent.
+losing it. The trail history never grows beyond
+`min(TrailLength, Length - 1, 4096)` entries; larger authored trail lengths are
+rejected before publication, so allocation and public state remain atomic.
+`TrailLength`, `FadeDuration`, and `Interval` reconfigure retained trail storage
+or timer scheduling after publication even when a `PropertyChanged` observer
+throws; the observer failure is rethrown only after the committed timing state
+is coherent.
 
 ## Presets and glyphs
 

@@ -201,10 +201,11 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
         {
             var style = inherited.WithForeground(ResolveColor(actualStyle.IndeterminateColor));
             var glyph = ResolveConfiguredGlyph(actualStyle.Glyphs.IndeterminateGlyph);
+            var visible = canvas.Bounds.Intersect(Bounds);
 
-            for (var y = Bounds.Y; y < Bounds.Bottom; y++)
+            for (var y = visible.Y; y < visible.Bottom; y++)
             {
-                for (var x = Bounds.X; x < Bounds.Right; x++)
+                for (var x = visible.X; x < visible.Right; x++)
                 {
                     canvas.DrawRune(glyph, new Point(x, y), style, BackgroundMode.Transparent);
                 }
@@ -275,20 +276,21 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
         double ratio)
     {
         var progress = ControlGlyphs.Progress;
+        var visible = canvas.Bounds.Intersect(Bounds);
 
         if (UseSubCellResolution)
         {
-            var totalEighths = (int) (ratio * Bounds.Width * 8);
+            var totalEighths = (long) (ratio * Bounds.Width * 8);
             var fullCells = totalEighths / 8;
             var remainder = totalEighths % 8;
 
-            for (var x = Bounds.X; x < Bounds.Right; x++)
+            for (var x = visible.X; x < visible.Right; x++)
             {
                 var cellIndex = x - Bounds.X;
                 var glyph = cellIndex < fullCells
                     ? ResolveConfiguredGlyph(glyphs.FillGlyph)
                     : cellIndex == fullCells && remainder > 0
-                        ? ResolveControlGlyph(progress.HorizontalFractions.Span[remainder])
+                        ? ResolveControlGlyph(progress.HorizontalFractions.Span[(int) remainder])
                         : ResolveConfiguredGlyph(glyphs.TrackGlyph);
                 var style = cellIndex < fullCells || (cellIndex == fullCells && remainder > 0)
                     ? fillStyle
@@ -300,7 +302,7 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
         {
             var filled = (int) (Bounds.Width * ratio);
 
-            for (var x = Bounds.X; x < Bounds.Right; x++)
+            for (var x = visible.X; x < visible.Right; x++)
             {
                 var glyph = x - Bounds.X < filled
                     ? ResolveConfiguredGlyph(glyphs.FillGlyph)
@@ -319,20 +321,21 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
         double ratio)
     {
         var progress = ControlGlyphs.Progress;
+        var visible = canvas.Bounds.Intersect(Bounds);
 
         if (UseSubCellResolution)
         {
-            var totalEighths = (int) (ratio * Bounds.Height * 8);
+            var totalEighths = (long) (ratio * Bounds.Height * 8);
             var fullCells = totalEighths / 8;
             var remainder = totalEighths % 8;
 
-            for (var y = Bounds.Y; y < Bounds.Bottom; y++)
+            for (var y = visible.Y; y < visible.Bottom; y++)
             {
                 var cellFromBottom = Bounds.Bottom - 1 - y;
                 var glyph = cellFromBottom < fullCells
                     ? ResolveConfiguredGlyph(glyphs.FillGlyph)
                     : cellFromBottom == fullCells && remainder > 0
-                        ? ResolveControlGlyph(progress.VerticalFractions.Span[remainder])
+                        ? ResolveControlGlyph(progress.VerticalFractions.Span[(int) remainder])
                         : ResolveConfiguredGlyph(glyphs.TrackGlyph);
                 var style = cellFromBottom < fullCells || (cellFromBottom == fullCells && remainder > 0)
                     ? fillStyle
@@ -345,7 +348,7 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
             var filled = (int) (Bounds.Height * ratio);
             var emptyEnd = Bounds.Bottom - filled;
 
-            for (var y = Bounds.Y; y < Bounds.Bottom; y++)
+            for (var y = visible.Y; y < visible.Bottom; y++)
             {
                 var glyph = y >= emptyEnd
                     ? ResolveConfiguredGlyph(glyphs.FillGlyph)

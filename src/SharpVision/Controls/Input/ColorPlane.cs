@@ -150,13 +150,16 @@ internal sealed class ColorPlane: ControlBase
             : (int) Math.Round((1 - Value) * (bounds.Height - 1), MidpointRounding.AwayFromZero);
         var themedMarker = ControlGlyphs.ColorPlane.SelectedMarker;
         var marker = (SelectedMarker ?? themedMarker.Value).Resolve(themedMarker.Fallback, CellPolicy.AmbiguousWidth);
+        var visible = canvas.Bounds.Intersect(bounds);
 
-        for (var y = 0; y < bounds.Height; y++)
+        for (var absoluteY = visible.Y; absoluteY < visible.Bottom; absoluteY++)
         {
+            var y = absoluteY - bounds.Y;
             var value = bounds.Height <= 1 ? 1 : 1 - (y / (double) (bounds.Height - 1));
 
-            for (var x = 0; x < bounds.Width; x++)
+            for (var absoluteX = visible.X; absoluteX < visible.Right; absoluteX++)
             {
+                var x = absoluteX - bounds.X;
                 var saturation = bounds.Width <= 1 ? 0 : x / (double) (bounds.Width - 1);
                 var color = Color.FromHsv(Hue, saturation, value);
                 var selected = x == selectedX && y == selectedY;
@@ -177,7 +180,7 @@ internal sealed class ColorPlane: ControlBase
                     : TerminalAttributes.None;
                 canvas.DrawRune(
                     glyph,
-                    new Point(bounds.X + x, bounds.Y + y),
+                    new Point(absoluteX, absoluteY),
                     new TerminalStyle(foreground, color, attributes));
             }
         }

@@ -64,3 +64,5 @@ var chart = new AreaChart
   points empty.
 - Point glyphs remain visible over the fill in both modes, and multiple series
   retain deterministic color precedence.
+- Fill interpolation visits only plot columns inside the current canvas clip;
+  its values and category positions still derive from the complete logical plot.

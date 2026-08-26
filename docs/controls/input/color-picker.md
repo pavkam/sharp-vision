@@ -86,7 +86,10 @@ The RGB editor stretches its saturation/value plane into the remaining space.
 The hue ramp and the horizontal hue `Slider` share one `Overlay`; exact red,
 green, and blue sliders occupy retained rows below it. The selected-color
 preview and the uppercase `#RRGGBB` readout share the final row, with
-contrast-aware text drawn over the selected color.
+contrast-aware text drawn over the selected color. The plane and hue ramp shade
+only their intersection with the current canvas clip while deriving hue,
+saturation, value, edge focus, and marker positions from the complete logical
+bounds.
 
 The plane is one focus stop. Left/Right adjust saturation by one percentage
 point, Up/Down adjust value, and Home/End jump to the saturation endpoints. A

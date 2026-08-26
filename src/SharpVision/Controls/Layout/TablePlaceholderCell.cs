@@ -60,10 +60,11 @@ internal sealed class TablePlaceholderCell: ControlBase
             underline,
             underlineColor);
         var glyph = IsError ? _owner.ResolvedPlaceholderErrorGlyph : _owner.ResolvedPlaceholderGlyph;
+        var visible = canvas.Bounds.Intersect(bounds);
 
-        for (var y = bounds.Y; y < bounds.Bottom; y++)
+        for (var y = visible.Y; y < visible.Bottom; y++)
         {
-            for (var x = bounds.X; x < bounds.Right; x++)
+            for (var x = visible.X; x < visible.Right; x++)
             {
                 canvas.DrawRune(glyph, new Point(x, y), style, BackgroundMode.Transparent);
             }
