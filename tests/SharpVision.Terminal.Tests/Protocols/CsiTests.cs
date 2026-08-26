@@ -77,6 +77,34 @@ public sealed class CsiTests
     }
 
     /// <summary>
+    /// Verifies scroll-region set and reset commands.
+    /// </summary>
+    [Fact]
+    public void ScrollRegion_WhenMarginsAreValid_WritesExactBytes()
+    {
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new ProtocolWriter(destination);
+
+        Csi.SetScrollRegion(writer, top: 2, bottom: 20);
+        Csi.ResetScrollRegion(writer);
+
+        destination.WrittenSpan.ToArray().ShouldBe("[2;20r[r"u8.ToArray());
+    }
+
+    /// <summary>
+    /// Verifies that a scroll region with the top margin equal to the bottom margin is allowed.
+    /// </summary>
+    [Fact]
+    public void SetScrollRegion_WhenMarginsAreEqual_WritesExactBytes()
+    {
+        var destination = new ArrayBufferWriter<byte>();
+
+        Csi.SetScrollRegion(new ProtocolWriter(destination), top: 5, bottom: 5);
+
+        destination.WrittenSpan.ToArray().ShouldBe("[5;5r"u8.ToArray());
+    }
+
+    /// <summary>
     /// Verifies save, restore, device, and status query commands.
     /// </summary>
     [Fact]
@@ -115,6 +143,9 @@ public sealed class CsiTests
         _ = Should.Throw<ArgumentOutOfRangeException>(() => Csi.Position(writer, 1, 0));
         _ = Should.Throw<ArgumentOutOfRangeException>(() => Csi.EraseLine(writer, EraseArea.Scrollback));
         _ = Should.Throw<ArgumentOutOfRangeException>(() => Csi.QueryPrivateMode(writer, 0));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => Csi.SetScrollRegion(writer, 0, 1));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => Csi.SetScrollRegion(writer, 1, 0));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => Csi.SetScrollRegion(writer, 5, 4));
 
         destination.WrittenCount.ShouldBe(0);
     }

@@ -125,6 +125,30 @@ public static class Csi
     public static void ScrollDown(ProtocolWriter writer, [ValueRange(1, int.MaxValue)] int count = 1) =>
         WritePositive(writer, count, (byte) 'T');
 
+    /// <summary>Sets the scrolling region using DECSTBM.</summary>
+    /// <param name="writer">The validated protocol writer.</param>
+    /// <param name="top">The one-based top margin row.</param>
+    /// <param name="bottom">The one-based bottom margin row.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// A margin is not positive, or <paramref name="top"/> is greater than <paramref name="bottom"/>.
+    /// </exception>
+    public static void SetScrollRegion(ProtocolWriter writer, [ValueRange(1, int.MaxValue)] int top, [ValueRange(1, int.MaxValue)] int bottom)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(top);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(bottom);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(top, bottom);
+
+        Span<byte> parameters = stackalloc byte[21];
+        var length = Format(top, parameters);
+        parameters[length++] = (byte) ';';
+        length += Format(bottom, parameters[length..]);
+        writer.Csi(parameters[..length], [], (byte) 'r');
+    }
+
+    /// <summary>Resets the scrolling region to the full screen using DECSTBM.</summary>
+    /// <param name="writer">The validated protocol writer.</param>
+    public static void ResetScrollRegion(ProtocolWriter writer) => writer.Csi([], [], (byte) 'r');
+
     /// <summary>Saves the current cursor position using ANSI CSI s.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     public static void SaveCursor(ProtocolWriter writer) => writer.Csi([], [], (byte) 's');
