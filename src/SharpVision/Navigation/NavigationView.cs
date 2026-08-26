@@ -213,11 +213,15 @@ public sealed class NavigationView: CompositeControlBase
         get;
         set
         {
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                _headerText.Content = value ?? string.Empty;
-                _headerText.Visibility = string.IsNullOrEmpty(value) ? Visibility.Collapsed : Visibility.Visible;
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () =>
+                {
+                    _headerText.Content = Header ?? string.Empty;
+                    _headerText.Visibility = string.IsNullOrEmpty(Header) ? Visibility.Collapsed : Visibility.Visible;
+                });
         }
     }
 

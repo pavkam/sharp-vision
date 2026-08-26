@@ -72,11 +72,15 @@ public sealed class Menu: ItemsControl
         {
             ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The menu orientation is unknown.");
 
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                _stack.Orientation = value;
-                UpdateItemSizing();
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () =>
+                {
+                    _stack.Orientation = Orientation;
+                    UpdateItemSizing();
+                });
         }
     } = Orientation.Horizontal;
 
@@ -90,10 +94,11 @@ public sealed class Menu: ItemsControl
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                _stack.Spacing = value;
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () => _stack.Spacing = Spacing);
         }
     }
 
@@ -1566,18 +1571,33 @@ public sealed class Menu: ItemsControl
         bool openedFromPointerSelection)
     {
         var owner = FindSessionOwner();
+        var selected = ItemAt(index) is MenuItem item ? item : null;
+        var dispatcher = Dispatcher;
+        var attachmentVersion = AttachmentVersion;
         switchSubmenu &= HasOpenSubmenu() || owner.IsSessionArmed;
         Select(index, focus);
 
-        if (!switchSubmenu)
+        if (!switchSubmenu ||
+            selected is null ||
+            !ReferenceEquals(Dispatcher, dispatcher) ||
+            AttachmentVersion != attachmentVersion ||
+            !ReferenceEquals(_selectedEntry, selected) ||
+            IndexOfItem(selected) < 0 ||
+            !ReferenceEquals(FindSessionOwner(), owner))
         {
             return;
         }
 
-        var selected = (MenuItem) ItemAt(index);
         owner.ExecuteSubmenuTransition(() =>
         {
-            owner.TransitionToSubmenuCore(this, selected, openedFromPointerSelection);
+            if (ReferenceEquals(Dispatcher, dispatcher) &&
+                AttachmentVersion == attachmentVersion &&
+                ReferenceEquals(_selectedEntry, selected) &&
+                IndexOfItem(selected) >= 0 &&
+                ReferenceEquals(FindSessionOwner(), owner))
+            {
+                owner.TransitionToSubmenuCore(this, selected, openedFromPointerSelection);
+            }
         });
     }
 

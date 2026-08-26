@@ -122,10 +122,11 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
         {
             ArgumentNullException.ThrowIfNull(value);
 
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                _openButton.Text = value;
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () => _openButton.Text = OpenText);
         }
     } = "&Open";
 

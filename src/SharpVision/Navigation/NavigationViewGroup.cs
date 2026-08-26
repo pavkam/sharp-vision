@@ -67,11 +67,15 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
         get;
         set
         {
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                _stack.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
-                FindNavigationView()?.NotifyGroupVisibilityChanged(this);
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () =>
+                {
+                    _stack.Visibility = IsExpanded ? Visibility.Visible : Visibility.Collapsed;
+                    FindNavigationView()?.NotifyGroupVisibilityChanged(this);
+                });
         }
     } = true;
 

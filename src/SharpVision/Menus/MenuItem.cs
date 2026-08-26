@@ -233,31 +233,35 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
         {
             var previousShortcut = field;
 
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                _derivedShortcutText = value?.ToString();
-
-                if (_shortcutTextValue is null)
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () =>
                 {
-                    NotifyPropertyChanged(nameof(ShortcutText), InvalidationImpact.Measure);
-                }
+                    _derivedShortcutText = Shortcut?.ToString();
 
-                // Only an already-attached item's own transition needs to touch the dispatcher's
-                // live count here - an unattached item's Shortcut simply seeds what OnAttached
-                // reads once it attaches, and OnDetached already unwinds an attached item's count
-                // on the way out.
-                if (Dispatcher is { } dispatcher)
-                {
-                    if (previousShortcut is null && value is not null)
+                    // Only an already-attached item's own transition needs to touch the dispatcher's
+                    // live count here - an unattached item's Shortcut simply seeds what OnAttached
+                    // reads once it attaches, and OnDetached already unwinds an attached item's count
+                    // on the way out.
+                    if (Dispatcher is { } dispatcher)
                     {
-                        dispatcher.IncrementLiveShortcutCount();
+                        if (previousShortcut is null && Shortcut is not null)
+                        {
+                            dispatcher.IncrementLiveShortcutCount();
+                        }
+                        else if (previousShortcut is not null && Shortcut is null)
+                        {
+                            dispatcher.DecrementLiveShortcutCount();
+                        }
                     }
-                    else if (previousShortcut is not null && value is null)
+
+                    if (_shortcutTextValue is null)
                     {
-                        dispatcher.DecrementLiveShortcutCount();
+                        NotifyPropertyChanged(nameof(ShortcutText), InvalidationImpact.Measure);
                     }
-                }
-            }
+                });
         }
     }
 

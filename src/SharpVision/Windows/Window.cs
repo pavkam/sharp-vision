@@ -973,7 +973,13 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             // runs on and backs off if a modal became active (or Visibility/attachment
             // changed) in the meantime.
             Shown?.Invoke(this, EventArgs.Empty);
-            Dispatcher?.Post(RunAttachFocusFallback);
+            var dispatcher = Dispatcher;
+
+            if (dispatcher is not null)
+            {
+                var attachmentVersion = AttachmentVersion;
+                dispatcher.Post(() => RunAttachFocusFallback(dispatcher, attachmentVersion));
+            }
         }
     }
 
@@ -999,9 +1005,12 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// fallback exists to close.
     /// </para>
     /// </remarks>
-    private void RunAttachFocusFallback()
+    private void RunAttachFocusFallback(Dispatcher dispatcher, long attachmentVersion)
     {
-        if (Dispatcher is null || Visibility != Visibility.Visible || HasActiveSurfaceModal)
+        if (!ReferenceEquals(Dispatcher, dispatcher) ||
+            AttachmentVersion != attachmentVersion ||
+            Visibility != Visibility.Visible ||
+            HasActiveSurfaceModal)
         {
             return;
         }

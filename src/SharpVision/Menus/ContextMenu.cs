@@ -12,6 +12,7 @@ public class ContextMenu: IDisposable
     private readonly Popup _popup;
     private LightDismiss? _lightDismiss;
     private bool _isDisposed;
+    private long _presentationVersion;
 
     /// <summary>Initializes a closed context menu with its own empty vertical menu.</summary>
     public ContextMenu() : this(new Menu { Orientation = Orientation.Vertical })
@@ -42,6 +43,7 @@ public class ContextMenu: IDisposable
         _popup.Closing += OnPopupClosing;
         _popup.Closed += OnPopupClosed;
         _popup.PropertyChanged += OnPopupPropertyChanged;
+        _popup.ParentChanged += OnPopupParentChanged;
     }
 
     /// <summary>Raised immediately before the menu is shown, allowing dynamic item updates.</summary>
@@ -91,7 +93,13 @@ public class ContextMenu: IDisposable
             return;
         }
 
+        var presentationVersion = _presentationVersion;
         Opening?.Invoke(this, EventArgs.Empty);
+
+        if (_isDisposed || presentationVersion != _presentationVersion || _popup.Parent is null)
+        {
+            return;
+        }
 
         _popup.FixedOrigin = new Point(col, row);
         _popup.IsOpen = true;
@@ -127,6 +135,7 @@ public class ContextMenu: IDisposable
         _popup.Closing -= OnPopupClosing;
         _popup.Closed -= OnPopupClosed;
         _popup.PropertyChanged -= OnPopupPropertyChanged;
+        _popup.ParentChanged -= OnPopupParentChanged;
         Menu.ItemInvoked -= OnMenuItemInvoked;
         Opening = null;
         Closing = null;
@@ -138,6 +147,13 @@ public class ContextMenu: IDisposable
     private void OnPopupClosing(object? sender, EventArgs e) => Closing?.Invoke(this, EventArgs.Empty);
 
     private void OnPopupClosed(object? sender, EventArgs e) => Closed?.Invoke(this, EventArgs.Empty);
+
+    private void OnPopupParentChanged(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+        _presentationVersion++;
+    }
 
     // IsOpen changes on every closure path, including indirect ones the popup
     // reaches on its own — detachment (a caller replaces or clears

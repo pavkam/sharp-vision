@@ -318,14 +318,15 @@ dependencies, ancestor propagation, dispatcher scheduling, retries, and frame
 coordination. `ControlBase` exposes the authoring seams that let derived
 controls participate without exposing pending phase flags.
 
-| Seam                                                                         | Use                                                                                              |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `SetProperty(ref field, value, impact)`                                      | Commit one ordinary CLR property and raise `PropertyChanged`.                                    |
-| Private-protected `SetPropertyAndContinue(ref field, value, impact, action)` | Preserve notification order, then complete dependent work before rethrowing an observer failure. |
-| `NotifyPropertyChanged(name, impact)`                                        | Publish a coordinated mutation after all related fields commit.                                  |
-| `Invalidate(InvalidationImpact)`                                             | Request phase work without a property notification.                                              |
-| `InvalidateVisualState()`                                                    | Clear resolved appearance caches after semantic state changes.                                   |
-| `SetVisualStateProperty(ref field, value)`                                   | Commit a property that changes `GetAppearanceState()`.                                           |
+| Seam                                                                            | Use                                                                                              |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `SetProperty(ref field, value, impact)`                                         | Commit one ordinary CLR property and raise `PropertyChanged`.                                    |
+| Private-protected `SetPropertyAndSynchronize(ref field, value, impact, action)` | Synchronize retained state before publishing the still-current property generation.              |
+| Private-protected `SetPropertyAndContinue(ref field, value, impact, action)`    | Preserve notification order, then complete dependent work before rethrowing an observer failure. |
+| `NotifyPropertyChanged(name, impact)`                                           | Publish a coordinated mutation after all related fields commit.                                  |
+| `Invalidate(InvalidationImpact)`                                                | Request phase work without a property notification.                                              |
+| `InvalidateVisualState()`                                                       | Clear resolved appearance caches after semantic state changes.                                   |
+| `SetVisualStateProperty(ref field, value)`                                      | Commit a property that changes `GetAppearanceState()`.                                           |
 
 Each seam validates dispatcher access, lifetime, arguments, and the selected
 impact before changing any observable state. Assigning an equivalent value is a
@@ -336,6 +337,15 @@ observer and only then rethrow the first callback failure, so the committed
 public value cannot outlive its invariant repair. Specialized visual-state
 changes compute their strongest impact from the active style rather than
 assuming that every state transition is render-only.
+
+A property whose retained projection must already agree when observers run uses
+`SetPropertyAndSynchronize`. The dependent synchronization completes before
+`PropertyChanged`; if either synchronization or notification reenters the same
+property, the newest generation owns both the retained state and publication. An
+older generation does not resume with a captured value, including an
+away-and-back change that restores an equal value. Synchronization and
+publication are both attempted when either callback throws, and the earliest
+failure is rethrown after the public value and retained projection agree.
 
 ## Access-key extension points
 

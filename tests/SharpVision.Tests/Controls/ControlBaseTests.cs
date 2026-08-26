@@ -6,6 +6,71 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies validated mutable control properties and invalidation.</summary>
 public sealed partial class ControlBaseTests
 {
+    /// <summary>Verifies a newer value committed from owner publication leaves the retained
+    /// projection aligned instead of letting the outer setter forward its captured candidate.</summary>
+    [Fact]
+    public void SetPropertyAndSynchronize_WhenPropertyObserverCommitsNewerValue_PreservesNewerProjection()
+    {
+        var probe = new SynchronizedPropertyProbe();
+        probe.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SynchronizedPropertyProbe.Value) && probe.Value == 1)
+            {
+                probe.Value = 2;
+            }
+        };
+
+        probe.Value = 1;
+
+        probe.Value.ShouldBe(2);
+        probe.ForwardedValue.ShouldBe(2);
+    }
+
+    /// <summary>Verifies reentry from retained-state synchronization itself supersedes the outer
+    /// property publication, including an away-and-back generation.</summary>
+    [Fact]
+    public void SetPropertyAndSynchronize_WhenSynchronizationReenters_SuppressesOuterPublication()
+    {
+        var probe = new SynchronizedPropertyProbe();
+        var reentered = false;
+        probe.Synchronizing = () =>
+        {
+            if (!reentered && probe.Value == 1)
+            {
+                reentered = true;
+                probe.Value = 2;
+                probe.Value = 1;
+            }
+        };
+        var notifications = 0;
+        probe.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SynchronizedPropertyProbe.Value))
+            {
+                notifications++;
+            }
+        };
+
+        probe.Value = 1;
+
+        probe.Value.ShouldBe(1);
+        probe.ForwardedValue.ShouldBe(1);
+        notifications.ShouldBe(2);
+    }
+
+    /// <summary>Verifies a throwing property observer cannot prevent already-required retained
+    /// synchronization from completing.</summary>
+    [Fact]
+    public void SetPropertyAndSynchronize_WhenPropertyObserverThrows_PreservesProjectionBeforeRethrow()
+    {
+        var probe = new SynchronizedPropertyProbe();
+        probe.PropertyChanged += (_, _) => throw new InvalidOperationException("observer failure");
+
+        _ = Should.Throw<InvalidOperationException>(() => probe.Value = 3);
+
+        probe.Value.ShouldBe(3);
+        probe.ForwardedValue.ShouldBe(3);
+    }
     /// <summary>Verifies control defaults are content-sized and initially dirty.</summary>
     [Fact]
     public void Constructor_WhenCreated_HasDocumentedDefaults()

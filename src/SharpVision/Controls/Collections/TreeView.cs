@@ -339,9 +339,11 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
                 return;
             }
 
+            var previousValue = field;
             var previous = ActualCheckMark;
             field = value;
             var current = ActualCheckMark;
+            field = previousValue;
 
             // The mark occupies cells ahead of the header, so a width change moves every row's
             // text and needs a measure pass rather than a repaint.
@@ -350,13 +352,22 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
                 : previous == current
                     ? InvalidationImpact.None
                     : InvalidationImpact.Render;
-            NotifyPropertyChanged(nameof(CheckMark), impact);
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                impact,
+                () =>
+                {
+                    var live = ActualCheckMark;
 
-            if (previous != current)
-            {
-                NotifyPropertyChanged(nameof(ActualCheckMark), InvalidationImpact.None);
-                InvalidateItemChrome(impact);
-            }
+                    if (previous != live)
+                    {
+                        NotifyPropertyChanged(nameof(ActualCheckMark), InvalidationImpact.None);
+                        InvalidateItemChrome(previous.Width != live.Width
+                            ? InvalidationImpact.Measure
+                            : InvalidationImpact.Render);
+                    }
+                });
         }
     }
 

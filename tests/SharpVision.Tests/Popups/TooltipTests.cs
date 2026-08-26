@@ -442,27 +442,18 @@ public sealed class TooltipTests
             TestContext.Current.CancellationToken);
 
         // Started directly rather than through a real hover/focus interaction:
-        // PointerManager and FocusManager both re-validate their tracked
-        // control on detachment and synthesize an exit that already cancels
-        // a timer started through the normal path, which would make this
-        // regression pass regardless of the fix under test. Reflection
-        // isolates the scenario the issue actually describes — a timer
-        // pending when the anchor detaches by whatever means.
-        var startShowTimer = typeof(Tooltip).GetMethod(
-            "StartShowTimer",
-            ReflectionBindingFlags.Instance | ReflectionBindingFlags.NonPublic).ShouldNotBeNull();
-        await surface.UpdateAsync(() => startShowTimer.Invoke(tooltip, null), "start the show timer directly");
+        // PointerManager and FocusManager both re-validate their tracked control on detachment
+        // and synthesize an exit that already cancels a timer started through the normal path.
+        await surface.UpdateAsync(tooltip.StartShowTimerForLifecycleTest, "start the show timer directly");
 
-        var timerField = typeof(Tooltip).GetField(
-            "_showTimer",
-            ReflectionBindingFlags.Instance | ReflectionBindingFlags.NonPublic).ShouldNotBeNull();
-        timerField.GetValue(tooltip).ShouldBeOfType<DispatcherTimer>().IsRunning.ShouldBeTrue();
+        tooltip.HasShowTimer.ShouldBeTrue();
+        tooltip.IsShowTimerRunning.ShouldBeTrue();
 
         await surface.UpdateAsync(
             () => container.Children.Remove(anchor).ShouldBeTrue(),
             "detach the anchor while its show timer is still pending");
 
-        timerField.GetValue(tooltip).ShouldBeOfType<DispatcherTimer>().IsRunning.ShouldBeFalse();
+        tooltip.HasShowTimer.ShouldBeFalse();
 
         await surface.AdvanceAsync(TimeSpan.FromMilliseconds(10), "let the cancelled show delay elapse");
 
@@ -473,6 +464,47 @@ public sealed class TooltipTests
             "reattach the anchor without any new hover/focus interaction");
 
         tooltip.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a tooltip migrated between dispatchers creates its next delay on the new
+    /// dispatcher instead of restarting the stopped timer owned by the former attachment.</summary>
+    [Fact]
+    public async Task Pointer_WhenAnchorReattachesToNewDispatcher_UsesNewDispatcherTimerAsync()
+    {
+        var previousClock = new ManualTimeProvider();
+        var currentClock = new ManualTimeProvider();
+        await using var previousDispatcher = Dispatcher.Start(timeProvider: previousClock);
+        await using var currentDispatcher = Dispatcher.Start(timeProvider: currentClock);
+        var anchor = new Button { Text = "Anchor" };
+        Tooltip.SetText(anchor, "Save");
+        var tooltip = Tooltip.GetTooltip(anchor).ShouldNotBeNull();
+        tooltip.ShowDelay = TimeSpan.FromMilliseconds(10);
+        await previousDispatcher.InvokeAsync(
+            () =>
+            {
+                anchor.Attach(previousDispatcher);
+                anchor.SetPointerOver(value: true, directlyOver: true);
+                anchor.Detach();
+            },
+            TestContext.Current.CancellationToken);
+
+        await currentDispatcher.InvokeAsync(
+            () =>
+            {
+                anchor.Attach(currentDispatcher);
+                anchor.SetPointerOver(value: false, directlyOver: false);
+                anchor.SetPointerOver(value: true, directlyOver: true);
+            },
+            TestContext.Current.CancellationToken);
+        previousClock.Advance(TimeSpan.FromMilliseconds(10));
+        await previousDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        tooltip.IsOpen.ShouldBeFalse();
+
+        currentClock.Advance(TimeSpan.FromMilliseconds(10));
+        await currentDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        tooltip.IsOpen.ShouldBeTrue();
+        await currentDispatcher.InvokeAsync(anchor.Detach, TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies overlapping show and hide requests retain one timer callback per transition.</summary>

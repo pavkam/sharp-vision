@@ -138,6 +138,64 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies deferred focus posted by an earlier attachment cannot enter the focus
+    /// manager installed by a later dispatcher attachment.</summary>
+    [Fact]
+    public async Task Attach_WhenVisibleWindowMigratesBeforeDeferredFocus_IgnoresPreviousDispatcherAsync()
+    {
+        await using var previousDispatcher = Dispatcher.Start();
+        await using var currentDispatcher = Dispatcher.Start();
+        var target = new ProbeControl { IsFocusable = true };
+        var window = new Window { Content = target };
+        var previousRoot = new Overlay { Children = { window } };
+        var currentRoot = new Overlay();
+        FocusManager? previousFocus = null;
+        FocusManager? currentFocus = null;
+        var detached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new();
+        previousDispatcher.Post(() =>
+        {
+            previousRoot.Attach(previousDispatcher);
+            previousFocus = new FocusManager(previousRoot);
+            previousRoot.Children.Remove(window).ShouldBeTrue();
+            detached.SetResult();
+            release.Wait();
+        });
+        await detached.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        await currentDispatcher.InvokeAsync(
+            () =>
+            {
+                currentRoot.Children.Add(window);
+                currentRoot.Attach(currentDispatcher);
+                currentFocus = new FocusManager(currentRoot);
+            },
+            TestContext.Current.CancellationToken);
+        await currentDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        currentFocus.ShouldNotBeNull().Focused.ShouldBeSameAs(target);
+
+        release.Set();
+        await previousDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        await currentDispatcher.InvokeAsync(
+            () => currentFocus.ShouldNotBeNull().Focused.ShouldBeSameAs(target),
+            TestContext.Current.CancellationToken);
+
+        await currentDispatcher.InvokeAsync(
+            () =>
+            {
+                currentFocus.Dispose();
+                currentRoot.Detach();
+            },
+            TestContext.Current.CancellationToken);
+        await previousDispatcher.InvokeAsync(
+            () =>
+            {
+                previousFocus.ShouldNotBeNull().Dispose();
+                previousRoot.Detach();
+            },
+            TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies undefined close placement is rejected before the current value changes.</summary>
     [Fact]
     public void ClosePlacement_WhenValueIsUndefined_ThrowsBeforeMutation()

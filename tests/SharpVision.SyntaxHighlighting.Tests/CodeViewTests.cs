@@ -703,6 +703,29 @@ public sealed class CodeViewTests
         view.IsFolded(foldStart).ShouldBeTrue();
     }
 
+    /// <summary>Verifies visible-line projection follows a newer folding policy committed from
+    /// the owner notification instead of the outer setter's captured policy.</summary>
+    [Fact]
+    public void IsFoldingEnabled_WhenPropertyObserverRestoresTrue_RebuildsFoldedProjection()
+    {
+        var view = new CodeView { Code = "fn a() {\n    x();\n}\n", Language = "Rust" };
+        var foldStart = Enumerable.Range(0, 3).First(view.IsFoldStart);
+        _ = view.SetFolded(foldStart, true);
+        var foldedHeight = view.MeasureProjection().Height;
+        view.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(CodeView.IsFoldingEnabled) && !view.IsFoldingEnabled)
+            {
+                view.IsFoldingEnabled = true;
+            }
+        };
+
+        view.IsFoldingEnabled = false;
+
+        view.IsFoldingEnabled.ShouldBeTrue();
+        view.MeasureProjection().Height.ShouldBe(foldedHeight);
+    }
+
     /// <summary>Verifies a freshly constructed view has a default CodeViewContextMenu.</summary>
     [Fact]
     public void ContextMenu_WhenConstructed_IsTheDefaultCodeViewContextMenu()

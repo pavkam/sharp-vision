@@ -87,6 +87,28 @@ public sealed class DateInputTests
         control.OwnedCalendar.MaximumDate.ShouldBe(control.Maximum);
     }
 
+    /// <summary>Verifies a newer bound committed from PropertyChanged owns both the public input
+    /// and its retained Calendar validation boundary.</summary>
+    [Fact]
+    public void Minimum_WhenPropertyObserverCommitsNewerBound_SynchronizesCalendarToNewerValue()
+    {
+        var outer = new DateOnly(2020, 1, 1);
+        var nested = new DateOnly(2010, 1, 1);
+        using var input = new DateInput();
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(DateInput.Minimum) && input.Minimum == outer)
+            {
+                input.Minimum = nested;
+            }
+        };
+
+        input.Minimum = outer;
+
+        input.Minimum.ShouldBe(nested);
+        OwnedTree.Find<UiCalendar>(input).ShouldNotBeNull().MinimumDate.ShouldBe(nested);
+    }
+
     #region Properties
 
     /// <summary>Verifies a null value is accepted when AllowNull is enabled.</summary>

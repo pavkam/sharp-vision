@@ -71,6 +71,28 @@ public sealed class TabControlTests
         tabs.SelectedItem.ShouldBeSameAs(first);
     }
 
+    /// <summary>Verifies generated headers receive the newest reentrant HeaderWidth value.</summary>
+    [Fact]
+    public void HeaderWidth_WhenPropertyObserverCommitsNewerWidth_UpdatesEveryHeader()
+    {
+        var tabs = Create(Create("First", "One"), Create("Second", "Two"));
+        var outer = Length.Cells(8);
+        var nested = Length.Cells(5);
+        tabs.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(TabControl.HeaderWidth) && tabs.HeaderWidth == outer)
+            {
+                tabs.HeaderWidth = nested;
+            }
+        };
+
+        tabs.HeaderWidth = outer;
+
+        tabs.HeaderWidth.ShouldBe(nested);
+        tabs.HeaderAt(0).Width.ShouldBe(nested);
+        tabs.HeaderAt(1).Width.ShouldBe(nested);
+    }
+
     /// <summary>Verifies setting SelectedItem to null clears selection, matching SelectedIndex = -1.</summary>
     [Fact]
     public void SelectedItem_WhenSetToNull_ClearsSelection()

@@ -140,11 +140,11 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            if (SetProperty(ref field, value, InvalidationImpact.Measure) && _okButton is { } button)
-            {
-                button.Text = value;
-                ApplyEqualWidth(_buttons);
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () => SynchronizeButtonText(_okButton, OkText));
         }
     } = "&OK";
 
@@ -158,11 +158,11 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            if (SetProperty(ref field, value, InvalidationImpact.Measure) && _cancelButton is { } button)
-            {
-                button.Text = value;
-                ApplyEqualWidth(_buttons);
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () => SynchronizeButtonText(_cancelButton, CancelText));
         }
     } = "&Cancel";
 
@@ -176,11 +176,11 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            if (SetProperty(ref field, value, InvalidationImpact.Measure) && _yesButton is { } button)
-            {
-                button.Text = value;
-                ApplyEqualWidth(_buttons);
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () => SynchronizeButtonText(_yesButton, YesText));
         }
     } = "&Yes";
 
@@ -194,11 +194,11 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            if (SetProperty(ref field, value, InvalidationImpact.Measure) && _noButton is { } button)
-            {
-                button.Text = value;
-                ApplyEqualWidth(_buttons);
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () => SynchronizeButtonText(_noButton, NoText));
         }
     } = "&No";
 
@@ -455,6 +455,17 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
 
         ApplyEqualWidth(result);
         return (result, ok, cancel, yes, no);
+    }
+
+    private void SynchronizeButtonText(Button? button, string text)
+    {
+        if (button is null)
+        {
+            return;
+        }
+
+        button.Text = text;
+        ApplyEqualWidth(_buttons);
     }
 
     private void ApplyEqualWidth(Button[] buttons)

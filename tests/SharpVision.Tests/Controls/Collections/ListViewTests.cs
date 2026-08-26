@@ -7,6 +7,39 @@ namespace SharpVision.Tests.Controls.Collections;
 /// <summary>Verifies realized ListView ownership, selection, input, scrolling, and rendering.</summary>
 public sealed class ListViewTests
 {
+    /// <summary>Verifies both realization inputs use the newest values committed from their owner
+    /// notifications, keeping generated rows aligned with the public template and height.</summary>
+    [Fact]
+    public void RealizationProperties_WhenObserversCommitNewerValues_UseNewestTemplateAndHeight()
+    {
+        ItemTemplate outerTemplate = _ => new ControlText("Outer") { Height = Length.Star(1) };
+        ItemTemplate nestedTemplate = _ => new ControlText("Nested") { Height = Length.Star(1) };
+        var list = new UiListView();
+        list.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiListView.ItemTemplate) &&
+                ReferenceEquals(list.ItemTemplate, outerTemplate))
+            {
+                list.ItemTemplate = nestedTemplate;
+            }
+
+            if (eventArgs.PropertyName == nameof(UiListView.RowHeight) && list.RowHeight == 2)
+            {
+                list.RowHeight = 3;
+            }
+        };
+
+        list.ItemTemplate = outerTemplate;
+        list.RowHeight = 2;
+        list.Items = ["value"];
+        new LayoutEngine().Layout(list, new Size(20, 6));
+
+        list.ItemTemplate.ShouldBeSameAs(nestedTemplate);
+        list.RowHeight.ShouldBe(3);
+        OwnedTree.FindAll<ControlText>(list).ShouldContain(text => text.Content == "Nested");
+        OwnedTree.FindAll<ControlText>(list).ShouldNotContain(text => text.Content == "Outer");
+        OwnedTree.Find<ListItem>(list).ShouldNotBeNull().Bounds.Height.ShouldBe(3);
+    }
     /// <summary>Verifies a ListView starts as a quiet borderless collection surface without caller styling.</summary>
     [Fact]
     public void Constructor_WhenCreated_UsesQuietBackgroundDefaults()

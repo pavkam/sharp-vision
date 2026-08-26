@@ -570,6 +570,79 @@ public sealed class MenuSurfaceTests
         surface.ShouldHaveFocus(menu);
     }
 
+    /// <summary>Verifies selection observers may mutate or detach an armed menu without the
+    /// interrupted pointer path indexing a replacement entry or opening an obsolete submenu.</summary>
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(0, true)]
+    [InlineData(1, false)]
+    [InlineData(1, true)]
+    [InlineData(2, false)]
+    [InlineData(2, true)]
+    [InlineData(3, false)]
+    [InlineData(3, true)]
+    [InlineData(4, false)]
+    [InlineData(4, true)]
+    public async Task Pointer_WhenSelectionObserverMutatesSubmenuTarget_DoesNotUseStaleIndexAsync(
+        int mutation,
+        bool fromSelectedItem)
+    {
+        var fileMenu = new Menu { Orientation = Orientation.Vertical };
+        fileMenu.Items.Add(new MenuItem { Text = "Open" });
+        var editMenu = new Menu { Orientation = Orientation.Vertical };
+        editMenu.Items.Add(new MenuItem { Text = "Copy" });
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
+        var edit = new MenuItem { Text = "Edit", Submenu = editMenu };
+        var menu = new Menu { Orientation = Orientation.Horizontal };
+        menu.Items.Add(file);
+        menu.Items.Add(edit);
+        var root = new Stack { Children = { menu } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 6),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.ClickAsync(file);
+        var editPopup = OwnedTree.Find<Popup>(edit).ShouldNotBeNull();
+        var mutated = false;
+        menu.PropertyChanged += (_, eventArgs) =>
+        {
+            var propertyName = fromSelectedItem ? nameof(Menu.SelectedItem) : nameof(Menu.SelectedIndex);
+
+            if (mutated || eventArgs.PropertyName != propertyName || !ReferenceEquals(menu.SelectedItem, edit))
+            {
+                return;
+            }
+
+            mutated = true;
+
+            switch (mutation)
+            {
+                case 0:
+                    _ = menu.Items.Remove(edit);
+                    break;
+                case 1:
+                    menu.Items.Clear();
+                    break;
+                case 2:
+                    menu.Items.Move(1, 0);
+                    break;
+                case 3:
+                    menu.Items[1] = new MenuSeparator();
+                    break;
+                case 4:
+                    _ = root.Children.Remove(menu);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mutation));
+            }
+        };
+
+        await surface.Pointer.MoveToAsync(edit);
+
+        mutated.ShouldBeTrue();
+        editPopup.IsOpen.ShouldBe(mutation == 2);
+    }
+
     /// <summary>Verifies moving an armed menu to a command closes the previous submenu without invoking it.</summary>
     [Fact]
     public async Task Pointer_WhenArmedMenuMovesToCommand_ClosesPreviousSubmenuAsync()

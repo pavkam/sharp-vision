@@ -28,6 +28,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 {
     private StyleSlotBase? _primaryStyle;
     private Dictionary<string, StyleSlotBase>? _styleSlots;
+    private Dictionary<string, long>? _synchronizedPropertyVersions;
     private long _stylePublicationVersion;
     private ThemeStructuralDependency _themeStructuralDependencies;
     private bool? _effectiveIsVisible;
@@ -3182,6 +3183,66 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(() => NotifyPropertyChanged(propertyName, impact), ref failure);
         ExceptionAggregation.Capture(continuation, ref failure);
+        failure?.Throw();
+        return true;
+    }
+
+    /// <summary>Commits one property, synchronizes its dependent retained state, and only then
+    /// publishes the still-current transition.</summary>
+    /// <typeparam name="T">The property value type.</typeparam>
+    /// <param name="field">The current backing field.</param>
+    /// <param name="value">The validated replacement value.</param>
+    /// <param name="impact">The validated earliest affected phase.</param>
+    /// <param name="synchronize">Updates retained state derived from the committed value.</param>
+    /// <param name="propertyName">The non-empty property name supplied by the compiler.</param>
+    /// <returns>Whether a changed value was committed.</returns>
+    /// <remarks>
+    /// The per-property generation makes a nested owner transition authoritative even when it
+    /// changes away and back. A dependent-state callback that commits a newer owner value also
+    /// suppresses this transition's later property notification. Synchronization and publication
+    /// are both attempted when either throws, with the earliest failure rethrown afterward.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="synchronize"/> or
+    /// <paramref name="propertyName"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="propertyName"/> is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NotifyPropertyChangedInvocator]
+    private protected bool SetPropertyAndSynchronize<T>(
+        ref T field,
+        T value,
+        InvalidationImpact impact,
+        Action synchronize,
+        [CallerMemberName] string? propertyName = null)
+    {
+        ArgumentNullException.ThrowIfNull(synchronize);
+        ValidateImpact(impact);
+        ArgumentException.ThrowIfNullOrEmpty(propertyName);
+        VerifyMutable();
+
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            return false;
+        }
+
+        field = value;
+        _synchronizedPropertyVersions ??= [];
+        _ = _synchronizedPropertyVersions.TryGetValue(propertyName, out var version);
+        version++;
+        _synchronizedPropertyVersions[propertyName] = version;
+        Invalidate(InvalidationFor(impact));
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(synchronize, ref failure);
+
+        if (_synchronizedPropertyVersions[propertyName] == version &&
+            EqualityComparer<T>.Default.Equals(field, value))
+        {
+            ExceptionAggregation.Capture(
+                () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)),
+                ref failure);
+        }
+
         failure?.Throw();
         return true;
     }

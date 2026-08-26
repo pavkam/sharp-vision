@@ -267,10 +267,11 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
                 throw new ArgumentException("Calendar requires a Gregorian display culture.", nameof(value));
             }
 
-            if (SetProperty(ref _culture, value, InvalidationImpact.Render))
-            {
-                FirstDayOfWeek = value.DateTimeFormat.FirstDayOfWeek;
-            }
+            _ = SetPropertyAndSynchronize(
+                ref _culture,
+                value,
+                InvalidationImpact.Render,
+                () => FirstDayOfWeek = Culture.DateTimeFormat.FirstDayOfWeek);
         }
     }
 

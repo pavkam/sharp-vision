@@ -117,16 +117,22 @@ public sealed class ListView: ItemsControl
                 return;
             }
 
-            if (RowHeight is int height)
+            if (RowHeight is not null)
             {
-                _ = SetProperty(ref field, value, InvalidationImpact.Measure);
-                ReplaceVirtualized(_items, replaceItems: false);
+                _ = SetPropertyAndSynchronize(
+                    ref field,
+                    value,
+                    InvalidationImpact.Measure,
+                    () => ReplaceVirtualized(_items, replaceItems: false));
                 return;
             }
 
             var realized = Build(_items, value);
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
-            Replace(_items, realized, replaceItems: false);
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () => Replace(_items, realized, replaceItems: false));
         }
     } = DefaultTemplate;
 
@@ -165,17 +171,23 @@ public sealed class ListView: ItemsControl
             }
 
             var wasVirtualized = field is not null;
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
-            _stack.RowHeight = value;
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () =>
+                {
+                    _stack.RowHeight = RowHeight;
 
-            if (value is int height)
-            {
-                Rewindow();
-            }
-            else if (wasVirtualized)
-            {
-                Replace(_items, Build(_items, ItemTemplate), replaceItems: false);
-            }
+                    if (RowHeight is not null)
+                    {
+                        Rewindow();
+                    }
+                    else if (wasVirtualized)
+                    {
+                        Replace(_items, Build(_items, ItemTemplate), replaceItems: false);
+                    }
+                });
         }
     }
 

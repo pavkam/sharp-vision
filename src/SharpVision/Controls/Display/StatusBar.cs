@@ -33,10 +33,11 @@ public sealed class StatusBar: ItemsControl
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
 
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                _host.Spacing = value;
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () => _host.Spacing = Spacing);
         }
     } = 1;
 

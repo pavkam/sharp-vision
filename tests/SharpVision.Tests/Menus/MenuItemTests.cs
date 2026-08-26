@@ -6,6 +6,26 @@ namespace SharpVision.Tests.Menus;
 /// <summary>Verifies shortcut text measurement, rendering position, and dim attributes on menu items.</summary>
 public sealed class MenuItemTests
 {
+    /// <summary>Verifies the derived shortcut label follows the newest reentrant gesture.</summary>
+    [Fact]
+    public void Shortcut_WhenPropertyObserverCommitsNewerGesture_UpdatesDerivedText()
+    {
+        var outer = new KeyGesture(Code.Character, Modifiers.Control, new Rune('a'));
+        var nested = new KeyGesture(Code.Character, Modifiers.Control, new Rune('b'));
+        var item = new MenuItem();
+        item.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(MenuItem.Shortcut) && item.Shortcut == outer)
+            {
+                item.Shortcut = nested;
+            }
+        };
+
+        item.Shortcut = outer;
+
+        item.Shortcut.ShouldBe(nested);
+        item.ShortcutText.ShouldBe(nested.ToString());
+    }
     /// <summary>Verifies every MenuItem-declared property starts at its documented default.</summary>
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()

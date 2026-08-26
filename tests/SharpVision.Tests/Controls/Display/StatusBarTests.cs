@@ -6,6 +6,27 @@ namespace SharpVision.Tests.Controls.Display;
 /// <summary>Verifies StatusBar item ownership, alignment, validation, and layout contracts.</summary>
 public sealed class StatusBarTests
 {
+    /// <summary>Verifies retained item spacing follows a newer reentrant owner value.</summary>
+    [Fact]
+    public void Spacing_WhenPropertyObserverCommitsNewerValue_UpdatesRetainedHost()
+    {
+        using var bar = new StatusBar();
+        bar.Items.Add(new StatusBarItem { Content = new ControlText("A") });
+        bar.Items.Add(new StatusBarItem { Content = new ControlText("B") });
+        bar.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(StatusBar.Spacing) && bar.Spacing == 4)
+            {
+                bar.Spacing = 2;
+            }
+        };
+
+        bar.Spacing = 4;
+        new LayoutEngine().Layout(bar, new Size(20, 1));
+
+        bar.Spacing.ShouldBe(2);
+        bar.ItemAt(1).Bounds.X.ShouldBe(bar.ItemAt(0).Bounds.Right + 2);
+    }
     /// <summary>Verifies the conventional one-row passive strip and item defaults.</summary>
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()

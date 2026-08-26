@@ -168,10 +168,11 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         {
             ArgumentNullException.ThrowIfNull(value);
 
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                _upButton.Text = value;
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () => _upButton.Text = ParentDirectoryText);
         }
     } = "↑";
 
@@ -186,10 +187,11 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         {
             ArgumentNullException.ThrowIfNull(value);
 
-            if (SetProperty(ref field, value, InvalidationImpact.None))
-            {
-                PathInput.Placeholder = value;
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.None,
+                () => PathInput.Placeholder = DirectoryPlaceholder);
         }
     } = "Directory path";
 
@@ -204,10 +206,11 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         {
             ArgumentNullException.ThrowIfNull(value);
 
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                HiddenToggle.Text = value;
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () => HiddenToggle.Text = ShowHiddenText);
         }
     } = "Show &hidden";
 
@@ -222,10 +225,11 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         {
             ArgumentNullException.ThrowIfNull(value);
 
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                _cancelButton.Text = value;
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () => _cancelButton.Text = CancelText);
         }
     } = "&Cancel";
 

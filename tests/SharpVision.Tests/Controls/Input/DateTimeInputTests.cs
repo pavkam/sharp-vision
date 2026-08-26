@@ -7,6 +7,27 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves the detached public DateTimeInput contract, clamping, and rendering.</summary>
 public sealed class DateTimeInputTests
 {
+    /// <summary>Verifies the retained Calendar receives the newest culture committed from owner
+    /// publication instead of the outer setter's captured culture.</summary>
+    [Fact]
+    public void Culture_WhenPropertyObserverCommitsNewerCulture_SynchronizesOwnedCalendar()
+    {
+        var outer = CultureInfo.GetCultureInfo("en-US");
+        var nested = CultureInfo.GetCultureInfo("de-DE");
+        using var input = new DateTimeInput();
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(DateTimeInput.Culture) && input.Culture.Equals(outer))
+            {
+                input.Culture = nested;
+            }
+        };
+
+        input.Culture = outer;
+
+        input.Culture.ShouldBe(nested);
+        input.OwnedCalendar.Culture.ShouldBe(nested);
+    }
     /// <summary>Verifies reentrant value publication suppresses the superseded typed event.</summary>
     [Fact]
     public void Value_WhenPropertyObserverCommitsNewerValue_SuppressesStaleTypedEvent()

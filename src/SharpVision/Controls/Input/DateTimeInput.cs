@@ -180,12 +180,16 @@ public sealed class DateTimeInput: InputBase
                     format, value, nameof(value), "DateTime", static (f, c) => DateTime.MinValue.ToString(f, c));
             }
 
-            if (SetProperty(ref _culture, value, InvalidationImpact.Measure))
-            {
-                _calendar.Culture = value;
-                _segments.ClampActiveSegment();
-                _segments.ResetDigitBuffer();
-            }
+            _ = SetPropertyAndSynchronize(
+                ref _culture,
+                value,
+                InvalidationImpact.Measure,
+                () =>
+                {
+                    _calendar.Culture = Culture;
+                    _segments.ClampActiveSegment();
+                    _segments.ResetDigitBuffer();
+                });
         }
     }
 

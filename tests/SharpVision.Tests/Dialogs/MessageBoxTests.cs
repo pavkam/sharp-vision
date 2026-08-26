@@ -707,6 +707,56 @@ public sealed class MessageBoxTests
         messageBox.NoText.ShouldBe("&No");
     }
 
+    /// <summary>Verifies every generated action caption follows a newer value committed from its
+    /// owner notification and equal-width repair uses those final labels.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Captions_WhenPropertyObserversCommitNewerValues_UpdateRetainedButtons(bool okCancel)
+    {
+        using var messageBox = new MessageBox(
+            "Choose.",
+            "Action",
+            okCancel ? MessageBoxButtons.OkCancel : MessageBoxButtons.YesNoCancel);
+        messageBox.PropertyChanged += (_, eventArgs) =>
+        {
+            switch (eventArgs.PropertyName)
+            {
+                case nameof(MessageBox.OkText) when messageBox.OkText == "Outer OK":
+                    messageBox.OkText = "Nested OK";
+                    break;
+                case nameof(MessageBox.CancelText) when messageBox.CancelText == "Outer Cancel":
+                    messageBox.CancelText = "Nested Cancel";
+                    break;
+                case nameof(MessageBox.YesText) when messageBox.YesText == "Outer Yes":
+                    messageBox.YesText = "Nested Yes";
+                    break;
+                case nameof(MessageBox.NoText) when messageBox.NoText == "Outer No":
+                    messageBox.NoText = "Nested No";
+                    break;
+                default:
+                    break;
+            }
+        };
+
+        if (okCancel)
+        {
+            messageBox.OkText = "Outer OK";
+        }
+        else
+        {
+            messageBox.YesText = "Outer Yes";
+            messageBox.NoText = "Outer No";
+        }
+
+        messageBox.CancelText = "Outer Cancel";
+        var labels = OwnedTree.FindAll<Button>(messageBox).Select(button => button.Text).ToArray();
+
+        labels.ShouldContain(okCancel ? "Nested OK" : "Nested Yes");
+        labels.ShouldContain(okCancel ? "Nested Cancel" : "Nested No");
+        labels.ShouldNotContain(label => label.StartsWith("Outer", StringComparison.Ordinal));
+    }
+
     /// <summary>Verifies changing a caption updates only the retained Button owning that semantic
     /// action, in place, without replacing it - preserving its MessageBoxResult association.</summary>
     [Fact]

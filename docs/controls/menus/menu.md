@@ -79,6 +79,14 @@ to another item closes the previous sibling and opens the new item's submenu.
 Moving to an item without a submenu closes the previous submenu without invoking
 the command.
 
+Selection callbacks may synchronously mutate or detach the menu. A pending
+submenu transition retains the selected item's identity and continues only if
+that same item remains selected under the same attached menu session. Moving
+that item is safe because the transition does not reuse its original numeric
+index. Removing or replacing it, clearing the collection, selecting a different
+item during reorder, or detaching from either selection notification cancels the
+stale transition; it never indexes replacement state or opens another item.
+
 Opening the first submenu arms one top-menu-rooted
 [modal plane](../../concepts/modality.md#menu-planes) with
 `OutsideInteraction.Dismiss`. Sibling switches, command rows, retained popup

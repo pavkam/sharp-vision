@@ -9,6 +9,65 @@ namespace SharpVision.Tests.Dialogs;
 /// <summary>Defines retained composition and asynchronous state behavior for FilePickerDialog.</summary>
 public sealed class FilePickerDialogTests
 {
+    /// <summary>Verifies a localized caption committed from PropertyChanged owns the retained
+    /// navigation button instead of being overwritten by the outer captured text.</summary>
+    [Fact]
+    public void ParentDirectoryText_WhenPropertyObserverCommitsNewerText_UpdatesRetainedButton()
+    {
+        using var dialog = new FilePickerDialog();
+        dialog.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(FilePickerDialog.ParentDirectoryText) &&
+                dialog.ParentDirectoryText == "Old")
+            {
+                dialog.ParentDirectoryText = "New";
+            }
+        };
+
+        dialog.ParentDirectoryText = "Old";
+
+        dialog.ParentDirectoryText.ShouldBe("New");
+        OwnedTree.FindAll<Button>(dialog).ShouldContain(button => button.Text == "New");
+        OwnedTree.FindAll<Button>(dialog).ShouldNotContain(button => button.Text == "Old");
+    }
+
+    /// <summary>Verifies every other immediately forwarded picker caption and placeholder follows
+    /// its newest owner value after synchronous reentry.</summary>
+    [Fact]
+    public void ForwardedText_WhenPropertyObserversCommitNewerValues_UpdatesRetainedControls()
+    {
+        using var dialog = new FilePickerDialog();
+        dialog.PropertyChanged += (_, eventArgs) =>
+        {
+            switch (eventArgs.PropertyName)
+            {
+                case nameof(FilePickerDialog.DirectoryPlaceholder) when dialog.DirectoryPlaceholder == "Outer path":
+                    dialog.DirectoryPlaceholder = "Nested path";
+                    break;
+                case nameof(FilePickerDialog.ShowHiddenText) when dialog.ShowHiddenText == "Outer hidden":
+                    dialog.ShowHiddenText = "Nested hidden";
+                    break;
+                case nameof(FilePickerDialog.CancelText) when dialog.CancelText == "Outer cancel":
+                    dialog.CancelText = "Nested cancel";
+                    break;
+                case nameof(FilePickerDialog.OpenText) when dialog.OpenText == "Outer open":
+                    dialog.OpenText = "Nested open";
+                    break;
+                default:
+                    break;
+            }
+        };
+
+        dialog.DirectoryPlaceholder = "Outer path";
+        dialog.ShowHiddenText = "Outer hidden";
+        dialog.CancelText = "Outer cancel";
+        dialog.OpenText = "Outer open";
+
+        OwnedTree.FindAll<TextInput>(dialog).ShouldContain(input => input.Placeholder == "Nested path");
+        OwnedTree.FindAll<CheckBox>(dialog).ShouldContain(toggle => toggle.Text == "Nested hidden");
+        OwnedTree.FindAll<Button>(dialog).ShouldContain(button => button.Text == "Nested cancel");
+        OwnedTree.FindAll<Button>(dialog).ShouldContain(button => button.Text == "Nested open");
+    }
     /// <summary>Verifies construction copies configuration and composes one responsive dialog Window.</summary>
     [Fact]
     public void Constructor_WhenConfigured_UsesCopiedOptionsAndSemanticControls()

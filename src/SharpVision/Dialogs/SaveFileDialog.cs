@@ -147,10 +147,11 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
         {
             ArgumentNullException.ThrowIfNull(value);
 
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                _saveButton.Text = value;
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () => _saveButton.Text = SaveText);
         }
     } = "&Save";
 
@@ -165,10 +166,11 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
         {
             ArgumentNullException.ThrowIfNull(value);
 
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                _fileNameLabelText.Content = value;
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () => _fileNameLabelText.Content = FileNameLabel);
         }
     } = "Name:";
 
@@ -183,10 +185,11 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
         {
             ArgumentNullException.ThrowIfNull(value);
 
-            if (SetProperty(ref field, value, InvalidationImpact.None))
-            {
-                _fileNameInput.Placeholder = value;
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.None,
+                () => _fileNameInput.Placeholder = FileNamePlaceholder);
         }
     } = "File name";
 

@@ -7,6 +7,27 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves the detached public Calendar contract and date geometry.</summary>
 public sealed class CalendarTests
 {
+    /// <summary>Verifies culture-derived weekday state follows the newest reentrant culture.</summary>
+    [Fact]
+    public void Culture_WhenPropertyObserverCommitsNewerCulture_DerivesNewestFirstDayOfWeek()
+    {
+        var outer = CultureInfo.GetCultureInfo("de-DE");
+        var nested = CultureInfo.GetCultureInfo("en-US");
+        using var calendar = new UiCalendar();
+        calendar.Culture = CultureInfo.InvariantCulture;
+        calendar.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiCalendar.Culture) && calendar.Culture.Equals(outer))
+            {
+                calendar.Culture = nested;
+            }
+        };
+
+        calendar.Culture = outer;
+
+        calendar.Culture.ShouldBe(nested);
+        calendar.FirstDayOfWeek.ShouldBe(nested.DateTimeFormat.FirstDayOfWeek);
+    }
     /// <summary>Verifies ActiveDate publication cannot overwrite a newer nested selection.</summary>
     [Fact]
     public void Selection_WhenActiveDateObserverSelectsNewerDate_PreservesNewerTransaction()

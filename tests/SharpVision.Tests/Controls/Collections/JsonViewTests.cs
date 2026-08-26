@@ -211,6 +211,27 @@ public sealed class JsonViewTests
         view.Indent.ShouldBe(4);
     }
 
+    /// <summary>Verifies cached source lines rebuild from the newest reentrant indentation.</summary>
+    [Fact]
+    public void Indent_WhenPropertyObserverCommitsNewerValue_RebuildsNewestProjection()
+    {
+        var json = /*lang=json,strict*/ "{\"outer\":{\"value\":1}}";
+        var view = new JsonView { Json = json };
+        var expected = new JsonView { Json = json, Indent = 1 };
+        view.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(JsonView.Indent) && view.Indent == 4)
+            {
+                view.Indent = 1;
+            }
+        };
+
+        view.Indent = 4;
+
+        view.Indent.ShouldBe(1);
+        view.MeasureProjectedContent().ShouldBe(expected.MeasureProjectedContent());
+    }
+
     /// <summary>Verifies callers can collapse and restore one container by JSON Pointer.</summary>
     [Fact]
     public void SetExpanded_WhenContainerPathExists_ChangesVisibleEntryCount()

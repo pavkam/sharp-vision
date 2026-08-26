@@ -172,6 +172,11 @@ focuses the first eligible descendant, or the Window itself. Changing visibility
 away from visible exits any active surface scope and performs the common focus,
 capture, bounds, and lifecycle cleanup.
 
+Initial focus posted during attachment belongs to that exact attachment
+generation and dispatcher. If the Window detaches or migrates before the queue
+drains, the older callback is ignored; only work posted by the current owner may
+use its focus manager.
+
 `ShowModal(outsideInteraction, initialFocus)` makes the Window visible and
 returns its application-owned `ModalScope`. The default
 `OutsideInteraction.Ignore` consumes outside input without requesting closure.

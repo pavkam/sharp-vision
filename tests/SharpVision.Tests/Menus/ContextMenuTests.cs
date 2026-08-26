@@ -116,6 +116,26 @@ public sealed class ContextMenuTests
         menu.IsOpen.ShouldBeFalse();
     }
 
+    /// <summary>Verifies an Opening callback that removes and reuses the menu supersedes the
+    /// original show request instead of leaving a latent open popup on its new ownership cycle.</summary>
+    [Fact]
+    public void Show_WhenOpeningObserverReattachesMenu_DoesNotOpenSupersededPresentation()
+    {
+        using var button = new Button { Text = "Host" };
+        var menu = new ContextMenu();
+        button.ContextMenu = menu;
+        menu.Opening += (_, _) =>
+        {
+            button.ContextMenu = null;
+            button.ContextMenu = menu;
+        };
+
+        menu.Show(5, 10);
+
+        button.ContextMenu.ShouldBeSameAs(menu);
+        menu.IsOpen.ShouldBeFalse();
+    }
+
     /// <summary>Verifies the ContextMenu property round-trips.</summary>
     [Fact]
     public void ContextMenu_WhenSetOnControl_CanBeRetrieved()

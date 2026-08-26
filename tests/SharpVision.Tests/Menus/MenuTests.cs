@@ -6,6 +6,38 @@ namespace SharpVision.Tests.Menus;
 /// <summary>Verifies typed menu ownership, selection navigation, check states, and cells.</summary>
 public sealed class MenuTests
 {
+    /// <summary>Verifies layout forwarding follows the newest owner value after synchronous
+    /// property reentry for both orientation and spacing.</summary>
+    [Fact]
+    public void LayoutProperties_WhenPropertyObserversCommitNewerValues_UseNewestStackConfiguration()
+    {
+        var first = new MenuItem { Text = "First" };
+        var second = new MenuItem { Text = "Second" };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        menu.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Menu.Orientation) && menu.Orientation == Orientation.Vertical)
+            {
+                menu.Orientation = Orientation.Horizontal;
+            }
+
+            if (eventArgs.PropertyName == nameof(Menu.Spacing) && menu.Spacing == 4)
+            {
+                menu.Spacing = 2;
+            }
+        };
+
+        menu.Orientation = Orientation.Vertical;
+        menu.Spacing = 4;
+        new LayoutEngine().Layout(menu, new Size(30, 3));
+
+        menu.Orientation.ShouldBe(Orientation.Horizontal);
+        menu.Spacing.ShouldBe(2);
+        second.Bounds.Y.ShouldBe(first.Bounds.Y);
+        second.Bounds.X.ShouldBe(first.Bounds.Right + 2);
+    }
     /// <summary>Verifies menus begin with a useful minimum while retaining inherited width configuration.</summary>
     [Fact]
     public void Constructor_WhenCreated_UsesConfigurableTenCellMinimumWidth()

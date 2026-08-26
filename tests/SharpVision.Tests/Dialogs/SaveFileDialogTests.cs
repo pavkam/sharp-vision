@@ -8,6 +8,38 @@ using System.Reflection;
 /// <summary>Defines retained composition and asynchronous state behavior for SaveFileDialog.</summary>
 public sealed class SaveFileDialogTests
 {
+    /// <summary>Verifies save-specific retained captions and placeholders follow newer values
+    /// committed from their owner notifications.</summary>
+    [Fact]
+    public void ForwardedText_WhenPropertyObserversCommitNewerValues_UpdatesRetainedControls()
+    {
+        using var dialog = new SaveFileDialog();
+        dialog.PropertyChanged += (_, eventArgs) =>
+        {
+            switch (eventArgs.PropertyName)
+            {
+                case nameof(SaveFileDialog.SaveText) when dialog.SaveText == "Outer save":
+                    dialog.SaveText = "Nested save";
+                    break;
+                case nameof(SaveFileDialog.FileNameLabel) when dialog.FileNameLabel == "Outer label":
+                    dialog.FileNameLabel = "Nested label";
+                    break;
+                case nameof(SaveFileDialog.FileNamePlaceholder) when dialog.FileNamePlaceholder == "Outer name":
+                    dialog.FileNamePlaceholder = "Nested name";
+                    break;
+                default:
+                    break;
+            }
+        };
+
+        dialog.SaveText = "Outer save";
+        dialog.FileNameLabel = "Outer label";
+        dialog.FileNamePlaceholder = "Outer name";
+
+        OwnedTree.FindAll<Button>(dialog).ShouldContain(button => button.Text == "Nested save");
+        OwnedTree.FindAll<ControlText>(dialog).ShouldContain(text => text.Content == "Nested label");
+        OwnedTree.FindAll<TextInput>(dialog).ShouldContain(input => input.Placeholder == "Nested name");
+    }
     /// <summary>Verifies construction copies configuration and composes one responsive dialog Window.</summary>
     [Fact]
     public void Constructor_WhenConfigured_UsesCopiedOptionsAndSemanticControls()

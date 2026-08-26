@@ -77,12 +77,17 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         get;
         set
         {
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
-
-            for (var index = 0; index < _headers.Children.Count; index++)
-            {
-                _headers.Children[index].Width = value;
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () =>
+                {
+                    for (var index = 0; index < _headers.Children.Count; index++)
+                    {
+                        _headers.Children[index].Width = HeaderWidth;
+                    }
+                });
         }
     } = Length.Auto;
 

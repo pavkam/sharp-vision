@@ -442,6 +442,18 @@ public sealed class Tooltip: Popup
     /// test seams, or zero when no hide timer has been created yet.</summary>
     internal int HideTimerTickSubscribers => _hideTimer?.TickSubscribers ?? 0;
 
+    /// <summary>Gets whether a show-delay timer is retained, proving detachment releases the
+    /// dispatcher-owned timer rather than merely stopping it for reuse under another owner.</summary>
+    internal bool HasShowTimer => _showTimer is not null;
+
+    /// <summary>Gets whether the retained show-delay timer is armed, proving cancellation state
+    /// without exposing the timer object itself.</summary>
+    internal bool IsShowTimerRunning => _showTimer?.IsRunning == true;
+
+    /// <summary>Starts the ordinary show delay for lifecycle tests whose anchor detachment would
+    /// otherwise synthesize pointer-exit cancellation before the target state can be observed.</summary>
+    internal void StartShowTimerForLifecycleTest() => StartShowTimer();
+
     private void StartShowTimer()
     {
         if (IsOpen || _attachedAnchor?.Dispatcher is not { } dispatcher)
@@ -492,6 +504,26 @@ public sealed class Tooltip: Popup
         }
     }
 
+    private void ReleaseTimers()
+    {
+        var showTimer = _showTimer;
+        var hideTimer = _hideTimer;
+        _showTimer = null;
+        _hideTimer = null;
+
+        if (showTimer is not null)
+        {
+            showTimer.Tick -= OnShowTimerTick;
+            showTimer.Dispose();
+        }
+
+        if (hideTimer is not null)
+        {
+            hideTimer.Tick -= OnHideTimerTick;
+            hideTimer.Dispose();
+        }
+    }
+
     private void OnShowTimerTick(object? sender, EventArgs eventArgs)
     {
         _ = sender;
@@ -529,8 +561,7 @@ public sealed class Tooltip: Popup
         // also bypasses the public Closed event (it commits closed state directly rather than
         // running the normal CloseSurface sequence), so OnSurfaceClosed's cleanup would never
         // run here; drop the surface relayout subscription directly instead of leaking it.
-        CancelShowTimer();
-        CancelHideTimer();
+        ReleaseTimers();
         base.OnDetached();
         UnsubscribeSurfaceRelayout();
     }
@@ -546,8 +577,7 @@ public sealed class Tooltip: Popup
                 _ = _attachedTooltips.Remove(anchor);
             }
 
-            _showTimer?.Dispose();
-            _hideTimer?.Dispose();
+            ReleaseTimers();
         }
 
         base.OnUnavailable(reason);

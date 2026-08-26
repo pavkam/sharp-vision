@@ -1463,6 +1463,44 @@ public sealed class NavigationViewTests
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("M");
     }
 
+    /// <summary>Verifies retained header text and group visibility follow newer values committed
+    /// from their owner property notifications.</summary>
+    [Fact]
+    public void ForwardedProperties_WhenObserversCommitNewerValues_UpdateRetainedPresentation()
+    {
+        var group = new NavigationViewGroup { Header = "Group" };
+        var child = new NavigationViewItem { Text = "Child" };
+        group.Items.Add(child);
+        var nav = new NavigationView { Header = "Initial" };
+        nav.Items.Add(group);
+        nav.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(NavigationView.Header) && nav.Header == "Outer")
+            {
+                nav.Header = "Nested";
+            }
+        };
+        group.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(NavigationViewGroup.IsExpanded) && !group.IsExpanded)
+            {
+                group.IsExpanded = true;
+            }
+        };
+
+        nav.Header = "Outer";
+        group.IsExpanded = false;
+        var size = new Size(24, 10);
+        new LayoutEngine().Layout(nav, size);
+        using Frame frame = new(size);
+        nav.Render(frame.Canvas);
+
+        nav.Header.ShouldBe("Nested");
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("N");
+        group.IsExpanded.ShouldBeTrue();
+        child.EffectiveIsVisible.ShouldBeTrue();
+    }
+
     /// <summary>Verifies Header round-trips, defaults to null, and its documented Measure impact
     /// actually reserves and releases the header row - not just repaints it - by comparing the
     /// auto-sized height with and without a header.</summary>

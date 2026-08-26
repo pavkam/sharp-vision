@@ -718,11 +718,15 @@ public sealed class CodeView:
         {
             VerifyMutable();
 
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                RebuildVisibleLines();
-                _content.RequestInvalidate(InvalidationImpact.Measure);
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () =>
+                {
+                    RebuildVisibleLines();
+                    _content.RequestInvalidate(InvalidationImpact.Measure);
+                });
         }
     } = true;
 

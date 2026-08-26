@@ -1888,6 +1888,32 @@ public sealed partial class TreeViewTests
         item.ActualCheckMark.Width.ShouldBe(3);
     }
 
+    /// <summary>Verifies a throwing owner observer cannot skip invalidating retained rows for the
+    /// already-committed shared check-mark presentation.</summary>
+    [Fact]
+    public void CheckMark_WhenPropertyObserverThrows_StillInvalidatesRetainedRows()
+    {
+        var item = new TreeViewItem { Header = "Item", IsCheckable = true };
+        var tree = new TreeView();
+        tree.Items.Add(item);
+        tree.Clear(Invalidation.All);
+        item.Clear(Invalidation.All);
+        tree.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(TreeView.CheckMark))
+            {
+                throw new InvalidOperationException("observer failure");
+            }
+        };
+        var mark = new CheckMark(CheckBoxMarkStyle.Square, CheckBoxGlyphs.Default);
+
+        _ = Should.Throw<InvalidOperationException>(() => tree.CheckMark = mark);
+
+        tree.CheckMark.ShouldBe(mark);
+        tree.ActualCheckMark.ShouldBe(mark);
+        (item.Pending & Invalidation.Measure).ShouldNotBe(Invalidation.None);
+    }
+
     /// <summary>Verifies assigning the same mark publishes nothing.</summary>
     [Fact]
     public void CheckMark_WhenUnchanged_RaisesNothing()

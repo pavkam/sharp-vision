@@ -126,13 +126,17 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
 
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                _sourceLines = BuildLines(_root, value);
-                _lines = _sourceLines;
-                _projectionWidth = null;
-                _content.Invalidate(Invalidation.Measure);
-            }
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () =>
+                {
+                    _sourceLines = BuildLines(_root, Indent);
+                    _lines = _sourceLines;
+                    _projectionWidth = null;
+                    _content.Invalidate(Invalidation.Measure);
+                });
         }
     } = 2;
 
