@@ -22,7 +22,9 @@ application construction. The session uses its exact alternate-screen,
 cursor-visibility, and application-key mode pairs. The renderer uses exact
 description cursor addressing, erase, rendition, color/default, reset, and
 optional cursor-shape programs; description-key decoding is profile-driven. VT52
-mode is documented and decoded diagnostically but is not an output target.
+mode is documented and decoded diagnostically but is not an output target: it
+predates the ANSI grammar every supported description uses, and no modern
+terminal requires it.
 
 ## Supported features
 

@@ -22,8 +22,18 @@ the next band.
 
 ## Implemented encoder
 
-The encoder accepts owned sRGB RGBA only. It never decodes PNG. Fully
-transparent pixels remain unchanged; every nonzero alpha is treated as opaque.
+The low-level encoder accepts owned sRGB RGBA only; the shared graphics backend
+decodes a supported PNG placement to RGBA before invoking it, as
+[Images](../concepts/images.md#overview) describes. Fully transparent pixels
+remain unchanged.
+
+> [!IMPORTANT]
+>
+> **Implementation gap:** partial alpha is thresholded, not blended. Every
+> nonzero alpha is treated as fully opaque, so anti-aliased edges and soft
+> shadows show hard fringes on sixel output while the Kitty and iTerm2 backends
+> transmit the same source's alpha faithfully.
+
 Each component is mapped without dithering to a fixed 6 by 6 by 6 RGB cube. Only
 used colors are published, sorted by cube index and assigned dense stable
 palette identifiers. This makes identical input and geometry byte-for-byte

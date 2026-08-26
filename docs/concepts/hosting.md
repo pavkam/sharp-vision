@@ -109,11 +109,15 @@ through their own `PosixSignalRegistration`s reusing the Ctrl+C cancellation
 callback and token. Unlike `SIGINT`/`SIGQUIT`, these two are registered
 unconditionally - `TreatControlCAsInput` has no effect on them - because they
 are the signals a process manager, container orchestrator, systemd unit, or
-plain `kill` sends to request graceful termination, not Ctrl+C. Windows has no
-equivalent registration yet: `CTRL_CLOSE_EVENT`, `CTRL_LOGOFF_EVENT`, and
-`CTRL_SHUTDOWN_EVENT` are not handled, so a console-window close, logoff, or
-system shutdown on Windows still bypasses `Application.StopAsync` and its
-terminal-mode restoration.
+plain `kill` sends to request graceful termination, not Ctrl+C. The same
+cooperative shutdown should cover the equivalent involuntary exits on Windows.
+
+> [!IMPORTANT]
+>
+> **Implementation gap:** Windows has no equivalent registration.
+> `CTRL_CLOSE_EVENT`, `CTRL_LOGOFF_EVENT`, and `CTRL_SHUTDOWN_EVENT` are not
+> handled, so a console-window close, logoff, or system shutdown on Windows
+> bypasses `Application.StopAsync` and its terminal-mode restoration.
 
 A signal that lands while `Build()` is blocked inside the screen's synchronous
 `OnAttach` is still cancelled cooperatively - the linked token is cancelled and

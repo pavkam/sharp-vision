@@ -44,9 +44,16 @@ are the currently connected typed output operations. A route wraps the farthest
 layer first, then works inward so the nearest multiplexer sees the outermost
 wire envelope. Each tmux layer doubles every ESC again. It prepares the complete
 bounded result before mutating the caller's destination. Each complete Kitty
-APC, sixel DCS, or iTerm2 multipart OSC is routed independently. Clipboard is a
-policy family reserved for its typed implementation; no route operation accepts
-control strings or caller-supplied raw payloads.
+APC, sixel DCS, or iTerm2 multipart OSC is routed independently. No route
+operation accepts control strings or caller-supplied raw payloads.
+
+> [!IMPORTANT]
+>
+> **Implementation gap:** the typed `Clipboard` policy family is reserved but
+> not wired. `MultiplexerRoute` implements capability-query and graphics routing
+> only, and the clipboard service emits OSC 52 and OSC 5522 bytes without
+> consulting the route, so an approved tmux route does not carry clipboard
+> operations yet.
 
 A mixed route may contain at most one GNU screen layer, and that layer must be
 farthest. Screen therefore receives the original CSI query batch rather than a

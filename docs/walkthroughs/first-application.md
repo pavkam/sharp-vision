@@ -7,17 +7,15 @@ terminal modes when the application exits.
 ## Create the project
 
 ```bash
-git clone https://github.com/pavkam/sharp-vision.git sharp-vision
 dotnet new console --framework net10.0 --name HelloSharpVision
 cd HelloSharpVision
-dotnet add reference ../sharp-vision/src/SharpVision/SharpVision.csproj
+dotnet add package SharpVision --prerelease
 ```
 
-> [!IMPORTANT]
->
-> The published UI package currently cannot resolve its unpublished
-> `SharpVision.Terminal` dependency. Until the terminal package exists, the
-> project reference above is the supported path.
+The `SharpVision` package pulls in its published `SharpVision.Terminal`
+dependency automatically. To work against the sources instead, clone
+[pavkam/sharp-vision](https://github.com/pavkam/sharp-vision) and add a project
+reference to `src/SharpVision/SharpVision.csproj`.
 
 ## Add the screen
 

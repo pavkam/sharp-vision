@@ -163,22 +163,25 @@ literal paragraph content and the result contains one deterministic diagnostic,
 keeping hostile input bounded without discarding source text or leaking the
 semantic tree's insertion exception.
 
-**Known limitations**, tracked as intentional scope boundaries rather than
-silent gaps:
-
-- **Tab indentation.** CommonMark expands a tab to the next 4-column stop when
-  measuring a list, block-quote, or code-fence indent. This reader's own
-  block-start detectors count only literal space characters toward that
-  measurement, so a tab-indented marker is not recognized as indentation at all;
-  the tab itself survives as a literal character in the resulting text. This
-  applies only to structural indentation - a tab inside an already-parsed code
-  block or inline flow expands correctly.
-- **Lazy continuation.** A line that fails to repeat a block quote's `>` marker,
-  or a list item's own indentation, but is otherwise ordinary text ends that
-  quote or list item immediately instead of continuing its enclosing paragraph,
-  the way CommonMark's lazy-continuation rule requires.
-- **HTML entities.** `&amp;`, `&#65;`, and similar entity references pass
-  through completely literally; this reader does not decode them.
+> [!IMPORTANT]
+>
+> **Implementation gap:** three CommonMark behaviors are not implemented yet.
+> The reader should follow the CommonMark rule in each case; current behavior
+> differs as described.
+>
+> - **Tab indentation.** CommonMark expands a tab to the next 4-column stop when
+>   measuring a list, block-quote, or code-fence indent. This reader's
+>   block-start detectors count only literal space characters toward that
+>   measurement, so a tab-indented marker is not recognized as indentation at
+>   all; the tab itself survives as a literal character in the resulting text.
+>   This applies only to structural indentation - a tab inside an already-parsed
+>   code block or inline flow expands correctly.
+> - **Lazy continuation.** A line that fails to repeat a block quote's `>`
+>   marker, or a list item's own indentation, but is otherwise ordinary text
+>   ends that quote or list item immediately instead of continuing its enclosing
+>   paragraph, the way CommonMark's lazy-continuation rule requires.
+> - **HTML entities.** `&amp;`, `&#65;`, and similar entity references pass
+>   through completely literally; this reader does not decode them.
 
 ## Optional extensions
 

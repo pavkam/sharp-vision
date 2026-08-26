@@ -63,10 +63,19 @@ single `IClipboard.KittyClipboardReplyReceived` event. That covers every
 OSC 52 `Write` is fire-and-forget - the protocol defines no acknowledgement for
 a write, so no transaction is opened and no event is raised.
 
-Unsolicited/proactive Kitty paste events (mode 5522 also lets a terminal push
-clipboard changes without a request) remain intentionally out of scope: no
-runtime path currently reports a mode-5522 paste notification that did not
-originate from an explicit `Write` or `Request`.
+Mode 5522 also lets a terminal push clipboard changes without a request. When
+the application has enabled paste events, such a terminal-initiated notification
+should surface through the clipboard service as its own typed event, distinct
+from the reply to an application-issued operation.
+
+> [!IMPORTANT]
+>
+> **Implementation gap:** terminal-initiated mode-5522 paste notifications are
+> parsed but never surfaced. A packet that does not correlate with an
+> application-issued `Write` or `Request` transaction is discarded inside the
+> clipboard service, so no event fires even after the application enables paste
+> events. Only application-issued operations currently raise
+> `KittyClipboardReplyReceived`.
 
 ## Bounds and recovery
 

@@ -11,11 +11,18 @@ an optional semicolon plus Base64 data, and ST `ESC \`.
 provide the typed direct-data surface. Image identifiers and placement
 identifiers are canonical nonzero unsigned 32-bit decimal values: leading
 zeroes, signs, and overflow are rejected. The official direct RGB query uses
-`f=24`; transmission accepts only RGBA `f=32` and PNG `f=100`. RGB transmission
-and zlib compression are explicit unsupported values. File, temporary-file, and
-shared-memory media are rejected before output because they depend on filesystem
-paths and externally managed lifetimes that SharpVision does not trust.
-Animation and Unicode placeholder presentation are out of scope.
+`f=24`; transmission accepts only RGBA `f=32` and PNG `f=100`. File,
+temporary-file, and shared-memory media are rejected before output because they
+depend on filesystem paths and externally managed lifetimes that SharpVision
+does not trust.
+
+> [!IMPORTANT]
+>
+> **Implementation gap:** four documented Kitty graphics protocol features have
+> no implementation yet. `KittyGraphicsCommand` rejects RGB `f=24` transmission
+> and zlib `o=z` compression before output, and neither animation nor Unicode
+> placeholder presentation has a typed surface, so every placement is a
+> cursor-anchored direct-data upload.
 
 ## Supported features
 

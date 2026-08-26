@@ -18,6 +18,16 @@ non-interlaced, 8-bit grayscale, RGB, indexed, grayscale-alpha, and RGBA sources
 to straight RGBA8888 for raster-only backends. It applies indexed alpha tables
 and the exact transparent grayscale or RGB sample from `tRNS` as specified by
 the [PNG Third Edition transparency chunk](https://www.w3.org/TR/png-3/#11tRNS).
+
+> [!IMPORTANT]
+>
+> **Implementation gap:** the decoder does not cover interlaced (Adam7) or
+> 16-bit-per-channel PNG sources. Structural validation accepts them, so
+> `ImageSource.FromPng` succeeds and the failure surfaces later as a decode
+> rejection: on a sixel-only terminal such a placement keeps its cell fallback
+> and reports a `GraphicsDiagnostic`, while the Kitty and iTerm2 backends
+> transmit the same bytes untouched.
+
 The Kitty and iTerm2 backends may transmit owned PNG directly when their
 capability and route are proved.
 

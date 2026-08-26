@@ -36,9 +36,18 @@ and 18 for text-area pixels, character-cell pixels, and text-area cells.
 dimensions no greater than 65535. `ProtocolModes` encodes cursor visibility,
 alternate screen 1049, focus 1004, bracketed paste 2004, synchronized output
 2026, Kitty clipboard mode 5522, and the mouse tracking (9/1000/1002/1003) and
-coordinate (1005/1006/1015/1016) modes. Scroll regions (DECSTBM) and tabulation
-control (HTS/TBC/CHT/CBT) have no typed commands and are not claimed as
-implemented.
+coordinate (1005/1006/1015/1016) modes.
+
+Tabulation control (HTS/TBC/CHT/CBT) has no typed commands by design: the frame
+encoder addresses every cell absolutely through the description's `cup` program,
+so hardware tab stops play no role in full-screen output.
+
+> [!IMPORTANT]
+>
+> **Implementation gap:** scroll regions (DECSTBM) have no typed commands. `Csi`
+> cannot emit `CSI Pt ; Pb r`, and the renderer repaints scroll-shaped damage
+> through absolute cursor addressing instead of a scroll region, so a one-line
+> scroll costs a repaint of every moved row.
 
 ## Recovery and tests
 

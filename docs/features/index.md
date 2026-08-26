@@ -53,9 +53,10 @@ override, and when a multiplexer is detected, graphics always go through its
 wrapping policy rather than falling back to unwrapped direct output.
 
 Windows console hosting is implemented and unit-tested at its mode-flag and
-P/Invoke boundaries; the gap in real Windows-console validation is recorded in
-[hosting](../concepts/hosting.md#windows). Unix hosting uses the real tty and
-preserves both cell and pixel dimensions where the platform reports them.
+P/Invoke boundaries, and the test suite runs on Windows in continuous
+integration; see [hosting](../concepts/hosting.md#windows) for the platform
+rules. Unix hosting uses the real tty and preserves both cell and pixel
+dimensions where the platform reports them.
 
 ## Proof and limits
 

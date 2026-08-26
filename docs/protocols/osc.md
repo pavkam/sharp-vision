@@ -20,7 +20,16 @@ sensitive query responses.
 Typed support covers selectors 0/2 for titles, 4/10/11 for palette/default color
 queries where capabilities allow, 8 for hyperlinks, 52 for clipboard text, and
 5522 through the dedicated
-[Kitty clipboard contract](kitty-clipboard.md#overview).
+[Kitty clipboard contract](kitty-clipboard.md#overview). Shell-integration
+prompt marks (OSC 133) and working-directory reports (OSC 7) are out of scope:
+they describe a shell session rather than a full-screen application.
+
+> [!IMPORTANT]
+>
+> **Implementation gap:** the desktop-notification selectors have no typed
+> support. Neither OSC 9 nor OSC 777 has a typed encoder or terminal service, so
+> an application cannot raise a terminal notification through
+> `Application.Terminal`.
 
 ## Typed API and behavior
 
@@ -41,10 +50,11 @@ the active terminal color-depth capability.
 
 `Osc52` implements typed clipboard/primary/secondary/select/cut-buffer text,
 strict canonical Base64, UTF-8 validation, query payloads, owned decode results,
-and ST/BEL parser integration. OSC 5522 is deliberately handled separately,
-through `Kitty.Clipboard.KittyClipboardPacket`,
-`Kitty.Clipboard.KittyClipboardWriter`, and
-`Kitty.Clipboard.KittyClipboardTransaction`.
+and ST/BEL parser integration. OSC 5522 is handled separately because it is a
+correlated, MIME-aware transaction protocol with chunking, permissions, and
+paste events rather than a single-payload text write, through
+`Kitty.Clipboard.KittyClipboardPacket`, `Kitty.Clipboard.KittyClipboardWriter`,
+and `Kitty.Clipboard.KittyClipboardTransaction`.
 
 ## Security and tests
 

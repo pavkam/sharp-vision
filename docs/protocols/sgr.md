@@ -11,9 +11,13 @@ inverse, conceal, strike, overline, 16-color, 256-color, RGB, and default
 foreground/background. Unsupported attributes degrade by omission; colors
 degrade through the configured palette strategy.
 
-Reset 22 clears bold and faint together in common terminals. The encoder must
-not pretend it can independently clear one without an extension such as the
-[Kitty independent intensity controls](https://sw.kovidgoyal.net/kitty/misc-protocol/).
+> [!NOTE]
+>
+> Reset 22 clears bold and faint together in common terminals, so the encoder
+> never pretends it can independently clear one. Independent clearing would
+> require negotiating an extension such as the
+> [Kitty independent intensity controls](https://sw.kovidgoyal.net/kitty/misc-protocol/),
+> which SharpVision does not implement.
 
 ## Supported features
 

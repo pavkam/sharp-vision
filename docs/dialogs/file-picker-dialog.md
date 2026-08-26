@@ -10,11 +10,17 @@ location bar, a scrolling `ListView`, a filter selector, a hidden-entry toggle,
 status text, and Open and Cancel actions. Directories are navigation targets
 only and never appear in accepted results.
 
-The picker does not create, rename, delete, or save files, and it does not
-select directories. When the user needs to choose a path for a later write, use
-[`SaveFileDialog`](save-file-dialog.md#overview) instead. Picking a directory
-would need its own result and validation contract, so there is no directory mode
-here.
+The picker does not create, rename, delete, or save files. When the user needs
+to choose a path for a later write, use
+[`SaveFileDialog`](save-file-dialog.md#overview) instead.
+
+> [!IMPORTANT]
+>
+> **Implementation gap:** no dialog in the family can select a directory as its
+> result. `FilePickerDialog` filters directories out of the published selection
+> unconditionally and `SaveFileDialog` rejects a directory target, so an
+> application that needs "choose a folder" must compose its own browsing surface
+> today.
 
 ## API
 

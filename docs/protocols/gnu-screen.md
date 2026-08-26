@@ -53,9 +53,15 @@ layer and cannot prove outer-terminal support.
 Startup routes Kitty keyboard status, DA1, DA2, DEC mode reports, and cell or
 window metrics because those are CSI sequences. It neither writes nor registers
 OSC 4/10/11, XTGETTCAP, or DECRQSS, so omitted families consume no query slot
-and cannot hold publication until the deadline. Clipboard and graphics do not
-opt in through Screen without a separately sourced typed encoding that avoids
-the nested-ST limit.
+and cannot hold publication until the deadline.
+
+> [!NOTE]
+>
+> This boundary is conditional, not a blanket protocol impossibility: clipboard
+> and graphics stay unavailable through Screen only because every typed encoding
+> SharpVision emits for them terminates an inner string with ST. A typed
+> encoding that avoids the nested-ST limit would be routable without changing
+> the relay rules above.
 
 Terminal replies normally return as ordinary raw input. The explicit reply seam
 also accepts a complete Screen-wrapped CSI reply before correlation. A

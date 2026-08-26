@@ -49,14 +49,24 @@ scalars follow as ordered `Text` values.
 
 Escape, Enter, Tab, Backspace, lock keys, Print Screen, Pause, Menu, and F13-F35
 have named logical codes. Other valid PUA functional values remain
-`Code.Unknown` with their native number. Impossible scalars, modifier values
-outside 1-256, event values outside 1-3, extra groups, DEL and C1 control
-codepoints (0x7F-0x9F) in associated text, and excessive text fields report one
-redacted diagnostic and recover to the next input. Other control codepoints —
-including Enter (13) and Tab (9) reported as a key's own associated text — pass
-through as text scalars unchanged. Legacy decoding remains active for terminals
-where [`QueryTracker`](device-attributes.md#kitty-keyboard-detection) does not
-prove support.
+`Code.Unknown` with their native number.
+
+> [!IMPORTANT]
+>
+> **Implementation gap:** the keypad, media, and modifier-key blocks of the
+> functional range have no named logical codes. Keys such as keypad Enter, the
+> keypad arrows, and the media transport keys decode to `Code.Unknown` with only
+> their native number preserved, so applications cannot bind them as typed
+> codes.
+
+Impossible scalars, modifier values outside 1-256, event values outside 1-3,
+extra groups, DEL and C1 control codepoints (0x7F-0x9F) in associated text, and
+excessive text fields report one redacted diagnostic and recover to the next
+input. Other control codepoints — including Enter (13) and Tab (9) reported as a
+key's own associated text — pass through as text scalars unchanged. Legacy
+decoding remains active for terminals where
+[`QueryTracker`](device-attributes.md#kitty-keyboard-detection) does not prove
+support.
 
 ## Input coverage
 

@@ -32,7 +32,8 @@ OSC 1337;FileEnd ST
 cells. Contain uses `preserveAspectRatio=1`; stretch uses 0. `inline=1` is
 always present so data can never become a file download. The optional `name`
 argument is omitted. The older single-sequence `File` form is not emitted and no
-legacy compatibility is claimed.
+legacy compatibility is claimed: the 3.5 multipart form supersedes it, and its
+single all-in-one payload could not be budgeted across multiplexer envelopes.
 
 Every complete OSC frame, including introducer and ST, is at most 1,048,576
 bytes. Raw part size is derived from Base64 and exact frame overhead. Under
@@ -43,12 +44,21 @@ limit or destination failure never exposes a partial transaction. An authorized
 route too small for metadata, one Base64 group, or FileEnd leaves the placement
 on cell fallback rather than failing the render.
 
-The writer accepts structurally validated owned PNG only. It never decodes PNG
-or accepts RGBA. The protocol cannot express a clipped pixel source or
+The writer accepts structurally validated owned PNG only; it never decodes the
+payload it transmits. The protocol cannot express a clipped pixel source or
 aspect-preserving cover crop, so only a complete PNG source with contain or
 stretch is eligible. Cover and partial-source placements retain cell fallback.
 Profile mutation, annotations, shell integration, clipboard streaming, generic
-file transfer, and every other OSC 1337 feature remain unsupported.
+file transfer, and every other OSC 1337 feature stay out of scope: they manage
+the user's terminal application and filesystem rather than present application
+output.
+
+> [!IMPORTANT]
+>
+> **Implementation gap:** RGBA sources are rejected rather than encoded. No PNG
+> encoder exists, so an RGBA `ImageSource` cannot reach an iTerm2-only terminal
+> and keeps its cell fallback even though the same pixels are losslessly
+> expressible as PNG.
 
 ## Non-retained backend and selection
 

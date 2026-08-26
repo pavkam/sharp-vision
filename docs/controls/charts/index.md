@@ -20,7 +20,9 @@ renders.
 
 Full charts expose `Series`, `Scale`, `LegendPlacement`, `ShowCategoryLabels`,
 and `ShowValueLabels`. `Sparkline` exposes only `Series` and `Scale`, accepts at
-most one series, and intentionally has no legend or label properties.
+most one series, and intentionally has no legend or label properties: a
+sparkline is an inline trend mark, and a presentation that needs a legend or
+labels is what the full charts provide.
 
 `ChartScale` accepts optional finite `Minimum` and `Maximum` bounds and an
 `IncludeZero` policy. `ChartScale.Automatic` includes zero. Bar charts use that

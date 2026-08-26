@@ -29,8 +29,10 @@ truncation diagnostic for unfinished input. `ProtocolWriter` emits validated
 DCS, APC, PM, and SOS commands with ST termination. The
 [runtime router](runtime-routing.md#overview) owns copied observation after
 framing. Known query families are decoded through their protocol-specific typed
-parsers; generic DCS consumer registration is not a public API. Multiplexer
-framing is described on the tmux and GNU screen pages.
+parsers; generic DCS consumer registration is not a public API, so raw string
+payloads stay inside typed parsers and untrusted terminal data never reaches
+application code unvalidated. Multiplexer framing is described on the tmux and
+GNU screen pages.
 
 ## Security and tests
 

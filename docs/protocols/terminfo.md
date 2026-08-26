@@ -248,7 +248,8 @@ The reader accepts only the identifiers in this table. Names are case-sensitive
 ncurses identifiers; an inclusive range expands only the shown numeric suffixes.
 An absent allowlisted value is absent evidence, not a support claim. Every
 identifier outside this table is ignored, including printer control, labels,
-micro-motion, and padded hardware behavior.
+micro-motion, and padded hardware behavior — capability families that drive
+printers and hardware terminals a full-screen cell renderer never addresses.
 
 | Family                                | Exact accepted identifiers                                                                                                                                                                                                                                                                                  |
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

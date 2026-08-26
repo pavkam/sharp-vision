@@ -68,7 +68,7 @@ lifecycle event.
 
 `CloseRequested` fires wherever the shared `CloseSurface` engine runs — the
 whole Popup family, and `Dialog<TResult>`'s own typed-completion path — and also
-from Window's close affordance, `CloseOnEscape`, and modal dismiss. Every
+from Window's close affordance, `CloseOnEscape`, and modal dismiss. The
 hand-rolled path still raises `CloseRequested` first via the same
 `FloatingSurfaceBase.RaiseCloseRequested` helper the engine uses and is guarded
 so repeated closure after committed cleanup raises nothing, honoring the same
@@ -82,8 +82,8 @@ timer and stack registration.
 > [!IMPORTANT]
 >
 > **Implementation gap:** Window's close affordance, `CloseOnEscape`, and modal
-> dismiss each hand-roll their own close sequence instead of routing through the
-> shared `CloseSurface` engine the rest of the Popup family and
+> dismiss all funnel into one hand-rolled close sequence instead of routing
+> through the shared `CloseSurface` engine the rest of the Popup family and
 > `Dialog<TResult>` use. Window has no separate _public_ open flag -
 > `Visibility == IsVisible` is its open state - and a `Closing` handler may
 > retain the Window by touching `Visibility`, which the engine's own

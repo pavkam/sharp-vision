@@ -19,6 +19,12 @@ tab is one semantic character and exactly one displayed cell. The control owns
 its normalized text and token projection; callers retain the assigned source
 string and catalog.
 
+> [!IMPORTANT]
+>
+> **Implementation gap:** there is no opt-in soft-wrap mode. Long lines only
+> scroll horizontally, so a host that cannot afford horizontal scrolling has no
+> way to keep a long line fully visible inside `CodeView`.
+
 ## Inheritance
 
 ```mermaid
