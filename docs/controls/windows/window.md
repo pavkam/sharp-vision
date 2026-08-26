@@ -91,7 +91,11 @@ The corner hit is checked before the title-bar hit, so a minimum-height window
 resizes rather than drags when the two targets coincide. Only the bottom-right
 corner is an interactive target; the other three corners and the four edges are
 not resize handles. Release, pointer leave, capture loss, disable, hide, detach,
-or disposal ends a resize the same way as a drag.
+or disposal ends a resize the same way as a drag. Width, height, and origin
+commits revalidate the active capture, parent, dimensions, and four overlay
+anchors after each observable setter. A callback that ends the gesture or makes
+a newer sizing or anchoring decision therefore stops the remaining stale resize
+writes.
 
 ## Chrome and interaction
 

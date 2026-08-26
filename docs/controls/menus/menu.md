@@ -142,7 +142,9 @@ Selecting a radio item stages every matching sibling's checked field before the
 first property callback runs. Changed properties publish in item order. A
 reentrant selection invalidates the older versions and suppresses their
 remaining stale notifications; the first callback failure is rethrown only after
-the current publication has been attempted.
+the current publication has been attempted. Disposal, removal, or group changes
+during an earlier item callback likewise suppress publication through later
+staged items that are no longer live members of this menu radio group.
 
 ## Example
 

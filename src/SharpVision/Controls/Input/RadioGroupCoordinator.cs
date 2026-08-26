@@ -70,33 +70,45 @@ internal static class RadioGroupCoordinator
             }
 
             var eventArgs = new RadioButtonSelectionChangedEventArgs(previous, value, cause);
+            var groupName = value.GroupName;
+            var owningSlot = value.OwningSlot;
+            var groupRoot = groupName is null ? null : FindGroupRoot(value);
             var previousVersion = previous?.StageChecked(false) ?? 0;
             var currentVersion = changed ? value.StageChecked(true) : 0;
             ExceptionDispatchInfo? failure = null;
 
-            if (previous is not null && previous.IsCheckedCommitCurrent(previousVersion, value: false))
+            if (previous is not null &&
+                IsCurrentMember(previous, groupName, owningSlot, groupRoot) &&
+                previous.IsCheckedCommitCurrent(previousVersion, value: false))
             {
                 ExceptionAggregation.Capture(previous.PublishChecked, ref failure);
             }
 
-            if (changed && value.IsCheckedCommitCurrent(currentVersion, value: true))
+            if (changed &&
+                IsCurrentMember(value, groupName, owningSlot, groupRoot) &&
+                value.IsCheckedCommitCurrent(currentVersion, value: true))
             {
                 ExceptionAggregation.Capture(value.PublishChecked, ref failure);
             }
 
             if (previous is not null &&
+                IsCurrentMember(previous, groupName, owningSlot, groupRoot) &&
                 previous.IsCheckedCommitCurrent(previousVersion, value: false) &&
+                IsCurrentMember(value, groupName, owningSlot, groupRoot) &&
                 value.IsChecked)
             {
                 ExceptionAggregation.Capture(() => previous.RaiseUnchecked(eventArgs), ref failure);
             }
 
-            if (changed && value.IsCheckedCommitCurrent(currentVersion, value: true))
+            if (changed &&
+                IsCurrentMember(value, groupName, owningSlot, groupRoot) &&
+                value.IsCheckedCommitCurrent(currentVersion, value: true))
             {
                 ExceptionAggregation.Capture(() => value.RaiseChecked(eventArgs), ref failure);
             }
 
-            if ((!changed && value.IsChecked) || value.IsCheckedCommitCurrent(currentVersion, value: true))
+            if (IsCurrentMember(value, groupName, owningSlot, groupRoot) &&
+                ((!changed && value.IsChecked) || value.IsCheckedCommitCurrent(currentVersion, value: true)))
             {
                 ExceptionAggregation.Capture(() => value.RaiseSelectionChanged(eventArgs), ref failure);
             }
@@ -195,12 +207,7 @@ internal static class RadioGroupCoordinator
         // FloatingSurfaceBase (Window or Popup) instead, mirroring how Menu.SelectRadio scopes to
         // its own Items. A control with no enclosing surface (content attached
         // directly to the Screen) keeps the prior root-of-tree behavior.
-        ControlBase root = value;
-
-        while (root is not FloatingSurfaceBase && root.Parent is { } parent)
-        {
-            root = parent;
-        }
+        var root = FindGroupRoot(value);
 
         Collect(root, value.GroupName, result);
 
@@ -210,6 +217,37 @@ internal static class RadioGroupCoordinator
         }
 
         return result;
+    }
+
+    [Pure]
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    private static bool IsCurrentMember(
+        RadioButton member,
+        string? groupName,
+        OwnedControlSlot? owningSlot,
+        ControlBase? groupRoot)
+    {
+        return !member.IsDisposed &&
+            string.Equals(member.GroupName, groupName, StringComparison.Ordinal) &&
+            (groupName is null
+                ? ReferenceEquals(member.OwningSlot, owningSlot)
+                : ReferenceEquals(FindGroupRoot(member), groupRoot));
+    }
+
+    [Pure]
+    private static ControlBase FindGroupRoot(RadioButton value)
+    {
+        ControlBase root = value;
+
+        while (root is not FloatingSurfaceBase && root.Parent is { } parent)
+        {
+            root = parent;
+        }
+
+        return root;
     }
 
     private static void Collect(ControlBase control, string groupName, List<RadioButton> result)

@@ -167,6 +167,46 @@ public sealed class RadioButtonTests
         observed.ShouldBeTrue();
     }
 
+    /// <summary>Verifies an earlier group publication can remove or dispose the later staged
+    /// member without publishing through that stale target.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void IsChecked_WhenEarlierCallbackInvalidatesLaterMember_SkipsLaterPublication(bool dispose)
+    {
+        var parent = new Stack();
+        var first = new RadioButton { IsChecked = true };
+        var second = new RadioButton();
+        var published = 0;
+        parent.Children.Add(first);
+        parent.Children.Add(second);
+        first.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(RadioButton.IsChecked))
+            {
+                if (dispose)
+                {
+                    second.Dispose();
+                }
+                else
+                {
+                    parent.Children.Remove(second).ShouldBeTrue();
+                }
+            }
+        };
+        second.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(RadioButton.IsChecked))
+            {
+                published++;
+            }
+        };
+
+        second.IsChecked = true;
+
+        published.ShouldBe(0);
+    }
+
     /// <summary>Verifies named groups span containers but remain scoped to one root.</summary>
     [Fact]
     public void IsChecked_WhenNamedMembersAreInDifferentContainers_UsesRootScope()

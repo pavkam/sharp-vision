@@ -70,6 +70,9 @@ caller still wins.
 
 An item's own `Invoked` subscribers finish before the menu forwards
 `Menu.ItemInvoked`. Both callbacks observe the committed check or radio state.
+If the item callback removes, moves, or disposes the item or its menu,
+forwarding to the captured old owner is skipped; an activation never closes or
+reports through a menu that no longer owns its item.
 
 ## Style-resolved glyphs
 

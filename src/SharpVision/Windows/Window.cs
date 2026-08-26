@@ -874,6 +874,12 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 
         if (_resizing)
         {
+            var gestureParent = Parent;
+            var originalHeight = Height;
+            var originalLeft = Overlay.GetLeft(this);
+            var originalTop = Overlay.GetTop(this);
+            var originalRight = Overlay.GetRight(this);
+            var originalBottom = Overlay.GetBottom(this);
             var deltaX = cells.X - _resizePointerOrigin.X;
             var deltaY = cells.Y - _resizePointerOrigin.Y;
             var clientBounds = Parent?.ContentBounds ?? default;
@@ -896,15 +902,57 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
                 _resizeWindowOrigin.Height + deltaY,
                 minHeight,
                 Math.Max(minHeight, Math.Min(MaxHeight, maximumHeight)));
-            Width = Length.Cells(width);
-            Height = Length.Cells(height);
+            var targetWidth = Length.Cells(width);
+            var targetHeight = Length.Cells(height);
+            var targetLeft = Length.Cells(_resizeWindowPosition.X);
+            var targetTop = Length.Cells(_resizeWindowPosition.Y);
+            eventArgs.IsHandled = true;
+            Width = targetWidth;
+
+            if (!CanContinueResize(
+                    gestureParent,
+                    targetWidth,
+                    originalHeight,
+                    originalLeft,
+                    originalTop,
+                    originalRight,
+                    originalBottom))
+            {
+                return;
+            }
+
+            Height = targetHeight;
+
+            if (!CanContinueResize(
+                    gestureParent,
+                    targetWidth,
+                    targetHeight,
+                    originalLeft,
+                    originalTop,
+                    originalRight,
+                    originalBottom))
+            {
+                return;
+            }
 
             // Own the origin for the duration of the gesture, exactly as the drag path
             // already does, so the top-left corner stays fixed regardless of the window's
             // alignment or Overlay.Right/Bottom anchoring.
-            Overlay.SetLeft(this, Length.Cells(_resizeWindowPosition.X));
-            Overlay.SetTop(this, Length.Cells(_resizeWindowPosition.Y));
-            eventArgs.IsHandled = true;
+            Overlay.SetLeft(this, targetLeft);
+
+            if (!CanContinueResize(
+                    gestureParent,
+                    targetWidth,
+                    targetHeight,
+                    targetLeft,
+                    originalTop,
+                    originalRight,
+                    originalBottom))
+            {
+                return;
+            }
+
+            Overlay.SetTop(this, targetTop);
         }
         else if (_dragging)
         {
@@ -933,6 +981,26 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     [Pure]
     private bool IsResizeCorner(Point cells) =>
         cells.Y == Bounds.Bottom - 1 && cells.X == Bounds.Right - 1;
+
+    [Pure]
+    private bool CanContinueResize(
+        ControlBase? gestureParent,
+        Length expectedWidth,
+        Length expectedHeight,
+        Length? expectedLeft,
+        Length? expectedTop,
+        Length? expectedRight,
+        Length? expectedBottom) =>
+        !IsDisposed &&
+        _resizing &&
+        HasPointerCapture &&
+        ReferenceEquals(Parent, gestureParent) &&
+        Width == expectedWidth &&
+        Height == expectedHeight &&
+        Overlay.GetLeft(this) == expectedLeft &&
+        Overlay.GetTop(this) == expectedTop &&
+        Overlay.GetRight(this) == expectedRight &&
+        Overlay.GetBottom(this) == expectedBottom;
 
     // The resize gesture must never collapse the window past a size the user cannot see or grab
     // again: enough cells for the border sides that are actually enabled, plus one content cell.

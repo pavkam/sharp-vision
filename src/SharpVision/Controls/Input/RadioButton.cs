@@ -292,7 +292,7 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
     /// <returns>True when no reentrant selection replaced the commit.</returns>
     [Pure]
     internal bool IsCheckedCommitCurrent(int version, bool value) =>
-        version > 0 && _checkedVersion == version && _isChecked == value;
+        !IsDisposed && version > 0 && _checkedVersion == version && _isChecked == value;
 
     /// <summary>Publishes the property notification for one still-current staged commit.</summary>
     /// <exception cref="InvalidOperationException">The attached member is accessed off-dispatcher.</exception>

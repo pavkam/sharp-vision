@@ -43,6 +43,11 @@ command runs on every activation, including re-selecting the current member. The
 command and parameter are captured at activation entry, so selection callbacks
 may rebind or dispose the control without changing that activation.
 
+Group fields are staged before notifications begin. Each later publication is
+revalidated against lifetime, group name, and the original owning slot or group
+root, so an earlier callback may remove, move, regroup, or dispose a staged
+member without publishing through that stale target.
+
 `RadioButtonStyle : InputStyle` is a complete immutable presentation: it bundles
 a `RadioButtonMarkStyle`, a complete `RadioButtonGlyphs` pair (unchecked and
 checked), and the inherited `Face`/`Border`/`Shadow`.

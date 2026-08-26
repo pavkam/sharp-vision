@@ -93,11 +93,15 @@ such as Ctrl+Enter never toggles a container.
 Selection highlights only the quoted key or `[index]` token. The value keeps its
 scalar type color, which avoids erasing syntax meaning as navigation moves.
 Every selection change minimally reveals its line through the vertical viewport.
-Wheel, scrollbar, and programmatic scrolling use the shared container scrolling
-contract. `LineSize` scales the wheel's cell step; keyboard navigation always
-moves the selection by exactly one line regardless of this value. A word-wrapped
-value's continuation lines count toward the PageUp/PageDown page step the same
-as any other line, since the step is line-based rather than entry-based.
+Selection notifications are an input-continuation boundary: if a callback
+replaces or reprojects the document, changes the selected node, or disposes the
+view, the originating pointer or keyboard gesture does not focus, reveal, or
+toggle through its obsolete node snapshot. Wheel, scrollbar, and programmatic
+scrolling use the shared container scrolling contract. `LineSize` scales the
+wheel's cell step; keyboard navigation always moves the selection by exactly one
+line regardless of this value. A word-wrapped value's continuation lines count
+toward the PageUp/PageDown page step the same as any other line, since the step
+is line-based rather than entry-based.
 
 ## Example
 

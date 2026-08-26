@@ -199,6 +199,68 @@ public sealed class JsonViewSurfaceTests
         surface.Cell(new Point(0, 5)).Text.ShouldBe("▶");
     }
 
+    /// <summary>Verifies a selection callback that replaces the document prevents the original
+    /// disclosure click from mutating an equal path in the replacement model.</summary>
+    [Fact]
+    public async Task Pointer_WhenSelectionCallbackReplacesDocument_DoesNotContinueOldDisclosureAsync()
+    {
+        var view = new JsonView { Json = /*lang=json,strict*/ "{\"first\":1,\"branch\":{\"old\":2}}" };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(24, 6),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        view.SelectionChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.Path == "/branch")
+            {
+                view.Json = /*lang=json,strict*/ "{\"branch\":{\"replacement\":3}}";
+            }
+        };
+
+        await surface.Pointer.ClickAsync(view, new Point(0, 2));
+
+        view.Json.ShouldBe(/*lang=json,strict*/ "{\"branch\":{\"replacement\":3}}");
+        view.VisibleEntryCount.ShouldBe(2);
+        surface.Cell(new Point(0, 1)).Text.ShouldBe("▼");
+    }
+
+    /// <summary>Verifies keyboard selection does not reveal through a projection replaced by its
+    /// own selection callback or overwrite the replacement viewport decision.</summary>
+    [Fact]
+    public void Keyboard_WhenSelectionCallbackReplacesProjection_DoesNotRevealStaleSelection()
+    {
+        var replacement = string.Join(',', Enumerable.Range(0, 12).Select(index => $"\"new{index}\":{index}"));
+        var view = new JsonView
+        {
+            Json = /*lang=json,strict*/ "{\"old0\":0,\"old1\":1}",
+            Height = Length.Cells(4),
+            ShowScrollBars = ShowScrollBars.Never
+        };
+        new LayoutEngine().Layout(view, new Size(20, 6));
+        view.SelectionChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.Path == "/old1")
+            {
+                view.Json = $"{{{replacement}}}";
+                new LayoutEngine().Layout(view, new Size(20, 6));
+                view.VerticalOffset = 3;
+            }
+        };
+        var down = new KeyEventArgs(new Stroke(
+            Code.Down,
+            default,
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press));
+
+        _ = Router.Route(view, Events.Key, down);
+
+        view.SelectedPath.ShouldBe("/new0");
+        view.VerticalOffset.ShouldBe(3);
+        down.IsHandled.ShouldBeTrue();
+    }
+
     /// <summary>Verifies an incidental Control modifier on Enter does not toggle the selected
     /// container's disclosure, and leaves the stroke unhandled.</summary>
     [Fact]

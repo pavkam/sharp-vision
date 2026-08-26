@@ -476,7 +476,10 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(() => Invoked?.Invoke(this, eventArgs), ref failure);
 
-        if (owner is not null)
+        if (owner is not null &&
+            !IsDisposed &&
+            !owner.IsDisposed &&
+            ReferenceEquals(FindMenu(), owner))
         {
             ExceptionAggregation.Capture(() => owner.NotifyItemInvoked(eventArgs), ref failure);
         }

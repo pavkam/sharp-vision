@@ -1495,6 +1495,119 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies resize stops after a Width callback disposes, detaches, disables, or
+    /// reanchors the active window instead of applying the remainder of the stale transaction.</summary>
+    [Theory]
+    [InlineData("dispose")]
+    [InlineData("detach")]
+    [InlineData("disable")]
+    [InlineData("reanchor")]
+    public async Task Drag_WhenWidthCallbackInvalidatesResize_StopsRemainingMutationAsync(string mutation)
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var canvas = new Overlay();
+            var window = new Window
+            {
+                Width = Length.Cells(10),
+                Height = Length.Cells(4),
+                CanResize = true,
+                CanMove = false
+            };
+            Overlay.SetLeft(window, Length.Cells(0));
+            Overlay.SetTop(window, Length.Cells(0));
+            canvas.Children.Add(window);
+            new LayoutEngine().Layout(canvas, new Size(20, 10));
+            canvas.Attach(dispatcher);
+            using PointerManager pointer = new(canvas);
+            var corner = new Point(window.Bounds.Right - 1, window.Bounds.Bottom - 1);
+            window.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName != nameof(Window.Width))
+                {
+                    return;
+                }
+
+                switch (mutation)
+                {
+                    case "dispose":
+                        window.Dispose();
+                        break;
+                    case "detach":
+                        canvas.Children.Remove(window).ShouldBeTrue();
+                        break;
+                    case "disable":
+                        window.IsEnabled = false;
+                        break;
+                    case "reanchor":
+                        Overlay.SetLeft(window, Length.Cells(7));
+                        break;
+                    default:
+                        throw new UnreachableException();
+                }
+            };
+
+            _ = pointer.Dispatch(Pointer(corner, PointerAction.Press));
+            Action move = () => _ = pointer.Dispatch(
+                Pointer(new Point(corner.X + 2, corner.Y + 2), PointerAction.Move));
+
+            move.ShouldNotThrow();
+
+            if (mutation != "dispose")
+            {
+                window.Height.ShouldBe(Length.Cells(4));
+            }
+
+            if (mutation == "reanchor")
+            {
+                Overlay.GetLeft(window).ShouldBe(Length.Cells(7));
+            }
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a Height callback that changes the origin prevents the later attached
+    /// position writes from overwriting that newer decision.</summary>
+    [Fact]
+    public async Task Drag_WhenHeightCallbackReanchorsWindow_PreservesNewerOriginAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var canvas = new Overlay();
+            var window = new Window
+            {
+                Width = Length.Cells(10),
+                Height = Length.Cells(4),
+                CanResize = true,
+                CanMove = false
+            };
+            Overlay.SetLeft(window, Length.Cells(0));
+            Overlay.SetTop(window, Length.Cells(0));
+            canvas.Children.Add(window);
+            new LayoutEngine().Layout(canvas, new Size(20, 10));
+            canvas.Attach(dispatcher);
+            using PointerManager pointer = new(canvas);
+            var corner = new Point(window.Bounds.Right - 1, window.Bounds.Bottom - 1);
+            window.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(Window.Height))
+                {
+                    Overlay.SetTop(window, Length.Cells(6));
+                }
+            };
+
+            _ = pointer.Dispatch(Pointer(corner, PointerAction.Press));
+            _ = pointer.Dispatch(Pointer(new Point(corner.X + 2, corner.Y + 2), PointerAction.Move));
+
+            window.Width.ShouldBe(Length.Cells(12));
+            window.Height.ShouldBe(Length.Cells(6));
+            Overlay.GetTop(window).ShouldBe(Length.Cells(6));
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies primary presses remain drag and resize gestures while auxiliary buttons are held.</summary>
     [Theory]
     [InlineData(false, Buttons.Primary | Buttons.Secondary)]

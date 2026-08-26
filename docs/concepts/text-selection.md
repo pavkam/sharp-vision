@@ -6,7 +6,10 @@ Semantic text selection is an opt-in `ControlBase` capability. Any control can
 own one directional UTF-16 range over the text projected by itself and its
 retained descendants, including a range that crosses child boundaries.
 `IsTextSelectionEnabled` defaults to `false`; opting in does not implicitly make
-the control focusable or a tab stop.
+the control focusable or a tab stop. Capability changes publish the property
+before gesture setup or cleanup, but reentrant callbacks that reverse the value
+own the newest transition: obsolete outer work does not cancel its gesture,
+clear its range, or deliver a stale enabled-state hook afterward.
 
 `ControlBase` owns the range, click and drag transaction, keyboard navigation,
 capture, nested autoscroll, reveal, final adornment, and common change event.

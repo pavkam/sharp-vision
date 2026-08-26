@@ -16,6 +16,7 @@ public abstract partial class ControlBase: ISelectableTextSource
     private int? _textSelectionDesiredRow;
     private bool _textSelectionCaretEstablished;
     private ulong _textSelectionFingerprint;
+    private ulong _textSelectionCapabilityVersion;
     private ulong _textSelectionTransitionVersion;
 
     /// <summary>Gets the common pointer-selection phase for behavioral invariant tests.</summary>
@@ -44,7 +45,21 @@ public abstract partial class ControlBase: ISelectableTextSource
         get;
         set
         {
+            VerifyMutable();
+
+            if (field == value)
+            {
+                return;
+            }
+
+            var version = ++_textSelectionCapabilityVersion;
+
             if (!SetProperty(ref field, value, InvalidationImpact.Render))
+            {
+                return;
+            }
+
+            if (!IsTextSelectionCapabilityCurrent(version, value))
             {
                 return;
             }
@@ -52,6 +67,12 @@ public abstract partial class ControlBase: ISelectableTextSource
             if (!value)
             {
                 _textSelectionGesture?.Cancel(releaseCapture: true);
+
+                if (!IsTextSelectionCapabilityCurrent(version, value))
+                {
+                    return;
+                }
+
                 _textSelectionCaretEstablished = false;
                 _ = CommitTextSelection(default);
             }
@@ -60,7 +81,10 @@ public abstract partial class ControlBase: ISelectableTextSource
                 _textSelectionGesture = new TextSelectionGesture(this);
             }
 
-            OnTextSelectionEnabledChanged(value);
+            if (IsTextSelectionCapabilityCurrent(version, value))
+            {
+                OnTextSelectionEnabledChanged(value);
+            }
         }
     }
 
@@ -284,6 +308,10 @@ public abstract partial class ControlBase: ISelectableTextSource
     /// <summary>Responds after the opt-in selection capability state changes.</summary>
     /// <param name="enabled">The committed capability state.</param>
     protected virtual void OnTextSelectionEnabledChanged(bool enabled) => _ = enabled;
+
+    [Pure]
+    private bool IsTextSelectionCapabilityCurrent(ulong version, bool value) =>
+        !IsDisposed && _textSelectionCapabilityVersion == version && IsTextSelectionEnabled == value;
 
     /// <summary>Gets whether this control's own snapshot replaces retained-child aggregation.</summary>
     protected virtual bool HasAuthoritativeTextSelectionProjection => false;

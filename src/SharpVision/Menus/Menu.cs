@@ -299,6 +299,7 @@ public sealed class Menu: ItemsControl
             .Where(candidate => candidate.Kind == MenuItemKind.Radio &&
                                 string.Equals(candidate.GroupName, item.GroupName, StringComparison.Ordinal))
             .ToArray();
+        var groupName = item.GroupName;
         var versions = new int[candidates.Length];
 
         for (var index = 0; index < candidates.Length; index++)
@@ -312,7 +313,10 @@ public sealed class Menu: ItemsControl
         {
             var expected = ReferenceEquals(candidates[index], item);
 
-            if (candidates[index].IsCheckedCommitCurrent(versions[index], expected))
+            if (IndexOfItemControl(candidates[index]) >= 0 &&
+                candidates[index].Kind == MenuItemKind.Radio &&
+                string.Equals(candidates[index].GroupName, groupName, StringComparison.Ordinal) &&
+                candidates[index].IsCheckedCommitCurrent(versions[index], expected))
             {
                 ExceptionAggregation.Capture(candidates[index].PublishChecked, ref failure);
             }

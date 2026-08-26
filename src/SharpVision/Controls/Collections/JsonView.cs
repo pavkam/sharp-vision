@@ -37,6 +37,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     private readonly StyleSlot<JsonViewStyle> _style;
     private JsonViewNode? _selectedNode;
     private int? _projectionWidth;
+    private ulong _projectionVersion;
     private (Rune Collapsed, Rune IsExpanded)? _builtWithGlyphs;
     private Constraint _lastMeasureConstraint;
     private bool _suppressScrollChangedPassthrough;
@@ -112,6 +113,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
             _sourceLines = BuildLines(root, Indent);
             _lines = _sourceLines;
             _projectionWidth = null;
+            _projectionVersion++;
             _stack.HorizontalOffset = 0;
             _stack.VerticalOffset = 0;
             CommitSelection(previousPath, visibleNodes.FirstOrDefault());
@@ -142,6 +144,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
                     _sourceLines = BuildLines(_root, Indent);
                     _lines = _sourceLines;
                     _projectionWidth = null;
+                    _projectionVersion++;
                     _content.Invalidate(Invalidation.Measure);
                 });
         }
@@ -650,10 +653,18 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
             return;
         }
 
+        var projectionVersion = _projectionVersion;
         CommitSelection(SelectedPath, node);
+
+        if (!IsInputContinuationCurrent(node, projectionVersion))
+        {
+            eventArgs.IsHandled = true;
+            return;
+        }
+
         _ = Focus();
 
-        if (onDisclosure)
+        if (onDisclosure && IsInputContinuationCurrent(node, projectionVersion))
         {
             _ = SetExpanded(node.Path, !node.IsExpanded);
         }
@@ -953,6 +964,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
         _sourceLines = BuildLines(_root, Indent);
         _lines = _sourceLines;
         _projectionWidth = null;
+        _projectionVersion++;
         NormalizeSelection();
         _content.Invalidate(Invalidation.Measure);
         NotifyPropertyChanged(nameof(VisibleEntryCount), InvalidationImpact.Measure);
@@ -1068,8 +1080,15 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
 
         var index = _selectedNode is null ? -1 : _visibleNodes.IndexOf(_selectedNode);
         var target = Math.Clamp(index + direction, 0, _visibleNodes.Count - 1);
-        CommitSelection(SelectedPath, _visibleNodes[target]);
-        RevealSelection();
+        var node = _visibleNodes[target];
+        var projectionVersion = _projectionVersion;
+        CommitSelection(SelectedPath, node);
+
+        if (IsInputContinuationCurrent(node, projectionVersion))
+        {
+            RevealSelection();
+        }
+
         return true;
     }
 
@@ -1099,8 +1118,14 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
             return false;
         }
 
+        var projectionVersion = _projectionVersion;
         CommitSelection(SelectedPath, node);
-        RevealSelection();
+
+        if (IsInputContinuationCurrent(node, projectionVersion))
+        {
+            RevealSelection();
+        }
+
         return true;
     }
 
@@ -1118,8 +1143,15 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
             return false;
         }
 
-        CommitSelection(SelectedPath, first ? _visibleNodes[0] : _visibleNodes[^1]);
-        RevealSelection();
+        var node = first ? _visibleNodes[0] : _visibleNodes[^1];
+        var projectionVersion = _projectionVersion;
+        CommitSelection(SelectedPath, node);
+
+        if (IsInputContinuationCurrent(node, projectionVersion))
+        {
+            RevealSelection();
+        }
+
         return true;
     }
 
@@ -1151,8 +1183,14 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
             return false;
         }
 
+        var projectionVersion = _projectionVersion;
         CommitSelection(SelectedPath, parent);
-        RevealSelection();
+
+        if (IsInputContinuationCurrent(parent, projectionVersion))
+        {
+            RevealSelection();
+        }
+
         return true;
     }
 
@@ -1168,8 +1206,15 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
             return SetExpanded(selected.Path, true);
         }
 
-        CommitSelection(SelectedPath, selected.Children[0]);
-        RevealSelection();
+        var child = selected.Children[0];
+        var projectionVersion = _projectionVersion;
+        CommitSelection(SelectedPath, child);
+
+        if (IsInputContinuationCurrent(child, projectionVersion))
+        {
+            RevealSelection();
+        }
+
         return true;
     }
 
@@ -1244,6 +1289,13 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
             _stack.VerticalOffset = lineIndex - _stack.Viewport.Height + 1;
         }
     }
+
+    [Pure]
+    private bool IsInputContinuationCurrent(JsonViewNode node, ulong projectionVersion) =>
+        !IsDisposed &&
+        _projectionVersion == projectionVersion &&
+        ReferenceEquals(_selectedNode, node) &&
+        _visibleNodes.Contains(node);
 
     private void DrawToken(
         TerminalCanvas canvas,

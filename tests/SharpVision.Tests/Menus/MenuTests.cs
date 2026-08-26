@@ -564,6 +564,81 @@ public sealed class MenuTests
         order.ShouldBe(["item", "menu"]);
     }
 
+    /// <summary>Verifies item callbacks cannot forward invocation into an owner relationship they
+    /// removed, moved, or disposed.</summary>
+    [Theory]
+    [InlineData("remove")]
+    [InlineData("move")]
+    [InlineData("dispose")]
+    public void PerformInvoke_WhenItemCallbackInvalidatesOwner_SkipsOldMenuForwarding(string mutation)
+    {
+        var menu = new Menu();
+        var destination = new Menu();
+        var item = new MenuItem();
+        var oldOwnerInvocations = 0;
+        menu.Items.Add(item);
+        menu.ItemInvoked += (_, _) => oldOwnerInvocations++;
+        item.Invoked += (_, _) =>
+        {
+            if (mutation == "dispose")
+            {
+                menu.Dispose();
+                return;
+            }
+
+            menu.Items.Remove(item).ShouldBeTrue();
+
+            if (mutation == "move")
+            {
+                destination.Items.Add(item);
+            }
+        };
+
+        item.PerformInvoke();
+
+        oldOwnerInvocations.ShouldBe(0);
+    }
+
+    /// <summary>Verifies an earlier radio publication can remove or dispose the later staged
+    /// member without publishing through that stale target.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void IsChecked_WhenEarlierRadioCallbackInvalidatesLaterMember_SkipsLaterPublication(bool dispose)
+    {
+        var menu = new Menu();
+        var first = new MenuItem { Kind = MenuItemKind.Radio, GroupName = "size", IsChecked = true };
+        var second = new MenuItem { Kind = MenuItemKind.Radio, GroupName = "size" };
+        var published = 0;
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        first.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(MenuItem.IsChecked))
+            {
+                if (dispose)
+                {
+                    second.Dispose();
+                }
+                else
+                {
+                    menu.Items.Remove(second).ShouldBeTrue();
+                }
+            }
+        };
+        second.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(MenuItem.IsChecked))
+            {
+                published++;
+            }
+        };
+
+        second.IsChecked = true;
+
+        published.ShouldBe(0);
+    }
+
     /// <summary>Verifies the bound command runs after Invoked and after the menu's own
     /// notification.</summary>
     [Fact]

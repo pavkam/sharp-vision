@@ -109,6 +109,55 @@ public sealed partial class ControlBaseTests
         raised.ShouldBe(1);
     }
 
+    /// <summary>Verifies a newer reentrant enable transition retains its gesture and selection
+    /// instead of letting obsolete outer disable cleanup erase them.</summary>
+    [Fact]
+    public void IsTextSelectionEnabled_WhenDisableObserverReenables_PreservesNewestState()
+    {
+        var control = new Stack
+        {
+            IsTextSelectionEnabled = true,
+            Children = { new ControlText("text") }
+        };
+        control.SetTextSelection(new Selection(0, 4));
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ControlBase.IsTextSelectionEnabled) &&
+                !control.IsTextSelectionEnabled)
+            {
+                control.IsTextSelectionEnabled = true;
+            }
+        };
+
+        control.IsTextSelectionEnabled = false;
+
+        control.IsTextSelectionEnabled.ShouldBeTrue();
+        control.TextSelection.ShouldBe(new Selection(0, 4));
+        control.TextSelectionPhase.ShouldBe(TextSelectionGesturePhase.Idle);
+    }
+
+    /// <summary>Verifies a newer reentrant disable transition owns final cleanup when an enable
+    /// notification is reversed.</summary>
+    [Fact]
+    public void IsTextSelectionEnabled_WhenEnableObserverDisables_PreservesNewestState()
+    {
+        var control = new Stack { Children = { new ControlText("text") } };
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ControlBase.IsTextSelectionEnabled) &&
+                control.IsTextSelectionEnabled)
+            {
+                control.IsTextSelectionEnabled = false;
+            }
+        };
+
+        control.IsTextSelectionEnabled = true;
+
+        control.IsTextSelectionEnabled.ShouldBeFalse();
+        control.TextSelection.ShouldBe(default);
+        control.TextSelectionPhase.ShouldBe(TextSelectionGesturePhase.Idle);
+    }
+
     /// <summary>Verifies replacing a semantic source clears a range even when its text is identical.</summary>
     [Fact]
     public void TextSelection_WhenSourceIdentityChanges_ClearsStaleRangeOnce()
