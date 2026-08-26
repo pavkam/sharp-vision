@@ -118,6 +118,59 @@ public sealed class WindowSurfaceTests
         Overlay.GetZIndex(second).ShouldBeGreaterThan(Overlay.GetZIndex(first));
     }
 
+    /// <summary>Verifies inherited visibility and enabled changes immediately yield modeless activation.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Activation_WhenActiveWindowBecomesUnavailableThroughAncestor_ActivatesFallbackAsync(
+        bool disableAncestor)
+    {
+        var fallback = new Window
+        {
+            Header = "Fallback",
+            Width = Length.Cells(10),
+            Height = Length.Cells(5)
+        };
+        var active = new Window
+        {
+            Header = "Nested",
+            Width = Length.Cells(10),
+            Height = Length.Cells(5)
+        };
+        var host = new Overlay { Children = { active } };
+        Overlay.SetLeft(host, Length.Cells(12));
+        var root = new Overlay { Children = { fallback, host } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 7),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(fallback, new Point(1, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+        await surface.Pointer.MoveToAsync(active, new Point(1, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+        surface.Application.ActiveWindow.ShouldBeSameAs(active);
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                if (disableAncestor)
+                {
+                    host.IsEnabled = false;
+                }
+                else
+                {
+                    host.Visibility = Visibility.Collapsed;
+                }
+            },
+            "make the active Window unavailable through its ancestor");
+
+        surface.Application.ActiveWindow.ShouldBeSameAs(fallback);
+        fallback.IsActive.ShouldBeTrue();
+        active.IsActive.ShouldBeFalse();
+    }
+
     /// <summary>Verifies Window chrome ignores hover and activates only when focus enters its subtree.</summary>
     [Fact]
     public async Task Theme_WhenWindowHoveredAndActivated_RespondsOnlyToActivationAsync()

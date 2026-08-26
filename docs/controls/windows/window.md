@@ -166,13 +166,15 @@ popups are never touched by this reordering (see
 disabling, detaching, disposing, or shutting down the active Window activates
 the most recently active remaining available Window instead of clearing
 activation, walking a small recency history the activation manager keeps for
-this purpose. That bounded history is an ordering hint: if every retained entry
-is unavailable, the manager searches the owned tree for an older Window marked
-by the same activation lifetime. Only when no previously active Window remains
-available does activation clear. The default Window profile maps `IsActive` onto
-its existing `FocusWithin` appearance contribution, changing only the frame
-foreground to `SemanticColor.ActiveBorder`. `ContainsFocus` and `IsFocused` keep
-their independent keyboard-focus meanings.
+this purpose. Visibility and enabled state include inherited ancestor state, so
+hiding or disabling an ordinary container around the active Window triggers the
+same immediate fallback. That bounded history is an ordering hint: if every
+retained entry is unavailable, the manager searches the owned tree for an older
+Window marked by the same activation lifetime. Only when no previously active
+Window remains available does activation clear. The default Window profile maps
+`IsActive` onto its existing `FocusWithin` appearance contribution, changing
+only the frame foreground to `SemanticColor.ActiveBorder`. `ContainsFocus` and
+`IsFocused` keep their independent keyboard-focus meanings.
 
 Activation notifications are serialized: reentrant activation supersedes the
 older request, and a throwing observer is rethrown only after manager identity,

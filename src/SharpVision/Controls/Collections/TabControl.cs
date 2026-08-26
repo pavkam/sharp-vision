@@ -20,6 +20,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     private const int _selectionIndicatorRowHeight = 1;
     private const int _headerStripHeight = _headerRowHeight + _selectionIndicatorRowHeight;
     private const int _headerSeparatorWidth = 1;
+    private readonly Dictionary<TabItem, TabHeader> _headersByItem = [];
     private readonly Dictionary<TabItem, TabItemPresentation> _requestedPresentations = [];
     private readonly StyleSlot<TabControlStyle> _style;
     private readonly LayoutStack _headers;
@@ -211,11 +212,13 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         var divider = style.DividerGlyph.Resolve(separators.TabDivider.Fallback, CellPolicy.AmbiguousWidth);
         var underline = style.UnderlineGlyph.Resolve(separators.TabUnderline.Fallback, CellPolicy.AmbiguousWidth);
 
-        for (var index = 0; index < _headers.Children.Count - 1; index++)
+        for (var index = 0; index < _headers.Children.Count; index++)
         {
             var header = HeaderAt(index);
 
-            if (header.Visibility == Visibility.Visible && header.Bounds.Right < Bounds.Right)
+            if (header.Visibility == Visibility.Visible &&
+                HasVisibleHeaderAfter(index) &&
+                header.Bounds.Right < Bounds.Right)
             {
                 canvas.DrawRune(
                     divider,
@@ -288,6 +291,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         {
             IsEnabled = item.IsEnabled,
             Visibility = requestedPresentation.Visibility,
+            Width = HeaderWidth,
         };
         header.Activated += OnHeaderActivated;
         InsertItemControl(index, item);
@@ -303,11 +307,22 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             throw;
         }
 
+        _headersByItem.Add(item, header);
         _requestedPresentations.Add(item, requestedPresentation);
         item.PropertyChanged += OnItemPropertyChanged;
         item.Width = Length.Percent(100);
+
+        if (!IsCommitted(item, header))
+        {
+            return;
+        }
+
         item.Height = Length.Percent(100);
-        header.Width = HeaderWidth;
+
+        if (!IsCommitted(item, header))
+        {
+            return;
+        }
 
         // The newly inserted page never displaces an already-selected page: the
         // selected item keeps its identity, so only its numeric index shifts.
@@ -342,6 +357,10 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         return true;
     }
 
+    /// <summary>Detaches an owned page before its caller-initiated disposal publication begins.</summary>
+    /// <param name="item">The page whose direct disposal was requested.</param>
+    internal void RemoveItemForDisposal(TabItem item) => _ = RemoveItem(item);
+
     internal void RemoveItemAt(int index)
     {
         VerifyMutable();
@@ -366,7 +385,8 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         var header = HeaderAt(idx);
         item.PropertyChanged -= OnItemPropertyChanged;
         header.Activated -= OnHeaderActivated;
-        RestorePresentation(item);
+        _ = _headersByItem.Remove(item);
+        _ = _requestedPresentations.Remove(item, out var requestedPresentation);
         header.CommitSelection(false);
         _ = RemoveItemControl(item);
         _ = _headers.Children.Remove(header);
@@ -391,6 +411,8 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
             ApplyPresentation();
         }
+
+        RestorePresentation(item, requestedPresentation);
     }
 
     internal void ReplaceItem(int index, TabItem item)
@@ -420,6 +442,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         {
             IsEnabled = item.IsEnabled,
             Visibility = requestedPresentation.Visibility,
+            Width = HeaderWidth,
         };
         newHeader.Activated += OnHeaderActivated;
 
@@ -441,26 +464,47 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
         old.PropertyChanged -= OnItemPropertyChanged;
         oldHeader.Activated -= OnHeaderActivated;
-        RestorePresentation(old);
+        _ = _headersByItem.Remove(old);
+        _ = _requestedPresentations.Remove(old, out var oldPresentation);
         oldHeader.CommitSelection(false);
         oldHeader.Dispose();
 
+        _headersByItem.Add(item, newHeader);
         _requestedPresentations.Add(item, requestedPresentation);
         item.PropertyChanged += OnItemPropertyChanged;
-        item.Width = Length.Percent(100);
-        item.Height = Length.Percent(100);
-        newHeader.Width = HeaderWidth;
+        try
+        {
+            item.Width = Length.Percent(100);
 
-        if (wasSelected)
-        {
-            _selectedIndex = -1;
-            _selectionVersion++;
-            var target = IsEligible(index) ? index : SingleSelectionIndex.FindNearest(index, ItemControlCount, IsEligible);
-            CommitSelection(target, previousSelectedIndex, previousSelectedItem);
+            if (!IsCommitted(item, newHeader))
+            {
+                return;
+            }
+
+            item.Height = Length.Percent(100);
+
+            if (!IsCommitted(item, newHeader))
+            {
+                return;
+            }
+
+            if (wasSelected)
+            {
+                _selectedIndex = -1;
+                _selectionVersion++;
+                var target = IsEligible(index)
+                    ? index
+                    : SingleSelectionIndex.FindNearest(index, ItemControlCount, IsEligible);
+                CommitSelection(target, previousSelectedIndex, previousSelectedItem);
+            }
+            else
+            {
+                ApplyPresentation();
+            }
         }
-        else
+        finally
         {
-            ApplyPresentation();
+            RestorePresentation(old, oldPresentation);
         }
     }
 
@@ -561,11 +605,13 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             var header = HeaderAt(index);
             item.PropertyChanged -= OnItemPropertyChanged;
             header.Activated -= OnHeaderActivated;
-            RestorePresentation(item);
+            _ = _headersByItem.Remove(item);
             header.CommitSelection(false);
             headers[index] = header;
         }
 
+        var presentations = _requestedPresentations.ToArray();
+        _requestedPresentations.Clear();
         ClearItemControls();
         _headers.Children.Clear();
         CommitSelectionAfterMutation(-1, previousSelectedIndex, previousSelectedItem);
@@ -574,26 +620,41 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         {
             header.Dispose();
         }
+
+        foreach (var (item, presentation) in presentations)
+        {
+            RestorePresentation(item, presentation);
+        }
     }
 
-    // Runs before the item is detached so the restored values are the ones
-    // observed by the caller immediately afterward, not an intermediate state
-    // still overwritten by this control's private presentation policy. Without
-    // this, a detached item kept Width/Height pinned to Percent(100) and
-    // Visibility pinned to whatever page happened to be selected last — and
-    // because AddItem captures an item's *current* Visibility as its next
-    // owner's requested visibility, a Collapsed leftover made the item
-    // permanently unselectable in any later TabControl.
-    private void RestorePresentation(TabItem item)
+    // Restoration runs only after ownership, headers, and selection have reached their final
+    // snapshot. Caller PropertyChanged handlers can therefore mutate the collection without
+    // resuming an obsolete outer transaction against a detached item or disposed header.
+    private static void RestorePresentation(TabItem item, TabItemPresentation presentation)
     {
-        if (!_requestedPresentations.Remove(item, out var presentation))
-        {
-            return;
-        }
-
         item.Visibility = presentation.Visibility;
         item.Width = presentation.Width;
         item.Height = presentation.Height;
+    }
+
+    [Pure]
+    private bool IsCommitted(TabItem item, TabHeader header) =>
+        IndexOfItemControl(item) >= 0 &&
+        _headersByItem.TryGetValue(item, out var currentHeader) &&
+        ReferenceEquals(currentHeader, header);
+
+    [Pure]
+    private bool HasVisibleHeaderAfter(int index)
+    {
+        for (var candidate = index + 1; candidate < _headers.Children.Count; candidate++)
+        {
+            if (HeaderAt(candidate).Visibility == Visibility.Visible)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <inheritdoc/>

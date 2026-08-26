@@ -50,4 +50,11 @@ public sealed class TabItem: ContentControl
             ArrangeChild(content, default, ResolvedAxes.Both);
         }
     }
+
+    /// <inheritdoc/>
+    internal override void OnDirectDisposalRequested()
+    {
+        FindAncestor<TabControl>()?.RemoveItemForDisposal(this);
+        base.OnDirectDisposalRequested();
+    }
 }

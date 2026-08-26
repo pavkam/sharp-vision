@@ -16,10 +16,10 @@ changes only its foreground; the committed selected header may use the selection
 background.
 
 The header strip occupies the first row. Each label gets one cell of horizontal
-padding, adjacent labels are separated by the code-owned tab-divider glyph, and
-the code-owned tab-underline glyph occupies the second row when the height
-permits. Below that rule, only the selected page's content participates in
-measure, arrangement, rendering, hit testing, and navigation. The selected
+padding, adjacent visible labels are separated by the code-owned tab-divider
+glyph, and the code-owned tab-underline glyph occupies the second row when the
+height permits. Below that rule, only the selected page's content participates
+in measure, arrangement, rendering, hit testing, and navigation. The selected
 visual state belongs to the header; page content keeps its normal appearance.
 Unselected content stays owned and attached, with empty bounds.
 
@@ -56,6 +56,10 @@ without disposing. `Move` reorders the existing page and header identities in
 place: neither control detaches, changes parent, loses focus, nor crosses an
 attachment lifecycle boundary.
 
+Directly disposing an owned `TabItem` first removes it through the same semantic
+collection path. Its generated header and presentation bookkeeping leave with
+it, and selection repairs exactly as for `Items.Remove`.
+
 ## Behavior
 
 - Inserting, removing, replacing, or moving a page preserves the identity of an
@@ -73,6 +77,12 @@ attachment lifecycle boundary.
   or page `Visibility` notification supersedes the interrupted transaction;
   stale typed events are suppressed and the live selected page is presented
   before its event is raised.
+- Incoming page geometry notifications may synchronously remove, replace, clear,
+  or dispose the candidate. The newer collection snapshot wins and the
+  interrupted insertion or replacement performs no stale header work.
+- Removal restores caller-authored visibility and geometry only after the page,
+  header, and selection snapshot have committed. Restoration callbacks may
+  safely begin another collection mutation.
 - `TabItem.IsClosable` opts a page into `RequestClose` and Delete-key closure.
   `CloseRequested` is raised before removal with a cancellable
   [`TabCloseRequestedEventArgs`](#tabcloserequestedeventargs) payload. No close

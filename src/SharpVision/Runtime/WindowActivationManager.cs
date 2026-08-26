@@ -3,6 +3,7 @@
 
 namespace SharpVision.Runtime;
 
+using System.ComponentModel;
 using System.Runtime.ExceptionServices;
 
 using Controls.Layout;
@@ -315,16 +316,24 @@ internal sealed class WindowActivationManager: IDisposable
 
     private void Subscribe(Window window)
     {
-        window.VisibilityChanged += OnActiveWindowAvailabilityChanged;
-        window.EnabledChanged += OnActiveWindowAvailabilityChanged;
+        window.PropertyChanged += OnActiveWindowPropertyChanged;
         window.ParentChanged += OnActiveWindowAvailabilityChanged;
     }
 
     private void Unsubscribe(Window window)
     {
-        window.VisibilityChanged -= OnActiveWindowAvailabilityChanged;
-        window.EnabledChanged -= OnActiveWindowAvailabilityChanged;
+        window.PropertyChanged -= OnActiveWindowPropertyChanged;
         window.ParentChanged -= OnActiveWindowAvailabilityChanged;
+    }
+
+    private void OnActiveWindowPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.PropertyName is nameof(ControlBase.EffectiveIsVisible) or nameof(ControlBase.EffectiveIsEnabled))
+        {
+            OnActiveWindowAvailabilityChanged(sender, eventArgs);
+        }
     }
 
     private void OnActiveWindowAvailabilityChanged(object? sender, EventArgs eventArgs)

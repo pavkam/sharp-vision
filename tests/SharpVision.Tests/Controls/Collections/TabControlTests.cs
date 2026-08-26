@@ -421,6 +421,27 @@ public sealed class TabControlTests
         FrameOracle.Get(frame, new Point(5, 0)).ShouldBe("|");
     }
 
+    /// <summary>Verifies dividers exist only between visible headers, never after the visible tail.</summary>
+    [Fact]
+    public void Render_WhenOnlyTrailingHeadersAreCollapsed_DoesNotDrawTrailingDivider()
+    {
+        var first = Create("A", "One");
+        var second = Create("B", "Two");
+        var third = Create("C", "Three");
+        second.Visibility = Visibility.Collapsed;
+        third.Visibility = Visibility.Collapsed;
+        var tabs = Create(first, second, third);
+        tabs.HeaderWidth = Length.Cells(3);
+        tabs.Style = TabControlStyle.Default with { DividerGlyph = new Rune('|') };
+        var size = new Size(12, 4);
+        new LayoutEngine().Layout(tabs, size);
+        using Frame frame = new(size);
+
+        tabs.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(3, 0)).ShouldBe(string.Empty);
+    }
+
     /// <summary>Verifies the divider still draws on the header row when the control is squeezed
     /// to exactly height 1, the graceful-degradation case ArrangeOverride explicitly clamps for.</summary>
     [Fact]
@@ -898,6 +919,42 @@ public sealed class TabControlTests
         selected.IsDisposed.ShouldBeFalse();
     }
 
+    /// <summary>Verifies child-initiated disposal removes the matching retained header and repairs selection.</summary>
+    [Fact]
+    public void Dispose_WhenOwnedSelectedPageDisposes_ReconcilesHeadersAndSelection()
+    {
+        var first = Create("First", "One");
+        var selected = Create("Selected", "Two");
+        var third = Create("Third", "Three");
+        var tabs = Create(first, selected, third);
+        tabs.SelectedItem = selected;
+
+        selected.Dispose();
+
+        tabs.Items.ShouldBe([first, third]);
+        tabs.SelectedItem.ShouldBeSameAs(third);
+        tabs.HeaderAt(0).Text.ShouldBe("First");
+        tabs.HeaderAt(1).Text.ShouldBe("Third");
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tabs.HeaderAt(2));
+    }
+
+    /// <summary>Verifies disposing an earlier unselected page preserves the selected page identity.</summary>
+    [Fact]
+    public void Dispose_WhenOwnedPageBeforeSelectionDisposes_ShiftsSelectionWithItsHeader()
+    {
+        var first = Create("First", "One");
+        var selected = Create("Selected", "Two");
+        var tabs = Create(first, selected);
+        tabs.SelectedItem = selected;
+
+        first.Dispose();
+
+        tabs.Items.ShouldBe([selected]);
+        tabs.SelectedIndex.ShouldBe(0);
+        tabs.SelectedItem.ShouldBeSameAs(selected);
+        tabs.HeaderAt(0).Text.ShouldBe("Selected");
+    }
+
     /// <summary>Verifies removal restores the item's authored Width, Height, and Visibility.</summary>
     [Fact]
     public void Items_WhenTabIsRemoved_RestoresAuthoredWidthHeightAndVisibility()
@@ -1040,6 +1097,139 @@ public sealed class TabControlTests
         tabs.HeaderAt(0).Text.ShouldBe("Inserted");
         tabs.HeaderAt(1).Text.ShouldBe("First");
         tabs.HeaderAt(2).Text.ShouldBe("Second");
+    }
+
+    /// <summary>Verifies incoming-page geometry callbacks may remove the page without leaving an outer mutation behind.</summary>
+    [Theory]
+    [InlineData(false, false, "remove")]
+    [InlineData(false, false, "clear")]
+    [InlineData(false, false, "replace")]
+    [InlineData(false, false, "dispose")]
+    [InlineData(false, true, "remove")]
+    [InlineData(false, true, "clear")]
+    [InlineData(false, true, "replace")]
+    [InlineData(false, true, "dispose")]
+    [InlineData(true, false, "remove")]
+    [InlineData(true, false, "clear")]
+    [InlineData(true, false, "replace")]
+    [InlineData(true, false, "dispose")]
+    [InlineData(true, true, "remove")]
+    [InlineData(true, true, "clear")]
+    [InlineData(true, true, "replace")]
+    [InlineData(true, true, "dispose")]
+    public void InsertOrReplace_WhenGeometryCallbackMutatesCandidate_CompletesWithAlignedCollections(
+        bool replace,
+        bool onHeight,
+        string mutation)
+    {
+        var original = Create("Original", "One");
+        var survivor = Create("Survivor", "Two");
+        var tabs = Create(original, survivor);
+        var candidate = Create("Candidate", "New");
+        var nested = false;
+        candidate.PropertyChanged += (_, eventArgs) =>
+        {
+            var propertyName = onHeight ? nameof(ControlBase.Height) : nameof(ControlBase.Width);
+            if (nested || eventArgs.PropertyName != propertyName || candidate.Parent is null)
+            {
+                return;
+            }
+
+            nested = true;
+            if (mutation == "remove")
+            {
+                _ = tabs.Items.Remove(candidate);
+            }
+            else if (mutation == "clear")
+            {
+                tabs.Items.Clear();
+            }
+            else if (mutation == "replace")
+            {
+                tabs.Items[tabs.Items.IndexOf(candidate)] = Create("Nested", "Replacement");
+            }
+            else
+            {
+                candidate.Dispose();
+            }
+        };
+
+        if (replace)
+        {
+            tabs.Items[0] = candidate;
+        }
+        else
+        {
+            tabs.Items.Insert(0, candidate);
+        }
+
+        tabs.Items.ShouldNotContain(candidate);
+        for (var index = 0; index < tabs.Items.Count; index++)
+        {
+            tabs.HeaderAt(index).Text.ShouldBe(tabs.Items[index].HeaderText);
+        }
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tabs.HeaderAt(tabs.Items.Count));
+    }
+
+    /// <summary>Verifies restoration callbacks run only after removal fully commits, so nested collection work is safe.</summary>
+    [Theory]
+    [InlineData("remove", "Visibility")]
+    [InlineData("clear", "Visibility")]
+    [InlineData("replace", "Visibility")]
+    [InlineData("dispose", "Visibility")]
+    [InlineData("remove", "Width")]
+    [InlineData("clear", "Width")]
+    [InlineData("replace", "Width")]
+    [InlineData("dispose", "Width")]
+    [InlineData("remove", "Height")]
+    [InlineData("clear", "Height")]
+    [InlineData("replace", "Height")]
+    [InlineData("dispose", "Height")]
+    public void Remove_WhenRestorationCallbackMutatesCollection_LeavesOneCommittedSnapshot(
+        string mutation,
+        string propertyName)
+    {
+        var removed = Create("Removed", "One");
+        removed.Visibility = Visibility.Hidden;
+        removed.Width = Length.Cells(7);
+        removed.Height = Length.Cells(3);
+        var survivor = Create("Survivor", "Two");
+        var tabs = Create(removed, survivor);
+        var nested = false;
+        removed.PropertyChanged += (_, eventArgs) =>
+        {
+            if (nested || eventArgs.PropertyName != propertyName || removed.Parent is not null)
+            {
+                return;
+            }
+
+            nested = true;
+            if (mutation == "remove")
+            {
+                _ = tabs.Items.Remove(removed);
+            }
+            else if (mutation == "clear")
+            {
+                tabs.Items.Clear();
+            }
+            else if (mutation == "replace")
+            {
+                tabs.Items[0] = Create("Replacement", "New");
+            }
+            else
+            {
+                survivor.Dispose();
+            }
+        };
+
+        _ = tabs.Items.Remove(removed);
+
+        removed.Parent.ShouldBeNull();
+        for (var index = 0; index < tabs.Items.Count; index++)
+        {
+            tabs.HeaderAt(index).Text.ShouldBe(tabs.Items[index].HeaderText);
+        }
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tabs.HeaderAt(tabs.Items.Count));
     }
 
     /// <summary>Verifies an out-of-range insertion index throws before mutating the collection.</summary>
