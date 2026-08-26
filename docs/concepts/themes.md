@@ -240,8 +240,10 @@ The same rule set covers every other member kind a style section accepts:
 attributes take a literal attribute name/array or the JSON name of a global
 semantic value; border glyph styles and shadow geometry are allowed because they
 define the type's own chrome, not something a specific control instance owns.
-Individual controls may still set complete local styles that take precedence
-over everything a theme supplies.
+Enum-shaped leaves accept declared names and comma-separated declared flag names
+only; numeric ordinals and numeric flag bitsets are rejected as unstable wire
+representations. Individual controls may still set complete local styles that
+take precedence over everything a theme supplies.
 
 Every bundled theme except the two zero-config defaults (`default-dark`/
 `default-light`, backing `ThemeCatalog.Dark`/`ThemeCatalog.White`) restyles
@@ -459,6 +461,13 @@ closing it, and `ThemeCatalog.LoadFile(path)` reads a file.
 catalog. Embedded themes are parsed lazily and cached; each external load
 returns a new frozen instance.
 
+For typed construction, create an unfrozen `Theme`, configure semantic colors
+with `SetColor`, semantic decorations with `SetAttributes`, the glyph family
+with `SetGlyphs`, and any of the six root state sets with `SetStyleSet`, then
+call `Freeze`. Mutation after freezing throws. `Application.Theme` accepts only
+a frozen instance, so unfinished construction state cannot enter a live retained
+tree.
+
 Input is limited to 64 KiB, a JSON depth of eight, 256 palette entries, and
 2,048 characters per metadata string. Comments, trailing commas, malformed
 UTF-8, invalid element kinds, unknown top-level or `styles.*` key names, and
@@ -466,11 +475,11 @@ malformed colors all fail with a source-labelled `InvalidDataException` - for
 `styles.*` leaf values specifically, at first resolution rather than at parse
 time (see [Style types](#style-types) above).
 
-Assigning `Application.Theme` publishes the frozen theme through the retained
-control tree on the dispatcher; controls are not reconstructed. The resolver
-caches each style type's resolved set per `(Theme, VisualState combination)`,
-and theme replacement, local appearance changes, and relevant state changes
-invalidate those entries.
+Assigning `Application.Theme` publishes an already-frozen theme through the
+retained control tree on the dispatcher; controls are not reconstructed. The
+resolver caches each style type's resolved set per
+`(Theme, VisualState combination)`, and theme replacement, local appearance
+changes, and relevant state changes invalidate those entries.
 
 ## Expected behavior
 

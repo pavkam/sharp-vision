@@ -4,6 +4,7 @@
 namespace SharpVision.Controls;
 
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Reflection;
 
 using Styling;
@@ -14,6 +15,7 @@ using Styling;
 public sealed class StyleSlot<TStyle>
     where TStyle : ControlStyle
 {
+    private static readonly ConcurrentDictionary<Type, FieldInfo[]> _comparableFields = new();
     private readonly Action<TStyle, TStyle>? _changed;
     private readonly List<StyleSlot<TStyle>> _targets = [];
     private TStyle? _cache;
@@ -281,22 +283,23 @@ public sealed class StyleSlot<TStyle>
             return previousDecoration.Resolve(previousTheme) == currentDecoration.Resolve(currentTheme);
         }
 
-        if (previous is not IAppearanceFragment)
+        var fields = GetComparableFields(previous.GetType());
+        if (fields.Length == 0)
         {
             return true;
         }
 
-        foreach (var property in previous.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        foreach (var field in fields)
         {
-            if (isStyleRoot && property.DeclaringType == typeof(ControlStyle))
+            if (isStyleRoot && field.DeclaringType == typeof(ControlStyle))
             {
                 continue;
             }
 
             if (!ResolvedSemanticValuesEqual(
-                    property.GetValue(previous),
+                    field.GetValue(previous),
                     previousTheme,
-                    property.GetValue(current),
+                    field.GetValue(current),
                     currentTheme,
                     isStyleRoot: false))
             {
@@ -346,14 +349,15 @@ public sealed class StyleSlot<TStyle>
             return ResolvedSequencesEqual(previousItems, previousTheme, currentItems, currentTheme);
         }
 
-        if (previous is not IAppearanceFragment)
+        var fields = GetComparableFields(type);
+        if (fields.Length == 0)
         {
             return Equals(previous, current);
         }
 
-        foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        foreach (var field in fields)
         {
-            if (!ResolvedValuesEqual(property.GetValue(previous), previousTheme, property.GetValue(current), currentTheme))
+            if (!ResolvedValuesEqual(field.GetValue(previous), previousTheme, field.GetValue(current), currentTheme))
             {
                 return false;
             }
@@ -361,6 +365,20 @@ public sealed class StyleSlot<TStyle>
 
         return true;
     }
+
+    private static FieldInfo[] GetComparableFields(Type type) =>
+        _comparableFields.GetOrAdd(
+            type,
+            static candidate =>
+            [
+                .. candidate
+                    .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(static property => property.GetIndexParameters().Length == 0)
+                    .Select(static property => property.DeclaringType?.GetField(
+                        $"<{property.Name}>k__BackingField",
+                        BindingFlags.NonPublic | BindingFlags.Instance))
+                    .OfType<FieldInfo>()
+            ]);
 
     [Pure]
     private static bool ResolvedSequencesEqual(

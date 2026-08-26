@@ -10,6 +10,27 @@ using System.Text.Json;
 /// <summary>Verifies public Theme construction preserves valid immutable metadata.</summary>
 public sealed class ThemeTests
 {
+    /// <summary>Verifies typed programmatic configuration covers global values, glyphs, and root styles.</summary>
+    [Fact]
+    public void SetThemeValues_WhenUnfrozen_ConfiguresTypedValuesUntilFreeze()
+    {
+        var theme = new Theme();
+        var input = InputStyle.Default with { AffixGap = 3 };
+
+        theme.SetColor(SemanticColor.Accent, Color.Rgb(1, 2, 3));
+        theme.SetAttributes(SemanticDecoration.FocusedText, TerminalAttributes.Bold);
+        theme.SetGlyphs(GlyphFamily.Ascii);
+        theme.SetStyleSet(new StyleStates<InputStyle> { Normal = input });
+        theme.Freeze();
+
+        theme.ResolveColor(SemanticColor.Accent).ShouldBe(Color.Rgb(1, 2, 3));
+        theme.ResolveAttributes(SemanticDecoration.FocusedText).ShouldBe(TerminalAttributes.Bold);
+        theme.Glyphs.ShouldBeSameAs(GlyphFamily.Ascii);
+        theme.GetStyleSet(InputStyle.Default).Normal.ShouldBe(input);
+        _ = Should.Throw<InvalidOperationException>(() =>
+            theme.SetColor(SemanticColor.Accent, Color.Rgb(4, 5, 6)));
+    }
+
     /// <summary>Verifies privileged root lookup is selected by exact framework type identity.</summary>
     [Fact]
     public void GetStyleSet_WhenExternalTypeNameCollidesWithRoot_Throws()

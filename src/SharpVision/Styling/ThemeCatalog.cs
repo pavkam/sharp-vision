@@ -530,7 +530,7 @@ public static class ThemeCatalog
 
     private static ColorScheme ReadColorScheme(string? value, string source, bool required)
     {
-        return value is null && !required
+        return string.IsNullOrWhiteSpace(value) && !required
             ? ColorScheme.Dark
             : value switch
             {
@@ -580,6 +580,11 @@ public static class ThemeCatalog
         if (stream.CanSeek)
         {
             var remaining = stream.Length - stream.Position;
+            if (remaining < 0)
+            {
+                throw new InvalidDataException($"Theme '{source}' starts beyond the end of its stream.");
+            }
+
             if (remaining > MaximumDocumentBytes)
             {
                 throw DocumentTooLarge(source);

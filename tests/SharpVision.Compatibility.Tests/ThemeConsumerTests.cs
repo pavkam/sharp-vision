@@ -9,6 +9,7 @@ using System.Text;
 using SharpVision.Controls;
 using SharpVision.Styling;
 using SharpVision.Terminal.Protocols;
+using SharpVision.Terminal.Rendering;
 
 /// <summary>
 /// Verifies <see cref="Theme"/>'s four interaction-derived style sets -
@@ -33,6 +34,26 @@ using SharpVision.Terminal.Protocols;
 /// </remarks>
 public sealed class ThemeConsumerTests
 {
+    /// <summary>Verifies a package consumer can build and freeze a Theme entirely through typed APIs.</summary>
+    [Fact]
+    public void Theme_WhenBuiltProgrammatically_ConfiguresEveryTypedValueFamily()
+    {
+        var theme = new Theme();
+        var control = ControlStyle.Default with
+        {
+            Face = ControlStyle.Default.Face with { Foreground = SemanticColor.Accent }
+        };
+
+        theme.SetColor(SemanticColor.Accent, Color.Rgb(1, 2, 3));
+        theme.SetAttributes(SemanticDecoration.FocusedText, TerminalAttributes.Bold);
+        theme.SetGlyphs(GlyphFamily.Ascii);
+        theme.SetStyleSet(new StyleStates<ControlStyle> { Normal = control });
+        theme.Freeze();
+
+        theme.ResolveColor(SemanticColor.Accent).ShouldBe(Color.Rgb(1, 2, 3));
+        theme.GetStyleSet(ControlStyle.Default).Normal.ShouldBe(control);
+    }
+
     /// <summary>Models a third-party "gauge" control's complete style: two structural members
     /// (<see cref="FillColor"/>, <see cref="FillGlyph"/>) beyond Face/Border/Shadow, falling back
     /// through <see cref="Theme.GetInteractiveControlStyleSet"/> the same way a library-owned

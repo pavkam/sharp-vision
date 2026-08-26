@@ -173,6 +173,19 @@ public sealed class StyleKeyTests
             ThemeCatalog.Parse(ThemeJson.Create(inputGlyphStyle: "\"triple\"")));
     }
 
+    /// <summary>Verifies style enum leaves accept names only, never unstable numeric ordinals.</summary>
+    [Theory]
+    [InlineData("\"0\"", "\"all\"")]
+    [InlineData("\"heavy\"", "\"3\"")]
+    [InlineData("\"heavy\"", "\"-1\"")]
+    public void Parse_WhenStyleSymbolIsNumeric_ThrowsNormalizedInvalidDataException(
+        string glyphStyle,
+        string sides)
+    {
+        _ = Should.Throw<InvalidDataException>(() =>
+            ThemeCatalog.Parse(ThemeJson.Create(inputGlyphStyle: glyphStyle, inputSides: sides)));
+    }
+
     /// <summary>The counter-case: an unauthored theme keeps the code-owned tab strip - TabControl's
     /// own dividerGlyph/underlineGlyph/dividerColor/selectionIndicatorColor. A theme could once
     /// author a "tabControl" section to move these; a leaf resolves no theme section of its own any

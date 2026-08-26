@@ -651,6 +651,31 @@ public sealed class ThemeCatalogTests
         stream.CanRead.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a legal seekable position beyond Length is normalized as invalid theme data.</summary>
+    [Fact]
+    public void Load_WhenSeekablePositionIsBeyondEnd_ThrowsSourceLabelledInvalidDataException()
+    {
+        using var stream = new MemoryStream("{}"u8.ToArray()) { Position = 10 };
+
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Load(stream));
+
+        error.Message.ShouldContain("<stream>");
+    }
+
+    /// <summary>Verifies blank external color-scheme metadata uses the documented dark default.</summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Parse_WhenExternalColorSchemeIsBlank_DefaultsToDark(string value)
+    {
+        var json = ThemeJson.Create().Replace(
+            "\"colorScheme\": \"dark\"",
+            $"\"colorScheme\":\"{value}\"",
+            StringComparison.Ordinal);
+
+        ThemeCatalog.Parse(json).ColorScheme.ShouldBe(ColorScheme.Dark);
+    }
+
     /// <summary>Verifies missing or empty semantic sections are rejected.</summary>
     [Theory]
     [InlineData( /*lang=json,strict*/ """{"status":{}}""")]

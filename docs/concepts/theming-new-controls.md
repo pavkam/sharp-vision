@@ -200,18 +200,21 @@ above.
 
 The style slot recursively tracks every `ControlColor` and `ControlDecoration`
 member, including members nested in faces, borders, shadows, and custom style
-fragments. A theme replacement that changes any resolved paint value therefore
-requests render even when the definition's callback sees identical raw semantic
-tokens. The callback still owns structural classification: return `Measure` or
-`Arrange` for geometry changes and `Render` for non-semantic visual members.
-Compare each such member according to its contract; do not use whole-record
-equality as a catch-all. Immutable and read-only collection members need ordered
-content comparison such as `SequenceEqual`, because equivalent resolutions may
-own different backing storage. The framework uses ordered content equality when
-deciding whether `ActualStyle` changed, but the definition callback must still
-assign the correct invalidation phase to a real collection-content change.
-Standalone control properties are outside a style slot, so their control keeps
-the explicit `GetThemeChangeImpact` comparison shown above.
+values. Nested immutable records do not need to implement `IAppearanceFragment`
+for notification equality: the slot compares their auto-property storage and
+does not invoke arbitrary computed getters. A theme replacement that changes any
+resolved paint value therefore requests render even when the definition's
+callback sees identical raw semantic tokens. The callback still owns structural
+classification: return `Measure` or `Arrange` for geometry changes and `Render`
+for non-semantic visual members. Compare each such member according to its
+contract; do not use whole-record equality as a catch-all. Immutable and
+read-only collection members need ordered content comparison such as
+`SequenceEqual`, because equivalent resolutions may own different backing
+storage. The framework uses ordered content equality when deciding whether
+`ActualStyle` changed, but the definition callback must still assign the correct
+invalidation phase to a real collection-content change. Standalone control
+properties are outside a style slot, so their control keeps the explicit
+`GetThemeChangeImpact` comparison shown above.
 
 Use `StyleDefinitions.Part`, `InitializePartStyle`, and `BindStyle` for a named
 style forwarded to retained implementation controls. Bind the nullable local

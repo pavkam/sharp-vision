@@ -226,7 +226,7 @@ public sealed class Application:
 
     /// <summary>Gets or sets the application-wide theme published to attached controls.</summary>
     /// <exception cref="ArgumentNullException">The assigned theme is null.</exception>
-    /// <exception cref="InvalidOperationException">The application is mutated off-dispatcher.</exception>
+    /// <exception cref="InvalidOperationException">The assigned theme is not frozen, or the application is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The application is disposed.</exception>
     public Theme Theme
     {
@@ -234,6 +234,11 @@ public sealed class Application:
         set
         {
             ArgumentNullException.ThrowIfNull(value);
+            if (!value.IsFrozen)
+            {
+                throw new InvalidOperationException("Only a frozen Theme can be published to an application.");
+            }
+
             Dispatcher.VerifyAccess();
 
             if (ReferenceEquals(_theme, value))

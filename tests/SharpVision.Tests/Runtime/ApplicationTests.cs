@@ -15,6 +15,21 @@ using MultiplexerKind = Terminal.Multiplexing.MultiplexerKind;
 /// <summary>Verifies application startup, frame completion, suspension, and shutdown.</summary>
 public sealed partial class ApplicationTests
 {
+    /// <summary>Verifies unfinished programmatic Themes cannot be published as immutable state.</summary>
+    [Fact]
+    public async Task Theme_WhenAssignedUnfrozen_ThrowsBeforePublicationAsync()
+    {
+        await using FakeTerminal terminal = new();
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        var unfinished = new Theme();
+
+        _ = await application.Dispatcher.InvokeAsync(
+            () => Should.Throw<InvalidOperationException>(() => application.Theme = unfinished),
+            TestContext.Current.CancellationToken);
+
+        application.Theme.ShouldBeSameAs(ThemeCatalog.Dark);
+    }
+
     /// <summary>Verifies Window activation is an empty read model before the control tree initializes.</summary>
     [Fact]
     public async Task ActiveWindow_WhenApplicationIsNotStarted_IsNullAsync()

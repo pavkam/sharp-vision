@@ -359,6 +359,23 @@ public sealed class StyleSlotTests
         probe.Pending.ShouldBe(Invalidation.Render);
     }
 
+    /// <summary>Verifies semantic members inside ordinary immutable nested values participate in
+    /// resolved ActualStyle notification without requiring the overlay marker interface.</summary>
+    [Fact]
+    public void PropagateTheme_WhenNestedOrdinaryValueResolvesDifferently_PublishesActualStyle()
+    {
+        using var probe = new NestedSemanticStyleProbe();
+        var notifications = Observe(probe);
+        probe.ApplyTheme(ThemeCatalog.Parse(ThemeJson.Create(accent: "#112233")));
+        notifications.Clear();
+        probe.Clear(Invalidation.All);
+
+        probe.ApplyTheme(ThemeCatalog.Parse(ThemeJson.Create(accent: "#aabbcc")));
+
+        notifications.ShouldContain(nameof(NestedSemanticStyleProbe.ActualStyle));
+        probe.Pending.ShouldBe(Invalidation.Render);
+    }
+
     /// <summary>Verifies a Theme-owned resolution invokes the same projection callback as a local
     /// style commit after the new Theme is observable.</summary>
     [Fact]

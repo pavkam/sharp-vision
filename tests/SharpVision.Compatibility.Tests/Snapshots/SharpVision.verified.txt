@@ -4051,6 +4051,11 @@ namespace SharpVision.Styling
             where TStyle : SharpVision.Styling.ControlStyle { }
         public SharpVision.Terminal.Rendering.TerminalAttributes ResolveAttributes(SharpVision.Styling.SemanticDecoration decoration) { }
         public SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.SemanticColor color) { }
+        public void SetAttributes(SharpVision.Styling.SemanticDecoration decoration, SharpVision.Terminal.Rendering.TerminalAttributes value) { }
+        public void SetColor(SharpVision.Styling.SemanticColor color, SharpVision.Terminal.Protocols.Color value) { }
+        public void SetGlyphs(SharpVision.Styling.GlyphFamily value) { }
+        public void SetStyleSet<TStyle>(SharpVision.Styling.StyleStates<TStyle> styles)
+            where TStyle : SharpVision.Styling.ControlStyle { }
     }
     public static class ThemeCatalog
     {

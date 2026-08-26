@@ -168,26 +168,67 @@ public sealed class Theme
         return _attributes[(int) decoration];
     }
 
-    internal void SetColor(SemanticColor color, Color value)
+    /// <summary>Configures one global semantic color before this Theme is frozen.</summary>
+    /// <param name="color">The semantic color to configure.</param>
+    /// <param name="value">The concrete terminal color.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="color"/> is undefined.</exception>
+    /// <exception cref="ArgumentException"><paramref name="value"/> is transparent.</exception>
+    /// <exception cref="InvalidOperationException">This Theme is frozen.</exception>
+    public void SetColor(SemanticColor color, Color value)
     {
         if (IsFrozen)
         {
             throw new InvalidOperationException("A frozen theme cannot be changed.");
         }
 
+        ArgumentOutOfRangeException.ThrowIfNotDefined(color);
         ValidateConcrete(value, nameof(value));
         _colors[(int) color] = value;
     }
 
-    internal void SetAttributes(SemanticDecoration decoration, TerminalAttributes value)
+    /// <summary>Configures one global semantic decoration before this Theme is frozen.</summary>
+    /// <param name="decoration">The semantic decoration to configure.</param>
+    /// <param name="value">The concrete terminal attributes.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="decoration"/> is undefined.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="value"/> contains unknown flags.</exception>
+    /// <exception cref="InvalidOperationException">This Theme is frozen.</exception>
+    public void SetAttributes(SemanticDecoration decoration, TerminalAttributes value)
     {
         if (IsFrozen)
         {
             throw new InvalidOperationException("A frozen theme cannot be changed.");
         }
 
+        ArgumentOutOfRangeException.ThrowIfNotDefined(decoration);
         ((TerminalAttributes?) value).Validate(null, null);
         _attributes[(int) decoration] = value;
+    }
+
+    /// <summary>Configures one well-known root style's complete state set before this Theme is frozen.</summary>
+    /// <typeparam name="TStyle">One of the six exact well-known root style types.</typeparam>
+    /// <param name="styles">The complete normal style and optional state contributions.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="styles"/> is null.</exception>
+    /// <exception cref="ArgumentException"><typeparamref name="TStyle"/> is not an exact well-known root style type.</exception>
+    /// <exception cref="InvalidOperationException">This Theme is frozen.</exception>
+    public void SetStyleSet<TStyle>(StyleStates<TStyle> styles)
+        where TStyle : ControlStyle
+    {
+        if (IsFrozen)
+        {
+            throw new InvalidOperationException("A frozen theme cannot be changed.");
+        }
+
+        ArgumentNullException.ThrowIfNull(styles);
+        var styleType = typeof(TStyle);
+        _ = GetRootStyleKey(styleType, nameof(styles));
+        if (styles.Normal.GetType() != styleType)
+        {
+            throw new ArgumentException("The normal style must have the exact well-known root style type.", nameof(styles));
+        }
+
+        _programmaticStyleSets[styleType] = styles;
+        _styleSets.Clear();
+        _appearanceSets.Clear();
     }
 
     internal void SetStyleSections(Dictionary<string, JsonElement> sections)
@@ -212,7 +253,11 @@ public sealed class Theme
     /// "glyphs" field selects a different family.</summary>
     public GlyphFamily Glyphs { get; private set; } = GlyphFamily.Default;
 
-    internal void SetGlyphs(GlyphFamily value)
+    /// <summary>Configures the theme-wide glyph family before this Theme is frozen.</summary>
+    /// <param name="value">The complete glyph family.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">This Theme is frozen.</exception>
+    public void SetGlyphs(GlyphFamily value)
     {
         if (IsFrozen)
         {
@@ -221,6 +266,8 @@ public sealed class Theme
 
         ArgumentNullException.ThrowIfNull(value);
         Glyphs = value;
+        _styleSets.Clear();
+        _appearanceSets.Clear();
     }
 
     // Mirrors ThemeCatalog.ResolveColorValue/ResolveColor exactly, but reads this Theme's own public
@@ -236,7 +283,7 @@ public sealed class Theme
                 ? Color.Transparent
                 : string.Equals(value, "default", StringComparison.OrdinalIgnoreCase)
                     ? Color.Default
-                    : Enum.TryParse<SemanticColor>(value, ignoreCase: true, out var semantic) && Enum.IsDefined(semantic)
+                    : TryParseNamedEnum(value, out SemanticColor semantic)
                         ? semantic
                         : throw new InvalidDataException(
                             $"Theme '{DiagnosticSource}' {context} references unknown palette key '{value}'.");
@@ -285,9 +332,24 @@ public sealed class Theme
     internal TEnum? ParseSectionEnum<TEnum>(string? value, string context) where TEnum : struct, Enum =>
         value is null
             ? null
-            : Enum.TryParse<TEnum>(value, ignoreCase: true, out var result) && IsRepresentable(result)
+            : TryParseNamedEnum(value, out TEnum result)
                 ? result
                 : throw new InvalidDataException($"Theme '{DiagnosticSource}' {context} has unknown value '{value}'.");
+
+    private static bool TryParseNamedEnum<TEnum>(string value, out TEnum result)
+        where TEnum : struct, Enum
+    {
+        var names = Enum.GetNames<TEnum>();
+        var tokens = value.Split(',', StringSplitOptions.TrimEntries);
+        if (tokens.Length == 0 || tokens.Any(token =>
+                token.Length == 0 || !names.Contains(token, StringComparer.OrdinalIgnoreCase)))
+        {
+            result = default;
+            return false;
+        }
+
+        return Enum.TryParse(value, ignoreCase: true, out result) && IsRepresentable(result);
+    }
 
     /// <summary>Reports whether one parsed enum value is expressible in its type.</summary>
     /// <remarks>
@@ -659,6 +721,7 @@ public sealed class Theme
     private readonly ConcurrentDictionary<string, Dictionary<string, Dictionary<string, JsonElement>>?> _rawStyleSections = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<(Type, string, ControlStyle), object> _styleSets = new();
     private readonly ConcurrentDictionary<string, AppearanceStates> _appearanceSets = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<Type, object> _programmaticStyleSets = new();
 
     // Raw per-state JSON override dictionaries for one styles.* key, with no code-owned default
     // baked in and no fallback awareness - the primitive both GetStyleSet (root types) and a leaf
@@ -716,16 +779,21 @@ public sealed class Theme
             throw new ArgumentException("The default must have the exact well-known root style type.", nameof(codeOwnedDefault));
         }
 
-        var key = styleType == typeof(ControlStyle) ? StyleKey.Of<ControlStyle>() :
-            styleType == typeof(InputStyle) ? StyleKey.Of<InputStyle>() :
-            styleType == typeof(ContainerStyle) ? StyleKey.Of<ContainerStyle>() :
-            styleType == typeof(WindowStyle) ? StyleKey.Of<WindowStyle>() :
-            styleType == typeof(PopupStyle) ? StyleKey.Of<PopupStyle>() :
-            styleType == typeof(TooltipStyle) ? StyleKey.Of<TooltipStyle>() :
-            throw new ArgumentException("Only the six well-known root style types own theme sections.", nameof(codeOwnedDefault));
+        var key = GetRootStyleKey(styleType, nameof(codeOwnedDefault));
 
-        return GetStyleSet(key, codeOwnedDefault);
+        return _programmaticStyleSets.TryGetValue(styleType, out var configured)
+            ? (StyleStates<TStyle>) configured
+            : GetStyleSet(key, codeOwnedDefault);
     }
+
+    private static string GetRootStyleKey(Type styleType, string parameterName) =>
+        styleType == typeof(ControlStyle) ? StyleKey.Of<ControlStyle>() :
+        styleType == typeof(InputStyle) ? StyleKey.Of<InputStyle>() :
+        styleType == typeof(ContainerStyle) ? StyleKey.Of<ContainerStyle>() :
+        styleType == typeof(WindowStyle) ? StyleKey.Of<WindowStyle>() :
+        styleType == typeof(PopupStyle) ? StyleKey.Of<PopupStyle>() :
+        styleType == typeof(TooltipStyle) ? StyleKey.Of<TooltipStyle>() :
+        throw new ArgumentException("Only the six well-known root style types own theme sections.", parameterName);
 
     /// <summary>Resolves one root style's complete per-state set from an explicit key, memoized
     /// per theme, style type, key, and code-owned default.</summary>
