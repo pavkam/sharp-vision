@@ -69,6 +69,8 @@ accepts format versions through 6.22 and rejects newer definitions before adding
 them to the catalog. The reader also rejects unknown root/highlighting content,
 invalid singleton ordering, and duplicate singleton sections. Repeated options
 inside the schema-permitted `general` section are accumulated in document order.
+Catalog metadata preserves the KDE `style` and `hidden` attributes without
+forcing lazy embedded definitions to be parsed.
 
 ## Attribution
 

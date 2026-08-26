@@ -334,6 +334,8 @@ public sealed class SyntaxDefinitionCatalog
             definition.AlternativeNames,
             definition.Author,
             definition.Priority,
+            definition.Style,
+            definition.Hidden,
             license: string.Empty,
             sha256: string.Empty,
             bytes: 0,
@@ -345,7 +347,7 @@ public sealed class SyntaxDefinitionCatalog
         using var document = JsonDocument.Parse(manifestStream);
         var root = document.RootElement;
 
-        if (root.GetProperty("schema").GetInt32() != 1)
+        if (root.GetProperty("schema").GetInt32() != 2)
         {
             throw new InvalidDataException("The embedded syntax-definition manifest schema is not supported.");
         }
@@ -366,6 +368,8 @@ public sealed class SyntaxDefinitionCatalog
                 element.TryGetProperty("priority", out var priority) && priority.ValueKind == JsonValueKind.Number
                     ? priority.GetInt32()
                     : null,
+                element.GetProperty("style").GetString()!,
+                element.GetProperty("hidden").GetBoolean(),
                 element.GetProperty("license").GetString()!,
                 element.GetProperty("sha256").GetString()!,
                 element.GetProperty("bytes").GetInt32(),

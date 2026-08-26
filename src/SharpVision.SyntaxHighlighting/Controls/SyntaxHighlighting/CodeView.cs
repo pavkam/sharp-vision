@@ -166,13 +166,15 @@ public sealed class CodeView:
             // dependent field exactly as they were - the same validate-before-mutate contract
             // Language's own setter keeps.
             var grammar = Language is null ? null : value.GetGrammar(Language);
-            _ = SetProperty(ref field, value, InvalidationImpact.None);
+            field = value;
 
             if (Language is not null)
             {
                 _grammar = grammar;
                 RebuildProjection();
             }
+
+            NotifyPropertyChanged(nameof(Catalog), InvalidationImpact.None);
         }
     } = SyntaxDefinitionCatalog.Default;
 

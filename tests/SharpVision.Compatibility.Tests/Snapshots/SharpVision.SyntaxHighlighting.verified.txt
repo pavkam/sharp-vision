@@ -245,6 +245,7 @@ namespace SharpVision.SyntaxHighlighting
         public string Name { get; }
         public int? Priority { get; }
         public string Section { get; }
+        public string Style { get; }
         public int Version { get; }
     }
     public sealed class SyntaxDefinitionCatalog
@@ -265,6 +266,7 @@ namespace SharpVision.SyntaxHighlighting
         public int Bytes { get; }
         public System.Collections.Generic.IReadOnlyList<string> Extensions { get; }
         public string File { get; }
+        public bool Hidden { get; }
         public string License { get; }
         public System.Collections.Generic.IReadOnlyList<string> MimeTypes { get; }
         public string Name { get; }
@@ -272,6 +274,7 @@ namespace SharpVision.SyntaxHighlighting
         public string Sha256 { get; }
         public string SourceCommit { get; }
         public string SourceRepository { get; }
+        public string Style { get; }
     }
     public static class SyntaxDefinitionReader
     {

@@ -11,6 +11,15 @@ public sealed class SyntaxDefinitionReaderTests
     public void Read_WhenKateVersionIsSupported_PreservesMinimumVersion() =>
         SyntaxDefinitionReader.Read(_minimal).KateVersion.ShouldBe(new Version(5, 0));
 
+    /// <summary>Verifies the KDE language style survives parsing as public metadata.</summary>
+    [Fact]
+    public void Read_WhenLanguageDeclaresStyle_PreservesStyle()
+    {
+        var xml = _minimal.Replace("name=\"Mini\"", "name=\"Mini\" style=\"haskell\"", StringComparison.Ordinal);
+
+        SyntaxDefinitionReader.Read(xml).Style.ShouldBe("haskell");
+    }
+
     /// <summary>Verifies definitions cannot omit the schema-required engine version.</summary>
     [Fact]
     public void Read_WhenKateVersionIsMissing_ThrowsFormatException()

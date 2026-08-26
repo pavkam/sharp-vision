@@ -117,6 +117,7 @@ public sealed class SyntaxCompiledRule
     /// </param>
     /// <returns>The match outcome.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="line"/> or <paramref name="captures"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="captures"/> contains a null element.</exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="offset"/> is negative or greater than <paramref name="line"/>'s length.
     /// </exception>
@@ -127,6 +128,14 @@ public sealed class SyntaxCompiledRule
         ArgumentNullException.ThrowIfNull(captures);
         ArgumentOutOfRangeException.ThrowIfNegative(offset);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(offset, line.Length);
+
+        for (var index = 0; index < captures.Count; index++)
+        {
+            if (captures[index] is null)
+            {
+                throw new ArgumentException("Capture values cannot contain null.", nameof(captures));
+            }
+        }
 
         var span = line.AsSpan();
 
@@ -322,9 +331,11 @@ public sealed class SyntaxCompiledRule
     {
         Debug.Assert(Source.Text is not null, "The reader requires a StringDetect rule's String attribute.");
         var pattern = Source.Dynamic ? ReplaceCaptures(Source.Text ?? string.Empty, captures, escapeForRegex: false) : Source.Text ?? string.Empty;
-        var comparison = Source.Insensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var matches = Source.Insensitive
+            ? offset + pattern.Length <= line.Length && SyntaxCaseFolding.Equals(line.Slice(offset, pattern.Length), pattern)
+            : offset + pattern.Length <= line.Length && line.Slice(offset, pattern.Length).SequenceEqual(pattern);
 
-        return offset + pattern.Length <= line.Length && line.Slice(offset, pattern.Length).Equals(pattern, comparison)
+        return matches
             ? new SyntaxRuleMatch(pattern.Length, [])
             : SyntaxRuleMatch.None;
     }
@@ -344,9 +355,11 @@ public sealed class SyntaxCompiledRule
             return SyntaxRuleMatch.None;
         }
 
-        var comparison = Source.Insensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var matches = Source.Insensitive
+            ? SyntaxCaseFolding.Equals(line.Slice(offset, word.Length), word)
+            : line.Slice(offset, word.Length).SequenceEqual(word);
 
-        if (!line.Slice(offset, word.Length).Equals(word, comparison))
+        if (!matches)
         {
             return SyntaxRuleMatch.None;
         }

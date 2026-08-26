@@ -16,6 +16,7 @@ public readonly record struct SyntaxDefinitionInfo
     private readonly IReadOnlyList<string>? _mimeTypes;
     private readonly IReadOnlyList<string>? _alternativeNames;
     private readonly string? _author;
+    private readonly string? _style;
     private readonly string? _license;
     private readonly string? _sha256;
     private readonly string? _sourceRepository;
@@ -31,6 +32,8 @@ public readonly record struct SyntaxDefinitionInfo
     /// <param name="alternativeNames">Additional names this definition also matches under.</param>
     /// <param name="author">The declared author.</param>
     /// <param name="priority">The relative file-detection priority, or null when unspecified.</param>
+    /// <param name="style">The generalized language style used by indentation integrations.</param>
+    /// <param name="hidden">Whether the definition should stay out of a language-selection menu.</param>
     /// <param name="license">The declared, redistribution-audited license, or empty for a caller-supplied definition.</param>
     /// <param name="sha256">The lower-case source-byte SHA-256, or empty for a caller-supplied definition.</param>
     /// <param name="bytes">The non-negative source-byte count.</param>
@@ -53,6 +56,8 @@ public readonly record struct SyntaxDefinitionInfo
         IReadOnlyList<string> alternativeNames,
         string author,
         int? priority,
+        string style,
+        bool hidden,
         string license,
         string sha256,
         int bytes,
@@ -67,6 +72,8 @@ public readonly record struct SyntaxDefinitionInfo
         _alternativeNames = new SyntaxReadOnlyList<string>(alternativeNames);
         _author = author;
         Priority = priority;
+        _style = style;
+        Hidden = hidden;
         _license = license;
         _sha256 = sha256;
         Bytes = bytes;
@@ -94,6 +101,12 @@ public readonly record struct SyntaxDefinitionInfo
 
     /// <summary>Gets the declared author.</summary>
     public string Author => _author ?? string.Empty;
+
+    /// <summary>Gets the generalized language style used by indentation integrations.</summary>
+    public string Style => _style ?? string.Empty;
+
+    /// <summary>Gets whether this definition should stay out of a language-selection menu.</summary>
+    public bool Hidden { get; }
 
     /// <summary>Gets the relative file-detection priority, or null when unspecified. This internal
     /// metadata keeps catalog selection correct without expanding the public provenance surface.</summary>

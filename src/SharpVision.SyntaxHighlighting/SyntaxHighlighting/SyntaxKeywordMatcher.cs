@@ -20,7 +20,7 @@ internal sealed class SyntaxKeywordMatcher
     {
         _words = new HashSet<string>(
             words,
-            caseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
+            caseSensitive ? StringComparer.Ordinal : SyntaxCaseFoldingComparer.Instance);
         _delimiters = delimiters;
     }
 

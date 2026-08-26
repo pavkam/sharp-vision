@@ -39,6 +39,71 @@ public sealed class SyntaxDefinitionCatalogTests
         info.SourceCommit.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies lazy inventory metadata exposes every hidden definition without parsing them.</summary>
+    [Fact]
+    public void GetInfo_WhenEmbeddedInventoryContainsHiddenDefinitions_ReportsAllWithoutParsingDefinitions()
+    {
+        var catalog = SyntaxDefinitionCatalog.CreateEmbedded();
+        var before = catalog.DefinitionParseCount;
+
+        var hidden = catalog.Names.Where(name => catalog.GetInfo(name).Hidden).ToArray();
+
+        hidden.ShouldBe(["Alerts", "Comments", "Modelines", "SPDX-Comments"]);
+        catalog.DefinitionParseCount.ShouldBe(before);
+    }
+
+    /// <summary>Verifies every embedded generalized style is available from lazy inventory metadata.</summary>
+    [Fact]
+    public void GetInfo_WhenEmbeddedDefinitionsDeclareStyles_ReportsAllWithoutParsingDefinitions()
+    {
+        var catalog = SyntaxDefinitionCatalog.CreateEmbedded();
+        var before = catalog.DefinitionParseCount;
+
+        var styles = catalog.Names
+            .Select(name => (Name: name, catalog.GetInfo(name).Style))
+            .Where(static entry => entry.Style.Length > 0)
+            .ToArray();
+
+        styles.ShouldBe(
+        [
+            ("Elixir/EEx", "eex"),
+            ("Elixir/HEEx", "heex"),
+            ("Elm", "elm"),
+            ("GTK Blueprint", "gtkblueprint"),
+            ("Julia", "julia"),
+            ("PureScript", "haskell"),
+            ("Snakemake", "snakemake"),
+            ("Swift", "cstyle"),
+        ]);
+        catalog.DefinitionParseCount.ShouldBe(before);
+    }
+
+    /// <summary>Verifies parsed style metadata reaches directory-backed inventory records.</summary>
+    [Fact]
+    public void GetInfo_WhenDirectoryDefinitionDeclaresStyleAndHidden_PreservesBothValues()
+    {
+        var directory = Directory.CreateTempSubdirectory("sharpvision-syntax-catalog-metadata-");
+
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(directory.FullName, "metadata.xml"),
+                CreateLanguage("Metadata", "*.meta").Replace(
+                    "kateversion=\"5.0\"",
+                    "kateversion=\"5.0\" style=\"haskell\" hidden=\"true\"",
+                    StringComparison.Ordinal));
+
+            var info = SyntaxDefinitionCatalog.FromDirectory(directory.FullName).GetInfo("Metadata");
+
+            info.Style.ShouldBe("haskell");
+            info.Hidden.ShouldBeTrue();
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
     /// <summary>Verifies loading the same definition twice reads its embedded resource only once.</summary>
     [Fact]
     public void GetDefinition_WhenCalledTwiceForTheSameName_ReadsTheEmbeddedResourceOnlyOnce()

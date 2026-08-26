@@ -356,6 +356,61 @@ public sealed class CodeViewTests
         }
     }
 
+    /// <summary>Verifies a reentrant language change supersedes the catalog setter's pre-notification grammar.</summary>
+    [Fact]
+    public void Catalog_WhenNotificationChangesLanguage_DoesNotRestoreStaleGrammar()
+    {
+        var firstDirectory = Directory.CreateTempSubdirectory("sharpvision-syntax-view-reentrant-a-");
+        var secondDirectory = Directory.CreateTempSubdirectory("sharpvision-syntax-view-reentrant-b-");
+
+        try
+        {
+            const string folding = """
+                <language name="LangA" section="Sources" extensions="*.a" version="1" kateversion="5.0">
+                  <highlighting>
+                    <contexts><context name="Normal" attribute="Normal Text" lineEndContext="#stay"><DetectChar attribute="Normal Text" context="#stay" char="{" beginRegion="Brace"/><DetectChar attribute="Normal Text" context="#stay" char="}" endRegion="Brace"/></context></contexts>
+                    <itemDatas><itemData name="Normal Text" defStyleNum="dsNormal"/></itemDatas>
+                  </highlighting>
+                </language>
+                """;
+            const string plain = """
+                <language name="LangB" section="Sources" extensions="*.b" version="1" kateversion="5.0">
+                  <highlighting>
+                    <contexts><context name="Normal" attribute="Normal Text" lineEndContext="#stay"/></contexts>
+                    <itemDatas><itemData name="Normal Text" defStyleNum="dsNormal"/></itemDatas>
+                  </highlighting>
+                </language>
+                """;
+
+            foreach (var directory in new[] { firstDirectory, secondDirectory })
+            {
+                File.WriteAllText(Path.Combine(directory.FullName, "a.xml"), folding);
+                File.WriteAllText(Path.Combine(directory.FullName, "b.xml"), plain);
+            }
+
+            var first = SyntaxDefinitionCatalog.FromDirectory(firstDirectory.FullName);
+            var second = SyntaxDefinitionCatalog.FromDirectory(secondDirectory.FullName);
+            var view = new CodeView { Catalog = first, Language = "LangA", Code = "{\nx\n}\n" };
+            view.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(CodeView.Catalog))
+                {
+                    view.Language = "LangB";
+                }
+            };
+
+            view.Catalog = second;
+
+            view.Language.ShouldBe("LangB");
+            view.FoldRanges.ShouldBeEmpty();
+        }
+        finally
+        {
+            firstDirectory.Delete(recursive: true);
+            secondDirectory.Delete(recursive: true);
+        }
+    }
+
     /// <summary>Verifies replacing Catalog with a value that lacks the current Language throws and
     /// leaves Catalog, Language, and the already-resolved grammar exactly as they were - the same
     /// validate-before-mutate contract Language's own setter keeps.</summary>

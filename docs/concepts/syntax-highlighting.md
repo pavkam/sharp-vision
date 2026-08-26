@@ -85,6 +85,13 @@ check or the escape-sequence grammar `HlCStringChar` and `HlCChar` share - was
 verified line-for-line against the upstream KSyntaxHighlighting C++ source, not
 inferred from the XML format documentation alone.
 
+Case-insensitive keywords, `StringDetect`, and `WordDetect` use Qt-compatible
+Unicode simple case folding rather than .NET ordinal-ignore-case semantics. The
+same allocation-free scalar folding primitive therefore handles ordinary case
+pairs plus folds such as Kelvin sign to `k` and long s to `s` across every
+literal-rule family. Public `TryMatch` calls reject null capture elements before
+dispatching to any dynamic matcher.
+
 `DetectIdentifier` evaluates Unicode scalars, accepting letters at the start and
 every decimal-digit, letter-number, or other-number category afterward;
 supplementary-plane continuations are never split into UTF-16 surrogate halves.
@@ -106,6 +113,11 @@ read-only collection snapshots. Callers cannot cast those properties back to the
 parser/compiler/tokenizer's mutable lists, dictionaries, or arrays. Public
 syntax value structs define usable empty defaults; a resolved context target
 entry remains a reference type because no valid target exists without a grammar.
+
+Root metadata preserves both `style`, used by indentation integrations, and the
+`hidden` language-picker flag. `SyntaxDefinitionInfo` carries both values in the
+catalog inventory, including the embedded manifest, so callers can filter hidden
+helper definitions without opening or parsing their resources.
 
 A cross-definition reference (`IncludeRules`, a context switch, or a keyword
 `<include>`) that names a definition or context the current

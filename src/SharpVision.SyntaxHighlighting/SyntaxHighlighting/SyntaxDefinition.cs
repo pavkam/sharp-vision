@@ -27,6 +27,7 @@ public sealed class SyntaxDefinition
     /// <param name="author">The non-null declared author.</param>
     /// <param name="license">The non-null declared license.</param>
     /// <param name="indenter">The suggested indenter name, or null.</param>
+    /// <param name="style">The non-null generalized language style used by indentation integrations.</param>
     /// <param name="hidden">Whether this definition should stay out of a language-selection menu.</param>
     /// <param name="general">The parsed <c>&lt;general&gt;</c> section.</param>
     /// <param name="keywordLists">The non-null keyword lists, keyed by name.</param>
@@ -45,6 +46,7 @@ public sealed class SyntaxDefinition
         string author,
         string license,
         string? indenter,
+        string style,
         bool hidden,
         SyntaxGeneralOptions general,
         IReadOnlyDictionary<string, SyntaxKeywordList> keywordLists,
@@ -67,6 +69,7 @@ public sealed class SyntaxDefinition
         Author = author;
         License = license;
         Indenter = indenter;
+        Style = style;
         Hidden = hidden;
         General = general;
         KeywordLists = new SyntaxReadOnlyDictionary<string, SyntaxKeywordList>(keywordLists);
@@ -106,6 +109,9 @@ public sealed class SyntaxDefinition
 
     /// <summary>Gets the suggested indenter name, or null.</summary>
     public string? Indenter { get; }
+
+    /// <summary>Gets the generalized language style used by indentation integrations.</summary>
+    public string Style { get; }
 
     /// <summary>Gets whether this definition should stay out of a language-selection menu.</summary>
     public bool Hidden { get; }

@@ -176,6 +176,67 @@ public sealed class SyntaxCompiledRuleTests
         result.Success.ShouldBeFalse();
     }
 
+    /// <summary>Gets literal rule families and Unicode pairs Qt folds together.</summary>
+    public static TheoryData<string, string, string> UnicodeCaseFoldLiteralRules() =>
+        new()
+        {
+            { "StringDetect", "K", "K" },
+            { "StringDetect", "S", "ſ" },
+            { "WordDetect", "K", "K" },
+            { "WordDetect", "S", "ſ" },
+        };
+
+    /// <summary>Verifies every case-insensitive literal rule family uses Qt-compatible Unicode folding.</summary>
+    [Theory]
+    [MemberData(nameof(UnicodeCaseFoldLiteralRules))]
+    public void TryMatch_WhenInsensitiveLiteralUsesUnicodeCaseFold_Matches(
+        string element,
+        string pattern,
+        string text)
+    {
+        var rule = LiteralRule($"<{element} attribute=\"Normal Text\" context=\"#stay\" String=\"{pattern}\" insensitive=\"true\"/>");
+
+        rule.TryMatch(text, 0, []).Length.ShouldBe(text.Length);
+    }
+
+    /// <summary>Gets every dynamic rule family that dereferences captures.</summary>
+    public static TheoryData<string> DynamicCaptureRules() =>
+    [
+        "<DetectChar attribute=\"Normal Text\" context=\"#stay\" char=\"1\" dynamic=\"true\"/>",
+        "<StringDetect attribute=\"Normal Text\" context=\"#stay\" String=\"%1\" dynamic=\"true\"/>",
+        "<RegExpr attribute=\"Normal Text\" context=\"#stay\" String=\"%1\" dynamic=\"true\"/>",
+    ];
+
+    /// <summary>Verifies null capture elements are rejected at the public boundary for every dynamic family.</summary>
+    [Theory]
+    [MemberData(nameof(DynamicCaptureRules))]
+    public void TryMatch_WhenCaptureElementIsNull_ThrowsArgumentException(string element)
+    {
+        var rule = LiteralRule(element);
+
+        _ = Should.Throw<ArgumentException>(() => rule.TryMatch("x", 0, [null!]));
+    }
+
+    private static SyntaxCompiledRule LiteralRule(string element)
+    {
+        var language = $"""
+            <language name="Literal" section="Sources" extensions="*.l" version="1" kateversion="5.0">
+              <highlighting>
+                <contexts>
+                  <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                    {element}
+                  </context>
+                </contexts>
+                <itemDatas>
+                  <itemData name="Normal Text" defStyleNum="dsNormal"/>
+                </itemDatas>
+              </highlighting>
+            </language>
+            """;
+
+        return SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(language)).Contexts[0].Rules[0];
+    }
+
     private const string _capturingGroupLanguage = """
         <language name="Captures" section="Sources" extensions="*.c" version="1" kateversion="5.0">
           <highlighting>

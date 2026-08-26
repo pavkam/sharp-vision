@@ -56,6 +56,11 @@ const languageAttribute = (text, name) => {
   return attributeMatch ? attributeMatch[1] : null;
 };
 
+const languageBooleanAttribute = (text, name) => {
+  const value = languageAttribute(text, name)?.toLowerCase();
+  return value === "true" || value === "1";
+};
+
 const spdxLicenseId = (text) => {
   const header = text.slice(0, 2000);
   const match = header.match(/SPDX-License-Identifier:\s*([A-Za-z0-9.+-]+)/u);
@@ -89,7 +94,7 @@ const syntaxFiles = async (root) =>
     .sort(compareOrdinal);
 
 /**
- * Builds the schema-1 manifest for the syntax definitions already staged under `root`, which
+ * Builds the schema-2 manifest for the syntax definitions already staged under `root`, which
  * must contain only files this module's own {@link classifyLicense} accepts.
  *
  * @param {string} root the curated resource directory to scan.
@@ -126,6 +131,8 @@ export const createManifest = async (root) => {
       alternativeNames: languageAttribute(text, "alternativeNames") ?? "",
       author: languageAttribute(text, "author") ?? "",
       priority: Number.parseInt(languageAttribute(text, "priority") ?? "0", 10),
+      style: languageAttribute(text, "style") ?? "",
+      hidden: languageBooleanAttribute(text, "hidden"),
       license,
       sha256: createHash("sha256").update(bytes).digest("hex"),
       bytes: bytes.length,
@@ -136,7 +143,7 @@ export const createManifest = async (root) => {
 
   definitions.sort((left, right) => compareOrdinal(left.name, right.name));
 
-  return { schema: 1, count: definitions.length, definitions };
+  return { schema: 2, count: definitions.length, definitions };
 };
 
 /**

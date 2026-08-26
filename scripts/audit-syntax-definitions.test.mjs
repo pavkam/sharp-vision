@@ -76,13 +76,27 @@ test("createManifest_WhenDefinitionsAreCurated_RecordsResourcesAndLicenses", asy
   const manifest = await createManifest(root);
   const demo = manifest.definitions.find(({ name }) => name === "Demo");
 
-  assert.equal(manifest.schema, 1);
+  assert.equal(manifest.schema, 2);
   assert.equal(manifest.count, 2);
   assert.equal(demo.license, "MIT");
   assert.equal(demo.resource, "SharpVision.SyntaxHighlighting.Resources.Syntax.demo.xml");
   assert.equal(demo.sourceRepository, upstreamSource.repository);
   assert.equal(demo.sourceCommit, upstreamSource.commit);
   assert.match(demo.sha256, /^[0-9a-f]{64}$/u);
+});
+
+test("createManifest_WhenDefinitionDeclaresStyleAndHidden_RecordsLazyInventoryMetadata", async () => {
+  const root = await createCuratedFolder();
+  await writeFile(
+    path.join(root, "hidden.xml"),
+    definition("Hidden", "*.hidden", "MIT", ' style="haskell" hidden="1"'),
+  );
+
+  const manifest = await createManifest(root);
+  const hidden = manifest.definitions.find(({ name }) => name === "Hidden");
+
+  assert.equal(hidden.style, "haskell");
+  assert.equal(hidden.hidden, true);
 });
 
 test("createManifest_WhenAFileIsNotCurated_Rejects", async () => {

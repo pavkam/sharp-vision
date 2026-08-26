@@ -87,9 +87,12 @@ subscribers.
 background, the fold gutter, and its one-cell collapsed and expanded glyphs.
 Transparent role colors and control or non-one-cell fold glyphs are rejected.
 
-`Code`, `Language`, and `ClipboardWriter` raise `PropertyChanged` exactly once
-after the replacement value and all dependent token, fold, selection, and
-viewport state have committed. Reassigning the same value is silent.
+`Code`, `Catalog`, `Language`, and `ClipboardWriter` raise `PropertyChanged`
+exactly once after the replacement value and all dependent token, fold,
+selection, and viewport state have committed. Reentrant language changes during
+a catalog notification supersede that completed catalog projection instead of
+letting the outer transition restore a stale grammar. Reassigning the same value
+is silent.
 
 ## Selection, viewport, and copying
 

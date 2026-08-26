@@ -98,6 +98,7 @@ public static class SyntaxDefinitionReader
                     author: Attribute(language, "author") ?? string.Empty,
                     license: Attribute(language, "license") ?? string.Empty,
                     indenter: Attribute(language, "indenter"),
+                    style: Attribute(language, "style") ?? string.Empty,
                     hidden: ParseBool(Attribute(language, "hidden")),
                     general: general,
                     keywordLists: keywordLists,

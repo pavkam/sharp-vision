@@ -79,11 +79,24 @@ public sealed class SyntaxKeywordMatcherTests
         matcher.Match("IF", 0).ShouldBe(2);
     }
 
-    /// <summary>Verifies candidate lookup compares the source span without allocating a temporary string.</summary>
-    [Fact]
-    public void Match_WhenRepeatedAfterWarmup_AllocatesNoCandidateStrings()
+    /// <summary>Verifies case-insensitive keyword lookup uses Qt-compatible Unicode folding.</summary>
+    [Theory]
+    [InlineData("K", "K")]
+    [InlineData("S", "ſ")]
+    public void Match_WhenCaseInsensitiveUnicodeFoldDiffersFromOrdinal_Matches(string keyword, string text)
     {
-        var matcher = new SyntaxKeywordMatcher(["keyword"], caseSensitive: true, SyntaxWordDelimiters.Default);
+        var matcher = new SyntaxKeywordMatcher([keyword], caseSensitive: false, SyntaxWordDelimiters.Default);
+
+        matcher.Match(text, 0).ShouldBe(text.Length);
+    }
+
+    /// <summary>Verifies candidate lookup compares the source span without allocating a temporary string.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Match_WhenRepeatedAfterWarmup_AllocatesNoCandidateStrings(bool caseSensitive)
+    {
+        var matcher = new SyntaxKeywordMatcher(["keyword"], caseSensitive, SyntaxWordDelimiters.Default);
         _ = matcher.Match("identifier", 0);
         var before = GC.GetAllocatedBytesForCurrentThread();
         var matches = 0;
