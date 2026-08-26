@@ -40,6 +40,7 @@ public sealed record FilePickerDialogStyle: FileDialogStyle
     /// <param name="rootPadding">The outer edges around the dialog's retained content.</param>
     /// <param name="contentSpacing">The non-negative spacing between the root content's rows.</param>
     /// <param name="fileListBorder">The complete border around the file-list surface.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="contentSpacing"/> is negative.</exception>
     [SetsRequiredMembers]
     public FilePickerDialogStyle(
         Face face,

@@ -141,7 +141,7 @@ internal sealed class TabControlPane: CompositeControlBase
                 new DocExample("Add and remove", "Buttons modify the tab set.",
                     new DocColumn(dyn, new DocRow(addBtn, rmBtn, closeBtn), dynStatus))),
             new DocSection("🎨", "Styling",
-                "<info>TabControlStyle</info> carries the divider and underline glyphs and both strip colors, so a theme's <info>styles.tabControl</info> section or a local <info>Style</info> customizes the tab strip.",
+                "<info>TabControlStyle</info> carries the divider and underline glyphs and both strip colors. The shared chrome follows <info>styles.control</info>; assign a local <info>Style</info> to customize tab-strip members.",
                 new DocExample("Custom colors and glyphs",
                     "Override the divider and selection indicator for a distinct visual treatment.",
                     new TabControl

@@ -142,8 +142,8 @@ public sealed class ThemeCatalogTests
 
         normal.Border.Sides.ShouldBe(BorderSide.All);
         normal.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Heavy);
-        normal.Border.Foreground.SemanticColor.ShouldBe(SemanticColor.ControlBorder);
-        hovered.Border.Foreground.SemanticColor.ShouldBe(SemanticColor.ActiveBorder);
+        theme.Resolve(normal.Border.Foreground).ShouldBe(Color.Rgb(128, 128, 128));
+        theme.Resolve(hovered.Border.Foreground).ShouldBe(Color.Rgb(0, 255, 255));
         theme.ResolveColor(SemanticColor.ActiveBorder).ShouldBe(Color.Rgb(0, 255, 255));
         theme.ResolveAttributes(SemanticDecoration.FocusedText).ShouldBe(TerminalAttributes.Bold);
     }
@@ -160,14 +160,9 @@ public sealed class ThemeCatalogTests
         _ = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "semantic-test"));
     }
 
-    // Every palette key below is deliberately spelled identically to the SemanticColor role it
-    // backs, and any "styles.*" section further down that references one of these names (e.g.
-    // "activeBorder") resolves through Theme.ResolveSectionColor, which checks SemanticColor names
-    // before palette keys - so a colliding name here only resolves correctly because its palette
-    // value is kept byte-identical to the real semantic value it shadows. Do not let a future edit
-    // change only one side of that pairing (see ControlBaseTests.Appearance.cs's
-    // ActualAppearance_WhenThemeProvidesPerStateAppearance_UsesNormalAndActiveValues for the same
-    // collision biting for real, with a mismatched value).
+    // Palette keys deliberately mirror semantic role names to exercise the documented exact-key
+    // precedence. Style references such as "activeBorder" therefore resolve to these literal
+    // palette entries, while differently-cased or absent keys can still name semantic roles.
     private static string CreateDocument() => /*lang=json,strict*/ """
         {
           "name": "Semantic",
@@ -337,6 +332,21 @@ public sealed class ThemeCatalogTests
         var theme = ThemeCatalog.Parse(ThemeJson.Create(background: "bg", foreground: "fg"), "t");
 
         theme.ResolveColor(SemanticColor.Control).ShouldBe(Color.Rgb(0x10, 0x10, 0x10));
+    }
+
+    /// <summary>Verifies an exact palette key wins when its name also names a semantic color.</summary>
+    [Fact]
+    public void Parse_WhenStyleColorMatchesPaletteAndSemanticNames_UsesExactPaletteEntry()
+    {
+        var json = ThemeJson.Create(
+            palette: "\"bg\":\"#101010\",\"fg\":\"#e0e0e0\",\"accent\":\"#ff0000\",\"semanticAccent\":\"#0000ff\"",
+            accent: "semanticAccent",
+            windowExtra: ",\"closeMarkColor\":\"accent\"");
+
+        var theme = ThemeCatalog.Parse(json, "palette-precedence");
+
+        theme.ResolveColor(SemanticColor.Accent).ShouldBe(Color.Rgb(0, 0, 255));
+        theme.Resolve(theme.GetWindowStyleSet().Normal.CloseMarkColor).ShouldBe(Color.Rgb(255, 0, 0));
     }
 
     /// <summary>Verifies a raw hex literal in "colors.*" is rejected: every semantic-color mapping

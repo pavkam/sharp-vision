@@ -192,9 +192,11 @@ itself; see [Appearance](styling.md#overview) for the full mechanism. Pass a
 private method as `InitializeStyle`'s optional `changed` callback only for
 genuine post-commit work such as normalizing an animation phase or projecting an
 aggregate style onto heterogeneous retained parts - there is no virtual
-`OnStyleChanged` to override. The factory is fully public and requires no
-internal access - a third-party control registers its own `StyleDefinition`
-exactly the way `CommandTileStyle` does above.
+`OnStyleChanged` to override. The callback runs for both local assignments and
+theme-owned resolved changes, after the new value and Theme have committed. The
+factory is fully public and requires no internal access - a third-party control
+registers its own `StyleDefinition` exactly the way `CommandTileStyle` does
+above.
 
 The style slot recursively tracks every `ControlColor` and `ControlDecoration`
 member, including members nested in faces, borders, shadows, and custom style
@@ -214,12 +216,16 @@ the explicit `GetThemeChangeImpact` comparison shown above.
 Use `StyleDefinitions.Part`, `InitializePartStyle`, and `BindStyle` for a named
 style forwarded to retained implementation controls. Bind the nullable local
 slot, not `Actual`, so a reset never pins a theme-derived value. The framework
-rejects a control definition passed to `InitializePartStyle` and a part
-definition passed to `InitializeStyle`; role mismatches are authoring errors,
-not a way to suppress appearance ownership. A primary-named style that only
-projects values onto heterogeneous retained parts uses
-`StyleDefinitions.Aggregate` with `InitializeStyle`, as `ColorPickerStyle` does.
-Aggregate styles retain conventional `Style`/`ActualStyle` naming without
+publishes reusable `ForwardingDefinition` values for `ButtonStyle`,
+`CheckBoxStyle`, `SeparatorStyle`, and `ScrollBarStyle`, allowing an external
+composite to bind those built-in child styles without copying private completion
+logic. For an application-owned style, create the equivalent definition with
+`StyleDefinitions.Part`. The framework rejects a control definition passed to
+`InitializePartStyle` and a part definition passed to `InitializeStyle`; role
+mismatches are authoring errors, not a way to suppress appearance ownership. A
+primary-named style that only projects values onto heterogeneous retained parts
+uses `StyleDefinitions.Aggregate` with `InitializeStyle`, as `ColorPickerStyle`
+does. Aggregate styles retain conventional `Style`/`ActualStyle` naming without
 claiming the aggregate control's own face, border, or shadow.
 
 Bindings are scoped to retained ancestry. Removing or reparenting the target

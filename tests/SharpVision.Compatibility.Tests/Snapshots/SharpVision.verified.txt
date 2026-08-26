@@ -1232,6 +1232,7 @@ namespace SharpVision.Controls.Display
         public required System.Text.Rune HorizontalGlyph { get; init; }
         public required System.Text.Rune VerticalGlyph { get; init; }
         public new static SharpVision.Controls.Display.SeparatorStyle Default { get; }
+        public static SharpVision.Controls.StyleDefinition<SharpVision.Controls.Display.SeparatorStyle> ForwardingDefinition { get; }
     }
     public sealed class Spinner : SharpVision.Controls.ControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Display.SpinnerStyle>
     {
@@ -1373,6 +1374,7 @@ namespace SharpVision.Controls.Input
         public required SharpVision.Layout.Thickness Padding { get; init; }
         public new static SharpVision.Controls.Input.ButtonStyle Default { get; }
         public static SharpVision.Controls.Input.ButtonStyle Filled { get; }
+        public static SharpVision.Controls.StyleDefinition<SharpVision.Controls.Input.ButtonStyle> ForwardingDefinition { get; }
         public static SharpVision.Controls.Input.ButtonStyle Standard { get; }
     }
     public sealed class Calendar : SharpVision.Controls.ControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.CalendarStyle>
@@ -1487,6 +1489,7 @@ namespace SharpVision.Controls.Input
         public int MarkWidth { get; }
         public static SharpVision.Controls.Input.CheckBoxStyle Brackets { get; }
         public new static SharpVision.Controls.Input.CheckBoxStyle Default { get; }
+        public static SharpVision.Controls.StyleDefinition<SharpVision.Controls.Input.CheckBoxStyle> ForwardingDefinition { get; }
         public static SharpVision.Controls.Input.CheckBoxStyle Square { get; }
         public static SharpVision.Controls.Input.CheckBoxStyle Tick { get; }
     }

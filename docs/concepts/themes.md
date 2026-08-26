@@ -228,10 +228,13 @@ A color member - whether one of `face`/`border`/`shadow`'s own nested colors or
 a structural one such as `window`'s close-mark colors - accepts the same shapes:
 a `SemanticColor` name, a palette key, or `"transparent"`/`"default"` - never a
 raw hex literal - resolved through `Theme.Palette` lazily rather than an eager
-parse-time dictionary. A `glyphs`-shaped member such as `anchorGlyphs` is a
-nested object whose own members are each one printable, one-cell Rune string -
-an entry with more than one Rune, or a Rune that measures wider than one cell,
-is rejected the same way a hand-authored glyph value would be.
+parse-time dictionary. An exact, case-sensitive palette-key match takes
+precedence over the case-insensitive semantic and special names, so keys such as
+`accent` or `default` remain authorable without silently resolving to another
+value. A `glyphs`-shaped member such as `anchorGlyphs` is a nested object whose
+own members are each one printable, one-cell Rune string - an entry with more
+than one Rune, or a Rune that measures wider than one cell, is rejected the same
+way a hand-authored glyph value would be.
 
 The same rule set covers every other member kind a style section accepts:
 attributes take a literal attribute name/array or the JSON name of a global

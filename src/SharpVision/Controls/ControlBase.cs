@@ -3757,10 +3757,10 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
             if (publicationVersion == _stylePublicationVersion)
             {
-                foreach (var actualStylePropertyName in transition.ResolvedStylePropertyNames)
+                foreach (var slot in transition.ChangedStyleSlots)
                 {
                     ExceptionAggregation.Capture(
-                        () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(actualStylePropertyName)),
+                        () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(slot.ActualPropertyName)),
                         ref failure);
 
                     if (publicationVersion != _stylePublicationVersion)
@@ -3778,6 +3778,21 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             ExceptionAggregation.Capture(
                 () => PublishAppearanceChanges(previousAppearance, currentAppearance),
                 ref failure);
+        }
+
+        if (publicationVersion == _stylePublicationVersion && change.ThemeTransition is { } resolvedTransition)
+        {
+            foreach (var slot in resolvedTransition.ChangedStyleSlots)
+            {
+                ExceptionAggregation.Capture(
+                    () => slot.PublishThemeChanged(resolvedTransition.PreviousTheme, resolvedTransition.CurrentTheme),
+                    ref failure);
+
+                if (publicationVersion != _stylePublicationVersion)
+                {
+                    break;
+                }
+            }
         }
 
         failure?.Throw();
@@ -4269,40 +4284,27 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         ResolvedAppearance previous,
         ResolvedAppearance current) => previous.GetImpact(current);
 
-    /// <summary>Gets the resolved-style property to publish for one committed Theme change.</summary>
-    /// <param name="previous">The previously inherited Theme, or null.</param>
-    /// <param name="current">The currently inherited Theme, or null.</param>
-    /// <returns>
-    /// The non-empty resolved-style property name when Theme ownership changed that value; otherwise null.
-    /// </returns>
-    /// <remarks>
-    /// A styled control compares its complete old and new Theme-owned styles here. A local style returns null
-    /// because Theme identity does not change the complete resolved style value. The hook runs before inherited
-    /// Theme state commits, so implementations resolve only from the supplied parameters and local style state.
-    /// </remarks>
-    private string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
-        _primaryStyle?.GetThemeResolvedProperty(previous, current);
-
-    private List<string> GetThemeResolvedStylePropertyNames(Theme? previous, Theme? current)
+    /// <summary>Collects the slots whose resolved values change across a prospective Theme transition.</summary>
+    private List<StyleSlotBase> GetThemeResolvedStyleSlots(Theme? previous, Theme? current)
     {
         if (_styleSlots is null)
         {
-            return GetThemeResolvedStylePropertyName(previous, current) is { } propertyName
-                ? [propertyName]
+            return _primaryStyle is { } primary && primary.GetThemeResolvedProperty(previous, current) is not null
+                ? [primary]
                 : [];
         }
 
-        var propertyNames = new List<string>(_styleSlots.Count);
+        var slots = new List<StyleSlotBase>(_styleSlots.Count);
         foreach (var slot in _styleSlots.Values)
         {
             if (slot.GetThemeResolvedProperty(previous, current) is { } propertyName &&
-                !propertyNames.Contains(propertyName, StringComparer.Ordinal))
+                !slots.Exists(existing => string.Equals(existing.ActualPropertyName, propertyName, StringComparison.Ordinal)))
             {
-                propertyNames.Add(propertyName);
+                slots.Add(slot);
             }
         }
 
-        return propertyNames;
+        return slots;
     }
 
     /// <summary>Gets or sets whether this control stops ambient text appearance inheritance.</summary>
@@ -4399,18 +4401,18 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             previousParentAmbientFace,
             currentParentAmbientFace);
         ValidateImpact(impact);
-        var resolvedStylePropertyNames = GetThemeResolvedStylePropertyNames(previousTheme, theme);
+        var changedStyleSlots = GetThemeResolvedStyleSlots(previousTheme, theme);
 
-        foreach (var resolvedStylePropertyName in resolvedStylePropertyNames)
+        foreach (var changedStyleSlot in changedStyleSlots)
         {
-            ArgumentException.ThrowIfNullOrEmpty(resolvedStylePropertyName);
+            ArgumentException.ThrowIfNullOrEmpty(changedStyleSlot.ActualPropertyName);
         }
 
         return new ThemeTransition(
             this,
             previousTheme,
             theme,
-            resolvedStylePropertyNames,
+            changedStyleSlots,
             impact);
     }
 

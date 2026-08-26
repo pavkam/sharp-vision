@@ -22,10 +22,10 @@ public sealed record SeparatorStyle: ControlStyle
         static (previous, _, current, _) =>
             previous != current ? InvalidationImpact.Render : InvalidationImpact.None);
 
-    /// <summary>Gets the non-invalidating definition used by pure forwarding hosts -
+    /// <summary>Gets the non-invalidating definition used by library and external pure forwarding hosts -
     /// <c>MessageBox</c>'s and every <c>FileDialogBase</c>-derived dialog's shared action-bar
     /// divider.</summary>
-    internal static StyleDefinition<SeparatorStyle> ForwardingDefinition { get; } = StyleDefinitions.Part(
+    public static StyleDefinition<SeparatorStyle> ForwardingDefinition { get; } = StyleDefinitions.Part(
         static theme => Definition.Resolve(null, theme),
         static (_, _, _, _) => InvalidationImpact.None);
 

@@ -41,6 +41,9 @@ internal abstract class StyleSlotBase
     /// <summary>Gets the resolved property changed by one Theme transition.</summary>
     internal abstract string? GetThemeResolvedProperty(Theme? previous, Theme? current);
 
+    /// <summary>Publishes the resolved-style callback for one committed Theme transition.</summary>
+    internal abstract void PublishThemeChanged(Theme? previous, Theme? current);
+
     /// <summary>Clears the memoized resolved value.</summary>
     internal abstract void ClearResolvedCache();
 

@@ -10,23 +10,23 @@ internal readonly struct ThemeTransition
     /// <param name="control">The non-null control whose inherited Theme changed.</param>
     /// <param name="previousTheme">The previously inherited Theme, or null.</param>
     /// <param name="currentTheme">The currently inherited Theme, or null.</param>
-    /// <param name="resolvedStylePropertyNames">The exact changed resolved-style properties.</param>
+    /// <param name="changedStyleSlots">The exact slots whose resolved styles changed.</param>
     /// <param name="impact">The prevalidated strongest invalidation required by every visual state.</param>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     internal ThemeTransition(
         ControlBase control,
         Theme? previousTheme,
         Theme? currentTheme,
-        IReadOnlyList<string> resolvedStylePropertyNames,
+        IReadOnlyList<StyleSlotBase> changedStyleSlots,
         InvalidationImpact impact)
     {
         ArgumentNullException.ThrowIfNull(control);
-        ArgumentNullException.ThrowIfNull(resolvedStylePropertyNames);
+        ArgumentNullException.ThrowIfNull(changedStyleSlots);
 
         Control = control;
         PreviousTheme = previousTheme;
         CurrentTheme = currentTheme;
-        ResolvedStylePropertyNames = resolvedStylePropertyNames;
+        ChangedStyleSlots = changedStyleSlots;
         Impact = impact;
     }
 
@@ -39,8 +39,8 @@ internal readonly struct ThemeTransition
     /// <summary>Gets the currently inherited Theme, or null.</summary>
     internal Theme? CurrentTheme { get; }
 
-    /// <summary>Gets the exact changed resolved-style property names.</summary>
-    internal IReadOnlyList<string> ResolvedStylePropertyNames { get; }
+    /// <summary>Gets the exact slots whose resolved styles changed.</summary>
+    internal IReadOnlyList<StyleSlotBase> ChangedStyleSlots { get; }
 
     /// <summary>Gets the prevalidated strongest invalidation required by every visual state.</summary>
     internal InvalidationImpact Impact { get; }

@@ -44,8 +44,8 @@ public sealed record CheckBoxStyle: InputStyle
             AffixGap = input.AffixGap
         };
 
-    /// <summary>Gets the non-invalidating definition used by pure forwarding hosts.</summary>
-    internal static StyleDefinition<CheckBoxStyle> ForwardingDefinition { get; } = StyleDefinitions.Part(
+    /// <summary>Gets the non-invalidating definition used by library and external pure forwarding hosts.</summary>
+    public static StyleDefinition<CheckBoxStyle> ForwardingDefinition { get; } = StyleDefinitions.Part(
         static theme => Definition.Resolve(null, theme),
         static (_, _, _, _) => InvalidationImpact.None);
 

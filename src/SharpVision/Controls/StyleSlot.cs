@@ -84,6 +84,17 @@ public sealed class StyleSlot<TStyle>
 
     internal void PublishChanged(TStyle previous, TStyle current) => _changed?.Invoke(previous, current);
 
+    /// <summary>Publishes one Theme-owned resolved transition after the new Theme commits.</summary>
+    internal void PublishThemeChanged(Theme? previous, Theme? current)
+    {
+        if (_changed is null)
+        {
+            return;
+        }
+
+        _changed(Definition.Resolve(LocalValue, previous), Definition.Resolve(LocalValue, current));
+    }
+
     /// <summary>Adds one validated downstream slot and forwards the nullable local value.</summary>
     internal void Bind(StyleSlot<TStyle> target)
     {

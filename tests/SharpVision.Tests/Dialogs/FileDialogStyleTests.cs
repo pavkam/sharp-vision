@@ -102,4 +102,42 @@ public sealed class FileDialogStyleTests
             save with { CloseMarkPressedColor = SemanticColor.Error },
             null).ShouldBe(InvalidationImpact.Render);
     }
+
+    /// <summary>Verifies both public constructors reject invalid spacing at style creation.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Constructor_WhenContentSpacingIsNegative_ThrowsBeforePublication(bool isFilePicker)
+    {
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            CreateStyle(isFilePicker, contentSpacing: -1));
+    }
+
+    /// <summary>Verifies record-copy initialization cannot bypass the spacing invariant.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ContentSpacing_WhenRecordCopyIsNegative_ThrowsBeforePublication(bool isFilePicker)
+    {
+        FileDialogStyle style = isFilePicker ? FilePickerDialogStyle.Default : SaveFileDialogStyle.Default;
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => style with { ContentSpacing = -1 });
+    }
+
+    private static FileDialogStyle CreateStyle(bool isFilePicker, int contentSpacing) =>
+        isFilePicker
+            ? new FilePickerDialogStyle(
+                WindowStyle.Default.Face,
+                WindowStyle.Default.Border,
+                WindowStyle.Default.Shadow,
+                new Thickness(1),
+                contentSpacing,
+                ControlStyle.NoBorder)
+            : new SaveFileDialogStyle(
+                WindowStyle.Default.Face,
+                WindowStyle.Default.Border,
+                WindowStyle.Default.Shadow,
+                new Thickness(1),
+                contentSpacing,
+                ControlStyle.NoBorder);
 }

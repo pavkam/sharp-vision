@@ -230,14 +230,14 @@ public sealed class Theme
     {
         ArgumentNullException.ThrowIfNull(value);
 
-        return string.Equals(value, "transparent", StringComparison.OrdinalIgnoreCase)
-            ? Color.Transparent
-            : string.Equals(value, "default", StringComparison.OrdinalIgnoreCase)
-                ? Color.Default
-                : Enum.TryParse<SemanticColor>(value, ignoreCase: true, out var semantic) && Enum.IsDefined(semantic)
-                    ? semantic
-                    : Palette.TryGetValue(value, out var paletteColor)
-                        ? paletteColor
+        return Palette.TryGetValue(value, out var paletteColor)
+            ? paletteColor
+            : string.Equals(value, "transparent", StringComparison.OrdinalIgnoreCase)
+                ? Color.Transparent
+                : string.Equals(value, "default", StringComparison.OrdinalIgnoreCase)
+                    ? Color.Default
+                    : Enum.TryParse<SemanticColor>(value, ignoreCase: true, out var semantic) && Enum.IsDefined(semantic)
+                        ? semantic
                         : throw new InvalidDataException(
                             $"Theme '{DiagnosticSource}' {context} references unknown palette key '{value}'.");
     }

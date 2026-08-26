@@ -359,6 +359,20 @@ public sealed class StyleSlotTests
         probe.Pending.ShouldBe(Invalidation.Render);
     }
 
+    /// <summary>Verifies a Theme-owned resolution invokes the same projection callback as a local
+    /// style commit after the new Theme is observable.</summary>
+    [Fact]
+    public void PropagateTheme_WhenResolvedStyleChanges_InvokesChangedCallbackWithCurrentTheme()
+    {
+        using var probe = new SemanticColorStyleProbe();
+
+        probe.ApplyTheme(ThemeCatalog.Parse(ThemeJson.Create(accent: "#112233")));
+        probe.ApplyTheme(ThemeCatalog.Parse(ThemeJson.Create(accent: "#aabbcc")));
+
+        probe.StyleChanges.ShouldBe(2);
+        probe.ProjectedColor.ShouldBe(Color.Rgb(0xaa, 0xbb, 0xcc));
+    }
+
     /// <summary>Verifies an <c>ImmutableArray</c> member with equal contents stops reporting a
     /// change. Boxed, it compares by the underlying array reference, so two structurally identical
     /// resolutions of <c>SpinnerStyle.Frames</c> looked different every single time - the

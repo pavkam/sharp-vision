@@ -42,6 +42,9 @@ internal sealed class StyleSlotRegistration<TStyle>: StyleSlotBase
     internal override string? GetThemeResolvedProperty(Theme? previous, Theme? current) =>
         _slot.GetThemeResolvedProperty(previous, current);
 
+    internal override void PublishThemeChanged(Theme? previous, Theme? current) =>
+        _slot.PublishThemeChanged(previous, current);
+
     internal override void ClearResolvedCache() => _slot.ClearResolvedCache();
 
     internal override void DisposeBindings() => _slot.DisposeBindings();

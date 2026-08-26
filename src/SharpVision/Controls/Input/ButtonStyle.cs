@@ -24,8 +24,8 @@ public sealed record ButtonStyle: InputStyle
                     ? InvalidationImpact.Arrange
                     : InvalidationImpact.None);
 
-    /// <summary>Gets the non-invalidating definition used by pure forwarding hosts.</summary>
-    internal static StyleDefinition<ButtonStyle> ForwardingDefinition { get; } = StyleDefinitions.Part(
+    /// <summary>Gets the non-invalidating definition used by library and external pure forwarding hosts.</summary>
+    public static StyleDefinition<ButtonStyle> ForwardingDefinition { get; } = StyleDefinitions.Part(
         static theme => Definition.Resolve(null, theme),
         static (_, _, _, _) => InvalidationImpact.None);
 

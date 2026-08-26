@@ -9,7 +9,7 @@ public sealed class SemanticColorStyleProbe: ControlBase, IStyled<SemanticColorS
     private readonly StyleSlot<SemanticColorStyle> _style;
 
     /// <summary>Initializes the aggregate style slot.</summary>
-    public SemanticColorStyleProbe() => _style = InitializeStyle(SemanticColorStyle.Definition);
+    public SemanticColorStyleProbe() => _style = InitializeStyle(SemanticColorStyle.Definition, OnStyleChanged);
 
     /// <inheritdoc/>
     public SemanticColorStyle? Style
@@ -21,7 +21,20 @@ public sealed class SemanticColorStyleProbe: ControlBase, IStyled<SemanticColorS
     /// <inheritdoc/>
     public SemanticColorStyle ActualStyle => _style.Actual;
 
+    /// <summary>Gets the number of resolved-style callbacks observed.</summary>
+    public int StyleChanges { get; private set; }
+
+    /// <summary>Gets the literal color projected by the latest resolved-style callback.</summary>
+    public Color ProjectedColor { get; private set; }
+
     /// <summary>Propagates an inherited theme for focused invalidation tests.</summary>
     /// <param name="theme">The prospective theme.</param>
     public void ApplyTheme(Theme theme) => SetTheme(theme);
+
+    private void OnStyleChanged(SemanticColorStyle previous, SemanticColorStyle current)
+    {
+        _ = previous;
+        StyleChanges++;
+        ProjectedColor = current.FillColor.Resolve(Theme);
+    }
 }

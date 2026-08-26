@@ -54,7 +54,16 @@ public abstract record FileDialogStyle: WindowStyle
     public required Thickness RootPadding { get; init; }
 
     /// <summary>Gets the non-negative spacing between the root content's rows.</summary>
-    public required int ContentSpacing { get; init; }
+    /// <exception cref="ArgumentOutOfRangeException">The assigned spacing is negative.</exception>
+    public required int ContentSpacing
+    {
+        get;
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            field = value;
+        }
+    }
 
     /// <summary>Gets the complete border around the file-list surface.</summary>
     public required Border FileListBorder { get; init; }
