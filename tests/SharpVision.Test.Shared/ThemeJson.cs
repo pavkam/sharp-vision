@@ -86,7 +86,7 @@ public static class ThemeJson
 
         return $$"""
             { "name": "{{name}}", "slug": "t", "colorScheme": "dark", "order": 1,
-              "author": "A", "license": "MIT", "source": "s"{{glyphsField}},
+              "author": "A", "license": "MIT", "source": "https://example.invalid/theme"{{glyphsField}},
               "palette": { {{palette}}, {{_reservedPalette}}{{extraPalette}} },
               "colors": {
                 "window":"{{backgroundRef}}", "windowSurface":"{{backgroundRef}}", "windowText":"{{foregroundRef}}",

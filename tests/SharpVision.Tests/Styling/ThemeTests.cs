@@ -10,6 +10,24 @@ using System.Text.Json;
 /// <summary>Verifies public Theme construction preserves valid immutable metadata.</summary>
 public sealed class ThemeTests
 {
+    /// <summary>Verifies programmatic provenance rejects non-SPDX licenses and non-HTTP sources.</summary>
+    [Fact]
+    public void Constructor_WhenProvenanceIsInvalid_ThrowsArgumentException()
+    {
+        _ = Should.Throw<ArgumentException>(() => new Theme(license: "whatever"));
+        _ = Should.Throw<ArgumentException>(() => new Theme(source: "not a URL"));
+    }
+
+    /// <summary>Verifies catalog provenance applies the same SPDX and URL contracts.</summary>
+    [Fact]
+    public void ThemeCatalogEntry_WhenProvenanceIsInvalid_ThrowsArgumentException()
+    {
+        _ = Should.Throw<ArgumentException>(() => new ThemeCatalogEntry(
+            "Theme", "theme", ColorScheme.Dark, "Author", "whatever", "https://example.invalid/theme"));
+        _ = Should.Throw<ArgumentException>(() => new ThemeCatalogEntry(
+            "Theme", "theme", ColorScheme.Dark, "Author", "MIT", "not a URL"));
+    }
+
     /// <summary>Verifies URL and file identifiers reject unsafe path, fragment, and whitespace syntax.</summary>
     [Theory]
     [InlineData("two words")]
@@ -515,7 +533,7 @@ public sealed class ThemeTests
     [StringSyntax(StringSyntaxAttribute.Json)]
     private const string _colorsOnlyTheme = """
         { "name": "T", "slug": "t", "colorScheme": "dark", "order": 1,
-          "author": "A", "license": "MIT", "source": "s",
+          "author": "A", "license": "MIT", "source": "https://example.invalid/theme",
           "palette": {
             "bg":"#101010", "fg":"#e0e0e0", "shadow":"#303030", "accent":"#77aaff",
             "disabledText":"#707070", "disabledBorder":"#606060",
@@ -560,7 +578,7 @@ public sealed class ThemeTests
     [StringSyntax(StringSyntaxAttribute.Json)]
     private const string _colorsAndBorderOnlyTheme = """
         { "name": "T", "slug": "t", "colorScheme": "dark", "order": 1,
-          "author": "A", "license": "MIT", "source": "s",
+          "author": "A", "license": "MIT", "source": "https://example.invalid/theme",
           "palette": {
             "bg":"#101010", "fg":"#e0e0e0", "shadow":"#303030", "accent":"#77aaff",
             "disabledText":"#707070", "disabledBorder":"#606060",

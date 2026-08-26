@@ -360,7 +360,7 @@ public sealed class StyleSlotTests
     }
 
     /// <summary>Verifies semantic members inside ordinary immutable nested values participate in
-    /// resolved ActualStyle notification without requiring the overlay marker interface.</summary>
+    /// resolved ActualStyle notification without invoking computed, cyclic, or indexed getters.</summary>
     [Fact]
     public void PropagateTheme_WhenNestedOrdinaryValueResolvesDifferently_PublishesActualStyle()
     {

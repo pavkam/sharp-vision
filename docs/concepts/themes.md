@@ -40,7 +40,10 @@ value and null or blank identity and provenance metadata before publishing the
 theme. `ThemeCatalogEntry` rejects the same undefined color-scheme state before
 publishing catalog metadata. A nonblank `slug` must be lowercase kebab case:
 ASCII letters and digits separated by single hyphens. The same portable grammar
-applies to parsed, programmatic, and catalog-entry slugs.
+applies to parsed, programmatic, and catalog-entry slugs. `source` must be an
+absolute HTTP or HTTPS URL. `license` must be one of the supported SPDX
+identifiers accepted by typed construction; invalid provenance is rejected
+consistently by programmatic, parsed, and catalog-entry metadata.
 
 ## Global values
 
@@ -69,8 +72,8 @@ disabledText, border, shadow, hotkey
 ```
 
 Each accepts a single attribute name or an array of names; an empty array means
-no attributes. `Theme.ResolveAttributes(SemanticDecoration)` is the typed public
-lookup.
+no attributes. JSON `null` is not an alias for an empty array.
+`Theme.ResolveAttributes(SemanticDecoration)` is the typed public lookup.
 
 `Theme.Error`, `Warning`, `Success`, `Info`, `Muted`, and `Hotkey` are named
 shortcuts onto `ResolveColor`, reading the same `colors` entries as every other

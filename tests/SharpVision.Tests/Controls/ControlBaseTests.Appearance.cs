@@ -633,6 +633,26 @@ public sealed partial class ControlBaseTests
         control.Style.ShouldBeNull();
     }
 
+    /// <summary>Verifies every live resolved-style getter serves an off-dispatcher snapshot without
+    /// mutating either the typed-style or appearance cache.</summary>
+    [Fact]
+    public async Task ActualStyle_WhenAttachedAndReadOffDispatcher_ResolvesWithoutCachingAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = new StyledProbe();
+        await dispatcher.InvokeAsync(
+            () => control.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+        var resolutions = control.UncachedAppearanceResolutionCount;
+
+        _ = control.ActualStyle.ShouldNotBeNull();
+        _ = control.ActualFace;
+        _ = control.ActualBorder;
+        _ = control.ActualShadow;
+
+        control.UncachedAppearanceResolutionCount.ShouldBe(resolutions);
+    }
+
     /// <summary>Verifies prospective Theme impact is calculated while the inherited Theme remains
     /// unchanged. Driven through "input" - StyledProbe's ButtonStyle falls back to it, and Border
     /// passes through unchanged from ButtonStyle.Complete's fallback argument - since a leaf

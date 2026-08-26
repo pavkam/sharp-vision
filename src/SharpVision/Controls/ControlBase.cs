@@ -3878,7 +3878,11 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         }
     }
 
-    private void VerifyAccess() => Dispatcher?.VerifyAccess();
+    /// <summary>Rejects attached-tree mutation from outside the owning dispatcher.</summary>
+    internal void VerifyAccess() => Dispatcher?.VerifyAccess();
+
+    /// <summary>Gets whether a live cache may be read or written by the current caller.</summary>
+    internal bool HasDispatcherAccess => Dispatcher?.CheckAccess() ?? true;
 
     private void VerifyLifecycleRoot()
     {
@@ -4021,8 +4025,16 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         set => SetFace(value);
     }
 
-    /// <summary>Gets the fully composed current face with concrete terminal values.</summary>
-    public Face ActualFace => GetActualFace(GetAppearanceState());
+    /// <summary>Gets the fully composed current face with concrete terminal values. An attached
+    /// off-dispatcher read resolves a cache-neutral snapshot.</summary>
+    public Face ActualFace
+    {
+        get
+        {
+            var state = GetAppearanceState();
+            return HasDispatcherAccess ? GetActualFace(state) : ResolveAppearance(Theme, state).Face;
+        }
+    }
 
     /// <summary>Clears the complete local face and returns ownership to the active semantic appearance.</summary>
     public void ResetFace()
@@ -4050,8 +4062,16 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         set => SetBorder(value);
     }
 
-    /// <summary>Gets the fully composed current border with concrete terminal values.</summary>
-    public Border ActualBorder => GetActualBorder(GetAppearanceState());
+    /// <summary>Gets the fully composed current border with concrete terminal values. An attached
+    /// off-dispatcher read resolves a cache-neutral snapshot.</summary>
+    public Border ActualBorder
+    {
+        get
+        {
+            var state = GetAppearanceState();
+            return HasDispatcherAccess ? GetActualBorder(state) : ResolveAppearance(Theme, state).Border;
+        }
+    }
 
     /// <summary>Clears the complete local border and returns ownership to the active semantic
     /// appearance. Requires <see cref="EnableChromeAuthoring"/>.</summary>
@@ -4089,8 +4109,16 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         set => SetShadow(value);
     }
 
-    /// <summary>Gets the fully composed current shadow with concrete terminal values.</summary>
-    public Shadow ActualShadow => GetActualShadow(GetAppearanceState());
+    /// <summary>Gets the fully composed current shadow with concrete terminal values. An attached
+    /// off-dispatcher read resolves a cache-neutral snapshot.</summary>
+    public Shadow ActualShadow
+    {
+        get
+        {
+            var state = GetAppearanceState();
+            return HasDispatcherAccess ? GetActualShadow(state) : ResolveAppearance(Theme, state).Shadow;
+        }
+    }
 
     /// <summary>Clears the complete local shadow and returns ownership to the active semantic
     /// appearance. Requires <see cref="EnableChromeAuthoring"/>.</summary>

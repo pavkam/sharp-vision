@@ -15,7 +15,7 @@ public sealed class ThemeCatalogEntry
     /// <param name="license">The license identifier.</param>
     /// <param name="order">The declared catalog sort order.</param>
     /// <param name="source">The source URL.</param>
-    /// <exception cref="ArgumentException">A required string is null, empty, or whitespace.</exception>
+    /// <exception cref="ArgumentException">A required string is blank, the slug is unsafe, or provenance is invalid.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="colorScheme"/> is undefined.</exception>
     public ThemeCatalogEntry(string name, string slug, ColorScheme colorScheme, string author, string license,
         string source, int order = 0)
@@ -26,6 +26,8 @@ public sealed class ThemeCatalogEntry
         ArgumentException.ThrowIfNullOrWhiteSpace(license);
         ArgumentException.ThrowIfNullOrWhiteSpace(source);
         _ = ThemeSlug.Validate(slug, nameof(slug));
+        _ = ThemeProvenance.ValidateLicense(license, nameof(license));
+        _ = ThemeProvenance.ValidateSource(source, nameof(source));
 
         ArgumentOutOfRangeException.ThrowIfNotDefined(colorScheme, nameof(colorScheme), "The theme catalog color scheme is unknown.");
 

@@ -111,6 +111,31 @@ public sealed class ThemeCatalogTests
         error.Message.ShouldContain("slug");
     }
 
+    /// <summary>Verifies parsed provenance is validated before a Theme is published.</summary>
+    [Theory]
+    [InlineData("\"license\": \"MIT\"", "\"license\": \"whatever\"")]
+    [InlineData("\"source\": \"https://example.invalid/theme\"", "\"source\": \"not a URL\"")]
+    public void Parse_WhenProvenanceIsInvalid_ThrowsInvalidDataException(string current, string replacement)
+    {
+        var json = ThemeJson.Create().Replace(current, replacement, StringComparison.Ordinal);
+
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "invalid-provenance"));
+
+        error.Message.ShouldContain("invalid-provenance");
+    }
+
+    /// <summary>Verifies global attributes use the documented string-or-array grammar.</summary>
+    [Fact]
+    public void Parse_WhenGlobalAttributeIsNull_ThrowsInvalidDataException()
+    {
+        var json = ThemeJson.Create().Replace("\"normalText\":[]", "\"normalText\":null", StringComparison.Ordinal);
+
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "null-attribute"));
+
+        error.Message.ShouldContain("null-attribute");
+        error.Message.ShouldContain("attributes.normalText");
+    }
+
     /// <summary>Verifies geometry objects reject extra members instead of silently discarding them.</summary>
     [Fact]
     public void Parse_WhenStyleGeometryHasUnknownMember_ThrowsInvalidDataException()

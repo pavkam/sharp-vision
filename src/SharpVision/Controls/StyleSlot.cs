@@ -49,12 +49,18 @@ public sealed class StyleSlot<TStyle>
         set => Owner.CommitStyle(this, value);
     }
 
-    /// <summary>Gets the cached complete local, Theme-owned, or fallback style.</summary>
+    /// <summary>Gets the cached complete local, Theme-owned, or fallback style. An attached
+    /// off-dispatcher read resolves a cache-neutral snapshot.</summary>
     public TStyle Actual
     {
         get
         {
             var theme = Owner.Theme;
+            if (!Owner.HasDispatcherAccess)
+            {
+                return Definition.Resolve(LocalValue, theme);
+            }
+
             if (_cache is { } cached &&
                 EqualityComparer<TStyle?>.Default.Equals(_cacheKey, LocalValue) &&
                 ReferenceEquals(_cacheTheme, theme))

@@ -31,7 +31,12 @@ sequenceDiagram
 ```
 
 Only the dispatcher touches `Tree`. Queue locks protect record copies and wake
-state; they never hold user callbacks, layout, rendering, or terminal I/O.
+state; they never hold user callbacks, layout, rendering, or terminal I/O. Live
+resolved getters such as `ActualStyle`, `ActualFace`, `ActualBorder`, and
+`ActualShadow` use the live resolution cache on the dispatcher. Off-dispatcher
+reads resolve a cache-neutral snapshot and never observe or mutate that cache;
+callers with an explicit prospective Theme use the corresponding resolution
+APIs.
 
 `Dispatcher.Start` creates one named background owner thread and a finite FIFO
 queue (4,096 entries by default). `Post` rejects overflow before enqueueing and

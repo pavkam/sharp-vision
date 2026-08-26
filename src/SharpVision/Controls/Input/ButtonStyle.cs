@@ -95,29 +95,24 @@ public sealed record ButtonStyle: InputStyle
     {
         var previousProfile = Definition.Appearance!(previous, previousTheme);
         var currentProfile = Definition.Appearance!(current, currentTheme);
-        var combinations = 1 << VisualStateOrder.OrderedOverlays.Length;
-
-        for (var flags = 0; flags < combinations; flags++)
-        {
-            var state = VisualState.Normal;
-            for (var index = 0; index < VisualStateOrder.OrderedOverlays.Length; index++)
-            {
-                if ((flags & (1 << index)) != 0)
-                {
-                    state |= VisualStateOrder.OrderedOverlays[index];
-                }
-            }
-
-            var previousShadow = previousProfile.Resolve(state).Shadow;
-            var currentShadow = currentProfile.Resolve(state).Shadow;
-            if (ResolvePressedTranslation(previousShadow) != ResolvePressedTranslation(currentShadow))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return ResolvePressedTranslation(previousProfile.Normal.Shadow) !=
+               ResolvePressedTranslation(currentProfile.Normal.Shadow) ||
+               ShadowGeometryChanged(previousProfile.IsPointerOver.Shadow, currentProfile.IsPointerOver.Shadow) ||
+               ShadowGeometryChanged(previousProfile.FocusWithin.Shadow, currentProfile.FocusWithin.Shadow) ||
+               ShadowGeometryChanged(previousProfile.Focused.Shadow, currentProfile.Focused.Shadow) ||
+               ShadowGeometryChanged(previousProfile.Current.Shadow, currentProfile.Current.Shadow) ||
+               ShadowGeometryChanged(previousProfile.Selected.Shadow, currentProfile.Selected.Shadow) ||
+               ShadowGeometryChanged(previousProfile.Checked.Shadow, currentProfile.Checked.Shadow) ||
+               ShadowGeometryChanged(previousProfile.Indeterminate.Shadow, currentProfile.Indeterminate.Shadow) ||
+               ShadowGeometryChanged(previousProfile.Pressed.Shadow, currentProfile.Pressed.Shadow) ||
+               ShadowGeometryChanged(previousProfile.Disabled.Shadow, currentProfile.Disabled.Shadow);
     }
+
+    [Pure]
+    private static bool ShadowGeometryChanged(ShadowOverlay? previous, ShadowOverlay? current) =>
+        previous?.IsVisible != current?.IsVisible ||
+        previous?.Mode != current?.Mode ||
+        previous?.Offset != current?.Offset;
 
     [Pure]
     private static Point ResolvePressedTranslation(Shadow shadow) => !shadow.IsVisible

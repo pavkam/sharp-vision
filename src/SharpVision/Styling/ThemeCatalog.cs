@@ -263,10 +263,8 @@ public static class ThemeCatalog
             ReadSlug(definition.Slug, source, required: embedded),
             ReadColorScheme(definition.ColorScheme, source, required: embedded),
             embedded ? ReadRequiredMetadata(definition.Author, "author", source) : Or(definition.Author, "SharpVision contributors"),
-            embedded ? ReadRequiredMetadata(definition.License, "license", source) : Or(definition.License, "MIT"),
-            embedded
-                ? ReadRequiredMetadata(definition.Source, "source", source)
-                : Or(definition.Source, "https://github.com/sharpvision/sharpvision"));
+            ReadLicense(definition.License, source, required: embedded),
+            ReadSource(definition.Source, source, required: embedded));
 
         theme.SetDiagnosticSource(source);
 
@@ -437,11 +435,6 @@ public static class ThemeCatalog
 
     private static TerminalAttributes ParseAttributes(JsonElement value, string source, string context)
     {
-        if (value.ValueKind == JsonValueKind.Null)
-        {
-            return TerminalAttributes.None;
-        }
-
         if (value.ValueKind == JsonValueKind.String)
         {
             var name = value.GetString()!;
@@ -494,8 +487,8 @@ public static class ThemeCatalog
             ReadSlug(definition.Slug, resource, required: true),
             ReadColorScheme(definition.ColorScheme, resource, required: true),
             ReadRequiredMetadata(definition.Author, "author", resource),
-            ReadRequiredMetadata(definition.License, "license", resource),
-            ReadRequiredMetadata(definition.Source, "source", resource),
+            ReadLicense(definition.License, resource, required: true),
+            ReadSource(definition.Source, resource, required: true),
             definition.Order);
     }
 
@@ -537,6 +530,24 @@ public static class ThemeCatalog
         return ThemeSlug.IsValid(slug)
             ? slug
             : throw new InvalidDataException($"Theme '{source}' has invalid slug '{slug}'.");
+    }
+
+    private static string ReadLicense(string? value, string source, bool required)
+    {
+        var license = required ? ReadRequiredMetadata(value, "license", source) : Or(value, "MIT");
+        return ThemeProvenance.IsLicense(license)
+            ? license
+            : throw new InvalidDataException($"Theme '{source}' has invalid SPDX license identifier '{license}'.");
+    }
+
+    private static string ReadSource(string? value, string source, bool required)
+    {
+        var provenance = required
+            ? ReadRequiredMetadata(value, "source", source)
+            : Or(value, "https://github.com/sharpvision/sharpvision");
+        return ThemeProvenance.IsSource(provenance)
+            ? provenance
+            : throw new InvalidDataException($"Theme '{source}' has invalid source URL '{provenance}'.");
     }
 
     private static ColorScheme ReadColorScheme(string? value, string source, bool required)

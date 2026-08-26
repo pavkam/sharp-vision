@@ -60,7 +60,7 @@ public sealed class Theme
     /// <param name="license">The palette license identifier.</param>
     /// <param name="source">The palette source URL.</param>
     /// <exception cref="ArgumentNullException">Required identity or provenance metadata is null.</exception>
-    /// <exception cref="ArgumentException">Required metadata is blank or a palette value is transparent.</exception>
+    /// <exception cref="ArgumentException">Required metadata is blank, provenance is invalid, or a palette value is transparent.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="colorScheme"/> is undefined.</exception>
     public Theme(
         IReadOnlyDictionary<string, Color>? palette = null,
@@ -74,8 +74,8 @@ public sealed class Theme
         name = RequireMetadata(name, nameof(name));
         slug = ThemeSlug.Validate(RequireMetadata(slug, nameof(slug)), nameof(slug));
         author = RequireMetadata(author, nameof(author));
-        license = RequireMetadata(license, nameof(license));
-        source = RequireMetadata(source, nameof(source));
+        license = ThemeProvenance.ValidateLicense(RequireMetadata(license, nameof(license)), nameof(license));
+        source = ThemeProvenance.ValidateSource(RequireMetadata(source, nameof(source)), nameof(source));
 
         ArgumentOutOfRangeException.ThrowIfNotDefined(colorScheme, nameof(colorScheme), "The theme color scheme is unknown.");
 

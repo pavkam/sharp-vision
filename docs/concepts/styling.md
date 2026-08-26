@@ -171,7 +171,10 @@ family by state require only render invalidation. Resolved appearances are
 cached per control state; theme publication, local assignments, state changes,
 and ambient-boundary changes clear the affected cache entries. A theme
 replacement compares only the currently rendered state; changes to inactive
-states are resolved and laid out when that state next becomes active.
+states are resolved and laid out when that state next becomes active. Button
+style comparison classifies pressed-shadow geometry from Normal plus the nine
+sparse state contributions directly; it never enumerates the 512-state power
+set, and adding a state therefore grows comparison work linearly.
 
 Global style-type Normal appearances define high-level chrome. Control-specific
 padding, glyph families, and part colors live in each control's complete typed

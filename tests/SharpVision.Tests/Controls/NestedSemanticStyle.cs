@@ -20,4 +20,27 @@ public sealed record NestedSemanticStyle: ControlStyle
 
     /// <summary>Gets the nested swatch.</summary>
     public required NestedSwatch Swatch { get; init; }
+
+    /// <summary>Gets a computed self-reference that must never participate in stored-style comparison.</summary>
+    public NestedSemanticStyle Self => this;
+
+    /// <summary>Gets a computed value that proves style comparison does not invoke arbitrary getters.</summary>
+    public int Throwing
+    {
+        get
+        {
+            _ = Swatch;
+            throw new InvalidOperationException("Computed style getters are not comparison data.");
+        }
+    }
+
+    /// <summary>Gets a computed indexed value that proves comparison never invokes indexers.</summary>
+    public int this[int index]
+    {
+        get
+        {
+            _ = Swatch;
+            throw new InvalidOperationException($"Indexer {index} is not comparison data.");
+        }
+    }
 }
