@@ -127,13 +127,86 @@ public sealed class PngTests
         _ = Should.Throw<NotSupportedException>(() => source.AsSpan().DecodeRgba());
     }
 
-    /// <summary>Verifies a bit depth other than 8 is reported rather than misdecoded.</summary>
-    [Fact]
-    public void DecodeRgba_WhenBitDepthIsNotEight_ThrowsNotSupported()
+    /// <summary>Verifies sub-8-bit depths are reported rather than misdecoded; Adam7 interlacing
+    /// and depths below 8 bits per channel remain outside this decoder's scope.</summary>
+    [Theory]
+    [InlineData((byte) 1)]
+    [InlineData((byte) 2)]
+    [InlineData((byte) 4)]
+    public void DecodeRgba_WhenBitDepthIsSubByte_ThrowsNotSupported(byte bitDepth)
     {
-        var source = CreateDecodablePng(8, 1, colorType: 0, bitDepth: 1, [0], [[0xFF]]);
+        var source = CreateDecodablePng(8, 1, colorType: 0, bitDepth: bitDepth, [0], [[0xFF]]);
 
         _ = Should.Throw<NotSupportedException>(() => source.AsSpan().DecodeRgba());
+    }
+
+    /// <summary>Verifies 16-bit grayscale samples narrow to 8 bits by keeping the most significant
+    /// byte of each big-endian sample.</summary>
+    [Fact]
+    public void DecodeRgba_WhenColorTypeIsGrayscaleAndBitDepthIsSixteen_NarrowsToMostSignificantByte()
+    {
+        byte[] row = Samples16(0x0000, 0x8042, 0xFFFF);
+        var source = CreateDecodablePng(3, 1, colorType: 0, bitDepth: 16, [0], [row]);
+
+        var decoded = source.AsSpan().DecodeRgba();
+
+        decoded.ShouldBe([0, 0, 0, 255, 0x80, 0x80, 0x80, 255, 255, 255, 255, 255]);
+    }
+
+    /// <summary>Verifies 16-bit RGB samples each narrow independently to their most significant
+    /// byte.</summary>
+    [Fact]
+    public void DecodeRgba_WhenColorTypeIsRgbAndBitDepthIsSixteen_NarrowsEachChannel()
+    {
+        byte[] row = Samples16(0x1020, 0x3040, 0x5060);
+        var source = CreateDecodablePng(1, 1, colorType: 2, bitDepth: 16, [0], [row]);
+
+        var decoded = source.AsSpan().DecodeRgba();
+
+        decoded.ShouldBe([0x10, 0x30, 0x50, 255]);
+    }
+
+    /// <summary>Verifies 16-bit RGBA samples each narrow independently, including the alpha
+    /// channel.</summary>
+    [Fact]
+    public void DecodeRgba_WhenColorTypeIsRgbaAndBitDepthIsSixteen_NarrowsEachChannel()
+    {
+        byte[] row = Samples16(0x1122, 0x3344, 0x5566, 0x7788);
+        var source = CreateDecodablePng(1, 1, colorType: 6, bitDepth: 16, [0], [row]);
+
+        var decoded = source.AsSpan().DecodeRgba();
+
+        decoded.ShouldBe([0x11, 0x33, 0x55, 0x77]);
+    }
+
+    /// <summary>Verifies 16-bit grayscale-with-alpha samples narrow both the gray and alpha
+    /// channels independently.</summary>
+    [Fact]
+    public void DecodeRgba_WhenColorTypeIsGrayscaleAlphaAndBitDepthIsSixteen_NarrowsBothChannels()
+    {
+        byte[] row = Samples16(0xAB10, 0xCD20);
+        var source = CreateDecodablePng(1, 1, colorType: 4, bitDepth: 16, [0], [row]);
+
+        var decoded = source.AsSpan().DecodeRgba();
+
+        decoded.ShouldBe([0xAB, 0xAB, 0xAB, 0xCD]);
+    }
+
+    /// <summary>Verifies a 16-bit tRNS comparison uses the full 16-bit sample rather than its
+    /// narrowed 8-bit value: two distinct 16-bit gray levels that narrow to the same most
+    /// significant byte must not both match a tRNS key that only equals one of them exactly.</summary>
+    [Fact]
+    public void DecodeRgba_WhenGrayscaleBitDepthIsSixteen_ComparesTrnsAtFullSampleWidth()
+    {
+        // 0x2A00 and 0x2A7F both narrow to the most significant byte 0x2A, but only 0x2A00
+        // exactly matches the 16-bit tRNS key; a post-narrowing comparison would incorrectly
+        // treat both as transparent.
+        byte[] row = Samples16(0x2A00, 0x2A7F);
+        var source = CreateDecodablePng(2, 1, colorType: 0, bitDepth: 16, [0], [row], trns: [0x2A, 0x00]);
+
+        var decoded = source.AsSpan().DecodeRgba();
+
+        decoded.ShouldBe([0x2A, 0x2A, 0x2A, 0, 0x2A, 0x2A, 0x2A, 255]);
     }
 
     /// <summary>Verifies an indexed source without a PLTE chunk is reported rather than misdecoded.</summary>
@@ -258,5 +331,20 @@ public sealed class PngTests
         destination[1] = (byte) (value >> 16);
         destination[2] = (byte) (value >> 8);
         destination[3] = (byte) value;
+    }
+
+    /// <summary>Converts 16-bit sample values to a big-endian byte row, as PNG stores multi-byte
+    /// samples.</summary>
+    private static byte[] Samples16(params ushort[] samples)
+    {
+        var row = new byte[samples.Length * 2];
+
+        for (var i = 0; i < samples.Length; i++)
+        {
+            row[i * 2] = (byte) (samples[i] >> 8);
+            row[i * 2 + 1] = (byte) samples[i];
+        }
+
+        return row;
     }
 }

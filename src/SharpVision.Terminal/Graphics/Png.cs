@@ -8,7 +8,7 @@ using System.Buffers.Binary;
 using System.IO.Compression;
 
 /// <summary>Validates the bounded PNG container subset required for owned transmission, and
-/// decodes a conservative non-interlaced 8-bit-depth subset to straight RGBA8888.</summary>
+/// decodes a conservative non-interlaced, 8- or 16-bit-depth subset to straight RGBA8888.</summary>
 internal static class Png
 {
     [SuppressMessage(
@@ -79,17 +79,18 @@ internal static class Png
         }
 
         /// <summary>
-        /// Decodes a non-interlaced, 8-bit-depth PNG to straight (non-premultiplied) RGBA8888,
-        /// four bytes per pixel in row-major order. Supports every PNG color type (grayscale, RGB,
-        /// indexed, grayscale with alpha, RGBA); an indexed source without a required <c>PLTE</c>
-        /// chunk is rejected. Interlaced sources and depths other than 8 bits per channel are
-        /// outside this decoder's scope and are reported through
+        /// Decodes a non-interlaced, 8- or 16-bit-depth PNG to straight (non-premultiplied)
+        /// RGBA8888, four bytes per pixel in row-major order. Supports every PNG color type
+        /// (grayscale, RGB, indexed, grayscale with alpha, RGBA); an indexed source without a
+        /// required <c>PLTE</c> chunk is rejected. A 16-bit-per-channel sample narrows to 8 bits
+        /// by keeping its most significant byte. Interlaced sources and depths other than 8 or 16
+        /// bits per channel are outside this decoder's scope and are reported through
         /// <see cref="NotSupportedException"/> rather than approximated.
         /// </summary>
         /// <returns>Owned RGBA8888 pixel bytes, exactly width times height times four in length.</returns>
         /// <exception cref="ArgumentException">The PNG structure or required header fields are invalid.</exception>
         /// <exception cref="NotSupportedException">
-        /// The source is interlaced, uses a bit depth other than 8, or is indexed without a
+        /// The source is interlaced, uses a bit depth other than 8 or 16, or is indexed without a
         /// <c>PLTE</c> chunk.
         /// </exception>
         [Pure]
@@ -103,10 +104,10 @@ internal static class Png
                 throw new NotSupportedException("Interlaced PNG sources are not supported.");
             }
 
-            if (bitDepth != 8)
+            if (bitDepth is not (8 or 16))
             {
                 throw new NotSupportedException(
-                    $"PNG bit depth {bitDepth} is not supported; only 8 bits per channel is decoded.");
+                    $"PNG bit depth {bitDepth} is not supported; only 8 or 16 bits per channel is decoded.");
             }
 
             var channels = ChannelsFor(colorType);
@@ -147,7 +148,8 @@ internal static class Png
 
             ValidateTransparency(colorType, palette, transparency);
 
-            var stride = checked(size.Width * channels);
+            var bytesPerSample = bitDepth / 8;
+            var stride = checked(size.Width * channels * bytesPerSample);
             var rawLength = checked((long) size.Height * (stride + 1));
 
             if (rawLength > int.MaxValue)
@@ -188,8 +190,8 @@ internal static class Png
 
             }
 
-            var pixels = Defilter(raw, size.Height, stride, channels);
-            return ToRgba(pixels, size, colorType, channels, palette, transparency);
+            var pixels = Defilter(raw, size.Height, stride, channels * bytesPerSample);
+            return ToRgba(pixels, size, colorType, channels, bytesPerSample, palette, transparency);
         }
     }
 
@@ -309,31 +311,37 @@ internal static class Png
         Size size,
         byte colorType,
         int channels,
+        int bytesPerSample,
         byte[]? palette,
         byte[]? transparency)
     {
         var rgba = new byte[checked(size.Width * size.Height * 4)];
+        var pixelStride = channels * bytesPerSample;
 
         for (var pixel = 0; pixel < size.Width * size.Height; pixel++)
         {
-            var source = pixels.Slice(pixel * channels, channels);
+            var source = pixels.Slice(pixel * pixelStride, pixelStride);
             var destination = rgba.AsSpan(pixel * 4, 4);
 
             switch (colorType)
             {
                 case 0:
-                    destination[0] = destination[1] = destination[2] = source[0];
+                    destination[0] = destination[1] = destination[2] = NarrowSample(source, 0, bytesPerSample);
                     destination[3] = transparency is not null &&
-                                     source[0] == ReadEightBitTransparencySample(transparency)
+                                     ReadSample(source, 0, bytesPerSample) == ReadTransparencySample(transparency)
                         ? (byte) 0
                         : (byte) 255;
                     break;
                 case 2:
-                    source.CopyTo(destination);
+                    destination[0] = NarrowSample(source, 0, bytesPerSample);
+                    destination[1] = NarrowSample(source, 1, bytesPerSample);
+                    destination[2] = NarrowSample(source, 2, bytesPerSample);
                     destination[3] = transparency is not null &&
-                                     source[0] == ReadEightBitTransparencySample(transparency) &&
-                                     source[1] == ReadEightBitTransparencySample(transparency.AsSpan(2)) &&
-                                     source[2] == ReadEightBitTransparencySample(transparency.AsSpan(4))
+                                     ReadSample(source, 0, bytesPerSample) == ReadTransparencySample(transparency) &&
+                                     ReadSample(source, 1, bytesPerSample) ==
+                                     ReadTransparencySample(transparency.AsSpan(2)) &&
+                                     ReadSample(source, 2, bytesPerSample) ==
+                                     ReadTransparencySample(transparency.AsSpan(4))
                         ? (byte) 0
                         : (byte) 255;
                     break;
@@ -356,11 +364,14 @@ internal static class Png
                         : (byte) 255;
                     break;
                 case 4:
-                    destination[0] = destination[1] = destination[2] = source[0];
-                    destination[3] = source[1];
+                    destination[0] = destination[1] = destination[2] = NarrowSample(source, 0, bytesPerSample);
+                    destination[3] = NarrowSample(source, 1, bytesPerSample);
                     break;
                 default:
-                    source.CopyTo(destination);
+                    destination[0] = NarrowSample(source, 0, bytesPerSample);
+                    destination[1] = NarrowSample(source, 1, bytesPerSample);
+                    destination[2] = NarrowSample(source, 2, bytesPerSample);
+                    destination[3] = NarrowSample(source, 3, bytesPerSample);
                     break;
             }
         }
@@ -368,8 +379,25 @@ internal static class Png
         return rgba;
     }
 
-    private static byte ReadEightBitTransparencySample(ReadOnlySpan<byte> value) =>
-        (byte) (BinaryPrimitives.ReadUInt16BigEndian(value) & byte.MaxValue);
+    /// <summary>Narrows a scanline sample to 8 bits by keeping its most significant byte, which is
+    /// the whole sample when the source is already 8 bits per channel.</summary>
+    private static byte NarrowSample(ReadOnlySpan<byte> source, int channelIndex, int bytesPerSample) =>
+        source[channelIndex * bytesPerSample];
+
+    /// <summary>Reads a scanline sample at its native bit depth, before any narrowing, so it can be
+    /// compared against a <c>tRNS</c> value at the same width.</summary>
+    private static ushort ReadSample(ReadOnlySpan<byte> source, int channelIndex, int bytesPerSample)
+    {
+        var offset = channelIndex * bytesPerSample;
+        return bytesPerSample == 2
+            ? BinaryPrimitives.ReadUInt16BigEndian(source.Slice(offset, 2))
+            : source[offset];
+    }
+
+    /// <summary>Reads a <c>tRNS</c> transparency-key sample, always stored as a full two-byte
+    /// value regardless of the source bit depth, for comparison against <see cref="ReadSample"/>.</summary>
+    private static ushort ReadTransparencySample(ReadOnlySpan<byte> value) =>
+        BinaryPrimitives.ReadUInt16BigEndian(value);
 
     [SuppressMessage(
         "Style",

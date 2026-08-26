@@ -14,19 +14,23 @@ The first source representations are:
   IEND termination, and positive pixel dimensions.
 
 PNG validation establishes safe ownership and dimensions. The decoder converts
-non-interlaced, 8-bit grayscale, RGB, indexed, grayscale-alpha, and RGBA sources
-to straight RGBA8888 for raster-only backends. It applies indexed alpha tables
-and the exact transparent grayscale or RGB sample from `tRNS` as specified by
-the [PNG Third Edition transparency chunk](https://www.w3.org/TR/png-3/#11tRNS).
+non-interlaced, 8- or 16-bit grayscale, RGB, indexed, grayscale-alpha, and RGBA
+sources to straight RGBA8888 for raster-only backends; indexed sources remain 8
+bits per index. A 16-bit-per-channel sample narrows to 8 bits by keeping its
+most significant byte. It applies indexed alpha tables and the exact transparent
+grayscale or RGB sample from `tRNS` as specified by the
+[PNG Third Edition transparency chunk](https://www.w3.org/TR/png-3/#11tRNS),
+comparing the full-width sample so a 16-bit source is never matched against a
+narrowed value.
 
 > [!IMPORTANT]
 >
 > **Implementation gap:** the decoder does not cover interlaced (Adam7) or
-> 16-bit-per-channel PNG sources. Structural validation accepts them, so
-> `ImageSource.FromPng` succeeds and the failure surfaces later as a decode
-> rejection: on a sixel-only terminal such a placement keeps its cell fallback
-> and reports a `GraphicsDiagnostic`, while the Kitty and iTerm2 backends
-> transmit the same bytes untouched.
+> sub-8-bit-per-channel (1, 2, or 4 bits) PNG sources. Structural validation
+> accepts them, so `ImageSource.FromPng` succeeds and the failure surfaces later
+> as a decode rejection: on a sixel-only terminal such a placement keeps its
+> cell fallback and reports a `GraphicsDiagnostic`, while the Kitty and iTerm2
+> backends transmit the same bytes untouched.
 
 The Kitty and iTerm2 backends may transmit owned PNG directly when their
 capability and route are proved.
