@@ -791,6 +791,34 @@ public sealed class ListViewTests
         invocations.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies modifier families unavailable in legacy mouse encoding still suppress direct pointer invocation.</summary>
+    [Theory]
+    [InlineData(Modifiers.Super)]
+    [InlineData(Modifiers.Meta)]
+    [InlineData(Modifiers.Hyper)]
+    public async Task Dispatch_WhenDoubleClickCarriesExtendedCommandModifier_DoesNotInvokeAsync(Modifiers modifiers)
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = new UiListView
+        {
+            Items = ["A"],
+            ItemInvocation = ListItemInvocation.DoubleClick
+        };
+        var invocations = 0;
+        control.ItemInvoked += (_, _) => invocations++;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            control.Attach(dispatcher);
+            new LayoutEngine().Layout(control, new Size(10, 2));
+            using PointerManager pointer = new(control);
+            Click(pointer, new Point(0, 0), modifiers);
+            Click(pointer, new Point(0, 0), modifiers);
+        }, TestContext.Current.CancellationToken);
+
+        invocations.ShouldBe(0);
+    }
+
     /// <summary>Verifies an incidental Control modifier on Enter still moves the active item but
     /// does not raise ItemInvoked - only the invocation is gated, not selection tracking.</summary>
     [Fact]

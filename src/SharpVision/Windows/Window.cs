@@ -55,7 +55,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     {
         _closeInteraction = new PressBehavior(
             ResolveCloseTargetBounds,
-            () => CanClose && EffectiveIsEnabled && EffectiveIsVisible && ResolveCloseTargetBounds().Width > 0,
+            () => !IsDisposed && CanClose && EffectiveIsEnabled && EffectiveIsVisible && ResolveCloseTargetBounds().Width > 0,
             static () => false,
             RequestFocus,
             CapturePointer,
@@ -841,7 +841,8 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             return;
         }
 
-        if (action == PointerAction.Press && eventArgs.Pointer.Buttons == Buttons.Primary)
+        if (action == PointerAction.Press &&
+            (eventArgs.Pointer.Buttons & Buttons.Primary) != 0)
         {
             // The resize corner is checked first: at a minimum window size it can coincide
             // with the title bar row, and resizing is the more specific gesture there.

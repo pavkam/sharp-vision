@@ -732,6 +732,79 @@ public sealed class ButtonTests
         button.IsDisposed.ShouldBeTrue();
     }
 
+    /// <summary>Verifies pressed-state callbacks may dispose before Enter completion without stale activation.</summary>
+    [Fact]
+    public void Route_WhenPressedCallbackDisposesButton_StopsCompletion()
+    {
+        var button = new Button();
+        var clicks = 0;
+        button.Click += (_, _) => clicks++;
+        button.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Button.IsPressed) && button.IsPressed)
+            {
+                button.Dispose();
+            }
+        };
+
+        _ = Should.NotThrow(() => Router.Route(
+            button,
+            Events.Key,
+            new KeyEventArgs(new Stroke(Code.Enter, null, 0, Modifiers.None, KeyAction.Press))));
+
+        button.IsDisposed.ShouldBeTrue();
+        clicks.ShouldBe(0);
+    }
+
+    /// <summary>Verifies capture-loss callbacks may disable a button before pointer completion activates it.</summary>
+    [Fact]
+    public async Task Route_WhenCaptureLossDisablesButton_StopsPointerCompletionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var button = new Button { Bounds = new Rect(0, 0, 6, 1) };
+        var clicks = 0;
+        button.Click += (_, _) => clicks++;
+        button.LostPointerCapture += (_, _) => button.IsEnabled = false;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            button.Attach(dispatcher);
+            using PointerManager pointer = new(button);
+            _ = pointer.Dispatch(Pointer(new Point(2, 0), PointerAction.Press));
+            _ = Should.NotThrow(() => pointer.Dispatch(Pointer(new Point(2, 0), PointerAction.Release)));
+        }, TestContext.Current.CancellationToken);
+
+        button.IsEnabled.ShouldBeFalse();
+        clicks.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a throwing pressed observer cannot suppress the derived geometry hook.</summary>
+    [Fact]
+    public void IsPressed_WhenPropertyObserverThrows_StillUpdatesPressedContentGeometry()
+    {
+        var button = new Button
+        {
+            Text = "Push",
+            Style = TestButtonStyles.WithShadow(
+                AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1), attributes: TerminalAttributes.Dim))
+        };
+        new LayoutEngine().Layout(button, new Size(10, 3));
+        var content = button.TextControl!;
+        var released = content.Bounds;
+        button.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Button.IsPressed))
+            {
+                throw new InvalidOperationException("observer failed");
+            }
+        };
+
+        _ = Should.Throw<InvalidOperationException>(() => button.SetPressed(true));
+
+        button.IsPressed.ShouldBeTrue();
+        content.Bounds.ShouldNotBe(released);
+    }
+
     /// <summary>Verifies a Click handler that disposes the Button from a Space-triggered
     /// activation on a terminal that never delivers key releases does not throw
     /// ObjectDisposedException: the press-only-terminal path pulses SetPressed the same way

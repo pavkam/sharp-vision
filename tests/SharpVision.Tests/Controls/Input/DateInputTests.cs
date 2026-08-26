@@ -630,6 +630,30 @@ public sealed class DateInputTests
         control.IsOpen.ShouldBeFalse();
     }
 
+    /// <summary>Verifies dropdown chords reject every additional command modifier.</summary>
+    [Theory]
+    [InlineData(Code.Down, Modifiers.Alt | Modifiers.Control)]
+    [InlineData(Code.Down, Modifiers.Alt | Modifiers.Shift)]
+    [InlineData(Code.Down, Modifiers.Alt | Modifiers.Super)]
+    [InlineData(Code.Down, Modifiers.Alt | Modifiers.Meta)]
+    [InlineData(Code.Down, Modifiers.Alt | Modifiers.Hyper)]
+    [InlineData(Code.F4, Modifiers.Alt)]
+    [InlineData(Code.F4, Modifiers.Control)]
+    [InlineData(Code.F4, Modifiers.Shift)]
+    [InlineData(Code.F4, Modifiers.Super)]
+    [InlineData(Code.F4, Modifiers.Meta)]
+    [InlineData(Code.F4, Modifiers.Hyper)]
+    public void Dispatch_WhenOpeningGestureHasExtraModifier_LeavesInputUnhandled(Code code, Modifiers modifiers)
+    {
+        using var control = new DateInput();
+        var key = KeyEvent(code, modifiers);
+
+        _ = Router.Route(control, Events.Key, key);
+
+        control.IsOpen.ShouldBeFalse();
+        key.IsHandled.ShouldBeFalse();
+    }
+
     /// <summary>Verifies PopupChrome applies to the owned Calendar popup without leaking it, and
     /// ResetPopupChrome returns it to the PopupChrome appearance.</summary>
     [Fact]

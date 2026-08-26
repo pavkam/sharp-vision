@@ -5,6 +5,9 @@
 `DateTimeInput` combines date and time segment editing with an optional Calendar
 popup.
 
+Exact Alt+Down opens the popup; lock-key state is ignored, but every additional
+command modifier leaves the chord unhandled for an application or host shortcut.
+
 The time portion supports `TimeStep`, a positive whole-minute increment that
 Up/Down applies while the minute segment is active. The embedded calendar
 exposes the same basic date navigation options as `Calendar`. Selecting a date

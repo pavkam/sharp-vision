@@ -64,7 +64,7 @@ public abstract class InputBase: ControlBase
 
         _press = new PressBehavior(
             () => InteractionBounds,
-            () => EffectiveIsEnabled && EffectiveIsVisible,
+            () => !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible,
             () => FocusOwner is null || IsFocused,
             RequestFocus,
             CapturePointer,

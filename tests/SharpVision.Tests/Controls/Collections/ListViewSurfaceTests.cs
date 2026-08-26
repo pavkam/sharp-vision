@@ -904,6 +904,35 @@ public sealed class ListViewSurfaceTests
         invoked.ShouldBe([1]);
     }
 
+    /// <summary>Verifies every command modifier prevents a multi-click from becoming an invocation.</summary>
+    [Theory]
+    [InlineData(Modifiers.Control)]
+    [InlineData(Modifiers.Shift)]
+    [InlineData(Modifiers.Alt)]
+    public async Task Input_WhenDoubleClickCarriesCommandModifier_DoesNotInvokeAsync(Modifiers modifiers)
+    {
+        List<ControlText> realized = [];
+        var invocations = 0;
+        var list = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new ControlText((string) item!)),
+            Items = ["One"],
+            ItemInvocation = ListItemInvocation.DoubleClick,
+            ScrollBars = ScrollBars.None
+        };
+        list.ItemInvoked += (_, _) => invocations++;
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(8, 1),
+            TestContext.Current.CancellationToken);
+        var row = realized[0].Parent.ShouldNotBeNull();
+
+        await surface.Pointer.ClickAsync(row, modifiers);
+        await surface.Pointer.ClickAsync(row, modifiers);
+
+        invocations.ShouldBe(0);
+    }
+
     /// <summary>Verifies a runtime IsVisible -&gt; Collapsed -&gt; IsVisible transition on a mounted eager
     /// (no RowHeight) item leaves no stale committed cell behind - the surviving sibling moves up to
     /// occupy the collapsed row's former position with no leftover glyph or background, and pointer

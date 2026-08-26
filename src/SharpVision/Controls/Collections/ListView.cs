@@ -1522,15 +1522,14 @@ public sealed class ListView: ItemsControl
             return;
         }
 
-        // A multi-click held with Control or Shift is a selection gesture (toggle or range-extend),
-        // not a commit - PointerManager's click-count chain tracks target, cell, and buttons only,
-        // never modifiers, so two rapid modified clicks on the same row still reach a multi-click
-        // count even though the user never intended to invoke.
-        var modifierHeld = (modifiers & (Modifiers.Control | Modifiers.Shift)) != 0;
+        // PointerManager's click-count chain tracks target, cell, and buttons only, never
+        // modifiers. A multi-click is a commit only when lock-normalized modifiers are empty;
+        // selection, application, and host command chords remain available to their owners.
+        var isPlainPointerGesture = KeyboardModifierPolicy.MatchesCommand(modifiers, Modifiers.None);
 
         if (eventArgs.Cause == ActivationCause.Pointer &&
             (ItemInvocation == ListItemInvocation.SingleClick ||
-                (item.LastClickCount >= 2 && !modifierHeld)))
+                (item.LastClickCount >= 2 && isPlainPointerGesture)))
         {
             ItemInvoked?.Invoke(this, new ItemInvokedEventArgs(item.Index, Items[item.Index], eventArgs.Cause));
         }

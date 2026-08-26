@@ -110,9 +110,13 @@ begins, and capture governs hit testing once a press is under way.
 Focus loss, disable, hide, collapse, detach, disposal, terminal-focus loss, and
 capture cancellation all clear any held state without activating. The protected
 capture-cancellation hook runs after manager ownership and pressed state are
-already clear. Keyboard and pointer completions carry the `Keyboard` and
-`Pointer` `ActivationCause` values; a concrete programmatic API uses
-`Programmatic`.
+already clear. Completion revalidates lifetime, attachment, visibility, and
+enabled state after pressed-state, focus, and capture-loss callbacks; an
+invalidated owner is never cleared or activated through a stale continuation.
+The protected pressed-state hook still runs when a property observer throws, so
+derived geometry and rendering cannot disagree with committed `IsPressed`.
+Keyboard and pointer completions carry the `Keyboard` and `Pointer`
+`ActivationCause` values; a concrete programmatic API uses `Programmatic`.
 
 The press-activation state machine is one internal composed behavior, enabled
 once through [`InputBase.EnablePressActivation`](input-base.md#api) and used by

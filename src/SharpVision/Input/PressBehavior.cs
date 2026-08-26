@@ -123,8 +123,14 @@ internal sealed class PressBehavior
                     // fully resolve before activation runs, since activation can synchronously
                     // dispose the control this behavior is composed into.
                     _setPressed(true);
+
+                    if (!_isAvailable())
+                    {
+                        return;
+                    }
+
                     _setPressed(false);
-                    if (_canCompleteSpace())
+                    if (_isAvailable() && _canCompleteSpace())
                     {
                         _activate(ActivationCause.Keyboard);
                     }
@@ -159,7 +165,9 @@ internal sealed class PressBehavior
                 eventArgs.IsHandled = true;
                 _spaceHeld = false;
                 _setPressed(false);
-                if (stroke.Modifiers.IsActivationEligible() && _canCompleteSpace())
+                if (_isAvailable() &&
+                    stroke.Modifiers.IsActivationEligible() &&
+                    _canCompleteSpace())
                 {
                     _activate(ActivationCause.Keyboard);
                 }
@@ -188,8 +196,18 @@ internal sealed class PressBehavior
                 // activation can synchronously dispose the control this behavior is composed
                 // into.
                 _setPressed(true);
+
+                if (!_isAvailable())
+                {
+                    return;
+                }
+
                 _setPressed(false);
-                _activate(ActivationCause.Keyboard);
+
+                if (_isAvailable())
+                {
+                    _activate(ActivationCause.Keyboard);
+                }
             }
         }
     }
@@ -237,6 +255,12 @@ internal sealed class PressBehavior
             }
 
             _ = _requestFocus();
+
+            if (!_isAvailable())
+            {
+                return;
+            }
+
             _pointerHeld = true;
             _setPressed(true);
             eventArgs.IsHandled = true;
@@ -258,8 +282,13 @@ internal sealed class PressBehavior
                 _releasePointerCapture();
             }
 
+            if (!_isAvailable())
+            {
+                return;
+            }
+
             _setPressed(false);
-            if (inside)
+            if (inside && _isAvailable())
             {
                 _activate(ActivationCause.Pointer);
             }

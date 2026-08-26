@@ -507,7 +507,9 @@ public sealed class DateTimeInput: InputBase
                 return;
             }
 
-            if (openKey.IsRepeat && stroke.Code == Code.Down && (stroke.Modifiers & Modifiers.Alt) != 0)
+            if (openKey.IsRepeat &&
+                stroke.Code == Code.Down &&
+                KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Alt))
             {
                 eventArgs.IsHandled = true;
                 return;
@@ -606,8 +608,12 @@ public sealed class DateTimeInput: InputBase
             stroke.Code == Code.Down &&
             (stroke.Modifiers & Modifiers.Alt) != 0)
         {
-            IsOpen = true;
-            eventArgs.IsHandled = true;
+            if (KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Alt))
+            {
+                IsOpen = true;
+                eventArgs.IsHandled = true;
+            }
+
             return;
         }
 

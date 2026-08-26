@@ -574,6 +574,24 @@ public sealed class DateTimeInputTests
         control.IsOpen.ShouldBeFalse();
     }
 
+    /// <summary>Verifies Alt+Down rejects every additional command modifier.</summary>
+    [Theory]
+    [InlineData(Modifiers.Alt | Modifiers.Control)]
+    [InlineData(Modifiers.Alt | Modifiers.Shift)]
+    [InlineData(Modifiers.Alt | Modifiers.Super)]
+    [InlineData(Modifiers.Alt | Modifiers.Meta)]
+    [InlineData(Modifiers.Alt | Modifiers.Hyper)]
+    public void Dispatch_WhenAltDownHasExtraModifier_LeavesInputUnhandled(Modifiers modifiers)
+    {
+        using var control = new DateTimeInput();
+        var key = Key(Code.Down, modifiers);
+
+        _ = Router.Route(control, Events.Key, key);
+
+        control.IsOpen.ShouldBeFalse();
+        key.IsHandled.ShouldBeFalse();
+    }
+
     /// <summary>Verifies selecting a date from the popup preserves the value's time-zone interpretation.</summary>
     [Fact]
     public void Popup_WhenDateIsSelected_PreservesDateTimeKind()

@@ -9,6 +9,10 @@ While the popup is open, arrow, Page Up, Page Down, Home, and End keys navigate
 the calendar. Enter or Space commits its active date, and Escape closes the
 popup without changing the value.
 
+Exact Alt+Down or unmodified F4 opens the popup; lock-key state is ignored, but
+any additional command modifier leaves the chord unhandled for an application or
+host shortcut.
+
 Custom date formats follow .NET quoting and escaping rules. Date letters inside
 quoted or escaped literals remain display text and never become editable
 segments. When a format contains no editable segments, segment-editing keys are

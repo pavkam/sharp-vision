@@ -1495,6 +1495,53 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies primary presses remain drag and resize gestures while auxiliary buttons are held.</summary>
+    [Theory]
+    [InlineData(false, Buttons.Primary | Buttons.Secondary)]
+    [InlineData(false, Buttons.Primary | Buttons.Middle)]
+    [InlineData(true, Buttons.Primary | Buttons.Secondary)]
+    [InlineData(true, Buttons.Primary | Buttons.Middle)]
+    public async Task Drag_WhenPrimaryAndAuxiliaryButtonsAreHeld_StartsGestureAsync(bool resize, Buttons buttons)
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var canvas = new Overlay();
+            var window = new Window
+            {
+                Header = "Gesture",
+                Width = Length.Cells(10),
+                Height = Length.Cells(4),
+                CanMove = !resize,
+                CanResize = resize,
+                CanClose = false
+            };
+            canvas.Children.Add(window);
+            new LayoutEngine().Layout(canvas, new Size(20, 10));
+            canvas.Attach(dispatcher);
+            using PointerManager pointer = new(canvas);
+            var origin = resize
+                ? new Point(window.Bounds.Right - 1, window.Bounds.Bottom - 1)
+                : new Point(3, 0);
+
+            _ = pointer.Dispatch(Pointer(origin, PointerAction.Press, buttons));
+            _ = pointer.Dispatch(Pointer(new Point(origin.X + 2, origin.Y + 2), PointerAction.Move, buttons));
+
+            pointer.Captured.ShouldBeSameAs(window);
+            if (resize)
+            {
+                window.Width.ShouldBe(Length.Cells(12));
+                window.Height.ShouldBe(Length.Cells(6));
+            }
+            else
+            {
+                Overlay.GetLeft(window).ShouldBe(Length.Cells(2));
+                Overlay.GetTop(window).ShouldBe(Length.Cells(2));
+            }
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies dragging the bottom-right corner does nothing while CanResize is false,
     /// the default.</summary>
     [Fact]

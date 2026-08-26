@@ -36,7 +36,7 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
         _style = InitializeStyle(ToastStyle.Definition);
         _closeInteraction = new PressBehavior(
             ResolveCloseTargetBounds,
-            () => IsDismissible && IsOpen && EffectiveIsEnabled && EffectiveIsVisible &&
+            () => !IsDisposed && IsDismissible && IsOpen && EffectiveIsEnabled && EffectiveIsVisible &&
                 ResolveCloseTargetBounds().Width > 0,
             static () => true,
             RequestFocus,

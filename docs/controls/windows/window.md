@@ -70,28 +70,28 @@ the Overlay keeps the complete border box inside its latest content bounds
 without changing the offsets you authored. An oversized Window starts at the
 leading edge and clips normally.
 
-When `CanMove` is true, a primary drag on unoccupied title-bar chrome captures
-the pointer and writes Overlay `Left` and `Top` offsets from the absolute
-pointer movement, clearing any existing `Right`/`Bottom` offsets in the same
-move — otherwise an `Auto`/`Star`-sized window with a surviving trailing anchor
-would stretch between the fresh leading offset and the stale trailing one
-instead of moving. The border box stays inside the parent content bounds, and
-release, pointer leave, capture loss, disable, hide, detach, or disposal all end
-the drag.
+When `CanMove` is true, a drag whose button mask includes Primary on unoccupied
+title-bar chrome captures the pointer and writes Overlay `Left` and `Top`
+offsets from the absolute pointer movement, clearing any existing
+`Right`/`Bottom` offsets in the same move — otherwise an `Auto`/`Star`-sized
+window with a surviving trailing anchor would stretch between the fresh leading
+offset and the stale trailing one instead of moving. The border box stays inside
+the parent content bounds, and release, pointer leave, capture loss, disable,
+hide, detach, or disposal all end the drag.
 
-When `CanResize` is true, a primary drag from the single bottom-right corner
-cell captures the pointer and writes `Width` and `Height` from the absolute
-pointer movement. The top-left corner stays fixed because the gesture also
-writes Overlay `Left` and `Top` offsets from the corner's starting position —
-so, just as a title drag does, a resize converts the window to an explicitly
-positioned one, regardless of whatever alignment or `Right`/`Bottom` anchoring
-placed it beforehand. The result is clamped to `MinWidth`/`MaxWidth`,
-`MinHeight`/`MaxHeight`, and the parent content bounds. The corner hit is
-checked before the title-bar hit, so a minimum-height window resizes rather than
-drags when the two targets coincide. Only the bottom-right corner is an
-interactive target; the other three corners and the four edges are not resize
-handles. Release, pointer leave, capture loss, disable, hide, detach, or
-disposal ends a resize the same way as a drag.
+When `CanResize` is true, a drag whose button mask includes Primary from the
+single bottom-right corner cell captures the pointer and writes `Width` and
+`Height` from the absolute pointer movement. The top-left corner stays fixed
+because the gesture also writes Overlay `Left` and `Top` offsets from the
+corner's starting position — so, just as a title drag does, a resize converts
+the window to an explicitly positioned one, regardless of whatever alignment or
+`Right`/`Bottom` anchoring placed it beforehand. The result is clamped to
+`MinWidth`/`MaxWidth`, `MinHeight`/`MaxHeight`, and the parent content bounds.
+The corner hit is checked before the title-bar hit, so a minimum-height window
+resizes rather than drags when the two targets coincide. Only the bottom-right
+corner is an interactive target; the other three corners and the four edges are
+not resize handles. Release, pointer leave, capture loss, disable, hide, detach,
+or disposal ends a resize the same way as a drag.
 
 ## Chrome and interaction
 

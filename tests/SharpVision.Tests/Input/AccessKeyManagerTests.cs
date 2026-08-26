@@ -65,6 +65,43 @@ public sealed class AccessKeyManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a declining match may dispose a later snapshot candidate without making dispatch stale.</summary>
+    [Fact]
+    public async Task Process_WhenEarlierMatchDisposesLaterMatch_SkipsTheStaleCandidateAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            using var root = new Stack();
+            var firstTarget = new TextInput();
+            var secondTarget = new TextInput();
+            var first = new GroupBox { HeaderText = "&Apply", Content = firstTarget };
+            var second = new GroupBox { HeaderText = "&Again", Content = secondTarget };
+            root.Children.Add(first);
+            root.Children.Add(second);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            var manager = new AccessKeyManager(root, focus, modality);
+            focus.Changing += (_, eventArgs) =>
+            {
+                if (ReferenceEquals(eventArgs.Next, firstTarget))
+                {
+                    second.Dispose();
+                    eventArgs.Cancel = true;
+                }
+            };
+
+            var handled = Should.NotThrow(() => manager.Process(Alt('a')));
+
+            handled.ShouldBeFalse();
+            second.IsDisposed.ShouldBeTrue();
+            focus.Focused.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a group caption focuses its first eligible descendant by tab order.</summary>
     [Fact]
     public async Task Process_WhenGroupCaptionMatches_FocusesFirstDescendantInTabOrderAsync()

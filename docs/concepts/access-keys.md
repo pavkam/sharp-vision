@@ -88,7 +88,10 @@ a semantic control does not become a second candidate for the same marker.
 Duplicate keys are valid. If focus is inside one matching candidate, that
 candidate becomes the cycle anchor and the next match is tried, wrapping around
 at the end. Otherwise traversal starts at the first match. A candidate that
-declines its action does not prevent a later match from accepting it.
+declines its action does not prevent a later match from accepting it. Because a
+declining action may synchronously remove, dispose, hide, or disable later
+snapshot entries, every candidate is revalidated against the live tree before
+invocation and stale entries are skipped.
 
 ## Focus and semantic actions
 

@@ -33,7 +33,7 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
         _style = InitializeStyle(ExpanderStyle.Definition);
         _interaction = new PressBehavior(
             () => HeaderBounds,
-            () => EffectiveIsEnabled && EffectiveIsVisible,
+            () => !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible,
             () => FocusOwner is null || IsFocused, RequestFocus, CapturePointer,
             () => HasPointerCapture, ReleasePointerCapture, SetPressed,
             _ => IsExpanded = !IsExpanded,

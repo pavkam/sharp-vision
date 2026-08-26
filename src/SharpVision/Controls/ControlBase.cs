@@ -1987,11 +1987,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <summary>Invokes the protected access-key seam after manager eligibility validation.</summary>
     /// <param name="key">The matched Unicode scalar.</param>
     /// <returns>True when the control accepts the semantic action.</returns>
-    internal bool InvokeAccessKey(Rune key)
-    {
-        VerifyMutable();
-        return MatchesAccessKey(key) && OnAccessKey(key);
-    }
+    internal bool InvokeAccessKey(Rune key) => MatchesAccessKey(key) && OnAccessKey(key);
 
     /// <summary>Removes one live registration after dispatcher validation.</summary>
     internal void RemoveHandler(IHandler handler)
@@ -2161,8 +2157,17 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         }
 
         InvalidateVisualStateCore();
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPressed)));
-        OnPressedChanged(value);
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(
+            () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPressed))),
+            ref failure);
+
+        if (!IsDisposed)
+        {
+            ExceptionAggregation.Capture(() => OnPressedChanged(value), ref failure);
+        }
+
+        failure?.Throw();
     }
 
     // Deterministic structural counters, not wall-clock timing: SetSelectedState/SetCurrentState

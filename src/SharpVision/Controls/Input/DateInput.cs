@@ -445,7 +445,9 @@ public sealed class DateInput: InputBase
                 return;
             }
 
-            if (openKey.IsRepeat && stroke.Code == Code.Down && (stroke.Modifiers & Modifiers.Alt) != 0)
+            if (openKey.IsRepeat &&
+                stroke.Code == Code.Down &&
+                KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Alt))
             {
                 eventArgs.IsHandled = true;
                 return;
@@ -476,15 +478,23 @@ public sealed class DateInput: InputBase
                 key.Code == Code.Down &&
                 (key.Modifiers & Modifiers.Alt) != 0)
             {
-                IsOpen = true;
-                eventArgs.IsHandled = true;
+                if (KeyboardModifierPolicy.MatchesCommand(key.Modifiers, Modifiers.Alt))
+                {
+                    IsOpen = true;
+                    eventArgs.IsHandled = true;
+                }
+
                 return;
             }
 
             if (keyEventArgs.IsInitialKeyDown && key.Code == Code.F4)
             {
-                IsOpen = true;
-                eventArgs.IsHandled = true;
+                if (KeyboardModifierPolicy.MatchesCommand(key.Modifiers, Modifiers.None))
+                {
+                    IsOpen = true;
+                    eventArgs.IsHandled = true;
+                }
+
                 return;
             }
 

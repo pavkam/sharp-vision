@@ -27,7 +27,7 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
         ArgumentNullException.ThrowIfNull(content);
         _interaction = new PressBehavior(
             () => Bounds,
-            () => EffectiveIsEnabled && EffectiveIsVisible,
+            () => !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible,
             () => FocusOwner is null || IsFocused,
             RequestFocus,
             CapturePointer,
