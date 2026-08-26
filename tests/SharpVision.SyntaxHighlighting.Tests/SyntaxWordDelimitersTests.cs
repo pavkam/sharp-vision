@@ -6,6 +6,18 @@ namespace SharpVision.SyntaxHighlighting.Tests;
 /// <summary>Verifies <see cref="SyntaxWordDelimiters"/>'s default set and override composition.</summary>
 public sealed class SyntaxWordDelimitersTests
 {
+    /// <summary>Verifies the default struct is a valid empty delimiter set whose query, derivation,
+    /// equality, and hashing members are all safe.</summary>
+    [Fact]
+    public void DefaultValue_WhenUsed_BehavesAsAnEmptyDelimiterSet()
+    {
+        var delimiters = default(SyntaxWordDelimiters);
+
+        delimiters.Contains('a').ShouldBeFalse();
+        delimiters.With("@", string.Empty).Contains('@').ShouldBeTrue();
+        delimiters.Equals(default).ShouldBeTrue();
+        delimiters.GetHashCode().ShouldBe(default(SyntaxWordDelimiters).GetHashCode());
+    }
     /// <summary>
     /// Verifies <see cref="SyntaxWordDelimiters.Default"/> contains exactly the built-in upstream
     /// KSyntaxHighlighting <c>WordDelimiters::WordDelimiters()</c> character set - the tab and

@@ -641,6 +641,48 @@ public sealed class CodeViewSurfaceTests
         tabbed.Extent.Width.ShouldBe(spaced.Extent.Width);
     }
 
+    /// <summary>Verifies mounted fold geometry uses the same one-cell tab policy as rendering, so
+    /// a visibly deeper two-space child folds beneath its one-tab parent.</summary>
+    [Fact]
+    public async Task Folding_WhenTabAndSpaceIndentationAreMixed_MatchesRenderedCellDepthAsync()
+    {
+        var directory = Directory.CreateTempSubdirectory("sharpvision-code-view-tabs-");
+
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(directory.FullName, "indented.xml"),
+                """
+                <language name="Indented" section="Sources" extensions="*.i" version="1" kateversion="5.0">
+                  <general><folding indentationsensitive="true"/></general>
+                  <highlighting>
+                    <contexts><context name="Normal" attribute="Normal Text" lineEndContext="#stay"/></contexts>
+                    <itemDatas><itemData name="Normal Text" defStyleNum="dsNormal"/></itemDatas>
+                  </highlighting>
+                </language>
+                """);
+            var view = new CodeView
+            {
+                Catalog = SyntaxDefinitionCatalog.FromDirectory(directory.FullName),
+                Code = "\tparent\n  child\nroot",
+                Language = "Indented",
+            };
+            await using var surface = await ComponentSurface.MountAsync(
+                view,
+                new Size(20, 5),
+                TestThemes.BorderlessContainer,
+                TestContext.Current.CancellationToken);
+
+            var range = view.FoldRanges.ShouldHaveSingleItem();
+            range.StartLine.ShouldBe(0);
+            range.EndLine.ShouldBe(1);
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
     /// <summary>Verifies a double-click selects the complete word under the pointer.</summary>
     [Fact]
     public async Task Pointer_WhenDoubleClicked_SelectsTheCompleteWordAsync()

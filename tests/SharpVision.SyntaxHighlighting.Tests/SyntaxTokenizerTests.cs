@@ -333,6 +333,64 @@ public sealed class SyntaxTokenizerTests
         range.EndLine.ShouldBe(2);
     }
 
+    /// <summary>Verifies tab indentation follows the tokenizer consumer's documented one-cell
+    /// geometry, so a visibly deeper two-space child folds beneath a one-tab parent.</summary>
+    [Fact]
+    public void Tokenize_WhenTabParentHasTwoSpaceChild_UsesOneCellTabIndentation()
+    {
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_indentationLanguage));
+
+        var result = SyntaxTokenizer.Tokenize(grammar, "\tparent\n  child\nroot");
+
+        var range = result.FoldRanges.ShouldHaveSingleItem();
+        range.StartLine.ShouldBe(0);
+        range.EndLine.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a one-tab child is not treated as deeper than a two-space parent when a
+    /// tab is displayed as one cell.</summary>
+    [Fact]
+    public void Tokenize_WhenTwoSpaceParentHasTabChild_DoesNotInventAFold()
+    {
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_indentationLanguage));
+
+        var result = SyntaxTokenizer.Tokenize(grammar, "  parent\n\tchild\nroot");
+
+        result.FoldRanges.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a same-offset look-ahead cycle degrades to a complete fallback token
+    /// instead of returning an uncovered non-empty line after its safety bound.</summary>
+    [Fact]
+    public void Tokenize_WhenLookAheadContextsCycleAtOneOffset_CoversTheRemainingLine()
+    {
+        const string language = """
+            <language name="LookAheadCycle" section="Sources" extensions="*.cycle" version="1" kateversion="5.0">
+              <highlighting>
+                <contexts>
+                  <context name="A" attribute="Normal Text" lineEndContext="#stay">
+                    <DetectChar attribute="Normal Text" context="B" char="x" lookAhead="true"/>
+                  </context>
+                  <context name="B" attribute="Keyword" lineEndContext="#stay">
+                    <DetectChar attribute="Keyword" context="#pop" char="x" lookAhead="true"/>
+                  </context>
+                </contexts>
+                <itemDatas>
+                  <itemData name="Normal Text" defStyleNum="dsNormal"/>
+                  <itemData name="Keyword" defStyleNum="dsKeyword"/>
+                </itemDatas>
+              </highlighting>
+            </language>
+            """;
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(language));
+
+        var result = SyntaxTokenizer.Tokenize(grammar, "xyz");
+
+        var token = result.Lines[0].Tokens.ShouldHaveSingleItem();
+        token.Start.ShouldBe(0);
+        token.Length.ShouldBe(3);
+    }
+
     private const string _keywordOnlyLanguage = """
         <language name="KeywordOnly" section="Sources" extensions="*.k" version="1" kateversion="5.0">
           <highlighting>

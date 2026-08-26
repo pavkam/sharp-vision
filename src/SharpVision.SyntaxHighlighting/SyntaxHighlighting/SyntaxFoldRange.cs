@@ -3,10 +3,15 @@
 
 namespace SharpVision.SyntaxHighlighting;
 
-/// <summary>Represents one collapsible line range a tokenized document can fold away.</summary>
+/// <summary>Represents one collapsible line range a tokenized document can fold away. The default
+/// value is an empty indentation range at line zero.</summary>
 [PublicAPI]
 public readonly record struct SyntaxFoldRange
 {
+#pragma warning disable IDE0032 // Nullable storage distinguishes an uninitialized struct from an authored Region value.
+    private readonly SyntaxFoldRangeKind? _kind;
+#pragma warning restore IDE0032
+
     /// <summary>Initializes a fold range.</summary>
     /// <param name="startLine">The non-negative zero-based first line of the range.</param>
     /// <param name="endLine">The zero-based last line of the range, greater than or equal to <paramref name="startLine"/>.</param>
@@ -22,7 +27,7 @@ public readonly record struct SyntaxFoldRange
 
         StartLine = startLine;
         EndLine = endLine;
-        Kind = kind;
+        _kind = kind;
         RegionName = regionName;
     }
 
@@ -33,7 +38,7 @@ public readonly record struct SyntaxFoldRange
     public int EndLine { get; }
 
     /// <summary>Gets how this range was detected.</summary>
-    public SyntaxFoldRangeKind Kind { get; }
+    public SyntaxFoldRangeKind Kind => _kind ?? SyntaxFoldRangeKind.Indentation;
 
     /// <summary>
     /// Gets the shared region name for a <see cref="SyntaxFoldRangeKind.Region"/> range, or null.

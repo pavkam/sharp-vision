@@ -22,6 +22,10 @@ namespace SharpVision.SyntaxHighlighting;
 [PublicAPI]
 public readonly record struct SyntaxContextTarget
 {
+#pragma warning disable IDE0032 // Default structs need null-coalescing getters over nullable backing storage.
+    private readonly IReadOnlyList<SyntaxContextTargetEntry>? _pushes;
+#pragma warning restore IDE0032
+
     /// <summary>The switch that changes nothing.</summary>
     public static readonly SyntaxContextTarget Stay = new(0, []);
 
@@ -31,14 +35,14 @@ public readonly record struct SyntaxContextTarget
     internal SyntaxContextTarget(int popCount, IReadOnlyList<SyntaxContextTargetEntry> pushes)
     {
         PopCount = popCount;
-        Pushes = pushes;
+        _pushes = new SyntaxReadOnlyList<SyntaxContextTargetEntry>(pushes);
     }
 
     /// <summary>Gets the number of contexts to pop before pushing <see cref="Pushes"/>.</summary>
     public int PopCount { get; }
 
     /// <summary>Gets the ordered contexts to push, in push order, after popping.</summary>
-    public IReadOnlyList<SyntaxContextTargetEntry> Pushes { get; }
+    public IReadOnlyList<SyntaxContextTargetEntry> Pushes => _pushes ?? SyntaxReadOnlyList<SyntaxContextTargetEntry>.Empty;
 
     /// <summary>Gets whether this target changes the context stack at all.</summary>
     public bool IsStay => PopCount == 0 && Pushes.Count == 0;

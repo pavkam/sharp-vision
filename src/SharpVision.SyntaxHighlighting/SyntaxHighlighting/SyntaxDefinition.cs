@@ -55,10 +55,10 @@ public sealed class SyntaxDefinition
         }
 
         Name = name;
-        AlternativeNames = alternativeNames;
+        AlternativeNames = new SyntaxReadOnlyList<string>(alternativeNames);
         Section = section;
-        Extensions = extensions;
-        MimeTypes = mimeTypes;
+        Extensions = new SyntaxReadOnlyList<string>(extensions);
+        MimeTypes = new SyntaxReadOnlyList<string>(mimeTypes);
         Version = version;
         Priority = priority;
         Author = author;
@@ -66,9 +66,9 @@ public sealed class SyntaxDefinition
         Indenter = indenter;
         Hidden = hidden;
         General = general;
-        KeywordLists = keywordLists;
-        ItemDataSet = itemDataSet;
-        Contexts = contexts;
+        KeywordLists = new SyntaxReadOnlyDictionary<string, SyntaxKeywordList>(keywordLists);
+        ItemDataSet = new SyntaxReadOnlyDictionary<string, SyntaxItemData>(itemDataSet);
+        Contexts = new SyntaxReadOnlyList<SyntaxContext>(contexts);
     }
 
     /// <summary>Gets the language name, referenced by cross-definition includes and switches.</summary>

@@ -189,7 +189,7 @@ namespace SharpVision.SyntaxHighlighting
         public int PopCount { get; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxContextTargetEntry> Pushes { get; }
     }
-    public readonly struct SyntaxContextTargetEntry : System.IEquatable<SharpVision.SyntaxHighlighting.SyntaxContextTargetEntry>
+    public sealed class SyntaxContextTargetEntry
     {
         public int ContextIndex { get; }
         public SharpVision.SyntaxHighlighting.SyntaxGrammar Grammar { get; }

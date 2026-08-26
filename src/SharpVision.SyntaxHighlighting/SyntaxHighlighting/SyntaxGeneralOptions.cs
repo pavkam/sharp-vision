@@ -35,11 +35,11 @@ public sealed class SyntaxGeneralOptions
         IReadOnlyList<SyntaxEmptyLineRule> emptyLineRules)
     {
         Folding = folding;
-        Comments = comments;
+        Comments = new SyntaxReadOnlyList<SyntaxCommentDefinition>(comments);
         CaseSensitiveKeywords = caseSensitiveKeywords;
         WeakDeliminator = weakDeliminator;
         AdditionalDeliminator = additionalDeliminator;
-        EmptyLineRules = emptyLineRules;
+        EmptyLineRules = new SyntaxReadOnlyList<SyntaxEmptyLineRule>(emptyLineRules);
     }
 
     /// <summary>Gets the definition's default, all-contexts folding behavior.</summary>

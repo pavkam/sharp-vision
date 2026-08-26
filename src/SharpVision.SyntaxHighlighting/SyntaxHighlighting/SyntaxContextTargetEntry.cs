@@ -5,7 +5,7 @@ namespace SharpVision.SyntaxHighlighting;
 
 /// <summary>Identifies one context to push, by its compiled grammar and index within it.</summary>
 [PublicAPI]
-public readonly record struct SyntaxContextTargetEntry
+public sealed class SyntaxContextTargetEntry
 {
     /// <summary>Initializes a resolved push target.</summary>
     /// <param name="grammar">The non-null grammar the target context belongs to.</param>

@@ -13,7 +13,7 @@ using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
 [PublicAPI]
 public sealed class SyntaxGrammar
 {
-    private readonly SyntaxGrammarContext?[] _contexts;
+    private readonly SyntaxGrammarContext[] _contexts;
     private readonly Dictionary<string, int> _indexByName;
     private readonly SyntaxWordDelimiters _baseDelimiters;
 
@@ -22,7 +22,8 @@ public sealed class SyntaxGrammar
     internal SyntaxGrammar(SyntaxDefinition definition)
     {
         Definition = definition;
-        _contexts = new SyntaxGrammarContext?[definition.Contexts.Count];
+        _contexts = new SyntaxGrammarContext[definition.Contexts.Count];
+        ContextsView = Array.AsReadOnly(_contexts);
         _indexByName = new Dictionary<string, int>(StringComparer.Ordinal);
         _baseDelimiters = SyntaxWordDelimiters.Default.With(definition.General.AdditionalDeliminator, definition.General.WeakDeliminator);
 
@@ -49,9 +50,11 @@ public sealed class SyntaxGrammar
                 "contexts - including every other grammar reached transitively through a " +
                 "cross-definition reference - before returning, so no element is ever null here.");
 
-            return _contexts!;
+            return ContextsView;
         }
     }
+
+    private IReadOnlyList<SyntaxGrammarContext> ContextsView { get; }
 
     /// <summary>Compiles a definition into a grammar, resolving cross-definition references eagerly.</summary>
     /// <param name="definition">The non-null definition to compile.</param>

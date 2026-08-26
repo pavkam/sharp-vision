@@ -71,11 +71,23 @@ check or the escape-sequence grammar `HlCStringChar` and `HlCChar` share - was
 verified line-for-line against the upstream KSyntaxHighlighting C++ source, not
 inferred from the XML format documentation alone.
 
+Indentation folding measures tabs as one cell, matching `CodeView` rendering. If
+malformed look-ahead or fallthrough rules revisit one offset without consuming
+text, tokenization follows at most 1,024 context transitions before styling the
+remaining suffix with the active context; every non-empty output line therefore
+remains completely tiled by tokens.
+
 A catalog owns one compilation session, so a grammar reached through a
 cross-definition reference is the same immutable instance returned by a direct
 `GetGrammar` lookup. Concurrent first lookups also share one parse and one
 compilation; failed lazy loads are removed so a later corrected resource can be
 retried.
+
+Parsed definitions, compiled grammars, and highlight results expose owned
+read-only collection snapshots. Callers cannot cast those properties back to the
+parser/compiler/tokenizer's mutable lists, dictionaries, or arrays. Public
+syntax value structs define usable empty defaults; a resolved context target
+entry remains a reference type because no valid target exists without a grammar.
 
 A cross-definition reference (`IncludeRules`, a context switch, or a keyword
 `<include>`) that names a definition or context the current

@@ -7,6 +7,10 @@ namespace SharpVision.SyntaxHighlighting;
 [PublicAPI]
 public readonly record struct SyntaxRuleMatch
 {
+#pragma warning disable IDE0032 // Default structs need null-coalescing getters over nullable backing storage.
+    private readonly IReadOnlyList<string>? _captures;
+#pragma warning restore IDE0032
+
     /// <summary>The result for a rule that did not match.</summary>
     public static readonly SyntaxRuleMatch None;
 
@@ -21,7 +25,7 @@ public readonly record struct SyntaxRuleMatch
     {
         Success = true;
         Length = length;
-        Captures = captures;
+        _captures = new SyntaxReadOnlyList<string>(captures);
         SkipOffset = 0;
     }
 
@@ -44,7 +48,7 @@ public readonly record struct SyntaxRuleMatch
     {
         Success = false;
         Length = 0;
-        Captures = [];
+        _captures = SyntaxReadOnlyList<string>.Empty;
         SkipOffset = skipOffset;
     }
 
@@ -55,7 +59,7 @@ public readonly record struct SyntaxRuleMatch
     public int Length { get; }
 
     /// <summary>Gets the captured groups available to propagate as dynamic arguments.</summary>
-    public IReadOnlyList<string> Captures { get; } = [];
+    public IReadOnlyList<string> Captures => _captures ?? SyntaxReadOnlyList<string>.Empty;
 
     /// <summary>
     /// Gets the offset before which this rule is known not to match again on the current line, a

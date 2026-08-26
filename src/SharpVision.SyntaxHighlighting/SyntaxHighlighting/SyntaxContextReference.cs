@@ -5,11 +5,16 @@ namespace SharpVision.SyntaxHighlighting;
 
 /// <summary>
 /// Names one target context by its own name and, for a cross-definition reference such as
-/// <c>Normal##JavaScript</c>, the other syntax definition it belongs to.
+/// <c>Normal##JavaScript</c>, the other syntax definition it belongs to. The default value names
+/// the empty start context in the current definition.
 /// </summary>
 [PublicAPI]
 public readonly record struct SyntaxContextReference
 {
+#pragma warning disable IDE0032 // Default structs need null-coalescing getters over nullable backing storage.
+    private readonly string? _contextName;
+#pragma warning restore IDE0032
+
     /// <summary>Initializes a context reference.</summary>
     /// <param name="contextName">
     /// The referenced context's name, or an empty string to mean "the referenced definition's own
@@ -21,7 +26,7 @@ public readonly record struct SyntaxContextReference
     /// </param>
     internal SyntaxContextReference(string contextName, string? definitionName)
     {
-        ContextName = contextName;
+        _contextName = contextName;
         DefinitionName = definitionName;
     }
 
@@ -29,7 +34,7 @@ public readonly record struct SyntaxContextReference
     /// Gets the referenced context's name, or an empty string meaning the referenced definition's
     /// own start context.
     /// </summary>
-    public string ContextName { get; }
+    public string ContextName => _contextName ?? string.Empty;
 
     /// <summary>
     /// Gets the other syntax definition's name, or null when the reference stays within the same

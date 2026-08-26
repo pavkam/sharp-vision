@@ -122,6 +122,7 @@ public sealed class CodeView:
 
             field = value;
             RebuildProjection();
+            NotifyPropertyChanged(nameof(Code), InvalidationImpact.None);
         }
     } = string.Empty;
 
@@ -186,6 +187,7 @@ public sealed class CodeView:
             field = value;
             _grammar = grammar;
             RebuildProjection();
+            NotifyPropertyChanged(nameof(Language), InvalidationImpact.None);
         }
     }
 
@@ -536,7 +538,7 @@ public sealed class CodeView:
         set
         {
             VerifyMutable();
-            field = value;
+            _ = SetProperty(ref field, value, InvalidationImpact.None);
         }
     }
 

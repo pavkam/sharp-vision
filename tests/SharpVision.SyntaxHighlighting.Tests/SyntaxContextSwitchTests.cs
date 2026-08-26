@@ -6,6 +6,34 @@ namespace SharpVision.SyntaxHighlighting.Tests;
 /// <summary>Verifies the KDE context-switch mini-language parser.</summary>
 public sealed class SyntaxContextSwitchTests
 {
+    /// <summary>Verifies every public syntax value with reference-backed empty semantics remains
+    /// safely readable when generic code produces its default value.</summary>
+    [Fact]
+    public void Default_WhenReferenceBackedSyntaxValuesAreRead_UsesDocumentedEmptySemantics()
+    {
+        default(SyntaxContextSwitch).IsStay.ShouldBeTrue();
+        default(SyntaxContextSwitch).Targets.ShouldBeEmpty();
+        default(SyntaxContextTarget).IsStay.ShouldBeTrue();
+        default(SyntaxContextTarget).Pushes.ShouldBeEmpty();
+        default(SyntaxHighlightedLine).Tokens.ShouldBeEmpty();
+        default(SyntaxRuleMatch).Captures.ShouldBeEmpty();
+        default(SyntaxContextReference).ContextName.ShouldBe(string.Empty);
+        default(SyntaxItemData).Name.ShouldBe(string.Empty);
+        default(SyntaxFoldRange).Kind.ShouldBe(SyntaxFoldRangeKind.Indentation);
+
+        var info = default(SyntaxDefinitionInfo);
+        info.Name.ShouldBe(string.Empty);
+        info.File.ShouldBe(string.Empty);
+        info.Section.ShouldBe(string.Empty);
+        info.Extensions.ShouldBeEmpty();
+        info.MimeTypes.ShouldBeEmpty();
+        info.AlternativeNames.ShouldBeEmpty();
+        info.Author.ShouldBe(string.Empty);
+        info.License.ShouldBe(string.Empty);
+        info.Sha256.ShouldBe(string.Empty);
+        info.SourceRepository.ShouldBe(string.Empty);
+        info.SourceCommit.ShouldBe(string.Empty);
+    }
     /// <summary>Verifies <c>#stay</c> parses to a no-op switch.</summary>
     [Fact]
     public void Parse_WhenSpecificationIsStay_ReturnsStay() => SyntaxContextSwitch.Parse("#stay").IsStay.ShouldBeTrue();

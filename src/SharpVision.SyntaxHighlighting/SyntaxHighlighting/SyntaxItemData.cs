@@ -4,7 +4,8 @@
 namespace SharpVision.SyntaxHighlighting;
 
 /// <summary>
-/// Maps one syntax definition's named <c>&lt;itemData&gt;</c> attribute to its default style role.
+/// Maps one syntax definition's named <c>&lt;itemData&gt;</c> attribute to its default style role;
+/// the default value has an empty name and the default style enumeration value.
 /// </summary>
 /// <remarks>
 /// The KDE XML format also allows an <c>&lt;itemData&gt;</c> to override its role with a literal
@@ -16,6 +17,10 @@ namespace SharpVision.SyntaxHighlighting;
 [PublicAPI]
 public readonly record struct SyntaxItemData
 {
+#pragma warning disable IDE0032 // Default structs need null-coalescing getters over nullable backing storage.
+    private readonly string? _name;
+#pragma warning restore IDE0032
+
     /// <summary>Initializes a fully specified item-data mapping.</summary>
     /// <param name="name">
     /// The non-null, non-empty name a <see cref="SyntaxContext"/> or <see cref="SyntaxRule"/>
@@ -24,12 +29,12 @@ public readonly record struct SyntaxItemData
     /// <param name="defaultStyle">The resolved default style role.</param>
     internal SyntaxItemData(string name, SyntaxDefaultStyle defaultStyle)
     {
-        Name = name;
+        _name = name;
         DefaultStyle = defaultStyle;
     }
 
     /// <summary>Gets the item-data name, as referenced by an <c>attribute="…"</c> value.</summary>
-    public string Name { get; }
+    public string Name => _name ?? string.Empty;
 
     /// <summary>Gets the resolved default style role.</summary>
     public SyntaxDefaultStyle DefaultStyle { get; }

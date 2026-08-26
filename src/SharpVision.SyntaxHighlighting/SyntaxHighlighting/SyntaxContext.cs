@@ -33,7 +33,7 @@ public sealed class SyntaxContext
         FallthroughContext = fallthroughContext;
         NoIndentationBasedFolding = noIndentationBasedFolding;
         StopEmptyLineContextSwitchLoop = stopEmptyLineContextSwitchLoop;
-        Rules = rules;
+        Rules = new SyntaxReadOnlyList<SyntaxRule>(rules);
     }
 
     /// <summary>Gets the context name, as referenced by a <see cref="SyntaxContextReference"/>.</summary>

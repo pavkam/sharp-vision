@@ -10,6 +10,8 @@ using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
 /// keyword list, an identifier-adjacent number, or a word-detect rule.
 /// </summary>
 /// <remarks>
+/// The default struct value is a valid empty delimiter set; <see cref="Default"/> is the separate
+/// KDE built-in set.
 /// <see cref="Default"/> is the exact built-in set from upstream KSyntaxHighlighting's
 /// <c>WordDelimiters::WordDelimiters()</c>: the tab and space characters plus
 /// <c>!%&amp;()*+,-./:;&lt;=&gt;?[\]^{|}~</c>. A <see cref="SyntaxGeneralOptions"/> and, layered on
@@ -21,14 +23,12 @@ using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
 public readonly struct SyntaxWordDelimiters: IEquatable<SyntaxWordDelimiters>
 {
     private const string _builtIn = "\t !%&()*+,-./:;<=>?[\\]^{|}~";
-
-    private readonly bool[] _ascii;
-    private readonly string _nonAscii;
+    private static readonly bool[] _emptyAscii = new bool[128];
 
     private SyntaxWordDelimiters(bool[] ascii, string nonAscii)
     {
-        _ascii = ascii;
-        _nonAscii = nonAscii;
+        AsciiStorage = ascii;
+        NonAsciiStorage = nonAscii;
     }
 
     /// <summary>Gets the built-in default delimiter set with no definition or rule overrides applied.</summary>
@@ -38,7 +38,7 @@ public readonly struct SyntaxWordDelimiters: IEquatable<SyntaxWordDelimiters>
     /// <param name="value">The character to test.</param>
     /// <returns>True when <paramref name="value"/> is a delimiter.</returns>
     [Pure]
-    public bool Contains(char value) => value < 128 ? _ascii[value] : _nonAscii.Contains(value);
+    public bool Contains(char value) => value < 128 ? Ascii[value] : NonAscii.Contains(value);
 
     /// <summary>Builds a new set with additional characters appended and weak characters removed.</summary>
     /// <param name="additional">Non-null characters to add.</param>
@@ -57,8 +57,8 @@ public readonly struct SyntaxWordDelimiters: IEquatable<SyntaxWordDelimiters>
             return this;
         }
 
-        var ascii = (bool[]) _ascii.Clone();
-        var nonAscii = new StringBuilder(_nonAscii);
+        var ascii = (bool[]) Ascii.Clone();
+        var nonAscii = new StringBuilder(NonAscii);
 
         foreach (var c in additional)
         {
@@ -89,7 +89,7 @@ public readonly struct SyntaxWordDelimiters: IEquatable<SyntaxWordDelimiters>
 
     /// <inheritdoc/>
     public bool Equals(SyntaxWordDelimiters other) =>
-        _ascii.AsSpan().SequenceEqual(other._ascii) && _nonAscii == other._nonAscii;
+        Ascii.AsSpan().SequenceEqual(other.Ascii) && NonAscii == other.NonAscii;
 
     /// <inheritdoc/>
     public override bool Equals(object? obj) => obj is SyntaxWordDelimiters other && Equals(other);
@@ -99,12 +99,12 @@ public readonly struct SyntaxWordDelimiters: IEquatable<SyntaxWordDelimiters>
     {
         var hash = new HashCode();
 
-        foreach (var flag in _ascii)
+        foreach (var flag in Ascii)
         {
             hash.Add(flag);
         }
 
-        hash.Add(_nonAscii);
+        hash.Add(NonAscii);
         return hash.ToHashCode();
     }
 
@@ -119,6 +119,14 @@ public readonly struct SyntaxWordDelimiters: IEquatable<SyntaxWordDelimiters>
     /// <param name="right">The second set.</param>
     /// <returns>True when the sets contain different characters.</returns>
     public static bool operator !=(SyntaxWordDelimiters left, SyntaxWordDelimiters right) => !left.Equals(right);
+
+    private bool[] Ascii => AsciiStorage ?? _emptyAscii;
+
+    private string NonAscii => NonAsciiStorage ?? string.Empty;
+
+    private bool[] AsciiStorage { get; }
+
+    private string NonAsciiStorage { get; }
 
     private static bool ContainsNonAscii(StringBuilder builder, char value)
     {

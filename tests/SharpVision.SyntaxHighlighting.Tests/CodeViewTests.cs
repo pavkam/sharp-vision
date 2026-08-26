@@ -10,6 +10,43 @@ public sealed class CodeViewTests
 {
     private const string _rustSnippet = "fn main() {\n    let x = 1;\n}\n";
 
+    /// <summary>Verifies content and clipboard mutations each notify exactly once after the new
+    /// value and dependent projection are fully observable.</summary>
+    [Fact]
+    public void ContentProperties_WhenChanged_NotifyAfterTheirTransactionsCommit()
+    {
+        var view = new CodeView();
+        var notifications = new List<string>();
+        view.PropertyChanged += (_, args) =>
+        {
+            notifications.Add(args.PropertyName!);
+
+            if (args.PropertyName == nameof(CodeView.Code))
+            {
+                view.Code.ShouldBe(_rustSnippet);
+                view.Selection.IsEmpty.ShouldBeTrue();
+            }
+            else if (args.PropertyName == nameof(CodeView.Language))
+            {
+                view.Language.ShouldBe("Rust");
+                view.FoldRanges.ShouldNotBeEmpty();
+            }
+        };
+        Action<string> writer = _ => { };
+
+        view.Code = _rustSnippet;
+        view.Language = "Rust";
+        view.ClipboardWriter = writer;
+        view.Code = _rustSnippet;
+        view.Language = "Rust";
+        view.ClipboardWriter = writer;
+
+        notifications.Count(name => name == nameof(CodeView.Code)).ShouldBe(1);
+        notifications.Count(name => name == nameof(CodeView.Language)).ShouldBe(1);
+        notifications.Count(name => name == nameof(CodeView.ClipboardWriter)).ShouldBe(1);
+        view.ClipboardWriter.ShouldBeSameAs(writer);
+    }
+
     /// <summary>Verifies CodeView adapts its read-only selection through the common control contract.</summary>
     [Fact]
     public void TextSelection_WhenAccessedThroughControlBase_UsesCodeViewSelectionState()

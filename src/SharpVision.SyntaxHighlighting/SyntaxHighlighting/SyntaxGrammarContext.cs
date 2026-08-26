@@ -36,7 +36,7 @@ public sealed class SyntaxGrammarContext
     {
         Name = name;
         AttributeStyle = attributeStyle;
-        Rules = rules;
+        Rules = new SyntaxReadOnlyList<SyntaxCompiledRule>(rules);
         LineEndTarget = lineEndTarget;
         LineEmptyTarget = lineEmptyTarget;
         FallthroughTarget = fallthroughTarget;

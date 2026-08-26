@@ -12,8 +12,8 @@ public sealed class SyntaxHighlightResult
     /// <param name="foldRanges">The non-null fold ranges, ordered by start line then descending length.</param>
     internal SyntaxHighlightResult(IReadOnlyList<SyntaxHighlightedLine> lines, IReadOnlyList<SyntaxFoldRange> foldRanges)
     {
-        Lines = lines;
-        FoldRanges = foldRanges;
+        Lines = new SyntaxReadOnlyList<SyntaxHighlightedLine>(lines);
+        FoldRanges = new SyntaxReadOnlyList<SyntaxFoldRange>(foldRanges);
     }
 
     /// <summary>Gets the tokenized lines, in source order.</summary>

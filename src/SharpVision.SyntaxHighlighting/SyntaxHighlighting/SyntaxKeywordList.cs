@@ -33,8 +33,8 @@ public sealed class SyntaxKeywordList
     internal SyntaxKeywordList(string name, IReadOnlyList<string> words, IReadOnlyList<string> crossDefinitionIncludes)
     {
         Name = name;
-        Words = words;
-        CrossDefinitionIncludes = crossDefinitionIncludes;
+        Words = new SyntaxReadOnlyList<string>(words);
+        CrossDefinitionIncludes = new SyntaxReadOnlyList<string>(crossDefinitionIncludes);
     }
 
     /// <summary>Gets the list name, as referenced by a <c>&lt;keyword String="…"&gt;</c> rule.</summary>

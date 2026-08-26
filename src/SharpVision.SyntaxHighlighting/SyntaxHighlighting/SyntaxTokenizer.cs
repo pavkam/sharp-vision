@@ -22,8 +22,6 @@ using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
 public static class SyntaxTokenizer
 {
     private const int _maxContextSwitchesPerBoundary = 1024;
-    private const int _maxLoopIterationsPerLine = 1_000_000;
-    private const int _indentationTabWidth = 4;
 
     /// <summary>Tokenizes a complete document.</summary>
     /// <param name="grammar">The non-null compiled grammar to tokenize against.</param>
@@ -166,8 +164,17 @@ public static class SyntaxTokenizer
         {
             if (offset == lastOffset)
             {
-                if (++stallCount > _maxLoopIterationsPerLine)
+                if (++stallCount > _maxContextSwitchesPerBoundary)
                 {
+                    if (beginOffset < offset)
+                    {
+                        tokens.Add(new SyntaxToken(beginOffset, offset - beginOffset, currentStyle));
+                    }
+
+                    var fallbackStyle = stack[^1].Context.AttributeStyle;
+                    tokens.Add(new SyntaxToken(offset, line.Length - offset, fallbackStyle));
+                    offset = line.Length;
+                    beginOffset = line.Length;
                     break;
                 }
             }
@@ -505,7 +512,7 @@ public static class SyntaxTokenizer
         {
             if (c == '\t')
             {
-                width = ((width / _indentationTabWidth) + 1) * _indentationTabWidth;
+                width++;
             }
             else if (c == ' ')
             {
