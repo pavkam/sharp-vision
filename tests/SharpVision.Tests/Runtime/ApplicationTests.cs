@@ -194,6 +194,59 @@ public sealed partial class ApplicationTests
         application.Failure.ShouldBeNull();
     }
 
+    /// <summary>Verifies a control that calls RefreshScreen synchronously from inside its own
+    /// render pass - legal, reachable application-level misuse, since any OnRenderContent
+    /// override or event handler can run on the dispatcher thread mid-paint - coalesces through
+    /// the same _renderRequested path every other invalidation source uses, instead of
+    /// reentering Root.Render on the same Root control and letting ControlBase.RenderCore's own
+    /// per-control guard throw InvalidOperationException("Render cannot be reentered.") uncaught
+    /// into the dispatcher's unhandled-exception path, which would force the whole application to
+    /// shut down.</summary>
+    [Fact]
+    public async Task RefreshScreen_WhenCalledSynchronouslyFromWithinRender_CoalescesInsteadOfReenteringAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var probe = new ProbeControl();
+        await using Application application = new(probe, terminal, terminal, TerminalOptions.Minimal);
+
+        var reentered = false;
+        probe.Rendering = _ =>
+        {
+            // Guard against recursing on every subsequent frame; one reentrant call mid-paint is
+            // enough to reproduce the defect, and the coalesced second frame must render cleanly.
+            if (reentered)
+            {
+                return;
+            }
+
+            reentered = true;
+            application.RefreshScreen();
+        };
+
+        var frameCount = 0;
+        var secondFrame = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.FrameRendered += (_, _) =>
+        {
+            if (++frameCount >= 2)
+            {
+                secondFrame.TrySetResult();
+            }
+        };
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        // Without the fix, the reentrant RefreshScreen call inside the first render pass reenters
+        // Root.Render and throws; that exception is reported as an unhandled failure and the
+        // application force-stops, so neither of these would ever become true and this would time
+        // out instead of observing the coalesced second frame.
+        await secondFrame.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        application.Failure.ShouldBeNull();
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        application.Failure.ShouldBeNull();
+    }
+
     /// <summary>Verifies Shutdown() drives the identical cooperative stop path as the ISink Closed()
     /// callback, giving application code a discoverable, intention-named exit call.</summary>
     [Fact]

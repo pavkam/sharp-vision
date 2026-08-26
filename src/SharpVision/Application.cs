@@ -2321,13 +2321,29 @@ public sealed class Application:
 
         _layoutSinceLastRender = false;
 
+        // Set before the call it guards, not after: Root.Render runs application/control code
+        // synchronously (event handlers, OnRenderContent overrides) on this same dispatcher
+        // thread, and any of it that reaches StartRender again - e.g. a legal RefreshScreen()
+        // call mid-paint - must see IsRendering already true so it coalesces through
+        // _renderRequested like every other invalidation path, instead of finding the guard
+        // still false and reentering Root.Render on the same Root control, which throws
+        // InvalidOperationException("Render cannot be reentered.") from ControlBase.RenderCore's
+        // own per-control guard.
+        IsRendering = true;
+
         try
         {
             Root.Render(frame.Canvas);
         }
         catch
         {
+            // Root.Render never touches the renderer or the terminal - only frame.Canvas - so
+            // there is nothing here for the renderer/backend to retire (contrast the RenderAsync
+            // catch below, which mirrors CompleteRender's failure path because that call may have
+            // already started terminal I/O). This failure just needs IsRendering put back so the
+            // application is not permanently wedged believing a render is still in flight.
             frame.Dispose();
+            IsRendering = false;
             throw;
         }
 
@@ -2335,7 +2351,6 @@ public sealed class Application:
         var completion = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         _renderTask = completion.Task;
-        IsRendering = true;
 
         ValueTask<RenderMetrics> operation;
 
