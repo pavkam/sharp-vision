@@ -63,10 +63,13 @@ classDiagram
 
 - `Header` is hidden when null or empty.
 - `Items` and `FooterItems` accept `NavigationViewItem`, `NavigationViewGroup`,
-  and `NavigationViewSeparator` through the same typed overloads.
+  and `NavigationViewSeparator` through the same typed overloads. Their
+  `ControlBase`-typed replacement indexer enforces that same set before changing
+  ownership or the existing entry's forwarding and focus policy.
 - Moving an entry within either collection reorders the existing identity
   without detaching, reparenting, blurring, or reattaching it.
-- `SelectItem` rejects null and items owned by another navigation view.
+- `SelectItem` rejects null, unavailable items, and items owned by another
+  navigation view.
 - `SelectionChanged` fires after a committed selection change. If an
   `IsSelected` or `SelectedItem` observer synchronously selects another item,
   the newer selection owns the visual markers, public property, and typed event;
@@ -84,6 +87,12 @@ current group or invoke a current item without transferring focus, firing once
 per key hold and only with activation-eligible modifiers, while the navigation
 keys repeat while held. When no entry is current, activation first establishes
 the first available entry and then applies its action.
+
+An entry that becomes hidden cannot remain selected or current. An entry that
+becomes disabled may retain its selected identity, but it immediately loses
+keyboard-current eligibility; Enter and Space re-establish current on an
+available entry instead of invoking the disabled one. These rules use effective
+availability, including inherited ancestor state.
 
 `LineSize` forwards the mouse wheel's cell step to the generated scroll
 container; keyboard Up and Down always move by exactly one entry regardless of
@@ -136,6 +145,10 @@ collection. Enter or Space on the current group toggles its expansion while the
 owning `NavigationView` keeps focus. Collapsing a group whose descendant is
 current moves the current state to the group header and repairs any now-hidden
 selection.
+
+Pointer toggling uses a paired primary press and release on the header row. The
+group captures during the hold and cancels on drag-out, capture loss,
+unavailability, detachment, or disposal; an unmatched release is inert.
 
 | Member        | Type                           | Default  | Description                                                                                    |
 | ------------- | ------------------------------ | -------- | ---------------------------------------------------------------------------------------------- |
@@ -219,5 +232,6 @@ expansion.
 - Pointer selection works both directly and through grouped items, and
   forwarding handlers are cleaned up when grouped items are removed or the
   collection is cleared.
-- Removing the selected item clears the selection.
+- Removing or directly disposing a selected top-level or grouped item repairs
+  selection to the adjacent available item, or clears it when none remains.
 - Final rendering resolves deterministically to the exact cells.

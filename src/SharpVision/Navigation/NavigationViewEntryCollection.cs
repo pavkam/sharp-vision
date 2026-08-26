@@ -21,6 +21,11 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <summary>Gets or replaces one owned entry, preserving its position.</summary>
     /// <exception cref="ArgumentNullException">The assigned value is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current entries.</exception>
+    /// <exception cref="ArgumentException">
+    /// The assigned value is not a navigation item, group, or separator, or it already belongs to a tree.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">The owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner or assigned value is disposed.</exception>
     public ControlBase this[int index]
     {
         get => _owner.GetItem(index, _isFooter);

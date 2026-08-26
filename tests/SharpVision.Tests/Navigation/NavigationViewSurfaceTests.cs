@@ -466,6 +466,36 @@ public sealed class NavigationViewSurfaceTests
         surface.ShouldHaveFocus(view);
     }
 
+    /// <summary>Verifies a group release without an armed primary press is an inert routed event.</summary>
+    [Fact]
+    public async Task Pointer_WhenGroupReceivesReleaseWithoutPress_DoesNotToggleAsync()
+    {
+        var group = new NavigationViewGroup { Header = "Group" };
+        var view = CreateView(header: null, 18);
+        view.Items.Add(group);
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(18, 3),
+            TestContext.Current.CancellationToken);
+        var release = new PointerEventArgs(new Pointer(
+            new Point(group.Bounds.X + 1, group.Bounds.Y),
+            pixels: null,
+            Buttons.Primary,
+            PointerAction.Release,
+            wheelX: 0,
+            wheelY: 0,
+            Modifiers.None,
+            isMotion: false,
+            isCellPositionInferred: false));
+
+        await surface.UpdateAsync(
+            () => _ = Router.Route(group, Events.Pointer, release),
+            "route an unmatched group release");
+
+        group.IsExpanded.ShouldBeTrue();
+        release.IsHandled.ShouldBeFalse();
+    }
+
     /// <summary>Verifies owner-focused keyboard navigation reaches group headers and collapses their retained rows.</summary>
     [Fact]
     public async Task Input_WhenGroupsReceiveKeyboardNavigation_CollapsesEachGroupAsync()

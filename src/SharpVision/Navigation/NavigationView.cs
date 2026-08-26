@@ -242,6 +242,7 @@ public sealed class NavigationView: CompositeControlBase
     /// <param name="item">The non-null item owned by this navigation view.</param>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="item"/> is not owned by this navigation view.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="item"/> is unavailable.</exception>
     public void SelectItem(NavigationViewItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -249,6 +250,11 @@ public sealed class NavigationView: CompositeControlBase
         if (!ReferenceEquals(item.FindNavigationView(), this))
         {
             throw new ArgumentException("The item is not owned by this navigation view.", nameof(item));
+        }
+
+        if (!IsAvailable(item))
+        {
+            throw new InvalidOperationException("An unavailable navigation item cannot be selected.");
         }
 
         _ = _navigator.SetCurrent(item);
@@ -270,9 +276,7 @@ public sealed class NavigationView: CompositeControlBase
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
     internal void InsertEntry(int index, ControlBase entry, bool isFooter)
     {
-        Debug.Assert(
-            entry is NavigationViewItem or NavigationViewGroup or NavigationViewSeparator,
-            "Navigation view entries are constrained by typed collection overloads.");
+        ValidateEntry(entry);
         var stack = isFooter ? _footerStack : _itemsStack;
 
         // Ownership is secured before any authored property is captured or
@@ -384,9 +388,7 @@ public sealed class NavigationView: CompositeControlBase
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current entries.</exception>
     internal void ReplaceEntryAt(int index, ControlBase entry, bool isFooter)
     {
-        Debug.Assert(
-            entry is NavigationViewItem or NavigationViewGroup or NavigationViewSeparator,
-            "Navigation view entries are constrained by typed collection overloads.");
+        ValidateEntry(entry);
         var stack = isFooter ? _footerStack : _itemsStack;
 
         if ((uint) index >= (uint) stack.Children.Count)
@@ -403,17 +405,6 @@ public sealed class NavigationView: CompositeControlBase
 
         var repair = PrepareRemoval(old);
 
-        if (old is NavigationViewItem oldItem)
-        {
-            oldItem.Invoked -= OnItemInvoked;
-        }
-        else if (old is NavigationViewGroup oldGroup)
-        {
-            oldGroup.VisibilityChanged -= OnGroupVisibilityChanged;
-        }
-
-        RestorePresentation(old);
-
         _isHandlingKnownRemoval = true;
 
         try
@@ -424,6 +415,17 @@ public sealed class NavigationView: CompositeControlBase
         {
             _isHandlingKnownRemoval = false;
         }
+
+        if (old is NavigationViewItem oldItem)
+        {
+            oldItem.Invoked -= OnItemInvoked;
+        }
+        else if (old is NavigationViewGroup oldGroup)
+        {
+            oldGroup.VisibilityChanged -= OnGroupVisibilityChanged;
+        }
+
+        RestorePresentation(old);
 
         _requestedPresentations.Add(
             entry,
@@ -441,6 +443,16 @@ public sealed class NavigationView: CompositeControlBase
         }
 
         CompleteRemoval(repair);
+    }
+
+    /// <summary>Detaches a top-level semantic entry before direct disposal publication begins.</summary>
+    /// <param name="entry">The owned entry whose caller requested disposal.</param>
+    internal void RemoveEntryForDisposal(ControlBase entry)
+    {
+        if (!RemoveEntry(entry, isFooter: false))
+        {
+            _ = RemoveEntry(entry, isFooter: true);
+        }
     }
 
     // Repairs selection/current-item state for a top-level entry that left the tree without
@@ -664,12 +676,13 @@ public sealed class NavigationView: CompositeControlBase
         // out of view too, so parking there would leave current on an invisible entry; null lets
         // navigation fall back to the same first-navigable-entry recovery ActivateCurrent already
         // performs for a null current.
-        if (_navigator.Current is { } current && IsDescendantOf(current, group))
+        if (_navigator.Current is { } current &&
+            (ReferenceEquals(current, group) || IsDescendantOf(current, group)))
         {
-            _ = _navigator.SetCurrent(group.EffectiveIsVisible ? group : null);
+            _ = _navigator.SetCurrent(IsAvailable(group) ? group : null);
         }
 
-        if (SelectedItem is null || SelectedItem.EffectiveIsVisible)
+        if (SelectedItem is null || IsAvailable(SelectedItem))
         {
             return;
         }
@@ -796,6 +809,11 @@ public sealed class NavigationView: CompositeControlBase
 
     private bool ActivateCurrent()
     {
+        if (_navigator.Current is { } stale && !IsAvailable(stale))
+        {
+            _ = _navigator.SetCurrent(null);
+        }
+
         if (_navigator.Current is null)
         {
             var entries = CollectNavigableEntries();
@@ -808,13 +826,13 @@ public sealed class NavigationView: CompositeControlBase
             _ = _navigator.SetCurrent(entries[0]);
         }
 
-        if (_navigator.Current is NavigationViewGroup group)
+        if (_navigator.Current is NavigationViewGroup group && IsAvailable(group))
         {
             group.IsExpanded = !group.IsExpanded;
             return true;
         }
 
-        if (_navigator.Current is NavigationViewItem item)
+        if (_navigator.Current is NavigationViewItem item && IsAvailable(item))
         {
             item.ActivateFromOwner(ActivationCause.Keyboard);
             return true;
@@ -856,12 +874,12 @@ public sealed class NavigationView: CompositeControlBase
             }
         }
 
-        previous?.VisibilityChanged -= OnSelectedItemVisibilityChanged;
+        previous?.PropertyChanged -= OnSelectedItemAvailabilityChanged;
 
         SelectedItem = item;
         _selectedIndex = item is null ? -1 : CollectSelectableItems().IndexOf(item);
 
-        item?.VisibilityChanged += OnSelectedItemVisibilityChanged;
+        item?.PropertyChanged += OnSelectedItemAvailabilityChanged;
         item?.CommitSelection(true);
 
         if (_selectionVersion != version)
@@ -882,20 +900,39 @@ public sealed class NavigationView: CompositeControlBase
     // Reacts only to the selected item's own Visibility setter running - group collapse instead
     // flips the group's internal stack's Visibility, so this handler and NotifyGroupVisibilityChanged
     // never both fire for the same collapse.
-    private void OnSelectedItemVisibilityChanged(object? sender, EventArgs eventArgs)
+    private void OnSelectedItemAvailabilityChanged(
+        object? sender,
+        System.ComponentModel.PropertyChangedEventArgs eventArgs)
     {
         _ = sender;
-        _ = eventArgs;
 
-        if (SelectedItem is null || SelectedItem.EffectiveIsVisible)
+        if (eventArgs.PropertyName is not nameof(EffectiveIsVisible) and
+            not nameof(EffectiveIsEnabled))
         {
             return;
         }
 
+        if (SelectedItem is null || IsAvailable(SelectedItem))
+        {
+            return;
+        }
+
+        if (eventArgs.PropertyName == nameof(EffectiveIsEnabled))
+        {
+            if (ReferenceEquals(_navigator.Current, SelectedItem))
+            {
+                _ = _navigator.SetCurrent(null);
+            }
+
+            return;
+        }
+
         var remaining = CollectSelectableItems();
-        Select(remaining.Count == 0
+        var replacement = remaining.Count == 0
             ? null
-            : remaining[_selectedIndex.Clamp(0, remaining.Count - 1)]);
+            : remaining[_selectedIndex.Clamp(0, remaining.Count - 1)];
+        _ = _navigator.SetCurrent(replacement);
+        Select(replacement);
     }
 
     [Pure]
@@ -1001,4 +1038,25 @@ public sealed class NavigationView: CompositeControlBase
 
         return false;
     }
+
+    private static void ValidateEntry(ControlBase entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+
+        if (entry is not NavigationViewItem and not NavigationViewGroup and not NavigationViewSeparator)
+        {
+            throw new ArgumentException(
+                "A navigation entry must be an item, group, or separator.",
+                nameof(entry));
+        }
+    }
+
+    [Pure]
+    private bool IsAvailable(ControlBase entry) =>
+        !entry.IsDisposed &&
+        entry.EffectiveIsVisible &&
+        entry.EffectiveIsEnabled &&
+        (entry is NavigationViewItem item
+            ? ReferenceEquals(item.FindNavigationView(), this)
+            : entry is NavigationViewGroup group && ReferenceEquals(group.FindNavigationView(), this));
 }

@@ -15,6 +15,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     private readonly LayoutStack _stack;
     private readonly OwnedControlSlot _childrenSlot;
     private readonly Dictionary<NavigationViewItem, NavigationItemPresentation> _requestedPresentations = [];
+    private readonly PressBehavior _press;
     private readonly StyleSlot<NavigationViewGroupStyle> _style;
 
     /// <summary>Initializes an expanded navigation group with no header.</summary>
@@ -35,6 +36,19 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
         Items = new NavigationViewItemCollection(this);
         IsFocusable = false;
         IsTabStop = false;
+        _press = new PressBehavior(
+            () => new Rect(Bounds.X, Bounds.Y, Bounds.Width, Math.Min(1, Bounds.Height)),
+            () => !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible,
+            () => true,
+            () => FindNavigationView()?.Focus() == true,
+            CapturePointer,
+            () => HasPointerCapture,
+            ReleasePointerCapture,
+            SetPressed,
+            Activate,
+            () => Capabilities.KeyReleaseEvents.Authoritative);
+        LostPointerCapture += OnGroupLostPointerCapture;
+        PropertyChanged += OnGroupAvailabilityChanged;
     }
 
     /// <summary>Gets this group's constrained sub-item collection.</summary>
@@ -144,6 +158,10 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
 
         return true;
     }
+
+    /// <summary>Detaches one grouped item before direct disposal publication begins.</summary>
+    /// <param name="item">The owned item whose caller requested disposal.</param>
+    internal void RemoveItemForDisposal(NavigationViewItem item) => _ = RemoveItemCore(item);
 
     /// <summary>Clears all sub-items.</summary>
     internal void ClearItemsCore()
@@ -258,19 +276,51 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
             IsInitialKeyDown: true,
             Stroke: { Code: Code.Enter, Modifiers: var enterModifiers }
         } && enterModifiers.IsActivationEligible();
-        var pointer = eventArgs is PointerEventArgs
+        if (keyboard)
         {
-            Pointer.Action: PointerAction.Release,
-            Pointer.Buttons: var buttons,
-            LocalCells.Y: 0
-        } && (buttons & Buttons.Primary) != 0;
-
-        if (keyboard || pointer)
-        {
-            FindNavigationView()?.NotifyGroupInvoked(this);
-            IsExpanded = !IsExpanded;
+            Activate(ActivationCause.Keyboard);
             eventArgs.IsHandled = true;
+            return;
         }
+
+        if (eventArgs is PointerEventArgs)
+        {
+            _press.Handle(eventArgs);
+        }
+    }
+
+    private void Activate(ActivationCause cause)
+    {
+        _ = cause;
+        FindNavigationView()?.NotifyGroupInvoked(this);
+        IsExpanded = !IsExpanded;
+    }
+
+    private void OnGroupLostPointerCapture(object? sender, PointerCaptureLostEventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+        _press.CaptureLost();
+    }
+
+    private void OnGroupAvailabilityChanged(
+        object? sender,
+        System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.PropertyName is nameof(EffectiveIsVisible) or nameof(EffectiveIsEnabled))
+        {
+            _press.Unavailable();
+        }
+    }
+
+    /// <inheritdoc/>
+    internal override void OnDirectDisposalRequested()
+    {
+        _press.Unavailable();
+        FindNavigationView()?.RemoveEntryForDisposal(this);
+        base.OnDirectDisposalRequested();
     }
 
     [Pure]

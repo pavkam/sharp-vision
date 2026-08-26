@@ -226,4 +226,19 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
 
     [Pure]
     internal NavigationView? FindNavigationView() => FindAncestor<NavigationView>();
+
+    /// <inheritdoc/>
+    internal override void OnDirectDisposalRequested()
+    {
+        if (FindAncestor<NavigationViewGroup>() is { } group)
+        {
+            group.RemoveItemForDisposal(this);
+        }
+        else
+        {
+            FindNavigationView()?.RemoveEntryForDisposal(this);
+        }
+
+        base.OnDirectDisposalRequested();
+    }
 }

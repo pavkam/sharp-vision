@@ -1985,6 +1985,219 @@ public sealed class NavigationViewTests
         nav.Items.Count.ShouldBe(1);
     }
 
+    /// <summary>Verifies the ControlBase-typed indexer rejects controls outside the documented entry set.</summary>
+    [Fact]
+    public void Indexer_WhenReplacementIsNotANavigationEntry_RejectsBeforeMutation()
+    {
+        var nav = new NavigationView();
+        var original = new NavigationViewItem { Text = "Original" };
+        nav.Items.Add(original);
+        var unsupported = new Button { Text = "Unsupported" };
+
+        _ = Should.Throw<ArgumentException>(() => nav.Items[0] = unsupported);
+
+        nav.Items.ShouldBe([original]);
+        _ = original.Parent.ShouldNotBeNull();
+        unsupported.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies ownership validation failure leaves the existing entry's policy and invocation wiring intact.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Indexer_WhenReplacementIsRejected_PreservesExistingEntry(bool disposed)
+    {
+        var nav = new NavigationView();
+        var original = new NavigationViewItem { Text = "Original", IsFocusable = true, IsTabStop = true };
+        var sibling = new NavigationViewItem { Text = "Sibling" };
+        nav.Items.Add(original);
+        nav.Items.Add(sibling);
+        nav.SelectItem(original);
+        var candidate = new NavigationViewItem { Text = "Rejected" };
+        var other = new NavigationView();
+        if (disposed)
+        {
+            candidate.Dispose();
+        }
+        else
+        {
+            other.Items.Add(candidate);
+        }
+
+        if (disposed)
+        {
+            _ = Should.Throw<ObjectDisposedException>(() => nav.Items[0] = candidate);
+        }
+        else
+        {
+            _ = Should.Throw<ArgumentException>(() => nav.Items[0] = candidate);
+        }
+
+        nav.SelectItem(sibling);
+        original.ActivateFromOwner(ActivationCause.Programmatic);
+
+        nav.Items.ShouldBe([original, sibling]);
+        nav.SelectedItem.ShouldBeSameAs(original);
+        original.IsFocusable.ShouldBeFalse();
+        original.IsTabStop.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies unavailable owned items cannot become the programmatic selection/current entry.</summary>
+    [Theory]
+    [InlineData("disabled")]
+    [InlineData("hidden")]
+    [InlineData("collapsed")]
+    [InlineData("ancestor-disabled")]
+    [InlineData("ancestor-hidden")]
+    public void SelectItem_WhenOwnedItemIsUnavailable_ThrowsWithoutChangingSelection(string state)
+    {
+        var selected = new NavigationViewItem { Text = "Selected" };
+        var unavailable = new NavigationViewItem { Text = "Unavailable" };
+        var nav = new NavigationView();
+        nav.Items.Add(selected);
+        nav.Items.Add(unavailable);
+        var host = new Overlay { Children = { nav } };
+        nav.SelectItem(selected);
+
+        if (state == "disabled")
+        {
+            unavailable.IsEnabled = false;
+        }
+        else if (state == "hidden")
+        {
+            unavailable.Visibility = Visibility.Hidden;
+        }
+        else if (state == "collapsed")
+        {
+            unavailable.Visibility = Visibility.Collapsed;
+        }
+        else if (state == "ancestor-disabled")
+        {
+            host.IsEnabled = false;
+        }
+        else
+        {
+            host.Visibility = Visibility.Hidden;
+        }
+
+        _ = Should.Throw<InvalidOperationException>(() => nav.SelectItem(unavailable));
+
+        if (state == "ancestor-hidden")
+        {
+            nav.SelectedItem.ShouldBeNull();
+        }
+        else
+        {
+            nav.SelectedItem.ShouldBeSameAs(selected);
+        }
+    }
+
+    /// <summary>Verifies Enter cannot invoke a current item after direct availability is lost.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Dispatch_WhenCurrentItemBecomesUnavailable_DoesNotInvokeItAsync(bool hidden)
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var current = new NavigationViewItem { Text = "Current" };
+            var fallback = new NavigationViewItem { Text = "Fallback" };
+            var invoked = 0;
+            current.Invoked += (_, _) => invoked++;
+            var nav = new NavigationView();
+            nav.Items.Add(current);
+            nav.Items.Add(fallback);
+            nav.Attach(dispatcher);
+            nav.SelectItem(current);
+
+            if (hidden)
+            {
+                current.Visibility = Visibility.Hidden;
+            }
+            else
+            {
+                current.IsEnabled = false;
+            }
+
+            var enter = new KeyEventArgs(new Stroke(
+                Code.Enter, default, nativeCode: 0, Modifiers.None, KeyAction.Press));
+            _ = Router.Route(nav, Events.Key, enter);
+
+            invoked.ShouldBe(0);
+            nav.SelectedItem.ShouldBeSameAs(fallback);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an unavailable current group cannot toggle from keyboard activation.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Dispatch_WhenCurrentGroupBecomesUnavailable_DoesNotToggleItAsync(bool hidden)
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var group = new NavigationViewGroup { Header = "Current" };
+            var fallback = new NavigationViewItem { Text = "Fallback" };
+            var nav = new NavigationView();
+            nav.Items.Add(group);
+            nav.Items.Add(fallback);
+            nav.Attach(dispatcher);
+            nav.NotifyGroupInvoked(group);
+
+            if (hidden)
+            {
+                group.Visibility = Visibility.Hidden;
+            }
+            else
+            {
+                group.IsEnabled = false;
+            }
+
+            var enter = new KeyEventArgs(new Stroke(
+                Code.Enter, default, nativeCode: 0, Modifiers.None, KeyAction.Press));
+            _ = Router.Route(nav, Events.Key, enter);
+
+            group.IsExpanded.ShouldBeTrue();
+            nav.SelectedItem.ShouldBeSameAs(fallback);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies direct disposal of grouped children and their group repairs retained selection.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Dispose_WhenGroupedSelectionOrContainingGroupDisposes_RepairsOnce(bool disposeGroup)
+    {
+        var selected = new NavigationViewItem { Text = "Selected" };
+        var group = new NavigationViewGroup { Header = "Group" };
+        group.Items.Add(selected);
+        var fallback = new NavigationViewItem { Text = "Fallback" };
+        var nav = new NavigationView();
+        nav.Items.Add(group);
+        nav.Items.Add(fallback);
+        nav.SelectItem(selected);
+        var changes = new List<NavigationViewSelectionChangedEventArgs>();
+        nav.SelectionChanged += (_, eventArgs) => changes.Add(eventArgs);
+
+        if (disposeGroup)
+        {
+            group.Dispose();
+        }
+        else
+        {
+            selected.Dispose();
+        }
+
+        nav.SelectedItem.ShouldBeSameAs(fallback);
+        changes.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            eventArgs => eventArgs.PreviousItem.ShouldBeSameAs(selected),
+            eventArgs => eventArgs.CurrentItem.ShouldBeSameAs(fallback));
+    }
+
     /// <summary>Verifies Move repositions an entry while preserving its identity and, since
     /// selection here is reference-tracked, the selected item's identity.</summary>
     [Fact]
