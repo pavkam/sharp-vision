@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Styling;
 
+using System.Text.Json.Nodes;
+
 /// <summary>Verifies the embedded theme catalog discovers, orders, loads, and caches themes.</summary>
 public sealed class ThemeCatalogTests
 {
@@ -887,6 +889,16 @@ public sealed class ThemeCatalogTests
     public void LoadFile_WhenNull_Throws() =>
         Should.Throw<ArgumentNullException>(() => ThemeCatalog.LoadFile(null!));
 
+    /// <summary>Verifies an empty path is rejected by the documented path-validation branch.</summary>
+    [Fact]
+    public void LoadFile_WhenPathIsEmpty_ThrowsArgumentException() =>
+        _ = Should.Throw<ArgumentException>(() => ThemeCatalog.LoadFile(string.Empty));
+
+    /// <summary>Verifies a directory cannot be opened as a theme file and reports the documented access failure.</summary>
+    [Fact]
+    public void LoadFile_WhenPathNamesDirectory_ThrowsUnauthorizedAccessException() =>
+        _ = Should.Throw<UnauthorizedAccessException>(() => ThemeCatalog.LoadFile(Path.GetTempPath()));
+
     /// <summary>Verifies loading a missing file path throws <see cref="FileNotFoundException"/>.</summary>
     [Fact]
     public void LoadFile_WhenFileMissing_Throws()
@@ -911,6 +923,36 @@ public sealed class ThemeCatalogTests
         {
             File.Delete(path);
         }
+    }
+
+    /// <summary>Verifies every object-shaped style boundary normalizes a wrong JSON kind to the
+    /// loader's source-labelled invalid-data contract.</summary>
+    [Theory]
+    [InlineData("styles")]
+    [InlineData("styles.control")]
+    [InlineData("styles.control.normal")]
+    public void Parse_WhenStyleObjectHasWrongJsonKind_ThrowsSourceLabelledInvalidDataException(string path)
+    {
+        var document = JsonNode.Parse(ThemeJson.Create())!;
+        SetNode(document, path, new JsonArray());
+
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(document.ToJsonString(), "wrong-style-shape"));
+
+        error.Message.ShouldContain("wrong-style-shape");
+        error.Message.ShouldContain(path);
+    }
+
+    private static void SetNode(JsonNode document, string path, JsonNode value)
+    {
+        var segments = path.Split('.');
+        var parent = document;
+
+        for (var index = 0; index < segments.Length - 1; index++)
+        {
+            parent = parent[segments[index]]!;
+        }
+
+        parent[segments[^1]] = value;
     }
 
     private static string JsonWithPaletteEntries(int count)

@@ -3,8 +3,6 @@
 
 namespace SharpVision.SyntaxHighlighting;
 
-using System.Collections.Concurrent;
-
 /// <summary>
 /// Wraps one parsed <see cref="SyntaxRule"/> with its grammar-resolved style, context target, and
 /// compiled matching data, and performs the actual per-position match KDE's <c>Rule::doMatch</c>
@@ -23,18 +21,14 @@ using System.Collections.Concurrent;
 [PublicAPI]
 public sealed class SyntaxCompiledRule
 {
-    /// <summary>The wall-clock bound applied to every regex match this rule performs. A syntax
-    /// definition's <c>RegExpr</c> pattern text is effectively untrusted input - hand-authored,
-    /// third-party, or loaded from disk through <see cref="SyntaxDefinitionCatalog.FromDirectory"/>
-    /// - so a pathological pattern combined with adversarial source text must degrade to a timed-out
-    /// non-match instead of blocking the calling dispatcher thread through catastrophic
-    /// backtracking.</summary>
-    private static readonly TimeSpan _regexMatchTimeout = TimeSpan.FromMilliseconds(500);
+    /// <summary>The maximum number of capture-substituted patterns retained by one dynamic rule.</summary>
+    private const int _dynamicRegexCacheCapacity = 64;
 
     private readonly SyntaxKeywordMatcher? _keywordMatcher;
     private readonly SyntaxWordDelimiters _delimiters;
-    private readonly Lazy<Regex>? _staticRegex;
-    private readonly ConcurrentDictionary<string, Regex>? _dynamicRegexCache;
+    private readonly PcreRegex? _staticRegex;
+    private readonly SyntaxRegularExpressionCache? _dynamicRegexCache;
+    private readonly bool _regularExpressionIsValid = true;
 
     /// <summary>Initializes a compiled rule.</summary>
     /// <param name="source">The non-null parsed rule this instance compiles.</param>
@@ -66,11 +60,13 @@ public sealed class SyntaxCompiledRule
         {
             if (source.Dynamic)
             {
-                _dynamicRegexCache = new ConcurrentDictionary<string, Regex>(StringComparer.Ordinal);
+                _dynamicRegexCache = new SyntaxRegularExpressionCache(_dynamicRegexCacheCapacity);
+                var initial = CompileRegex(source.Text ?? string.Empty, source, out _regularExpressionIsValid);
+                _ = _dynamicRegexCache.GetOrAdd(source.Text ?? string.Empty, _ => initial);
             }
             else
             {
-                _staticRegex = new Lazy<Regex>(() => CompileRegex(source.Text ?? string.Empty, source));
+                _staticRegex = CompileRegex(source.Text ?? string.Empty, source, out _regularExpressionIsValid);
             }
         }
     }
@@ -89,6 +85,15 @@ public sealed class SyntaxCompiledRule
     /// KSyntaxHighlighting's <c>Rule::hasSkipOffset</c> gates its own per-line skip-offset cache.
     /// </summary>
     internal bool HasSkipOffset => Source.Kind is SyntaxRuleKind.Keyword or SyntaxRuleKind.RegularExpression;
+
+    /// <summary>Gets the number of compiled regular expressions retained by this rule so tests can
+    /// prove the dynamic-pattern lifetime bound without reflecting into its cache implementation.</summary>
+    internal int CachedRegularExpressionCount =>
+        _dynamicRegexCache?.Count ?? (_staticRegex is null ? 0 : 1);
+
+    /// <summary>Gets whether this rule's authored regular-expression pattern compiled under the
+    /// KDE-compatible engine, so corpus tests can reject silently disabled shipped rules.</summary>
+    internal bool RegularExpressionIsValid => _regularExpressionIsValid;
 
     /// <summary>
     /// Gets the style role this rule's own matched text is painted with, or null to inherit
@@ -496,22 +501,20 @@ public sealed class SyntaxCompiledRule
             ? _dynamicRegexCache!.GetOrAdd(
                 ReplaceCaptures(Source.Text ?? string.Empty, captures, escapeForRegex: true),
                 pattern => CompileRegex(pattern, Source))
-            : _staticRegex!.Value;
+            : _staticRegex!;
 
-        Match match;
+        PcreMatch match;
 
         try
         {
-            match = regex.Match(line, offset);
+            match = SyntaxRegularExpression.Match(regex, line, offset);
         }
-        catch (RegexMatchTimeoutException)
+        catch (PcreMatchException error) when (SyntaxRegularExpression.IsBudgetExceeded(error))
         {
-            // A pathological pattern - plausible among hand-authored or externally supplied
-            // (SyntaxDefinitionCatalog.FromDirectory) definitions - combined with adversarial
-            // input text can trigger exponential-time backtracking. _regexMatchTimeout bounds the
-            // wall-clock cost of any single match attempt; a timed-out match degrades to no match
-            // rather than freezing the calling dispatcher thread for the rest of the process.
-            return SyntaxRuleMatch.None;
+            // The negative skip offset suppresses this effective rule for the rest of the line.
+            // Retrying the same exhausted search at every following UTF-16 offset would multiply
+            // the bounded PCRE2 work into an unbounded line-level delay.
+            return new SyntaxRuleMatch(skipOffset: -1);
         }
 
         if (!match.Success)
@@ -546,22 +549,11 @@ public sealed class SyntaxCompiledRule
         return new SyntaxRuleMatch(match.Length, captured);
     }
 
-    private static Regex CompileRegex(string pattern, SyntaxRule source)
-    {
-        var options = RegexOptions.CultureInvariant | (source.Insensitive ? RegexOptions.IgnoreCase : RegexOptions.None);
+    private static PcreRegex CompileRegex(string pattern, SyntaxRule source) =>
+        SyntaxRegularExpression.Compile(pattern, source.Insensitive, source.Minimal);
 
-        try
-        {
-            return new Regex(pattern, options, _regexMatchTimeout);
-        }
-        catch (RegexParseException)
-        {
-            // An invalid pattern in a third-party syntax definition must not crash the whole
-            // buffer's highlighting; it simply never matches, the same graceful degradation
-            // upstream applies to an invalid QRegularExpression.
-            return new Regex("(?!)", options, _regexMatchTimeout);
-        }
-    }
+    private static PcreRegex CompileRegex(string pattern, SyntaxRule source, out bool isValid) =>
+        SyntaxRegularExpression.Compile(pattern, source.Insensitive, source.Minimal, out isValid);
 
     private static string ReplaceCaptures(string pattern, IReadOnlyList<string> captures, bool escapeForRegex)
     {

@@ -221,6 +221,8 @@ public static class ThemeCatalog
     /// <param name="path">The theme file path.</param>
     /// <returns>A newly parsed frozen theme.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="path"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="path"/> is empty or malformed.</exception>
+    /// <exception cref="UnauthorizedAccessException">Access to <paramref name="path"/> is denied, or it names a directory.</exception>
     /// <exception cref="IOException">The file cannot be read.</exception>
     /// <exception cref="InvalidDataException">The document is oversized or invalid.</exception>
     public static Theme LoadFile(string path)
@@ -329,9 +331,22 @@ public static class ThemeCatalog
             throw new InvalidDataException($"Theme '{source}' must define a 'styles' object, which may be empty.");
         }
 
-        var rawSections = stylesElement.Deserialize<Dictionary<string, JsonElement>>(JsonOptions)
-            ?? throw new InvalidDataException($"Theme '{source}' 'styles' must be an object.");
+        var rawSections = ReadObject(stylesElement, source, "styles");
         theme.SetStyleSections(ReadStyleSections(rawSections, source));
+    }
+
+    /// <summary>Reads one required JSON object without exposing serializer shape exceptions.</summary>
+    internal static Dictionary<string, JsonElement> ReadObject(JsonElement element, string source, string path)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(path);
+
+        return element.ValueKind != JsonValueKind.Object
+            ? throw new InvalidDataException($"Theme '{source}' '{path}' must be an object.")
+            : element.EnumerateObject().ToDictionary(
+                static property => property.Name,
+                static property => property.Value,
+                StringComparer.Ordinal);
     }
 
     // Every key, including a dot-namespaced one, must be one of the six well-known role sections -

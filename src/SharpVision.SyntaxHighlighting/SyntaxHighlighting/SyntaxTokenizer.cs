@@ -25,13 +25,6 @@ public static class SyntaxTokenizer
     private const int _maxLoopIterationsPerLine = 1_000_000;
     private const int _indentationTabWidth = 4;
 
-    /// <summary>The wall-clock bound applied to every empty-line indentation-folding regex match.
-    /// An <c>&lt;emptyLine regexpr="…"&gt;</c> pattern is untrusted third-party input the same way
-    /// a rule's <c>RegExpr</c> is, so a pathological pattern must degrade to a timed-out non-match
-    /// instead of blocking the calling thread; see <see cref="SyntaxCompiledRule"/>'s matching
-    /// timeout for the equivalent per-rule bound.</summary>
-    private static readonly TimeSpan _regexMatchTimeout = TimeSpan.FromMilliseconds(500);
-
     /// <summary>Tokenizes a complete document.</summary>
     /// <param name="grammar">The non-null compiled grammar to tokenize against.</param>
     /// <param name="text">The non-null complete source text.</param>
@@ -456,29 +449,19 @@ public static class SyntaxTokenizer
 
     #region Indentation folding
 
-    private static List<Regex> CompileEmptyLinePatterns(IReadOnlyList<SyntaxEmptyLineRule> rules)
+    private static List<PcreRegex> CompileEmptyLinePatterns(IReadOnlyList<SyntaxEmptyLineRule> rules)
     {
-        var patterns = new List<Regex>(rules.Count);
+        var patterns = new List<PcreRegex>(rules.Count);
 
         foreach (var rule in rules)
         {
-            try
-            {
-                patterns.Add(new Regex(
-                    rule.Pattern,
-                    RegexOptions.CultureInvariant | (rule.CaseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase),
-                    _regexMatchTimeout));
-            }
-            catch (RegexParseException)
-            {
-                // An invalid pattern in a third-party definition simply never matches.
-            }
+            patterns.Add(SyntaxRegularExpression.Compile(rule.Pattern, !rule.CaseSensitive, minimal: false));
         }
 
         return patterns;
     }
 
-    private static bool IsFoldingEmptyLine(string line, List<Regex> emptyLinePatterns)
+    private static bool IsFoldingEmptyLine(string line, List<PcreRegex> emptyLinePatterns)
     {
         if (string.IsNullOrWhiteSpace(line))
         {
@@ -489,15 +472,15 @@ public static class SyntaxTokenizer
         {
             try
             {
-                if (pattern.IsMatch(line))
+                if (SyntaxRegularExpression.Match(pattern, line, 0).Success)
                 {
                     return true;
                 }
             }
-            catch (RegexMatchTimeoutException)
+            catch (PcreMatchException error) when (SyntaxRegularExpression.IsBudgetExceeded(error))
             {
                 // A pathological pattern degrades to "this pattern does not classify the line as
-                // blank" rather than blocking the calling thread; see _regexMatchTimeout.
+                // blank" rather than blocking the calling thread.
             }
         }
 

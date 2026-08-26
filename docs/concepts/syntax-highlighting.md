@@ -9,7 +9,9 @@ highlighting engine against the public
 `SyntaxDefinitionReader` parses one definition file, `SyntaxGrammar.Compile`
 resolves it (including any cross-definition reference) into a runtime grammar,
 and `SyntaxTokenizer.Tokenize` runs that grammar's context-switching state
-machine over a complete source string. `CodeView` is the only consumer most
+machine over a complete source string. KDE regular expressions execute through
+PCRE2's UTF-16 engine, matching Qt's `QRegularExpression` dialect rather than
+.NET's different regular-expression syntax. `CodeView` is the only consumer most
 applications need; the engine types below exist as public API for anything that
 needs raw tokens or fold ranges without a control attached.
 
@@ -74,10 +76,19 @@ that one reference, the same graceful behavior upstream KSyntaxHighlighting
 applies (a logged warning, not a load failure) - one missing embedded-language
 definition never breaks highlighting of everything else in a document.
 
-One documented gap: `RegExpr`'s `minimal` attribute (invert every quantifier's
-default greediness) has no equivalent in .NET's regular expression engine, so it
-is parsed but not applied; author a pattern's own lazy quantifiers (`*?`, `+?`)
-directly where minimal matching is required.
+`RegExpr` supports PCRE2 constructs used by the shipped KDE corpus, including
+possessive quantifiers, subroutine and back references, branch-reset groups,
+quoted literals, and POSIX character classes. Its `minimal` attribute maps to
+PCRE2's inverted-greediness option. Static expressions compile with their
+grammar; invalid third-party patterns degrade to never matching.
+
+Every match has bounded backtracking, nesting, and heap budgets. Exhausting a
+budget suppresses that effective rule for the rest of the current line, so one
+pathological expression cannot repay the same bound at every UTF-16 offset.
+Capture-substituted dynamic expressions retain a 64-entry least-recently-used
+working set per rule; distinct heredoc delimiters and similar user-controlled
+captures therefore cannot create process-lifetime cache growth. Indentation
+folding's `emptyLine` expressions use the same dialect and budgets.
 
 ## The embedded catalog and licensing
 

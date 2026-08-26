@@ -3,6 +3,8 @@
 
 namespace SharpVision.SyntaxHighlighting.Tests;
 
+using System.Security;
+
 /// <summary>Verifies <see cref="SyntaxCompiledRule"/>'s argument validation and match algorithms.</summary>
 public sealed class SyntaxCompiledRuleTests
 {
@@ -24,6 +26,84 @@ public sealed class SyntaxCompiledRuleTests
 
     private static SyntaxCompiledRule IntegerRule() =>
         SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_integerLanguage)).Contexts[0].Rules[0];
+
+    /// <summary>Gets representative KDE/PCRE2 constructs and text they must match.</summary>
+    public static TheoryData<string, string, int> KdeRegularExpressionCases() =>
+        new()
+        {
+            { "a++b", "aaab", 4 },
+            { @"([a-z]+)-\g1", "word-word", 9 },
+            { @"(?|(a)|(b))\1", "bb", 2 },
+            { @"\Q[abc]\E", "[abc]", 5 },
+            { "[[:alpha:]]+", "letters", 7 },
+        };
+
+    /// <summary>Verifies representative constructs from the KDE definition corpus keep their
+    /// PCRE2 meanings instead of being disabled or silently interpreted as .NET syntax.</summary>
+    [Theory]
+    [MemberData(nameof(KdeRegularExpressionCases))]
+    public void TryMatch_WhenKdeRegularExpressionConstructIsUsed_PreservesPcre2Semantics(
+        string pattern,
+        string line,
+        int expectedLength)
+    {
+        var rule = RegularExpressionRule(pattern);
+
+        var match = rule.TryMatch(line, 0, []);
+
+        match.Success.ShouldBeTrue();
+        match.Length.ShouldBe(expectedLength);
+    }
+
+    /// <summary>Verifies KDE's minimal flag inverts quantifier greediness for the complete pattern.</summary>
+    [Fact]
+    public void TryMatch_WhenRegularExpressionIsMinimal_PrefersShortestMatch()
+    {
+        var rule = RegularExpressionRule("a.*b", minimal: true);
+
+        var match = rule.TryMatch("a1b2b", 0, []);
+
+        match.Length.ShouldBe(3);
+    }
+
+    /// <summary>Verifies capture-substituted regular expressions retain only a bounded working set.</summary>
+    [Fact]
+    public void TryMatch_WhenDynamicCapturesKeepChanging_BoundsCompiledExpressionCache()
+    {
+        var rule = RegularExpressionRule("^%1$", dynamic: true);
+
+        for (var index = 0; index < 256; index++)
+        {
+            var capture = $"delimiter-{index}";
+            rule.TryMatch(capture, 0, [capture]).Success.ShouldBeTrue();
+        }
+
+        rule.CachedRegularExpressionCount.ShouldBeLessThanOrEqualTo(64);
+    }
+
+    private static SyntaxCompiledRule RegularExpressionRule(
+        string pattern,
+        bool minimal = false,
+        bool dynamic = false)
+    {
+        var escapedPattern = SecurityElement.Escape(pattern);
+        var language = $$"""
+            <language name="Regex" section="Sources" extensions="*.r" version="1" kateversion="5.0">
+              <highlighting>
+                <contexts>
+                  <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                    <RegExpr attribute="Normal Text" context="#stay" String="{{escapedPattern}}" minimal="{{minimal.ToString().ToLowerInvariant()}}" dynamic="{{dynamic.ToString().ToLowerInvariant()}}"/>
+                  </context>
+                </contexts>
+                <itemDatas>
+                  <itemData name="Normal Text" defStyleNum="dsNormal"/>
+                </itemDatas>
+              </highlighting>
+            </language>
+            """;
+
+        return SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(language)).Contexts[0].Rules[0];
+    }
 
     /// <summary>Verifies a null line throws <see cref="ArgumentNullException"/> rather than crashing deeper.</summary>
     [Fact]
@@ -178,9 +258,8 @@ public sealed class SyntaxCompiledRuleTests
 
     /// <summary>
     /// Verifies a pattern prone to catastrophic backtracking - the classic <c>(a+)+b</c> shape,
-    /// evaluated against adversarial input with no trailing <c>b</c> - degrades to a timed-out
-    /// non-match instead of blocking the calling thread indefinitely. This deliberately runs the
-    /// match engine long enough for its bounded <c>matchTimeout</c> to actually fire.
+    /// evaluated against adversarial input with no trailing <c>b</c> - degrades to a
+    /// match-budget-exhausted non-match instead of blocking the calling thread indefinitely.
     /// </summary>
     [Fact]
     public void TryMatch_WhenPatternCausesCatastrophicBacktracking_TimesOutToANonMatch()

@@ -759,8 +759,7 @@ public sealed class Theme
             return null;
         }
 
-        var byState = element.Deserialize<Dictionary<string, JsonElement>>(ThemeCatalog.JsonOptions)
-            ?? throw new InvalidDataException($"Theme '{DiagnosticSource}' 'styles.{key}' must be an object.");
+        var byState = ThemeCatalog.ReadObject(element, DiagnosticSource, $"styles.{key}");
 
         var result = new Dictionary<string, Dictionary<string, JsonElement>>(StringComparer.Ordinal);
         foreach (var (state, value) in byState)
@@ -770,8 +769,7 @@ public sealed class Theme
                 throw new InvalidDataException($"Theme '{DiagnosticSource}' 'styles.{key}' has unknown state '{state}'.");
             }
 
-            result[state] = value.Deserialize<Dictionary<string, JsonElement>>(ThemeCatalog.JsonOptions)
-                ?? throw new InvalidDataException($"Theme '{DiagnosticSource}' 'styles.{key}.{state}' must be an object.");
+            result[state] = ThemeCatalog.ReadObject(value, DiagnosticSource, $"styles.{key}.{state}");
         }
 
         return result;

@@ -1,5 +1,12 @@
 # SharpVision.SyntaxHighlighting third-party notices
 
+## PCRE.NET and PCRE2
+
+KDE regular expressions execute through the `PCRE.NET` 1.5.0 NuGet dependency, a
+BSD-3-Clause .NET wrapper around PCRE2 10.47. PCRE2 is distributed under the BSD
+3-Clause license with the PCRE2 exception. Both dependencies retain their own
+package license metadata and notices.
+
 ## KDE syntax-highlighting definitions
 
 The following 159 syntax-definition XML files are copied byte-for-byte from

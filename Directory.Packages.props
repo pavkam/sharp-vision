@@ -23,6 +23,7 @@
          (verified locally). Re-check this pairing whenever xunit.v3 ships a stable mtp-v2 release. -->
     <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.0.6" />
     <PackageVersion Include="Moq" Version="4.20.72" />
+    <PackageVersion Include="PCRE.NET" Version="1.5.0" />
     <PackageVersion Include="PublicApiGenerator" Version="11.5.4" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
     <PackageVersion Include="Verify.XunitV3" Version="31.28.0" />

@@ -347,6 +347,37 @@ public sealed class SyntaxTokenizerTests
         stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(5));
     }
 
+    private const string _catastrophicRegularExpressionLanguage = """
+        <language name="Catastrophic" section="Sources" extensions="*.c" version="1" kateversion="5.0">
+          <highlighting>
+            <contexts>
+              <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                <RegExpr attribute="Normal Text" context="#stay" String="(a+)+b"/>
+              </context>
+            </contexts>
+            <itemDatas>
+              <itemData name="Normal Text" defStyleNum="dsNormal"/>
+            </itemDatas>
+          </highlighting>
+        </language>
+        """;
+
+    /// <summary>Verifies one pathological rule is suppressed after exhausting its bounded match
+    /// budget instead of paying that budget again at every remaining source offset.</summary>
+    [Fact]
+    public void Tokenize_WhenRegularExpressionExhaustsMatchBudget_DoesNotRetryAtEveryOffset()
+    {
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_catastrophicRegularExpressionLanguage));
+        var adversarialLine = new string('a', 40);
+        var stopwatch = Stopwatch.StartNew();
+
+        var result = SyntaxTokenizer.Tokenize(grammar, adversarialLine);
+
+        stopwatch.Stop();
+        result.Lines.ShouldHaveSingleItem().Tokens.ShouldHaveSingleItem().Length.ShouldBe(adversarialLine.Length);
+        stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(2));
+    }
+
     private const string _lineEndPopBeyondRootLanguage = """
         <language name="LineEndPopBeyondRoot" section="Sources" extensions="*.p" version="1" kateversion="5.0">
           <highlighting>
@@ -456,6 +487,39 @@ public sealed class SyntaxTokenizerTests
         range.EndLine.ShouldBe(2);
     }
 
+    private const string _pcreEmptyLinePatternLanguage = """
+        <language name="PcreEmptyLine" section="Sources" extensions="*.p" version="1" kateversion="5.0">
+          <general>
+            <folding indentationsensitive="true"/>
+            <emptyLines>
+              <emptyLine regexpr="^a++$"/>
+            </emptyLines>
+          </general>
+          <highlighting>
+            <contexts>
+              <context name="Normal" attribute="Normal Text" lineEndContext="#stay"/>
+            </contexts>
+            <itemDatas>
+              <itemData name="Normal Text" defStyleNum="dsNormal"/>
+            </itemDatas>
+          </highlighting>
+        </language>
+        """;
+
+    /// <summary>Verifies indentation folding interprets empty-line patterns with the same PCRE2
+    /// dialect as ordinary KDE regular-expression rules.</summary>
+    [Fact]
+    public void Tokenize_WhenEmptyLinePatternUsesPcreConstruct_ClassifiesMatchingLineAsEmpty()
+    {
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(_pcreEmptyLinePatternLanguage));
+
+        var result = SyntaxTokenizer.Tokenize(grammar, "root\n    child\naaaa\n    grandchild\nnext");
+
+        var range = result.FoldRanges.ShouldHaveSingleItem();
+        range.StartLine.ShouldBe(0);
+        range.EndLine.ShouldBe(3);
+    }
+
     private const string _catastrophicEmptyLinePatternLanguage = """
         <language name="CatastrophicEmptyLine" section="Sources" extensions="*.c" version="1" kateversion="5.0">
           <general>
@@ -476,9 +540,8 @@ public sealed class SyntaxTokenizerTests
         """;
 
     /// <summary>Verifies a catastrophically-backtracking <c>&lt;emptyLine regexpr&gt;</c> pattern
-    /// times out to "this line is not blank" rather than blocking tokenization of the rest of the
-    /// document. This deliberately runs the match engine long enough for its bounded
-    /// <c>matchTimeout</c> to actually fire.</summary>
+    /// exhausts its bounded match budget to "this line is not blank" rather than blocking
+    /// tokenization of the rest of the document.</summary>
     [Fact]
     public void Tokenize_WhenEmptyLinePatternCausesCatastrophicBacktracking_TimesOutAndContinuesTokenizing()
     {

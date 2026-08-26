@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <PackageReference Include="JetBrains.Annotations"/>
+    <PackageReference Include="PCRE.NET"/>
   </ItemGroup>
 
   <ItemGroup>

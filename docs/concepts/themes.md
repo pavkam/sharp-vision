@@ -471,6 +471,12 @@ closing it, and `ThemeCatalog.LoadFile(path)` reads a file.
 catalog. Embedded themes are parsed lazily and cached; each external load
 returns a new frozen instance.
 
+`LoadFile` preserves the platform file API's exception taxonomy: null paths
+throw `ArgumentNullException`, empty or malformed paths throw
+`ArgumentException`, access-denied paths and directories throw
+`UnauthorizedAccessException`, and other file-read failures throw `IOException`.
+Theme content failures remain source-labelled `InvalidDataException` values.
+
 For typed construction, create an unfrozen `Theme`, configure semantic colors
 with `SetColor`, semantic decorations with `SetAttributes`, the glyph family
 with `SetGlyphs`, and any of the six root state sets with `SetStyleSet`, then

@@ -25,6 +25,15 @@ public sealed class SyntaxDefinitionCorpusTests
 
         grammar.Contexts.ShouldNotBeEmpty();
 
+        foreach (var context in grammar.Contexts)
+        {
+            foreach (var rule in context.Rules.Where(static rule => rule.Source.Kind == SyntaxRuleKind.RegularExpression))
+            {
+                rule.RegularExpressionIsValid.ShouldBeTrue(
+                    $"Embedded language '{name}', context '{context.Name}', has an invalid PCRE2 pattern: {rule.Source.Text}");
+            }
+        }
+
         var sample = string.Join('\n', ["// a comment", "identifier 123 \"a string\" 0x1F", "{ }", string.Empty]);
         var result = SyntaxTokenizer.Tokenize(grammar, sample);
 
