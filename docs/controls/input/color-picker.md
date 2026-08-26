@@ -44,20 +44,25 @@ themed control style: it owns no `styles.*` theme key of its own. It exposes
 only the presentation applied to the owned hue and RGB `Slider`s, the
 hex-readout status text, and the saturation/value plane's selection marker,
 without exposing the parts themselves. `SliderStyle` (`SliderStyle?`) is applied
-uniformly to the hue and all three RGB `Slider`s. `StatusFace` (`Face?`) styles
-the hex readout's background, attributes, and underline; the Foreground
-component is always ignored, because `ColorPicker` recomputes the readout
-foreground from the current value on every commit so the readout stays legible
-regardless of the configured background. `SelectedMarker` (`Rune?`) replaces the
-printable glyph the plane draws over the currently selected coordinate; a value
-that cannot occupy exactly one cell under the active width policy falls back to
-the same code-owned repair glyph as an unset marker.
+to all three RGB `Slider`s. `HueSliderStyle` (`SliderStyle?`) independently
+styles the retained hue slider; when unset, it derives from `SliderStyle`, and
+its background is always made transparent so the rainbow ramp remains visible.
+`StatusFace` (`Face?`) styles the hex readout's background, attributes, and
+underline; the Foreground component is always ignored, because `ColorPicker`
+recomputes the readout foreground from the current value on every commit so the
+readout stays legible regardless of the configured background. `SelectedMarker`
+(`Rune?`) replaces the printable glyph the plane draws over the currently
+selected coordinate; a value that cannot occupy exactly one cell under the
+active width policy falls back to the same code-owned repair glyph as an unset
+marker.
 
 `null` for any member lets the corresponding part use its own default. A style
 set while the monochrome fallback is active still applies and is retained across
 a later color-capable depth upgrade; the preview swatch and the plane's
 saturation/value fill are not covered by `ColorPickerStyle` today - only its
-selection marker is.
+selection marker is. `ActualStyle` reports the values actually applied to every
+covered retained part, including the separately normalized hue slider and the
+value-dependent status foreground.
 
 ## Color depth and presentation
 

@@ -392,6 +392,21 @@ public sealed class StyleSlotTests
         ReportsThemeChange(previous, current).ShouldBeTrue();
     }
 
+    /// <summary>Verifies content equality applies to arbitrary ordered collection members, not
+    /// only the framework's built-in Rune frame array.</summary>
+    [Fact]
+    public void PropagateTheme_WhenCustomCollectionContentsMatch_DoesNotPublish()
+    {
+        using var probe = new SequenceStyleProbe();
+        var notifications = Observe(probe);
+        probe.ApplyTheme(ThemeCatalog.Parse(ThemeJson.Create()));
+        notifications.Clear();
+
+        probe.ApplyTheme(ThemeCatalog.Parse(ThemeJson.Create()));
+
+        notifications.ShouldNotContain(nameof(SequenceStyleProbe.ActualStyle));
+    }
+
     private static bool ReportsThemeChange(Theme previous, Theme current)
     {
         using var spinner = new Spinner();

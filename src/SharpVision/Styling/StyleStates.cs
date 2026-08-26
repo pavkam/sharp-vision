@@ -12,7 +12,16 @@ public sealed class StyleStates<TStyle> where TStyle : ControlStyle
 {
     /// <summary>Gets the complete normal-state style. Always present - every control style
     /// resolves to at least its code-owned default.</summary>
-    public required TStyle Normal { get; init; }
+    /// <exception cref="ArgumentNullException">The assigned style is null.</exception>
+    public required TStyle Normal
+    {
+        get;
+        init
+        {
+            ArgumentNullException.ThrowIfNull(value, nameof(Normal));
+            field = value;
+        }
+    }
 
     /// <summary>Gets the pointer-over contribution, or null when this theme did not author one.</summary>
     public TStyle? IsPointerOver { get; init; }

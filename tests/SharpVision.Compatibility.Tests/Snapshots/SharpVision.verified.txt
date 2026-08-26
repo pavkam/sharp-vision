@@ -1521,7 +1521,8 @@ namespace SharpVision.Controls.Input
     }
     public sealed class ColorPickerStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Input.ColorPickerStyle>
     {
-        public ColorPickerStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Controls.Input.SliderStyle? sliderStyle, SharpVision.Styling.Face? statusFace, System.Text.Rune? selectedMarker) { }
+        public ColorPickerStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Controls.Input.SliderStyle? sliderStyle, SharpVision.Styling.Face? statusFace, System.Text.Rune? selectedMarker, SharpVision.Controls.Input.SliderStyle? hueSliderStyle = null) { }
+        public SharpVision.Controls.Input.SliderStyle? HueSliderStyle { get; init; }
         public System.Text.Rune? SelectedMarker { get; init; }
         public SharpVision.Controls.Input.SliderStyle? SliderStyle { get; init; }
         public SharpVision.Styling.Face? StatusFace { get; init; }

@@ -10,6 +10,32 @@ using System.Text.Json;
 /// <summary>Verifies public Theme construction preserves valid immutable metadata.</summary>
 public sealed class ThemeTests
 {
+    /// <summary>Verifies privileged root lookup is selected by exact framework type identity.</summary>
+    [Fact]
+    public void GetStyleSet_WhenExternalTypeNameCollidesWithRoot_Throws()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create());
+
+        var exception = Should.Throw<ArgumentException>(() =>
+            theme.GetStyleSet(new Collisions.InputStyle()));
+
+        exception.Message.ShouldContain("well-known root");
+    }
+
+    /// <summary>Verifies immutable role adapters and Window's derived state set are cached.</summary>
+    [Fact]
+    public void AppearanceAndWindowStyleSets_WhenReadRepeatedly_ReturnSameInstances()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create());
+
+        theme.Control.ShouldBeSameAs(theme.Control);
+        theme.Input.ShouldBeSameAs(theme.Input);
+        theme.Container.ShouldBeSameAs(theme.Container);
+        theme.Window.ShouldBeSameAs(theme.Window);
+        theme.Popup.ShouldBeSameAs(theme.Popup);
+        theme.Tooltip.ShouldBeSameAs(theme.Tooltip);
+        theme.GetWindowStyleSet().ShouldBeSameAs(theme.GetWindowStyleSet());
+    }
     /// <summary>Verifies an undefined color-scheme value is rejected before publication.</summary>
     [Fact]
     public void Constructor_WhenColorSchemeIsUndefined_ThrowsArgumentOutOfRangeException()

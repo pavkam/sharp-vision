@@ -75,13 +75,28 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
 
     /// <summary>Gets the resolved presentation currently applied to the owned Sliders, status
     /// readout, and plane selection marker.</summary>
-    public ColorPickerStyle ActualStyle => new(
-        ControlStyle.DefaultFace,
-        ControlStyle.NoBorder,
-        ControlStyle.NoShadow,
-        _style.Actual.SliderStyle,
-        _status.Face,
-        Plane.SelectedMarker);
+    public ColorPickerStyle ActualStyle
+    {
+        get
+        {
+            var aggregate = Style;
+            var slider = SliderStyle.Definition.Resolve(aggregate?.SliderStyle, Theme);
+            var hueSlider = SliderStyle.Definition.Resolve(
+                NormalizeHueSliderStyle(aggregate?.HueSliderStyle ?? aggregate?.SliderStyle),
+                Theme);
+            var status = aggregate?.StatusFace ?? ColorPickerStyle.DefaultStatusFace;
+            var rgb = _value.IsRgb ? _value : Color.Rgb(0, 0, 0);
+
+            return new ColorPickerStyle(
+                ControlStyle.DefaultFace,
+                ControlStyle.NoBorder,
+                ControlStyle.NoShadow,
+                slider,
+                status with { Foreground = rgb.Contrast() },
+                aggregate?.SelectedMarker,
+                hueSlider);
+        }
+    }
 
     /// <summary>Gets the uppercase RGB readout, or DEFAULT for the terminal default color.</summary>
     internal string HexText => _status.Content;
@@ -241,7 +256,7 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
         _ = current;
         var style = Style;
         var sliderStyle = style?.SliderStyle;
-        HueSlider.Style = HueSliderStyle(sliderStyle);
+        HueSlider.Style = NormalizeHueSliderStyle(style?.HueSliderStyle ?? sliderStyle);
         RedSlider.Style = sliderStyle;
         GreenSlider.Style = sliderStyle;
         BlueSlider.Style = sliderStyle;
@@ -257,7 +272,7 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
     // ColorPickerStyle.SliderStyle.Face.Background must not reach HueSlider's resolved appearance,
     // or Slider.OnRenderContent clears the gradient out from under it before drawing.
     [Pure]
-    private static SliderStyle? HueSliderStyle(SliderStyle? sliderStyle) => sliderStyle is null
+    private static SliderStyle? NormalizeHueSliderStyle(SliderStyle? sliderStyle) => sliderStyle is null
         ? null
         : sliderStyle with { Face = sliderStyle.Face with { Background = Color.Transparent } };
 
@@ -282,6 +297,7 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
         }
 
         SynchronizeParts();
+        NotifyPropertyChanged(nameof(ActualStyle), InvalidationImpact.None);
         ValueChanged?.Invoke(this, new ColorChangedEventArgs(previous, requested));
         return true;
     }

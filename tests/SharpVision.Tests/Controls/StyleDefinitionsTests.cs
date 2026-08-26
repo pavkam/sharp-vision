@@ -151,6 +151,33 @@ public sealed class StyleDefinitionsTests
             StyleDefinitions.Aggregate(static _ => RootDefault(), null!));
     }
 
+    /// <summary>Verifies every public callback result is rejected at its named boundary.</summary>
+    [Fact]
+    public void Definitions_WhenCallbackReturnsNull_ThrowNamedInvalidOperationException()
+    {
+        var theme = CreateTheme();
+        var nullSet = StyleDefinitions.Control<TestWidgetStyle, TestRootStyle>(
+            static _ => null!,
+            Complete,
+            _neverInvalidatesWidget);
+        var nullNormal = StyleDefinitions.Control(
+            static _ => new StyleStates<TestRootStyle> { Normal = null! },
+            Complete,
+            _neverInvalidatesWidget);
+        var nullCompletion = StyleDefinitions.Control(
+            static _ => new StyleStates<TestRootStyle> { Normal = RootDefault() },
+            static (_, _, _) => null!,
+            _neverInvalidatesWidget);
+        var nullPart = StyleDefinitions.Part(static _ => null!, _neverInvalidatesRoot);
+        var nullAggregate = StyleDefinitions.Aggregate(static _ => null!, _neverInvalidatesRoot);
+
+        Should.Throw<InvalidOperationException>(() => nullSet.Resolve(null, theme)).Message.ShouldContain("fallbackTo");
+        Should.Throw<ArgumentNullException>(() => nullNormal.Resolve(null, theme)).ParamName.ShouldBe("Normal");
+        Should.Throw<InvalidOperationException>(() => nullCompletion.Resolve(null, theme)).Message.ShouldContain("complete");
+        Should.Throw<InvalidOperationException>(() => nullPart.Resolve(null, theme)).Message.ShouldContain("fallback");
+        Should.Throw<InvalidOperationException>(() => nullAggregate.Resolve(null, theme)).Message.ShouldContain("fallback");
+    }
+
     private static readonly Func<TestRootStyle, Theme?, TestRootStyle, Theme?, InvalidationImpact> _neverInvalidatesRoot =
         static (_, _, _, _) => InvalidationImpact.None;
 

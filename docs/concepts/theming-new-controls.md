@@ -139,9 +139,7 @@ public sealed record CommandTileStyle : ControlStyle
             static (previous, _, current, _) =>
                 previous.Padding != current.Padding
                     ? InvalidationImpact.Measure
-                    : previous == current
-                        ? InvalidationImpact.None
-                        : InvalidationImpact.Render);
+                    : InvalidationImpact.None);
 
     private static CommandTileStyle Complete(InputStyle input, VisualState state, Theme theme) =>
         new(input.Face, input.Border, input.Shadow, padding: new Thickness(1, 0));
@@ -204,6 +202,12 @@ fragments. A theme replacement that changes any resolved paint value therefore
 requests render even when the definition's callback sees identical raw semantic
 tokens. The callback still owns structural classification: return `Measure` or
 `Arrange` for geometry changes and `Render` for non-semantic visual members.
+Compare each such member according to its contract; do not use whole-record
+equality as a catch-all. Immutable and read-only collection members need ordered
+content comparison such as `SequenceEqual`, because equivalent resolutions may
+own different backing storage. The framework uses ordered content equality when
+deciding whether `ActualStyle` changed, but the definition callback must still
+assign the correct invalidation phase to a real collection-content change.
 Standalone control properties are outside a style slot, so their control keeps
 the explicit `GetThemeChangeImpact` comparison shown above.
 

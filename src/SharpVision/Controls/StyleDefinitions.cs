@@ -38,17 +38,22 @@ public static class StyleDefinitions
         ArgumentNullException.ThrowIfNull(fallbackTo);
         ArgumentNullException.ThrowIfNull(complete);
         ArgumentNullException.ThrowIfNull(compare);
+        StyleStates<TFallback> ResolveFallback(Theme theme) =>
+            RequireResult(fallbackTo(theme), nameof(fallbackTo));
+        TStyle Complete(TFallback fallback, VisualState state, Theme theme) =>
+            RequireResult(complete(fallback, state, theme), nameof(complete));
+
         return new StyleDefinition<TStyle>(
-            (local, theme) => local ?? ResolveNormal(theme ?? ThemeCatalog.Dark, fallbackTo, complete),
-            (style, theme) => (theme ?? ThemeCatalog.Dark).BuildFallbackAwareStates(style, fallbackTo, complete),
+            (local, theme) => local ?? ResolveNormal(theme ?? ThemeCatalog.Dark, ResolveFallback, Complete),
+            (style, theme) => (theme ?? ThemeCatalog.Dark).BuildFallbackAwareStates(style, ResolveFallback, Complete),
             (previous, previousTheme, current, currentTheme) => MaximumImpact(
                 compare(previous, previousTheme, current, currentTheme),
                 GetInheritedImpact(previous, previousTheme, current, currentTheme)),
             localAppearance: (style, theme) =>
                 (theme ?? ThemeCatalog.Dark).BuildCodeOwnedStates(
                     style,
-                    fallbackTo(Theme.Unthemed).Normal,
-                    complete));
+                    ResolveFallback(Theme.Unthemed).Normal,
+                    Complete));
     }
 
     // Used to also overlay this key's own "normal" JSON on top of the completed fallback. A leaf
@@ -90,7 +95,7 @@ public static class StyleDefinitions
         ArgumentNullException.ThrowIfNull(fallback);
         ArgumentNullException.ThrowIfNull(compare);
         return new StyleDefinition<TStyle>(
-            (local, theme) => local ?? fallback(theme),
+            (local, theme) => local ?? RequireResult(fallback(theme), nameof(fallback)),
             null,
             compare,
             StyleDefinitionKind.Part);
@@ -111,9 +116,13 @@ public static class StyleDefinitions
         ArgumentNullException.ThrowIfNull(fallback);
         ArgumentNullException.ThrowIfNull(compare);
         return new StyleDefinition<TStyle>(
-            (local, theme) => local ?? fallback(theme),
+            (local, theme) => local ?? RequireResult(fallback(theme), nameof(fallback)),
             null,
             compare,
             StyleDefinitionKind.Aggregate);
     }
+
+    private static TResult RequireResult<TResult>(TResult? result, string callbackName)
+        where TResult : class =>
+        result ?? throw new InvalidOperationException($"The {callbackName} callback returned null.");
 }

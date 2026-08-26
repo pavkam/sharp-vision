@@ -340,6 +340,7 @@ public sealed class ColorPickerTests
         picker.BlueSlider.Style.ShouldBeNull();
         picker.HueSlider.Style.ShouldBeNull();
         picker.ActualStyle.SliderStyle.ShouldBe(expectedSlider.ActualStyle);
+        picker.ActualStyle.HueSliderStyle.ShouldBe(picker.HueSlider.ActualStyle);
         var statusFace = picker.ActualStyle.StatusFace.ShouldNotBeNull();
         statusFace.Background.ShouldBe(Color.Transparent);
         statusFace.Attributes.ShouldBe((ControlDecoration) SemanticDecoration.NormalText);
@@ -384,6 +385,7 @@ public sealed class ColorPickerTests
         picker.BlueSlider.ActualStyle.ShouldBe(sliderStyle);
         picker.HueSlider.ActualStyle.ShouldBe(sliderStyle);
         picker.ActualStyle.SliderStyle.ShouldBe(sliderStyle);
+        picker.ActualStyle.HueSliderStyle.ShouldBe(picker.HueSlider.ActualStyle);
         var statusFace = picker.ActualStyle.StatusFace.ShouldNotBeNull();
         statusFace.Background.ShouldBe(face.Background);
         statusFace.Attributes.ShouldBe(face.Attributes);
@@ -391,6 +393,32 @@ public sealed class ColorPickerTests
         statusFace.Foreground.ShouldBe(ColorMath.Contrast(Color.Rgb(10, 20, 30)));
         picker.Plane.SelectedMarker.ShouldBe(new Rune('#'));
         picker.ActualStyle.SelectedMarker.ShouldBe(new Rune('#'));
+    }
+
+    /// <summary>Verifies ActualStyle reports resolved child styles and publishes value-derived changes.</summary>
+    [Fact]
+    public void ActualStyle_WhenContributionIsNullOrOpaque_ReportsRetainedPartsAndValueChanges()
+    {
+        var opaque = SliderStyle.Default with
+        {
+            Face = SliderStyle.Default.Face with { Background = Color.Rgb(10, 20, 30) }
+        };
+        using var picker = new ColorPicker
+        {
+            Style = ColorPickerStyle.Definition.Resolve(null, ThemeCatalog.Dark) with { SliderStyle = opaque }
+        };
+        List<string> notifications = [];
+        picker.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName!);
+
+        var actual = picker.ActualStyle;
+        picker.Value = Color.Rgb(255, 255, 255);
+
+        actual.SliderStyle.ShouldBe(picker.RedSlider.ActualStyle);
+        actual.SliderStyle.ShouldBe(picker.GreenSlider.ActualStyle);
+        actual.SliderStyle.ShouldBe(picker.BlueSlider.ActualStyle);
+        actual.HueSliderStyle.ShouldBe(picker.HueSlider.ActualStyle);
+        actual.StatusFace.ShouldNotBe(picker.ActualStyle.StatusFace);
+        notifications.ShouldContain(nameof(ColorPicker.ActualStyle));
     }
 
     /// <summary>Verifies an opaque SliderStyle.Face.Background forwarded through ColorPickerStyle

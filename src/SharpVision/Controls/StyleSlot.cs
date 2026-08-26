@@ -3,7 +3,7 @@
 
 namespace SharpVision.Controls;
 
-using System.Collections.Immutable;
+using System.Collections;
 using System.Reflection;
 
 using Styling;
@@ -325,13 +325,14 @@ public sealed class StyleSlot<TStyle>
             return previousDecoration.Resolve(previousTheme) == currentDecoration.Resolve(currentTheme);
         }
 
-        // Boxed ImmutableArray - SpinnerStyle.Frames is the one in play - compares by the
-        // underlying array reference, so two equal-content resolutions reported a change. Harmless
-        // in direction, being the over-notifying mirror of the two gaps above, but it is the same
-        // "the default comparison does not mean what it looks like" defect.
-        if (previous is ImmutableArray<Rune> previousFrames && current is ImmutableArray<Rune> currentFrames)
+        // ImmutableArray, arrays, and third-party ordered collection members may all represent
+        // identical resolved presentation through independently allocated storage. Compare their
+        // elements through this same semantic-aware walk instead of relying on container identity.
+        if (previous is not string &&
+            previous is IEnumerable previousItems &&
+            current is IEnumerable currentItems)
         {
-            return previousFrames.SequenceEqual(currentFrames);
+            return ResolvedSequencesEqual(previousItems, previousTheme, currentItems, currentTheme);
         }
 
         if (previous is not IAppearanceFragment)
@@ -348,6 +349,49 @@ public sealed class StyleSlot<TStyle>
         }
 
         return true;
+    }
+
+    [Pure]
+    private static bool ResolvedSequencesEqual(
+        IEnumerable previous,
+        Theme? previousTheme,
+        IEnumerable current,
+        Theme? currentTheme)
+    {
+        var previousEnumerator = previous.GetEnumerator();
+        var currentEnumerator = current.GetEnumerator();
+
+        try
+        {
+            while (true)
+            {
+                var previousHasValue = previousEnumerator.MoveNext();
+                var currentHasValue = currentEnumerator.MoveNext();
+                if (previousHasValue != currentHasValue)
+                {
+                    return false;
+                }
+
+                if (!previousHasValue)
+                {
+                    return true;
+                }
+
+                if (!ResolvedValuesEqual(
+                        previousEnumerator.Current,
+                        previousTheme,
+                        currentEnumerator.Current,
+                        currentTheme))
+                {
+                    return false;
+                }
+            }
+        }
+        finally
+        {
+            (previousEnumerator as IDisposable)?.Dispose();
+            (currentEnumerator as IDisposable)?.Dispose();
+        }
     }
 
     internal void ClearResolvedCache() => ClearCache();

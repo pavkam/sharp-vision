@@ -11,7 +11,7 @@ using System.Diagnostics.CodeAnalysis;
 /// so a document naming this type's derived key is rejected rather than accepted and ignored. Its
 /// inherited Face/Border/Shadow (satisfying the shared <see cref="ControlStyle"/> constraint every
 /// style type needs) are vestigial and never consulted; the real content is
-/// <see cref="SliderStyle"/>/<see cref="StatusFace"/>/<see cref="SelectedMarker"/>.</summary>
+/// <see cref="SliderStyle"/>/<see cref="HueSliderStyle"/>/<see cref="StatusFace"/>/<see cref="SelectedMarker"/>.</summary>
 [PublicAPI]
 public sealed record ColorPickerStyle: ControlStyle
 {
@@ -23,6 +23,7 @@ public sealed record ColorPickerStyle: ControlStyle
             NoShadow,
             SliderStyle.Definition.Resolve(null, theme),
             DefaultStatusFace,
+            null,
             null),
         static (previous, _, current, _) => previous == current
             ? InvalidationImpact.None
@@ -44,12 +45,22 @@ public sealed record ColorPickerStyle: ControlStyle
     /// <param name="statusFace">The status mechanics, or null for the library fallback.</param>
     /// <param name="selectedMarker">The marker forwarded to the retained ColorPlane's currently-selected-
     /// coordinate indicator, or null for the library default.</param>
+    /// <param name="hueSliderStyle">The Hue Slider contribution, or null to derive it from
+    /// <paramref name="sliderStyle"/> while preserving the transparent rainbow backdrop.</param>
     [SetsRequiredMembers]
-    public ColorPickerStyle(Face face, Border border, Shadow shadow, SliderStyle? sliderStyle, Face? statusFace, Rune? selectedMarker) : base(face, border, shadow)
+    public ColorPickerStyle(
+        Face face,
+        Border border,
+        Shadow shadow,
+        SliderStyle? sliderStyle,
+        Face? statusFace,
+        Rune? selectedMarker,
+        SliderStyle? hueSliderStyle = null) : base(face, border, shadow)
     {
         SliderStyle = sliderStyle;
         StatusFace = statusFace;
         SelectedMarker = selectedMarker;
+        HueSliderStyle = hueSliderStyle;
     }
 
     /// <summary>Gets the marker forwarded to the retained ColorPlane's currently-selected-coordinate
@@ -58,6 +69,10 @@ public sealed record ColorPickerStyle: ControlStyle
 
     /// <summary>Gets the Slider contribution, or null when the retained Sliders own semantic resolution.</summary>
     public SliderStyle? SliderStyle { get; init; }
+
+    /// <summary>Gets the Hue Slider contribution, or null to derive it from
+    /// <see cref="SliderStyle"/> while preserving the transparent rainbow backdrop.</summary>
+    public SliderStyle? HueSliderStyle { get; init; }
 
     /// <summary>Gets the status face contribution, or null for the library fallback.</summary>
     /// <remarks>The foreground is ignored because ColorPicker recomputes contrast from its value.</remarks>

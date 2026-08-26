@@ -131,22 +131,22 @@ public sealed class Theme
     public IReadOnlyDictionary<string, Color> Palette { get; }
 
     /// <summary>Gets the passive base-control semantic appearance.</summary>
-    public AppearanceStates Control => GetStyleSet(ControlStyle.Default).ToAppearanceStates();
+    public AppearanceStates Control => GetAppearanceStates("control", static theme => theme.GetStyleSet(ControlStyle.Default));
 
     /// <summary>Gets the editable or selectable input semantic appearance.</summary>
-    public AppearanceStates Input => GetStyleSet(InputStyle.Default).ToAppearanceStates();
+    public AppearanceStates Input => GetAppearanceStates("input", static theme => theme.GetStyleSet(InputStyle.Default));
 
     /// <summary>Gets the framed grouping or collection semantic appearance.</summary>
-    public AppearanceStates Container => GetStyleSet(ContainerStyle.Default).ToAppearanceStates();
+    public AppearanceStates Container => GetAppearanceStates("container", static theme => theme.GetStyleSet(ContainerStyle.Default));
 
     /// <summary>Gets the top-level window semantic appearance.</summary>
-    public AppearanceStates Window => GetWindowStyleSet().ToAppearanceStates();
+    public AppearanceStates Window => GetAppearanceStates("window", static theme => theme.GetWindowStyleSet());
 
     /// <summary>Gets the transient popup semantic appearance.</summary>
-    public AppearanceStates Popup => GetStyleSet(PopupStyle.Default).ToAppearanceStates();
+    public AppearanceStates Popup => GetAppearanceStates("popup", static theme => theme.GetStyleSet(PopupStyle.Default));
 
     /// <summary>Gets the passive, non-interactive hint semantic appearance.</summary>
-    public AppearanceStates Tooltip => GetStyleSet(TooltipStyle.Default).ToAppearanceStates();
+    public AppearanceStates Tooltip => GetAppearanceStates("tooltip", static theme => theme.GetStyleSet(TooltipStyle.Default));
 
     /// <summary>Resolves one known global color to a concrete terminal color.</summary>
     /// <param name="color">The known semantic color.</param>
@@ -658,6 +658,7 @@ public sealed class Theme
 
     private readonly ConcurrentDictionary<string, Dictionary<string, Dictionary<string, JsonElement>>?> _rawStyleSections = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<(Type, string, ControlStyle), object> _styleSets = new();
+    private readonly ConcurrentDictionary<string, AppearanceStates> _appearanceSets = new(StringComparer.Ordinal);
 
     // Raw per-state JSON override dictionaries for one styles.* key, with no code-owned default
     // baked in and no fallback awareness - the primitive both GetStyleSet (root types) and a leaf
@@ -702,8 +703,29 @@ public sealed class Theme
     /// <typeparam name="TStyle">The style type that owns the section.</typeparam>
     /// <param name="codeOwnedDefault">The code-owned default this type falls back to.</param>
     /// <returns>The complete per-state set.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="codeOwnedDefault"/> is null.</exception>
+    /// <exception cref="ArgumentException"><typeparamref name="TStyle"/> is not one of the six well-known root style types.</exception>
     public StyleStates<TStyle> GetStyleSet<TStyle>(TStyle codeOwnedDefault)
-        where TStyle : ControlStyle => GetStyleSet(StyleKey.Of<TStyle>(), codeOwnedDefault);
+        where TStyle : ControlStyle
+    {
+        ArgumentNullException.ThrowIfNull(codeOwnedDefault);
+
+        var styleType = typeof(TStyle);
+        if (codeOwnedDefault.GetType() != styleType)
+        {
+            throw new ArgumentException("The default must have the exact well-known root style type.", nameof(codeOwnedDefault));
+        }
+
+        var key = styleType == typeof(ControlStyle) ? StyleKey.Of<ControlStyle>() :
+            styleType == typeof(InputStyle) ? StyleKey.Of<InputStyle>() :
+            styleType == typeof(ContainerStyle) ? StyleKey.Of<ContainerStyle>() :
+            styleType == typeof(WindowStyle) ? StyleKey.Of<WindowStyle>() :
+            styleType == typeof(PopupStyle) ? StyleKey.Of<PopupStyle>() :
+            styleType == typeof(TooltipStyle) ? StyleKey.Of<TooltipStyle>() :
+            throw new ArgumentException("Only the six well-known root style types own theme sections.", nameof(codeOwnedDefault));
+
+        return GetStyleSet(key, codeOwnedDefault);
+    }
 
     /// <summary>Resolves one root style's complete per-state set from an explicit key, memoized
     /// per theme, style type, key, and code-owned default.</summary>
@@ -1277,7 +1299,13 @@ public sealed class Theme
     // own Window property and Window.GetDefaultAppearanceStates (both need it identically).
     // A theme JSON that DOES author "window.focusWithin" still wins
     // outright - this only fills in when the raw section is entirely absent.
-    internal StyleStates<WindowStyle> GetWindowStyleSet()
+    internal StyleStates<WindowStyle> GetWindowStyleSet() =>
+        (StyleStates<WindowStyle>) _styleSets.GetOrAdd(
+            (typeof(WindowStyle), "$windowWithFocusWithin", WindowStyle.Default),
+            static (_, theme) => theme.BuildWindowStyleSet(),
+            this);
+
+    private StyleStates<WindowStyle> BuildWindowStyleSet()
     {
         var styleSet = GetStyleSet(WindowStyle.Default);
         return styleSet.FocusWithin is not null
@@ -1300,6 +1328,15 @@ public sealed class Theme
                 Authored = styleSet.Authored
             };
     }
+
+    private AppearanceStates GetAppearanceStates<TStyle>(
+        string key,
+        Func<Theme, StyleStates<TStyle>> resolve)
+        where TStyle : ControlStyle =>
+        _appearanceSets.GetOrAdd(
+            key,
+            static (_, state) => state.resolve(state.theme).ToAppearanceStates(),
+            (theme: this, resolve));
 
     internal Color Resolve(ControlColor value) => value.IsLiteral
         ? value.Literal
