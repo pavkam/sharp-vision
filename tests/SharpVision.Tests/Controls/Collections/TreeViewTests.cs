@@ -403,6 +403,34 @@ public sealed partial class TreeViewTests
         currentItem.ShouldBeSameAs(b);
     }
 
+    /// <summary>Verifies selection property reentry suppresses the superseded tree delta.</summary>
+    [Theory]
+    [InlineData(nameof(TreeView.SelectedItem))]
+    [InlineData(nameof(TreeView.SelectedItems))]
+    public void SelectItem_WhenSelectionPropertyObserverReenters_PublishesOnlyCurrentTypedEvent(
+        string propertyName)
+    {
+        var first = new TreeViewItem { Header = "First" };
+        var second = new TreeViewItem { Header = "Second" };
+        var third = new TreeViewItem { Header = "Third" };
+        var tree = new TreeView { Items = { first, second, third } };
+        var events = new List<TreeViewSelectionChangedEventArgs>();
+        tree.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == propertyName && ReferenceEquals(tree.SelectedItem, second))
+            {
+                tree.SelectItem(third);
+            }
+        };
+        tree.SelectionChanged += (_, eventArgs) => events.Add(eventArgs);
+
+        tree.SelectItem(second);
+
+        tree.SelectedItem.ShouldBeSameAs(third);
+        events.Count.ShouldBe(1);
+        events[0].CurrentItem.ShouldBeSameAs(third);
+    }
+
     /// <summary>Verifies collapsing a parent removes its children from the visible flat list.</summary>
     [Fact]
     public void IsExpanded_WhenToggled_RebuildsVisibleItems()
@@ -768,6 +796,32 @@ public sealed partial class TreeViewTests
         propertyChanges.ShouldBe(2);
     }
 
+    /// <summary>Verifies a nested checkability transition suppresses the older ancestor snapshot.</summary>
+    [Fact]
+    public void IsCheckable_WhenPropertyCallbackReenters_SuppressesSupersededAncestorEvent()
+    {
+        var parent = new TreeViewItem { Header = "Parent", IsCheckable = true };
+        var child = new TreeViewItem { Header = "Child", IsCheckable = true, IsChecked = true };
+        parent.Children.Add(child);
+        var parentEvents = new List<CheckChangedEventArgs>();
+        var reentered = false;
+        child.PropertyChanged += (_, eventArgs) =>
+        {
+            if (!reentered && eventArgs.PropertyName == nameof(TreeViewItem.IsCheckable))
+            {
+                reentered = true;
+                child.IsCheckable = true;
+            }
+        };
+        parent.CheckStateChanged += (_, eventArgs) => parentEvents.Add(eventArgs);
+
+        child.IsCheckable = false;
+
+        child.IsCheckable.ShouldBeTrue();
+        parent.IsChecked.ShouldBe(true);
+        parentEvents.Select(static eventArgs => eventArgs.Current).ShouldBe([true]);
+    }
+
     /// <summary>Verifies check-state transitions notify every ancestor exactly once.</summary>
     [Fact]
     public void IsChecked_WhenDeepDescendantChanges_NotifiesEveryAncestorOnce()
@@ -796,6 +850,63 @@ public sealed partial class TreeViewTests
         parentChanges.ShouldBe(2);
         rootProperties.ShouldBe(2);
         parentProperties.ShouldBe(2);
+    }
+
+    /// <summary>Verifies a nested check transaction suppresses the older descendant snapshot.</summary>
+    [Fact]
+    public void IsChecked_WhenCheckCallbackReenters_SuppressesSupersededDescendantEvent()
+    {
+        var parent = new TreeViewItem { Header = "Parent", IsCheckable = true };
+        var child = new TreeViewItem { Header = "Child", IsCheckable = true };
+        parent.Children.Add(child);
+        var childEvents = new List<CheckChangedEventArgs>();
+        parent.CheckStateChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.Current == true)
+            {
+                child.IsChecked = false;
+            }
+        };
+        child.CheckStateChanged += (_, eventArgs) => childEvents.Add(eventArgs);
+
+        parent.IsChecked = true;
+
+        child.IsChecked.ShouldBe(false);
+        childEvents.Select(static eventArgs => eventArgs.Current).ShouldBe([false]);
+    }
+
+    /// <summary>Verifies removing any captured descendant from the first callback prevents an
+    /// obsolete notification from reaching that detached item.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void IsChecked_WhenPropertyCallbackRemovesCapturedChild_DoesNotNotifyDetachedItem(int index)
+    {
+        var parent = new TreeViewItem { Header = "Parent", IsCheckable = true };
+        var children = Enumerable.Range(0, 3)
+            .Select(value => new TreeViewItem { Header = value.ToString(CultureInfo.InvariantCulture), IsCheckable = true })
+            .ToArray();
+
+        foreach (var child in children)
+        {
+            parent.Children.Add(child);
+        }
+
+        var detachedEvents = 0;
+        children[index].CheckStateChanged += (_, _) => detachedEvents++;
+        parent.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(TreeViewItem.IsChecked))
+            {
+                _ = parent.Children.Remove(children[index]);
+            }
+        };
+
+        parent.IsChecked = true;
+
+        children[index].Parent.ShouldBeNull();
+        detachedEvents.ShouldBe(0);
     }
 
     /// <summary>Verifies a detached candidate cannot be inserted into a descendant collection.</summary>

@@ -104,8 +104,11 @@ after every selected view and visual state has updated, because `PreviousItem`
 and `CurrentItem` describe only the first selected identity and cannot express a
 range, a `SelectAll`, a removal repair, or a mode change. Reentrant changes
 advance a transaction version so a stale outer proposal cannot overwrite them.
-Mode narrowing and structural rebuilds invalidate pending proposals, and a
-reentrant change to `None` mode rejects any pending non-empty proposal.
+The `SelectedItem` and `SelectedItems` property notifications are also
+transaction boundaries: an observer that commits a newer selection suppresses
+the superseded transaction's remaining notifications and typed event. Mode
+narrowing and structural rebuilds invalidate pending proposals, and a reentrant
+change to `None` mode rejects any pending non-empty proposal.
 
 Only caller- and input-driven changes are cancellable. Normalization the control
 performs on its own behalf — narrowing `SelectionMode`, or repairing the
@@ -180,8 +183,12 @@ owned by a `TreeView` or by another `TreeViewItem`'s `Children` collection.
 
 Setting `IsChecked` on a checkable parent propagates to its checkable
 descendants, and a parent becomes indeterminate when its checkable children do
-not agree. `CheckGlyphs` keeps the resolved mark layout while replacing only its
-glyphs, so the two surfaces cannot disagree about which glyphs a row draws.
+not agree. Check-state and checkability changes share one transaction version at
+the hierarchy root. Every affected item's property and typed callbacks are
+revalidated against that version and its current attachment, so a nested change
+or removal cannot publish the remainder of an obsolete snapshot. `CheckGlyphs`
+keeps the resolved mark layout while replacing only its glyphs, so the two
+surfaces cannot disagree about which glyphs a row draws.
 
 A checkable row reserves its indent, one disclosure cell, one gap, the mark, and
 one leading space before the header, and its measured width matches those cells

@@ -1036,6 +1036,32 @@ public sealed class ListViewTests
         control.VerticalOffset.ShouldBe(4);
     }
 
+    /// <summary>Verifies selection property reentry suppresses the superseded typed delta.</summary>
+    [Theory]
+    [InlineData(nameof(UiListView.SelectedIndex))]
+    [InlineData(nameof(UiListView.SelectedItem))]
+    [InlineData(nameof(UiListView.SelectedItems))]
+    public void SelectedIndex_WhenSelectionPropertyObserverReenters_PublishesOnlyCurrentTypedEvent(
+        string propertyName)
+    {
+        var control = new UiListView { Items = ["Zero", "One", "Two"] };
+        var events = new List<ListSelectionChangedEventArgs>();
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == propertyName && control.SelectedIndex == 1)
+            {
+                control.SelectedIndex = 2;
+            }
+        };
+        control.SelectionChanged += (_, eventArgs) => events.Add(eventArgs);
+
+        control.SelectedIndex = 1;
+
+        control.SelectedIndex.ShouldBe(2);
+        events.Count.ShouldBe(1);
+        events[0].AddedIndexes.ToArray().ShouldBe([2]);
+    }
+
     /// <summary>Verifies additive selection also refuses to activate a stale target removed by a
     /// reentrant exclusive selection transaction.</summary>
     [Fact]

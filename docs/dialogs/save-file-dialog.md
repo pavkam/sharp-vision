@@ -197,6 +197,10 @@ Invalid public arguments throw before the dialog changes observably. Invalid
 filename or path composition, missing directories, access denial, and
 enumeration I/O failures are recoverable while the dialog is open: `Status`
 shows concise text while the last successful directory and rows stay committed.
+An overwrite-message formatter that throws or returns null, and a failure while
+constructing the confirmation dialog, follow the same recoverable path. The
+error updates `Status` only for the exact current acceptance request and
+dispatcher attachment; it never escapes the asynchronous Save action.
 
 A confirmed path does not prove that the caller can later create or replace the
 file. Filesystem races, permissions, sharing, and the final write remain the

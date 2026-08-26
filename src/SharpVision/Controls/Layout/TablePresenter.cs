@@ -13,7 +13,7 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 /// controls and provides their scrolling viewport. Its <see cref="Table"/> owner remains a semantic
 /// item control and exposes rows and columns rather than a bypassable child collection.
 /// </remarks>
-internal sealed class TablePresenter: Container
+internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
 {
     // A header label and a grid separator each occupy one terminal cell.
     private const int _headerTextHeight = 1;
@@ -75,6 +75,10 @@ internal sealed class TablePresenter: Container
     /// valid both inside this presenter's own arrange transaction and from an out-of-band
     /// <see cref="Table.ProgressiveRewindow"/> call.</summary>
     internal Point ProgressiveOrigin => new(ViewportBounds.X, ViewportBounds.Y);
+
+    /// <inheritdoc/>
+    void IOwnedChildDisposalObserver.OnOwnedChildDisposalRequested(ControlBase child) =>
+        _owner.OnPresenterCellDisposalRequested(child);
 
     /// <summary>Gets the header band height reserved above progressive rows, or zero without a
     /// shown header or defined columns.</summary>
@@ -421,12 +425,14 @@ internal sealed class TablePresenter: Container
 
         var controller = _owner.ProgressiveController!;
         var rowHeight = controller.RowHeight;
-        var baseY = ProgressiveOrigin.Y - VerticalOffset + ProgressiveHeaderHeight;
-        var last = Math.Min(controller.WindowStart + controller.WindowCount - 1, controller.LogicalCount - 2);
+        var baseY = ProgressiveOrigin.Y.Add(-VerticalOffset).Add(ProgressiveHeaderHeight);
+        var last = Math.Min(
+            controller.WindowStart.Add(controller.WindowCount - 1),
+            controller.LogicalCount - 2);
 
         for (var index = controller.WindowStart; index <= last; index++)
         {
-            var separatorY = baseY + (index * (rowHeight + RowGap)) + rowHeight;
+            var separatorY = baseY.Add(index.Multiply(rowHeight.Add(RowGap))).Add(rowHeight);
             DrawHorizontalGridLine(canvas, separatorY, horizontalGlyph, crossGlyph, grid);
         }
     }

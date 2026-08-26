@@ -23,6 +23,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     private readonly HashSet<TableCellReference> _selectedCells = [];
     private bool _isReordering;
     private long _progressiveSortVersion;
+    private long _selectionVersion;
     private TableRow? _selectionAnchorRow;
     private int _selectionAnchorColumn = -1;
     private TableEditState? _edit;
@@ -1511,7 +1512,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         }
 
         var current = VerticalOffset;
-        var stride = controller.RowHeight + _presenter.RowGap;
+        var stride = controller.RowHeight.Add(_presenter.RowGap);
         var target = PagingStep.IndexIntoViewOffset(index, stride, current, Viewport.Height, Extent.Height);
 
         if (target != current)
@@ -1523,9 +1524,9 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     [Pure]
     private int StepPageRows()
     {
-        var stride = (Progressive?.RowHeight ?? 1) + _presenter.RowGap;
+        var stride = (Progressive?.RowHeight ?? 1).Add(_presenter.RowGap);
         var target = PagingStep.TargetExtent(Viewport.Height, PageOverlap);
-        return Math.Max(1, (target + stride - 1) / stride);
+        return Math.Max(1, target.Add(stride - 1) / stride);
     }
 
     // Keyboard navigation calls this on every arrow keystroke, so an O(rows) Rows.IndexOf scan
@@ -1742,6 +1743,8 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             return;
         }
 
+        var selectionVersion = ++_selectionVersion;
+
         var addedRows = nextRows.Except(oldRows).ToArray();
         var removedRows = oldRows.Except(nextRows).ToArray();
         var addedCells = nextCells.Except(oldCells).ToArray();
@@ -1757,7 +1760,18 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         // cells actually joined or left selection, so re-touching every other cell adds no value.
         ApplyCellStateDelta(addedRows, removedRows, addedCells, removedCells);
         NotifyPropertyChanged(nameof(SelectedRows), InvalidationImpact.None);
+
+        if (_selectionVersion != selectionVersion)
+        {
+            return;
+        }
+
         NotifyPropertyChanged(nameof(SelectedCells), InvalidationImpact.None);
+
+        if (_selectionVersion != selectionVersion)
+        {
+            return;
+        }
 
         SelectionChanged?.Invoke(
             this,
@@ -2151,6 +2165,20 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             throw new ArgumentException(
                 "A progressive table cannot define an automatic-width column.",
                 nameof(column));
+        }
+    }
+
+    internal void OnPresenterCellDisposalRequested(ControlBase cell)
+    {
+        for (var index = Rows.Count - 1; index >= 0; index--)
+        {
+            var row = Rows[index];
+
+            if (row.Cells.Contains(cell))
+            {
+                RemoveRowCore(Rows, index, repairSelection: true);
+                return;
+            }
         }
     }
 

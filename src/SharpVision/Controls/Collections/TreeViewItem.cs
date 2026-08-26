@@ -31,6 +31,7 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
     private const int _indentStackAllocLimitCells = 256;
 
     private bool _isSelected;
+    private long _checkStateVersion;
 #pragma warning disable IDE0032 // Propagation assigns this field across instances.
     private bool? _isChecked = false;
 #pragma warning restore IDE0032
@@ -166,24 +167,57 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         get;
         set
         {
+            VerifyMutable();
+
+            if (field == value)
+            {
+                return;
+            }
+
+            var coordinator = GetCheckStateCoordinator();
+            var version = ++coordinator._checkStateVersion;
             var previousStates = new List<(TreeViewItem Item, bool? State)>();
             for (var item = this; item is not null; item = item.ParentCollection?.ParentItem)
             {
                 previousStates.Add((item, item.GetEffectiveCheckState()));
             }
 
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
+            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+
+            if (!IsCheckStateTransactionCurrent(coordinator, version, this))
             {
-                foreach (var (item, previous) in previousStates)
+                return;
+            }
+
+            foreach (var (item, previous) in previousStates)
+            {
+                if (!IsCheckStateTransactionCurrent(coordinator, version, item))
                 {
-                    var current = item.GetEffectiveCheckState();
-                    if (previous != current)
-                    {
-                        item.RaiseCheckStateChanged(previous, current, ActivationCause.Programmatic);
-                    }
+                    continue;
                 }
 
-                FindTreeView()?.NotifyCheckStateChanged(this);
+                var current = item.GetEffectiveCheckState();
+                if (previous == current)
+                {
+                    continue;
+                }
+
+                item.InvalidateVisualState();
+                item.NotifyPropertyChanged(nameof(IsChecked), InvalidationImpact.Render);
+
+                if (!IsCheckStateTransactionCurrent(coordinator, version, item))
+                {
+                    continue;
+                }
+
+                item.CheckStateChanged?.Invoke(
+                    item,
+                    new CheckChangedEventArgs(previous, current, ActivationCause.Programmatic));
+
+                if (IsCheckStateTransactionCurrent(coordinator, version, item))
+                {
+                    item.FindTreeView()?.NotifyCheckStateChanged(item);
+                }
             }
         }
     }
@@ -777,6 +811,8 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
 
     internal void SetCheckState(bool? value, ActivationCause cause, bool propagate)
     {
+        var coordinator = GetCheckStateCoordinator();
+        var version = ++coordinator._checkStateVersion;
         var affected = CollectAffectedCheckStateItems(propagate);
 
         // One memoized pass per snapshot. Evaluating each affected item independently re-walked its
@@ -788,6 +824,11 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
 
         foreach (var item in affected)
         {
+            if (!IsCheckStateTransactionCurrent(coordinator, version, item))
+            {
+                continue;
+            }
+
             var previous = previousStates[item];
             var current = currentStates[item];
 
@@ -796,10 +837,44 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
                 continue;
             }
 
-            item.RaiseCheckStateChanged(previous, current, cause);
-            item.FindTreeView()?.NotifyCheckStateChanged(item);
+            item.InvalidateVisualState();
+            item.NotifyPropertyChanged(nameof(IsChecked), InvalidationImpact.Render);
+
+            if (!IsCheckStateTransactionCurrent(coordinator, version, item))
+            {
+                continue;
+            }
+
+            item.CheckStateChanged?.Invoke(item, new CheckChangedEventArgs(previous, current, cause));
+
+            if (IsCheckStateTransactionCurrent(coordinator, version, item))
+            {
+                item.FindTreeView()?.NotifyCheckStateChanged(item);
+            }
         }
     }
+
+    [Pure]
+    private TreeViewItem GetCheckStateCoordinator()
+    {
+        var current = this;
+
+        while (current.ParentCollection?.ParentItem is { } parent)
+        {
+            current = parent;
+        }
+
+        return current;
+    }
+
+    [Pure]
+    private static bool IsCheckStateTransactionCurrent(
+        TreeViewItem coordinator,
+        long version,
+        TreeViewItem item) =>
+        coordinator._checkStateVersion == version &&
+        !item.IsDisposed &&
+        ReferenceEquals(item.GetCheckStateCoordinator(), coordinator);
 
     [Pure]
     private static Dictionary<TreeViewItem, bool?> EvaluateStates(List<TreeViewItem> affected)
@@ -953,13 +1028,6 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         {
             affected.Add(item);
         }
-    }
-
-    private void RaiseCheckStateChanged(bool? previous, bool? current, ActivationCause cause)
-    {
-        InvalidateVisualState();
-        NotifyPropertyChanged(nameof(IsChecked), InvalidationImpact.Render);
-        CheckStateChanged?.Invoke(this, new CheckChangedEventArgs(previous, current, cause));
     }
 
     internal bool? GetEffectiveCheckState()

@@ -1622,6 +1622,11 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         if (!OwnedDisposalRequested)
         {
             OwnedControlRegistry.VerifyMutationAllowed(this);
+
+            if (Parent is IOwnedChildDisposalObserver observer)
+            {
+                observer.OnOwnedChildDisposalRequested(this);
+            }
         }
 
         try

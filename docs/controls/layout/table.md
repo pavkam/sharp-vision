@@ -118,7 +118,9 @@ and then transferred to the table. Every row must be non-null and must contain
 exactly as many cells as there are columns; inserting or replacing a null row,
 or a row with the wrong cell count, fails at the public collection boundary and
 leaves every candidate cell detached. Removing a row releases its cells for
-another owner.
+another owner. Disposing any cell that is currently attached directly to a table
+removes its entire semantic row before disposal commits, repairs active,
+selected, and editing state, and releases the row's remaining cells.
 
 ## Progressive loading
 
@@ -232,6 +234,12 @@ its fetch resolve asynchronously afterward. `SelectAll` branches by
 active-or-first loaded key under `Row`, and every currently loaded key under
 `MultipleRows` — it never reaches past what is already cached.
 
+The resolved progressive row stride is the saturating sum of `rowHeight` and
+`RowSpacing`. Windowing, arrangement, hit testing, paging, prefetch margins, and
+bottom-edge offsets all use that same positive stride with saturating index and
+coordinate arithmetic, so valid extreme `int` values cannot wrap into a negative
+row or an unrelated range.
+
 The logical row count is elastic when `ITableDataSource<T>.Count` is `null`: the
 table exposes one phantom row past the highest confirmed index until the source
 reports `IsEndOfData`, at which point the extent collapses to the exact
@@ -296,9 +304,12 @@ handled-events observers still receive the record. These rules follow the shared
 and routed handled-state contract.
 
 `SelectRow`, `SelectCell`, `ClearSelection`, and `SelectAll` commit selection
-state and raise `SelectionChanged`. After a pointer selection callback returns,
-editing and `RowInvoked` continue only when the exact hit row and cell remain
-owned and available; removal, replacement, clearing, or disposal ends that input
+state and raise `SelectionChanged`. `SelectedRows` and `SelectedCells` property
+notifications are transaction boundaries: a callback that commits a newer
+selection suppresses the superseded transaction's remaining notification and
+typed event. After a pointer selection callback returns, editing and
+`RowInvoked` continue only when the exact hit row and cell remain owned and
+available; removal, replacement, clearing, or disposal ends that input
 transaction, while moving the same row preserves its current identity and index.
 `RowInvoked` reports pointer and keyboard activation. `SortBy` cycles a column
 through ascending, descending, and reset; `SetSort` selects an explicit state

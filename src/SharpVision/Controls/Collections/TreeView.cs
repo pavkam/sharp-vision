@@ -1064,6 +1064,8 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
             return false;
         }
 
+        var selectionVersion = _selectionVersion;
+
         _ = selection.RemoveWhere(item => item.IsDisposed || !_ownedItemsSet.Contains(item));
 
         foreach (var item in _selectedItems)
@@ -1083,7 +1085,19 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
         _selectedItems.UnionWith(selection);
         _selectedItem = FindFirstInTreeOrder(selection);
         NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
+
+        if (_selectionVersion != selectionVersion)
+        {
+            return true;
+        }
+
         NotifyPropertyChanged(nameof(SelectedItems), InvalidationImpact.Render);
+
+        if (_selectionVersion != selectionVersion)
+        {
+            return true;
+        }
+
         SelectionChanged?.Invoke(
             this,
             new TreeViewSelectionChangedEventArgs(previous, SelectedItem, added, removed));

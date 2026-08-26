@@ -96,6 +96,54 @@ public sealed class TableDataControllerTests
         table.IsProgressive.ShouldBeFalse();
     }
 
+    /// <summary>Verifies accepted extreme row spacing resolves one positive saturated stride for
+    /// realization, arrangement, hit testing, and paging.</summary>
+    [Fact]
+    public async Task Geometry_WhenRowStrideOverflowsInt32_RemainsConsistentAsync()
+    {
+        var table = CreateHost();
+        table.RowSpacing = int.MaxValue;
+        var source = CreateSource(3);
+        await using var surface = await ComponentSurface.MountAsync(
+            table, new Size(20, 5), TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind extreme stride");
+
+        var controller = table.ProgressiveController!;
+        controller.WindowCount.ShouldBeGreaterThan(0);
+        controller.WindowStart.ShouldBe(0);
+        controller.TryResolvePoint(new Point(0, 0), out var logicalIndex, out _).ShouldBeTrue();
+        logicalIndex.ShouldBe(0);
+        await surface.UpdateAsync(() => table.SelectIndex(1), "select with extreme stride");
+        table.VerticalOffset.ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    /// <summary>Verifies bottom-window prefetch arithmetic saturates instead of wrapping past an
+    /// accepted maximum logical count.</summary>
+    [Fact]
+    public async Task Rewindow_WhenScrolledToSaturatedBottom_RealizesFinalWindowAsync()
+    {
+        var table = CreateHost();
+        var source = new BrokenIntSource(
+            request => new TableDataResult<int>
+            {
+                Items = Enumerable.Range(request.StartIndex, request.Count).ToArray(),
+                IsEndOfData = false
+            },
+            count: int.MaxValue);
+        await using var surface = await ComponentSurface.MountAsync(
+            table, new Size(20, 5), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, static value => new TableRow([new ControlText(value.ToString(CultureInfo.InvariantCulture))]), 1), "bind maximum count");
+
+        await surface.UpdateAsync(
+            () => table.VerticalOffset = Math.Max(0, table.Extent.Height - table.Viewport.Height),
+            "scroll to saturated bottom");
+
+        var controller = table.ProgressiveController!;
+        controller.WindowCount.ShouldBeGreaterThan(0);
+        controller.WindowStart.ShouldBeGreaterThan(int.MaxValue - 20);
+    }
+
     /// <summary>Verifies a rejected SetDataSource call while already progressive leaves the original
     /// controller and source bound, rather than tearing it down.</summary>
     [Fact]

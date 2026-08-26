@@ -8,6 +8,50 @@ using System.Reflection;
 /// <summary>Defines retained composition and asynchronous state behavior for SaveFileDialog.</summary>
 public sealed class SaveFileDialogTests
 {
+    /// <summary>Verifies caller formatter failures become deterministic dialog status instead of
+    /// escaping the accept interaction through async void.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Save_WhenOverwriteMessageFormatterFails_ReportsRecoverableStatusAsync(bool returnsNull)
+    {
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "save-formatter-failure"));
+        var existingPath = Path.Combine(directory, "existing.txt");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory, new FilePickerEntry("existing.txt", existingPath, false, false));
+        var dialog = new SaveFileDialog(
+            new SaveFileOptions
+            {
+                InitialDirectory = directory,
+                InitialFileName = "existing.txt",
+                ConfirmOverwrite = true
+            },
+            source)
+        {
+            OverwriteMessageFormat = returnsNull
+                ? static _ => null!
+                : static _ => throw new FormatException("formatter boom")
+        };
+        var save = OwnedTree.FindAll<Button>(dialog).Single(static button => button.IsDefault);
+        var root = new Overlay { Children = { dialog } };
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(
+            () => root.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+
+        for (var attempt = 0; attempt < 20 && dialog.IsLoading; attempt++)
+        {
+            await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        }
+
+        await dispatcher.InvokeAsync(save.PerformClick, TestContext.Current.CancellationToken);
+
+        dialog.HasSelectedResult.ShouldBeFalse();
+        dialog.Status.ShouldStartWith("Cannot confirm overwrite:");
+        await dispatcher.InvokeAsync(root.Dispose, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies overwrite completion captured by an earlier dispatcher attachment cannot
     /// publish its abandoned path after the modeless dialog migrates to a new owner.</summary>
     [Fact]

@@ -82,10 +82,10 @@ internal sealed class TableDataController: IDisposable
     [NonNegativeValue]
     public int LogicalCount =>
         IsEndOfData
-            ? _knownFrontier + 1
+            ? _knownFrontier.Add(1)
             : _adapter.Count is int known
                 ? Math.Max(0, known)
-                : _knownFrontier + 2;
+                : _knownFrontier.Add(2);
 
     /// <summary>Gets whether the backing source has reported its true end.</summary>
     public bool IsEndOfData { get; private set; }
@@ -135,12 +135,12 @@ internal sealed class TableDataController: IDisposable
         }
 
         var rowGap = _presenter.RowGap;
-        var stride = RowHeight + rowGap;
-        var viewportRows = Math.Max(1, stride == 0 ? 1 : viewportHeight / stride);
+        var stride = RowHeight.Add(rowGap);
+        var viewportRows = Math.Max(1, viewportHeight / stride);
         var first = Math.Max(0, (verticalOffset / stride) - viewportRows);
         var last = Math.Min(
             logicalCount - 1,
-            ((verticalOffset + Math.Max(0, viewportHeight - 1)) / stride) + viewportRows);
+            (verticalOffset.Add(Math.Max(0, viewportHeight - 1)) / stride).Add(viewportRows));
 
         // A stale, still-large verticalOffset can outrun a freshly-reset (or freshly-shrunk)
         // logicalCount - most notably right after Reload() collapses LogicalCount to 1 for an
@@ -488,7 +488,7 @@ internal sealed class TableDataController: IDisposable
                 continue;
             }
 
-            var logicalIndex = WindowStart + position;
+            var logicalIndex = WindowStart.Add(position);
             var selected = _cache.TryGetValue(logicalIndex, out var entry) && _selectedKeys.Contains(entry.Key);
             var current = logicalIndex == ActiveIndex;
 
@@ -535,9 +535,9 @@ internal sealed class TableDataController: IDisposable
             return;
         }
 
-        var center = (first + last) / 2.0;
+        var center = ((long) first + last) / 2.0;
         var ordered = gaps
-            .OrderBy(gap => Math.Abs((((gap.Start * 2) + gap.Count - 1) / 2.0) - center))
+            .OrderBy(gap => Math.Abs(((((long) gap.Start * 2) + gap.Count - 1) / 2.0) - center))
             .Take(capacity);
 
         foreach (var (start, count) in ordered)
@@ -559,7 +559,8 @@ internal sealed class TableDataController: IDisposable
     {
         foreach (var range in _pending)
         {
-            if (index >= range.Start && index < range.Start + range.Count)
+            if (index >= range.Start &&
+                (long) index - range.Start < range.Count)
             {
                 return true;
             }
@@ -718,8 +719,9 @@ internal sealed class TableDataController: IDisposable
             }
         }
 
-        _ = _errorIndices.RemoveWhere(index => index >= request.StartIndex && index < request.StartIndex + request.Count);
-        _knownFrontier = Math.Max(_knownFrontier, request.StartIndex + result.Items.Count - 1);
+        var requestEnd = (long) request.StartIndex + request.Count;
+        _ = _errorIndices.RemoveWhere(index => index >= request.StartIndex && index < requestEnd);
+        _knownFrontier = Math.Max(_knownFrontier, request.StartIndex.Add(result.Items.Count - 1));
 
         if (result.IsEndOfData)
         {
@@ -764,7 +766,8 @@ internal sealed class TableDataController: IDisposable
 
         range.Cts.Dispose();
 
-        for (var index = request.StartIndex; index < request.StartIndex + request.Count; index++)
+        var requestEnd = (long) request.StartIndex + request.Count;
+        for (var index = request.StartIndex; index < requestEnd; index++)
         {
             _ = _errorIndices.Add(index);
         }
@@ -864,7 +867,7 @@ internal sealed class TableDataController: IDisposable
         {
             var item = result.Items[offset]!;
             var key = _adapter.GetKey(item);
-            var index = request.StartIndex + offset;
+            var index = request.StartIndex.Add(offset);
 
             if (!seenInBatch.Add(key))
             {
@@ -900,7 +903,7 @@ internal sealed class TableDataController: IDisposable
         for (var index = _pending.Count - 1; index >= 0; index--)
         {
             var range = _pending[index];
-            var rangeLast = range.Start + range.Count - 1;
+            var rangeLast = range.Start.Add(range.Count - 1);
 
             if (rangeLast < first || range.Start > last)
             {
@@ -921,7 +924,7 @@ internal sealed class TableDataController: IDisposable
 
         for (var position = 0; position < _window.Length; position++)
         {
-            var logicalIndex = WindowStart + position;
+            var logicalIndex = WindowStart.Add(position);
 
             if (logicalIndex >= first && logicalIndex <= last)
             {
@@ -936,7 +939,7 @@ internal sealed class TableDataController: IDisposable
 
         for (var i = 0; i < newCount; i++)
         {
-            var logicalIndex = first + i;
+            var logicalIndex = first.Add(i);
             var existingPosition = logicalIndex - WindowStart;
             var row = (uint) existingPosition < (uint) _window.Length ? _window[existingPosition] : null;
 
@@ -1025,8 +1028,9 @@ internal sealed class TableDataController: IDisposable
 
     private void EvictCache(int first, int last, int viewportRows)
     {
-        var lowerBound = first - (2 * viewportRows);
-        var upperBound = last + (2 * viewportRows);
+        var evictionMargin = viewportRows.Multiply(2);
+        var lowerBound = first.Add(-evictionMargin);
+        var upperBound = last.Add(evictionMargin);
         List<int> stale = [];
 
         foreach (var index in _cache.Keys)
@@ -1089,7 +1093,7 @@ internal sealed class TableDataController: IDisposable
         var columnGap = _presenter.ColumnGap;
         var columnWidths = _presenter.ColumnWidths;
         var cellPadding = _owner.ActualStyle.CellPadding;
-        var baseY = origin.Y - _presenter.VerticalOffset + headerHeight;
+        var baseY = origin.Y.Add(-_presenter.VerticalOffset).Add(headerHeight);
         var baseX = origin.X - _presenter.HorizontalOffset;
 
         for (var i = 0; i < _window.Length; i++)
@@ -1099,8 +1103,8 @@ internal sealed class TableDataController: IDisposable
                 continue;
             }
 
-            var logicalIndex = WindowStart + i;
-            var y = baseY + (logicalIndex * (RowHeight + rowGap));
+            var logicalIndex = WindowStart.Add(i);
+            var y = baseY.Add(logicalIndex.Multiply(RowHeight.Add(rowGap)));
             var x = baseX;
 
             for (var column = 0; column < row.Cells.Count && column < columnWidths.Length; column++)
@@ -1151,17 +1155,18 @@ internal sealed class TableDataController: IDisposable
         var origin = _presenter.ProgressiveOrigin;
         var headerHeight = _presenter.ProgressiveHeaderHeight;
         var rowGap = _presenter.RowGap;
-        var baseY = origin.Y - _presenter.VerticalOffset + headerHeight;
+        var baseY = origin.Y.Add(-_presenter.VerticalOffset).Add(headerHeight);
 
         if (point.Y < baseY)
         {
             return false;
         }
 
-        var stride = RowHeight + rowGap;
-        var candidate = (point.Y - baseY) / stride;
+        var stride = RowHeight.Add(rowGap);
+        var relative = (long) point.Y - baseY;
+        var candidate = relative / stride;
 
-        if ((point.Y - baseY) % stride >= RowHeight)
+        if (relative % stride >= RowHeight)
         {
             // Inside the inter-row gap, not a data row.
             return false;
@@ -1180,7 +1185,7 @@ internal sealed class TableDataController: IDisposable
         {
             if (point.X >= x && point.X < x + columnWidths[column])
             {
-                logicalIndex = candidate;
+                logicalIndex = (int) candidate;
                 columnIndex = column;
                 return true;
             }

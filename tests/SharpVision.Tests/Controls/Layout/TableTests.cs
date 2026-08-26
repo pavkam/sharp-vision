@@ -1147,6 +1147,78 @@ public sealed class TableTests
         table.SelectedRows.ShouldBe([replacement, middle, last]);
     }
 
+    /// <summary>Verifies selection property reentry suppresses the superseded table delta.</summary>
+    [Theory]
+    [InlineData(nameof(Table.SelectedRows))]
+    [InlineData(nameof(Table.SelectedCells))]
+    public void SelectRow_WhenSelectionPropertyObserverReenters_PublishesOnlyCurrentTypedEvent(
+        string propertyName)
+    {
+        var first = new TableRow([new ControlText("first")]);
+        var second = new TableRow([new ControlText("second")]);
+        var third = new TableRow([new ControlText("third")]);
+        var table = new Table { SelectionMode = TableSelectionMode.Row };
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(first);
+        table.Rows.Add(second);
+        table.Rows.Add(third);
+        var events = new List<TableSelectionChangedEventArgs>();
+        table.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == propertyName && table.SelectedRows.SequenceEqual([second]))
+            {
+                table.SelectRow(third);
+            }
+        };
+        table.SelectionChanged += (_, eventArgs) => events.Add(eventArgs);
+
+        table.SelectRow(second);
+
+        table.SelectedRows.ShouldBe([third]);
+        events.Count.ShouldBe(1);
+        events[0].AddedRows.ShouldBe([third]);
+    }
+
+    /// <summary>Verifies direct disposal of any attached cell atomically removes its semantic row
+    /// and repairs dependent active, selection, and editing state.</summary>
+    [Theory]
+    [InlineData("ordinary")]
+    [InlineData("active")]
+    [InlineData("selected")]
+    [InlineData("editing")]
+    public void Cell_WhenDisposedDirectly_RemovesOwningRowAndRepairsState(string state)
+    {
+        var cell = new TextInput { Text = "value" };
+        var row = new TableRow([cell]);
+        var table = new Table { SelectionMode = TableSelectionMode.Row };
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(row);
+
+        switch (state)
+        {
+            case "ordinary":
+                break;
+            case "active":
+            case "selected":
+                table.SelectRow(row);
+                break;
+            case "editing":
+                table.BeginEdit(row, 0).ShouldBeTrue();
+                break;
+            default:
+                throw new InvalidOperationException($"Unknown state '{state}'.");
+        }
+
+        cell.Dispose();
+
+        table.Rows.ShouldBeEmpty();
+        table.SelectedRows.ShouldBeEmpty();
+        table.SelectedCells.ShouldBeEmpty();
+        table.ActiveRow.ShouldBeNull();
+        table.IsEditing.ShouldBeFalse();
+        Should.NotThrow(() => new LayoutEngine().Layout(table, new Size(20, 5)));
+    }
+
     /// <summary>Verifies row removal publishes one selection change and leaves shift selection anchored safely.</summary>
     [Fact]
     public void Rows_WhenSelectedAnchorIsRemoved_PublishesOneChangeAndRepairsShiftSelection()

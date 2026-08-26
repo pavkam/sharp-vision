@@ -407,6 +407,24 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
     private async void CompleteAcceptedAsync()
     {
         var acceptanceVersion = ++_acceptanceVersion;
+        var dispatcher = Dispatcher;
+        var attachmentVersion = AttachmentVersion;
+
+        try
+        {
+            await CompleteAcceptedCoreAsync(acceptanceVersion, dispatcher, attachmentVersion);
+        }
+        catch (Exception exception)
+        {
+            ReportAcceptanceFailure(dispatcher, attachmentVersion, acceptanceVersion, exception);
+        }
+    }
+
+    private async Task CompleteAcceptedCoreAsync(
+        long acceptanceVersion,
+        Dispatcher? dispatcher,
+        long attachmentVersion)
+    {
         var fileName = _fileNameInput.Text.Trim();
 
         if (string.IsNullOrEmpty(fileName))
@@ -437,9 +455,6 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
 
         if (_confirmOverwrite && FileSystem.FileExists(fullPath))
         {
-            var dispatcher = Dispatcher;
-            var attachmentVersion = AttachmentVersion;
-
             if (dispatcher is null)
             {
                 return;
@@ -491,6 +506,42 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
         }
 
         _ = Complete(SaveFileResult.FromPath(fullPath));
+    }
+
+    private void ReportAcceptanceFailure(
+        Dispatcher? dispatcher,
+        long attachmentVersion,
+        long acceptanceVersion,
+        Exception exception)
+    {
+        if (dispatcher is null)
+        {
+            return;
+        }
+
+        void CommitFailure()
+        {
+            if (ReferenceEquals(Dispatcher, dispatcher) &&
+                AttachmentVersion == attachmentVersion &&
+                _acceptanceVersion == acceptanceVersion)
+            {
+                SetStatus($"Cannot confirm overwrite: {exception.Message}");
+            }
+        }
+
+        if (dispatcher.CheckAccess())
+        {
+            CommitFailure();
+            return;
+        }
+
+        try
+        {
+            dispatcher.Post(CommitFailure);
+        }
+        catch (Exception postException) when (postException is ObjectDisposedException or InvalidOperationException)
+        {
+        }
     }
 
     private void OnFileNameChanged(object? sender, TextChangedEventArgs eventArgs)

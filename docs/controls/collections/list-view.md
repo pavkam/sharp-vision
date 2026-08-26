@@ -110,9 +110,13 @@ of by position:
 may cancel the change before it commits. `SelectionChanged` reports the same
 committed delta after all selected views and visual states have updated.
 Reentrant changes advance a transaction version, so a stale outer proposal
-cannot overwrite them. Mode or item-realization changes invalidate pending
-proposals even when the selected index set was already empty, and a reentrant
-change to `None` mode rejects any pending non-empty proposal.
+cannot overwrite them. The property notifications for `SelectedIndex`,
+`SelectedItem`, and `SelectedItems` are also transaction boundaries: if an
+observer commits a newer selection, the superseded transaction publishes neither
+its remaining property notifications nor its stale `SelectionChanged`. Mode or
+item-realization changes invalidate pending proposals even when the selected
+index set was already empty, and a reentrant change to `None` mode rejects any
+pending non-empty proposal.
 
 A successfully committed non-negative `SelectedIndex`, or a selected index
 committed through `SetSelected`, also becomes `ActiveIndex` and is minimally

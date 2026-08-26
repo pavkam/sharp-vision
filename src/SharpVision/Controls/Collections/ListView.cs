@@ -1375,6 +1375,8 @@ public sealed class ListView: ItemsControl
             return false;
         }
 
+        var selectionVersion = _selectionVersion;
+
         _selection.Clear();
         _selection.UnionWith(selection);
 
@@ -1386,8 +1388,25 @@ public sealed class ListView: ItemsControl
 
         RefreshSelectedItems();
         NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Render);
+
+        if (_selectionVersion != selectionVersion)
+        {
+            return true;
+        }
+
         NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
+
+        if (_selectionVersion != selectionVersion)
+        {
+            return true;
+        }
+
         NotifyPropertyChanged(nameof(SelectedItems), InvalidationImpact.Render);
+
+        if (_selectionVersion != selectionVersion)
+        {
+            return true;
+        }
 
         if (added.Length > 0 || removed.Length > 0)
         {
