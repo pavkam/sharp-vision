@@ -68,6 +68,13 @@ classDiagram
   ownership or the existing entry's forwarding and focus policy.
 - Moving an entry within either collection reorders the existing identity
   without detaching, reparenting, blurring, or reattaching it.
+- Entry insertion and replacement apply the view's focus policy transactionally.
+  If a focus-property callback removes, clears, replaces, or disposes the
+  incoming entry, that newer ownership snapshot wins and the interrupted
+  mutation performs no further writes or event subscription.
+- Removal and clear detach their complete entry snapshot and repair selection
+  before restoring caller-authored focus properties. Restoration callbacks may
+  safely begin another collection mutation against the committed state.
 - `SelectItem` rejects null, unavailable items, and items owned by another
   navigation view.
 - `SelectionChanged` fires after a committed selection change. If an
@@ -92,7 +99,15 @@ An entry that becomes hidden cannot remain selected or current. An entry that
 becomes disabled may retain its selected identity, but it immediately loses
 keyboard-current eligibility; Enter and Space re-establish current on an
 available entry instead of invoking the disabled one. These rules use effective
-availability, including inherited ancestor state.
+availability, including inherited ancestor state. Hidden-selection repair uses
+the selected identity's current position in the complete main, grouped, and
+footer item order, preferring its next available successor and then its previous
+available predecessor. Earlier inserts, removals, moves, group expansion, or
+availability transitions therefore cannot make repair jump to a stale index.
+
+Direct item, group, separator, and owner disposal retire private authored-focus
+snapshots with their ownership. A disposed view or retained disposed group does
+not keep former entries alive through presentation metadata.
 
 `LineSize` forwards the mouse wheel's cell step to the generated scroll
 container; keyboard Up and Down always move by exactly one entry regardless of

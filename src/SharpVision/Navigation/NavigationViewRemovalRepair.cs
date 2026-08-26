@@ -13,7 +13,7 @@ internal readonly struct NavigationViewRemovalRepair
     /// <summary>Initializes an immutable pre-detachment removal snapshot.</summary>
     /// <param name="currentRemoved">Whether the current-navigation item was removed.</param>
     /// <param name="selectedRemoved">Whether the selected item was removed.</param>
-    /// <param name="selectedIndex">The selected item's index among selectable items before removal.</param>
+    /// <param name="selectedIndex">The selected item's index in semantic item order before removal.</param>
     public NavigationViewRemovalRepair(bool currentRemoved, bool selectedRemoved, int selectedIndex)
     {
         IsCurrentRemoved = currentRemoved;
@@ -27,6 +27,6 @@ internal readonly struct NavigationViewRemovalRepair
     /// <summary>Gets whether the selected item was removed.</summary>
     public bool IsSelectedRemoved { get; }
 
-    /// <summary>Gets the selected item's index among selectable items before removal.</summary>
+    /// <summary>Gets the selected item's index in semantic item order before removal.</summary>
     public int SelectedIndex { get; }
 }

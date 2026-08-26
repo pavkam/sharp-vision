@@ -14,10 +14,12 @@ internal readonly record struct NavigationEntryPresentation
     /// <summary>Initializes an immutable snapshot of one entry's authored presentation.</summary>
     /// <param name="focusable">The caller-authored focusability at attach time.</param>
     /// <param name="tabStop">The caller-authored tab-stop participation at attach time.</param>
-    public NavigationEntryPresentation(bool focusable, bool tabStop)
+    /// <param name="version">The unique ownership transaction that captured the snapshot.</param>
+    public NavigationEntryPresentation(bool focusable, bool tabStop, long version)
     {
         IsFocusable = focusable;
         IsTabStop = tabStop;
+        Version = version;
     }
 
     /// <summary>Gets the authored focusability.</summary>
@@ -25,4 +27,7 @@ internal readonly record struct NavigationEntryPresentation
 
     /// <summary>Gets the authored tab-stop participation.</summary>
     public bool IsTabStop { get; }
+
+    /// <summary>Gets the unique ownership transaction that captured this snapshot.</summary>
+    public long Version { get; }
 }

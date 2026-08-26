@@ -22,6 +22,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     private const int _headerSeparatorWidth = 1;
     private readonly Dictionary<TabItem, TabHeader> _headersByItem = [];
     private readonly Dictionary<TabItem, TabItemPresentation> _requestedPresentations = [];
+    private readonly HashSet<TabItem> _closeRequestsInFlight = [];
     private readonly StyleSlot<TabControlStyle> _style;
     private readonly LayoutStack _headers;
     private readonly LayoutStack _stack;
@@ -567,7 +568,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
     /// <summary>Requests closure of a closeable tab and removes it when not cancelled.</summary>
     /// <param name="item">The owned closeable tab page.</param>
-    /// <returns><see langword="true"/> when the tab was removed.</returns>
+    /// <returns><see langword="true"/> when the request completes with the tab no longer owned.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
     /// <exception cref="ArgumentException">The item is not owned by this control.</exception>
     /// <exception cref="InvalidOperationException">The control is mutated off-dispatcher.</exception>
@@ -587,9 +588,23 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             return false;
         }
 
+        if (!_closeRequestsInFlight.Add(item))
+        {
+            return false;
+        }
+
         var request = new TabCloseRequestedEventArgs(item);
-        CloseRequested?.Invoke(this, request);
-        return !request.Cancel && RemoveItem(item);
+
+        try
+        {
+            CloseRequested?.Invoke(this, request);
+        }
+        finally
+        {
+            _ = _closeRequestsInFlight.Remove(item);
+        }
+
+        return IndexOfItemControl(item) < 0 || (!request.Cancel && RemoveItem(item));
     }
 
     internal void ClearItems()

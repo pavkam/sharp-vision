@@ -17,6 +17,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     private readonly Dictionary<NavigationViewItem, NavigationItemPresentation> _requestedPresentations = [];
     private readonly PressBehavior _press;
     private readonly StyleSlot<NavigationViewGroupStyle> _style;
+    private long _presentationVersion;
 
     /// <summary>Initializes an expanded navigation group with no header.</summary>
     public NavigationViewGroup()
@@ -108,6 +109,9 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     /// <summary>Gets the number of sub-items.</summary>
     internal int ItemCount => _stack.Children.Count;
 
+    /// <summary>Gets the retained authored-presentation count used to prove metadata retires with ownership.</summary>
+    internal int RequestedPresentationCount => _requestedPresentations.Count;
+
     /// <summary>Gets one sub-item by index.</summary>
     internal NavigationViewItem ItemAt(int index) => (NavigationViewItem) _stack.Children[index];
 
@@ -121,18 +125,20 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
         // overwritten. A rejected insertion (duplicate, already attached,
         // disposed) must leave the caller's object exactly as it found it.
         _stack.Children.Add(item);
-        _requestedPresentations.Add(
-            item,
-            new NavigationItemPresentation(item.IsFocusable, item.IsTabStop));
-
-        item.IsFocusable = false;
-        item.IsTabStop = false;
-        item.Invoked += OnItemInvoked;
+        var presentation = new NavigationItemPresentation(
+            item.IsFocusable,
+            item.IsTabStop,
+            ++_presentationVersion);
+        _requestedPresentations.Add(item, presentation);
+        ConfigureItem(item, presentation.Version);
     }
 
     /// <summary>Removes one sub-item from this group.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
-    internal bool RemoveItemCore(NavigationViewItem item)
+    internal bool RemoveItemCore(NavigationViewItem item) =>
+        RemoveItemCore(item, restorePresentation: true);
+
+    private bool RemoveItemCore(NavigationViewItem item, bool restorePresentation)
     {
         ArgumentNullException.ThrowIfNull(item);
 
@@ -146,14 +152,19 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
         // whether the removed item is (or owns) the view's current selection.
         var owner = FindNavigationView();
         var repair = owner?.PrepareRemoval(item);
+        var presentation = TakePresentation(item);
 
-        item.Invoked -= OnItemInvoked;
-        RestorePresentation(item);
         _ = _stack.Children.Remove(item);
+        item.Invoked -= OnItemInvoked;
 
         if (repair is { } value)
         {
             owner!.CompleteRemoval(value);
+        }
+
+        if (restorePresentation && presentation is { } requested)
+        {
+            RestorePresentation(item, requested);
         }
 
         return true;
@@ -161,43 +172,88 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
 
     /// <summary>Detaches one grouped item before direct disposal publication begins.</summary>
     /// <param name="item">The owned item whose caller requested disposal.</param>
-    internal void RemoveItemForDisposal(NavigationViewItem item) => _ = RemoveItemCore(item);
+    internal void RemoveItemForDisposal(NavigationViewItem item) =>
+        _ = RemoveItemCore(item, restorePresentation: false);
 
     /// <summary>Clears all sub-items.</summary>
     internal void ClearItemsCore()
     {
         var owner = FindNavigationView();
         var repair = owner?.PrepareRemoval(this);
+        var items = _stack.Children.OfType<NavigationViewItem>().ToArray();
+        var presentations = new List<(NavigationViewItem Item, NavigationItemPresentation Presentation)>();
 
-        foreach (var child in _stack.Children)
+        foreach (var item in items)
         {
-            if (child is NavigationViewItem item)
+            if (TakePresentation(item) is { } presentation)
             {
-                item.Invoked -= OnItemInvoked;
-                RestorePresentation(item);
+                presentations.Add((item, presentation));
             }
         }
 
         _stack.Children.Clear();
 
+        foreach (var item in items)
+        {
+            item.Invoked -= OnItemInvoked;
+        }
+
         if (repair is { } value)
         {
             owner!.CompleteRemoval(value);
         }
+
+        foreach (var (item, presentation) in presentations)
+        {
+            RestorePresentation(item, presentation);
+        }
     }
 
-    // Runs before the item is detached so callers observe restored values
-    // immediately, not this group's private indentation and focus policy.
-    private void RestorePresentation(NavigationViewItem item)
+    private NavigationItemPresentation? TakePresentation(NavigationViewItem item)
+        => _requestedPresentations.Remove(item, out var presentation) ? presentation : null;
+
+    private void ConfigureItem(NavigationViewItem item, long presentationVersion)
     {
-        if (!_requestedPresentations.Remove(item, out var presentation))
+        item.IsFocusable = false;
+
+        if (!IsCommitted(item, presentationVersion))
+        {
+            return;
+        }
+
+        item.IsTabStop = false;
+
+        if (!IsCommitted(item, presentationVersion))
+        {
+            return;
+        }
+
+        item.Invoked += OnItemInvoked;
+    }
+
+    [Pure]
+    private bool IsCommitted(NavigationViewItem item, long presentationVersion) =>
+        _stack.Children.Contains(item) &&
+        _requestedPresentations.TryGetValue(item, out var presentation) &&
+        presentation.Version == presentationVersion;
+
+    private static void RestorePresentation(NavigationViewItem item, NavigationItemPresentation presentation)
+    {
+        if (item.Parent is not null || item.IsDisposed || item.IsDisposing)
         {
             return;
         }
 
         item.IsFocusable = presentation.IsFocusable;
-        item.IsTabStop = presentation.IsTabStop;
+
+        if (!item.IsDisposed && !item.IsDisposing)
+        {
+            item.IsTabStop = presentation.IsTabStop;
+        }
     }
+
+    /// <summary>Retires descendant snapshots before owner-driven disposal skips direct child hooks.</summary>
+    internal void RetirePresentationMetadataForOwnerDisposal() => _requestedPresentations.Clear();
 
     /// <inheritdoc/>
     /// <inheritdoc/>
@@ -320,6 +376,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     {
         _press.Unavailable();
         FindNavigationView()?.RemoveEntryForDisposal(this);
+        _requestedPresentations.Clear();
         base.OnDirectDisposalRequested();
     }
 

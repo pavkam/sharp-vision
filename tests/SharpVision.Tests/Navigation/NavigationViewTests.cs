@@ -2198,6 +2198,442 @@ public sealed class NavigationViewTests
             eventArgs => eventArgs.CurrentItem.ShouldBeSameAs(fallback));
     }
 
+    /// <summary>Verifies selection repair derives adjacency from the current semantic tree after
+    /// every mutation that can shift a selected item's position without changing its identity.</summary>
+    [Theory]
+    [InlineData("insert")]
+    [InlineData("remove")]
+    [InlineData("move")]
+    [InlineData("expand")]
+    [InlineData("collapse")]
+    [InlineData("footer")]
+    [InlineData("reenable")]
+    public void SelectionRepair_WhenPriorMutationShiftsSelectedItem_UsesLiveAdjacentSuccessor(string mutation)
+    {
+        var before = new NavigationViewItem { Text = "Before" };
+        var selected = new NavigationViewItem { Text = "Selected" };
+        var after = new NavigationViewItem { Text = "After" };
+        var last = new NavigationViewItem { Text = "Last" };
+        var navigation = new NavigationView();
+        NavigationViewGroup? group = null;
+
+        if (mutation is "expand" or "collapse")
+        {
+            group = new NavigationViewGroup { Header = "Group", IsExpanded = mutation == "collapse" };
+            group.Items.Add(new NavigationViewItem { Text = "Group A" });
+            group.Items.Add(new NavigationViewItem { Text = "Group B" });
+            navigation.Items.Add(group);
+        }
+
+        if (mutation == "footer")
+        {
+            navigation.Items.Add(before);
+            navigation.FooterItems.Add(selected);
+            navigation.FooterItems.Add(after);
+        }
+        else
+        {
+            navigation.Items.Add(before);
+            navigation.Items.Add(selected);
+            navigation.Items.Add(after);
+            navigation.Items.Add(last);
+        }
+
+        navigation.SelectItem(selected);
+
+        switch (mutation)
+        {
+            case "insert":
+                navigation.Items.Insert(0, new NavigationViewItem { Text = "Inserted" });
+                break;
+            case "remove":
+                navigation.Items.Remove(before).ShouldBeTrue();
+                break;
+            case "move":
+                navigation.Items.Move(0, navigation.Items.Count - 1);
+                break;
+            case "expand":
+                group!.IsExpanded = true;
+                break;
+            case "collapse":
+                group!.IsExpanded = false;
+                break;
+            case "footer":
+                navigation.Items.Insert(0, new NavigationViewItem { Text = "Inserted" });
+                break;
+            case "reenable":
+                selected.IsEnabled = false;
+                navigation.Items.Insert(0, new NavigationViewItem { Text = "Inserted" });
+                selected.IsEnabled = true;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown selection mutation.");
+        }
+
+        selected.Visibility = Visibility.Collapsed;
+
+        navigation.SelectedItem.ShouldBeSameAs(after);
+    }
+
+    /// <summary>Verifies removal repair retains semantic adjacency when the selected item became
+    /// disabled and structural mutation shifted it before direct disposal.</summary>
+    [Fact]
+    public void SelectionRepair_WhenDisabledShiftedSelectionIsDisposed_UsesLiveAdjacentSuccessor()
+    {
+        var before = new NavigationViewItem { Text = "Before" };
+        var selected = new NavigationViewItem { Text = "Selected" };
+        var after = new NavigationViewItem { Text = "After" };
+        var navigation = new NavigationView();
+        navigation.Items.Add(before);
+        navigation.Items.Add(selected);
+        navigation.Items.Add(after);
+        navigation.SelectItem(selected);
+        selected.IsEnabled = false;
+        navigation.Items.Insert(0, new NavigationViewItem { Text = "Inserted" });
+
+        selected.Dispose();
+
+        navigation.SelectedItem.ShouldBeSameAs(after);
+    }
+
+    /// <summary>Verifies top-level insertion and replacement stop their continuation when either
+    /// focus-policy notification removes, clears, replaces, or disposes the candidate.</summary>
+    [Theory]
+    [InlineData("add", "remove", false)]
+    [InlineData("add", "remove", true)]
+    [InlineData("insert", "clear", false)]
+    [InlineData("insert", "clear", true)]
+    [InlineData("replace", "replace", false)]
+    [InlineData("replace", "replace", true)]
+    [InlineData("replace", "dispose", false)]
+    [InlineData("replace", "dispose", true)]
+    public void EntryMutation_WhenCandidateCallbackDetachesIt_StopsStaleContinuation(
+        string operation,
+        string callbackMutation,
+        bool onTabStop)
+    {
+        var existing = new NavigationViewItem { Text = "Existing" };
+        var candidate = new NavigationViewItem { Text = "Candidate", IsFocusable = true, IsTabStop = true };
+        var nestedReplacement = new NavigationViewItem { Text = "Nested" };
+        var navigation = new NavigationView();
+        navigation.Items.Add(existing);
+        navigation.SelectItem(existing);
+        var reentered = false;
+        candidate.PropertyChanged += (_, eventArgs) =>
+        {
+            if (reentered || eventArgs.PropertyName != (onTabStop ? nameof(ControlBase.IsTabStop) : nameof(ControlBase.IsFocusable)))
+            {
+                return;
+            }
+
+            reentered = true;
+
+            if (callbackMutation == "remove")
+            {
+                _ = navigation.Items.Remove(candidate);
+            }
+            else if (callbackMutation == "clear")
+            {
+                navigation.Items.Clear();
+            }
+            else if (callbackMutation == "replace")
+            {
+                navigation.Items[navigation.Items.IndexOf(candidate)] = nestedReplacement;
+            }
+            else
+            {
+                candidate.Dispose();
+            }
+        };
+
+        Should.NotThrow(() =>
+        {
+            if (operation == "add")
+            {
+                navigation.Items.Add(candidate);
+            }
+            else if (operation == "insert")
+            {
+                navigation.Items.Insert(0, candidate);
+            }
+            else
+            {
+                navigation.Items[0] = candidate;
+            }
+        });
+
+        navigation.Items.ShouldNotContain(candidate);
+        navigation.RequestedPresentationCount.ShouldBe(navigation.Items.Count + navigation.FooterItems.Count);
+
+        if (!candidate.IsDisposed)
+        {
+            candidate.IsFocusable.ShouldBeTrue();
+            candidate.IsTabStop.ShouldBeTrue();
+            var selection = navigation.SelectedItem;
+            candidate.ActivateFromOwner(ActivationCause.Programmatic);
+            navigation.SelectedItem.ShouldBeSameAs(selection);
+        }
+    }
+
+    /// <summary>Verifies grouped insertion stops its continuation when either focus-policy
+    /// notification removes, clears, or disposes the candidate.</summary>
+    [Theory]
+    [InlineData("remove", false)]
+    [InlineData("remove", true)]
+    [InlineData("clear", false)]
+    [InlineData("clear", true)]
+    [InlineData("dispose", false)]
+    [InlineData("dispose", true)]
+    public void GroupAdd_WhenCandidateCallbackDetachesIt_StopsStaleContinuation(
+        string callbackMutation,
+        bool onTabStop)
+    {
+        var group = new NavigationViewGroup { Header = "Group" };
+        var existing = new NavigationViewItem { Text = "Existing" };
+        var candidate = new NavigationViewItem { Text = "Candidate", IsFocusable = true, IsTabStop = true };
+        group.Items.Add(existing);
+        var reentered = false;
+        candidate.PropertyChanged += (_, eventArgs) =>
+        {
+            if (reentered || eventArgs.PropertyName != (onTabStop ? nameof(ControlBase.IsTabStop) : nameof(ControlBase.IsFocusable)))
+            {
+                return;
+            }
+
+            reentered = true;
+
+            if (callbackMutation == "remove")
+            {
+                _ = group.Items.Remove(candidate);
+            }
+            else if (callbackMutation == "clear")
+            {
+                group.Items.Clear();
+            }
+            else
+            {
+                candidate.Dispose();
+            }
+        };
+
+        Should.NotThrow(() => group.Items.Add(candidate));
+
+        group.Items.ShouldNotContain(candidate);
+        group.RequestedPresentationCount.ShouldBe(group.Items.Count);
+
+        if (!candidate.IsDisposed)
+        {
+            candidate.IsFocusable.ShouldBeTrue();
+            candidate.IsTabStop.ShouldBeTrue();
+        }
+    }
+
+    /// <summary>Verifies top-level presentation restoration publishes only after detachment, so
+    /// every same-collection mutation can reenter against committed state.</summary>
+    [Theory]
+    [InlineData("remove", false)]
+    [InlineData("remove", true)]
+    [InlineData("clear", false)]
+    [InlineData("clear", true)]
+    [InlineData("replace", false)]
+    [InlineData("replace", true)]
+    [InlineData("dispose", false)]
+    [InlineData("dispose", true)]
+    public void Remove_WhenPresentationCallbackReenters_ObservesCommittedDetachment(
+        string callbackMutation,
+        bool onTabStop)
+    {
+        var outgoing = new NavigationViewItem { Text = "Outgoing", IsFocusable = true, IsTabStop = true };
+        var survivor = new NavigationViewItem { Text = "Survivor" };
+        var nestedReplacement = new NavigationViewItem { Text = "Nested" };
+        var navigation = new NavigationView();
+        navigation.Items.Add(outgoing);
+        navigation.Items.Add(survivor);
+        navigation.SelectItem(outgoing);
+        var reentered = false;
+        outgoing.PropertyChanged += (_, eventArgs) =>
+        {
+            if (reentered || eventArgs.PropertyName != (onTabStop ? nameof(ControlBase.IsTabStop) : nameof(ControlBase.IsFocusable)))
+            {
+                return;
+            }
+
+            reentered = true;
+
+            if (callbackMutation == "remove")
+            {
+                navigation.Items.Remove(outgoing).ShouldBeFalse();
+            }
+            else if (callbackMutation == "clear")
+            {
+                navigation.Items.Clear();
+            }
+            else if (callbackMutation == "replace")
+            {
+                navigation.Items[0] = nestedReplacement;
+            }
+            else
+            {
+                outgoing.Dispose();
+            }
+        };
+
+        Should.NotThrow(() => navigation.Items.Remove(outgoing).ShouldBeTrue());
+
+        navigation.Items.ShouldNotContain(outgoing);
+        navigation.RequestedPresentationCount.ShouldBe(navigation.Items.Count + navigation.FooterItems.Count);
+    }
+
+    /// <summary>Verifies a selection callback that re-owns the outgoing item supersedes the old
+    /// owner's pending authored-state restoration.</summary>
+    [Fact]
+    public void Remove_WhenSelectionCallbackReaddsOutgoingItem_PreservesNewOwnershipPolicy()
+    {
+        var outgoing = new NavigationViewItem { Text = "Outgoing", IsFocusable = true, IsTabStop = true };
+        var survivor = new NavigationViewItem { Text = "Survivor" };
+        var navigation = new NavigationView();
+        navigation.Items.Add(outgoing);
+        navigation.Items.Add(survivor);
+        navigation.SelectItem(outgoing);
+        navigation.SelectionChanged += (_, eventArgs) =>
+        {
+            if (ReferenceEquals(eventArgs.PreviousItem, outgoing))
+            {
+                navigation.Items.Add(outgoing);
+            }
+        };
+
+        navigation.Items.Remove(outgoing).ShouldBeTrue();
+
+        navigation.Items.ShouldContain(outgoing);
+        outgoing.IsFocusable.ShouldBeFalse();
+        outgoing.IsTabStop.ShouldBeFalse();
+        navigation.RequestedPresentationCount.ShouldBe(navigation.Items.Count);
+    }
+
+    /// <summary>Verifies clear detaches its complete snapshot before restoration callbacks add new entries.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Clear_WhenPresentationCallbackAddsEntry_PreservesOnlyTheNestedAddition(bool onTabStop)
+    {
+        var outgoing = new NavigationViewItem { Text = "Outgoing", IsFocusable = true, IsTabStop = true };
+        var second = new NavigationViewItem { Text = "Second" };
+        var nested = new NavigationViewItem { Text = "Nested" };
+        var navigation = new NavigationView();
+        navigation.Items.Add(outgoing);
+        navigation.Items.Add(second);
+        var reentered = false;
+        outgoing.PropertyChanged += (_, eventArgs) =>
+        {
+            if (!reentered && eventArgs.PropertyName == (onTabStop ? nameof(ControlBase.IsTabStop) : nameof(ControlBase.IsFocusable)))
+            {
+                reentered = true;
+                navigation.Items.Add(nested);
+            }
+        };
+
+        Should.NotThrow(navigation.Items.Clear);
+
+        navigation.Items.ShouldBe([nested]);
+        navigation.RequestedPresentationCount.ShouldBe(1);
+    }
+
+    /// <summary>Verifies grouped restoration callbacks can remove, clear, add, or dispose against
+    /// a committed collection without corrupting the outer removal.</summary>
+    [Theory]
+    [InlineData("remove", false)]
+    [InlineData("remove", true)]
+    [InlineData("clear", false)]
+    [InlineData("clear", true)]
+    [InlineData("add", false)]
+    [InlineData("add", true)]
+    [InlineData("dispose", false)]
+    [InlineData("dispose", true)]
+    public void GroupRemove_WhenPresentationCallbackReenters_ObservesCommittedDetachment(
+        string callbackMutation,
+        bool onTabStop)
+    {
+        var outgoing = new NavigationViewItem { Text = "Outgoing", IsFocusable = true, IsTabStop = true };
+        var survivor = new NavigationViewItem { Text = "Survivor" };
+        var nested = new NavigationViewItem { Text = "Nested" };
+        var group = new NavigationViewGroup { Header = "Group" };
+        group.Items.Add(outgoing);
+        group.Items.Add(survivor);
+        var reentered = false;
+        outgoing.PropertyChanged += (_, eventArgs) =>
+        {
+            if (reentered || eventArgs.PropertyName != (onTabStop ? nameof(ControlBase.IsTabStop) : nameof(ControlBase.IsFocusable)))
+            {
+                return;
+            }
+
+            reentered = true;
+
+            if (callbackMutation == "remove")
+            {
+                group.Items.Remove(outgoing).ShouldBeFalse();
+            }
+            else if (callbackMutation == "clear")
+            {
+                group.Items.Clear();
+            }
+            else if (callbackMutation == "add")
+            {
+                group.Items.Add(nested);
+            }
+            else
+            {
+                outgoing.Dispose();
+            }
+        };
+
+        Should.NotThrow(() => group.Items.Remove(outgoing).ShouldBeTrue());
+
+        group.Items.ShouldNotContain(outgoing);
+        group.RequestedPresentationCount.ShouldBe(group.Items.Count);
+    }
+
+    /// <summary>Verifies direct entry, descendant, group, and owner disposal retire every private
+    /// presentation snapshot instead of retaining disposed controls.</summary>
+    [Fact]
+    public void Dispose_WhenNavigationOwnershipEnds_RetiresPresentationMetadata()
+    {
+        var top = new NavigationViewItem { Text = "Top" };
+        var separator = new NavigationViewSeparator();
+        var child = new NavigationViewItem { Text = "Child" };
+        var group = new NavigationViewGroup { Header = "Group" };
+        group.Items.Add(child);
+        var footer = new NavigationViewItem { Text = "Footer" };
+        var navigation = new NavigationView();
+        navigation.Items.Add(top);
+        navigation.Items.Add(separator);
+        navigation.Items.Add(group);
+        navigation.FooterItems.Add(footer);
+
+        top.Dispose();
+        separator.Dispose();
+        child.Dispose();
+        footer.Dispose();
+
+        navigation.RequestedPresentationCount.ShouldBe(1);
+        group.RequestedPresentationCount.ShouldBe(0);
+
+        group.Dispose();
+
+        navigation.RequestedPresentationCount.ShouldBe(0);
+
+        var retainedChild = new NavigationViewItem { Text = "Retained" };
+        var retainedGroup = new NavigationViewGroup { Header = "Retained group" };
+        retainedGroup.Items.Add(retainedChild);
+        navigation.Items.Add(retainedGroup);
+
+        navigation.Dispose();
+
+        navigation.RequestedPresentationCount.ShouldBe(0);
+        retainedGroup.RequestedPresentationCount.ShouldBe(0);
+    }
+
     /// <summary>Verifies Move repositions an entry while preserving its identity and, since
     /// selection here is reference-tracked, the selected item's identity.</summary>
     [Fact]

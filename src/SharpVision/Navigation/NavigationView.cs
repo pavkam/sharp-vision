@@ -21,18 +21,17 @@ public sealed class NavigationView: CompositeControlBase
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly Dictionary<ControlBase, NavigationEntryPresentation> _requestedPresentations = [];
     private bool _isHandlingKnownRemoval;
+    private long _presentationVersion;
     private long _selectionVersion;
 
-    /// <summary>The selectable-item position <see cref="Select"/> last committed - a best-effort
-    /// snapshot, not a live index. <see cref="OnEntryHostChanged"/> and
-    /// <see cref="NotifyGroupVisibilityChanged"/> both react after the selected item has already
-    /// left the selectable set (disposed, or its group collapsed), so unlike
-    /// <see cref="PrepareRemoval"/> - which still has the pre-removal tree to look the position up
-    /// in - they cannot recompute a fresh index at repair time and fall back to this cached one
-    /// instead. It can drift from the true position when unrelated entries are added, removed, or
-    /// change visibility without a selection change of their own; that drift is the accepted cost
-    /// of an adjacent-position repair over always jumping to the first item.</summary>
+    /// <summary>The selected item's last committed position in the complete semantic item order.
+    /// Ordinary unavailability repairs locate the retained item in that live order. This snapshot
+    /// is reserved for an unexpected child-initiated detachment where the identity has already left
+    /// the tree; committed host changes refresh it while the selection remains attached.</summary>
     private int _selectedIndex = -1;
+
+    /// <summary>Gets the retained authored-presentation count used to prove metadata retires with ownership.</summary>
+    internal int RequestedPresentationCount => _requestedPresentations.Count;
 
     /// <summary>Gets or sets the complete local style for this control's generated scrollbar.</summary>
     /// <remarks>
@@ -283,43 +282,29 @@ public sealed class NavigationView: CompositeControlBase
         // overwritten. A rejected insertion must leave the caller's object
         // exactly as it found it.
         stack.Children.Insert(index, entry);
-        _requestedPresentations.Add(
-            entry,
-            new NavigationEntryPresentation(entry.IsFocusable, entry.IsTabStop));
-
-        if (entry is NavigationViewItem item)
-        {
-            item.IsFocusable = false;
-            item.IsTabStop = false;
-            item.Invoked += OnItemInvoked;
-        }
-        else if (entry is NavigationViewGroup group)
-        {
-            group.VisibilityChanged += OnGroupVisibilityChanged;
-        }
+        var presentation = new NavigationEntryPresentation(
+            entry.IsFocusable,
+            entry.IsTabStop,
+            ++_presentationVersion);
+        _requestedPresentations.Add(entry, presentation);
+        ConfigureEntry(stack, entry, presentation.Version);
     }
 
     /// <summary>Removes one typed entry from a section.</summary>
-    internal bool RemoveEntry(ControlBase entry, bool isFooter)
+    internal bool RemoveEntry(ControlBase entry, bool isFooter) =>
+        RemoveEntryCore(entry, isFooter, restorePresentation: true);
+
+    private bool RemoveEntryCore(ControlBase entry, bool isFooter, bool restorePresentation)
     {
         var stack = isFooter ? _footerStack : _itemsStack;
-        var repair = PrepareRemoval(entry);
 
         if (!stack.Children.Contains(entry))
         {
             return false;
         }
 
-        if (entry is NavigationViewItem item)
-        {
-            item.Invoked -= OnItemInvoked;
-        }
-        else if (entry is NavigationViewGroup group)
-        {
-            group.VisibilityChanged -= OnGroupVisibilityChanged;
-        }
-
-        RestorePresentation(entry);
+        var repair = PrepareRemoval(entry);
+        var presentation = TakePresentation(entry);
 
         _isHandlingKnownRemoval = true;
 
@@ -332,7 +317,13 @@ public sealed class NavigationView: CompositeControlBase
             _isHandlingKnownRemoval = false;
         }
 
+        UnsubscribeEntry(entry);
         CompleteRemoval(repair);
+
+        if (restorePresentation && presentation is { } requested)
+        {
+            RestorePresentation(entry, requested);
+        }
 
         return true;
     }
@@ -416,42 +407,29 @@ public sealed class NavigationView: CompositeControlBase
             _isHandlingKnownRemoval = false;
         }
 
-        if (old is NavigationViewItem oldItem)
-        {
-            oldItem.Invoked -= OnItemInvoked;
-        }
-        else if (old is NavigationViewGroup oldGroup)
-        {
-            oldGroup.VisibilityChanged -= OnGroupVisibilityChanged;
-        }
-
-        RestorePresentation(old);
-
-        _requestedPresentations.Add(
-            entry,
-            new NavigationEntryPresentation(entry.IsFocusable, entry.IsTabStop));
-
-        if (entry is NavigationViewItem newItem)
-        {
-            newItem.IsFocusable = false;
-            newItem.IsTabStop = false;
-            newItem.Invoked += OnItemInvoked;
-        }
-        else if (entry is NavigationViewGroup newGroup)
-        {
-            newGroup.VisibilityChanged += OnGroupVisibilityChanged;
-        }
-
+        UnsubscribeEntry(old);
+        var oldPresentation = TakePresentation(old);
+        var presentation = new NavigationEntryPresentation(
+            entry.IsFocusable,
+            entry.IsTabStop,
+            ++_presentationVersion);
+        _requestedPresentations.Add(entry, presentation);
+        ConfigureEntry(stack, entry, presentation.Version);
         CompleteRemoval(repair);
+
+        if (oldPresentation is { } requested)
+        {
+            RestorePresentation(old, requested);
+        }
     }
 
     /// <summary>Detaches a top-level semantic entry before direct disposal publication begins.</summary>
     /// <param name="entry">The owned entry whose caller requested disposal.</param>
     internal void RemoveEntryForDisposal(ControlBase entry)
     {
-        if (!RemoveEntry(entry, isFooter: false))
+        if (!RemoveEntryCore(entry, isFooter: false, restorePresentation: false))
         {
-            _ = RemoveEntry(entry, isFooter: true);
+            _ = RemoveEntryCore(entry, isFooter: true, restorePresentation: false);
         }
     }
 
@@ -468,6 +446,8 @@ public sealed class NavigationView: CompositeControlBase
             return;
         }
 
+        RetireDetachedPresentationMetadata();
+
         // This notification publishes from inside DisposeCore, which removes the item from
         // its owning slot before IsDisposed itself flips true — IsDisposing is what's already
         // set at this point.
@@ -478,10 +458,11 @@ public sealed class NavigationView: CompositeControlBase
 
         if (SelectedItem is { IsDisposing: true } or { IsDisposed: true })
         {
-            var remaining = CollectSelectableItems();
-            Select(remaining.Count == 0
-                ? null
-                : remaining[_selectedIndex.Clamp(0, remaining.Count - 1)]);
+            Select(FindAvailableAtSemanticIndex(_selectedIndex));
+        }
+        else if (SelectedItem is { } selected)
+        {
+            _selectedIndex = CollectSemanticItems().IndexOf(selected);
         }
     }
 
@@ -499,7 +480,7 @@ public sealed class NavigationView: CompositeControlBase
                              (ReferenceEquals(current, root) || IsDescendantOf(current, root));
         var selectedRemoved = SelectedItem is { } selected &&
                               (ReferenceEquals(selected, root) || IsDescendantOf(selected, root));
-        var selectedIndex = selectedRemoved ? CollectSelectableItems().IndexOf(SelectedItem!) : -1;
+        var selectedIndex = selectedRemoved ? CollectSemanticItems().IndexOf(SelectedItem!) : -1;
 
         return new NavigationViewRemovalRepair(currentRemoved, selectedRemoved, selectedIndex);
     }
@@ -515,30 +496,80 @@ public sealed class NavigationView: CompositeControlBase
 
         if (repair.IsSelectedRemoved)
         {
-            var remaining = CollectSelectableItems();
-
-            // SelectedIndex is -1 whenever the selected item had already become unselectable
-            // (e.g. disabled) before removal, since PrepareRemoval looks it up in the
-            // selectable set alone — SelectItem/Select never require a selectable target. Treat
-            // that the same as the empty-remaining case instead of indexing with the sentinel.
-            Select(remaining.Count == 0
-                ? null
-                : remaining[repair.SelectedIndex.Clamp(0, remaining.Count - 1)]);
+            Select(FindAvailableAtSemanticIndex(repair.SelectedIndex));
         }
     }
 
-    // Runs before the entry is detached so callers observe restored values
-    // immediately, not this view's private presentation policy.
-    private void RestorePresentation(ControlBase entry)
+    private NavigationEntryPresentation? TakePresentation(ControlBase entry)
+        => _requestedPresentations.Remove(entry, out var presentation) ? presentation : null;
+
+    private void ConfigureEntry(LayoutStack stack, ControlBase entry, long presentationVersion)
     {
-        if (!_requestedPresentations.Remove(entry, out var presentation))
+        if (entry is NavigationViewItem item)
+        {
+            item.IsFocusable = false;
+
+            if (!IsCommitted(stack, entry, presentationVersion))
+            {
+                return;
+            }
+
+            item.IsTabStop = false;
+
+            if (!IsCommitted(stack, entry, presentationVersion))
+            {
+                return;
+            }
+
+            item.Invoked += OnItemInvoked;
+        }
+        else if (entry is NavigationViewGroup group)
+        {
+            group.VisibilityChanged += OnGroupVisibilityChanged;
+        }
+    }
+
+    [Pure]
+    private bool IsCommitted(LayoutStack stack, ControlBase entry, long presentationVersion) =>
+        stack.Children.Contains(entry) &&
+        _requestedPresentations.TryGetValue(entry, out var presentation) &&
+        presentation.Version == presentationVersion;
+
+    private void UnsubscribeEntry(ControlBase entry)
+    {
+        if (entry is NavigationViewItem item)
+        {
+            item.Invoked -= OnItemInvoked;
+        }
+        else if (entry is NavigationViewGroup group)
+        {
+            group.VisibilityChanged -= OnGroupVisibilityChanged;
+        }
+    }
+
+    private void RetireDetachedPresentationMetadata()
+    {
+        foreach (var entry in _requestedPresentations.Keys.ToArray())
+        {
+            if (!ReferenceEquals(entry.Parent, _itemsStack) &&
+                !ReferenceEquals(entry.Parent, _footerStack))
+            {
+                _ = _requestedPresentations.Remove(entry);
+            }
+        }
+    }
+
+    private static void RestorePresentation(ControlBase entry, NavigationEntryPresentation presentation)
+    {
+        if (entry is not NavigationViewItem { Parent: null, IsDisposed: false, IsDisposing: false } item)
         {
             return;
         }
 
-        if (entry is NavigationViewItem item)
+        item.IsFocusable = presentation.IsFocusable;
+
+        if (!item.IsDisposed && !item.IsDisposing)
         {
-            item.IsFocusable = presentation.IsFocusable;
             item.IsTabStop = presentation.IsTabStop;
         }
     }
@@ -548,19 +579,15 @@ public sealed class NavigationView: CompositeControlBase
     {
         var stack = isFooter ? _footerStack : _itemsStack;
         var repair = PrepareRemoval(stack);
+        var entries = stack.Children.ToArray();
+        var presentations = new List<(ControlBase Entry, NavigationEntryPresentation Presentation)>();
 
-        foreach (var child in stack.Children)
+        foreach (var child in entries)
         {
-            if (child is NavigationViewItem item)
+            if (TakePresentation(child) is { } presentation)
             {
-                item.Invoked -= OnItemInvoked;
+                presentations.Add((child, presentation));
             }
-            else if (child is NavigationViewGroup group)
-            {
-                group.VisibilityChanged -= OnGroupVisibilityChanged;
-            }
-
-            RestorePresentation(child);
         }
 
         _isHandlingKnownRemoval = true;
@@ -574,7 +601,17 @@ public sealed class NavigationView: CompositeControlBase
             _isHandlingKnownRemoval = false;
         }
 
+        foreach (var child in entries)
+        {
+            UnsubscribeEntry(child);
+        }
+
         CompleteRemoval(repair);
+
+        foreach (var (entry, presentation) in presentations)
+        {
+            RestorePresentation(entry, presentation);
+        }
     }
 
     /// <summary>Updates the selected item when a child receives focus externally.</summary>
@@ -687,10 +724,7 @@ public sealed class NavigationView: CompositeControlBase
             return;
         }
 
-        var remaining = CollectSelectableItems();
-        Select(remaining.Count == 0
-            ? null
-            : remaining[_selectedIndex.Clamp(0, remaining.Count - 1)]);
+        Select(FindAvailableAdjacentTo(SelectedItem));
     }
 
     private void OnKeyRouted(object? sender, KeyEventArgs eventArgs)
@@ -778,6 +812,12 @@ public sealed class NavigationView: CompositeControlBase
 
         if (reason == ReleaseReason.Disposed)
         {
+            foreach (var group in _requestedPresentations.Keys.OfType<NavigationViewGroup>())
+            {
+                group.RetirePresentationMetadataForOwnerDisposal();
+            }
+
+            _requestedPresentations.Clear();
             SelectionChanged = null;
             _ = _navigator.SetCurrent(null);
             Select(null);
@@ -877,7 +917,7 @@ public sealed class NavigationView: CompositeControlBase
         previous?.PropertyChanged -= OnSelectedItemAvailabilityChanged;
 
         SelectedItem = item;
-        _selectedIndex = item is null ? -1 : CollectSelectableItems().IndexOf(item);
+        _selectedIndex = item is null ? -1 : CollectSemanticItems().IndexOf(item);
 
         item?.PropertyChanged += OnSelectedItemAvailabilityChanged;
         item?.CommitSelection(true);
@@ -912,8 +952,14 @@ public sealed class NavigationView: CompositeControlBase
             return;
         }
 
-        if (SelectedItem is null || IsAvailable(SelectedItem))
+        if (SelectedItem is null)
         {
+            return;
+        }
+
+        if (IsAvailable(SelectedItem))
+        {
+            _selectedIndex = CollectSemanticItems().IndexOf(SelectedItem);
             return;
         }
 
@@ -927,21 +973,67 @@ public sealed class NavigationView: CompositeControlBase
             return;
         }
 
-        var remaining = CollectSelectableItems();
-        var replacement = remaining.Count == 0
-            ? null
-            : remaining[_selectedIndex.Clamp(0, remaining.Count - 1)];
+        var replacement = FindAvailableAdjacentTo(SelectedItem);
         _ = _navigator.SetCurrent(replacement);
         Select(replacement);
     }
 
     [Pure]
-    private List<NavigationViewItem> CollectSelectableItems()
+    private List<NavigationViewItem> CollectSemanticItems()
     {
         List<NavigationViewItem> result = [];
-        CollectFrom(_itemsStack, result);
-        CollectFrom(_footerStack, result);
+        CollectSemanticFrom(_itemsStack, result);
+        CollectSemanticFrom(_footerStack, result);
         return result;
+    }
+
+    [Pure]
+    private NavigationViewItem? FindAvailableAdjacentTo(NavigationViewItem selected)
+    {
+        var entries = CollectSemanticItems();
+        var selectedIndex = entries.IndexOf(selected);
+
+        for (var index = selectedIndex + 1; index < entries.Count; index++)
+        {
+            if (IsAvailable(entries[index]))
+            {
+                return entries[index];
+            }
+        }
+
+        for (var index = selectedIndex - 1; index >= 0; index--)
+        {
+            if (IsAvailable(entries[index]))
+            {
+                return entries[index];
+            }
+        }
+
+        return null;
+    }
+
+    [Pure]
+    private NavigationViewItem? FindAvailableAtSemanticIndex(int selectedIndex)
+    {
+        var entries = CollectSemanticItems();
+
+        for (var index = Math.Max(0, selectedIndex); index < entries.Count; index++)
+        {
+            if (IsAvailable(entries[index]))
+            {
+                return entries[index];
+            }
+        }
+
+        for (var index = Math.Min(selectedIndex - 1, entries.Count - 1); index >= 0; index--)
+        {
+            if (IsAvailable(entries[index]))
+            {
+                return entries[index];
+            }
+        }
+
+        return null;
     }
 
     // Accumulates realized entry heights from the current position until the sum reaches the
@@ -1002,24 +1094,19 @@ public sealed class NavigationView: CompositeControlBase
         }
     }
 
-    private static void CollectFrom(LayoutStack stack, List<NavigationViewItem> result)
+    private static void CollectSemanticFrom(LayoutStack stack, List<NavigationViewItem> result)
     {
         foreach (var child in stack.Children)
         {
-            if (child is NavigationViewItem { EffectiveIsVisible: true, EffectiveIsEnabled: true } item)
+            if (child is NavigationViewItem item)
             {
                 result.Add(item);
             }
-            else if (child is NavigationViewGroup { EffectiveIsVisible: true, EffectiveIsEnabled: true, IsExpanded: true } group)
+            else if (child is NavigationViewGroup group)
             {
                 for (var index = 0; index < group.ItemCount; index++)
                 {
-                    var sub = group.ItemAt(index);
-
-                    if (sub is { EffectiveIsVisible: true, EffectiveIsEnabled: true })
-                    {
-                        result.Add(sub);
-                    }
+                    result.Add(group.ItemAt(index));
                 }
             }
         }

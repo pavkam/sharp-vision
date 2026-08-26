@@ -85,8 +85,12 @@ it, and selection repairs exactly as for `Items.Remove`.
   safely begin another collection mutation.
 - `TabItem.IsClosable` opts a page into `RequestClose` and Delete-key closure.
   `CloseRequested` is raised before removal with a cancellable
-  [`TabCloseRequestedEventArgs`](#tabcloserequestedeventargs) payload. No close
-  glyph or mouse-only close affordance is part of this basic contract.
+  [`TabCloseRequestedEventArgs`](#tabcloserequestedeventargs) payload. A nested
+  request for the same page is bounded and returns false without republishing;
+  the outer request continues. If a callback removes, replaces, clears, or
+  disposes the page, the request returns true from that final ownership state,
+  even when the callback also sets `Cancel`. No close glyph or mouse-only close
+  affordance is part of this basic contract.
 - When the selected page is removed, disabled, or collapsed, the control chooses
   the nearest eligible successor, then the nearest predecessor, and otherwise
   clears the selection. Clearing the collection clears the selection.
@@ -138,11 +142,11 @@ rule only while the page is selected.
 | `Item`   | `TabItem` | —       | The tab page being requested for closure.            |
 | `Cancel` | `bool`    | `false` | Settable; rejecting the close request when set true. |
 
-When no handler cancels, `RequestClose` removes the item through the ordinary
-typed collection path and applies the nearest-eligible selection repair,
-following the same identity rule as every other mutation: `SelectionChanged`
-fires only when the selected page itself is removed, not merely when its numeric
-index shifts.
+When the page remains owned and no handler cancels, `RequestClose` removes it
+through the ordinary typed collection path and applies the nearest-eligible
+selection repair. Its Boolean result describes final ownership, including a
+callback-completed close. `SelectionChanged` fires only when the selected page
+itself is removed, not merely when its numeric index shifts.
 
 ## Strip style
 

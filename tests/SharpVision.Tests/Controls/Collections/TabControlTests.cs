@@ -347,6 +347,72 @@ public sealed class TabControlTests
         other.Items.ShouldContain(foreign);
     }
 
+    /// <summary>Verifies a same-item recursive close request publishes once and lets the outer request finish removal.</summary>
+    [Fact]
+    public void RequestClose_WhenHandlerRequestsSameItemAgain_BoundsPublicationAndCompletesOuterClose()
+    {
+        var item = Create("First", "One");
+        item.IsClosable = true;
+        var tabs = Create(item);
+        var requests = 0;
+        var nestedResult = true;
+        tabs.CloseRequested += (_, args) =>
+        {
+            requests++;
+            nestedResult = tabs.RequestClose(args.Item);
+        };
+
+        var result = tabs.RequestClose(item);
+
+        result.ShouldBeTrue();
+        nestedResult.ShouldBeFalse();
+        requests.ShouldBe(1);
+        tabs.Items.ShouldNotContain(item);
+    }
+
+    /// <summary>Verifies callback-completed removal, replacement, clear, and disposal all report
+    /// the requested page closed from final ownership, even when the callback also cancels.</summary>
+    [Theory]
+    [InlineData("remove", false)]
+    [InlineData("remove", true)]
+    [InlineData("replace", false)]
+    [InlineData("clear", false)]
+    [InlineData("dispose", false)]
+    public void RequestClose_WhenHandlerEndsOwnership_ReturnsFinalCloseOutcome(string mutation, bool cancel)
+    {
+        var item = Create("First", "One");
+        item.IsClosable = true;
+        var survivor = Create("Second", "Two");
+        var replacement = Create("Replacement", "Three");
+        var tabs = Create(item, survivor);
+        tabs.CloseRequested += (_, args) =>
+        {
+            if (mutation == "remove")
+            {
+                tabs.Items.Remove(args.Item).ShouldBeTrue();
+            }
+            else if (mutation == "replace")
+            {
+                tabs.Items[0] = replacement;
+            }
+            else if (mutation == "clear")
+            {
+                tabs.Items.Clear();
+            }
+            else
+            {
+                args.Item.Dispose();
+            }
+
+            args.Cancel = cancel;
+        };
+
+        var result = tabs.RequestClose(item);
+
+        result.ShouldBeTrue();
+        tabs.Items.ShouldNotContain(item);
+    }
+
     /// <summary>Verifies configured header lengths and scrolling policy reach retained headers.</summary>
     [Fact]
     public void HeaderLayout_WhenConfigured_UsesLengthAndOverflowPolicy()
