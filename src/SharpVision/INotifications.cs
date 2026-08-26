@@ -7,7 +7,7 @@ namespace SharpVision;
 /// <remarks>
 /// There is no reliable environment or query signal for desktop-notification support, so this is
 /// never auto-detected: only an explicit
-/// <see cref="SharpVision.Terminal.Capabilities.CapabilityOverrides.Notifications"/> opt-in can
+/// <see cref="CapabilityOverrides.Notifications"/> opt-in can
 /// make <see cref="IsSupported"/> true. See the
 /// <a href="../../docs/concepts/safe-degradation.md">safe-degradation contract</a> for the general
 /// fallback rule this follows.

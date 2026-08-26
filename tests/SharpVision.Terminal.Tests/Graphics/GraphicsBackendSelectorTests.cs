@@ -231,7 +231,9 @@ public sealed class GraphicsBackendSelectorTests
             new GraphicsContext(profile, metrics: null));
         var bytes = WritePlacements(backend);
 
-        result.Placements.ShouldBe(1);
+        // Both placements route through iTerm2 (sixel needs metrics to size pixels;
+        // iTerm2 does not, and now also accepts the RGBA source by PNG-encoding it on demand).
+        result.Placements.ShouldBe(2);
         bytes.AsSpan().IndexOf("\u001bP0;1;0q"u8).ShouldBe(-1);
         bytes.AsSpan().IndexOf("\u001b]1337;MultipartFile="u8).ShouldBeGreaterThanOrEqualTo(0);
     }

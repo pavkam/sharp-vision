@@ -177,9 +177,11 @@ public sealed class NonRetainedGraphicsBackendTests
         WritePlacements(backend).ShouldBeEmpty();
     }
 
-    /// <summary>Verifies replacing emitted PNG with unsupported RGBA clears the prior inline image.</summary>
+    /// <summary>Verifies replacing an emitted PNG with an RGBA source keeps the placement live by
+    /// PNG-encoding the RGBA source on demand, instead of falling back (RGBA is no longer an
+    /// unsupported format for the iTerm2 backend).</summary>
     [Fact]
-    public void Prepare_WhenPngBecomesRgba_RequestsFullCellRedrawWithoutImageBytes()
+    public void Prepare_WhenPngBecomesRgba_KeepsPlacementByEncodingRgbaOnDemand()
     {
         using var backend = new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true);
         using var first = ItermFrame("a", (Png(), new Rect(0, 0, 1, 1), PlacementMode.Contain));
@@ -192,11 +194,11 @@ public sealed class NonRetainedGraphicsBackendTests
         backend.Commit();
 
         var result = backend.Prepare(first, rgba, full: false, Context());
+        var bytes = WritePlacements(backend);
 
         result.Changed.ShouldBeTrue();
-        result.FullCellRedraw.ShouldBeTrue();
-        result.Placements.ShouldBe(0);
-        WritePlacements(backend).ShouldBeEmpty();
+        result.Placements.ShouldBe(1);
+        bytes.AsSpan().IndexOf("]1337;MultipartFile="u8).ShouldBeGreaterThanOrEqualTo(0);
     }
 
     /// <summary>Verifies damage under an image repaints it while unrelated cell damage stays quiet.</summary>

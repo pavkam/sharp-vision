@@ -1092,11 +1092,13 @@ namespace SharpVision.Terminal.Protocols
         public static void ReportCursorPosition(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
         public static void ReportWindowCells(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
         public static void ReportWindowPixels(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void ResetScrollRegion(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
         public static void RestoreCursor(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
         public static void SaveCursor(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
         public static void ScrollDown(SharpVision.Terminal.Protocols.ProtocolWriter writer, int count = 1) { }
         public static void ScrollUp(SharpVision.Terminal.Protocols.ProtocolWriter writer, int count = 1) { }
         public static void SecondaryDeviceAttributes(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void SetScrollRegion(SharpVision.Terminal.Protocols.ProtocolWriter writer, int top, int bottom) { }
     }
     public readonly struct Diagnostic : System.IEquatable<SharpVision.Terminal.Protocols.Diagnostic>
     {
@@ -1640,7 +1642,7 @@ namespace SharpVision.Terminal.Sixel
 {
     public static class SixelWriter
     {
-        public static void Write(SharpVision.Terminal.Graphics.ImageSource image, SharpVision.Terminal.Geometry.Rect source, SharpVision.Terminal.Geometry.Size destinationPixels, SharpVision.Terminal.Graphics.PlacementMode mode, System.Buffers.IBufferWriter<byte> destination, int maxOutputBytes = 268435456) { }
+        public static void Write(SharpVision.Terminal.Graphics.ImageSource image, SharpVision.Terminal.Geometry.Rect source, SharpVision.Terminal.Geometry.Size destinationPixels, SharpVision.Terminal.Graphics.PlacementMode mode, System.Buffers.IBufferWriter<byte> destination, int maxOutputBytes = 268435456, SharpVision.Terminal.Protocols.Color background = default) { }
     }
 }
 namespace SharpVision.Terminal.Terminfo

@@ -145,7 +145,7 @@ public sealed class PngTests
     [Fact]
     public void DecodeRgba_WhenColorTypeIsGrayscaleAndBitDepthIsSixteen_NarrowsToMostSignificantByte()
     {
-        byte[] row = Samples16(0x0000, 0x8042, 0xFFFF);
+        var row = Samples16(0x0000, 0x8042, 0xFFFF);
         var source = CreateDecodablePng(3, 1, colorType: 0, bitDepth: 16, [0], [row]);
 
         var decoded = source.AsSpan().DecodeRgba();
@@ -158,7 +158,7 @@ public sealed class PngTests
     [Fact]
     public void DecodeRgba_WhenColorTypeIsRgbAndBitDepthIsSixteen_NarrowsEachChannel()
     {
-        byte[] row = Samples16(0x1020, 0x3040, 0x5060);
+        var row = Samples16(0x1020, 0x3040, 0x5060);
         var source = CreateDecodablePng(1, 1, colorType: 2, bitDepth: 16, [0], [row]);
 
         var decoded = source.AsSpan().DecodeRgba();
@@ -171,7 +171,7 @@ public sealed class PngTests
     [Fact]
     public void DecodeRgba_WhenColorTypeIsRgbaAndBitDepthIsSixteen_NarrowsEachChannel()
     {
-        byte[] row = Samples16(0x1122, 0x3344, 0x5566, 0x7788);
+        var row = Samples16(0x1122, 0x3344, 0x5566, 0x7788);
         var source = CreateDecodablePng(1, 1, colorType: 6, bitDepth: 16, [0], [row]);
 
         var decoded = source.AsSpan().DecodeRgba();
@@ -184,7 +184,7 @@ public sealed class PngTests
     [Fact]
     public void DecodeRgba_WhenColorTypeIsGrayscaleAlphaAndBitDepthIsSixteen_NarrowsBothChannels()
     {
-        byte[] row = Samples16(0xAB10, 0xCD20);
+        var row = Samples16(0xAB10, 0xCD20);
         var source = CreateDecodablePng(1, 1, colorType: 4, bitDepth: 16, [0], [row]);
 
         var decoded = source.AsSpan().DecodeRgba();
@@ -201,7 +201,7 @@ public sealed class PngTests
         // 0x2A00 and 0x2A7F both narrow to the most significant byte 0x2A, but only 0x2A00
         // exactly matches the 16-bit tRNS key; a post-narrowing comparison would incorrectly
         // treat both as transparent.
-        byte[] row = Samples16(0x2A00, 0x2A7F);
+        var row = Samples16(0x2A00, 0x2A7F);
         var source = CreateDecodablePng(2, 1, colorType: 0, bitDepth: 16, [0], [row], trns: [0x2A, 0x00]);
 
         var decoded = source.AsSpan().DecodeRgba();
@@ -437,7 +437,7 @@ public sealed class PngTests
         for (var i = 0; i < samples.Length; i++)
         {
             row[i * 2] = (byte) (samples[i] >> 8);
-            row[i * 2 + 1] = (byte) samples[i];
+            row[(i * 2) + 1] = (byte) samples[i];
         }
 
         return row;
