@@ -28,7 +28,11 @@ labels is what the full charts provide.
 `IncludeZero` policy. `ChartScale.Automatic` includes zero. Bar charts use that
 default; line, area, and sparkline controls leave zero optional so small trends
 remain visible. Empty data resolves to `0..1`, and a constant automatic range is
-expanded symmetrically.
+expanded symmetrically when representable. At finite numeric extremes, expansion
+uses the nearest representable neighbor and saturates instead of creating
+infinity or equal endpoints. Ratio mapping normalizes spans whose direct
+subtraction would overflow, so every accepted finite value maps to a finite
+clamped position.
 
 `ChartLegendPlacement.Automatic` shows a bottom legend for two or more named
 series. `Hidden`, `Top`, `Bottom`, `Left`, and `Right` provide explicit policy.

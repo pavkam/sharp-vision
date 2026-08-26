@@ -22,6 +22,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     private readonly HashSet<TableRow> _selectedRows = [];
     private readonly HashSet<TableCellReference> _selectedCells = [];
     private bool _isReordering;
+    private long _progressiveSortVersion;
     private TableRow? _selectionAnchorRow;
     private int _selectionAnchorColumn = -1;
     private TableEditState? _edit;
@@ -1085,6 +1086,15 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         controller.Rewindow(Viewport.Height, VerticalOffset);
     }
 
+    /// <summary>Gets the attachment generation used to reject progressive callbacks queued by a
+    /// dispatcher that no longer owns this table.</summary>
+    internal long ProgressiveAttachmentVersion => AttachmentVersion;
+
+    /// <summary>Runs the ordinary progressive sort transaction for tests that must initiate a
+    /// newer request synchronously from the public sort callback.</summary>
+    /// <param name="columnIndex">The validated progressive column index.</param>
+    internal void RequestProgressiveSortForLifecycleTest(int columnIndex) => RequestProgressiveSort(columnIndex);
+
     // Cycles ascending/descending/reset for the clicked column using exactly SortBy's cycle, then
     // commits the same SortColumnIndex/SortDirection indicator state SetSort commits - but never
     // calls ReorderRows, since a progressive table has no owned Rows to reorder. The data source is
@@ -1092,6 +1102,14 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     private void RequestProgressiveSort(int columnIndex)
     {
         VerifyMutable();
+        var controller = Progressive;
+
+        if (controller is null)
+        {
+            return;
+        }
+
+        var version = ++_progressiveSortVersion;
 
         var direction = SortColumnIndex != columnIndex
             ? TableSortDirection.Ascending
@@ -1119,8 +1137,17 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             NotifyPropertyChanged(nameof(SortDirection), InvalidationImpact.Render);
         }
 
+        if (_progressiveSortVersion != version || !ReferenceEquals(Progressive, controller))
+        {
+            return;
+        }
+
         SortRequested?.Invoke(this, new TableSortChangedEventArgs(resolvedColumn, direction));
-        Reload();
+
+        if (_progressiveSortVersion == version && ReferenceEquals(Progressive, controller))
+        {
+            controller.Reload();
+        }
     }
 
     private void OnPresenterScrollChanged(object? sender, ScrollChangedEventArgs eventArgs)

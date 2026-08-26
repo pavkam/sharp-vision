@@ -21,6 +21,7 @@ public sealed class NavigationView: CompositeControlBase
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly Dictionary<ControlBase, NavigationEntryPresentation> _requestedPresentations = [];
     private bool _isHandlingKnownRemoval;
+    private long _selectionVersion;
 
     /// <summary>The selectable-item position <see cref="Select"/> last committed - a best-effort
     /// snapshot, not a live index. <see cref="OnEntryHostChanged"/> and
@@ -824,11 +825,17 @@ public sealed class NavigationView: CompositeControlBase
             return;
         }
 
+        var version = ++_selectionVersion;
         var previous = SelectedItem;
 
         if (previous is { IsDisposed: false })
         {
             previous.CommitSelection(false);
+
+            if (_selectionVersion != version)
+            {
+                return;
+            }
         }
 
         previous?.VisibilityChanged -= OnSelectedItemVisibilityChanged;
@@ -839,7 +846,18 @@ public sealed class NavigationView: CompositeControlBase
         item?.VisibilityChanged += OnSelectedItemVisibilityChanged;
         item?.CommitSelection(true);
 
+        if (_selectionVersion != version)
+        {
+            return;
+        }
+
         NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
+
+        if (_selectionVersion != version || !ReferenceEquals(SelectedItem, item))
+        {
+            return;
+        }
+
         SelectionChanged?.Invoke(this, new NavigationViewSelectionChangedEventArgs(previous, item));
     }
 

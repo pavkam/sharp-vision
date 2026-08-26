@@ -207,6 +207,11 @@ binding down and returns to an empty eager table. A rejected `SetDataSource`
 call always leaves the prior mode — eager or an earlier progressive source —
 completely untouched.
 
+Off-dispatcher `Changed` notifications are marshalled to the table's exact
+dispatcher attachment generation. Detaching or migrating the table before a
+queued notification runs discards that obsolete callback; it cannot reload a
+controller through the previous dispatcher.
+
 A progressive table addresses rows by zero-based logical `int` index and by a
 caller-supplied stable key (`ITableDataSource<T>.GetKey`), independent of
 whatever range happens to be cached. `ActiveIndex`, `ActiveKey`, and
@@ -248,7 +253,11 @@ does and repaints the same direction indicator, but raises `SortRequested`
 instead of reordering any row itself, then calls `Reload()`. An application
 subscribes to `SortRequested`, reconfigures its `ITableDataSource<T>` query to
 honor the reported column and direction, and lets the triggered `Reload()`
-re-fetch under the new order.
+re-fetch under the new order. The callback may also clear or replace the data
+source, dispose the table, or synchronously request a newer sort. Reload occurs
+only when the same controller and sort generation still own the transaction, so
+obsolete outer work never touches replacement state or duplicates the newer
+request.
 
 A table that merely leaves the tree keeps its progressive source, cache, and
 selection — only genuinely in-flight fetches are canceled, matching the

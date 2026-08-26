@@ -8,6 +8,63 @@ using System.Reflection;
 /// <summary>Defines retained composition and asynchronous state behavior for SaveFileDialog.</summary>
 public sealed class SaveFileDialogTests
 {
+    /// <summary>Verifies overwrite completion captured by an earlier dispatcher attachment cannot
+    /// publish its abandoned path after the modeless dialog migrates to a new owner.</summary>
+    [Fact]
+    public async Task Save_WhenDialogMigratesDuringOverwriteConfirmation_IgnoresPreviousRequestAsync()
+    {
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "save-migration"));
+        var existingPath = Path.Combine(directory, "existing.txt");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory, new FilePickerEntry("existing.txt", existingPath, false, false));
+        var dialog = new SaveFileDialog(
+            new SaveFileOptions
+            {
+                InitialDirectory = directory,
+                InitialFileName = "existing.txt",
+                ConfirmOverwrite = true
+            },
+            source);
+        var fileName = OwnedTree.FindAll<TextInput>(dialog)
+            .First(static input => input.Placeholder == "File name");
+        var save = OwnedTree.FindAll<Button>(dialog).Single(static button => button.IsDefault);
+        var confirmation = new TaskCompletionSource<MessageBoxResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var postReady = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        dialog.ConfirmOverwriteForLifecycleTest = () => confirmation.Task;
+        dialog.PostAcceptanceHookForLifecycleTest = postReady.SetResult;
+        await using var previousDispatcher = Dispatcher.Start();
+        await using var currentDispatcher = Dispatcher.Start();
+        var previousRoot = new Overlay { Children = { dialog } };
+        var currentRoot = new Overlay();
+
+        await previousDispatcher.InvokeAsync(
+            () =>
+            {
+                previousRoot.Attach(previousDispatcher);
+                save.PerformClick();
+                previousRoot.Children.Remove(dialog).ShouldBeTrue();
+            },
+            TestContext.Current.CancellationToken);
+        await currentDispatcher.InvokeAsync(
+            () =>
+            {
+                currentRoot.Children.Add(dialog);
+                currentRoot.Attach(currentDispatcher);
+                fileName.Text = "new.txt";
+            },
+            TestContext.Current.CancellationToken);
+
+        confirmation.SetResult(MessageBoxResult.Yes);
+        await postReady.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await previousDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        await currentDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        dialog.HasSelectedResult.ShouldBeFalse();
+        dialog.FileName.ShouldBe("new.txt");
+        await currentDispatcher.InvokeAsync(currentRoot.Dispose, TestContext.Current.CancellationToken);
+        await previousDispatcher.InvokeAsync(previousRoot.Dispose, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies save-specific retained captions and placeholders follow newer values
     /// committed from their owner notifications.</summary>
     [Fact]

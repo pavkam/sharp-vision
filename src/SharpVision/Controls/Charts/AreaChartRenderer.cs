@@ -93,7 +93,7 @@ internal static class AreaChartRenderer
 
                 var span = halfX[segment + 1] - halfX[segment];
                 var ratio = span <= 0 ? 0 : Math.Clamp((center - halfX[segment]) / span, 0, 1);
-                value = values[segment] + ((values[segment + 1] - values[segment]) * ratio);
+                value = ChartRenderer.Interpolate(values[segment], values[segment + 1], ratio);
             }
 
             var eighths = ChartRenderer.ExtentEighths(range, value, plot.Height, zeroCells);

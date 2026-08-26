@@ -166,7 +166,10 @@ separator, file rows use `·`, and names are markup-escaped and ellipsized.
   `OverwriteYesText`, `OverwriteNoText`, and `OverwriteStyle` — asks before
   completing. Choosing No or dismissing the box leaves the save dialog open;
   choosing Yes returns the path. When `ConfirmOverwrite` is false, an existing
-  path is returned directly.
+  path is returned directly. A pending confirmation belongs to the exact
+  filename request and dispatcher attachment that opened it. Editing the name,
+  retrying Save, detaching, or migrating the modeless dialog supersedes that
+  request, so its later answer cannot publish an abandoned path.
 - Changing the filter or the hidden-entry toggle replaces the asynchronous
   directory load. Tab and Shift+Tab stay inside the modal plane, and input
   outside the dialog is consumed.
@@ -183,7 +186,8 @@ file. Filesystem races, permissions, sharing, and the final write remain the
 caller's responsibility. Enumeration runs away from the dispatcher and posts
 only the newest immutable snapshot back to it. Attached properties, controls,
 focus, layout, completion, and the overwrite-confirmation continuation are
-dispatcher-affine.
+dispatcher-affine. A continuation captured before reattachment is ignored rather
+than posting completion through its previous dispatcher.
 
 ## Theming
 

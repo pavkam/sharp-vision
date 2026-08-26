@@ -38,8 +38,53 @@ internal static class ChartRenderer
 
     /// <summary>Maps a finite value to its clamped 0-1 position within a resolved range.</summary>
     [Pure]
-    internal static double Ratio(ChartScaleRange range, double value) =>
-        Math.Clamp((value - range.Minimum) / (range.Maximum - range.Minimum), 0, 1);
+    internal static double Ratio(ChartScaleRange range, double value)
+    {
+        if (value <= range.Minimum)
+        {
+            return 0;
+        }
+
+        if (value >= range.Maximum)
+        {
+            return 1;
+        }
+
+        var span = range.Maximum - range.Minimum;
+
+        if (double.IsFinite(span))
+        {
+            return Math.Clamp((value - range.Minimum) / span, 0, 1);
+        }
+
+        var magnitude = Math.Max(Math.Abs(range.Minimum), Math.Abs(range.Maximum));
+        var normalizedMinimum = range.Minimum / magnitude;
+        return Math.Clamp(
+            ((value / magnitude) - normalizedMinimum) /
+            ((range.Maximum / magnitude) - normalizedMinimum),
+            0,
+            1);
+    }
+
+    /// <summary>Interpolates finite values without overflowing their finite difference.</summary>
+    [Pure]
+    internal static double Interpolate(double start, double end, double ratio)
+    {
+        if (ratio <= 0)
+        {
+            return start;
+        }
+
+        if (ratio >= 1)
+        {
+            return end;
+        }
+
+        var difference = end - start;
+        return double.IsFinite(difference)
+            ? start + (difference * ratio)
+            : (start * (1 - ratio)) + (end * ratio);
+    }
 
     /// <summary>Maps a finite value to an inclusive vertical plot cell.</summary>
     [Pure]

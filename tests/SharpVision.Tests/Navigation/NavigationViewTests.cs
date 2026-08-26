@@ -6,6 +6,57 @@ namespace SharpVision.Tests.Navigation;
 /// <summary>Verifies sidebar navigation item ownership, selection, groups, and keyboard navigation.</summary>
 public sealed class NavigationViewTests
 {
+    /// <summary>Verifies every public selection-notification boundary yields ownership to a newer
+    /// nested selection and never publishes the superseded typed payload.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void SelectItem_WhenSelectionNotificationReenters_PublishesOnlyNewestSelection(int boundary)
+    {
+        var first = new NavigationViewItem { Text = "First" };
+        var second = new NavigationViewItem { Text = "Second" };
+        var newest = new NavigationViewItem { Text = "Newest" };
+        var navigation = new NavigationView();
+        navigation.Items.Add(first);
+        navigation.Items.Add(second);
+        navigation.Items.Add(newest);
+        navigation.SelectItem(first);
+        List<NavigationViewSelectionChangedEventArgs> changes = [];
+        navigation.SelectionChanged += (_, eventArgs) => changes.Add(eventArgs);
+        first.PropertyChanged += (_, eventArgs) =>
+        {
+            if (boundary == 0 && eventArgs.PropertyName == nameof(NavigationViewItem.IsSelected))
+            {
+                navigation.SelectItem(newest);
+            }
+        };
+        second.PropertyChanged += (_, eventArgs) =>
+        {
+            if (boundary == 1 && eventArgs.PropertyName == nameof(NavigationViewItem.IsSelected))
+            {
+                navigation.SelectItem(newest);
+            }
+        };
+        navigation.PropertyChanged += (_, eventArgs) =>
+        {
+            if (boundary == 2 &&
+                eventArgs.PropertyName == nameof(NavigationView.SelectedItem) &&
+                ReferenceEquals(navigation.SelectedItem, second))
+            {
+                navigation.SelectItem(newest);
+            }
+        };
+
+        navigation.SelectItem(second);
+
+        navigation.SelectedItem.ShouldBeSameAs(newest);
+        first.IsSelected.ShouldBeFalse();
+        second.IsSelected.ShouldBeFalse();
+        newest.IsSelected.ShouldBeTrue();
+        changes.ShouldHaveSingleItem().CurrentItem.ShouldBeSameAs(newest);
+    }
+
     /// <summary>Verifies a navigation view starts as a quiet borderless sidebar surface without caller styling.</summary>
     [Fact]
     public void Constructor_WhenCreated_UsesQuietBackgroundDefaults()

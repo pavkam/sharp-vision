@@ -6,6 +6,63 @@ namespace SharpVision.Tests.Controls.Charts;
 /// <summary>Verifies deterministic automatic chart-scale resolution.</summary>
 public sealed class ChartScaleResolverTests
 {
+    /// <summary>Verifies every collapsed finite extreme resolves to an ordered finite range.</summary>
+    [Theory]
+    [InlineData(double.MinValue)]
+    [InlineData(double.MaxValue)]
+    public void Resolve_WhenValuesCollapseAtFiniteExtreme_ReturnsFiniteOrderedRange(double value)
+    {
+        var scale = new ChartScale(minimum: null, maximum: null, includeZero: false);
+
+        var range = ChartScaleResolver.Resolve(scale, [value]);
+
+        double.IsFinite(range.Minimum).ShouldBeTrue();
+        double.IsFinite(range.Maximum).ShouldBeTrue();
+        range.Minimum.ShouldBeLessThan(range.Maximum);
+    }
+
+    /// <summary>Verifies one-sided empty extreme bounds still produce a finite ordered range.</summary>
+    [Theory]
+    [InlineData(double.MaxValue, true)]
+    [InlineData(double.MinValue, false)]
+    public void Resolve_WhenEmptyOneSidedBoundIsExtreme_ReturnsFiniteOrderedRange(double value, bool isMinimum)
+    {
+        var scale = isMinimum
+            ? new ChartScale(value, maximum: null, includeZero: false)
+            : new ChartScale(minimum: null, value, includeZero: false);
+
+        var range = ChartScaleResolver.Resolve(scale, ReadOnlySpan<double>.Empty);
+
+        double.IsFinite(range.Minimum).ShouldBeTrue();
+        double.IsFinite(range.Maximum).ShouldBeTrue();
+        range.Minimum.ShouldBeLessThan(range.Maximum);
+    }
+
+    /// <summary>Verifies ratio arithmetic remains finite across the widest accepted span.</summary>
+    [Theory]
+    [InlineData(double.MinValue, 0d)]
+    [InlineData(0d, 0.5d)]
+    [InlineData(double.MaxValue, 1d)]
+    public void Ratio_WhenRangeSpansFiniteExtremes_ReturnsExpectedFiniteRatio(double value, double expected)
+    {
+        var range = new ChartScaleRange(double.MinValue, double.MaxValue);
+
+        var ratio = ChartRenderer.Ratio(range, value);
+
+        double.IsFinite(ratio).ShouldBeTrue();
+        ratio.ShouldBe(expected, tolerance: 1e-15);
+    }
+
+    /// <summary>Verifies area interpolation does not overflow opposite-sign finite endpoints.</summary>
+    [Fact]
+    public void Interpolate_WhenEndpointsAreFiniteExtremes_ReturnsFiniteMidpoint()
+    {
+        var value = ChartRenderer.Interpolate(double.MinValue, double.MaxValue, 0.5);
+
+        double.IsFinite(value).ShouldBeTrue();
+        value.ShouldBe(0);
+    }
+
     /// <summary>Verifies mixed values preserve their extrema when zero is already included.</summary>
     [Fact]
     public void Resolve_WhenValuesAreMixedAndZeroIsIncluded_UsesDataExtrema()

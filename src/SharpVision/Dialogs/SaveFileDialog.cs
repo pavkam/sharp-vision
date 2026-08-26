@@ -28,6 +28,15 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
     private readonly Button _saveButton;
     private readonly StyleSlot<ButtonStyle> _saveButtonStyle;
     private readonly StyleSlot<SaveFileDialogStyle> _style;
+    private long _acceptanceVersion;
+
+    /// <summary>Gets or sets a deterministic overwrite-confirmation source for lifecycle tests
+    /// that must hold the asynchronous boundary while dispatcher ownership changes.</summary>
+    internal Func<Task<MessageBoxResult>>? ConfirmOverwriteForLifecycleTest { get; set; }
+
+    /// <summary>Gets or sets a lifecycle-test hook invoked immediately before the captured
+    /// dispatcher post, proving the continuation has crossed its asynchronous boundary.</summary>
+    internal Action? PostAcceptanceHookForLifecycleTest { get; set; }
 
     #region Construction and state
 
@@ -397,6 +406,7 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
 
     private async void CompleteAcceptedAsync()
     {
+        var acceptanceVersion = ++_acceptanceVersion;
         var fileName = _fileNameInput.Text.Trim();
 
         if (string.IsNullOrEmpty(fileName))
@@ -428,24 +438,27 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
         if (_confirmOverwrite && FileSystem.FileExists(fullPath))
         {
             var dispatcher = Dispatcher;
+            var attachmentVersion = AttachmentVersion;
 
             if (dispatcher is null)
             {
                 return;
             }
 
-            var confirmation = await MessageBox.ShowAsync(
-                this,
-                OverwriteMessageFormat(Path.GetFileName(fullPath)),
-                new MessageBoxOptions
-                {
-                    Title = OverwriteTitle,
-                    Buttons = MessageBoxButtons.YesNo,
-                    YesText = OverwriteYesText,
-                    NoText = OverwriteNoText,
-                    Style = OverwriteStyle,
-                    ButtonStyle = SaveButtonStyle
-                });
+            var confirmation = ConfirmOverwriteForLifecycleTest is { } confirm
+                ? await confirm()
+                : await MessageBox.ShowAsync(
+                    this,
+                    OverwriteMessageFormat(Path.GetFileName(fullPath)),
+                    new MessageBoxOptions
+                    {
+                        Title = OverwriteTitle,
+                        Buttons = MessageBoxButtons.YesNo,
+                        YesText = OverwriteYesText,
+                        NoText = OverwriteNoText,
+                        Style = OverwriteStyle,
+                        ButtonStyle = SaveButtonStyle
+                    });
 
             // The MessageBox completion resumes on a background thread. Post back to the
             // owning dispatcher so that Complete can safely modify attached control state.
@@ -455,11 +468,16 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
             // swallowed the same way as disposal: propagating InvalidOperationException here
             // would crash the whole application over one confirmed "overwrite" click the user
             // can simply retry, strictly worse than silently dropping it.
+            PostAcceptanceHookForLifecycleTest?.Invoke();
+
             try
             {
                 dispatcher.Post(() =>
                 {
-                    if (confirmation == MessageBoxResult.Yes)
+                    if (confirmation == MessageBoxResult.Yes &&
+                        ReferenceEquals(Dispatcher, dispatcher) &&
+                        AttachmentVersion == attachmentVersion &&
+                        _acceptanceVersion == acceptanceVersion)
                     {
                         _ = Complete(SaveFileResult.FromPath(fullPath));
                     }
@@ -477,6 +495,7 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
 
     private void OnFileNameChanged(object? sender, TextChangedEventArgs eventArgs)
     {
+        _acceptanceVersion++;
         _ = sender;
         _ = eventArgs;
         UpdateSaveEnabled();

@@ -57,7 +57,8 @@ var chart = new AreaChart
 - By default (`ChartStyle.FillMode` of `Fractional`) the fill is continuous
   across the series' domain: every plot column carries the linearly interpolated
   series height rasterized in eighth-cell resolution, so the fill's own
-  fractional top edge traces the series silhouette.
+  fractional top edge traces the series silhouette. Interpolation remains finite
+  when adjacent authored values have opposite-sign extreme magnitudes.
 - A style with `ChartFillMode.Glyph` keeps the authored area glyph filling whole
   cells in the columns that carry a data point, leaving the columns between
   points empty.

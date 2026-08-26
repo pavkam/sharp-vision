@@ -92,9 +92,9 @@ internal static class ChartScaleResolver
         return scale.Minimum is { } minimum && scale.Maximum is { } maximum
             ? new ChartScaleRange(minimum, maximum)
             : scale.Minimum is { } lower
-                ? new ChartScaleRange(lower, Math.Max(lower + 1, scale.IncludeZero ? 0 : lower + 1))
+                ? ExpandFromMinimum(lower, scale.IncludeZero)
                 : scale.Maximum is { } upper
-                    ? new ChartScaleRange(Math.Min(upper - 1, scale.IncludeZero ? 0 : upper - 1), upper)
+                    ? ExpandFromMaximum(upper, scale.IncludeZero)
                     : new ChartScaleRange(0, 1);
     }
 
@@ -103,10 +103,49 @@ internal static class ChartScaleResolver
     {
         var margin = value == 0 ? 1 : Math.Max(Math.Abs(value) * 0.1, 1);
 
-        return scale.Minimum.HasValue
-            ? new ChartScaleRange(value, value + margin)
-            : scale.Maximum.HasValue
-                ? new ChartScaleRange(value - margin, value)
-                : new ChartScaleRange(value - margin, value + margin);
+        if (scale.Minimum.HasValue)
+        {
+            return ExpandFromMinimum(value, includeZero: false, margin);
+        }
+
+        if (scale.Maximum.HasValue)
+        {
+            return ExpandFromMaximum(value, includeZero: false, margin);
+        }
+
+        var minimum = value - margin;
+        var maximum = value + margin;
+
+        return double.IsFinite(minimum) && double.IsFinite(maximum) && minimum < maximum
+            ? new ChartScaleRange(minimum, maximum)
+            : value == double.MaxValue
+                ? new ChartScaleRange(double.BitDecrement(value), value)
+                : new ChartScaleRange(value, double.BitIncrement(value));
+    }
+
+    [Pure]
+    private static ChartScaleRange ExpandFromMinimum(double minimum, bool includeZero, double distance = 1)
+    {
+        var expanded = minimum + distance;
+        var maximum = Math.Max(expanded, includeZero ? 0 : expanded);
+
+        return double.IsFinite(maximum) && minimum < maximum
+            ? new ChartScaleRange(minimum, maximum)
+            : minimum == double.MaxValue
+                ? new ChartScaleRange(double.BitDecrement(minimum), minimum)
+                : new ChartScaleRange(minimum, double.BitIncrement(minimum));
+    }
+
+    [Pure]
+    private static ChartScaleRange ExpandFromMaximum(double maximum, bool includeZero, double distance = 1)
+    {
+        var expanded = maximum - distance;
+        var minimum = Math.Min(expanded, includeZero ? 0 : expanded);
+
+        return double.IsFinite(minimum) && minimum < maximum
+            ? new ChartScaleRange(minimum, maximum)
+            : maximum == double.MinValue
+                ? new ChartScaleRange(maximum, double.BitIncrement(maximum))
+                : new ChartScaleRange(double.BitDecrement(maximum), maximum);
     }
 }

@@ -65,7 +65,10 @@ classDiagram
 - `Items` and `FooterItems` accept `NavigationViewItem`, `NavigationViewGroup`,
   and `NavigationViewSeparator` through the same typed overloads.
 - `SelectItem` rejects null and items owned by another navigation view.
-- `SelectionChanged` fires after a committed selection change.
+- `SelectionChanged` fires after a committed selection change. If an
+  `IsSelected` or `SelectedItem` observer synchronously selects another item,
+  the newer selection owns the visual markers, public property, and typed event;
+  the superseded transition publishes nothing further.
 
 The view is the single sidebar tab stop (`TabNavigation.None`); item and group
 faces never receive keyboard focus themselves. Up and Down arrows move the

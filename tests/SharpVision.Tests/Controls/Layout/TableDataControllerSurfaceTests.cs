@@ -411,6 +411,79 @@ public sealed class TableDataControllerSurfaceTests
         source.LoadCallCount.ShouldBeGreaterThan(loadCallCountBeforeClick);
     }
 
+    /// <summary>Verifies sort callbacks may remove, replace, or dispose progressive state without
+    /// the superseded outer request reloading through invalidated controller ownership.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task Pointer_WhenSortRequestedInvalidatesProgressiveController_DoesNotReloadStaleStateAsync(
+        int mutation)
+    {
+        var table = CreateHost(showHeader: true);
+        var source = CreateSource(20);
+        var replacement = CreateSource(20);
+        var host = new Overlay { Children = { table } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host, new Size(10, 6), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        var replacementLoadsAfterMutation = 0;
+        table.SortRequested += (_, _) =>
+        {
+            switch (mutation)
+            {
+                case 0:
+                    table.ClearDataSource();
+                    break;
+                case 1:
+                    table.SetDataSource(replacement, BuildRow, 1);
+                    replacementLoadsAfterMutation = replacement.LoadCallCount;
+                    break;
+                case 2:
+                    table.Dispose();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mutation));
+            }
+        };
+
+        await Should.NotThrowAsync(() => surface.Pointer.ClickAsync(table, new Point(1, 0)));
+
+        if (mutation == 1)
+        {
+            replacement.LoadCallCount.ShouldBe(replacementLoadsAfterMutation);
+        }
+    }
+
+    /// <summary>Verifies a newer reentrant sort owns the sole reload and the outer request does not
+    /// cancel and fetch the same controller a second time.</summary>
+    [Fact]
+    public async Task RequestProgressiveSort_WhenHandlerStartsNewerSort_ReloadsNewestRequestOnceAsync()
+    {
+        var table = CreateHost(showHeader: true);
+        var source = CreateSource(20);
+        await using var surface = await ComponentSurface.MountAsync(
+            table, new Size(10, 6), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        var reentered = false;
+        table.SortRequested += (_, _) =>
+        {
+            if (!reentered)
+            {
+                reentered = true;
+                table.RequestProgressiveSortForLifecycleTest(0);
+            }
+        };
+        var loadsBeforeSort = source.LoadCallCount;
+
+        await surface.UpdateAsync(
+            () => table.RequestProgressiveSortForLifecycleTest(0),
+            "request reentrant progressive sort");
+
+        table.SortDirection.ShouldBe(TableSortDirection.Descending);
+        source.LoadCallCount.ShouldBe(loadsBeforeSort + 1);
+    }
+
     /// <summary>Verifies leaving the tree mid-fetch cancels the in-flight request, and reattaching
     /// resumes progressive loading with a fresh fetch that still resolves normally.</summary>
     [Fact]
@@ -506,6 +579,53 @@ public sealed class TableDataControllerSurfaceTests
         await SettleUntilAsync(surface, source, () => !table.ProgressiveController!.IsPlaceholder(0));
 
         table.ProgressiveController!.IsPlaceholder(0).ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a source notification queued on one dispatcher cannot reload the same
+    /// progressive controller after its table migrates to another dispatcher attachment.</summary>
+    [Fact]
+    public async Task AdapterChanged_WhenTableMigratesBeforeQueuedCallback_IgnoresPreviousDispatcherAsync()
+    {
+        await using var previousDispatcher = Dispatcher.Start();
+        await using var currentDispatcher = Dispatcher.Start();
+        var table = CreateHost();
+        var source = CreateSource(20);
+        var previousRoot = new Overlay { Children = { table } };
+        var currentRoot = new Overlay();
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var detached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim changed = new();
+        using ManualResetEventSlim release = new();
+        previousDispatcher.Post(() =>
+        {
+            previousRoot.Attach(previousDispatcher);
+            table.SetDataSource(source, BuildRow, 1);
+            ready.SetResult();
+            changed.Wait();
+            previousRoot.Children.Remove(table).ShouldBeTrue();
+            detached.SetResult();
+            release.Wait();
+        });
+        await ready.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        source.RaiseChanged();
+        changed.Set();
+        await detached.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await currentDispatcher.InvokeAsync(
+            () =>
+            {
+                currentRoot.Children.Add(table);
+                currentRoot.Attach(currentDispatcher);
+            },
+            TestContext.Current.CancellationToken);
+        var loadCountBeforeStaleCallback = source.LoadCallCount;
+
+        release.Set();
+        await previousDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        source.LoadCallCount.ShouldBe(loadCountBeforeStaleCallback);
+        await currentDispatcher.InvokeAsync(currentRoot.Dispose, TestContext.Current.CancellationToken);
+        await previousDispatcher.InvokeAsync(previousRoot.Dispose, TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies the public <see cref="Table.Reload"/> path actually repaints an
