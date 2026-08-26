@@ -48,10 +48,12 @@ classDiagram
   radio selection within the containing menu.
 - `Invoked` reports the committed activation after any check or radio state
   update. The bound `Command`, if any and if `CanExecute` allows it, runs after
-  `Invoked` and after the menu's own `ItemInvoked` notification. An item with an
-  open submenu never reaches this: activating it toggles the submenu instead,
-  and no `Invoked` or `Command` fires. Every invocation event reports one
-  defined keyboard, pointer, or programmatic activation cause.
+  `Invoked` and after the menu's own `ItemInvoked` notification. The command and
+  parameter are captured before those callbacks, so rebinding or disposing the
+  item cannot redirect an activation already in progress. An item with an open
+  submenu never reaches this: activating it toggles the submenu instead, and no
+  `Invoked` or `Command` fires. Every invocation event reports one defined
+  keyboard, pointer, or programmatic activation cause.
 
 A check or radio entry reserves one cell for its selection glyph plus one
 separator cell in front of the caption. The caption is measured against the
@@ -155,7 +157,10 @@ set, `Shortcut` supplies its conventional display text; for example,
 text, following the same local-wins-over-derived precedence used throughout the
 library. Assigning `Shortcut` synchronizes the derived display text and the
 dispatcher's live-shortcut registration before the property publishes, and a
-reentrant newer assignment owns both.
+reentrant newer assignment owns both. Registration tracks the exact dispatcher
+to which the item currently contributes; attachment, detachment, and
+`ParentChanged` callbacks may change `Shortcut` without double-counting,
+underflowing, or leaking the previous dispatcher contribution.
 
 ## Shortcut dispatch
 
@@ -212,7 +217,10 @@ Generic popup fallback, promotion, light dismissal, and ancestor-chain
 preservation are unchanged. Closing the submenu restores focus to the owning
 menu. Every retained popup and nested Menu participates as a descendant of the
 top owner's [single menu plane](../../concepts/modality.md#menu-planes), so
-opening a nested item never creates one modal scope per submenu.
+opening a nested item never creates one modal scope per submenu. Directly
+disposing the retained `Submenu` clears the relationship and retires its popup
+immediately, whether the submenu is closed, open, or part of an active nested
+menu chain.
 
 ## MenuSeparator
 

@@ -1558,6 +1558,18 @@ public sealed class ListView: ItemsControl
         RepairIneligibleIndex(item.Index);
     }
 
+    /// <summary>Removes the semantic item before its directly disposed template content leaves the wrapper.</summary>
+    internal void OnItemContentDisposalRequested(ListItem item, ControlBase content)
+    {
+        if (!ReferenceEquals(item.Content, content) || !ReferenceEquals(ItemAt(item.Index), item))
+        {
+            return;
+        }
+
+        item.Content = null;
+        RemoveItem(item.Index);
+    }
+
     // Drops a row that just became ineligible from selection and, if it was also the active row,
     // hands active state to the nearest still-eligible neighbor - mirroring ReplaceItem's tail,
     // but never promoting selection to an adjacent index the way NavigationView's group-collapse

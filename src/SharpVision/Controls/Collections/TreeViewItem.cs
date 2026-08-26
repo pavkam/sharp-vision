@@ -822,6 +822,14 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         base.OnDisposing();
     }
 
+    /// <inheritdoc/>
+    internal override void OnDirectDisposalRequested()
+    {
+        ParentCollection?.RemoveForDisposal(this);
+        Children.ReleaseForDisposedParent();
+        base.OnDirectDisposalRequested();
+    }
+
     [Pure]
     internal TreeView? FindTreeView() => ParentCollection?.Owner ?? FindAncestor<TreeView>();
 

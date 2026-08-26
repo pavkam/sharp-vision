@@ -112,7 +112,9 @@ otherwise. Pointer or programmatic selection updates the owning
 | `Invoked`                    | `EventHandler<ActivationEventArgs>` | No subscribers | Raised after keyboard or pointer activation requests navigation.                                           |
 
 Activation raises `Invoked`, then invokes the inherited `Command` with
-`CommandParameter` when one is bound and `CanExecute` allows it.
+`CommandParameter` when one is bound and `CanExecute` allows it. That command
+binding is captured before `Invoked`, so a callback may rebind or dispose the
+item without changing the activation already in progress.
 
 `StartAffix` and `EndAffix` reserve fixed cell columns beside the label, the
 same seam `Button` and `HyperlinkButton` expose (see

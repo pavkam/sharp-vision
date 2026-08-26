@@ -159,6 +159,9 @@ off-screen-sized allocation.
 
 `TreeViewItem : ControlBase` is one selectable, optionally expandable entry
 owned by a `TreeView` or by another `TreeViewItem`'s `Children` collection.
+Directly disposing an item removes it from that semantic collection before
+disposal publishes and releases every descendant as a detached, reusable item;
+no disposed entry remains reachable through `Items` or `Children`.
 
 | Member                                   | Type                                               | Default              | Description                                                                              |
 | ---------------------------------------- | -------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------- |

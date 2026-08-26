@@ -39,7 +39,9 @@ classDiagram
 The bound command, if any and if `CanExecute` allows it, runs after the group
 selection commits and its events raise. Unlike selection itself — which is a
 no-op when this member is already the sole checked one in its group — the
-command runs on every activation, including re-selecting the current member.
+command runs on every activation, including re-selecting the current member. The
+command and parameter are captured at activation entry, so selection callbacks
+may rebind or dispose the control without changing that activation.
 
 `RadioButtonStyle : InputStyle` is a complete immutable presentation: it bundles
 a `RadioButtonMarkStyle`, a complete `RadioButtonGlyphs` pair (unchecked and

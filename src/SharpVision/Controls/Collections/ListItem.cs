@@ -14,7 +14,7 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 /// <see cref="ContentControl.Content"/> for realized template output, which the single-text-caption
 /// capability does not support.
 /// </remarks>
-internal sealed class ListItem: ContentControl
+internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
 {
     private readonly PressBehavior _interaction;
 
@@ -85,6 +85,10 @@ internal sealed class ListItem: ContentControl
 
     /// <summary>Gets whether content is effectively available for navigation and activation.</summary>
     public bool IsAvailable => Content is { EffectiveIsEnabled: true, EffectiveIsVisible: true };
+
+    /// <inheritdoc/>
+    void IOwnedChildDisposalObserver.OnOwnedChildDisposalRequested(ControlBase child) =>
+        FindList()?.OnItemContentDisposalRequested(this, child);
 
     /// <summary>Gets whether owned content is directly collapsed, mirroring the
     /// <see cref="MeasureOverride"/> zero-size contract without folding in ancestor or enabled

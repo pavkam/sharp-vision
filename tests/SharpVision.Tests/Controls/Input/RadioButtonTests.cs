@@ -95,6 +95,27 @@ public sealed class RadioButtonTests
         command.Executions.Count.ShouldBe(2);
     }
 
+    /// <summary>Verifies activation retains the entry command binding across reentrant selection callbacks.</summary>
+    [Fact]
+    public void PerformClick_WhenCheckedCallbackRebindsAndDisposes_ExecutesCapturedCommand()
+    {
+        var originalParameter = new object();
+        var original = new ProbeCommand();
+        var replacement = new ProbeCommand();
+        var radio = new RadioButton { Command = original, CommandParameter = originalParameter };
+        radio.Checked += (_, _) =>
+        {
+            radio.Command = replacement;
+            radio.CommandParameter = new object();
+            radio.Dispose();
+        };
+
+        radio.PerformClick();
+
+        original.Executions.ShouldBe([originalParameter]);
+        replacement.Executions.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies null-name siblings remain mutually exclusive.</summary>
     [Fact]
     public void IsChecked_WhenSiblingSelectionChanges_CommitsExclusiveStateBeforeEvents()

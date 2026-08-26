@@ -94,8 +94,9 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
     /// <inheritdoc/>
     protected override void Activate(ActivationCause cause)
     {
+        var command = CaptureCommand();
         Invoked?.Invoke(this, new ActivationEventArgs(cause));
-        ExecuteCommandIfAny();
+        ExecuteCommandIfAny(command);
     }
 
     /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inside the

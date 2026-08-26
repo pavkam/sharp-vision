@@ -1459,6 +1459,29 @@ public sealed class ListViewTests
         control.ActiveIndex.ShouldNotBe(target);
     }
 
+    /// <summary>Verifies direct template disposal removes its semantic item before layout can observe an empty wrapper.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ItemTemplate_WhenOwnedContentIsDisposed_RemovesSemanticItem(bool virtualized)
+    {
+        List<ControlText> realized = [];
+        var control = new UiListView
+        {
+            RowHeight = virtualized ? 1 : null,
+            Items = ["first", "second"],
+            ItemTemplate = item => Add(realized, new ControlText(item?.ToString() ?? string.Empty))
+        };
+        new LayoutEngine().Layout(control, new Size(10, 2));
+        control.SelectedIndex = 0;
+
+        realized[0].Dispose();
+        new LayoutEngine().Layout(control, new Size(10, 2));
+
+        control.Items.ShouldBe(["second"]);
+        control.SelectedIndex.ShouldBe(-1);
+    }
+
     /// <summary>Verifies a horizontally scrolled, fixed-RowHeight virtualized ListView renders its
     /// realized rows at the offset-shifted screen position - regression for Rewindow computing
     /// each row's X from the un-shifted RowOrigin.X alone, unlike its own Y arithmetic, which

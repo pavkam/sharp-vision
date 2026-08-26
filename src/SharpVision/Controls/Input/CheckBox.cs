@@ -137,6 +137,7 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
     /// <inheritdoc/>
     protected override void Activate(ActivationCause cause)
     {
+        var command = CaptureCommand();
         bool? next = _isChecked switch
         {
             false => true,
@@ -144,7 +145,7 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
             _ => false
         };
         SetChecked(next, cause);
-        ExecuteCommandIfAny();
+        ExecuteCommandIfAny(command);
     }
 
     /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved before the mark

@@ -42,6 +42,7 @@ public class ContextMenu: IDisposable
         };
         _popup.Closing += OnPopupClosing;
         _popup.Closed += OnPopupClosed;
+        _popup.ContentDisposalRequested += OnContentDisposalRequested;
         _popup.PropertyChanged += OnPopupPropertyChanged;
         _popup.ParentChanged += OnPopupParentChanged;
     }
@@ -56,7 +57,15 @@ public class ContextMenu: IDisposable
     public event EventHandler? Closed;
 
     /// <summary>Gets the typed managed menu items.</summary>
-    public MenuEntryCollection Items => Menu.Items;
+    /// <exception cref="ObjectDisposedException">The context menu relationship is disposed.</exception>
+    public MenuEntryCollection Items
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_isDisposed, this);
+            return Menu.Items;
+        }
+    }
 
     /// <summary>Gets whether the context menu is currently open.</summary>
     public bool IsOpen => _popup.IsOpen;
@@ -88,7 +97,7 @@ public class ContextMenu: IDisposable
     /// </remarks>
     public void Show(int row, int col)
     {
-        if (_popup.Parent is null)
+        if (_isDisposed || _popup.Parent is null)
         {
             return;
         }
@@ -134,12 +143,22 @@ public class ContextMenu: IDisposable
         _lightDismiss?.Dispose();
         _popup.Closing -= OnPopupClosing;
         _popup.Closed -= OnPopupClosed;
+        _popup.ContentDisposalRequested -= OnContentDisposalRequested;
         _popup.PropertyChanged -= OnPopupPropertyChanged;
         _popup.ParentChanged -= OnPopupParentChanged;
         Menu.ItemInvoked -= OnMenuItemInvoked;
         Opening = null;
         Closing = null;
         Closed = null;
+    }
+
+    private void OnContentDisposalRequested(object? sender, OwnedContentDisposalEventArgs eventArgs)
+    {
+        if (ReferenceEquals(sender, _popup) && ReferenceEquals(eventArgs.Content, Menu))
+        {
+            Close();
+            Dispose();
+        }
     }
 
     private void OnMenuItemInvoked(object? sender, MenuItemInvokedEventArgs e) => Close();

@@ -191,6 +191,27 @@ public sealed class CheckBoxTests
         command.Executions.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies activation executes the entry binding even when state callbacks rebind and dispose the control.</summary>
+    [Fact]
+    public void PerformClick_WhenStateCallbackRebindsAndDisposes_ExecutesCapturedCommand()
+    {
+        var originalParameter = new object();
+        var original = new ProbeCommand();
+        var replacement = new ProbeCommand();
+        var checkBox = new CheckBox { Command = original, CommandParameter = originalParameter };
+        checkBox.StateChanged += (_, _) =>
+        {
+            checkBox.Command = replacement;
+            checkBox.CommandParameter = new object();
+            checkBox.Dispose();
+        };
+
+        checkBox.PerformClick();
+
+        original.Executions.ShouldBe([originalParameter]);
+        replacement.Executions.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies the default arrangement hugs the mark, separator, and label instead of stretching.</summary>
     [Fact]
     public void Arrange_WhenDefaultAlignmentIsUsed_HugsMeasuredContentWidth()

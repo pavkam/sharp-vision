@@ -6,6 +6,29 @@ namespace SharpVision.Tests.Menus;
 /// <summary>Verifies context menu construction, ownership, and item management.</summary>
 public sealed class ContextMenuTests
 {
+    /// <summary>Verifies directly disposing the adopted menu retires a closed or open context-menu relationship.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Menu_WhenDisposedDirectly_DisposesContextMenuRelationship(bool open)
+    {
+        using var host = new Button();
+        var menu = new Menu();
+        var context = new ContextMenu(menu);
+        host.ContextMenu = context;
+
+        if (open)
+        {
+            context.Show(0, 0);
+            context.IsOpen.ShouldBeTrue();
+        }
+
+        menu.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => _ = context.Items);
+        context.IsOpen.ShouldBeFalse();
+    }
+
     /// <summary>Verifies defaults after construction.</summary>
     [Fact]
     public void Constructor_WhenCreated_HasExpectedDefaults()

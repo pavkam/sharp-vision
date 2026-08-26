@@ -292,6 +292,32 @@ public sealed class NavigationViewTests
         command.Executions.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies activation retains the entry command binding across reentrant invocation callbacks.</summary>
+    [Fact]
+    public void PerformInvoke_WhenInvokedCallbackRebindsAndDisposes_ExecutesCapturedCommand()
+    {
+        var originalParameter = new object();
+        var original = new ProbeCommand();
+        var replacement = new ProbeCommand();
+        var item = new NavigationViewItem
+        {
+            Text = "Page",
+            Command = original,
+            CommandParameter = originalParameter
+        };
+        item.Invoked += (_, _) =>
+        {
+            item.Command = replacement;
+            item.CommandParameter = new object();
+            item.Dispose();
+        };
+
+        item.PerformInvoke();
+
+        original.Executions.ShouldBe([originalParameter]);
+        replacement.Executions.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies unavailable items reject programmatic activation, matching the same
     /// EffectiveIsEnabled/EffectiveIsVisible gate every other PerformInvoke-equivalent method
     /// enforces.</summary>

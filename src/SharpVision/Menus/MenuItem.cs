@@ -119,6 +119,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 
         if (_submenuPopup is not null)
         {
+            _submenuPopup.ContentDisposalRequested -= OnSubmenuContentDisposalRequested;
             _submenuPopup.IsOpen = false;
             _ = _submenuSlot.Remove(_submenuPopup);
             _submenuPopup.Content = null;
@@ -131,6 +132,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 
         if (newPopup is not null && value is not null)
         {
+            newPopup.ContentDisposalRequested += OnSubmenuContentDisposalRequested;
             newPopup.Closing += OnSubmenuClosing;
             newPopup.Closed += OnSubmenuClosed;
             _submenuSlot.Add(newPopup);
@@ -138,6 +140,21 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
         }
 
         NotifyPropertyChanged(nameof(Submenu), InvalidationImpact.None);
+    }
+
+    private void OnSubmenuContentDisposalRequested(object? sender, OwnedContentDisposalEventArgs eventArgs)
+    {
+        if (ReferenceEquals(sender, _submenuPopup) && ReferenceEquals(eventArgs.Content, _submenu))
+        {
+            if (FindMenu() is { } menu)
+            {
+                menu.ReplaceSubmenu(this, null);
+            }
+            else
+            {
+                CommitSubmenu(null);
+            }
+        }
     }
 
     /// <summary>Gets or sets the submenu's owned popup border and shadow together.</summary>
@@ -231,8 +248,6 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
         get;
         set
         {
-            var previousShortcut = field;
-
             _ = SetPropertyAndSynchronize(
                 ref field,
                 value,
@@ -241,21 +256,10 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
                 {
                     _derivedShortcutText = Shortcut?.ToString();
 
-                    // Only an already-attached item's own transition needs to touch the dispatcher's
-                    // live count here - an unattached item's Shortcut simply seeds what OnAttached
-                    // reads once it attaches, and OnDetached already unwinds an attached item's count
-                    // on the way out.
-                    if (Dispatcher is { } dispatcher)
-                    {
-                        if (previousShortcut is null && Shortcut is not null)
-                        {
-                            dispatcher.IncrementLiveShortcutCount();
-                        }
-                        else if (previousShortcut is not null && Shortcut is null)
-                        {
-                            dispatcher.DecrementLiveShortcutCount();
-                        }
-                    }
+                    // Contribution identity, not the before/after property values, owns the count.
+                    // Parent and attachment callbacks may change Shortcut while dispatcher context
+                    // has already moved, so reconciliation must be idempotent at every boundary.
+                    SynchronizeShortcutContribution(Dispatcher);
 
                     if (_shortcutTextValue is null)
                     {
@@ -443,6 +447,8 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
             return;
         }
 
+        var command = CaptureCommand();
+
         switch (Kind)
         {
             case MenuItemKind.Check:
@@ -475,7 +481,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
             ExceptionAggregation.Capture(() => owner.NotifyItemInvoked(eventArgs), ref failure);
         }
 
-        ExceptionAggregation.Capture(ExecuteCommandIfAny, ref failure);
+        ExceptionAggregation.Capture(() => ExecuteCommandIfAny(command), ref failure);
 
         failure?.Throw();
     }
@@ -629,38 +635,39 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 
     /// <inheritdoc/>
     /// <remarks>
-    /// Seeds the owning dispatcher's live-shortcut count from whatever <see cref="Shortcut"/>
-    /// already holds - an item can be constructed and given a shortcut entirely off-dispatcher,
-    /// long before it ever attaches, and that assignment could not touch the count itself.
+    /// Reconciles the exact dispatcher contribution after attachment callbacks and any reentrant
+    /// shortcut assignment they performed.
     /// </remarks>
     protected override void OnAttached()
     {
         base.OnAttached();
         Debug.Assert(Dispatcher is not null, "An attached menu item owns a dispatcher.");
-        _shortcutCountDispatcher = Dispatcher;
-
-        if (Shortcut is not null)
-        {
-            Dispatcher.IncrementLiveShortcutCount();
-        }
+        SynchronizeShortcutContribution(Dispatcher);
     }
 
     /// <inheritdoc/>
     /// <remarks>
-    /// <see cref="Dispatcher"/> already reads null by the time this callback runs, so the
-    /// decrement targets the dispatcher <see cref="OnAttached"/> cached rather than the current,
-    /// already-cleared property.
+    /// Releases the exact dispatcher contribution cached during attachment, regardless of any
+    /// shortcut assignment performed by earlier detachment callbacks.
     /// </remarks>
     protected override void OnDetached()
     {
-        if (Shortcut is not null)
+        SynchronizeShortcutContribution(null);
+        base.OnDetached();
+    }
+
+    private void SynchronizeShortcutContribution(Dispatcher? dispatcher)
+    {
+        var desired = Shortcut is null ? null : dispatcher;
+
+        if (ReferenceEquals(_shortcutCountDispatcher, desired))
         {
-            Debug.Assert(_shortcutCountDispatcher is not null, "An attached item always cached its dispatcher.");
-            _shortcutCountDispatcher.DecrementLiveShortcutCount();
+            return;
         }
 
-        _shortcutCountDispatcher = null;
-        base.OnDetached();
+        _shortcutCountDispatcher?.DecrementLiveShortcutCount();
+        _shortcutCountDispatcher = desired;
+        _shortcutCountDispatcher?.IncrementLiveShortcutCount();
     }
 
     /// <inheritdoc/>

@@ -271,6 +271,64 @@ public sealed class ShortcutManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies adding and clearing a shortcut from parent lifecycle callbacks contributes
+    /// exactly once even though dispatcher context commits before attachment publication.</summary>
+    [Fact]
+    public async Task ParentChanged_WhenShortcutChangesDuringAttachAndDetach_KeepsTheLiveCountBalancedAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            using var root = new Stack();
+            var item = new MenuItem { Text = "Save" };
+            item.ParentChanged += (_, _) => item.Shortcut = item.Parent is null ? null : CtrlS;
+            root.Attach(dispatcher);
+
+            root.Children.Add(item);
+
+            dispatcher.HasLiveShortcuts.ShouldBeTrue();
+
+            _ = root.Children.Remove(item);
+
+            dispatcher.HasLiveShortcuts.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies clearing a preconfigured shortcut during attachment never decrements a
+    /// contribution that has not yet been made.</summary>
+    [Fact]
+    public async Task ParentChanged_WhenPreconfiguredShortcutIsClearedDuringAttach_DoesNotUnderflowTheLiveCountAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            using var root = new Stack();
+            var item = new MenuItem { Text = "Save", Shortcut = CtrlS };
+            item.ParentChanged += (_, _) =>
+            {
+                if (item.Parent is not null)
+                {
+                    item.Shortcut = null;
+                }
+            };
+            root.Attach(dispatcher);
+
+            root.Children.Add(item);
+
+            dispatcher.HasLiveShortcuts.ShouldBeFalse();
+
+            item.Shortcut = CtrlS;
+
+            dispatcher.HasLiveShortcuts.ShouldBeTrue();
+
+            _ = root.Children.Remove(item);
+
+            dispatcher.HasLiveShortcuts.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies detaching an item that still carries a shortcut decrements the live
     /// count, even though <c>Dispatcher</c> already reads null by the time the detach callback
     /// observes it.</summary>

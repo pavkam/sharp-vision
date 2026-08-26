@@ -947,6 +947,39 @@ public sealed partial class TreeViewTests
         item.IsDisposed.ShouldBeTrue();
     }
 
+    /// <summary>Verifies directly disposing a loading item removes its semantic entry and drops a late completion.</summary>
+    [Fact]
+    public async Task ItemDispose_WhenLoadIsInFlight_RemovesEntryAndDropsLateCompletionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var deferred = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+        Task observation = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+            item.IsExpanded = true;
+            observation = item.LastChildLoadObservation!;
+        }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+
+        await dispatcher.InvokeAsync(item.Dispose, TestContext.Current.CancellationToken);
+
+        tree.Items.ShouldBeEmpty();
+        item.ParentCollection.ShouldBeNull();
+        _ = deferred.TrySetResult([new TreeViewChildDescription("late", "Late") { Presence = TreeViewChildPresence.Leaf }]);
+        await observation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        observation.IsFaulted.ShouldBeFalse();
+        item.Children.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies <see cref="TreeViewItem.ReloadChildrenAsync"/> rejects a null ChildSource.</summary>
     [Fact]
     public async Task ReloadChildrenAsync_WhenChildSourceIsNull_ThrowsInvalidOperationExceptionAsync()

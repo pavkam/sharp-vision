@@ -81,6 +81,10 @@ classDiagram
   selection, parents, and cells. The default template creates one
   invariant-culture `Text` control per item; custom templates may return Unicode
   and variable-height controls.
+- Directly disposing a realized template control removes its semantic item from
+  the snapshot, disposes the now-empty wrapper, and repairs selection and active
+  position through the same rules as an ordinary item removal. This contract is
+  identical in eager and windowed realization.
 - `ListSelectionMode.None`, `Single`, and `Multiple` permit zero, at most one,
   or many selected indexes. Narrowing the mode normalizes the selection
   deterministically by keeping the lowest applicable index.

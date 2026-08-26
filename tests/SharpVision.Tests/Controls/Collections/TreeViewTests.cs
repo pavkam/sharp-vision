@@ -295,6 +295,43 @@ public sealed partial class TreeViewTests
         tree.Items.Count.ShouldBe(3);
     }
 
+    /// <summary>Verifies direct item disposal removes semantic ownership and releases descendants.</summary>
+    [Fact]
+    public void Item_WhenDisposedDirectly_RemovesSemanticEntryAndReleasesChildren()
+    {
+        var tree = new TreeView();
+        var parent = new TreeViewItem { Header = "parent" };
+        var child = new TreeViewItem { Header = "child" };
+        parent.Children.Add(child);
+        tree.Items.Add(parent);
+        tree.SelectedItem = parent;
+
+        parent.Dispose();
+
+        tree.Items.ShouldBeEmpty();
+        tree.SelectedItem.ShouldBeNull();
+        child.Parent.ShouldBeNull();
+        child.ParentCollection.ShouldBeNull();
+    }
+
+    /// <summary>Verifies direct nested-item disposal removes the exact child and its selection identity.</summary>
+    [Fact]
+    public void NestedItem_WhenDisposedDirectly_RemovesChildAndSelection()
+    {
+        var tree = new TreeView();
+        var parent = new TreeViewItem { Header = "parent" };
+        var child = new TreeViewItem { Header = "child" };
+        parent.Children.Add(child);
+        tree.Items.Add(parent);
+        tree.SelectedItem = child;
+
+        child.Dispose();
+
+        parent.Children.ShouldBeEmpty();
+        tree.SelectedItem.ShouldBeNull();
+        child.ParentCollection.ShouldBeNull();
+    }
+
     /// <summary>Verifies non-pointer input remains available through the inherited routed events.</summary>
     [Fact]
     public void Dispatch_WhenTreeViewItemReceivesKey_RaisesInheritedKeyDownWithoutConsumingIt()

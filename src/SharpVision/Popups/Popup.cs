@@ -12,8 +12,15 @@ using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
 
 /// <summary>Displays one owned content control on an opaque, framed, anchor-relative modal surface.</summary>
 [PublicAPI]
-public class Popup: FloatingSurfaceBase
+public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 {
+    /// <summary>Raised before directly disposed content leaves this popup's owned slot.</summary>
+    internal event EventHandler<OwnedContentDisposalEventArgs>? ContentDisposalRequested;
+
+    /// <inheritdoc/>
+    void IOwnedChildDisposalObserver.OnOwnedChildDisposalRequested(ControlBase child) =>
+        ContentDisposalRequested?.Invoke(this, new OwnedContentDisposalEventArgs(child));
+
     /// <summary>Gets or sets the border and shadow together as one composite value; either component
     /// left null keeps that part on Theme ownership.</summary>
     public PopupChrome Style

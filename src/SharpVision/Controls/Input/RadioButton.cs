@@ -130,12 +130,13 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
     /// <inheritdoc/>
     protected override void Activate(ActivationCause cause)
     {
+        var command = CaptureCommand();
         this.SelectInGroup(cause);
 
         // Unlike SelectInGroup, which is a hard no-op when this member is already the sole
         // checked one in its group, the command executes on every activation - re-selecting
         // the current member still counts as an activation.
-        ExecuteCommandIfAny();
+        ExecuteCommandIfAny(command);
     }
 
     /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved before the mark

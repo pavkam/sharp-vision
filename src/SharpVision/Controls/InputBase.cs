@@ -318,19 +318,31 @@ public abstract class InputBase: ControlBase
         }
     }
 
-    /// <summary>
-    /// Invokes <see cref="Command"/> with <see cref="CommandParameter"/> when a command is bound
-    /// and allows execution.
-    /// </summary>
+    /// <summary>Captures the command binding that owns one activation transaction.</summary>
     /// <remarks>
-    /// A concrete control's <see cref="Activate"/> override calls this after committing its own
-    /// state and raising its own events, so a command that cannot execute never suppresses the
-    /// control's own activation semantics (a toggle still toggles; a menu item still invokes).
+    /// Concrete controls capture before publishing activation callbacks, then execute the returned
+    /// binding afterward. Reentrant rebinding or disposal therefore cannot redirect work already
+    /// accepted by the activation entry point.
     /// </remarks>
-    protected void ExecuteCommandIfAny()
+    /// <returns>The borrowed command and parameter currently bound to this control.</returns>
+    internal (ICommand? Command, object? Parameter) CaptureCommand() => (Command, CommandParameter);
+
+    /// <summary>Invokes the current command binding when it allows execution.</summary>
+    /// <remarks>
+    /// This extension seam retains its dynamic lookup contract for derived controls. First-party
+    /// activation implementations capture their binding before public callbacks instead.
+    /// </remarks>
+    protected void ExecuteCommandIfAny() => ExecuteCommandIfAny((Command, CommandParameter));
+
+    /// <summary>Invokes one previously captured command binding when it allows execution.</summary>
+    /// <param name="binding">The command and parameter captured at activation entry.</param>
+    /// <remarks>
+    /// Execution follows the control's own committed state and events, so a command that cannot
+    /// execute never suppresses the control's activation semantics.
+    /// </remarks>
+    internal static void ExecuteCommandIfAny((ICommand? Command, object? Parameter) binding)
     {
-        var command = Command;
-        var parameter = CommandParameter;
+        var (command, parameter) = binding;
 
         if (command is not null && command.CanExecute(parameter))
         {

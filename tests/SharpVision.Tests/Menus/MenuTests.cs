@@ -583,6 +583,27 @@ public sealed class MenuTests
         order.ShouldBe(["item", "menu", "command"]);
     }
 
+    /// <summary>Verifies activation retains the entry command binding across reentrant item callbacks.</summary>
+    [Fact]
+    public void PerformInvoke_WhenInvokedCallbackRebindsAndDisposes_ExecutesCapturedCommand()
+    {
+        var originalParameter = new object();
+        var original = new ProbeCommand();
+        var replacement = new ProbeCommand();
+        var item = new MenuItem { Command = original, CommandParameter = originalParameter };
+        item.Invoked += (_, _) =>
+        {
+            item.Command = replacement;
+            item.CommandParameter = new object();
+            item.Dispose();
+        };
+
+        item.PerformInvoke();
+
+        original.Executions.ShouldBe([originalParameter]);
+        replacement.Executions.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies an item with an open submenu toggles it instead of invoking, so neither
     /// Invoked nor the bound command ever fires.</summary>
     [Fact]
@@ -1323,6 +1344,54 @@ public sealed class MenuTests
         previous.IsDisposed.ShouldBeFalse();
         previousPopup.IsDisposed.ShouldBeTrue();
         item.Submenu.ShouldBeNull();
+    }
+
+    /// <summary>Verifies directly disposing an adopted submenu clears its closed or open retained popup relationship.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Submenu_WhenDisposedDirectly_ClearsOwnedRelationship(bool open)
+    {
+        var submenu = new Menu();
+        var item = new MenuItem { Submenu = submenu };
+        var popup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
+
+        if (open)
+        {
+            item.PerformInvoke();
+            popup.IsOpen.ShouldBeTrue();
+        }
+
+        submenu.Dispose();
+
+        item.Submenu.ShouldBeNull();
+        item.HasRetainedSubmenuSurface.ShouldBeFalse();
+        popup.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies direct submenu disposal closes the active menu session that owned it.</summary>
+    [Fact]
+    public async Task Submenu_WhenDisposedInsideActiveMenuChain_ClosesTheSessionAsync()
+    {
+        var submenu = new Menu { Orientation = Orientation.Vertical };
+        submenu.Items.Add(new MenuItem { Text = "Open" });
+        var item = new MenuItem { Text = "File", Submenu = submenu };
+        var menu = new Menu { Orientation = Orientation.Horizontal };
+        menu.Items.Add(item);
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(30, 8),
+            TestContext.Current.CancellationToken);
+        var popup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
+        await surface.UpdateAsync(item.PerformInvoke, "open submenu");
+        var scope = surface.Application.Modality.Active.ShouldNotBeNull();
+
+        await surface.UpdateAsync(submenu.Dispose, "dispose active submenu");
+
+        item.Submenu.ShouldBeNull();
+        popup.IsDisposed.ShouldBeTrue();
+        scope.IsActive.ShouldBeFalse();
+        surface.Application.Modality.Active.ShouldBeNull();
     }
 
     /// <summary>Verifies assigning a menu already hosted as another item's submenu throws and

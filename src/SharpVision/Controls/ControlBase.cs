@@ -1627,6 +1627,14 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             {
                 observer.OnOwnedChildDisposalRequested(this);
             }
+
+            OnDirectDisposalRequested();
+
+            if (IsDisposed || IsDisposing)
+            {
+                GC.SuppressFinalize(this);
+                return;
+            }
         }
 
         try
@@ -1640,6 +1648,16 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                 GC.SuppressFinalize(this);
             }
         }
+    }
+
+    /// <summary>Allows a semantic control to reconcile caller-requested disposal before structural publication begins.</summary>
+    /// <remarks>
+    /// The hook is skipped during owner-driven teardown. A callback raised by reconciliation may
+    /// complete a reentrant disposal; the outer request detects that commit before entering a
+    /// second publication transaction.
+    /// </remarks>
+    internal virtual void OnDirectDisposalRequested()
+    {
     }
 
     /// <summary>Disposes a child while its owner already holds structural publication.</summary>

@@ -250,6 +250,22 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
         return true;
     }
 
+    /// <summary>Removes an item whose own public disposal already validated the mutation context.</summary>
+    internal void RemoveForDisposal(TreeViewItem item)
+    {
+        if (!_items.Remove(item))
+        {
+            return;
+        }
+
+        _ = _itemSet.Remove(item);
+        item.ParentCollection = null;
+        item.Children.Owner = null;
+        item.CancelPendingChildLoadSubtree();
+        Owner?.NotifyStructureChanged();
+        ParentItem?.OnChildCollectionStructureChanged();
+    }
+
     /// <summary>Removes the owned tree view item at a position.</summary>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current items.</exception>
     /// <exception cref="InvalidOperationException">An attached owner is mutated off its dispatcher.</exception>
@@ -345,6 +361,21 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
         _itemSet.Clear();
         Owner?.NotifyStructureChanged();
         ParentItem?.OnChildCollectionStructureChanged();
+    }
+
+    /// <summary>Releases every child when its semantic parent is being disposed.</summary>
+    internal void ReleaseForDisposedParent()
+    {
+        foreach (var item in _items)
+        {
+            item.ParentCollection = null;
+            item.Children.Owner = null;
+            item.CancelPendingChildLoadSubtree();
+        }
+
+        _items.Clear();
+        _itemSet.Clear();
+        IsLoaderOwned = false;
     }
 
     /// <summary>
