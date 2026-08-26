@@ -172,10 +172,11 @@ public sealed class NonRetainedGraphicsBackendSurfaceTests
         bytes.AsSpan().IndexOf("\u001bP0;1;0q"u8).ShouldBeGreaterThanOrEqualTo(0);
     }
 
-    /// <summary>Verifies an RGBA placement on an iTerm-only backend reports a format diagnostic
-    /// instead of failing silently, since iTerm never accepts raw RGBA sources.</summary>
+    /// <summary>Verifies an RGBA placement on an iTerm-only backend now has an iTerm path: it is
+    /// PNG-encoded on demand and reaches multipart output with no diagnostic, rather than being
+    /// rejected the way a raw RGBA source used to be.</summary>
     [Fact]
-    public async Task RenderAsync_WhenRgbaPlacementHasNoItermPath_ReportsFormatDiagnosticAsync()
+    public async Task RenderAsync_WhenRgbaPlacementUsesItermOnlyBackend_EncodesOnDemandAsync()
     {
         using var renderer = new Renderer(new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true));
         await using var transport = new FakeTransport();
@@ -193,9 +194,10 @@ public sealed class NonRetainedGraphicsBackendSurfaceTests
             new CellMetrics(1, 6),
             TestContext.Current.CancellationToken);
 
-        var diagnostic = renderer.LastGraphicsDiagnostics.ShouldHaveSingleItem();
-        diagnostic.ImageIdentity.ShouldBe(image.Identity);
-        diagnostic.Reason.ShouldBe(GraphicsPlacementSkipReason.FormatNotEncodable);
+        renderer.LastGraphicsDiagnostics.ShouldBeEmpty();
+        var bytes = transport.Writes.ShouldHaveSingleItem();
+        bytes.AsSpan().IndexOf("1337;MultipartFile="u8).ShouldBeGreaterThanOrEqualTo(0);
+        bytes.AsSpan().IndexOf("1337;FileEnd"u8).ShouldBeGreaterThanOrEqualTo(0);
     }
 
     /// <summary>Verifies a PNG this decoder cannot decode reports its sixel fallback instead of

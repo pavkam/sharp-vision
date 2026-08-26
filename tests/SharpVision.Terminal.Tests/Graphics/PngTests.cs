@@ -244,6 +244,101 @@ public sealed class PngTests
         _ = Should.Throw<ArgumentException>(() => source.AsSpan().DecodeRgba());
     }
 
+    /// <summary>Verifies encoding then decoding arbitrary RGBA pixels, including varied alpha and
+    /// multiple rows, reproduces the exact original bytes; this repository has no external
+    /// reference PNG decoder to check against, so round-tripping through the existing, unmodified
+    /// <c>DecodeRgba</c> is the available proof the encoder emits a structurally valid container
+    /// with correctly filtered and compressed scanlines.</summary>
+    [Fact]
+    public void Encode_WhenPixelsAreArbitrary_RoundTripsThroughDecodeRgbaExactly()
+    {
+        byte[] pixels =
+        [
+            10, 20, 30, 255, 40, 50, 60, 128, 70, 80, 90, 0,
+            255, 255, 255, 255, 0, 0, 0, 1, 200, 150, 100, 64
+        ];
+        var size = new Size(3, 2);
+        var buffer = new ArrayBufferWriter<byte>();
+
+        Png.Encode(size, pixels, buffer);
+        var decoded = buffer.WrittenSpan.DecodeRgba();
+
+        decoded.ShouldBe(pixels);
+    }
+
+    /// <summary>Verifies a single-pixel round trip, the smallest possible encode.</summary>
+    [Fact]
+    public void Encode_WhenImageIsOnePixel_RoundTripsThroughDecodeRgbaExactly()
+    {
+        byte[] pixels = [5, 6, 7, 8];
+        var buffer = new ArrayBufferWriter<byte>();
+
+        Png.Encode(new Size(1, 1), pixels, buffer);
+        var decoded = buffer.WrittenSpan.DecodeRgba();
+
+        decoded.ShouldBe(pixels);
+    }
+
+    /// <summary>Verifies encoding the same pixels twice produces byte-identical PNG containers,
+    /// proving the fixed compression level (rather than one derived from input) makes the encoder
+    /// deterministic.</summary>
+    [Fact]
+    public void Encode_WhenCalledTwiceWithIdenticalPixels_ProducesByteIdenticalOutput()
+    {
+        byte[] pixels =
+        [
+            1, 2, 3, 4, 5, 6, 7, 8,
+            9, 10, 11, 12, 13, 14, 15, 16
+        ];
+        var size = new Size(2, 2);
+        var first = new ArrayBufferWriter<byte>();
+        var second = new ArrayBufferWriter<byte>();
+
+        Png.Encode(size, pixels, first);
+        Png.Encode(size, pixels, second);
+
+        first.WrittenSpan.ToArray().ShouldBe(second.WrittenSpan.ToArray());
+    }
+
+    /// <summary>Verifies the emitted IEND chunk carries the fixed, well-known CRC-32 for an empty
+    /// "IEND" chunk type, since <c>DecodeRgba</c> never itself validates a chunk's CRC and so
+    /// cannot prove this encoder computed it correctly.</summary>
+    [Fact]
+    public void Encode_Always_EmitsTheWellKnownIendCrc()
+    {
+        var buffer = new ArrayBufferWriter<byte>();
+
+        Png.Encode(new Size(1, 1), [1, 2, 3, 4], buffer);
+
+        buffer.WrittenSpan[^12..].ToArray().ShouldBe(
+        [
+            0, 0, 0, 0,
+            (byte) 'I', (byte) 'E', (byte) 'N', (byte) 'D',
+            0xAE, 0x42, 0x60, 0x82
+        ]);
+    }
+
+    /// <summary>Verifies non-positive dimensions are reported rather than producing a malformed container.</summary>
+    [Fact]
+    public void Encode_WhenSizeIsNotPositive_ThrowsArgumentOutOfRange()
+    {
+        var buffer = new ArrayBufferWriter<byte>();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => Png.Encode(new Size(0, 1), [], buffer));
+    }
+
+    /// <summary>Verifies a pixel buffer whose length disagrees with the declared dimensions is
+    /// reported rather than silently truncated or overrun.</summary>
+    [Fact]
+    public void Encode_WhenRgbaLengthDisagreesWithSize_ThrowsArgumentException()
+    {
+        var buffer = new ArrayBufferWriter<byte>();
+
+        _ = Should.Throw<ArgumentException>(
+            () => Png.Encode(new Size(1, 1), [1, 2, 3], buffer));
+    }
+
     private static byte[] CreateDecodablePng(
         int width,
         int height,

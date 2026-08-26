@@ -97,6 +97,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         var encodable = new bool[back.PlacementCount];
         var metricDependent = new bool[back.PlacementCount];
         var sixelImages = new ImageSource?[back.PlacementCount];
+        var itermImages = new ImageSource?[back.PlacementCount];
         var skippedPlacements = ClassifyPlacements(
             back,
             metrics,
@@ -104,7 +105,8 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             enableIterm,
             encodable,
             metricDependent,
-            sixelImages);
+            sixelImages,
+            itermImages);
         var blocked = back.FindFallbackBlockedPlacements(encodable);
         var currentCount = CountRenderable(
             encodable,
@@ -155,9 +157,12 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
                     continue;
                 }
 
-                if (remaining > 0 && CanEncodeIterm(placement, enableIterm, remaining))
+                // Classification already resolved (and, for an RGBA source, PNG-encoded) this
+                // placement's iTerm image once; reuse it here rather than encoding it again.
+                if (remaining > 0 &&
+                    CanEncodeIterm(placement, enableIterm, itermImages[index], remaining))
                 {
-                    WriteIterm(placement, output, remaining);
+                    WriteIterm(placement, itermImages[index]!, output, remaining);
                     placementCount++;
                     continue;
                 }
@@ -390,7 +395,11 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         WriteRoutedFrame(dcs.WrittenSpan, destination);
     }
 
-    private void WriteIterm(Placement placement, IBufferWriter<byte> destination, int maxOutputBytes)
+    private void WriteIterm(
+        Placement placement,
+        ImageSource image,
+        IBufferWriter<byte> destination,
+        int maxOutputBytes)
     {
         WriteCursor(new Point(placement.Destination.X, placement.Destination.Y), destination);
         var destinationCells = new Size(
@@ -400,7 +409,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         if (_route is null)
         {
             ItermWriter.Write(
-                placement.Image!,
+                image,
                 destinationCells,
                 placement.Mode,
                 destination,
@@ -419,7 +428,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         }
 
         ItermWriter.Write(
-            placement.Image!,
+            image,
             destinationCells,
             placement.Mode,
             transaction,
@@ -463,7 +472,8 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         bool enableIterm,
         Span<bool> encodable,
         Span<bool> metricDependent,
-        Span<ImageSource?> sixelImages)
+        Span<ImageSource?> sixelImages,
+        Span<ImageSource?> itermImages)
     {
         List<GraphicsPlacementDiagnostic>? skipped = null;
 
@@ -484,9 +494,16 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
                 metricDependent[index] = true;
                 sixelImages[index] = sixelImage;
             }
-            else if (CanEncodeIterm(placement, enableIterm))
+            // An RGBA source has no dedicated iTerm2 wire format, so it is PNG-encoded on demand
+            // here (once per Prepare(), never cached across frames) purely to learn whether the
+            // resulting container fits; the same encoded image is cached in itermImages so the
+            // write pass below never repeats the encode within this same frame.
+            else if (enableIterm &&
+                     TryGetItermImage(placement, out var itermImage) &&
+                     CanEncodeIterm(placement, enableIterm, itermImage, _maxPreparedBytes))
             {
                 encodable[index] = true;
+                itermImages[index] = itermImage;
             }
             else
             {
@@ -532,8 +549,39 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         }
     }
 
+    // iTerm2 has no dedicated RGBA wire format, unlike sixel: an RGBA source is converted to an
+    // owned PNG-format image up front so every later iTerm2 check and write operates uniformly
+    // on ImageSource.Format == Png, exactly as a source that was already PNG would. A PNG source
+    // passes through unchanged; ItermWriter transmits its bytes verbatim regardless of whether
+    // this decoder could itself decode them.
+    private static bool TryGetItermImage(Placement placement, [NotNullWhen(true)] out ImageSource? image)
+    {
+        image = placement.Image!;
+
+        if (image.Format == ImageFormat.Png)
+        {
+            return true;
+        }
+
+        try
+        {
+            var buffer = new ArrayBufferWriter<byte>();
+            Png.Encode(image.Size, image.Source, buffer);
+            image = ImageSource.FromPng(buffer.WrittenSpan);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            // Covers both ArgumentException and the derived ArgumentOutOfRangeException that
+            // Encode and FromPng can throw.
+            image = null;
+            return false;
+        }
+    }
+
     private static bool IsFormatEncodable(ImageFormat format, bool enableSixel, bool enableIterm) =>
-        (enableSixel && format is ImageFormat.Rgba or ImageFormat.Png) || (enableIterm && format == ImageFormat.Png);
+        (enableSixel && format is ImageFormat.Rgba or ImageFormat.Png) ||
+        (enableIterm && format is ImageFormat.Png or ImageFormat.Rgba);
 
     private static int CountRenderable(
         ReadOnlySpan<bool> encodable,
@@ -618,15 +666,17 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
                available.TryMapCells(placement.Destination, out pixels);
     }
 
-    private bool CanEncodeIterm(Placement placement, bool enableIterm) =>
-        CanEncodeIterm(placement, enableIterm, _maxPreparedBytes);
-
-    private bool CanEncodeIterm(Placement placement, bool enableIterm, int maxOutputBytes)
+    // Accepts the already-resolved iTerm-eligible image (either the placement's own owned PNG, or
+    // an RGBA source PNG-encoded on demand by TryGetItermImage) so the geometry and byte-budget
+    // checks below apply equally to both, and so a caller that already resolved the image once
+    // this frame (classification) never triggers a second PNG encode when checking again against
+    // a tighter remaining budget during the write pass.
+    private bool CanEncodeIterm(Placement placement, bool enableIterm, ImageSource? image, int maxOutputBytes)
     {
         Debug.Assert(!placement.IsEmpty, "Active frame placements cannot be empty.");
-        var image = placement.Image!;
+
         if (!enableIterm ||
-            image.Format != ImageFormat.Png ||
+            image is null ||
             placement.Source != new Rect(0, 0, image.Size.Width, image.Size.Height) ||
             placement.Mode is not PlacementMode.Contain and not PlacementMode.Stretch)
         {

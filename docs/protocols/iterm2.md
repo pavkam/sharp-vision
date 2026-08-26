@@ -44,21 +44,17 @@ limit or destination failure never exposes a partial transaction. An authorized
 route too small for metadata, one Base64 group, or FileEnd leaves the placement
 on cell fallback rather than failing the render.
 
-The writer accepts structurally validated owned PNG only; it never decodes the
-payload it transmits. The protocol cannot express a clipped pixel source or
-aspect-preserving cover crop, so only a complete PNG source with contain or
-stretch is eligible. Cover and partial-source placements retain cell fallback.
-Profile mutation, annotations, shell integration, clipboard streaming, generic
-file transfer, and every other OSC 1337 feature stay out of scope: they manage
-the user's terminal application and filesystem rather than present application
-output.
-
-> [!IMPORTANT]
->
-> **Implementation gap:** RGBA sources are rejected rather than encoded. No PNG
-> encoder exists, so an RGBA `ImageSource` cannot reach an iTerm2-only terminal
-> and keeps its cell fallback even though the same pixels are losslessly
-> expressible as PNG.
+The writer itself accepts structurally validated owned PNG only; it never
+decodes the payload it transmits. An RGBA `ImageSource`, which has no dedicated
+iTerm2 wire format, is PNG-encoded on demand at the non-retained backend
+boundary — never inside the writer — before it ever reaches `ItermWriter`, so
+the writer's PNG-only contract is unchanged. The protocol cannot express a
+clipped pixel source or aspect-preserving cover crop, so only a complete PNG or
+RGBA source with contain or stretch is eligible. Cover and partial-source
+placements retain cell fallback regardless of source format. Profile mutation,
+annotations, shell integration, clipboard streaming, generic file transfer, and
+every other OSC 1337 feature stay out of scope: they manage the user's terminal
+application and filesystem rather than present application output.
 
 ## Non-retained backend and selection
 
@@ -83,9 +79,10 @@ Backend selection is evidence-based. Kitty query or override evidence wins
 globally because its retained backend supports RGBA and PNG. Without Kitty, one
 shared non-retained backend walks placements in original paint order: sixel
 handles RGBA only with supported query/override evidence and exact metrics;
-iTerm2 handles compatible PNG only when `ItermImages` is Supported with Query or
-Override origin. This keeps mixed RGBA/PNG order intact and lets PNG remain
-viable when sixel metrics are absent.
+iTerm2 handles compatible PNG or RGBA (PNG-encoded on demand) only when
+`ItermImages` is Supported with Query or Override origin. This keeps mixed
+RGBA/PNG order intact and lets PNG or RGBA remain viable when sixel metrics are
+absent.
 
 `ItermImages=true` is an explicit assertion that the destination implements the
 iTerm2 3.5-or-newer multipart protocol. Database and tentative `TERM_PROGRAM`
@@ -148,8 +145,9 @@ Exact-byte tests freeze metadata order, exact size, cell dimensions,
 preserve-aspect behavior, inline-only policy, omitted name, PNG Base64,
 multipart boundaries, and canonical ST. They prove official sequence math, exact
 nested tmux bounds, route-aware large-payload reconstruction, atomic output
-bounds, destination exception fidelity, tiny-route fallback, and rejection of
-RGBA, cover, partial sources, legacy `File`, BEL output, and Screen.
+bounds, destination exception fidelity, tiny-route fallback, on-demand RGBA PNG
+encoding reaching the same multipart transaction as an owned PNG source, and
+rejection of cover, partial-source, legacy `File`, BEL output, and Screen.
 
 The generic router accepts bounded OSC 1337 with ST or BEL at every split and
 recovers following input after overflow. Backend and real renderer tests cover
@@ -159,7 +157,7 @@ allocation-free synchronous phases, byte-quiet cleanup, independently routed
 tmux frames, transport failure, and full retry. Selector tests freeze
 Kitty-over-fallback priority, origin requirements (including that Query now
 authorizes iTerm2 output the same way it already does Kitty and sixel), route
-authorization, mixed paint order, and missing-metric PNG viability.
+authorization, mixed paint order, and missing-metric PNG/RGBA viability.
 `ActiveQueryDiscoveryStrategy` tests cover the Capabilities query gate, `FILE`
 code parsing, and silent-terminal negative inference; `CapabilityDetector` tests
 cover the `TERM_PROGRAM_VERSION` narrowing corroborator.

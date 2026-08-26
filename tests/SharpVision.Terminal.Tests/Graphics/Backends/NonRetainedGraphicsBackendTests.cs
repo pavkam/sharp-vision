@@ -98,8 +98,28 @@ public sealed class NonRetainedGraphicsBackendTests
         bytes.AsSpan().EndsWith("\u001b]1337;FileEnd\u001b\\\u001b[1;1H"u8).ShouldBeTrue();
     }
 
-    /// <summary>Verifies RGBA, cover, and partial PNG sources stay on the cell fallback and each
-    /// reports why iTerm cannot express the placement.</summary>
+    /// <summary>Verifies a full-source RGBA placement is PNG-encoded on demand and reaches the
+    /// same iTerm2 multipart transaction shape as an owned PNG source.</summary>
+    [Fact]
+    public void Prepare_WhenInitialRgbaPlacementExists_EncodesPngOnDemand()
+    {
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: false, enableIterm: true);
+        using var frame = ItermFrame("ab", (Red(), new Rect(1, 0, 1, 1), PlacementMode.Contain));
+
+        var result = backend.Prepare(null, frame, full: true, Context());
+        var bytes = WritePlacements(backend);
+
+        result.Placements.ShouldBe(1);
+        result.SkippedPlacements.ShouldBeEmpty();
+        bytes.AsSpan().StartsWith("\u001b[1;2H\u001b]1337;MultipartFile=size="u8).ShouldBeTrue();
+        bytes.AsSpan().IndexOf(";width=1;height=1;preserveAspectRatio=1;inline=1\u001b\\"u8)
+            .ShouldBeGreaterThanOrEqualTo(0);
+        bytes.AsSpan().EndsWith("\u001b]1337;FileEnd\u001b\\\u001b[1;1H"u8).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies cover-mode RGBA and cover- or partial-source PNG placements stay on the
+    /// cell fallback and each reports why iTerm cannot express the placement, even though iTerm
+    /// now accepts RGBA sources whose geometry does qualify.</summary>
     [Fact]
     public void Prepare_WhenPlacementCannotBeExpressed_DeclinesWithoutOutput()
     {
@@ -109,7 +129,7 @@ public sealed class NonRetainedGraphicsBackendTests
             GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]),
             new Rect(0, 0, 1, 1),
             new Rect(0, 0, 1, 1),
-            PlacementMode.Contain));
+            PlacementMode.Cover));
         var png = Png(width: 2);
         frame.AddPlacement(new Placement(
             png,
@@ -127,7 +147,7 @@ public sealed class NonRetainedGraphicsBackendTests
         result.Changed.ShouldBeFalse();
         result.Placements.ShouldBe(0);
         result.SkippedPlacements.Count.ShouldBe(3);
-        result.SkippedPlacements[0].Reason.ShouldBe(GraphicsPlacementSkipReason.FormatNotEncodable);
+        result.SkippedPlacements[0].Reason.ShouldBe(GraphicsPlacementSkipReason.PlacementNotEncodable);
         result.SkippedPlacements[1].Reason.ShouldBe(GraphicsPlacementSkipReason.PlacementNotEncodable);
         result.SkippedPlacements[2].Reason.ShouldBe(GraphicsPlacementSkipReason.PlacementNotEncodable);
         WritePlacements(backend).ShouldBeEmpty();

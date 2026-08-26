@@ -432,4 +432,149 @@ internal static class Png
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static ArgumentException Invalid() =>
         new("The source is not a structurally supported PNG.", "source");
+
+    // ----------------------------------------------------------------------------------------
+    // PNG encoding. Independent of every decode member above: builds a minimal single-IDAT PNG
+    // container from already-owned RGBA8888 pixels rather than approximating or reusing decode
+    // state, and is never called from the decode path.
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Encodes straight (non-premultiplied) RGBA8888 pixels to a minimal non-interlaced, 8-bit,
+    /// color-type-6 PNG container: one IHDR chunk, exactly one IDAT chunk holding every scanline
+    /// prefixed with the "None" filter type, and one empty IEND chunk. The zlib compression level
+    /// is fixed, so encoding identical pixels always produces byte-identical output.
+    /// </summary>
+    /// <param name="size">The positive pixel dimensions matching <paramref name="rgba"/>.</param>
+    /// <param name="rgba">Exactly four bytes per pixel in row-major RGBA order.</param>
+    /// <param name="destination">The non-null destination receiving the complete PNG container.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="destination"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="size"/> is not positive, or its encoded scanline data would exceed the
+    /// supported bound.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="rgba"/>'s length does not equal width times height times four.
+    /// </exception>
+    public static void Encode(Size size, ReadOnlySpan<byte> rgba, IBufferWriter<byte> destination)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+
+        if (size.Width <= 0 || size.Height <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(size), size, "PNG encode dimensions must be positive.");
+        }
+
+        var expected = checked((long) size.Width * size.Height * 4);
+
+        if (rgba.Length != expected)
+        {
+            throw new ArgumentException(
+                "RGBA source length must equal width times height times four.",
+                nameof(rgba));
+        }
+
+        destination.Write(Signature);
+        WriteIhdrChunk(destination, size);
+        WriteIdatChunk(destination, size, rgba);
+        WriteChunk(destination, "IEND"u8, []);
+    }
+
+    private static void WriteIhdrChunk(IBufferWriter<byte> destination, Size size)
+    {
+        Span<byte> data = stackalloc byte[13];
+        BinaryPrimitives.WriteUInt32BigEndian(data, (uint) size.Width);
+        BinaryPrimitives.WriteUInt32BigEndian(data.Slice(4, 4), (uint) size.Height);
+        data[8] = 8; // Bit depth: eight bits per channel.
+        data[9] = 6; // Color type: truecolor with alpha (RGBA).
+        data[10] = 0; // Compression method: zlib, the only defined value.
+        data[11] = 0; // Filter method: adaptive, the only defined value.
+        data[12] = 0; // Interlace method: none.
+        WriteChunk(destination, "IHDR"u8, data);
+    }
+
+    private static void WriteIdatChunk(IBufferWriter<byte> destination, Size size, ReadOnlySpan<byte> rgba)
+    {
+        var stride = checked(size.Width * 4);
+        var rawLength = checked((long) size.Height * (stride + 1));
+
+        if (rawLength > int.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(size),
+                size,
+                "The encoded PNG scanline data exceeds the supported bound.");
+        }
+
+        var raw = new byte[(int) rawLength];
+
+        for (var row = 0; row < size.Height; row++)
+        {
+            var rawOffset = row * (stride + 1);
+            raw[rawOffset] = 0; // Filter type: None, for every scanline.
+            rgba.Slice(row * stride, stride).CopyTo(raw.AsSpan(rawOffset + 1, stride));
+        }
+
+        using var compressed = new MemoryStream();
+
+        // A fixed compression level, rather than one derived from input size or content, is what
+        // makes encoding the same pixels always produce byte-identical PNG bytes.
+        using (var zlib = new ZLibStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
+        {
+            zlib.Write(raw);
+        }
+
+        WriteChunk(destination, "IDAT"u8, compressed.ToArray());
+    }
+
+    private static void WriteChunk(IBufferWriter<byte> destination, ReadOnlySpan<byte> type, ReadOnlySpan<byte> data)
+    {
+        var totalLength = checked(data.Length + 12);
+        var span = destination.GetSpan(totalLength);
+        BinaryPrimitives.WriteUInt32BigEndian(span, (uint) data.Length);
+        type.CopyTo(span.Slice(4, 4));
+        data.CopyTo(span.Slice(8, data.Length));
+        BinaryPrimitives.WriteUInt32BigEndian(span.Slice(8 + data.Length, 4), ComputeCrc32(type, data));
+        destination.Advance(totalLength);
+    }
+
+    private static uint ComputeCrc32(ReadOnlySpan<byte> type, ReadOnlySpan<byte> data)
+    {
+        var crc = UpdateCrc32(uint.MaxValue, type);
+        crc = UpdateCrc32(crc, data);
+        return crc ^ uint.MaxValue;
+    }
+
+    private static uint UpdateCrc32(uint crc, ReadOnlySpan<byte> bytes)
+    {
+        foreach (var value in bytes)
+        {
+            crc = _crc32Table[(crc ^ value) & 0xFF] ^ (crc >> 8);
+        }
+
+        return crc;
+    }
+
+    // The standard PNG/zlib/gzip CRC-32 table (IEEE 802.3 polynomial 0xEDB88320), built once and
+    // shared by every chunk this encoder writes.
+    private static readonly uint[] _crc32Table = BuildCrc32Table();
+
+    private static uint[] BuildCrc32Table()
+    {
+        var table = new uint[256];
+
+        for (uint n = 0; n < 256; n++)
+        {
+            var c = n;
+
+            for (var k = 0; k < 8; k++)
+            {
+                c = (c & 1) != 0 ? 0xEDB88320 ^ (c >> 1) : c >> 1;
+            }
+
+            table[n] = c;
+        }
+
+        return table;
+    }
 }

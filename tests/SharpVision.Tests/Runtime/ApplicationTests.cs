@@ -1629,7 +1629,9 @@ public sealed partial class ApplicationTests
     /// <summary>
     /// Verifies a placement whose format has no encodable path on any enabled protocol pushes a
     /// GraphicsDiagnostic event instead of leaving the degradation observable only through a
-    /// renderer the hosted Application never exposes.
+    /// renderer the hosted Application never exposes. RGBA no longer demonstrates this on an
+    /// iTerm-only backend - RGBA is PNG-encoded on demand there now - so this uses a PNG this
+    /// decoder cannot decode, with only sixel (which does need to decode it) authorized.
     /// </summary>
     [Fact]
     public async Task StartAsync_WhenImageFormatHasNoEncodablePath_RaisesGraphicsDiagnosticAsync()
@@ -1638,7 +1640,7 @@ public sealed partial class ApplicationTests
         terminal.QueueResize(new Dimensions(new Size(2, 1), new Size(5, 3)));
         var image = new Image
         {
-            Source = Rgba(),
+            Source = UndecodablePng(),
             AlternateText = "PN",
             Width = Length.Cells(2),
             Height = Length.Cells(1)
@@ -1647,7 +1649,7 @@ public sealed partial class ApplicationTests
             image,
             terminal,
             terminal,
-            Options(iterm: true));
+            Options(sixel: true));
         var diagnosed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         GraphicsDiagnosticEventArgs? received = null;
         application.GraphicsDiagnostic += OnGraphicsDiagnostic;
@@ -2142,6 +2144,21 @@ public sealed partial class ApplicationTests
 
     private static GraphicsImage Png() => GraphicsImage.FromPng(Convert.FromBase64String(
         "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEUlEQVR4nGP4z8DA8B+MgBgAHfAD/dPQfSYAAAAASUVORK5CYII="));
+
+    // Structurally valid enough to pass IHDR/size validation, but its IDAT chunk is not valid
+    // zlib data, so DecodeRgba (which sixel needs) throws; iTerm2 would still transmit these
+    // bytes verbatim, which is exactly why this fixture is paired with a sixel-only backend.
+    private static GraphicsImage UndecodablePng() => GraphicsImage.FromPng([
+        137, 80, 78, 71, 13, 10, 26, 10,
+        0, 0, 0, 13, 73, 72, 68, 82,
+        0, 0, 0, 1, 0, 0, 0, 1,
+        8, 6, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0, 73, 68, 65, 84,
+        0, 0, 0, 0,
+        0, 0, 0, 0, 73, 69, 78, 68,
+        0, 0, 0, 0
+    ]);
 
     private static byte[] NegotiationReplies() => Encoding.ASCII.GetBytes(
         "\u001b[?1016;1$y\u001b[?1006;1$y\u001b[?2004;1$y" +
