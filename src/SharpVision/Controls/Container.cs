@@ -369,40 +369,40 @@ public abstract class Container: ControlBase
     public event EventHandler<ScrollChangedEventArgs>? ScrollChanged;
 
     /// <summary>Gets or sets whether this container clips and offsets overflowing content along enabled axes.</summary>
+    /// <remarks>Dependent offset and generated-bar state is synchronized from the live committed
+    /// value after property observers return. A reentrant observer's newer value therefore owns the
+    /// complete scrolling policy.</remarks>
     /// <exception cref="InvalidOperationException">The attached container is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
     public bool AutoScroll
     {
         get;
-        set
+        set => _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Measure, ApplyAutoScrollPolicy);
+    }
+
+    private void ApplyAutoScrollPolicy()
+    {
+        // Bars are created when scrolling is armed rather than lazily in
+        // ResolveContentSlot. Lazy creation there added children
+        // mid-arrange, which invalidates this container's own measure and
+        // can prevent nested armed containers from ever converging to a
+        // settled layout.
+        if (AutoScroll)
         {
-            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                return;
-            }
+            EnsureBars();
+        }
+        else
+        {
+            // Routed through Apply rather than writing the internal offset fields directly,
+            // so this reset honors the same clamp/notify/synchronize contract every other
+            // offset change goes through — a subscriber tracking ScrollChanged must not
+            // silently miss this change, and the generated ScrollBar parts must not go stale.
+            _ = Apply(0, 0, ScrollCause.Programmatic);
 
-            // Bars are created when scrolling is armed rather than lazily in
-            // ResolveContentSlot. Lazy creation there added children
-            // mid-arrange, which invalidates this container's own measure and
-            // can prevent nested armed containers from ever converging to a
-            // settled layout.
-            if (value)
+            if (_scroll.Bars is not null)
             {
-                EnsureBars();
-            }
-            else
-            {
-                // Routed through Apply rather than writing the internal offset fields directly,
-                // so this reset honors the same clamp/notify/synchronize contract every other
-                // offset change goes through — a subscriber tracking ScrollChanged must not
-                // silently miss this change, and the generated ScrollBar parts must not go stale.
-                _ = Apply(0, 0, ScrollCause.Programmatic);
-
-                if (_scroll.Bars is not null)
-                {
-                    SetVisibility(_scroll.Horizontal!, visible: false);
-                    SetVisibility(_scroll.Vertical!, visible: false);
-                }
+                SetVisibility(_scroll.Horizontal!, visible: false);
+                SetVisibility(_scroll.Vertical!, visible: false);
             }
         }
     }
@@ -423,6 +423,8 @@ public abstract class Container: ControlBase
     } = ScrollBars.Vertical;
 
     /// <summary>Gets or sets the common chrome reservation policy for enabled scroll axes.</summary>
+    /// <remarks>Both axis policies are synchronized from the live committed value after property
+    /// observers return. A reentrant observer's newer common policy therefore owns both axes.</remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached container is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
@@ -433,22 +435,22 @@ public abstract class Container: ControlBase
         {
             ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The enum value is unknown.");
 
-            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                return;
-            }
-
-            var visibility = value switch
-            {
-                ShowScrollBars.Never => ScrollBarVisibility.Hidden,
-                ShowScrollBars.WhenNeeded => ScrollBarVisibility.Auto,
-                ShowScrollBars.Always => ScrollBarVisibility.Always,
-                _ => throw new UnreachableException()
-            };
-            HorizontalBarVisibility = visibility;
-            VerticalBarVisibility = visibility;
+            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Measure, ApplyShowScrollBarsPolicy);
         }
     } = ShowScrollBars.WhenNeeded;
+
+    private void ApplyShowScrollBarsPolicy()
+    {
+        var visibility = ShowScrollBars switch
+        {
+            ShowScrollBars.Never => ScrollBarVisibility.Hidden,
+            ShowScrollBars.WhenNeeded => ScrollBarVisibility.Auto,
+            ShowScrollBars.Always => ScrollBarVisibility.Always,
+            _ => throw new UnreachableException()
+        };
+        HorizontalBarVisibility = visibility;
+        VerticalBarVisibility = visibility;
+    }
 
     /// <summary>Gets or sets horizontal bar reservation policy.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>

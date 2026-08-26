@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Collections;
 
+using System.Runtime.ExceptionServices;
+
 using SharpVision.Controls.Input;
 using SharpVision.Terminal.Input;
 
@@ -33,6 +35,8 @@ public sealed class TreeViewItem: ControlBase
 #pragma warning restore IDE0032
 
     private CancellationTokenSource? _loadCancellation;
+    private long _expandedVersion;
+    private long _childStateVersion;
     private long _loadGeneration;
     private TreeViewChildState _priorChildStateBeforeLoad;
     private TreeViewStatusRow? _statusRow;
@@ -106,7 +110,9 @@ public sealed class TreeViewItem: ControlBase
     /// Expanding an item whose <see cref="ChildState"/> is <see cref="TreeViewChildState.Unloaded"/>
     /// starts exactly one background request for its children. Collapsing an item whose
     /// <see cref="ChildState"/> is <see cref="TreeViewChildState.Loading"/> cancels that request and
-    /// restores the state it had before the request started.
+    /// restores the state it had before the request started. A public observer that commits a newer
+    /// expansion state supersedes the outer transition's structural and loading work. Observer
+    /// failures do not prevent invariant work for the still-current transition.
     /// </remarks>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
@@ -123,18 +129,30 @@ public sealed class TreeViewItem: ControlBase
             }
 
             field = value;
-            NotifyPropertyChanged(nameof(IsExpanded), InvalidationImpact.None);
-            ExpandedChanged?.Invoke(this, new ItemExpandedChangedEventArgs(value));
-            FindTreeView()?.NotifyStructureChanged();
+            var version = ++_expandedVersion;
+            ExceptionDispatchInfo? failure = null;
+            ExceptionAggregation.Capture(
+                () => NotifyPropertyChanged(nameof(IsExpanded), InvalidationImpact.None),
+                ref failure);
 
-            if (value && ChildState == TreeViewChildState.Unloaded)
+            if (IsCurrentExpansion(version, value))
             {
-                _ = BeginLoad();
+                ExceptionAggregation.Capture(
+                    () => ExpandedChanged?.Invoke(this, new ItemExpandedChangedEventArgs(value)),
+                    ref failure);
             }
-            else if (!value && ChildState == TreeViewChildState.Loading)
+
+            if (IsCurrentExpansion(version, value))
             {
-                CancelOwnLoadAndRestorePriorState();
+                ExceptionAggregation.Capture(() => FindTreeView()?.NotifyStructureChanged(), ref failure);
             }
+
+            if (IsCurrentExpansion(version, value))
+            {
+                ExceptionAggregation.Capture(ApplyExpandedState, ref failure);
+            }
+
+            failure?.Throw();
         }
     } = true;
 
@@ -369,6 +387,9 @@ public sealed class TreeViewItem: ControlBase
     public TreeViewChildState ChildState { get; private set; } = TreeViewChildState.Leaf;
 
     /// <summary>Raised after <see cref="ChildState"/> changes.</summary>
+    /// <remarks>A callback may replace <see cref="ChildSource"/> or otherwise supersede the active
+    /// request. The superseded request does not start or publish later structural work. A callback
+    /// failure is rethrown only after the still-current request and status-row invariants complete.</remarks>
     public event EventHandler<TreeViewChildStateChangedEventArgs>? ChildStateChanged;
 
     /// <summary>Gets the exception from the most recently failed child request, or null.</summary>
@@ -1062,18 +1083,28 @@ public sealed class TreeViewItem: ControlBase
 
         var previous = ChildState;
         ChildState = value;
-        NotifyPropertyChanged(nameof(ChildState), InvalidationImpact.Measure);
-        ChildStateChanged?.Invoke(this, new TreeViewChildStateChangedEventArgs(previous, value));
+        var version = ++_childStateVersion;
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(
+            () => NotifyPropertyChanged(nameof(ChildState), InvalidationImpact.Measure),
+            ref failure);
 
-        if (!notifyTree)
+        if (IsCurrentChildState(version, value))
         {
-            return;
+            ExceptionAggregation.Capture(
+                () => ChildStateChanged?.Invoke(this, new TreeViewChildStateChangedEventArgs(previous, value)),
+                ref failure);
         }
 
-        // A status row appears or disappears exactly on a ChildState transition, so every
-        // transition must be able to trigger a flatten. Inside a commit's BeginUpdate/EndUpdate
-        // bracket this is a deferred no-op, folded into that one rebuild.
-        FindTreeView()?.NotifyStructureChanged();
+        if (notifyTree && IsCurrentChildState(version, value))
+        {
+            // A status row appears or disappears exactly on a ChildState transition, so every
+            // transition must be able to trigger a flatten. Inside a commit's BeginUpdate/EndUpdate
+            // bracket this is a deferred no-op, folded into that one rebuild.
+            ExceptionAggregation.Capture(() => FindTreeView()?.NotifyStructureChanged(), ref failure);
+        }
+
+        failure?.Throw();
     }
 
     private Task? BeginLoad()
@@ -1102,10 +1133,49 @@ public sealed class TreeViewItem: ControlBase
         var context = new TreeViewChildContext(RemoteKey, Header);
         var source = ChildSource ?? throw new InvalidOperationException(
             "BeginLoad requires a non-null ChildSource.");
-        SetChildState(TreeViewChildState.Loading);
+        var cancellationToken = cancellation.Token;
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(() => SetChildState(TreeViewChildState.Loading), ref failure);
+        Task? observation = null;
 
-        LastChildLoadObservation = RunLoadAsync(dispatcher, tree, context, source, generation, cancellation.Token);
-        return LastChildLoadObservation;
+        if (IsCurrentLoad(dispatcher, source, generation, cancellation))
+        {
+            observation = RunLoadAsync(dispatcher, tree, context, source, generation, cancellationToken);
+            LastChildLoadObservation = observation;
+        }
+
+        failure?.Throw();
+        return observation;
+    }
+
+    private bool IsCurrentExpansion(long version, bool value) =>
+        !IsDisposed && _expandedVersion == version && IsExpanded == value;
+
+    private bool IsCurrentChildState(long version, TreeViewChildState value) =>
+        !IsDisposed && _childStateVersion == version && ChildState == value;
+
+    private bool IsCurrentLoad(
+        Dispatcher dispatcher,
+        ITreeViewChildSource source,
+        long generation,
+        CancellationTokenSource cancellation) =>
+        !IsDisposed &&
+        ReferenceEquals(Dispatcher, dispatcher) &&
+        ReferenceEquals(ChildSource, source) &&
+        _loadGeneration == generation &&
+        ReferenceEquals(_loadCancellation, cancellation) &&
+        ChildState == TreeViewChildState.Loading;
+
+    private void ApplyExpandedState()
+    {
+        if (IsExpanded && ChildState == TreeViewChildState.Unloaded)
+        {
+            _ = BeginLoad();
+        }
+        else if (!IsExpanded && ChildState == TreeViewChildState.Loading)
+        {
+            CancelOwnLoadAndRestorePriorState();
+        }
     }
 
     private async Task RunLoadAsync(

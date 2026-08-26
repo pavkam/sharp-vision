@@ -911,6 +911,72 @@ public sealed partial class ControlBaseTests
         fired.ShouldBe(1);
     }
 
+    /// <summary>Verifies restoring visibility from the unavailability seam suppresses the stale
+    /// outer publications after the nested restoration has already published its own state.</summary>
+    [Fact]
+    public void Visibility_WhenUnavailableCallbackRestoresVisible_SuppressesOuterNotifications()
+    {
+        var control = new OwnershipObserverControl
+        {
+            BecomingUnavailable = static (current, reason) =>
+            {
+                if (reason == ReleaseReason.Hidden)
+                {
+                    current.Visibility = Visibility.Visible;
+                }
+            }
+        };
+        var propertyValues = new List<Visibility>();
+        var changedValues = new List<Visibility>();
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ControlBase.Visibility))
+            {
+                propertyValues.Add(control.Visibility);
+            }
+        };
+        control.VisibilityChanged += (_, _) => changedValues.Add(control.Visibility);
+
+        control.Visibility = Visibility.Hidden;
+
+        control.Visibility.ShouldBe(Visibility.Visible);
+        propertyValues.ShouldBe([Visibility.Visible]);
+        changedValues.ShouldBe([Visibility.Visible]);
+    }
+
+    /// <summary>Verifies restoring enabled state from the unavailability seam suppresses the stale
+    /// outer publications after the nested restoration has already published its own state.</summary>
+    [Fact]
+    public void IsEnabled_WhenUnavailableCallbackRestoresEnabled_SuppressesOuterNotifications()
+    {
+        var control = new OwnershipObserverControl
+        {
+            BecomingUnavailable = static (current, reason) =>
+            {
+                if (reason == ReleaseReason.Disabled)
+                {
+                    current.IsEnabled = true;
+                }
+            }
+        };
+        var propertyValues = new List<bool>();
+        var changedValues = new List<bool>();
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ControlBase.IsEnabled))
+            {
+                propertyValues.Add(control.IsEnabled);
+            }
+        };
+        control.EnabledChanged += (_, _) => changedValues.Add(control.IsEnabled);
+
+        control.IsEnabled = false;
+
+        control.IsEnabled.ShouldBeTrue();
+        propertyValues.ShouldBe([true]);
+        changedValues.ShouldBe([true]);
+    }
+
     /// <summary>Verifies ParentChanged fires when added to a container.</summary>
     [Fact]
     public void ParentChanged_WhenAddedToContainer_Fires()

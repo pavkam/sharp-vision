@@ -100,6 +100,31 @@ public sealed class ExpanderTests
         states.ShouldBe([false, true]);
     }
 
+    /// <summary>Verifies a reentrant property observer owns the final expanded state, content
+    /// visibility, and typed event stream.</summary>
+    [Fact]
+    public void IsExpanded_WhenPropertyObserverRestoresValue_SuppressesStaleExpandedEvent()
+    {
+        var content = new ProbeControl(new Size(4, 1));
+        var expander = new Expander { Content = content };
+        var observations = new List<(bool EventValue, bool LiveValue, Visibility ContentVisibility)>();
+        expander.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Expander.IsExpanded) && !expander.IsExpanded)
+            {
+                expander.IsExpanded = true;
+            }
+        };
+        expander.ExpandedChanged += (_, eventArgs) =>
+            observations.Add((eventArgs.IsExpanded, expander.IsExpanded, content.Visibility));
+
+        expander.IsExpanded = false;
+
+        expander.IsExpanded.ShouldBeTrue();
+        content.Visibility.ShouldBe(Visibility.Visible);
+        observations.ShouldBe([(true, true, Visibility.Visible)]);
+    }
+
     /// <summary>Verifies collapsing hides content from the Visibility chain, not only from arranged size,
     /// so a focusable control inside it stops being reachable by keyboard focus.</summary>
     [Fact]

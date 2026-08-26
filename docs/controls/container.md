@@ -102,7 +102,10 @@ are defined by [grow and shrink](../concepts/layout.md#grow-and-shrink).
 The inherited scroll properties select axes, offsets, bar reservation, chrome,
 line and page changes, and interaction. Generated bars are private framework
 parts. The [scrolling rules](../concepts/scrolling.md#overview) define feedback,
-clipping, nested wheel propagation, and offset validation.
+clipping, nested wheel propagation, and offset validation. `AutoScroll` and
+`ShowScrollBars` apply their dependent bar state from the live value after
+property observers return, so a reentrant observer's newer policy owns the
+offset reset, generated parts, and both axis reservation values.
 
 ## Example
 
@@ -159,3 +162,5 @@ public sealed class SharedSlot : Container
 - Rendering and pointer traversal, disposal, auto-size, scroll geometry,
   clipping, and nested wheel propagation all behave as documented.
 - Generated scrollbar parts stay encapsulated and never appear in `Children`.
+- Reentrant common scrolling-policy changes leave generated parts, offsets, and
+  both axis policies consistent with the newest committed value.

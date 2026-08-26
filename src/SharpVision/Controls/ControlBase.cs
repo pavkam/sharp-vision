@@ -32,6 +32,8 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     private ThemeStructuralDependency _themeStructuralDependencies;
     private bool? _effectiveIsVisible;
     private bool? _effectiveIsEnabled;
+    private long _visibilityVersion;
+    private long _isEnabledVersion;
 
     /// <summary>Gets how many times this control has actually recomputed <see cref="EffectiveIsVisible"/>
     /// or <see cref="EffectiveIsEnabled"/> from ancestor state rather than returning a cached value.
@@ -227,6 +229,8 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// A change to hidden or collapsed state commits and invalidates first, completes focus and
     /// pointer-capture cleanup, and then raises <see cref="PropertyChanged"/>. Cleanup and property
     /// callbacks both run when either fails, and the earliest failure is rethrown afterward.
+    /// If cleanup commits a newer visibility transition, the superseded outer transition does not
+    /// publish duplicate property, visibility, or derived-focus notifications.
     /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -249,6 +253,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
             var derivedSnapshot = SnapshotDerivedFocusState();
             field = value;
+            var version = ++_visibilityVersion;
             InvalidateEffectiveState();
             var invalidation = InvalidationFor(impact);
             Invalidate(invalidation);
@@ -262,15 +267,27 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                     ref failure);
             }
 
-            ExceptionAggregation.Capture(
-                () => PropertyChanged?.Invoke(
-                    this,
-                    new PropertyChangedEventArgs(nameof(Visibility))),
-                ref failure);
-            ExceptionAggregation.Capture(
-                () => VisibilityChanged?.Invoke(this, EventArgs.Empty),
-                ref failure);
-            ExceptionAggregation.Capture(() => PublishDerivedFocusStateChanges(derivedSnapshot), ref failure);
+            if (IsCurrentVisibilityTransition(version, value))
+            {
+                ExceptionAggregation.Capture(
+                    () => PropertyChanged?.Invoke(
+                        this,
+                        new PropertyChangedEventArgs(nameof(Visibility))),
+                    ref failure);
+            }
+
+            if (IsCurrentVisibilityTransition(version, value))
+            {
+                ExceptionAggregation.Capture(
+                    () => VisibilityChanged?.Invoke(this, EventArgs.Empty),
+                    ref failure);
+            }
+
+            if (IsCurrentVisibilityTransition(version, value))
+            {
+                ExceptionAggregation.Capture(() => PublishDerivedFocusStateChanges(derivedSnapshot), ref failure);
+            }
+
             failure?.Throw();
         }
     } = Visibility.Visible;
@@ -280,6 +297,8 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// Disabling commits and invalidates first, completes focus and pointer-capture cleanup, and
     /// then raises <see cref="PropertyChanged"/>. Cleanup and property callbacks both run when
     /// either fails, and the earliest failure is rethrown afterward.
+    /// If cleanup commits a newer enabled transition, the superseded outer transition does not
+    /// publish duplicate property, enabled, or derived-focus notifications.
     /// </remarks>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -297,6 +316,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
             var derivedSnapshot = SnapshotDerivedFocusState();
             field = value;
+            var version = ++_isEnabledVersion;
             InvalidateEffectiveState();
 
             // Disabled is in the appearance states' chrome-geometry state set (border.sides may
@@ -315,18 +335,36 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                     ref failure);
             }
 
-            ExceptionAggregation.Capture(
-                () => PropertyChanged?.Invoke(
-                    this,
-                    new PropertyChangedEventArgs(nameof(IsEnabled))),
-                ref failure);
-            ExceptionAggregation.Capture(
-                () => EnabledChanged?.Invoke(this, EventArgs.Empty),
-                ref failure);
-            ExceptionAggregation.Capture(() => PublishDerivedFocusStateChanges(derivedSnapshot), ref failure);
+            if (IsCurrentEnabledTransition(version, value))
+            {
+                ExceptionAggregation.Capture(
+                    () => PropertyChanged?.Invoke(
+                        this,
+                        new PropertyChangedEventArgs(nameof(IsEnabled))),
+                    ref failure);
+            }
+
+            if (IsCurrentEnabledTransition(version, value))
+            {
+                ExceptionAggregation.Capture(
+                    () => EnabledChanged?.Invoke(this, EventArgs.Empty),
+                    ref failure);
+            }
+
+            if (IsCurrentEnabledTransition(version, value))
+            {
+                ExceptionAggregation.Capture(() => PublishDerivedFocusStateChanges(derivedSnapshot), ref failure);
+            }
+
             failure?.Throw();
         }
     } = true;
+
+    private bool IsCurrentVisibilityTransition(long version, Visibility value) =>
+        !IsDisposed && _visibilityVersion == version && Visibility == value;
+
+    private bool IsCurrentEnabledTransition(long version, bool value) =>
+        !IsDisposed && _isEnabledVersion == version && IsEnabled == value;
 
     /// <summary>Gets whether this control and every ancestor are enabled.</summary>
     public bool EffectiveIsEnabled

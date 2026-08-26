@@ -272,13 +272,18 @@ already-`Loading` item is a no-op, and collapsing a `Loading` item cancels the
 request and restores the state it had before the request started. An item that
 starts life `IsExpanded` with `ChildSource` already assigned - the constructor
 default - starts its request as soon as it reaches a running dispatcher, even
-when that happens after construction. Every child request is validated before it
-commits: a null result or element, a duplicate key, a key that would create a
-cycle with an ancestor, or a header containing a terminal control character is
-rejected without mutating `Children` or `ChildState`, and the rejection surfaces
-through `LastChildLoadError`. A stable key reused across a reload keeps the same
-materialized `TreeViewItem` instance, so its `IsExpanded`, checked, and selected
-state survive the reload.
+when that happens after construction. If an expansion or child-state callback
+commits a newer expansion, source, or loading state, that newer transaction owns
+all later flattening and request work; the superseded transaction cannot start a
+request or reuse its disposed cancellation token. A throwing observer does not
+skip the still-current structural or request work, and its first failure is
+re-thrown only after those invariants are established. Every child request is
+validated before it commits: a null result or element, a duplicate key, a key
+that would create a cycle with an ancestor, or a header containing a terminal
+control character is rejected without mutating `Children` or `ChildState`, and
+the rejection surfaces through `LastChildLoadError`. A stable key reused across
+a reload keeps the same materialized `TreeViewItem` instance, so its
+`IsExpanded`, checked, and selected state survive the reload.
 
 `ChildSource` reassignment - including to null - cancels a pending request and
 evicts (detaches and disposes) any children the loader previously committed. A
@@ -327,3 +332,5 @@ tree.Items.Add(source);
   commit.
 - A stale completion - from a cancelled, superseded, or reassigned request - is
   always dropped; only the newest request's outcome is ever committed.
+- Reentrant expansion and loading callbacks leave structural realization and
+  request ownership aligned with the newest committed state.

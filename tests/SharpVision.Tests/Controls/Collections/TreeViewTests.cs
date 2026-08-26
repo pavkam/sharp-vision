@@ -445,6 +445,35 @@ public sealed partial class TreeViewTests
         captured.ShouldBe([false, true]);
     }
 
+    /// <summary>Verifies a newer expansion committed by the public callback owns all structural
+    /// and loading work, so the superseded outer transition cannot start a hidden request.</summary>
+    [Fact]
+    public async Task IsExpanded_WhenExpandedChangedCollapsesAgain_DoesNotStartSupersededLoadAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+        var tree = new TreeView { Items = { item } };
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            tree.Attach(dispatcher);
+            item.ExpandedChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.IsExpanded)
+                {
+                    item.IsExpanded = false;
+                }
+            };
+
+            item.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+
+        item.IsExpanded.ShouldBeFalse();
+        item.ChildState.ShouldBe(TreeViewChildState.Unloaded);
+        source.Requests.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies a Collapsed item drops its own row and its entire subtree from
     /// realization, retains selection on an unreachable descendant, and fully recovers when
     /// restored to IsVisible.</summary>

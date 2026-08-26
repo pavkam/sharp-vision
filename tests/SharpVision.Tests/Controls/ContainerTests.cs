@@ -6,6 +6,74 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies intrinsic Container scrolling geometry, offsets, clipping, and chrome.</summary>
 public sealed class ContainerTests
 {
+    /// <summary>Verifies reentrant AutoScroll policy wins both arming directions, including the
+    /// generated scrollbar ownership transaction.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AutoScroll_WhenPropertyObserverReversesValue_AppliesFinalPolicy(bool requested)
+    {
+        var container = new LayoutProbe
+        {
+            AutoScroll = !requested,
+            ScrollBars = ScrollBars.Both,
+            ShowScrollBars = ShowScrollBars.Always
+        };
+        container.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Container.AutoScroll) &&
+                container.AutoScroll == requested)
+            {
+                container.AutoScroll = !requested;
+            }
+        };
+
+        container.AutoScroll = requested;
+
+        container.AutoScroll.ShouldBe(!requested);
+        OwnedTree.FindAll<ScrollBar>(container).Count.ShouldBe(requested ? 0 : 2);
+    }
+
+    /// <summary>Verifies every common scrollbar policy applies the final reentrant value to both
+    /// independent axis properties.</summary>
+    [Theory]
+    [InlineData(ShowScrollBars.Never, ShowScrollBars.Always)]
+    [InlineData(ShowScrollBars.WhenNeeded, ShowScrollBars.Never)]
+    [InlineData(ShowScrollBars.Always, ShowScrollBars.WhenNeeded)]
+    public void ShowScrollBars_WhenPropertyObserverChangesPolicy_AppliesFinalPolicy(
+        ShowScrollBars requested,
+        ShowScrollBars replacement)
+    {
+        var container = new LayoutProbe();
+
+        if (container.ShowScrollBars == requested)
+        {
+            container.ShowScrollBars = replacement;
+        }
+
+        container.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Container.ShowScrollBars) &&
+                container.ShowScrollBars == requested)
+            {
+                container.ShowScrollBars = replacement;
+            }
+        };
+
+        container.ShowScrollBars = requested;
+
+        var expected = replacement switch
+        {
+            ShowScrollBars.Never => ScrollBarVisibility.Hidden,
+            ShowScrollBars.WhenNeeded => ScrollBarVisibility.Auto,
+            ShowScrollBars.Always => ScrollBarVisibility.Always,
+            _ => throw new UnreachableException()
+        };
+        container.ShowScrollBars.ShouldBe(replacement);
+        container.HorizontalBarVisibility.ShouldBe(expected);
+        container.VerticalBarVisibility.ShouldBe(expected);
+    }
+
     /// <summary>Verifies an unarmed container reports an inert scroll state and clips overflow.</summary>
     [Fact]
     public void ScrollState_WhenNotArmed_IsInert()

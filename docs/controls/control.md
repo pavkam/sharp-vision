@@ -84,7 +84,10 @@ the documented argument or object-lifetime exceptions. When a change hides,
 collapses, or disables a control, focus and pointer-capture cleanup completes
 before `PropertyChanged` is raised. If either callback path fails, cleanup and
 property publication are still both attempted, and the earliest failure is
-rethrown once the state and manager transitions are complete.
+rethrown once the state and manager transitions are complete. If cleanup or an
+unavailability callback commits a newer `Visibility` or `IsEnabled` transition,
+that newer transition owns the event stream; the superseded outer setter does
+not publish duplicate property-specific or derived-focus notifications.
 
 `EffectiveIsEnabled` and `EffectiveIsVisible` are computed across the whole
 ancestor chain, and changing an inherited state invalidates the affected

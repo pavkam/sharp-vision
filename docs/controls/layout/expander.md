@@ -59,10 +59,13 @@ the plain-text convenience described by
 `IsExpanded` defaults to `true` and controls content visibility. When it is
 `false`, only the header row renders; the content is excluded from measure,
 arrangement, rendering, hit testing, and navigation, but it remains owned and
-attached. `ExpandedChanged` fires after `IsExpanded` commits a changed value.
-`Content` is the single owned child, arranged below the header row while
-expanded. Replacing the content while collapsed releases the previous child
-immediately without changing the expansion state.
+attached. `ExpandedChanged` fires after `IsExpanded` commits a changed value. If
+a property observer commits a newer expansion state, that newer transition owns
+content visibility and the typed event; the superseded outer setter does not
+publish a stale `ExpandedChanged` payload. `Content` is the single owned child,
+arranged below the header row while expanded. Replacing the content while
+collapsed releases the previous child immediately without changing the expansion
+state.
 
 `ExpanderStyle : ControlStyle` is a complete immutable presentation: it adds a
 one-cell `CollapsedGlyph`, a one-cell `ExpandedGlyph`, and a non-negative
@@ -122,6 +125,8 @@ focuses the Expander and toggles expansion.
   collapsing excludes the content without giving up ownership.
 - Toggling raises `ExpandedChanged` in a deterministic order, and the borderless
   header renders its glyph and text into exact cells.
+- Reentrant property observers leave content visibility and the typed expansion
+  event aligned with the newest committed state.
 - The header responds to keyboard and pointer activation with hit geometry that
   accounts for any optional border and padding, hovering a descendant does not
   light the header, and a disabled Expander refuses to toggle.

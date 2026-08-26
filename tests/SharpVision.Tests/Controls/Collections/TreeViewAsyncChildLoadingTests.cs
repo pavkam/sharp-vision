@@ -7,6 +7,120 @@ namespace SharpVision.Tests.Controls.Collections;
 /// generation-guarded cancellation, atomic commits, validation, and admission control.</summary>
 public sealed partial class TreeViewTests
 {
+    /// <summary>Verifies expansion invariant work survives either public expansion observer
+    /// throwing after the state commits.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task IsExpanded_WhenExpansionObserverThrows_StillStartsCommittedLoadAsync(
+        bool throwFromPropertyObserver)
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null, new TreeViewChildDescription("child", "Child")
+        {
+            Presence = TreeViewChildPresence.Leaf
+        });
+        var item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+        var tree = new TreeView { Items = { item } };
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            tree.Attach(dispatcher);
+
+            if (throwFromPropertyObserver)
+            {
+                item.PropertyChanged += (_, eventArgs) =>
+                {
+                    if (eventArgs.PropertyName == nameof(TreeViewItem.IsExpanded))
+                    {
+                        throw new InvalidOperationException("The property observer failed.");
+                    }
+                };
+            }
+            else
+            {
+                item.ExpandedChanged += (_, _) =>
+                    throw new InvalidOperationException("The expanded observer failed.");
+            }
+
+            _ = Should.Throw<InvalidOperationException>(() => item.IsExpanded = true);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        source.Requests.ShouldBe([null]);
+        item.Children.Count.ShouldBe(1);
+    }
+
+    /// <summary>Verifies cancelling from the Loading callback cannot expose a token owned by the
+    /// cancelled and disposed request to the superseded outer start path.</summary>
+    [Fact]
+    public async Task BeginLoad_WhenLoadingObserverClearsSource_DoesNotStartCancelledRequestAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+        var tree = new TreeView { Items = { item } };
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            tree.Attach(dispatcher);
+            item.ChildStateChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.Current == TreeViewChildState.Loading)
+                {
+                    item.ChildSource = null;
+                }
+            };
+
+            item.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Leaf);
+        item.ChildSource.ShouldBeNull();
+        source.Requests.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a failing Loading observer cannot strand a committed loading state with
+    /// no request behind it.</summary>
+    [Fact]
+    public async Task BeginLoad_WhenLoadingObserverThrows_StillStartsRequestAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var completion = source.DeferNext(null);
+        var item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+        var tree = new TreeView { Items = { item } };
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            tree.Attach(dispatcher);
+            item.ChildStateChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.Current == TreeViewChildState.Loading)
+                {
+                    throw new InvalidOperationException("The loading observer failed.");
+                }
+            };
+
+            _ = Should.Throw<InvalidOperationException>(() => item.IsExpanded = true);
+        }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+        source.Requests.ShouldBe([null]);
+
+        completion.SetResult([]);
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+        item.Children.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies an item with no <see cref="TreeViewItem.ChildSource"/> and no children is
     /// a leaf, distinct from an item whose source has not yet been consulted.</summary>
     [Fact]
