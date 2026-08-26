@@ -81,3 +81,7 @@ var timeInput = new TimeInput { TimeStep = TimeSpan.FromMinutes(15) };
 | Public API            | Defaults, bounds, the null policy, time-step validation, `Format` validation, segment edits, and event order behave as documented.                                                                 |
 | Integrated behavior   | Keyboard and pointer segment selection work through mounted routed input.                                                                                                                          |
 | Complete runtime path | The 12- and 24-hour formats, optional seconds, custom `Format` layouts, active segment, focus, disabled state, tiny clipping, and non-invariant `Culture` separators/designators render correctly. |
+
+- Direct digit and AM/PM entry follows the shared
+  [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy),
+  leaving command-modified characters unhandled without changing a segment.

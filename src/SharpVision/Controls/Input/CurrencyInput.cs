@@ -411,7 +411,8 @@ public sealed class CurrencyInput: InputBase
             Code.Delete => _buffer.Delete(),
             Code.Left => _buffer.MovePrevious(extend: false),
             Code.Right => _buffer.MoveNext(extend: false),
-            Code.Character when stroke.Character is { } ch => _buffer.Insert(ch.ToString()),
+            Code.Character when stroke.Character is { } ch &&
+                KeyboardModifierPolicy.IsTextEntryEligible(stroke.Modifiers) => _buffer.Insert(ch.ToString()),
             _ => false
         };
 #pragma warning restore IDE0072

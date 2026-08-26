@@ -617,11 +617,13 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 
         if (eventArgs is KeyEventArgs { IsInitialKeyDown: true } key)
         {
-            var button = key.Stroke.Code == Code.Enter
-                ? FindButton(this, static candidate => candidate.IsDefault)
-                : key.Stroke.Code == Code.Escape
-                    ? FindButton(this, static candidate => candidate.IsCancel)
-                    : null;
+            var button = key.Stroke.Modifiers.IsActivationEligible()
+                ? key.Stroke.Code == Code.Enter
+                    ? FindButton(this, static candidate => candidate.IsDefault)
+                    : key.Stroke.Code == Code.Escape
+                        ? FindButton(this, static candidate => candidate.IsCancel)
+                        : null
+                : null;
 
             if (button is not null)
             {

@@ -923,7 +923,7 @@ public abstract partial class ControlBase: ISelectableTextSource
         if (stroke.Code == Code.Character &&
             stroke.Character is { } character &&
             Rune.ToLowerInvariant(character) == new Rune('a') &&
-            modifiers == Modifiers.Control)
+            KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Control))
         {
             SelectAllText();
             eventArgs.IsHandled = true;

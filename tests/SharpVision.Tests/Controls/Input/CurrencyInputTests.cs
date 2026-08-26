@@ -474,6 +474,35 @@ public sealed class CurrencyInputTests
         control.Value.ShouldBe(1.5m);
     }
 
+    /// <summary>Verifies direct character editing accepts only text-entry modifier states and
+    /// leaves command chords unhandled without contaminating the transient buffer.</summary>
+    [Theory]
+    [InlineData(Modifiers.None, true)]
+    [InlineData(Modifiers.Shift, true)]
+    [InlineData(Modifiers.CapsLock | Modifiers.NumLock, true)]
+    [InlineData(Modifiers.Control, false)]
+    [InlineData(Modifiers.Alt, false)]
+    [InlineData(Modifiers.Super, false)]
+    [InlineData(Modifiers.Hyper, false)]
+    [InlineData(Modifiers.Meta, false)]
+    public void Input_WhenCharacterCarriesModifiers_EditsOnlyForTextEntryState(
+        Modifiers modifiers,
+        bool expectedEdit)
+    {
+        // Arrange
+        using var control = new CurrencyInput { Value = 4m, DecimalPlaces = 0 };
+        TypeCharacter(control, '5');
+        var key = CharacterKey('9', modifiers);
+
+        // Act
+        _ = Router.Route(control, Events.Key, key);
+        _ = Router.Route(control, Events.Key, Key(Code.Enter));
+
+        // Assert
+        control.Value.ShouldBe(expectedEdit ? 59m : 5m);
+        key.IsHandled.ShouldBe(expectedEdit);
+    }
+
     /// <summary>Verifies culture when changed after construction re-derives the effective decimal
     /// places used by the next commit, without needing an explicit DecimalPlaces assignment.</summary>
     [Fact]
@@ -1182,12 +1211,14 @@ public sealed class CurrencyInputTests
         Router.Route(
             control,
             Events.Key,
-            new KeyEventArgs(new Stroke(
-                Code.Character,
-                new Rune(character),
-                nativeCode: 0,
-                Modifiers.None,
-                KeyAction.Press)));
+            CharacterKey(character, Modifiers.None));
+
+    private static KeyEventArgs CharacterKey(char character, Modifiers modifiers) => new(new Stroke(
+        Code.Character,
+        new Rune(character),
+        nativeCode: 0,
+        modifiers,
+        KeyAction.Press));
 
     #endregion
 }

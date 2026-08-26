@@ -532,7 +532,10 @@ public sealed class DateInput: InputBase
                 return;
             }
 
-            if (hasEditableSegments && key.Code == Code.Character && key.Character is { } ch &&
+            if (hasEditableSegments &&
+                key.Code == Code.Character &&
+                key.Character is { } ch &&
+                KeyboardModifierPolicy.IsTextEntryEligible(key.Modifiers) &&
                 ch.Value is >= '0' and <= '9')
             {
                 _ = _segments.TypeDigit(ch.Value - '0');

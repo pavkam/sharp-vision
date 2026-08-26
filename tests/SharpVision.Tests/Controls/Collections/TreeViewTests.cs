@@ -6,6 +6,44 @@ namespace SharpVision.Tests.Controls.Collections;
 /// <summary>Verifies hierarchical tree view ownership, selection, expand/collapse, and keyboard navigation.</summary>
 public sealed partial class TreeViewTests
 {
+    /// <summary>Verifies select-all normalizes character case and lock state but rejects larger
+    /// application-command chords.</summary>
+    [Theory]
+    [InlineData('a', Modifiers.Control, true)]
+    [InlineData('A', Modifiers.Control | Modifiers.CapsLock, true)]
+    [InlineData('a', Modifiers.Control | Modifiers.NumLock, true)]
+    [InlineData('A', Modifiers.Control | Modifiers.Shift, false)]
+    [InlineData('a', Modifiers.Control | Modifiers.Alt, false)]
+    [InlineData('a', Modifiers.Control | Modifiers.Super, false)]
+    public void Dispatch_WhenSelectAllCharacterCarriesModifiers_MatchesExactNormalizedCommand(
+        char character,
+        Modifiers modifiers,
+        bool expectedSelection)
+    {
+        // Arrange
+        var first = new TreeViewItem { Header = "First" };
+        var second = new TreeViewItem { Header = "Second" };
+        var tree = new TreeView
+        {
+            SelectionMode = TreeSelectionMode.Multiple,
+            Items = { first, second }
+        };
+        tree.SelectItem(first);
+        var key = new KeyEventArgs(new Stroke(
+            Code.Character,
+            new Rune(character),
+            nativeCode: 0,
+            modifiers,
+            KeyAction.Press));
+
+        // Act
+        _ = Router.Route(tree, Events.Key, key);
+
+        // Assert
+        tree.SelectedItems.ShouldBe(expectedSelection ? [first, second] : [first]);
+        key.IsHandled.ShouldBe(expectedSelection);
+    }
+
     /// <summary>Verifies the published selection snapshot cannot be rewritten by a consumer.</summary>
     [Fact]
     public void SelectedItems_WhenConsumerAttemptsMutation_RejectsTheChange()

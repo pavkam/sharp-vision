@@ -123,6 +123,10 @@ currencyInput.ValueChanged += (_, e) => Console.Write(e.Value);
 | Integrated behavior   | Keyboard editing, pasting, and mid-edit Culture changes work end to end without migrating a half-parsed buffer or a stale currency identity.                                                                                            |
 | Complete runtime path | Typed display transitions, culture-aware currency separators, group sizes, and sign patterns, Enter/Escape/focus-loss commit paths, keyboard stepping, pointer caret placement, the disabled state, and tiny clipping render correctly. |
 
+- Direct character edits follow the shared
+  [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy):
+  Shift and lock state may produce text, while command-modified characters stay
+  out of the transient buffer and remain unhandled.
 - The buffer accepts both a culture's own negative sign and the ASCII
   hyphen-minus, normalizing whichever was typed at commit.
 - A negative amount under a culture whose `CurrencyNegativePattern` wraps the

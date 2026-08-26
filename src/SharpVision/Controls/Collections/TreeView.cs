@@ -753,8 +753,9 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
 
         if (eventArgs.IsInitialKeyDown &&
             eventArgs.Stroke.Code == Code.Character &&
-            eventArgs.Stroke.Character == new Rune('a') &&
-            (eventArgs.Stroke.Modifiers & Modifiers.Control) != 0 &&
+            eventArgs.Stroke.Character is { } character &&
+            Rune.ToLowerInvariant(character) == new Rune('a') &&
+            KeyboardModifierPolicy.MatchesCommand(eventArgs.Stroke.Modifiers, Modifiers.Control) &&
             SelectionMode == TreeSelectionMode.Multiple)
         {
             SelectAll();

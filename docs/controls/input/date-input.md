@@ -77,3 +77,7 @@ var dateInput = new DateInput();
 | Public API            | Defaults, bounds, the null policy, format and culture validation, segment editing, and event order behave as documented.                              |
 | Integrated behavior   | Keyboard and pointer editing, Calendar selection, light dismiss, and focus restoration work end to end.                                               |
 | Complete runtime path | The field and active segment render in their exact cells, the popup places correctly, focused and disabled states apply, and tiny bounds clip safely. |
+
+- Direct digit entry follows the shared
+  [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy),
+  leaving command-modified characters unhandled without changing a segment.

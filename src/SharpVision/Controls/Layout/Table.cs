@@ -1168,7 +1168,9 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     {
         _ = sender;
 
-        if (eventArgs.Phase != RoutingPhase.Preview || !eventArgs.IsKeyDown)
+        if (eventArgs.IsHandled ||
+            eventArgs.Phase != RoutingPhase.Preview ||
+            !eventArgs.IsKeyDown)
         {
             return;
         }
@@ -1222,7 +1224,9 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
 
         if (stroke.Code == TerminalInput.Code.Character &&
             stroke.Character is { } character &&
-            (stroke.Modifiers & TerminalInput.Modifiers.Control) != 0 &&
+            KeyboardModifierPolicy.MatchesCommand(
+                stroke.Modifiers,
+                TerminalInput.Modifiers.Control) &&
             Rune.ToLowerInvariant(character) == new Rune('a'))
         {
             if (eventArgs.IsInitialKeyDown)
@@ -1281,7 +1285,8 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     {
         _ = sender;
 
-        if (eventArgs.Phase != RoutingPhase.Preview ||
+        if (eventArgs.IsHandled ||
+            eventArgs.Phase != RoutingPhase.Preview ||
             eventArgs.Pointer.Action != TerminalInput.PointerAction.Press ||
             (eventArgs.Pointer.Buttons & TerminalInput.Buttons.Primary) == 0 ||
             eventArgs.Pointer.Cells is not { } point)

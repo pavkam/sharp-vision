@@ -1436,6 +1436,55 @@ public sealed class TextInputTests
         control.Text.ShouldBe("AB");
     }
 
+    /// <summary>Verifies undo and redo require the exact Control chord after lock-key
+    /// normalization, leaving larger application chords unhandled.</summary>
+    [Theory]
+    [InlineData('z', Modifiers.Control, true)]
+    [InlineData('Z', Modifiers.Control | Modifiers.CapsLock, true)]
+    [InlineData('y', Modifiers.Control | Modifiers.NumLock, true)]
+    [InlineData('Y', Modifiers.Control | Modifiers.CapsLock | Modifiers.NumLock, true)]
+    [InlineData('z', Modifiers.Control | Modifiers.Shift, false)]
+    [InlineData('z', Modifiers.Control | Modifiers.Alt, false)]
+    [InlineData('z', Modifiers.Control | Modifiers.Super, false)]
+    [InlineData('z', Modifiers.Control | Modifiers.Hyper, false)]
+    [InlineData('z', Modifiers.Control | Modifiers.Meta, false)]
+    [InlineData('y', Modifiers.Control | Modifiers.Shift, false)]
+    [InlineData('y', Modifiers.Control | Modifiers.Alt, false)]
+    [InlineData('y', Modifiers.Control | Modifiers.Super, false)]
+    [InlineData('y', Modifiers.Control | Modifiers.Hyper, false)]
+    [InlineData('y', Modifiers.Control | Modifiers.Meta, false)]
+    public void Dispatch_WhenUndoOrRedoCarriesModifiers_MatchesExactNormalizedCommand(
+        char command,
+        Modifiers modifiers,
+        bool expectedExecution)
+    {
+        // Arrange
+        var control = new TextInput { Text = "A" };
+        control.Text = "AB";
+        var isRedo = char.ToLowerInvariant(command) == 'y';
+
+        if (isRedo)
+        {
+            control.Undo().ShouldBeTrue();
+        }
+
+        var key = new KeyEventArgs(new Stroke(
+            Code.Character,
+            new Rune(command),
+            nativeCode: 0,
+            modifiers,
+            KeyAction.Press));
+
+        // Act
+        Route(control, key, Events.Key);
+
+        // Assert
+        control.Text.ShouldBe(expectedExecution
+            ? isRedo ? "AB" : "A"
+            : isRedo ? "A" : "AB");
+        key.IsHandled.ShouldBe(expectedExecution);
+    }
+
     /// <summary>Verifies copy/cut ownership, read-only behavior, and password secrecy defaults.</summary>
     [Fact]
     public void CutSelection_WhenSelectionExists_ReturnsOwnedTextAndHonorsSecurityPolicy()

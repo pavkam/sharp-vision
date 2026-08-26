@@ -1491,6 +1491,119 @@ public sealed class TableTests
         editable.Text.ShouldBe("after");
     }
 
+    /// <summary>Verifies an ancestor can suppress every Table preview default while a deliberate
+    /// handled-events observer still receives the routed records.</summary>
+    [Fact]
+    public void Dispatch_WhenAncestorHandlesPreviewInput_DoesNotMutateTableButStillNotifiesHandledObserver()
+    {
+        // Arrange
+        var first = new TableRow([new ControlText("Alpha")]);
+        var second = new TableRow([new ControlText("Beta")]);
+        var table = new Table { SelectionMode = TableSelectionMode.Row };
+        table.Columns.Add(TableColumn.Fixed("Name", 10));
+        table.Rows.Add(first);
+        table.Rows.Add(second);
+        table.SelectRow(first);
+        var root = new Overlay { Children = { table } };
+        new LayoutEngine().Layout(root, new Size(20, 8));
+        var invoked = 0;
+        var observedKeys = 0;
+        var observedPointers = 0;
+        table.RowInvoked += (_, _) => invoked++;
+        _ = root.AddHandler(Events.Key, (_, eventArgs) =>
+        {
+            if (eventArgs.Phase == RoutingPhase.Preview)
+            {
+                eventArgs.IsHandled = true;
+            }
+        });
+        _ = root.AddHandler(Events.Pointer, (_, eventArgs) =>
+        {
+            if (eventArgs.Phase == RoutingPhase.Preview)
+            {
+                eventArgs.IsHandled = true;
+            }
+        });
+        _ = table.AddHandler(Events.Key, (_, eventArgs) =>
+        {
+            if (eventArgs.Phase == RoutingPhase.Preview)
+            {
+                observedKeys++;
+            }
+        }, handledEventsToo: true);
+        _ = table.AddHandler(Events.Pointer, (_, eventArgs) =>
+        {
+            if (eventArgs.Phase == RoutingPhase.Preview)
+            {
+                observedPointers++;
+            }
+        }, handledEventsToo: true);
+
+        // Act - cover navigation, activation, header sorting, cell selection, and double press.
+        _ = Router.Route(table, Events.Key, new KeyEventArgs(new Stroke(
+            Code.Down,
+            character: null,
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press)));
+        _ = Router.Route(table, Events.Key, new KeyEventArgs(new Stroke(
+            Code.Enter,
+            character: null,
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press)));
+        _ = Router.Route(table, Events.Pointer, PointerPress(new Point(1, 0), clickCount: 1));
+        _ = Router.Route(table, Events.Pointer, PointerPress(new Point(1, 3), clickCount: 1));
+        _ = Router.Route(table, Events.Pointer, PointerPress(new Point(1, 3), clickCount: 2));
+
+        // Assert
+        table.ActiveRow.ShouldBe(first);
+        table.SelectedRows.ShouldBe([first]);
+        table.SortColumnIndex.ShouldBe(-1);
+        table.SortDirection.ShouldBe(TableSortDirection.None);
+        table.IsEditing.ShouldBeFalse();
+        invoked.ShouldBe(0);
+        observedKeys.ShouldBe(2);
+        observedPointers.ShouldBe(3);
+    }
+
+    /// <summary>Verifies select-all normalizes character case and lock state but rejects larger
+    /// application-command chords.</summary>
+    [Theory]
+    [InlineData('a', Modifiers.Control, true)]
+    [InlineData('A', Modifiers.Control | Modifiers.CapsLock, true)]
+    [InlineData('a', Modifiers.Control | Modifiers.NumLock, true)]
+    [InlineData('A', Modifiers.Control | Modifiers.Shift, false)]
+    [InlineData('a', Modifiers.Control | Modifiers.Alt, false)]
+    [InlineData('a', Modifiers.Control | Modifiers.Super, false)]
+    public void Dispatch_WhenSelectAllCharacterCarriesModifiers_MatchesExactNormalizedCommand(
+        char character,
+        Modifiers modifiers,
+        bool expectedSelection)
+    {
+        // Arrange
+        var first = new TableRow([new ControlText("First")]);
+        var second = new TableRow([new ControlText("Second")]);
+        var table = new Table { SelectionMode = TableSelectionMode.MultipleRows };
+        table.Columns.Add(TableColumn.Auto("Name"));
+        table.Rows.Add(first);
+        table.Rows.Add(second);
+        table.SelectRow(first);
+        var key = new KeyEventArgs(new Stroke(
+            Code.Character,
+            new Rune(character),
+            nativeCode: 0,
+            modifiers,
+            KeyAction.Press));
+
+        // Act
+        _ = Router.Route(table, Events.Key, key);
+
+        // Assert
+        table.SelectedRows.ShouldBe(expectedSelection ? [first, second] : [first]);
+        key.IsHandled.ShouldBe(expectedSelection);
+    }
+
     private static void Key(TextInput control, Code code) =>
         Router.Route(
             control,
@@ -1507,6 +1620,19 @@ public sealed class TableTests
         _ = Router.Route(table, Events.Key, eventArgs);
         return eventArgs;
     }
+
+    private static PointerEventArgs PointerPress(Point cells, int clickCount) => new(
+        new Pointer(
+            cells,
+            pixels: null,
+            Buttons.Primary,
+            PointerAction.Press,
+            wheelX: 0,
+            wheelY: 0,
+            Modifiers.None,
+            isMotion: false,
+            isCellPositionInferred: false),
+        clickCount);
 
     /// <summary>Verifies every public row insertion boundary reports its own null parameter.</summary>
     [Fact]

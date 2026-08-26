@@ -685,6 +685,37 @@ public sealed class DateInputTests
 
     #region Typing
 
+    /// <summary>Verifies segmented date entry accepts only text-entry modifier states and leaves
+    /// command-modified digits unhandled without changing the active segment.</summary>
+    [Theory]
+    [InlineData(Modifiers.None, true)]
+    [InlineData(Modifiers.Shift, true)]
+    [InlineData(Modifiers.CapsLock | Modifiers.NumLock, true)]
+    [InlineData(Modifiers.Control, false)]
+    [InlineData(Modifiers.Alt, false)]
+    [InlineData(Modifiers.Super, false)]
+    [InlineData(Modifiers.Hyper, false)]
+    [InlineData(Modifiers.Meta, false)]
+    public void Input_WhenDigitCarriesModifiers_EditsOnlyForTextEntryState(
+        Modifiers modifiers,
+        bool expectedEdit)
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 3, 15),
+            Culture = CultureInfo.InvariantCulture
+        };
+        var key = CharacterKey('9', modifiers);
+
+        // Act
+        _ = Router.Route(control, Events.Key, key);
+
+        // Assert
+        control.Value.ShouldBe(expectedEdit ? new DateOnly(2026, 9, 15) : new DateOnly(2026, 3, 15));
+        key.IsHandled.ShouldBe(expectedEdit);
+    }
+
     /// <summary>Verifies typing four digits on the Year segment produces a year above 99
     /// instead of committing after two digits and misapplying the rest to Month.</summary>
     [Fact]
@@ -774,12 +805,14 @@ public sealed class DateInputTests
         Router.Route(
             control,
             Events.Key,
-            new KeyEventArgs(new Stroke(
-                Code.Character,
-                new Rune(digit),
-                nativeCode: 0,
-                Modifiers.None,
-                KeyAction.Press)));
+            CharacterKey(digit, Modifiers.None));
+
+    private static KeyEventArgs CharacterKey(char character, Modifiers modifiers) => new(new Stroke(
+        Code.Character,
+        new Rune(character),
+        nativeCode: 0,
+        modifiers,
+        KeyAction.Press));
 
     private static void PressKey(DateInput control, Code code) =>
         Router.Route(

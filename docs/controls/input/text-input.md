@@ -228,7 +228,10 @@ remain available to inherited routed input.
 - Shift extends the selection from the retained anchor, Control switches to word
   movement, and Up/Down map the rendered caret column to the nearest grapheme
   boundary on the adjacent line.
-- Control+A, Control+Z, and Control+Y select all, undo, and redo.
+- Control+A, Control+Z, and Control+Y select all, undo, and redo. They match the
+  exact Control command after lock-key normalization, so larger chords remain
+  unhandled under the shared
+  [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy).
 - Enter inserts LF only when `AcceptsReturn` is set; otherwise it submits.
 - Tab inserts only when `AcceptsTab` is set.
 

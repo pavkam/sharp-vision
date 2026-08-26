@@ -713,6 +713,46 @@ public sealed class TimeInputTests
 
     #endregion
 
+    /// <summary>Verifies digit and AM/PM entry accept only text-entry modifier states and leave
+    /// command-modified characters unhandled.</summary>
+    [Theory]
+    [InlineData(Modifiers.None, true)]
+    [InlineData(Modifiers.Shift, true)]
+    [InlineData(Modifiers.CapsLock | Modifiers.NumLock, true)]
+    [InlineData(Modifiers.Control, false)]
+    [InlineData(Modifiers.Alt, false)]
+    [InlineData(Modifiers.Super, false)]
+    [InlineData(Modifiers.Hyper, false)]
+    [InlineData(Modifiers.Meta, false)]
+    public void Input_WhenCharacterCarriesModifiers_EditsOnlyForTextEntryState(
+        Modifiers modifiers,
+        bool expectedEdit)
+    {
+        // Arrange
+        using var digitInput = new TimeInput
+        {
+            Value = new TimeOnly(10, 30),
+            Use24HourFormat = false
+        };
+        using var designatorInput = new TimeInput
+        {
+            Value = new TimeOnly(10, 30),
+            Use24HourFormat = false
+        };
+        var digit = CharacterKey('9', modifiers);
+        var designator = CharacterKey('p', modifiers);
+
+        // Act
+        _ = Router.Route(digitInput, Events.Key, digit);
+        _ = Router.Route(designatorInput, Events.Key, designator);
+
+        // Assert
+        digitInput.Value.ShouldBe(expectedEdit ? new TimeOnly(9, 30) : new TimeOnly(10, 30));
+        designatorInput.Value.ShouldBe(expectedEdit ? new TimeOnly(22, 30) : new TimeOnly(10, 30));
+        digit.IsHandled.ShouldBe(expectedEdit);
+        designator.IsHandled.ShouldBe(expectedEdit);
+    }
+
     #region Helpers
 
     private static string Row(Frame frame, int y)
@@ -739,12 +779,14 @@ public sealed class TimeInputTests
         Router.Route(
             control,
             Events.Key,
-            new KeyEventArgs(new Stroke(
-                Code.Character,
-                new Rune(digit),
-                nativeCode: 0,
-                Modifiers.None,
-                KeyAction.Press)));
+            CharacterKey(digit, Modifiers.None));
+
+    private static KeyEventArgs CharacterKey(char character, Modifiers modifiers) => new(new Stroke(
+        Code.Character,
+        new Rune(character),
+        nativeCode: 0,
+        modifiers,
+        KeyAction.Press));
 
     #endregion
 }

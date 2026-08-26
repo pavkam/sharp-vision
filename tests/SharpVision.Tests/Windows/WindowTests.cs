@@ -598,6 +598,49 @@ public sealed class WindowTests
         cancels.ShouldBe(1);
     }
 
+    /// <summary>Verifies Window fallback buttons accept text-producing incidental modifiers while
+    /// leaving application-command chords unhandled.</summary>
+    [Theory]
+    [InlineData(Code.Enter, Modifiers.None, true)]
+    [InlineData(Code.Enter, Modifiers.Shift, true)]
+    [InlineData(Code.Enter, Modifiers.CapsLock | Modifiers.NumLock, true)]
+    [InlineData(Code.Enter, Modifiers.Control, false)]
+    [InlineData(Code.Enter, Modifiers.Alt, false)]
+    [InlineData(Code.Enter, Modifiers.Super, false)]
+    [InlineData(Code.Enter, Modifiers.Hyper, false)]
+    [InlineData(Code.Enter, Modifiers.Meta, false)]
+    [InlineData(Code.Escape, Modifiers.None, true)]
+    [InlineData(Code.Escape, Modifiers.Shift, true)]
+    [InlineData(Code.Escape, Modifiers.CapsLock | Modifiers.NumLock, true)]
+    [InlineData(Code.Escape, Modifiers.Control, false)]
+    [InlineData(Code.Escape, Modifiers.Alt, false)]
+    [InlineData(Code.Escape, Modifiers.Super, false)]
+    [InlineData(Code.Escape, Modifiers.Hyper, false)]
+    [InlineData(Code.Escape, Modifiers.Meta, false)]
+    public void Dispatch_WhenFallbackKeyCarriesModifiers_ActivatesOnlyForEligibleChord(
+        Code code,
+        Modifiers modifiers,
+        bool expectedActivation)
+    {
+        // Arrange
+        var invocations = 0;
+        var button = new Button
+        {
+            IsDefault = code == Code.Enter,
+            IsCancel = code == Code.Escape
+        };
+        button.Click += (_, _) => invocations++;
+        var window = new Window { Content = button };
+        var key = Key(code, modifiers);
+
+        // Act
+        _ = Router.Route(window, Events.Key, key);
+
+        // Assert
+        invocations.ShouldBe(expectedActivation ? 1 : 0);
+        key.IsHandled.ShouldBe(expectedActivation);
+    }
+
     /// <summary>Verifies default and cancel discovery traverses private slots on non-Container content.</summary>
     [Fact]
     public void Dispatch_WhenButtonsUseNonContainerSlots_InvokesDefaultAndCancel()
@@ -1994,6 +2037,13 @@ public sealed class WindowTests
         nativeCode: 0,
         Modifiers.None,
         action));
+
+    private static KeyEventArgs Key(Code code, Modifiers modifiers) => new(new Stroke(
+        code,
+        default,
+        nativeCode: 0,
+        modifiers,
+        KeyAction.Press));
 
     #region Presentation lifetime
 

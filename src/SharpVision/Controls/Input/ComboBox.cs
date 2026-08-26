@@ -426,7 +426,10 @@ public sealed class ComboBox: InputBase
                 return;
             }
 
-            if (keyEventArgs.IsKeyDown && stroke.Code == Code.Character && stroke.Character is { } character)
+            if (keyEventArgs.IsKeyDown &&
+                stroke.Code == Code.Character &&
+                stroke.Character is { } character &&
+                KeyboardModifierPolicy.IsTextEntryEligible(stroke.Modifiers))
             {
                 eventArgs.IsHandled = SelectTypeAhead(character);
                 return;

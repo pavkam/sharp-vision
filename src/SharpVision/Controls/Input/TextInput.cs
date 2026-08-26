@@ -1397,8 +1397,11 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         }
 
         var word = (eventArgs.Stroke.Modifiers & Modifiers.Control) != 0;
+        var command = KeyboardModifierPolicy.MatchesCommand(
+            eventArgs.Stroke.Modifiers,
+            Modifiers.Control);
 
-        if (word && eventArgs.Stroke is { Code: Code.Character, Character: { } character })
+        if (command && eventArgs.Stroke is { Code: Code.Character, Character: { } character })
         {
             var value = Rune.ToLowerInvariant(character);
 

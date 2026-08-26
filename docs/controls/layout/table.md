@@ -272,7 +272,12 @@ editable `TextInput`. While editing, `Enter` commits, `Escape` restores the
 original text, and `Tab` commits and then moves to the next cell. A
 `TableColumn` marked `isReadOnly` and a read-only `TextInput` both refuse
 editing. `Ctrl+A` selects every row or cell when the active selection mode
-supports it.
+supports it and the stroke matches the exact lock-normalized Control command. An
+ancestor that handles preview key or pointer input suppresses all Table
+defaults; deliberate handled-events observers still receive the record. These
+rules follow the shared
+[keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy)
+and routed handled-state contract.
 
 `SelectRow`, `SelectCell`, `ClearSelection`, and `SelectAll` commit selection
 state and raise `SelectionChanged`. `RowInvoked` reports pointer and keyboard

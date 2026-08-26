@@ -428,6 +428,35 @@ public sealed class NumberInputTests
         control.Value.ShouldBe(12m);
     }
 
+    /// <summary>Verifies direct character editing accepts only text-entry modifier states and
+    /// leaves command chords unhandled without contaminating the transient buffer.</summary>
+    [Theory]
+    [InlineData(Modifiers.None, true)]
+    [InlineData(Modifiers.Shift, true)]
+    [InlineData(Modifiers.CapsLock | Modifiers.NumLock, true)]
+    [InlineData(Modifiers.Control, false)]
+    [InlineData(Modifiers.Alt, false)]
+    [InlineData(Modifiers.Super, false)]
+    [InlineData(Modifiers.Hyper, false)]
+    [InlineData(Modifiers.Meta, false)]
+    public void Input_WhenCharacterCarriesModifiers_EditsOnlyForTextEntryState(
+        Modifiers modifiers,
+        bool expectedEdit)
+    {
+        // Arrange
+        using var control = new NumberInput { Value = 4m, Mode = NumberInputMode.Integer };
+        TypeCharacter(control, '5');
+        var key = CharacterKey('9', modifiers);
+
+        // Act
+        _ = Router.Route(control, Events.Key, key);
+        _ = Router.Route(control, Events.Key, Key(Code.Enter));
+
+        // Assert
+        control.Value.ShouldBe(expectedEdit ? 59m : 5m);
+        key.IsHandled.ShouldBe(expectedEdit);
+    }
+
     /// <summary>Verifies commit when buffer overflows decimal range rejects and keeps prior value.</summary>
     [Fact]
     public void Commit_WhenBufferOverflowsDecimalRange_RejectsAndKeepsPriorValue()
@@ -913,12 +942,14 @@ public sealed class NumberInputTests
         Router.Route(
             control,
             Events.Key,
-            new KeyEventArgs(new Stroke(
-                Code.Character,
-                new Rune(character),
-                nativeCode: 0,
-                Modifiers.None,
-                KeyAction.Press)));
+            CharacterKey(character, Modifiers.None));
+
+    private static KeyEventArgs CharacterKey(char character, Modifiers modifiers) => new(new Stroke(
+        Code.Character,
+        new Rune(character),
+        nativeCode: 0,
+        modifiers,
+        KeyAction.Press));
 
     #endregion
 }

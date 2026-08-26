@@ -903,16 +903,62 @@ public sealed class DateTimeInputTests
         modifiers,
         action));
 
-    private static KeyEventArgs CharacterKey(char character) => new(new Stroke(
+    private static KeyEventArgs CharacterKey(char character) => CharacterKey(character, Modifiers.None);
+
+    private static KeyEventArgs CharacterKey(char character, Modifiers modifiers) => new(new Stroke(
         Code.Character,
         new Rune(character),
         nativeCode: 0,
-        Modifiers.None,
+        modifiers,
         KeyAction.Press));
 
     #endregion
 
     #region Typing
+
+    /// <summary>Verifies date-time digit and AM/PM entry accept only text-entry modifier states
+    /// and leave command-modified characters unhandled.</summary>
+    [Theory]
+    [InlineData(Modifiers.None, true)]
+    [InlineData(Modifiers.Shift, true)]
+    [InlineData(Modifiers.CapsLock | Modifiers.NumLock, true)]
+    [InlineData(Modifiers.Control, false)]
+    [InlineData(Modifiers.Alt, false)]
+    [InlineData(Modifiers.Super, false)]
+    [InlineData(Modifiers.Hyper, false)]
+    [InlineData(Modifiers.Meta, false)]
+    public void Input_WhenCharacterCarriesModifiers_EditsOnlyForTextEntryState(
+        Modifiers modifiers,
+        bool expectedEdit)
+    {
+        // Arrange
+        using var digitInput = new DateTimeInput
+        {
+            Value = new DateTime(2026, 3, 15, 10, 30, 0),
+            Use24HourFormat = false
+        };
+        using var designatorInput = new DateTimeInput
+        {
+            Value = new DateTime(2026, 3, 15, 10, 30, 0),
+            Use24HourFormat = false
+        };
+        var digit = CharacterKey('9', modifiers);
+        var designator = CharacterKey('p', modifiers);
+
+        // Act
+        _ = Router.Route(digitInput, Events.Key, digit);
+        _ = Router.Route(designatorInput, Events.Key, designator);
+
+        // Assert
+        digitInput.Value.ShouldBe(expectedEdit
+            ? new DateTime(2026, 9, 15, 10, 30, 0)
+            : new DateTime(2026, 3, 15, 10, 30, 0));
+        designatorInput.Value.ShouldBe(expectedEdit
+            ? new DateTime(2026, 3, 15, 22, 30, 0)
+            : new DateTime(2026, 3, 15, 10, 30, 0));
+        digit.IsHandled.ShouldBe(expectedEdit);
+        designator.IsHandled.ShouldBe(expectedEdit);
+    }
 
     /// <summary>Verifies typing four digits on the Year segment produces a year above 99
     /// instead of committing after two digits and misapplying the rest to Hour.</summary>

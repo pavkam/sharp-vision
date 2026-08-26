@@ -123,7 +123,7 @@ refusing it would leave the control in a state its own configuration forbids.
 | PageUp / PageDown                             | Moves by items filling the committed viewport height minus `PageOverlap`, accumulating each realized item's own height. |
 | Space                                         | Toggles the current checkable item's check state; otherwise toggles or replaces selection of the current item.          |
 | Enter                                         | Activates the current item, applies selection, and raises `ItemInvoked` for an activation-eligible modifier state.      |
-| Control+A (`Multiple` mode)                   | Selects every enabled item.                                                                                             |
+| Control+A (`Multiple` mode)                   | Selects every enabled item for the exact lock-normalized Control command; larger chords remain unhandled.               |
 | Primary pointer click on the disclosure glyph | Toggles `IsExpanded`.                                                                                                   |
 | Primary pointer click on the check mark       | Toggles the check state; every cell of the mark is a hit target.                                                        |
 | Primary pointer click elsewhere on the row    | Invokes and applies selection.                                                                                          |
@@ -315,8 +315,10 @@ tree.Items.Add(source);
 
 - A selected descendant stays selected while its branch is collapsed, and the
   selection keeps its stable tree order.
-- Control toggles, Shift ranges, and Control+A behave as described, and disabled
-  items are always excluded from selection.
+- Control toggles, Shift ranges, and Control+A behave as described under the
+  shared
+  [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy),
+  and disabled items are always excluded from selection.
 - Parent check state propagates to descendants, and indeterminate state is
   repaired after structural edits.
 - A child request commits atomically: `ChildState` and the full committed

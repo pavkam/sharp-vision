@@ -88,3 +88,8 @@ numberInput.ValueChanged += (_, e) => Console.Write(e.Value);
 | Public API            | Defaults, bounds, the null policy, integer-mode restrictions, the rounding matrix, overflow guarding, and event order behave as documented.                                                                 |
 | Integrated behavior   | Keyboard editing, pasting, and mid-edit Mode/Culture changes work end to end without migrating a half-parsed buffer.                                                                                        |
 | Complete runtime path | Typed display transitions, culture-aware separators and grouping, Enter/Escape/focus-loss commit paths, keyboard stepping, pointer caret placement, the disabled state, and tiny clipping render correctly. |
+
+- Direct character edits follow the shared
+  [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy):
+  Shift and lock state may produce text, while command-modified characters stay
+  out of the transient buffer and remain unhandled.

@@ -694,6 +694,38 @@ public sealed class ComboBoxTests
         combo.Placeholder.ShouldBe("Choose");
     }
 
+    /// <summary>Verifies popup type-ahead accepts text-entry modifier states while preserving
+    /// command-modified characters for ancestor shortcuts.</summary>
+    [Theory]
+    [InlineData(Modifiers.None, true)]
+    [InlineData(Modifiers.Shift, true)]
+    [InlineData(Modifiers.CapsLock | Modifiers.NumLock, true)]
+    [InlineData(Modifiers.Control, false)]
+    [InlineData(Modifiers.Alt, false)]
+    [InlineData(Modifiers.Super, false)]
+    [InlineData(Modifiers.Hyper, false)]
+    [InlineData(Modifiers.Meta, false)]
+    public void Input_WhenTypeAheadCharacterCarriesModifiers_SelectsOnlyForTextEntryState(
+        Modifiers modifiers,
+        bool expectedSelection)
+    {
+        // Arrange
+        var combo = new ComboBox
+        {
+            Items = ["Alpha", "Beta"],
+            SelectedIndex = 0,
+            IsOpen = true
+        };
+        var typed = CharacterKey(new Rune('b'), modifiers);
+
+        // Act
+        _ = Router.Route(combo, Events.Key, typed);
+
+        // Assert
+        combo.SelectedIndex.ShouldBe(expectedSelection ? 1 : 0);
+        typed.IsHandled.ShouldBe(expectedSelection);
+    }
+
     /// <summary>Verifies AllowNull defaults to true and disabling it blocks Delete/Backspace from
     /// clearing an active selection.</summary>
     [Fact]
@@ -1253,11 +1285,13 @@ public sealed class ComboBoxTests
 
     private static KeyEventArgs CharacterKey(char character) => CharacterKey(new Rune(character));
 
-    private static KeyEventArgs CharacterKey(Rune character) => new(new Stroke(
+    private static KeyEventArgs CharacterKey(Rune character) => CharacterKey(character, Modifiers.None);
+
+    private static KeyEventArgs CharacterKey(Rune character, Modifiers modifiers) => new(new Stroke(
         Code.Character,
         character,
         nativeCode: 0,
-        Modifiers.None,
+        modifiers,
         KeyAction.Press));
 
     private static Pointer Pointer(Point cells, PointerAction action) => new(

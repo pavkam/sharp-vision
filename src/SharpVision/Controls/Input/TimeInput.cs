@@ -344,8 +344,12 @@ public sealed class TimeInput: InputBase
             Code.End => _segments.MoveToEdge(first: false),
             Code.Delete => ClearValue(),
             Code.Backspace => _segments.ClearActiveSegment(),
-            Code.Character when stroke.Character is { } ch && IsDigit(ch) => _segments.TypeDigit(ch.Value - '0'),
-            Code.Character when stroke.Character is { } ch && IsAmPmToggle(ch) => ToggleAmPm(),
+            Code.Character when stroke.Character is { } ch &&
+                KeyboardModifierPolicy.IsTextEntryEligible(stroke.Modifiers) && IsDigit(ch) =>
+                _segments.TypeDigit(ch.Value - '0'),
+            Code.Character when stroke.Character is { } ch &&
+                KeyboardModifierPolicy.IsTextEntryEligible(stroke.Modifiers) && IsAmPmToggle(ch) =>
+                ToggleAmPm(),
             _ => false
         };
 #pragma warning restore IDE0072

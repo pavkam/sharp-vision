@@ -89,3 +89,7 @@ var dateTimeInput = new DateTimeInput { TimeStep = TimeSpan.FromMinutes(15) };
 | Public API            | Defaults, bounds, culture, the null policy, the time step, glyph validation, segment edits, and event order behave as documented.                                 |
 | Integrated behavior   | Keyboard and pointer editing, Calendar selection, light dismiss, and focus restoration work end to end.                                                           |
 | Complete runtime path | Date and time formats, culture-driven segment order and separators, the active segment, the popup, focus, the disabled state, and tiny clipping render correctly. |
+
+- Direct digit and AM/PM entry follows the shared
+  [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy),
+  leaving command-modified characters unhandled without changing a segment.

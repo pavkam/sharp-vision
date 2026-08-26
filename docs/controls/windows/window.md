@@ -130,9 +130,13 @@ mark can still react independently while its target is hovered or pressed.
 
 Unhandled Enter and Escape search the owned descendants in deterministic
 ownership order for the first enabled, visible `Button` marked `IsDefault` or
-`IsCancel`. When no cancel button exists, Escape requests closure — raising
-`CloseRequested` and then `Closing` — only when both `CloseOnEscape` and
-`CanClose` are true.
+`IsCancel`, but only under the shared
+[keyboard activation modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy).
+A command-modified Enter or Escape bypasses button fallback and remains
+available to the route. When no cancel button exists, Escape requests closure —
+raising `CloseRequested` and then `Closing` — only when both `CloseOnEscape` and
+`CanClose` are true; that dismissal policy remains independent of fallback
+button activation.
 
 ## Application activation
 

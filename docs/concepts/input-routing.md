@@ -186,6 +186,20 @@ the child's click behavior. The final adornment paints only complete mapped
 graphemes, and disable, capture loss, unavailability, or terminal-focus loss
 cancels retained gesture state.
 
+## Keyboard modifier policy
+
+Keyboard behavior distinguishes text-producing state from application-command
+chords. A control that interprets `Stroke.Character` directly as typed input or
+type-ahead accepts no modifier beyond Shift, Caps Lock, and Num Lock. Control,
+Alt, Super, Hyper, or Meta leaves that character unhandled so an ancestor can
+own the command.
+
+A named keyboard command instead matches its documented modifier set exactly
+after removing Caps Lock and Num Lock state. For example, Control+A and
+Control+Z accept either lock key but reject Control+Shift, Control+Alt, and
+Control+Super variants. Keyboard activation uses the text-producing allowance:
+Shift and lock state remain eligible, while command modifiers bubble.
+
 ## Pointer capture and coordinates
 
 Capture is exclusive per pointer source and supports press, drag, scrollbar,

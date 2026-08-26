@@ -1210,7 +1210,7 @@ public sealed class Application:
         if (stroke.Action != KeyAction.Press ||
             stroke.Code != Code.Character ||
             stroke.Character is not { } character ||
-            (stroke.Modifiers & ~(Modifiers.CapsLock | Modifiers.NumLock)) != Modifiers.Control)
+            !KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Control))
         {
             return false;
         }

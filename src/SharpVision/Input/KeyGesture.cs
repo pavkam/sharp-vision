@@ -82,7 +82,7 @@ public readonly record struct KeyGesture
     public bool Matches(in Stroke stroke) =>
         stroke.Action == KeyAction.Press &&
         stroke.Code == Code &&
-        (stroke.Modifiers & ~(Modifiers.CapsLock | Modifiers.NumLock)) == Modifiers &&
+        KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers) &&
         (Code != Code.Character ||
          (stroke.Character is { } character && Rune.ToUpperInvariant(character) == Character));
 
