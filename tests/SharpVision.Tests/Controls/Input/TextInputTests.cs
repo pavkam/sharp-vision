@@ -312,6 +312,81 @@ public sealed class TextInputTests
         unwrapped.DesiredSize.Height.ShouldBe(1);
     }
 
+    /// <summary>Verifies a word-break rewind that pushes down a word containing a wide (double-
+    /// cell) grapheme re-measures that word bounded by the viewport, rather than accumulating an
+    /// unchecked cell count past it: at a 3-cell viewport, " xy我" fills " xy" up to the break,
+    /// then the wide 我 (2 cells) overflows and forces a rewind to "xy我", which itself no longer
+    /// fits as a whole (2 + 2 &gt; 3) and must fall back to a grapheme boundary.</summary>
+    [Fact]
+    public void Measure_WhenWordWrapRewindPushesDownAWideGrapheme_KeepsEveryVisualLineWithinTheViewport()
+    {
+        // Arrange
+        var control = new TextInput { Text = " xy我", WordWrap = true };
+        control.SetTheme(TestThemes.BorderlessInput);
+
+        // Act
+        new LayoutEngine().Layout(control, new Size(3, 10));
+
+        // Assert
+        var lines = GetVisualLines(control);
+        lines.ShouldNotBeEmpty();
+
+        foreach (var line in lines)
+        {
+            line.Cells.ShouldBeLessThanOrEqualTo(3);
+        }
+    }
+
+    /// <summary>Verifies that when the word pushed down by a rewind is itself still too wide for
+    /// the viewport - here "我我我我我", 10 cells of wide CJK graphemes rewound into a 4-cell
+    /// viewport - the same placement logic keeps breaking it across further visual lines instead
+    /// of recording one line whose Cells silently overflows the viewport.</summary>
+    [Fact]
+    public void Measure_WhenPushedDownWordItselfOverflowsTheViewport_BreaksAgainAtGraphemeBoundaries()
+    {
+        // Arrange
+        var control = new TextInput { Text = " 我我我我我", WordWrap = true };
+        control.SetTheme(TestThemes.BorderlessInput);
+
+        // Act
+        new LayoutEngine().Layout(control, new Size(4, 10));
+
+        // Assert
+        var lines = GetVisualLines(control);
+        lines.Length.ShouldBeGreaterThan(2);
+
+        foreach (var line in lines)
+        {
+            line.Cells.ShouldBeLessThanOrEqualTo(4);
+        }
+    }
+
+    /// <summary>Reads TextInput's private per-line word-wrap layout (offset/length/cell-width
+    /// triples) via reflection, since <c>BuildVisualLines</c> and its <c>VisualLine</c> result are
+    /// implementation details with no public surface.</summary>
+    private static VisualLineSnapshot[] GetVisualLines(TextInput control)
+    {
+        var field = typeof(TextInput).GetField(
+            "_visualLines",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        var lines = (Array)field.GetValue(control)!;
+        var snapshots = new VisualLineSnapshot[lines.Length];
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines.GetValue(i)!;
+            var type = line.GetType();
+            var offset = (int)type.GetProperty("Offset")!.GetValue(line)!;
+            var length = (int)type.GetProperty("Length")!.GetValue(line)!;
+            var cells = (int)type.GetProperty("Cells")!.GetValue(line)!;
+            snapshots[i] = new VisualLineSnapshot(offset, length, cells);
+        }
+
+        return snapshots;
+    }
+
+    private readonly record struct VisualLineSnapshot(int Offset, int Length, int Cells);
+
     /// <summary>Verifies Select throws the documented ArgumentOutOfRangeException - not an
     /// unchecked OverflowException - when start plus length overflows a 32-bit integer, matching
     /// the "range overflows" case its own XML documentation promises.</summary>

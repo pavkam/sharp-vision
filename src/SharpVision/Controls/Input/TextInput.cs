@@ -1888,14 +1888,29 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
             viewportWidth = int.MaxValue;
         }
 
+        // Materialized once so an overflow can rewind the cursor to a word-break point (or to
+        // the offending grapheme itself) and re-walk the pushed-down remainder through the very
+        // same placement logic below, rather than through a second, differently-bounded loop.
+        // That single shared loop is what lets a pushed-down word that is itself still too wide
+        // for the viewport keep splitting at further grapheme/word boundaries instead of
+        // producing a line whose Cells silently exceeds viewportWidth.
+        var graphemes = new List<Grapheme>();
+
+        foreach (var grapheme in Graphemes.Enumerate(Text))
+        {
+            graphemes.Add(grapheme);
+        }
+
         var lines = new List<VisualLine>();
         var lineStart = 0;
         var x = 0;
         var lastBreakOffset = -1;
         var lastBreakCells = 0;
+        var i = 0;
 
-        foreach (var grapheme in Graphemes.Enumerate(Text))
+        while (i < graphemes.Count)
         {
+            var grapheme = graphemes[i];
             var cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
 
             if (IsLineBreak(cluster))
@@ -1905,6 +1920,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
                 x = 0;
                 lastBreakOffset = -1;
                 lastBreakCells = 0;
+                i++;
                 continue;
             }
 
@@ -1927,24 +1943,13 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
                 x = 0;
                 lastBreakOffset = -1;
                 lastBreakCells = 0;
-                var remaining = Text.AsSpan(lineStart, grapheme.Offset + grapheme.Length - lineStart);
 
-                foreach (var g in Graphemes.Enumerate(remaining))
+                // Rewind to the first grapheme of the new line (the word-break point, or the
+                // grapheme that just overflowed) so it gets re-measured from x = 0 by this same
+                // loop, allowing it to overflow — and break again — on its own.
+                while (i > 0 && graphemes[i - 1].Offset >= lineStart)
                 {
-                    var c = remaining.Slice(g.Offset, g.Length);
-
-                    if (!IsLineBreak(c))
-                    {
-                        var w = ClusterWidth(c, x);
-
-                        if (IsWordBreak(c))
-                        {
-                            lastBreakOffset = lineStart + g.Offset + g.Length;
-                            lastBreakCells = x + w;
-                        }
-
-                        x += w;
-                    }
+                    i--;
                 }
 
                 continue;
@@ -1958,6 +1963,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
             }
 
             x += width;
+            i++;
         }
 
         lines.Add(new VisualLine(lineStart, Text.Length - lineStart, x));
