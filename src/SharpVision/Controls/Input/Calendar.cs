@@ -32,6 +32,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
     private DateOnly? _intervalAnchor;
     private readonly Dictionary<DateOnly, CalendarDateMarkup> _markup = [];
     private DateInterval? _selection;
+    private long _selectionVersion;
     private DayOfWeek _firstDayOfWeek;
     private readonly StyleSlot<CalendarStyle> _style;
 
@@ -1016,9 +1017,8 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
             }
         }
 
-        ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(() => SetIntervalAnchor(null), ref failure);
         var previous = _selection;
+        ExceptionDispatchInfo? failure = null;
 
         // The active-date move - and the DisplayMonth repage SetActiveDate always performs -
         // must not run for a no-op assignment of the current selection, the same rule
@@ -1027,8 +1027,18 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         // is too late.
         if (previous == value)
         {
+            ExceptionAggregation.Capture(() => SetIntervalAnchor(null), ref failure);
             failure?.Throw();
             return false;
+        }
+
+        var version = ++_selectionVersion;
+        ExceptionAggregation.Capture(() => SetIntervalAnchor(null), ref failure);
+
+        if (!IsVersionedPropertyCurrent(_selection, previous, _selectionVersion, version))
+        {
+            failure?.Throw();
+            return true;
         }
 
         if (value is { } committed)
@@ -1036,12 +1046,21 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
             ExceptionAggregation.Capture(() => SetActiveDate(committed.Start), ref failure);
         }
 
-        ExceptionAggregation.Capture(
-            () => _ = SetProperty(ref _selection, value, InvalidationImpact.Render, nameof(Selection)),
-            ref failure);
-        ExceptionAggregation.Capture(
-            () => SelectionChanged?.Invoke(this, new CalendarSelectionChangedEventArgs(previous, value)),
-            ref failure);
+        if (IsVersionedPropertyCurrent(_selection, previous, _selectionVersion, version))
+        {
+            _selection = value;
+            ExceptionAggregation.Capture(
+                () => NotifyPropertyChanged(nameof(Selection), InvalidationImpact.Render),
+                ref failure);
+        }
+
+        if (IsVersionedPropertyCurrent(_selection, value, _selectionVersion, version))
+        {
+            ExceptionAggregation.Capture(
+                () => SelectionChanged?.Invoke(this, new CalendarSelectionChangedEventArgs(previous, value)),
+                ref failure);
+        }
+
         failure?.Throw();
         return true;
     }
@@ -1051,7 +1070,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
             ref _activeDate,
             value,
             InvalidationImpact.Render,
-            () => DisplayMonth = value,
+            () => DisplayMonth = ActiveDate,
             nameof(ActiveDate));
 
     private void SetIntervalAnchor(DateOnly? value) =>

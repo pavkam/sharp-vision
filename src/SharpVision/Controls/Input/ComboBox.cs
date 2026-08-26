@@ -30,6 +30,7 @@ public sealed class ComboBox: InputBase
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private string _typeAhead = string.Empty;
     private int _selectedIndex = -1;
+    private long _selectionVersion;
     private bool _synchronizingSelection;
     private bool _listSelectionChangedFired;
 
@@ -500,7 +501,14 @@ public sealed class ComboBox: InputBase
     private void OnSelectionChanged(object? sender, ListSelectionChangedEventArgs eventArgs)
     {
         _ = sender;
-        _selectedIndex = _list.SelectedIndex;
+        var selectedIndex = _list.SelectedIndex;
+
+        if (_selectedIndex != selectedIndex)
+        {
+            _selectedIndex = selectedIndex;
+            _selectionVersion++;
+        }
+
         _listSelectionChangedFired = true;
 
         if (_synchronizingSelection)
@@ -508,11 +516,23 @@ public sealed class ComboBox: InputBase
             return;
         }
 
+        if ((selectedIndex >= 0 && !eventArgs.AddedIndexes.Span.Contains(selectedIndex)) ||
+            (selectedIndex < 0 && !eventArgs.AddedIndexes.IsEmpty))
+        {
+            return;
+        }
+
+        var version = _selectionVersion;
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(
             () => NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure),
             ref failure);
-        ExceptionAggregation.Capture(() => SelectionChanged?.Invoke(this, eventArgs), ref failure);
+
+        if (_selectionVersion == version && _selectedIndex == selectedIndex)
+        {
+            ExceptionAggregation.Capture(() => SelectionChanged?.Invoke(this, eventArgs), ref failure);
+        }
+
         failure?.Throw();
     }
 
@@ -526,6 +546,7 @@ public sealed class ComboBox: InputBase
         }
 
         _selectedIndex = _list.SelectedIndex;
+        _selectionVersion++;
         NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure);
     }
 
@@ -561,6 +582,7 @@ public sealed class ComboBox: InputBase
 
         var previous = _selectedIndex;
         _selectedIndex = value;
+        _selectionVersion++;
         _listSelectionChangedFired = false;
 
         try
@@ -570,6 +592,7 @@ public sealed class ComboBox: InputBase
         catch
         {
             _selectedIndex = previous;
+            _selectionVersion++;
             throw;
         }
 
@@ -588,6 +611,7 @@ public sealed class ComboBox: InputBase
             // actually visible. Roll back instead of reporting a selection the drop-down
             // never adopted.
             _selectedIndex = previous;
+            _selectionVersion++;
             return;
         }
 
@@ -602,17 +626,22 @@ public sealed class ComboBox: InputBase
 
     private void PublishSelectionChanged(int selectedIndex, int previousIndex)
     {
+        var version = _selectionVersion;
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(
             () => NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure),
             ref failure);
 
-        int[] added = selectedIndex >= 0 ? [selectedIndex] : [];
-        int[] removed = previousIndex >= 0 ? [previousIndex] : [];
-        var selectionChanged = new ListSelectionChangedEventArgs(added, removed);
-        ExceptionAggregation.Capture(
-            () => SelectionChanged?.Invoke(this, selectionChanged),
-            ref failure);
+        if (_selectionVersion == version && _selectedIndex == selectedIndex)
+        {
+            int[] added = selectedIndex >= 0 ? [selectedIndex] : [];
+            int[] removed = previousIndex >= 0 ? [previousIndex] : [];
+            var selectionChanged = new ListSelectionChangedEventArgs(added, removed);
+            ExceptionAggregation.Capture(
+                () => SelectionChanged?.Invoke(this, selectionChanged),
+                ref failure);
+        }
+
         failure?.Throw();
     }
 

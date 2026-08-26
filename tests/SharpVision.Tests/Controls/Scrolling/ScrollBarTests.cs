@@ -6,6 +6,26 @@ namespace SharpVision.Tests.Controls.Scrolling;
 /// <summary>Verifies ScrollBar range, input, capture, geometry, and semantic rendering.</summary>
 public sealed class ScrollBarTests
 {
+    /// <summary>Verifies a newer value committed by PropertyChanged owns the typed event stream.</summary>
+    [Fact]
+    public void Value_WhenPropertyObserverCommitsNewerValue_SuppressesStaleTypedEvent()
+    {
+        var bar = new ScrollBar { Maximum = 100 };
+        var observations = new List<(int EventValue, int LiveValue)>();
+        bar.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ScrollBar.Value) && bar.Value == 10)
+            {
+                bar.Value = 20;
+            }
+        };
+        bar.ValueChanged += (_, eventArgs) => observations.Add((eventArgs.Value, bar.Value));
+
+        bar.Value = 10;
+
+        observations.ShouldBe([(20, 20)]);
+    }
+
     /// <summary>Verifies local style ownership overrides Theme fallback and clearing restores it.</summary>
     [Fact]
     public void Style_WhenThemeAndLocalValuesChange_UsesDocumentedPrecedence()

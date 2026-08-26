@@ -68,6 +68,11 @@ classDiagram
 | `OnDropDownOpened()`, `OnDropDownClosed()`                   | `void`                 | —        | Protected virtual, no-op by default; a control that enables the popup overrides these to raise its own public events.                                       |
 | `VerifyMutable()`                                            | `void`                 | —        | Exposes `ControlBase`'s internal off-dispatcher/disposed guard under a protected name a third-party derivative can call directly.                           |
 
+`CanExecuteChanged` may arrive from any thread. While attached, command-driven
+render invalidation is marshaled to the owning dispatcher and is valid only for
+that exact attachment generation. Detachment discards queued invalidation from
+the former dispatcher, and notifications received while detached are inert.
+
 `EnablePopup` accepts the popup's content control, its preferred
 `PopupPlacement` (default `Below`), whether opening transfers focus to the first
 eligible descendant of the content (`focusOnOpen`, default `false`), the popup's

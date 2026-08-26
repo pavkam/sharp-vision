@@ -113,14 +113,20 @@ public sealed class CurrencyInput: InputBase
     public bool AllowNull
     {
         get;
-        set
-        {
-            if (SetProperty(ref field, value, InvalidationImpact.None) && !value && _value is null)
-            {
-                _ = _coordinator.CommitValue(_coordinator.ClampToRange(0m));
-            }
-        }
+        set => _ = SetPropertyAndContinue(
+            ref field,
+            value,
+            InvalidationImpact.None,
+            RepairNullPolicy);
     } = true;
+
+    private void RepairNullPolicy()
+    {
+        if (!AllowNull && _value is null)
+        {
+            _ = _coordinator.CommitValue(_coordinator.ClampToRange(0m));
+        }
+    }
 
     /// <summary>Gets or sets the inclusive lower bound. Default is <see cref="decimal.MinValue"/>.</summary>
     /// <remarks>Endpoints may be equal.</remarks>

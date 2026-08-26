@@ -533,6 +533,73 @@ public sealed class InputBaseTests
         }
     }
 
+    /// <summary>Verifies a detached command source cannot dirty a control that has no dispatcher
+    /// lifecycle capable of consuming the invalidation.</summary>
+    [Fact]
+    public async Task Command_WhenCanExecuteChangedFiresWhileDetached_DoesNotInvalidateAsync()
+    {
+        var command = new ProbeCommand();
+        var control = new ProbePressable { Command = command };
+        control.Clear(Invalidation.All);
+
+        await Task.Run(command.RaiseCanExecuteChanged, TestContext.Current.CancellationToken);
+
+        control.Pending.ShouldBe(Invalidation.None);
+    }
+
+    /// <summary>Verifies work queued for an old dispatcher attachment cannot cross a detach and
+    /// reattach boundary to dirty the control under its new dispatcher.</summary>
+    [Fact]
+    public async Task Command_WhenQueuedCanExecuteChangedOutlivesAttachment_DoesNotInvalidateNewAttachmentAsync()
+    {
+        await using var previousDispatcher = Dispatcher.Start();
+        await using var currentDispatcher = Dispatcher.Start();
+        var command = new ProbeCommand();
+        var control = new ProbePressable { Command = command };
+        await previousDispatcher.InvokeAsync(
+            () =>
+            {
+                control.Attach(previousDispatcher);
+                control.Clear(Invalidation.All);
+            },
+            TestContext.Current.CancellationToken);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var detached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim raised = new();
+        using ManualResetEventSlim release = new();
+        previousDispatcher.Post(() =>
+        {
+            entered.SetResult();
+            raised.Wait();
+            control.Detach();
+            detached.SetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        await Task.Run(
+            () =>
+            {
+                command.RaiseCanExecuteChanged();
+                raised.Set();
+            },
+            TestContext.Current.CancellationToken);
+        await detached.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await currentDispatcher.InvokeAsync(
+            () =>
+            {
+                control.Attach(currentDispatcher);
+                control.Clear(Invalidation.All);
+            },
+            TestContext.Current.CancellationToken);
+
+        release.Set();
+        await previousDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        await currentDispatcher.InvokeAsync(
+            () => control.Pending.ShouldBe(Invalidation.None),
+            TestContext.Current.CancellationToken);
+    }
+
     #endregion
 
     #region Segment editing

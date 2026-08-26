@@ -7,6 +7,58 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves the detached public Calendar contract and date geometry.</summary>
 public sealed class CalendarTests
 {
+    /// <summary>Verifies ActiveDate publication cannot overwrite a newer nested selection.</summary>
+    [Fact]
+    public void Selection_WhenActiveDateObserverSelectsNewerDate_PreservesNewerTransaction()
+    {
+        var first = new DateOnly(2026, 8, 10);
+        var second = new DateOnly(2026, 8, 20);
+        using var calendar = new UiCalendar();
+        var observations = new List<(DateInterval? EventValue, DateInterval? LiveValue)>();
+        calendar.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiCalendar.ActiveDate) && calendar.ActiveDate == first)
+            {
+                calendar.Selection = new DateInterval(second, second);
+            }
+        };
+        calendar.SelectionChanged += (_, eventArgs) =>
+            observations.Add((eventArgs.Selection, calendar.Selection));
+
+        calendar.Selection = new DateInterval(first, first);
+
+        calendar.Selection.ShouldBe(new DateInterval(second, second));
+        calendar.ActiveDate.ShouldBe(second);
+        observations.ShouldBe([(new DateInterval(second, second), new DateInterval(second, second))]);
+    }
+
+    /// <summary>Verifies the same transaction ownership applies to multi-day intervals spanning
+    /// display months, keeping navigation and selection aligned with the nested commit.</summary>
+    [Fact]
+    public void Selection_WhenActiveDateObserverSelectsNewerInterval_PreservesNavigationAndEventOrder()
+    {
+        var outer = new DateInterval(new DateOnly(2026, 8, 28), new DateOnly(2026, 9, 2));
+        var nested = new DateInterval(new DateOnly(2026, 10, 3), new DateOnly(2026, 10, 9));
+        using var calendar = new UiCalendar { SelectionMode = CalendarSelectionMode.Interval };
+        var observations = new List<(DateInterval? Selection, DateOnly ActiveDate, DateOnly DisplayMonth)>();
+        calendar.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiCalendar.ActiveDate) && calendar.ActiveDate == outer.Start)
+            {
+                calendar.Selection = nested;
+            }
+        };
+        calendar.SelectionChanged += (_, eventArgs) =>
+            observations.Add((eventArgs.Selection, calendar.ActiveDate, calendar.DisplayMonth));
+
+        calendar.Selection = outer;
+
+        calendar.Selection.ShouldBe(nested);
+        calendar.ActiveDate.ShouldBe(nested.Start);
+        calendar.DisplayMonth.ShouldBe(new DateOnly(2026, 10, 1));
+        observations.ShouldBe([(nested, nested.Start, new DateOnly(2026, 10, 1))]);
+    }
+
     #region Interaction and rendering
 
     /// <summary>Verifies Space press activates the active date while release remains inert.</summary>

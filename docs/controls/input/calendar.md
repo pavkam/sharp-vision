@@ -66,6 +66,11 @@ before the committed state is published. Changing `SelectionMode` clears the
 committed selection and the pending anchor, so state from one interaction model
 never leaks into the other.
 
+Selection publication is transaction-ordered under synchronous property reentry.
+If an `ActiveDate` or `DisplayMonth` observer commits a newer selection, the
+newer interval owns `ActiveDate`, `DisplayMonth`, `Selection`, and the typed
+event stream; the interrupted selection does not resume and overwrite it.
+
 In interval mode, an anchor renders a provisional range through the active
 keyboard date or the directly hovered selectable date. This preview does not
 change `Selection` and does not raise `SelectionChanged`. A second endpoint

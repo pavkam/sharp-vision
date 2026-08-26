@@ -6,6 +6,26 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies Slider range state, semantic geometry, and direct input behavior.</summary>
 public sealed class SliderTests
 {
+    /// <summary>Verifies a newer value committed by PropertyChanged owns the typed event stream.</summary>
+    [Fact]
+    public void Value_WhenPropertyObserverCommitsNewerValue_SuppressesStaleTypedEvent()
+    {
+        var slider = new Slider { Minimum = 0, Maximum = 100 };
+        var observations = new List<(int EventValue, int LiveValue)>();
+        slider.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Slider.Value) && slider.Value == 10)
+            {
+                slider.Value = 20;
+            }
+        };
+        slider.ValueChanged += (_, eventArgs) => observations.Add((eventArgs.Value, slider.Value));
+
+        slider.Value = 10;
+
+        observations.ShouldBe([(20, 20)]);
+    }
+
     /// <summary>Verifies both endpoint setters restore the value invariant after a throwing observer.</summary>
     [Theory]
     [InlineData(true)]

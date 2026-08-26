@@ -34,6 +34,11 @@ is Japanese. `RoundingMode` is applied only at commit, through the
 three-argument `Math.Round(decimal, int, MidpointRounding)` overload, never the
 two-argument overload that silently rounds to even.
 
+Dependent policy repair reads the live `AllowNull` state after
+`PropertyChanged`. If an observer restores nullable input synchronously, the
+superseded outer assignment does not seed the value to zero or rewrite its
+formatted buffer.
+
 ## Inheritance
 
 ```mermaid

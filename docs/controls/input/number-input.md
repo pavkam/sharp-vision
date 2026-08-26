@@ -35,6 +35,11 @@ changing `Culture` or `Mode` while a buffer is mid-edit discards the transient
 text back to the committed value's formatting under the new settings, rather
 than migrating a half-parsed string across the switch.
 
+Dependent policy repair always reads the live policy after `PropertyChanged`. If
+an observer restores `AllowNull` or `Mode` synchronously, an obsolete outer
+assignment cannot seed null to zero, round a fractional value, or reformat the
+buffer for a mode that is no longer active.
+
 ## Inheritance
 
 ```mermaid

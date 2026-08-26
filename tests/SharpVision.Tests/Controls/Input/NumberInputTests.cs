@@ -7,6 +7,64 @@ namespace SharpVision.Tests.Controls.Input;
 /// formatting.</summary>
 public sealed class NumberInputTests
 {
+    /// <summary>Verifies reentrant value publication suppresses the superseded typed event.</summary>
+    [Fact]
+    public void Value_WhenPropertyObserverCommitsNewerValue_SuppressesStaleTypedEvent()
+    {
+        using var input = new NumberInput();
+        var observations = new List<(decimal? EventValue, decimal? LiveValue)>();
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(NumberInput.Value) && input.Value == 10m)
+            {
+                input.Value = 20m;
+            }
+        };
+        input.ValueChanged += (_, eventArgs) => observations.Add((eventArgs.Value, input.Value));
+
+        input.Value = 10m;
+
+        observations.ShouldBe([(20m, 20m)]);
+    }
+
+    /// <summary>Verifies reentrant AllowNull restoration prevents obsolete zero seeding.</summary>
+    [Fact]
+    public void AllowNull_WhenPropertyObserverRestoresTrue_PreservesNullValue()
+    {
+        using var input = new NumberInput();
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(NumberInput.AllowNull) && !input.AllowNull)
+            {
+                input.AllowNull = true;
+            }
+        };
+
+        input.AllowNull = false;
+
+        input.AllowNull.ShouldBeTrue();
+        input.Value.ShouldBeNull();
+    }
+
+    /// <summary>Verifies reentrant mode restoration prevents obsolete integer rounding.</summary>
+    [Fact]
+    public void Mode_WhenPropertyObserverRestoresDecimal_PreservesFractionalValue()
+    {
+        using var input = new NumberInput { Value = 1.5m };
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(NumberInput.Mode) && input.Mode == NumberInputMode.Integer)
+            {
+                input.Mode = NumberInputMode.Decimal;
+            }
+        };
+
+        input.Mode = NumberInputMode.Integer;
+
+        input.Mode.ShouldBe(NumberInputMode.Decimal);
+        input.Value.ShouldBe(1.5m);
+    }
+
     /// <summary>Verifies both endpoint setters repair the committed numeric value after a throwing observer.</summary>
     [Theory]
     [InlineData(true)]

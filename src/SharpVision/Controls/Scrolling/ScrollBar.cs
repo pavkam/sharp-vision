@@ -12,6 +12,7 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
 {
     private int _value;
+    private long _valueVersion;
     private readonly DragBehavior _drag;
     private int _dragPointerStart;
     private int? _dragPixelStart;
@@ -285,13 +286,23 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
         value = Math.Clamp(value, Minimum, Maximum);
         var previous = _value;
 
-        if (!SetProperty(ref _value, value, InvalidationImpact.Render, nameof(Value)))
+        if (!SetVersionedProperty(
+                ref _value,
+                value,
+                InvalidationImpact.Render,
+                ref _valueVersion,
+                out var version,
+                nameof(Value)))
         {
             return false;
         }
 
-        Debug.Assert(value >= Minimum && value <= Maximum, "Committed value remains in range.");
-        ValueChanged?.Invoke(this, new ScrollEventArgs(previous, value, cause));
+        if (IsVersionedPropertyCurrent(_value, value, _valueVersion, version))
+        {
+            Debug.Assert(value >= Minimum && value <= Maximum, "Committed value remains in range.");
+            ValueChanged?.Invoke(this, new ScrollEventArgs(previous, value, cause));
+        }
+
         return true;
     }
 

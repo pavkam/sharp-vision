@@ -117,6 +117,114 @@ public sealed class TabControlTests
             args => args.CurrentItem.ShouldBeSameAs(second));
     }
 
+    /// <summary>Verifies a newer selection committed from the SelectedIndex notification
+    /// supersedes every remaining notification from the older selection transaction.</summary>
+    [Fact]
+    public void SelectedIndex_WhenPropertyObserverSelectsNewerPage_SuppressesStaleSelectionEvent()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        var third = Create("Third", "Three");
+        var tabs = Create(first, second, third);
+        var changes = new List<TabSelectionChangedEventArgs>();
+        tabs.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(TabControl.SelectedIndex) && tabs.SelectedIndex == 1)
+            {
+                tabs.SelectedIndex = 2;
+            }
+        };
+        tabs.SelectionChanged += (_, eventArgs) => changes.Add(eventArgs);
+
+        tabs.SelectedIndex = 1;
+
+        tabs.SelectedIndex.ShouldBe(2);
+        tabs.SelectedItem.ShouldBeSameAs(third);
+        second.Visibility.ShouldBe(Visibility.Collapsed);
+        third.Visibility.ShouldBe(Visibility.Visible);
+        changes.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            eventArgs => eventArgs.CurrentIndex.ShouldBe(2),
+            eventArgs => eventArgs.CurrentItem.ShouldBeSameAs(third));
+    }
+
+    /// <summary>Verifies the SelectedItem notification is also a transaction boundary: a newer
+    /// selection committed there prevents the older typed event from describing stale identity.</summary>
+    [Fact]
+    public void SelectedItem_WhenPropertyObserverSelectsNewerPage_SuppressesStaleSelectionEvent()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        var third = Create("Third", "Three");
+        var tabs = Create(first, second, third);
+        var changes = new List<TabSelectionChangedEventArgs>();
+        tabs.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(TabControl.SelectedItem) && ReferenceEquals(tabs.SelectedItem, second))
+            {
+                tabs.SelectedItem = third;
+            }
+        };
+        tabs.SelectionChanged += (_, eventArgs) => changes.Add(eventArgs);
+
+        tabs.SelectedItem = second;
+
+        tabs.SelectedItem.ShouldBeSameAs(third);
+        changes.ShouldHaveSingleItem().CurrentItem.ShouldBeSameAs(third);
+    }
+
+    /// <summary>Verifies presentation callbacks may select another page immediately; the nested
+    /// transaction presents its page before publishing and suppresses the interrupted event.</summary>
+    [Fact]
+    public void Visibility_WhenObserverSelectsNewerPage_PresentsAndPublishesOnlyNewerSelection()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        var third = Create("Third", "Three");
+        var tabs = Create(first, second, third);
+        var observations = new List<(int Index, Visibility Second, Visibility Third)>();
+        second.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ControlBase.Visibility) && second.Visibility == Visibility.Visible)
+            {
+                tabs.SelectedIndex = 2;
+            }
+        };
+        tabs.SelectionChanged += (_, eventArgs) =>
+            observations.Add((eventArgs.CurrentIndex, second.Visibility, third.Visibility));
+
+        tabs.SelectedIndex = 1;
+
+        tabs.SelectedIndex.ShouldBe(2);
+        observations.ShouldBe([(2, Visibility.Collapsed, Visibility.Visible)]);
+    }
+
+    /// <summary>Verifies structural mutation from a page-presentation callback cannot publish the
+    /// obsolete numeric index captured before the selected page shifted in the collection.</summary>
+    [Fact]
+    public void Visibility_WhenObserverRemovesEarlierPage_SuppressesObsoleteSelectionEvent()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        var third = Create("Third", "Three");
+        var tabs = Create(first, second, third);
+        var changes = new List<TabSelectionChangedEventArgs>();
+        second.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ControlBase.Visibility) && second.Visibility == Visibility.Visible)
+            {
+                _ = tabs.Items.Remove(first);
+            }
+        };
+        tabs.SelectionChanged += (_, eventArgs) => changes.Add(eventArgs);
+
+        tabs.SelectedIndex = 1;
+
+        tabs.SelectedIndex.ShouldBe(0);
+        tabs.SelectedItem.ShouldBeSameAs(second);
+        second.Visibility.ShouldBe(Visibility.Visible);
+        changes.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies removing the selected page reports its identity as PreviousItem, not a shifted successor.</summary>
     [Fact]
     public void SelectionChanged_WhenSelectedPageIsRemoved_ReportsRemovedItemAsPrevious()

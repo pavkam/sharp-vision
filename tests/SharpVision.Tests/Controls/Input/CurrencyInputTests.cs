@@ -7,6 +7,45 @@ namespace SharpVision.Tests.Controls.Input;
 /// identity resolution, and culture-aware currency formatting and parsing.</summary>
 public sealed class CurrencyInputTests
 {
+    /// <summary>Verifies reentrant value publication suppresses the superseded typed event.</summary>
+    [Fact]
+    public void Value_WhenPropertyObserverCommitsNewerValue_SuppressesStaleTypedEvent()
+    {
+        using var input = new CurrencyInput();
+        var observations = new List<(decimal? EventValue, decimal? LiveValue)>();
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(CurrencyInput.Value) && input.Value == 10m)
+            {
+                input.Value = 20m;
+            }
+        };
+        input.ValueChanged += (_, eventArgs) => observations.Add((eventArgs.Value, input.Value));
+
+        input.Value = 10m;
+
+        observations.ShouldBe([(20m, 20m)]);
+    }
+
+    /// <summary>Verifies reentrant AllowNull restoration prevents obsolete zero seeding.</summary>
+    [Fact]
+    public void AllowNull_WhenPropertyObserverRestoresTrue_PreservesNullValue()
+    {
+        using var input = new CurrencyInput();
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(CurrencyInput.AllowNull) && !input.AllowNull)
+            {
+                input.AllowNull = true;
+            }
+        };
+
+        input.AllowNull = false;
+
+        input.AllowNull.ShouldBeTrue();
+        input.Value.ShouldBeNull();
+    }
+
     /// <summary>Verifies both currency endpoints repair the committed value after a throwing observer.</summary>
     [Theory]
     [InlineData(true)]

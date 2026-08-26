@@ -350,7 +350,14 @@ public abstract class InputBase: ControlBase
 
         var dispatcher = Dispatcher;
 
-        if (dispatcher is not null && !dispatcher.CheckAccess())
+        if (dispatcher is null)
+        {
+            return;
+        }
+
+        var attachmentVersion = AttachmentVersion;
+
+        if (!dispatcher.CheckAccess())
         {
             try
             {
@@ -362,7 +369,9 @@ public abstract class InputBase: ControlBase
                 // subscribers, which is worse than one stale render.
                 dispatcher.Post(() =>
                 {
-                    if (!IsDisposed)
+                    if (!IsDisposed &&
+                        ReferenceEquals(Dispatcher, dispatcher) &&
+                        AttachmentVersion == attachmentVersion)
                     {
                         Invalidate(Invalidation.Render);
                     }

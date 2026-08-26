@@ -6,6 +6,31 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies adaptive ColorPicker value, composition, layout, rendering, and input.</summary>
 public sealed class ColorPickerTests
 {
+    /// <summary>Verifies reentrant publication leaves the typed payload aligned with the newest color.</summary>
+    [Fact]
+    public void Value_WhenPropertyObserverCommitsNewerValue_SuppressesStaleTypedEvent()
+    {
+        var first = Color.Rgb(10, 20, 30);
+        var second = Color.Rgb(40, 50, 60);
+        var picker = new ColorPicker();
+        var observations = new List<(Color EventValue, Color LiveValue)>();
+        picker.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ColorPicker.Value) && picker.Value == first)
+            {
+                picker.Value = second;
+            }
+        };
+        picker.ValueChanged += (_, eventArgs) => observations.Add((eventArgs.Value, picker.Value));
+
+        picker.Value = first;
+
+        observations.ShouldBe([(second, second)]);
+        picker.RedSlider.Value.ShouldBe(40);
+        picker.GreenSlider.Value.ShouldBe(50);
+        picker.BlueSlider.Value.ShouldBe(60);
+    }
+
     /// <summary>Verifies a picker rejects default colors before changing selection.</summary>
     [Fact]
     public void Value_WhenColorIsDefault_AcceptsValue()

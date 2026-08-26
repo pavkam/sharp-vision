@@ -31,6 +31,10 @@ shares its AM/PM designator toggle, pointer-driven segment activation, and
 digit/AM-PM keystroke classification with [`DateTimeInput`](date-time-input.md)
 alone, through the internal `TemporalSegmentClassification` toolkit.
 
+Disabling `AllowNull` repairs an existing null only if that policy remains live
+after `PropertyChanged`. A synchronous observer that restores `AllowNull`
+prevents obsolete clock-derived seeding and preserves the null value.
+
 ## Inheritance
 
 ```mermaid

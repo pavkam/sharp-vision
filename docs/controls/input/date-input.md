@@ -22,6 +22,10 @@ through [`InputBase.EnableSegmentEditing`](../input-base.md#api). Each control
 keeps its own calendar/clock arithmetic and pattern (`ResolveDatePattern` here)
 on top of that shared engine.
 
+Disabling `AllowNull` repairs an existing null only if that policy remains live
+after `PropertyChanged`. A synchronous observer that restores `AllowNull`
+prevents obsolete clock-derived seeding and preserves the null value.
+
 ## Inheritance
 
 ```mermaid

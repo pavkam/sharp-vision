@@ -6,6 +6,27 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies popup-style combo box geometry, keyboard opening, focus, and committed selection.</summary>
 public sealed class ComboBoxTests
 {
+    /// <summary>Verifies reentrant selection publication suppresses the superseded typed event.</summary>
+    [Fact]
+    public void SelectedIndex_WhenPropertyObserverSelectsNewerItem_SuppressesStaleTypedEvent()
+    {
+        var box = new ComboBox { Items = ["A", "B", "C"] };
+        var observations = new List<(int EventIndex, int LiveIndex)>();
+        box.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ComboBox.SelectedIndex) && box.SelectedIndex == 1)
+            {
+                box.SelectedIndex = 2;
+            }
+        };
+        box.SelectionChanged += (_, eventArgs) =>
+            observations.Add((eventArgs.AddedIndexes.Span[0], box.SelectedIndex));
+
+        box.SelectedIndex = 1;
+
+        observations.ShouldBe([(2, 2)]);
+    }
+
     /// <summary>Verifies a combo field is discoverable through light intrinsic chrome by default.</summary>
     [Fact]
     public void Properties_WhenConstructed_UsesLightFieldBorder()

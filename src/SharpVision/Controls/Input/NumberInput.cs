@@ -93,13 +93,11 @@ public sealed class NumberInput: InputBase
     public bool AllowNull
     {
         get;
-        set
-        {
-            if (SetProperty(ref field, value, InvalidationImpact.None) && !value && _value is null)
-            {
-                _ = _coordinator.CommitValue(_coordinator.ClampToRange(0m));
-            }
-        }
+        set => _ = SetPropertyAndContinue(
+            ref field,
+            value,
+            InvalidationImpact.None,
+            RepairNullPolicy);
     } = true;
 
     /// <summary>Gets or sets the inclusive lower bound. Default is <see cref="decimal.MinValue"/>.</summary>
@@ -171,24 +169,32 @@ public sealed class NumberInput: InputBase
         {
             ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The mode is unknown.");
 
-            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                return;
-            }
-
-            if (value == NumberInputMode.Integer &&
-                _value is { } current &&
-                current != decimal.Truncate(current))
-            {
-                _ = _coordinator.CommitValue(_coordinator.ClampToRange(Math.Round(current, 0, RoundingMode)));
-            }
-
-            if (IsFocused)
-            {
-                RefreshBuffer();
-            }
+            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Measure, ApplyModePolicy);
         }
     } = NumberInputMode.Decimal;
+
+    private void RepairNullPolicy()
+    {
+        if (!AllowNull && _value is null)
+        {
+            _ = _coordinator.CommitValue(_coordinator.ClampToRange(0m));
+        }
+    }
+
+    private void ApplyModePolicy()
+    {
+        if (Mode == NumberInputMode.Integer &&
+            _value is { } current &&
+            current != decimal.Truncate(current))
+        {
+            _ = _coordinator.CommitValue(_coordinator.ClampToRange(Math.Round(current, 0, RoundingMode)));
+        }
+
+        if (IsFocused)
+        {
+            RefreshBuffer();
+        }
+    }
 
     /// <summary>Gets or sets the number of fractional digits displayed and accepted while
     /// <see cref="Mode"/> is <see cref="NumberInputMode.Decimal"/>. Treated as zero while

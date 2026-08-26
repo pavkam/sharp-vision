@@ -89,6 +89,12 @@ unavailability callback commits a newer `Visibility` or `IsEnabled` transition,
 that newer transition owns the event stream; the superseded outer setter does
 not publish duplicate property-specific or derived-focus notifications.
 
+When a control follows `PropertyChanged` with a property-specific typed event,
+synchronous reentry uses the same ownership rule: a callback that commits a
+newer value supersedes the older transaction. The older setter does not publish
+a typed payload that disagrees with the live property, even when the value
+changes away and back before the callback returns.
+
 `EffectiveIsEnabled` and `EffectiveIsVisible` are computed across the whole
 ancestor chain, and changing an inherited state invalidates the affected
 descendants. `IsHitTestVisible` affects pointer targeting only; it does not

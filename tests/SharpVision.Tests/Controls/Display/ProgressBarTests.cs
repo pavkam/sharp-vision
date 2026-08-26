@@ -6,6 +6,26 @@ namespace SharpVision.Tests.Controls.Display;
 /// <summary>Verifies ProgressBar range, layout, and rendering contracts.</summary>
 public sealed class ProgressBarTests
 {
+    /// <summary>Verifies a newer value committed by PropertyChanged owns the typed event stream.</summary>
+    [Fact]
+    public void Value_WhenPropertyObserverCommitsNewerValue_SuppressesStaleTypedEvent()
+    {
+        var bar = new ProgressBar { Maximum = 100 };
+        var observations = new List<(double EventValue, double LiveValue)>();
+        bar.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ProgressBar.Value) && bar.Value == 10)
+            {
+                bar.Value = 20;
+            }
+        };
+        bar.ValueChanged += (_, eventArgs) => observations.Add((eventArgs.Value, bar.Value));
+
+        bar.Value = 10;
+
+        observations.ShouldBe([(20, 20)]);
+    }
+
     /// <summary>Verifies documented range, presentation, alignment, and interaction defaults.</summary>
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()

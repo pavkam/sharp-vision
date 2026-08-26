@@ -21,6 +21,7 @@ using SharpVision.Terminal.Input;
 [PublicAPI]
 public sealed class DateTimeInput: InputBase
 {
+    private long _valueVersion;
     /// <inheritdoc/>
     protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
         (theme ?? ThemeCatalog.Dark).GetStyleSet(InputStyle.Default).ToAppearanceStates();
@@ -129,20 +130,17 @@ public sealed class DateTimeInput: InputBase
     public bool AllowNull
     {
         get;
-        set
-        {
-            // The eager re-seed only runs once seeding has already happened: resolving "now"
-            // here for a not-yet-seeded control would latch whatever clock is current at this
-            // call (often the construction-time wall clock, before a dispatcher with its own
-            // TimeProvider is attached) instead of the correct one. Leaving _value untouched
-            // when unseeded is safe - EnsureSeeded resolves a non-null value from the right
-            // clock before Value (or any other observer) can ever read _value as null.
-            if (SetProperty(ref field, value, InvalidationImpact.None) && !value && _seeded && _value is null)
-            {
-                _ = Commit(ClampToRange(TimeProvider.GetLocalNow().DateTime));
-            }
-        }
+        set => _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.None, RepairNullPolicy);
     } = true;
+
+    private void RepairNullPolicy()
+    {
+        // An unseeded control must wait for the dispatcher clock selected by EnsureSeeded.
+        if (!AllowNull && _seeded && _value is null)
+        {
+            _ = Commit(ClampToRange(TimeProvider.GetLocalNow().DateTime));
+        }
+    }
 
     /// <summary>
     /// Gets or sets the Gregorian culture applied to both the popup <see cref="Calendar"/>'s month
@@ -792,17 +790,27 @@ public sealed class DateTimeInput: InputBase
             ? ClampToRange(requested.Value)
             : AllowNull ? null : _value;
 
-        if (!SetProperty(ref _value, clamped, InvalidationImpact.Render, nameof(Value)))
+        if (!SetVersionedProperty(
+                ref _value,
+                clamped,
+                InvalidationImpact.Render,
+                ref _valueVersion,
+                out var version,
+                nameof(Value)))
         {
             return false;
         }
 
-        if (clamped.HasValue)
+        if (IsVersionedPropertyCurrent(_value, clamped, _valueVersion, version) && clamped.HasValue)
         {
             PushCalendarSelection(DateOnly.FromDateTime(clamped.Value));
         }
 
-        ValueChanged?.Invoke(this, new DateTimeInputValueChangedEventArgs(previous, clamped));
+        if (IsVersionedPropertyCurrent(_value, clamped, _valueVersion, version))
+        {
+            ValueChanged?.Invoke(this, new DateTimeInputValueChangedEventArgs(previous, clamped));
+        }
+
         return true;
     }
 

@@ -24,10 +24,11 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     private readonly StyleSlot<TabControlStyle> _style;
     private readonly LayoutStack _headers;
     private readonly LayoutStack _stack;
-    private bool _updatingPresentation;
+    private int _presentationDepth;
     private TabItem? _writingItem;
     private Visibility _writingVisibility;
     private int _selectedIndex = -1;
+    private long _selectionVersion;
 
     /// <summary>Initializes an empty tab control with typed managed pages.</summary>
     public TabControl()
@@ -303,6 +304,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         if (_selectedIndex >= index)
         {
             _selectedIndex++;
+            _selectionVersion++;
             NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure);
         }
 
@@ -373,6 +375,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
                 // unaffected by removing an earlier page, so only its numeric index shifts
                 // silently, with no SelectionChanged.
                 _selectedIndex--;
+                _selectionVersion++;
                 NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure);
             }
 
@@ -441,6 +444,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         if (wasSelected)
         {
             _selectedIndex = -1;
+            _selectionVersion++;
             var target = IsEligible(index) ? index : SingleSelectionIndex.FindNearest(index, ItemControlCount, IsEligible);
             CommitSelection(target, previousSelectedIndex, previousSelectedItem);
         }
@@ -500,6 +504,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
         if (_selectedIndex != previousSelectedIndex)
         {
+            _selectionVersion++;
             NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure);
         }
 
@@ -622,6 +627,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     {
         VerifyMutable();
         _selectedIndex = -1;
+        _selectionVersion++;
         CommitSelection(index, previousIndex, previousItem);
     }
 
@@ -644,13 +650,25 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         }
 
         _selectedIndex = index;
+        var selectionVersion = ++_selectionVersion;
 
         if (_selectedIndex >= 0)
         {
             HeaderAt(_selectedIndex).CommitSelection(true);
         }
 
+        if (selectionVersion != _selectionVersion)
+        {
+            return;
+        }
+
         ApplyPresentation();
+
+        if (selectionVersion != _selectionVersion)
+        {
+            return;
+        }
+
         if (HeaderOverflowPolicy == TabHeaderOverflowPolicy.Scroll && _selectedIndex >= 0)
         {
             _ = _headers.BringIntoView(HeaderAt(_selectedIndex));
@@ -659,7 +677,19 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         var currentItem = _selectedIndex >= 0 ? ItemAt(_selectedIndex) : null;
 
         NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure);
+
+        if (selectionVersion != _selectionVersion)
+        {
+            return;
+        }
+
         NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Measure);
+
+        if (selectionVersion != _selectionVersion)
+        {
+            return;
+        }
+
         SelectionChanged?.Invoke(
             this,
             new TabSelectionChangedEventArgs(previousIndex, index, previousItem, currentItem));
@@ -681,12 +711,9 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
     private void ApplyPresentation()
     {
-        if (_updatingPresentation)
-        {
-            return;
-        }
-
-        _updatingPresentation = true;
+        _presentationDepth++;
+        var previousWritingItem = _writingItem;
+        var previousWritingVisibility = _writingVisibility;
 
         try
         {
@@ -702,15 +729,27 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
                     item.ClearPresentedContent();
                 }
 
-                _writingItem = item;
-                _writingVisibility = visibility;
-                item.Visibility = visibility;
+                var parentWritingItem = _writingItem;
+                var parentWritingVisibility = _writingVisibility;
+
+                try
+                {
+                    _writingItem = item;
+                    _writingVisibility = visibility;
+                    item.Visibility = visibility;
+                }
+                finally
+                {
+                    _writingItem = parentWritingItem;
+                    _writingVisibility = parentWritingVisibility;
+                }
             }
         }
         finally
         {
-            _writingItem = null;
-            _updatingPresentation = false;
+            _writingItem = previousWritingItem;
+            _writingVisibility = previousWritingVisibility;
+            _presentationDepth--;
         }
     }
 
@@ -795,12 +834,12 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
         if (eventArgs.PropertyName == nameof(Visibility))
         {
-            // _updatingPresentation only says a write from ApplyPresentation is in flight, not that
+            // _presentationDepth only says a write from ApplyPresentation is in flight, not that
             // this particular notification is that write: a consumer can reassign Visibility from
             // inside this very notification, which reenters here before ApplyPresentation unwinds.
             // Attribute the write by comparing against what ApplyPresentation actually wrote for this
             // item - a mismatch means a consumer's reentrant request, which must be honored.
-            if (_updatingPresentation && ReferenceEquals(_writingItem, item) && item.Visibility == _writingVisibility)
+            if (_presentationDepth > 0 && ReferenceEquals(_writingItem, item) && item.Visibility == _writingVisibility)
             {
                 return;
             }

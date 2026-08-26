@@ -37,7 +37,10 @@ each depth commits and shows. A changed direct assignment or user selection
 commits `Value`, synchronizes every retained part, and then raises one
 `ValueChanged` event with immutable `ColorChangedEventArgs`. Capability changes
 alter the presentation without raising a value event. No-op changes raise
-nothing. All mutation of an attached control is dispatcher-affine.
+nothing. If `PropertyChanged(Value)` commits a newer color synchronously, the
+newer color owns every retained slider, swatch, readout, and typed event; the
+superseded transition publishes nothing further. All mutation of an attached
+control is dispatcher-affine.
 
 `ColorPickerStyle : ControlStyle` is a secondary (part) style, not a primary
 themed control style: it owns no `styles.*` theme key of its own. It exposes

@@ -35,6 +35,7 @@ namespace SharpVision.Input;
 /// </remarks>
 internal sealed class NumericInputCommitCoordinator
 {
+    private long _commitVersion;
     private readonly NumericEditBuffer _buffer;
     private readonly Func<decimal?> _getValue;
     private readonly Func<decimal?, bool> _trySetValue;
@@ -143,9 +144,16 @@ internal sealed class NumericInputCommitCoordinator
     public bool CommitValue(decimal? candidate)
     {
         var previous = _getValue();
+        var priorVersion = _commitVersion;
+        var version = ++_commitVersion;
 
         if (!_trySetValue(candidate))
         {
+            if (_commitVersion == version)
+            {
+                _commitVersion = priorVersion;
+            }
+
             return false;
         }
 
@@ -154,7 +162,11 @@ internal sealed class NumericInputCommitCoordinator
             _refreshBuffer();
         }
 
-        _raiseValueChanged(previous, candidate);
+        if (_commitVersion == version && _getValue() == candidate)
+        {
+            _raiseValueChanged(previous, candidate);
+        }
+
         return true;
     }
 

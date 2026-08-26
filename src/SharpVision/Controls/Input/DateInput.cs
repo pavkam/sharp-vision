@@ -38,6 +38,7 @@ public sealed class DateInput: InputBase
     private readonly Popup _popup;
     private readonly SegmentFieldBehavior _segments;
     private DateOnly? _value;
+    private long _valueVersion;
     private bool _seeded;
     private bool _synchronizingCalendar;
     private CultureInfo _culture;
@@ -131,13 +132,22 @@ public sealed class DateInput: InputBase
 
             var previous = _value;
             _value = value;
+            var version = ++_valueVersion;
 
             // Keeps an already-open popup showing the field's current value instead of a stale
             // selection and displayed month, matching how DateTimeInput's Commit re-pushes the
             // calendar's selection on every committed change regardless of IsOpen.
             SyncCalendar();
-            NotifyPropertyChanged(nameof(Value), InvalidationImpact.Render);
-            RaiseValueChanged(previous, value);
+
+            if (IsVersionedPropertyCurrent(_value, value, _valueVersion, version))
+            {
+                NotifyPropertyChanged(nameof(Value), InvalidationImpact.Render);
+            }
+
+            if (IsVersionedPropertyCurrent(_value, value, _valueVersion, version))
+            {
+                RaiseValueChanged(previous, value);
+            }
         }
     }
 
@@ -147,20 +157,17 @@ public sealed class DateInput: InputBase
     public bool AllowNull
     {
         get;
-        set
-        {
-            // The eager re-seed only runs once seeding has already happened: resolving "now"
-            // here for a not-yet-seeded control would latch whatever clock is current at this
-            // call (often the construction-time wall clock, before a dispatcher with its own
-            // TimeProvider is attached) instead of the correct one. Leaving _value untouched
-            // when unseeded is safe - EnsureSeeded resolves a non-null value from the right
-            // clock before Value (or any other observer) can ever read _value as null.
-            if (SetProperty(ref field, value, InvalidationImpact.None) && !value && _seeded && _value is null)
-            {
-                Value = ClampDate(DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime));
-            }
-        }
+        set => _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.None, RepairNullPolicy);
     } = true;
+
+    private void RepairNullPolicy()
+    {
+        // An unseeded control must wait for the dispatcher clock selected by EnsureSeeded.
+        if (!AllowNull && _seeded && _value is null)
+        {
+            Value = ClampDate(DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime));
+        }
+    }
 
     /// <summary>Gets or sets the Gregorian culture used for date formatting and segment order.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>

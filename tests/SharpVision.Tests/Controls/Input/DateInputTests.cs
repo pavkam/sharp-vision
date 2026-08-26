@@ -7,6 +7,48 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves the detached public DateInput contract, clamping, culture, and rendering.</summary>
 public sealed class DateInputTests
 {
+    /// <summary>Verifies reentrant value publication suppresses the superseded typed event.</summary>
+    [Fact]
+    public void Value_WhenPropertyObserverCommitsNewerValue_SuppressesStaleTypedEvent()
+    {
+        var initial = new DateOnly(2026, 8, 1);
+        var first = new DateOnly(2026, 8, 10);
+        var second = new DateOnly(2026, 8, 20);
+        using var input = new DateInput { Value = initial };
+        var observations = new List<(DateOnly? EventValue, DateOnly? LiveValue)>();
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(DateInput.Value) && input.Value == first)
+            {
+                input.Value = second;
+            }
+        };
+        input.ValueChanged += (_, eventArgs) => observations.Add((eventArgs.Value, input.Value));
+
+        input.Value = first;
+
+        observations.ShouldBe([(second, second)]);
+    }
+
+    /// <summary>Verifies a reentrant AllowNull restoration prevents obsolete eager seeding.</summary>
+    [Fact]
+    public void AllowNull_WhenPropertyObserverRestoresTrue_PreservesNullValue()
+    {
+        using var input = new DateInput { Value = null };
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(DateInput.AllowNull) && !input.AllowNull)
+            {
+                input.AllowNull = true;
+            }
+        };
+
+        input.AllowNull = false;
+
+        input.AllowNull.ShouldBeTrue();
+        input.Value.ShouldBeNull();
+    }
+
     /// <summary>Verifies both date endpoints repair the value and retained calendar after a throwing observer.</summary>
     [Theory]
     [InlineData(true)]

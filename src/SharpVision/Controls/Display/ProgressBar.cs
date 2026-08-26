@@ -8,6 +8,7 @@ namespace SharpVision.Controls.Display;
 public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
 {
     private double _value;
+    private long _valueVersion;
     private readonly StyleSlot<ProgressBarStyle> _style;
 
     /// <summary>Initializes a non-focusable horizontal progress bar at zero progress.</summary>
@@ -65,9 +66,10 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
             field = value;
             var previousValue = _value;
             _value = clamped;
+            var valueVersion = previousValue.Equals(clamped) ? _valueVersion : ++_valueVersion;
 
             NotifyPropertyChanged(nameof(Minimum), InvalidationImpact.Render);
-            NotifyValueChanged(previousValue, clamped);
+            NotifyValueChanged(previousValue, clamped, valueVersion);
         }
     }
 
@@ -99,9 +101,10 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
             field = value;
             var previousValue = _value;
             _value = clamped;
+            var valueVersion = previousValue.Equals(clamped) ? _valueVersion : ++_valueVersion;
 
             NotifyPropertyChanged(nameof(Maximum), InvalidationImpact.Render);
-            NotifyValueChanged(previousValue, clamped);
+            NotifyValueChanged(previousValue, clamped, valueVersion);
         }
     } = 1;
 
@@ -121,8 +124,9 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
             var clamped = Math.Clamp(value, Minimum, Maximum);
             var previousValue = _value;
             _value = clamped;
+            var valueVersion = previousValue.Equals(clamped) ? _valueVersion : ++_valueVersion;
 
-            NotifyValueChanged(previousValue, clamped);
+            NotifyValueChanged(previousValue, clamped, valueVersion);
         }
     }
 
@@ -362,14 +366,23 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
     // history. Callers commit _value before calling this, so every endpoint
     // and Value are already coherent for both notifications raised here. A
     // clamp that leaves Value unchanged stays silent.
-    private void NotifyValueChanged(double previousValue, double currentValue)
+    private void NotifyValueChanged(double previousValue, double currentValue, long version)
     {
         if (previousValue.Equals(currentValue))
         {
             return;
         }
 
+        if (!IsVersionedPropertyCurrent(_value, currentValue, _valueVersion, version))
+        {
+            return;
+        }
+
         NotifyPropertyChanged(nameof(Value), InvalidationImpact.Render);
-        ValueChanged?.Invoke(this, new ProgressValueChangedEventArgs(previousValue, currentValue));
+
+        if (IsVersionedPropertyCurrent(_value, currentValue, _valueVersion, version))
+        {
+            ValueChanged?.Invoke(this, new ProgressValueChangedEventArgs(previousValue, currentValue));
+        }
     }
 }

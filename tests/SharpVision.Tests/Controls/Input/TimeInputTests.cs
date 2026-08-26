@@ -6,6 +6,47 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves the detached public TimeInput contract, clamping, and rendering.</summary>
 public sealed class TimeInputTests
 {
+    /// <summary>Verifies reentrant value publication suppresses the superseded typed event.</summary>
+    [Fact]
+    public void Value_WhenPropertyObserverCommitsNewerValue_SuppressesStaleTypedEvent()
+    {
+        using var input = new TimeInput { Value = new TimeOnly(8, 0) };
+        var first = new TimeOnly(9, 0);
+        var second = new TimeOnly(10, 0);
+        var observations = new List<(TimeOnly? EventValue, TimeOnly? LiveValue)>();
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(TimeInput.Value) && input.Value == first)
+            {
+                input.Value = second;
+            }
+        };
+        input.ValueChanged += (_, eventArgs) => observations.Add((eventArgs.Value, input.Value));
+
+        input.Value = first;
+
+        observations.ShouldBe([(second, second)]);
+    }
+
+    /// <summary>Verifies a reentrant AllowNull restoration prevents obsolete eager seeding.</summary>
+    [Fact]
+    public void AllowNull_WhenPropertyObserverRestoresTrue_PreservesNullValue()
+    {
+        using var input = new TimeInput { Value = null };
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(TimeInput.AllowNull) && !input.AllowNull)
+            {
+                input.AllowNull = true;
+            }
+        };
+
+        input.AllowNull = false;
+
+        input.AllowNull.ShouldBeTrue();
+        input.Value.ShouldBeNull();
+    }
+
     /// <summary>Verifies both time endpoints repair the committed value after a throwing observer.</summary>
     [Theory]
     [InlineData(true)]

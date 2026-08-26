@@ -69,6 +69,14 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <summary>Gets the owning dispatcher while attached.</summary>
     public Dispatcher? Dispatcher { get; private set; }
 
+    /// <summary>Gets the lifecycle generation of the current dispatcher attachment.</summary>
+    /// <remarks>
+    /// Derived controls capture this value when queuing dispatcher work whose validity ends at
+    /// detachment. It advances for every attach and detach commit, including a later reattachment
+    /// to the same dispatcher instance.
+    /// </remarks>
+    private protected long AttachmentVersion { get; private set; }
+
     /// <summary>Gets the attached dispatcher's clock, or the system clock while detached.</summary>
     private protected TimeProvider TimeProvider => Dispatcher?.TimeProvider ?? TimeProvider.System;
 
@@ -3088,6 +3096,55 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         return true;
     }
 
+    /// <summary>Commits and publishes one property while advancing a caller-owned transition
+    /// version that later dependent work can use to reject a superseded callback continuation.</summary>
+    /// <typeparam name="T">The property value type.</typeparam>
+    /// <param name="field">The current backing field.</param>
+    /// <param name="value">The validated replacement value.</param>
+    /// <param name="impact">The validated earliest affected phase.</param>
+    /// <param name="version">The caller-owned version for this logical property.</param>
+    /// <param name="commitVersion">Receives this transition's version, or the current version for a no-op.</param>
+    /// <param name="propertyName">The non-empty property name supplied by the compiler.</param>
+    /// <returns>Whether a changed value was committed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="propertyName"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="propertyName"/> is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NotifyPropertyChangedInvocator]
+    private protected bool SetVersionedProperty<T>(
+        ref T field,
+        T value,
+        InvalidationImpact impact,
+        ref long version,
+        out long commitVersion,
+        [CallerMemberName] string? propertyName = null)
+    {
+        ValidateImpact(impact);
+        ArgumentException.ThrowIfNullOrEmpty(propertyName);
+        VerifyMutable();
+
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            commitVersion = version;
+            return false;
+        }
+
+        field = value;
+        commitVersion = ++version;
+        Invalidate(InvalidationFor(impact));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        return true;
+    }
+
+    /// <summary>Gets whether a versioned property transition still owns dependent work.</summary>
+    private protected static bool IsVersionedPropertyCurrent<T>(
+        T field,
+        T value,
+        long version,
+        long commitVersion) =>
+        version == commitVersion && EqualityComparer<T>.Default.Equals(field, value);
+
     /// <summary>Commits and publishes one property, then runs required dependent work even when a
     /// property observer throws, rethrowing the first failure after the continuation completes.</summary>
     /// <typeparam name="T">The property value type.</typeparam>
@@ -3806,6 +3863,11 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
         if (transition.CommitsContext)
         {
+            if (!ReferenceEquals(Dispatcher, transition.Dispatcher))
+            {
+                AttachmentVersion++;
+            }
+
             Dispatcher = transition.Dispatcher;
             CellPolicy = transition.CellPolicy;
             FocusOwner = transition.FocusOwner;

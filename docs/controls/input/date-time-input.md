@@ -31,6 +31,10 @@ glyphs. Set `Format` to a custom combined pattern (for example
 clamping, since a 12-hour hour token without a designator is treated as a
 24-hour segment for editing purposes.
 
+Disabling `AllowNull` repairs an existing null only if that policy remains live
+after `PropertyChanged`. A synchronous observer that restores `AllowNull`
+prevents obsolete clock-derived seeding and preserves the null value.
+
 ## Inheritance
 
 ```mermaid

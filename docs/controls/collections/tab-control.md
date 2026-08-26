@@ -66,6 +66,11 @@ without disposing.
 - `SelectionChanged` fires once, after the selected page identity and the
   retained content participation have committed. Assigning the same index again
   is not a selection change.
+- Selection and presentation are transaction-ordered under synchronous reentry.
+  A newer selection or structural mutation from `SelectedIndex`, `SelectedItem`,
+  or page `Visibility` notification supersedes the interrupted transaction;
+  stale typed events are suppressed and the live selected page is presented
+  before its event is raised.
 - `TabItem.IsClosable` opts a page into `RequestClose` and Delete-key closure.
   `CloseRequested` is raised before removal with a cancellable
   [`TabCloseRequestedEventArgs`](#tabcloserequestedeventargs) payload. No close
