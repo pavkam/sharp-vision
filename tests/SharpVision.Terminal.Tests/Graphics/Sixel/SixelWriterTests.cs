@@ -271,4 +271,66 @@ public sealed class SixelWriterTests
                 new Size(int.MaxValue, int.MaxValue),
                 colorCount: 216));
     }
+
+    /// <summary>Verifies a partially transparent pixel is blended against a supplied opaque
+    /// background before quantization, rather than thresholded to fully opaque.</summary>
+    [Fact]
+    public void Write_WhenBackgroundIsSuppliedForPartialAlpha_BlendsBeforeQuantizing()
+    {
+        // Blend: red = (200*128 + 0*127) / 255 = 100, green = 0, blue = (0*128 + 200*127) / 255 = 99.
+        // Quantized: red cube 2, green cube 0, blue cube 2 -> cube index 74 -> palette (40, 0, 40).
+        var image = GraphicsImage.FromRgba(new Size(1, 1), [200, 0, 0, 128]);
+        var output = new ArrayBufferWriter<byte>();
+
+        SixelWriter.Write(
+            image,
+            new Rect(0, 0, 1, 1),
+            new Size(1, 1),
+            PlacementMode.Stretch,
+            output,
+            background: Color.Rgb(0, 0, 200));
+
+        output.WrittenSpan.ToArray().ShouldBe(
+            "P0;1;0q\"1;1;1;1#0;2;40;0;40#0@\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies fully transparent pixels stay transparent even when a background is
+    /// supplied, since a real background never blends against a meaningless zero-alpha sample.</summary>
+    [Fact]
+    public void Write_WhenAlphaIsZero_RemainsTransparentEvenWithBackground()
+    {
+        var image = GraphicsImage.FromRgba(new Size(1, 1), [200, 0, 0, 0]);
+        var output = new ArrayBufferWriter<byte>();
+
+        SixelWriter.Write(
+            image,
+            new Rect(0, 0, 1, 1),
+            new Size(1, 1),
+            PlacementMode.Stretch,
+            output,
+            background: Color.Rgb(0, 0, 200));
+
+        output.WrittenSpan.ToArray().ShouldBe(
+            "P0;1;0q\"1;1;1;1\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies a fully opaque pixel is unaffected by a supplied background, since
+    /// blending a fully opaque source against anything is a no-op.</summary>
+    [Fact]
+    public void Write_WhenAlphaIsFullyOpaque_IgnoresSuppliedBackground()
+    {
+        var image = GraphicsImage.FromRgba(new Size(1, 1), [255, 0, 0, 255]);
+        var output = new ArrayBufferWriter<byte>();
+
+        SixelWriter.Write(
+            image,
+            new Rect(0, 0, 1, 1),
+            new Size(1, 1),
+            PlacementMode.Stretch,
+            output,
+            background: Color.Rgb(0, 0, 255));
+
+        output.WrittenSpan.ToArray().ShouldBe(
+            "P0;1;0q\"1;1;1;1#0;2;100;0;0#0@\\"u8.ToArray());
+    }
 }

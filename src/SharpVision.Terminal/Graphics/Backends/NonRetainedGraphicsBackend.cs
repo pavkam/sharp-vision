@@ -98,6 +98,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         var metricDependent = new bool[back.PlacementCount];
         var sixelImages = new ImageSource?[back.PlacementCount];
         var itermImages = new ImageSource?[back.PlacementCount];
+        var sixelBackgrounds = new Color[back.PlacementCount];
         var skippedPlacements = ClassifyPlacements(
             back,
             metrics,
@@ -106,7 +107,8 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             encodable,
             metricDependent,
             sixelImages,
-            itermImages);
+            itermImages,
+            sixelBackgrounds);
         var blocked = back.FindFallbackBlockedPlacements(encodable);
         var currentCount = CountRenderable(
             encodable,
@@ -151,7 +153,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
                 // supported source does not pay for the same decode twice in one frame.
                 if (sixelImages[index] is { } sixelImage &&
                     TryGetSixelPixels(placement, metrics, enableSixel, out var pixels) &&
-                    TryWriteSixel(placement, sixelImage, pixels, output, remaining))
+                    TryWriteSixel(placement, sixelImage, pixels, sixelBackgrounds[index], output, remaining))
                 {
                     placementCount++;
                     continue;
@@ -310,12 +312,13 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         Placement placement,
         ImageSource image,
         Rect pixels,
+        Color background,
         IBufferWriter<byte> destination,
         int maxOutputBytes)
     {
         try
         {
-            WriteSixel(placement, image, pixels, destination, maxOutputBytes);
+            WriteSixel(placement, image, pixels, background, destination, maxOutputBytes);
             return true;
         }
         catch (ArgumentOutOfRangeException)
@@ -343,6 +346,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         Placement placement,
         ImageSource image,
         Rect pixels,
+        Color background,
         IBufferWriter<byte> destination,
         int maxOutputBytes)
     {
@@ -361,7 +365,8 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
                 new Size(pixels.Width, pixels.Height),
                 placement.Mode,
                 buffer,
-                maxOutputBytes);
+                maxOutputBytes,
+                background);
             WriteCursor(new Point(placement.Destination.X, placement.Destination.Y), destination);
             destination.Write(buffer.WrittenSpan);
             return;
@@ -390,7 +395,8 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             new Size(pixels.Width, pixels.Height),
             placement.Mode,
             dcs,
-            Math.Min(maxOutputBytes, routeMaxBytes));
+            Math.Min(maxOutputBytes, routeMaxBytes),
+            background);
         WriteCursor(new Point(placement.Destination.X, placement.Destination.Y), destination);
         WriteRoutedFrame(dcs.WrittenSpan, destination);
     }
@@ -473,7 +479,8 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         Span<bool> encodable,
         Span<bool> metricDependent,
         Span<ImageSource?> sixelImages,
-        Span<ImageSource?> itermImages)
+        Span<ImageSource?> itermImages,
+        Span<Color> sixelBackgrounds)
     {
         List<GraphicsPlacementDiagnostic>? skipped = null;
 
@@ -493,6 +500,12 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
                 encodable[index] = true;
                 metricDependent[index] = true;
                 sixelImages[index] = sixelImage;
+
+                // A placement's destination spans multiple cells but each cell can carry its own
+                // background; sample only the top-left cell as this placement's blend background
+                // rather than tracking one per covered cell.
+                sixelBackgrounds[index] = frame.GetCell(
+                    new Point(placement.Destination.X, placement.Destination.Y)).Style.Background;
             }
             // An RGBA source has no dedicated iTerm2 wire format, so it is PNG-encoded on demand
             // here (once per Prepare(), never cached across frames) purely to learn whether the

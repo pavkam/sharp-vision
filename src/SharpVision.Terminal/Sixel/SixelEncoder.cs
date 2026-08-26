@@ -19,6 +19,9 @@ internal static class SixelEncoder
     /// <param name="mode">The fitting mode.</param>
     /// <param name="output">The bounded transaction writer.</param>
     /// <param name="maxOutputBytes">The positive caller byte policy.</param>
+    /// <param name="background">
+    /// The optional opaque background to blend partial alpha against before quantization.
+    /// </param>
     /// <returns>The exact number of source sampling operations.</returns>
     /// <exception cref="InvalidOperationException">The checked worst-case output exceeds policy.</exception>
     public static int Encode(
@@ -27,7 +30,8 @@ internal static class SixelEncoder
         Size destination,
         PlacementMode mode,
         IBufferWriter<byte> output,
-        int maxOutputBytes)
+        int maxOutputBytes,
+        Color background = default)
     {
         // The bound is monotone in palette size, so the zero-color bound is a valid lower bound
         // for any actual content. When even that already exceeds policy, rejection is certain
@@ -43,7 +47,7 @@ internal static class SixelEncoder
         try
         {
             var raster = rentedRaster.AsSpan(0, pixelCount);
-            var samples = Sample(image, source, destination, mode, raster);
+            var samples = Sample(image, source, destination, mode, raster, background);
             var palette = new SixelPalette(raster);
             var maximum = CalculateMaximumBytes(destination, palette.Count);
 
@@ -91,7 +95,8 @@ internal static class SixelEncoder
         Rect source,
         Size destination,
         PlacementMode mode,
-        Span<byte> raster)
+        Span<byte> raster,
+        Color background)
     {
         var samples = 0;
 
@@ -114,7 +119,8 @@ internal static class SixelEncoder
                     pixels[offset],
                     pixels[offset + 1],
                     pixels[offset + 2],
-                    pixels[offset + 3]);
+                    pixels[offset + 3],
+                    background);
                 samples++;
             }
         }

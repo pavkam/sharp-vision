@@ -446,6 +446,44 @@ public sealed class NonRetainedGraphicsBackendTests
             "\u001b[1;2H\u001bP0;1;0q\"1;1;1;6#0;2;100;0;0#0~\u001b\\\u001b[1;1H"u8.ToArray());
     }
 
+    /// <summary>Verifies a partially transparent pixel is blended against the destination cell's
+    /// explicit background color before quantization, instead of being thresholded to opaque.</summary>
+    [Fact]
+    public void Prepare_WhenDestinationCellHasExplicitBackground_BlendsPartialAlphaAgainstIt()
+    {
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false);
+        using var frame = new Frame(new Size(1, 1));
+        _ = frame.Canvas.Draw("a", default, new CellStyle(background: Color.Rgb(0, 0, 200)));
+        var image = GraphicsImage.FromRgba(new Size(1, 1), [200, 0, 0, 128]);
+        frame.Canvas.DrawImage(image, new Rect(0, 0, 1, 1), PlacementMode.Stretch);
+
+        var result = backend.Prepare(null, frame, full: true, Context(new CellMetrics(1, 1)));
+        var bytes = WritePlacements(backend);
+
+        result.Placements.ShouldBe(1);
+        bytes.ShouldBe(
+            "[1;1HP0;1;0q\"1;1;1;1#0;2;40;0;40#0@\\[1;1H"u8.ToArray());
+    }
+
+    /// <summary>Verifies a destination cell with no explicit background (the default sentinel)
+    /// keeps the existing threshold behavior instead of blending against a meaningless color.</summary>
+    [Fact]
+    public void Prepare_WhenDestinationCellBackgroundIsDefault_UsesThresholdInsteadOfBlending()
+    {
+        using var backend = new NonRetainedGraphicsBackend(enableSixel: true, enableIterm: false);
+        using var frame = new Frame(new Size(1, 1));
+        _ = frame.Canvas.Draw("a", default);
+        var image = GraphicsImage.FromRgba(new Size(1, 1), [200, 0, 0, 128]);
+        frame.Canvas.DrawImage(image, new Rect(0, 0, 1, 1), PlacementMode.Stretch);
+
+        var result = backend.Prepare(null, frame, full: true, Context(new CellMetrics(1, 1)));
+        var bytes = WritePlacements(backend);
+
+        result.Placements.ShouldBe(1);
+        bytes.ShouldBe(
+            "[1;1HP0;1;0q\"1;1;1;1#0;2;80;0;0#0@\\[1;1H"u8.ToArray());
+    }
+
     /// <summary>Verifies missing exact metrics stay on the ordinary cell fallback.</summary>
     [Fact]
     public void Prepare_WhenMetricsAreMissing_DeclinesWithoutRemoteState()

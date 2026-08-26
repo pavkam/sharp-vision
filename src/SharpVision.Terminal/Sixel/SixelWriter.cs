@@ -15,7 +15,9 @@ public static class SixelWriter
 
     /// <summary>
     /// Writes one transparent-background sixel DCS using a deterministic 6 by 6 by 6 RGB palette.
-    /// Fully transparent pixels remain unchanged; any nonzero alpha is encoded as opaque.
+    /// Fully transparent pixels remain unchanged. When no background is supplied, any nonzero
+    /// alpha is encoded as opaque; when an opaque RGB background is supplied, partial alpha is
+    /// blended against it before quantization.
     /// </summary>
     /// <param name="image">The non-null owned RGBA image.</param>
     /// <param name="source">The positive source rectangle contained by the image.</param>
@@ -23,6 +25,10 @@ public static class SixelWriter
     /// <param name="mode">The scaling and fitting mode.</param>
     /// <param name="destination">The non-null synchronous byte destination.</param>
     /// <param name="maxOutputBytes">The positive finite maximum encoded transaction size.</param>
+    /// <param name="background">
+    /// The optional opaque background to blend partial alpha against. <see cref="Color.Default"/>
+    /// (the default) keeps the existing threshold-only behavior.
+    /// </param>
     /// <exception cref="ArgumentNullException">A reference is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// Geometry, mode, or byte policy is invalid, or the worst-case transaction exceeds policy.
@@ -34,7 +40,8 @@ public static class SixelWriter
         Size destinationPixels,
         PlacementMode mode,
         IBufferWriter<byte> destination,
-        int maxOutputBytes = _defaultMaxOutputBytes)
+        int maxOutputBytes = _defaultMaxOutputBytes,
+        Color background = default)
     {
         ArgumentNullException.ThrowIfNull(image);
         ArgumentNullException.ThrowIfNull(destination);
@@ -61,7 +68,8 @@ public static class SixelWriter
                 destinationPixels,
                 mode,
                 transaction,
-                maxOutputBytes);
+                maxOutputBytes,
+                background);
         }
         catch (InvalidOperationException)
         {

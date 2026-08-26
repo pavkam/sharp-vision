@@ -27,12 +27,16 @@ decodes a supported PNG placement to RGBA before invoking it, as
 [Images](../concepts/images.md#overview) describes. Fully transparent pixels
 remain unchanged.
 
-> [!IMPORTANT]
->
-> **Implementation gap:** partial alpha is thresholded, not blended. Every
-> nonzero alpha is treated as fully opaque, so anti-aliased edges and soft
-> shadows show hard fringes on sixel output while the Kitty and iTerm2 backends
-> transmit the same source's alpha faithfully.
+An optional opaque background blends partial alpha before quantization:
+`result = source * alpha/255 + background * (1 - alpha/255)` per RGB channel.
+The renderer backend supplies this background by sampling the destination
+placement's top-left cell background color, a known simplification when a
+placement spans cells with different backgrounds. Passing no background (the
+default) keeps the encoder's original threshold behavior, where every nonzero
+alpha is treated as fully opaque; a `Color.Default` or otherwise non-RGB sampled
+cell background falls back to that same threshold path rather than blending
+against a meaningless sentinel value. Alpha exactly zero always remains fully
+transparent regardless of background.
 
 Each component is mapped without dithering to a fixed 6 by 6 by 6 RGB cube. Only
 used colors are published, sorted by cube index and assigned dense stable
@@ -95,8 +99,10 @@ direct DCS leakage.
 Encoder tests pin exact DCS parameters, raster attributes, palette ordering,
 transparency, repeat runs, source clipping, six-row bands, graphics carriage
 return/newline, and canonical ST. They also prove PNG rejection, destination
-failure fidelity, atomic output-limit rejection, checked large bounds, and one
-source sample per destination pixel.
+failure fidelity, atomic output-limit rejection, checked large bounds, one
+source sample per destination pixel, background blending for partial alpha, zero
+alpha staying transparent regardless of background, and a fully opaque source
+ignoring a supplied background.
 
 DA1 parameter 4 runs through the real streaming protocol router at every split;
 negative evidence and both override directions prove precedence. Backend and
@@ -104,9 +110,10 @@ real renderer tests cover exact and uneven metrics, missing metrics, movement,
 removal, unsupported replacement, intersecting cell damage, resize-style full
 repair, authorized tmux routing, Screen rejection, cursor restoration,
 allocation-free commit/invalidation, byte-quiet cleanup, partial transport
-failure, and full retry reconstruction. Application integration tests
-additionally require public Image fallback bytes before the sixel DCS and the
-exact uneven pixel grid in raster geometry.
+failure, full retry reconstruction, blending against an explicit destination
+cell background, and the default-background fallback to threshold behavior.
+Application integration tests additionally require public Image fallback bytes
+before the sixel DCS and the exact uneven pixel grid in raster geometry.
 
 ## Sources
 
@@ -117,8 +124,8 @@ Sources accessed 2026-07-28.
 
 ## Expected behavior
 
-| Layer     | Required evidence                                                                       |
-| --------- | --------------------------------------------------------------------------------------- |
-| Encoder   | Exact framing, raster attributes, palette, runs, transparency, limits, and determinism. |
-| Selection | DA1 parameter 4 or explicit evidence, pixel metrics, media/stretch, and route policy.   |
-| Rendering | Cell fallback, cursor, damage repair, failure retry, resize, final bytes, and cleanup.  |
+| Layer     | Required evidence                                                                                            |
+| --------- | ------------------------------------------------------------------------------------------------------------ |
+| Encoder   | Exact framing, raster attributes, palette, runs, transparency, background blending, limits, and determinism. |
+| Selection | DA1 parameter 4 or explicit evidence, pixel metrics, media/stretch, and route policy.                        |
+| Rendering | Cell fallback, cursor, damage repair, failure retry, resize, final bytes, and cleanup.                       |
