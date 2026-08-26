@@ -156,10 +156,9 @@ arriving before the caller ever reaches `StartAsync` latches a request that call
 itself resolves without a session ever having gone live, instead of being lost.
 The one window this cannot close is a signal landing before the `Application`
 constructor has even run - during `Build()`'s own preflight and
-terminal-description resolution - because no instance exists yet for anything
-
-> to hook into; that narrow gap still hits the OS default disposition, same as
-> it would before the constructor of any object exists in any shape.
+terminal-description resolution - because no instance exists yet for anything to
+hook into; that narrow gap still hits the OS default disposition, same as it
+would before the constructor of any object exists in any shape.
 
 Session startup expands the complete description-owned alternate-screen,
 cursor-visibility, and required application-key pairs before any transport

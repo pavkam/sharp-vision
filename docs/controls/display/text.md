@@ -23,20 +23,21 @@ classDiagram
 
 ## API
 
-| Member                  | Type           | Default               | Description                                                                                            |
-| ----------------------- | -------------- | --------------------- | ------------------------------------------------------------------------------------------------------ |
-| `Text()`                | —              | —                     | Initializes empty text with `UseMnemonic` defaulted to `false`.                                        |
-| `Text(string content)`  | —              | —                     | Initializes text with non-null markup `content`; rejects `null`.                                       |
-| `Content`               | `string`       | `string.Empty`        | Non-null markup text; unknown or malformed markup renders literally. Rejects `null`.                   |
-| `Overflow`              | `Overflow`     | `Overflow.Visible`    | Selects visible, wrap, wrap-anywhere, clip, or ellipsis behavior at grapheme boundaries.               |
-| `TextAlignment`         | `Alignment`    | `Alignment.Start`     | Places each formatted line at the start, center, or end of the content width.                          |
-| `AmbiguousWidth`        | `Ambiguous`    | Inherited cell policy | Optional local narrow or wide East Asian Ambiguous policy.                                             |
-| Inherited `UseMnemonic` | `bool`         | `false`               | Enables access-key marker parsing when this Text acts as a caption; overrides the base `true` default. |
-| `AccessKeyTarget`       | `ControlBase?` | `null`                | The control this label's access key focuses directly, when set.                                        |
-| `Style`                 | `TextStyle?`   | `null`                | Optional complete developer-authored presentation.                                                     |
-| `ActualStyle`           | `TextStyle`    | Resolved              | Read-only; the complete local, theme-owned, or code-owned presentation.                                |
-| `Escape(string value)`  | `string`       | —                     | Static; escapes dynamic visible text for safe markup interpolation. Rejects `null`.                    |
-| `TextChanged`           | `EventHandler` | —                     | Raised after `Content` changes.                                                                        |
+| Member                        | Type                     | Default               | Description                                                                                                                                   |
+| ----------------------------- | ------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Text()`                      | —                        | —                     | Initializes empty text with `UseMnemonic` defaulted to `false`.                                                                               |
+| `Text(string content)`        | —                        | —                     | Initializes text with non-null markup `content`; rejects `null`.                                                                              |
+| `Content`                     | `string`                 | `string.Empty`        | Non-null markup text; unknown or malformed markup renders literally. Rejects `null`.                                                          |
+| `Overflow`                    | `Overflow`               | `Overflow.Visible`    | Selects visible, wrap, wrap-anywhere, clip, or ellipsis behavior at grapheme boundaries.                                                      |
+| `TextAlignment`               | `Alignment`              | `Alignment.Start`     | Places each formatted line at the start, center, or end of the content width.                                                                 |
+| `AmbiguousWidth`              | `Ambiguous`              | Inherited cell policy | Optional local narrow or wide East Asian Ambiguous policy.                                                                                    |
+| Inherited `UseMnemonic`       | `bool`                   | `false`               | Enables access-key marker parsing when this Text acts as a caption; overrides the base `true` default.                                        |
+| `AccessKeyTarget`             | `ControlBase?`           | `null`                | The control this label's access key focuses directly, when set.                                                                               |
+| `Style`                       | `TextStyle?`             | `null`                | Optional complete developer-authored presentation.                                                                                            |
+| `ActualStyle`                 | `TextStyle`              | Resolved              | Read-only; the complete local, theme-owned, or code-owned presentation.                                                                       |
+| `Escape(string value)`        | `string`                 | —                     | Static; escapes dynamic visible text for safe markup interpolation. Rejects `null`.                                                           |
+| `GetSelectableTextSnapshot()` | `SelectableTextSnapshot` | —                     | Override; the leaf contributor to ancestor selection — returns the laid-out semantic text and visible grapheme geometry as an owned snapshot. |
+| `TextChanged`                 | `EventHandler`           | —                     | Raised after `Content` changes.                                                                                                               |
 
 The overflow modes behave as follows: `Overflow.Wrap` prefers breaking at
 whitespace and falls back to grapheme boundaries; `WrapAnywhere` breaks only

@@ -23,6 +23,9 @@ classDiagram
 | `Style`                      | `ChartStyle?`                | `null`                    | Gets or sets the complete local presentation.                                                     |
 | `ActualStyle`                | `ChartStyle`                 | Resolved                  | Read-only; the complete local, theme-owned, or code-owned presentation.                           |
 
+The intrinsic desired size is a constraint-independent 20 by 1 cells; parent
+layout sizes the control normally beyond that.
+
 `Sparkline` has no `LegendPlacement`, `ShowCategoryLabels`, or `ShowValueLabels`
 property: it never shows a legend or labels, regardless of series count. The
 [shared chart API](index.md#api) documents `ChartSeries`, `ChartDataPoint`,

@@ -27,10 +27,11 @@ classDiagram
 
 ## API
 
-| Member                                                          | Type           | Default | Description                                                                                                              |
-| --------------------------------------------------------------- | -------------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `Content`                                                       | `ControlBase?` | `null`  | Transfers ownership of zero or one detached `ControlBase`; replacement detaches the previous value without disposing it. |
-| `OnContentChanged(ControlBase? previous, ControlBase? current)` | `void`         | —       | Protected virtual; responds after the content ownership change is structurally committed.                                |
+| Member                                                          | Type                     | Default | Description                                                                                                              |
+| --------------------------------------------------------------- | ------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `Content`                                                       | `ControlBase?`           | `null`  | Transfers ownership of zero or one detached `ControlBase`; replacement detaches the previous value without disposing it. |
+| `OnContentChanged(ControlBase? previous, ControlBase? current)` | `void`                   | —       | Protected virtual; responds after the content ownership change is structurally committed.                                |
+| `GetSelectableTextSnapshot()`                                   | `SelectableTextSnapshot` | —       | Override; returns the content's semantic text and visible grapheme geometry as an owned control-local snapshot.          |
 
 All inherited layout, appearance, availability, and focus properties are defined
 by [`ControlBase`](control.md#api).

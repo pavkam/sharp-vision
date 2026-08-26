@@ -212,18 +212,18 @@ repaints it. The focused active date renders with an underline.
 
 The Calendar is one focus stop with `TabNavigation.None`.
 
-| Input                | Action                                                         |
-| -------------------- | -------------------------------------------------------------- |
-| Left / Right         | Move to the previous / next selectable date.                   |
-| Up / Down            | Move one week, continuing in that direction past blocked days. |
-| Home / End           | Move inward to the first / last selectable date of the week.   |
-| Page Up / Page Down  | Move to the corresponding date in the adjacent month.          |
-| Enter / Space        | Activate `ActiveDate` through the current mode.                |
-| Header arrow press   | Change only `DisplayMonth`.                                    |
-| Selectable day press | Focus, make active, and activate the mapped date.              |
-| Blocked day press    | Consume the press without changing selection.                  |
-| Pointer move / leave | Update or clear direct date hover and interval preview.        |
-| Wheel up / down      | Display the previous / next month.                             |
+| Input                | Action                                                                                                    |
+| -------------------- | --------------------------------------------------------------------------------------------------------- |
+| Left / Right         | Move to the previous / next selectable date.                                                              |
+| Up / Down            | Move one week, continuing in that direction past blocked days.                                            |
+| Home / End           | Move inward to the first / last selectable date of the week.                                              |
+| Page Up / Page Down  | Move to the corresponding date in the adjacent month.                                                     |
+| Enter / Space        | Activate `ActiveDate` through the current mode.                                                           |
+| Header arrow press   | Change only `DisplayMonth`, unless a focus callback invalidated the control.                              |
+| Selectable day press | Focus, then make active and activate the mapped date while the control stays valid after focus callbacks. |
+| Blocked day press    | Consume the press without changing selection.                                                             |
+| Pointer move / leave | Update or clear direct date hover and interval preview.                                                   |
+| Wheel up / down      | Display the previous / next month.                                                                        |
 
 Initial key presses and navigation repeats are accepted; release is ignored.
 Enter and Space activate only on the initial press, so one held key cannot

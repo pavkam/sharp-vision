@@ -3,10 +3,11 @@
 ## Overview
 
 `Toast` is declared `public sealed class Toast : FloatingSurfaceBase` and
-implements `IStyled<ToastStyle>`. It presents one caller-owned notification
-object in the attached owner’s Screen or Overlay presentation plane without
-entering modality or moving focus. The Toast owns its replaceable `Content`;
-callers retain and dispose the Toast itself.
+implements `IStyled<ToastStyle>` and the internal `IOverlayPositionConstraint`,
+which keeps its edge slot inside the host's bounds. It presents one caller-owned
+notification object in the attached owner’s Screen or Overlay presentation plane
+without entering modality or moving focus. The Toast owns its replaceable
+`Content`; callers retain and dispose the Toast itself.
 
 Six edge positions partition independent stacks. New notifications occupy the
 edge-nearest slot and older notifications move inward with one cell of spacing.
@@ -20,6 +21,7 @@ classDiagram
     ControlBase <|-- ContentControl
     ContentControl <|-- FloatingSurfaceBase
     FloatingSurfaceBase <|-- Toast
+    IOverlayPositionConstraint <|.. Toast
 ```
 
 ## API

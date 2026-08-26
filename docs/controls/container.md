@@ -48,6 +48,7 @@ classDiagram
 | `ArrangeOverride(Rect bounds)`                             | `void`                                 | —                            | Protected abstract; assigns the final content-box slots of owned children.                                                                         |
 | `ScrollBy(int x, int y, ScrollCause cause = Programmatic)` | `bool`                                 | —                            | Adds signed axis deltas with saturation and endpoint clamping.                                                                                     |
 | `BringIntoView(ControlBase descendant)`                    | `bool`                                 | —                            | Scrolls minimally to expose one descendant, walking through any intervening armed container.                                                       |
+| `GetSelectableTextSnapshot()`                              | `SelectableTextSnapshot`               | —                            | Override; aggregates children's semantic text and visible grapheme geometry as an owned control-local snapshot.                                    |
 | `ScrollChanged`                                            | `EventHandler<ScrollChangedEventArgs>` | —                            | Raised after one or both offsets commit.                                                                                                           |
 
 Concrete controls normally use the unbounded parameterless constructor;

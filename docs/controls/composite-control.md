@@ -29,10 +29,11 @@ classDiagram
 
 ## API
 
-| Member                                   | Type          | Default | Description                                                                                                                                   |
-| ---------------------------------------- | ------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Content`                                | `ControlBase` | —       | Protected, read-only; the currently committed private implementation root, for derived behavior to coordinate without exposing it to callers. |
-| `InitializeContent(ControlBase content)` | `void`        | —       | Protected; transfers one detached root into the permanent private composition slot, exactly once.                                             |
+| Member                                   | Type                     | Default | Description                                                                                                                                   |
+| ---------------------------------------- | ------------------------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Content`                                | `ControlBase`            | —       | Protected, read-only; the currently committed private implementation root, for derived behavior to coordinate without exposing it to callers. |
+| `InitializeContent(ControlBase content)` | `void`                   | —       | Protected; transfers one detached root into the permanent private composition slot, exactly once.                                             |
+| `GetSelectableTextSnapshot()`            | `SelectableTextSnapshot` | —       | Override; projects the retained tree's semantic text and visible grapheme geometry as an owned control-local snapshot.                        |
 
 A composite that declares `IStyled<TStyle>` also initializes its own primary
 style slot through the inherited `ControlBase.InitializeStyle<TStyle>`, and

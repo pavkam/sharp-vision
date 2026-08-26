@@ -66,10 +66,12 @@ the Theme-owned presentation.
 
 ## Input and visual states
 
-A primary press focuses the control, selects the nearest mapped value, and takes
-pointer capture. Captured movement keeps selecting against the geometry captured
-at press time. Release, leave, focus transfer, terminal focus loss, disabling,
-hiding, detachment, or disposal ends the drag without committing another value.
+A primary press focuses the control, then — provided no focus callback detached,
+hid, disabled, or disposed the slider — selects the nearest mapped value and
+takes pointer capture. Captured movement keeps selecting against the geometry
+captured at press time. Release, leave, focus transfer, terminal focus loss,
+disabling, hiding, detachment, or disposal ends the drag without committing
+another value.
 
 Left/Right operate a horizontal slider and Down/Up a vertical one: the
 decreasing key subtracts `SmallChange` and the increasing key adds it. Page Down

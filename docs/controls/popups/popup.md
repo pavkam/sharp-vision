@@ -2,8 +2,10 @@
 
 ## Overview
 
-`Popup` is declared `public class Popup : FloatingSurfaceBase`. It displays one
-owned content control on an opaque, framed, anchor-relative modal surface. Its
+`Popup` is declared `public class Popup : FloatingSurfaceBase` and implements
+the internal `IOwnedChildDisposalObserver`, so a directly disposed `Content`
+notifies the owning Popup before its disposal publishes. It displays one owned
+content control on an opaque, framed, anchor-relative modal surface. Its
 constructor calls the inherited `EnableChromeAuthoring()`, widening
 [`FloatingSurfaceBase`](../../concepts/floating-surfaces.md#overview)'s
 capability-gated `Border`/`Shadow` authoring to actually usable for `Popup` and
@@ -34,6 +36,7 @@ classDiagram
     ControlBase <|-- ContentControl
     ContentControl <|-- FloatingSurfaceBase
     FloatingSurfaceBase <|-- Popup
+    IOwnedChildDisposalObserver <|.. Popup
     Popup <|-- Flyout
     Popup <|-- Tooltip
 ```
@@ -79,9 +82,11 @@ classDiagram
 
 The inherited `Content` uses managed capacity-one ownership and is collapsed
 while `IsOpen` is false, so closed content cannot receive focus, pointer input,
-or rendering. Replacing content detaches the previous child without disposing it
-and preserves the last `Visibility` the Popup forced on it; newly committed
-content is forced visible while open, or collapsed while closed.
+or rendering. Directly disposing the assigned content notifies the owning Popup
+before the disposal publishes, so the popup repairs its semantic state first.
+Replacing content detaches the previous child without disposing it and preserves
+the last `Visibility` the Popup forced on it; newly committed content is forced
+visible while open, or collapsed while closed.
 
 ## Placement
 

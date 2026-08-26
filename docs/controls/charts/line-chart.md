@@ -37,6 +37,9 @@ palette, `Glyphs`, `LineMode` (default `Quadrant`), and `LinePattern` (default
 `Solid`), which govern how this chart's lines rasterize; see
 [Expected behavior](#expected-behavior).
 
+The intrinsic desired size is a constraint-independent 30 by 10 cells; parent
+layout sizes the control normally beyond that.
+
 ## Example
 
 ![The LineChart control rendered in the live showcase](../../images/controls/line-chart.png)

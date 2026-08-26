@@ -88,6 +88,9 @@ mutation. `SetSelection` rejects an endpoint past normalized text with
 transition does not subsequently reach inherited `TextSelectionChanged`
 subscribers.
 
+The constructor sets `TabNavigation.None`, so Tab leaves the control instead of
+walking into the generated scroll rails.
+
 `CodeViewStyle` colors all `SyntaxDefaultStyle` roles, selected foreground and
 background, the fold gutter, and its one-cell collapsed and expanded glyphs.
 Transparent role colors and control or non-one-cell fold glyphs are rejected.

@@ -36,6 +36,9 @@ The [shared chart API](index.md#api) documents `ChartSeries`, `ChartDataPoint`,
 palette, `Glyphs`, and `FillMode` (default `Fractional`), which governs how this
 chart's bars rasterize; see [Expected behavior](#expected-behavior).
 
+The intrinsic desired size is a constraint-independent 30 by 10 cells; parent
+layout sizes the control normally beyond that.
+
 ## Example
 
 ![The HorizontalBarChart control rendered in the live showcase](../../images/controls/horizontal-bar-chart.png)

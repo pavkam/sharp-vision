@@ -66,7 +66,11 @@ of the [`InputBase`](input-base.md#api) press-activation capability a control
 enables separately. Concrete classes still publish their own events and their
 own programmatic activation method (`Button.Click`/`PerformClick`,
 `MenuItem.Invoked`/`PerformInvoke`, and so on); only the command lifetime itself
-is shared. A concrete `Activate` override decides whether and how `Command`
+is shared. The shipped controls capture the bound command and parameter at
+activation entry, so an event handler that swaps or clears `Command`
+mid-activation cannot redirect that activation; the protected
+`ExecuteCommandIfAny()` seam deliberately keeps live lookup for third-party
+derivatives. A concrete `Activate` override decides whether and how `Command`
 factors into its own semantics - `Button` and `HyperlinkButton` check
 `CanExecute` and call `Execute` after their `Click` event; toggles and menu
 items that have not called `EnableCommand` simply never expose the property at
@@ -113,22 +117,24 @@ capture-cancellation hook runs after manager ownership and pressed state are
 already clear. Completion revalidates lifetime, attachment, visibility, and
 enabled state after pressed-state, focus, and capture-loss callbacks; an
 invalidated owner is never cleared or activated through a stale continuation.
-The protected pressed-state hook still runs when a property observer throws, so
-derived geometry and rendering cannot disagree with committed `IsPressed`.
-Keyboard and pointer completions carry the `Keyboard` and `Pointer`
-`ActivationCause` values; a concrete programmatic API uses `Programmatic`.
+The protected pressed-state hook still runs when a property observer throws —
+though not when that observer disposed the control — so derived geometry and
+rendering cannot disagree with committed `IsPressed`. Keyboard and pointer
+completions carry the `Keyboard` and `Pointer` `ActivationCause` values; a
+concrete programmatic API uses `Programmatic`.
 
 The press-activation state machine is one internal composed behavior, enabled
 once through [`InputBase.EnablePressActivation`](input-base.md#api) and used by
 every control described on this page as well as `ComboBox`, `DateInput`, and
-`DateTimeInput`, each of which enables it directly. `Expander`, `ListItem`, and
-`Window` compose the same behavior directly instead of through `InputBase`,
-since each already derives from a different public base
-(`HeaderedContentControl`, `ContentControl`, and `FloatingSurfaceBase`
-respectively) for its own content role. In every case the behavior owns no
-control-tree state and operates only through the protected focus and capture
-boundaries, keeping the public inheritance role about replaceable content,
-rather than using inheritance merely to reuse event handling.
+`DateTimeInput`, each of which enables it directly. `Expander`, `ListItem`,
+`Toast`, and `Window` compose the same behavior directly instead of through
+`InputBase`, since each already derives from a different public base
+(`HeaderedContentControl`, `ContentControl`, and — for both `Toast` and `Window`
+— `FloatingSurfaceBase` respectively) for its own content role. In every case
+the behavior owns no control-tree state and operates only through the protected
+focus and capture boundaries, keeping the public inheritance role about
+replaceable content, rather than using inheritance merely to reuse event
+handling.
 
 ## Visual state and extension
 

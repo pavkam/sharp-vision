@@ -49,12 +49,20 @@ Each font is a separate assembly resource. Constructing the catalog or reading
 selected font. There is no catalog-wide ZIP. Applications can also source their
 own fonts through the same lookup and `Load` surface:
 
-| Member                              | Source                                                          |
-| ----------------------------------- | --------------------------------------------------------------- |
-| `FigletCatalog.Default`             | The audited optional BSD/MIT resource collection.               |
-| `FigletCatalog.FromDirectory(path)` | Every `.flf`/`.tlf` file directly inside a directory.           |
-| `FigletCatalog.FromZip(stream)`     | Every `.flf`/`.tlf` entry in a caller-supplied Zip archive.     |
-| `FigletCatalog.FromFonts(fonts)`    | Already-parsed `FigletFont` instances, keyed by their own name. |
+| Member                                       | Source                                                          |
+| -------------------------------------------- | --------------------------------------------------------------- |
+| `FigletCatalog.Default`                      | The audited optional BSD/MIT resource collection.               |
+| `FigletCatalog.FromDirectory(path, limits?)` | Every `.flf`/`.tlf` file directly inside a directory.           |
+| `FigletCatalog.FromZip(stream, limits?)`     | Every `.flf`/`.tlf` entry in a caller-supplied Zip archive.     |
+| `FigletCatalog.FromFonts(fonts)`             | Already-parsed `FigletFont` instances, keyed by their own name. |
+
+Every parsing entry point — `Load(name)` and its `Load(name, limits)` overload
+included — is bounded by a `FigletLimits` value, defaulting to
+`FigletLimits.Default`. The record's six positive members cap parsing
+(`MaxInputBytes` 16 MiB, `MaxGlyphs` 4096, `MaxHeight` 256, `MaxRowWidth` 16384,
+`MaxComments` 4096) and rendered output (`MaxOutputChars` 16 MiB), each
+rejecting a non-positive value with `ArgumentOutOfRangeException`, so untrusted
+font files cannot exhaust memory during catalog construction or rendering.
 
 ```csharp
 var catalog = FigletCatalog.FromDirectory("/opt/myapp/fonts");

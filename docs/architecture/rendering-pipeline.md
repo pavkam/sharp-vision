@@ -94,10 +94,8 @@ finite transitive closure of later overlapping placements, so lower output never
 obscures an unchanged upper image. If an upper overlap cannot be encoded, it and
 every transitively affected lower placement remain on ordinary cell fallback;
 the backend does not invent unsafe clipping. Retained Kitty applies the same
-backward closure when a later placement is ineffective,
-
-> preventing a lower remote image from obscuring that later placement's
-> ordinary-cell fallback.
+backward closure when a later placement is ineffective, preventing a lower
+remote image from obscuring that later placement's ordinary-cell fallback.
 
 The application creates the renderer lazily for the first render, after profile
 and resize publication, and passes the current exact cell metrics to that

@@ -252,11 +252,10 @@ link cycles cannot create traversal cycles.
   the parent directory. The Button disables at a root.
 - Pressing Enter in the location input loads that text's canonical directory.
 - The ListView follows select-then-commit: a single primary pointer click on any
-  row - file or directory - only selects it. Committing a row takes Enter, the
-  or a second pointer click (a double-click); the Open Button runs only the
-  accept path and stays disabled without a file selection. Committing a
-  directory navigates into it; committing a file accepts the current file
-  selection.
+  row - file or directory - only selects it. Committing a row takes Enter or a
+  second pointer click (a double-click); the Open Button runs only the accept
+  path and stays disabled without a file selection. Committing a directory
+  navigates into it; committing a file accepts the current file selection.
 - ListView selection follows the existing single, Control-toggle, and
   Shift-range semantics. Directory rows can become current or selected visually,
   but `SelectedPaths` filters them out.

@@ -288,7 +288,11 @@ replacement share the same commit discipline:
 | Disposal identity         | Disposing a child directly removes it through its exact owning slot with `ReleaseReason.Disposed`, publishes the slot change once, and never emits a second `Detached` notification. Owner disposal continues across all slots after a descendant callback failure and disposes each remaining descendant exactly once. |
 
 Structural removal makes one deliberate exception to publication-after-commit.
-Its order is:
+For caller-initiated disposal, two preliminary steps run first: the owning
+slot's observer is notified so it can repair semantic state, then the control's
+own direct-disposal hook runs — and when either reentrantly completes the
+disposal, `Dispose()` returns without entering a second publication transaction.
+Owner-driven teardown skips both. The transaction order is then:
 
 1. While the old tree is still coherent, guarded availability cleanup releases
    focus and clears capture — running capture's cancellation hook first — then

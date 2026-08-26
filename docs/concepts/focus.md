@@ -14,11 +14,14 @@ always observe the new state consistently.
 
 Each `FocusManager` owns exactly one attached root. `Focus(ControlBase?)`
 rejects controls that belong to another root, and returns false when the target
-is ineligible or the change is cancelled. A committed change updates `Focused`
-and both controls' `IsFocused` state before raising `Lost` and `Gained`. If the
-tree is mutated during the `Changing` event, the target is revalidated before
-the change commits. Cleanup triggered by detach, hide, disable, or disposal
-cannot be cancelled.
+is ineligible, the change is cancelled, or a focus callback invalidated the
+just-committed target — a `Gained`, `Lost`, or `FocusEntered` handler that
+re-points focus, detaches, hides, disables, or disposes the target makes the
+request report false even though the change committed and every notification
+fired. A committed change updates `Focused` and both controls' `IsFocused` state
+before raising `Lost` and `Gained`. If the tree is mutated during the `Changing`
+event, the target is revalidated before the change commits. Cleanup triggered by
+detach, hide, disable, or disposal cannot be cancelled.
 
 Every synchronous focus callback is an invalidation boundary. The manager
 revalidates the committed target after each control and manager notification; an
@@ -53,7 +56,7 @@ sequenceDiagram
         FocusManager->>New: FocusEntered (self)
         FocusManager->>New: GotFocus
         FocusManager->>FocusManager: Gained?.Invoke(changed)
-        FocusManager-->>Caller: true (committed)
+        FocusManager-->>Caller: true while the target stays valid after callbacks
     end
 ```
 
