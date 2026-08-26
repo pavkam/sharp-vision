@@ -15,6 +15,7 @@ public readonly record struct SyntaxDefinitionInfo
     /// <param name="mimeTypes">The MIME types identifying documents of this language.</param>
     /// <param name="alternativeNames">Additional names this definition also matches under.</param>
     /// <param name="author">The declared author.</param>
+    /// <param name="priority">The relative file-detection priority, or null when unspecified.</param>
     /// <param name="license">The declared, redistribution-audited license, or empty for a caller-supplied definition.</param>
     /// <param name="sha256">The lower-case source-byte SHA-256, or empty for a caller-supplied definition.</param>
     /// <param name="bytes">The non-negative source-byte count.</param>
@@ -36,6 +37,7 @@ public readonly record struct SyntaxDefinitionInfo
         IReadOnlyList<string> mimeTypes,
         IReadOnlyList<string> alternativeNames,
         string author,
+        int? priority,
         string license,
         string sha256,
         int bytes,
@@ -49,6 +51,7 @@ public readonly record struct SyntaxDefinitionInfo
         MimeTypes = mimeTypes;
         AlternativeNames = alternativeNames;
         Author = author;
+        Priority = priority;
         License = license;
         Sha256 = sha256;
         Bytes = bytes;
@@ -76,6 +79,10 @@ public readonly record struct SyntaxDefinitionInfo
 
     /// <summary>Gets the declared author.</summary>
     public string Author { get; }
+
+    /// <summary>Gets the relative file-detection priority, or null when unspecified. This internal
+    /// metadata keeps catalog selection correct without expanding the public provenance surface.</summary>
+    internal int? Priority { get; }
 
     /// <summary>Gets the declared, redistribution-audited license, or an empty string for a caller-supplied definition.</summary>
     public string License { get; }

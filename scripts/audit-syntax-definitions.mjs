@@ -125,6 +125,7 @@ export const createManifest = async (root) => {
       mimetype: languageAttribute(text, "mimetype") ?? "",
       alternativeNames: languageAttribute(text, "alternativeNames") ?? "",
       author: languageAttribute(text, "author") ?? "",
+      priority: Number.parseInt(languageAttribute(text, "priority") ?? "0", 10),
       license,
       sha256: createHash("sha256").update(bytes).digest("hex"),
       bytes: bytes.length,

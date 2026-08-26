@@ -38,7 +38,7 @@ public static class SyntaxTokenizer
 
         var lines = SplitLines(text);
         var stack = new List<SyntaxContextFrame> { new(grammar, 0, []) };
-        var openRegions = new Stack<(int Line, string? RegionName)>();
+        var openRegions = new List<(int Line, string? RegionName)>();
         var foldRanges = new List<SyntaxFoldRange>();
         var indentationEligibility = new bool[lines.Count];
         var emptyLinePatterns = CompileEmptyLinePatterns(grammar.Definition.General.EmptyLineRules);
@@ -132,7 +132,7 @@ public static class SyntaxTokenizer
         List<SyntaxContextFrame> stack,
         string line,
         int lineIndex,
-        Stack<(int Line, string? RegionName)> openRegions,
+        List<(int Line, string? RegionName)> openRegions,
         List<SyntaxFoldRange> foldRanges)
     {
         var offset = 0;
@@ -400,7 +400,7 @@ public static class SyntaxTokenizer
         SyntaxRule rule,
         int offset,
         int matchLength,
-        Stack<(int Line, string? RegionName)> openRegions,
+        List<(int Line, string? RegionName)> openRegions,
         int lineIndex,
         List<SyntaxFoldRange> foldRanges)
     {
@@ -409,34 +409,44 @@ public static class SyntaxTokenizer
 
         if (rule.EndRegion is not null)
         {
-            CloseRegion(openRegions, lineIndex, foldRanges);
+            CloseRegion(openRegions, rule.EndRegion, lineIndex, foldRanges);
         }
 
         if (rule.BeginRegion is not null)
         {
-            openRegions.Push((lineIndex, rule.BeginRegion));
+            openRegions.Add((lineIndex, rule.BeginRegion));
         }
     }
 
-    private static void CloseRegion(Stack<(int Line, string? RegionName)> openRegions, int lineIndex, List<SyntaxFoldRange> foldRanges)
+    private static void CloseRegion(
+        List<(int Line, string? RegionName)> openRegions,
+        string regionName,
+        int lineIndex,
+        List<SyntaxFoldRange> foldRanges)
     {
-        if (openRegions.Count == 0)
+        for (var i = openRegions.Count - 1; i >= 0; i--)
         {
+            var openRegion = openRegions[i];
+
+            if (!string.Equals(openRegion.RegionName, regionName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            openRegions.RemoveAt(i);
+            foldRanges.Add(new SyntaxFoldRange(openRegion.Line, lineIndex, SyntaxFoldRangeKind.Region, openRegion.RegionName));
             return;
         }
-
-        var (startLine, regionName) = openRegions.Pop();
-        foldRanges.Add(new SyntaxFoldRange(startLine, lineIndex, SyntaxFoldRangeKind.Region, regionName));
     }
 
-    private static void CloseUnterminatedRegions(Stack<(int Line, string? RegionName)> openRegions, int lastLine, List<SyntaxFoldRange> foldRanges)
+    private static void CloseUnterminatedRegions(List<(int Line, string? RegionName)> openRegions, int lastLine, List<SyntaxFoldRange> foldRanges)
     {
         // An unterminated beginRegion (a syntax error, or simply the end of the visible buffer)
         // still folds everything from its start to the end of the document, rather than being
         // silently dropped.
-        while (openRegions.Count > 0)
+        for (var i = openRegions.Count - 1; i >= 0; i--)
         {
-            var (startLine, regionName) = openRegions.Pop();
+            var (startLine, regionName) = openRegions[i];
 
             if (lastLine > startLine)
             {

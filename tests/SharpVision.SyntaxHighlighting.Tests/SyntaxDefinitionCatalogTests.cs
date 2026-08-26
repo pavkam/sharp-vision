@@ -107,6 +107,34 @@ public sealed class SyntaxDefinitionCatalogTests
     [Fact]
     public void FindNameForFile_WhenExtensionMatchesRust_ReturnsRust() => SyntaxDefinitionCatalog.Default.FindNameForFile("main.rs").ShouldBe("Rust");
 
+    /// <summary>Verifies overlapping embedded globs select the definition with the greatest KDE
+    /// priority rather than whichever language name sorts first.</summary>
+    [Fact]
+    public void FindNameForFile_WhenSeveralDefinitionsMatch_UsesHighestPriority() =>
+        SyntaxDefinitionCatalog.Default.FindNameForFile("service.log").ShouldBe("Log File (simplified) Selector");
+
+    /// <summary>Verifies equal-priority overlapping definitions retain an ordinal-name tie-break,
+    /// so filesystem enumeration order cannot make detection nondeterministic.</summary>
+    [Fact]
+    public void FindNameForFile_WhenPrioritiesTie_UsesOrdinalNameAsDeterministicTieBreak()
+    {
+        var directory = Directory.CreateTempSubdirectory("sharpvision-syntax-priority-");
+
+        try
+        {
+            File.WriteAllText(Path.Combine(directory.FullName, "z.xml"), CreateLanguage("Zulu", "*.same", priority: 4));
+            File.WriteAllText(Path.Combine(directory.FullName, "a.xml"), CreateLanguage("Alpha", "*.same", priority: 4));
+
+            var catalog = SyntaxDefinitionCatalog.FromDirectory(directory.FullName);
+
+            catalog.FindNameForFile("file.same").ShouldBe("Alpha");
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
     /// <summary>Verifies an unrecognized extension resolves to null.</summary>
     [Fact]
     public void FindNameForFile_WhenNoExtensionMatches_ReturnsNull() => SyntaxDefinitionCatalog.Default.FindNameForFile("file.not-a-real-extension").ShouldBeNull();
@@ -139,6 +167,114 @@ public sealed class SyntaxDefinitionCatalogTests
             catalog.Names.ShouldBe(["ExternalTest"]);
             catalog.GetInfo("ExternalTest").License.ShouldBe(string.Empty);
             _ = catalog.GetGrammar("ExternalTest");
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    /// <summary>Verifies directory construction retains the already-validated definitions, so a
+    /// later lookup does not parse the same complete XML document a second time.</summary>
+    [Fact]
+    public void FromDirectory_WhenDefinitionIsRetrieved_DoesNotReparseItsXml()
+    {
+        var directory = Directory.CreateTempSubdirectory("sharpvision-syntax-retained-");
+
+        try
+        {
+            File.WriteAllText(Path.Combine(directory.FullName, "retained.xml"), CreateLanguage("Retained", "*.retained"));
+            var catalog = SyntaxDefinitionCatalog.FromDirectory(directory.FullName);
+
+            catalog.DefinitionParseCount.ShouldBe(1);
+
+            _ = catalog.GetDefinition("Retained");
+
+            catalog.DefinitionParseCount.ShouldBe(1);
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    /// <summary>Verifies a grammar reached through a cross-definition context target is the exact
+    /// catalog-owned instance returned by direct lookup of that target definition.</summary>
+    [Fact]
+    public void GetGrammar_WhenCrossDefinitionTargetIsCompiled_SharesTheCatalogGrammarInstance()
+    {
+        var directory = Directory.CreateTempSubdirectory("sharpvision-syntax-shared-grammar-");
+
+        try
+        {
+            File.WriteAllText(Path.Combine(directory.FullName, "b.xml"), CreateLanguage("Target", "*.target"));
+            File.WriteAllText(
+                Path.Combine(directory.FullName, "a.xml"),
+                """
+                <language name="Host" section="Sources" extensions="*.host" version="1" kateversion="5.0">
+                  <highlighting>
+                    <contexts>
+                      <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                        <DetectChar attribute="Normal Text" context="Normal##Target" char="x"/>
+                      </context>
+                    </contexts>
+                    <itemDatas>
+                      <itemData name="Normal Text" defStyleNum="dsNormal"/>
+                    </itemDatas>
+                  </highlighting>
+                </language>
+                """);
+            var catalog = SyntaxDefinitionCatalog.FromDirectory(directory.FullName);
+
+            var host = catalog.GetGrammar("Host");
+            var targetFromReference = host.Contexts[0].Rules[0].ResolvedTarget.Pushes.ShouldHaveSingleItem().Grammar;
+            var targetFromLookup = catalog.GetGrammar("Target");
+
+            targetFromReference.ShouldBeSameAs(targetFromLookup);
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    /// <summary>Verifies racing first lookups publish one definition parse and one grammar
+    /// compilation rather than merely returning one winner after duplicating the expensive work.</summary>
+    [Fact]
+    public async Task GetGrammar_WhenFirstLookupIsConcurrent_CompilesExactlyOnceAsync()
+    {
+        var embeddedCatalog = SyntaxDefinitionCatalog.CreateEmbedded();
+        using var start = new ManualResetEventSlim(initialState: false);
+        var definitionTasks = Enumerable.Range(0, 64).Select(_ => Task.Run(() =>
+        {
+            start.Wait();
+            return embeddedCatalog.GetDefinition("C#");
+        })).ToArray();
+
+        start.Set();
+        var definitions = await Task.WhenAll(definitionTasks);
+
+        definitions.ShouldAllBe(definition => ReferenceEquals(definition, definitions[0]));
+        embeddedCatalog.DefinitionParseCount.ShouldBe(1);
+
+        var directory = Directory.CreateTempSubdirectory("sharpvision-syntax-concurrent-grammar-");
+
+        try
+        {
+            File.WriteAllText(Path.Combine(directory.FullName, "single.xml"), CreateLanguage("Single", "*.single"));
+            var catalog = SyntaxDefinitionCatalog.FromDirectory(directory.FullName);
+            using var grammarStart = new ManualResetEventSlim(initialState: false);
+            var grammarTasks = Enumerable.Range(0, 64).Select(_ => Task.Run(() =>
+            {
+                grammarStart.Wait();
+                return catalog.GetGrammar("Single");
+            })).ToArray();
+
+            grammarStart.Set();
+            var grammars = await Task.WhenAll(grammarTasks);
+
+            grammars.ShouldAllBe(grammar => ReferenceEquals(grammar, grammars[0]));
+            catalog.GrammarCompilationCount.ShouldBe(1);
         }
         finally
         {
@@ -189,6 +325,28 @@ public sealed class SyntaxDefinitionCatalogTests
         }
     }
 
+    /// <summary>Verifies directory loading applies the reader's document-size bound while parsing
+    /// the file stream instead of accepting an arbitrarily large authored document.</summary>
+    [Fact]
+    public void FromDirectory_WhenAFileExceedsTheDocumentBound_ThrowsFormatException()
+    {
+        var directory = Directory.CreateTempSubdirectory("sharpvision-syntax-catalog-oversized-");
+
+        try
+        {
+            var oversizedComment = new string('x', 16_000_001);
+            File.WriteAllText(
+                Path.Combine(directory.FullName, "oversized.xml"),
+                $"<language name=\"Oversized\" section=\"Sources\" extensions=\"*.huge\" version=\"1\"><!--{oversizedComment}--></language>");
+
+            _ = Should.Throw<FormatException>(() => SyntaxDefinitionCatalog.FromDirectory(directory.FullName));
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
     /// <summary>Verifies two files declaring the same language name are rejected with ArgumentException.</summary>
     [Fact]
     public void FromDirectory_WhenTwoFilesDeclareTheSameLanguageName_ThrowsArgumentException()
@@ -219,5 +377,21 @@ public sealed class SyntaxDefinitionCatalogTests
         {
             directory.Delete(recursive: true);
         }
+    }
+    private static string CreateLanguage(string name, string extension, int? priority = null)
+    {
+        var priorityAttribute = priority is null ? string.Empty : $" priority=\"{priority.Value}\"";
+        return $"""
+            <language name="{name}" section="Sources" extensions="{extension}" version="1" kateversion="5.0"{priorityAttribute}>
+              <highlighting>
+                <contexts>
+                  <context name="Normal" attribute="Normal Text" lineEndContext="#stay"/>
+                </contexts>
+                <itemDatas>
+                  <itemData name="Normal Text" defStyleNum="dsNormal"/>
+                </itemDatas>
+              </highlighting>
+            </language>
+            """;
     }
 }

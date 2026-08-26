@@ -63,11 +63,19 @@ from a `RegExpr` match and consumed by a `dynamic="true"` rule in the context it
 pushes (the mechanism heredocs and here-strings rely on); keyword lists with
 per-rule case-sensitivity and delimiter overrides, including a cross-definition
 `<include>ListName##OtherLanguage</include>`; and both `beginRegion`/`endRegion`
-region folding and indentation-based folding. Every rule's matching algorithm -
-including the less obvious ones, such as `WordDetect`'s boundary check or the
-escape-sequence grammar `HlCStringChar` and `HlCChar` share - was verified
-line-for-line against the upstream KSyntaxHighlighting C++ source, not inferred
-from the XML format documentation alone.
+region folding and indentation-based folding. Named end markers close the most
+recent open region with the same name, so differently named regions may
+interleave without corrupting either fold range. Every rule's matching
+algorithm - including the less obvious ones, such as `WordDetect`'s boundary
+check or the escape-sequence grammar `HlCStringChar` and `HlCChar` share - was
+verified line-for-line against the upstream KSyntaxHighlighting C++ source, not
+inferred from the XML format documentation alone.
+
+A catalog owns one compilation session, so a grammar reached through a
+cross-definition reference is the same immutable instance returned by a direct
+`GetGrammar` lookup. Concurrent first lookups also share one parse and one
+compilation; failed lazy loads are removed so a later corrected resource can be
+retried.
 
 A cross-definition reference (`IncludeRules`, a context switch, or a keyword
 `<include>`) that names a definition or context the current
@@ -114,7 +122,11 @@ external commit for a first-party definition to pin.
 `SyntaxDefinitionCatalog.FromDirectory` loads any KDE-format XML file from an
 application's own files, mirroring upstream Kate's own local-file pickup model -
 including one of the excluded definitions above, which an application remains
-free to add on its own without this package redistributing it.
+free to add on its own without this package redistributing it. Directory files
+are parsed once from bounded streams during catalog construction; the catalog
+retains only their immutable definitions, not a second complete XML string. When
+several extension globs match, the greatest KDE `priority` wins, with the
+ordinal language name as a deterministic tie-break.
 
 ## Theming
 

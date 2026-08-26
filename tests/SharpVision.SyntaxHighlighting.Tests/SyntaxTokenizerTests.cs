@@ -142,6 +142,41 @@ public sealed class SyntaxTokenizerTests
         result.FoldRanges.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies an end marker closes the most recent open region with the same name,
+    /// leaving differently named interleaved regions open for their own markers.</summary>
+    [Fact]
+    public void Tokenize_WhenNamedRegionsAreInterleaved_ClosesEachMatchingRegion()
+    {
+        const string language = """
+            <language name="InterleavedRegions" section="Sources" extensions="*.regions" version="1" kateversion="5.0">
+              <highlighting>
+                <contexts>
+                  <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                    <StringDetect attribute="Normal Text" context="#stay" String="openA" beginRegion="A"/>
+                    <StringDetect attribute="Normal Text" context="#stay" String="openB" beginRegion="B"/>
+                    <StringDetect attribute="Normal Text" context="#stay" String="closeA" endRegion="A"/>
+                    <StringDetect attribute="Normal Text" context="#stay" String="closeB" endRegion="B"/>
+                  </context>
+                </contexts>
+                <itemDatas>
+                  <itemData name="Normal Text" defStyleNum="dsNormal"/>
+                </itemDatas>
+              </highlighting>
+            </language>
+            """;
+        var grammar = SyntaxGrammar.Compile(SyntaxDefinitionReader.Read(language));
+
+        var result = SyntaxTokenizer.Tokenize(grammar, "openA\nopenB\ncloseA\ncloseB");
+
+        result.FoldRanges.Count.ShouldBe(2);
+        result.FoldRanges[0].RegionName.ShouldBe("A");
+        result.FoldRanges[0].StartLine.ShouldBe(0);
+        result.FoldRanges[0].EndLine.ShouldBe(2);
+        result.FoldRanges[1].RegionName.ShouldBe("B");
+        result.FoldRanges[1].StartLine.ShouldBe(1);
+        result.FoldRanges[1].EndLine.ShouldBe(3);
+    }
+
     /// <summary>Verifies an empty document tokenizes to one empty line with no fold ranges.</summary>
     [Fact]
     public void Tokenize_WhenGivenEmptyDocument_ProducesOneEmptyLineAndNoFoldRanges()

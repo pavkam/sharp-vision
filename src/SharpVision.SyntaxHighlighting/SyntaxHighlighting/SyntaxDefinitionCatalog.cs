@@ -3,7 +3,6 @@
 
 namespace SharpVision.SyntaxHighlighting;
 
-using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -30,18 +29,35 @@ public sealed class SyntaxDefinitionCatalog
     private const string _manifestResource = "SharpVision.SyntaxHighlighting.Resources.syntax.manifest.json";
 
     private readonly Dictionary<string, SyntaxDefinitionInfo> _entries;
+    private readonly IReadOnlyList<string> _detectionNames;
     private readonly Func<SyntaxDefinitionCatalog, SyntaxDefinitionInfo, string> _readXml;
-    private readonly ConcurrentDictionary<string, SyntaxDefinition> _definitions = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<string, SyntaxGrammar> _grammars = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Lazy<SyntaxDefinition>> _definitions = new(StringComparer.Ordinal);
+    private readonly Lock _definitionGate = new();
+    private readonly Lock _grammarGate = new();
+    private readonly SyntaxGrammarCompiler _grammarCompiler;
     private int _embeddedResourceReadCount;
+    private int _definitionParseCount;
+    private int _grammarCompilationCount;
 
     private SyntaxDefinitionCatalog(
         Dictionary<string, SyntaxDefinitionInfo> entries,
-        Func<SyntaxDefinitionCatalog, SyntaxDefinitionInfo, string> readXml)
+        Func<SyntaxDefinitionCatalog, SyntaxDefinitionInfo, string> readXml,
+        IReadOnlyDictionary<string, SyntaxDefinition>? definitions = null)
     {
         _entries = entries;
         _readXml = readXml;
         Names = Array.AsReadOnly(entries.Keys.Order(StringComparer.Ordinal).ToArray());
+        _detectionNames = Array.AsReadOnly(
+            Names.OrderByDescending(name => entries[name].Priority ?? 0).ToArray());
+        _grammarCompiler = new SyntaxGrammarCompiler(ResolveDefinitionByName);
+
+        if (definitions is not null)
+        {
+            foreach (var (name, definition) in definitions)
+            {
+                _definitions[name] = new Lazy<SyntaxDefinition>(() => definition);
+            }
+        }
     }
 
     /// <summary>Gets the process-wide immutable audited embedded catalog.</summary>
@@ -57,6 +73,14 @@ public sealed class SyntaxDefinitionCatalog
     /// </summary>
     internal int EmbeddedResourceReadCount => Volatile.Read(ref _embeddedResourceReadCount);
 
+    /// <summary>Gets how many definition parses this catalog performed, so tests can prove parsed
+    /// definitions are retained instead of reparsed after inventory construction.</summary>
+    internal int DefinitionParseCount => Volatile.Read(ref _definitionParseCount);
+
+    /// <summary>Gets how many grammar compilations this catalog started, so tests can prove one
+    /// compilation owns each name even when concurrent callers race the first lookup.</summary>
+    internal int GrammarCompilationCount => Volatile.Read(ref _grammarCompilationCount);
+
     /// <summary>Builds a catalog from every <c>.xml</c> file directly inside one directory.</summary>
     /// <param name="path">The non-null directory to scan; not searched recursively.</param>
     /// <returns>A new catalog over the discovered files, keyed by each file's own declared language name.</returns>
@@ -71,23 +95,25 @@ public sealed class SyntaxDefinitionCatalog
     {
         ArgumentNullException.ThrowIfNull(path);
         var entries = new Dictionary<string, SyntaxDefinitionInfo>(StringComparer.Ordinal);
-        var xmlByName = new Dictionary<string, string>(StringComparer.Ordinal);
+        var definitions = new Dictionary<string, SyntaxDefinition>(StringComparer.Ordinal);
+        var catalogParseCount = 0;
 
         foreach (var file in Directory.EnumerateFiles(path, "*.xml"))
         {
-            var xml = File.ReadAllText(file);
-            var definition = SyntaxDefinitionReader.Read(xml);
+            using var stream = File.OpenRead(file);
+            var definition = SyntaxDefinitionReader.Read(stream);
+            _ = Interlocked.Increment(ref catalogParseCount);
 
             if (!entries.TryAdd(definition.Name, ToInfo(definition, Path.GetFileName(file))))
             {
                 throw new ArgumentException($"More than one file declares the language name '{definition.Name}'.", nameof(path));
             }
 
-            xmlByName[definition.Name] = xml;
+            definitions[definition.Name] = definition;
         }
 
         return entries.Count > 0
-            ? new SyntaxDefinitionCatalog(entries, (_, info) => xmlByName[info.Name])
+            ? CreateDirectoryCatalog(entries, definitions, catalogParseCount)
             : throw new ArgumentException("The directory contains no .xml syntax-definition files.", nameof(path));
     }
 
@@ -105,9 +131,9 @@ public sealed class SyntaxDefinitionCatalog
             : throw new KeyNotFoundException($"The syntax-definition catalog does not contain '{name}'.");
     }
 
-    /// <summary>Finds the first catalog name whose extension pattern matches a file name.</summary>
+    /// <summary>Finds the highest-priority catalog name whose extension pattern matches a file name.</summary>
     /// <param name="fileName">The non-null file name (a full path is accepted; only its final segment is matched).</param>
-    /// <returns>The first matching name in ordinal order, or null when nothing matches.</returns>
+    /// <returns>The greatest-priority match, using ordinal name order to break ties, or null.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="fileName"/> is null.</exception>
     [Pure]
     public string? FindNameForFile(string fileName)
@@ -115,7 +141,7 @@ public sealed class SyntaxDefinitionCatalog
         ArgumentNullException.ThrowIfNull(fileName);
         var name = Path.GetFileName(fileName);
 
-        foreach (var candidate in Names)
+        foreach (var candidate in _detectionNames)
         {
             var info = _entries[candidate];
 
@@ -147,14 +173,40 @@ public sealed class SyntaxDefinitionCatalog
     {
         ArgumentNullException.ThrowIfNull(name);
 
-        return _definitions.GetOrAdd(
-            name,
-            static (key, self) =>
+        var info = GetInfo(name);
+        Lazy<SyntaxDefinition> lazy;
+
+        lock (_definitionGate)
+        {
+            if (!_definitions.TryGetValue(name, out lazy!))
             {
-                var info = self.GetInfo(key);
-                return SyntaxDefinitionReader.Read(self._readXml(self, info));
-            },
-            this);
+                lazy = new Lazy<SyntaxDefinition>(
+                    () =>
+                    {
+                        _ = Interlocked.Increment(ref _definitionParseCount);
+                        return SyntaxDefinitionReader.Read(_readXml(this, info));
+                    },
+                    LazyThreadSafetyMode.ExecutionAndPublication);
+                _definitions.Add(name, lazy);
+            }
+        }
+
+        try
+        {
+            return lazy.Value;
+        }
+        catch
+        {
+            lock (_definitionGate)
+            {
+                if (_definitions.TryGetValue(name, out var current) && ReferenceEquals(current, lazy))
+                {
+                    _ = _definitions.Remove(name);
+                }
+            }
+
+            throw;
+        }
     }
 
     /// <summary>
@@ -171,15 +223,26 @@ public sealed class SyntaxDefinitionCatalog
     {
         ArgumentNullException.ThrowIfNull(name);
 
-        return _grammars.GetOrAdd(
-            name,
-            static (key, self) => SyntaxGrammar.Compile(self.GetDefinition(key), self.ResolveDefinitionByName),
-            this);
+        _ = GetInfo(name);
+
+        lock (_grammarGate)
+        {
+            if (_grammarCompiler.TryGetGrammar(name, out var existing))
+            {
+                return existing;
+            }
+
+            _ = Interlocked.Increment(ref _grammarCompilationCount);
+            return _grammarCompiler.Compile(GetDefinition(name));
+        }
     }
 
     private SyntaxDefinition? ResolveDefinitionByName(string name) => _entries.ContainsKey(name) ? GetDefinition(name) : null;
 
-    private static SyntaxDefinitionCatalog CreateEmbedded()
+    /// <summary>Creates a fresh embedded catalog so concurrency tests can exercise an unwarmed
+    /// first lookup independently of the process-wide <see cref="Default"/> instance.</summary>
+    /// <returns>A fresh catalog over the audited embedded definitions.</returns>
+    internal static SyntaxDefinitionCatalog CreateEmbedded()
     {
         var assembly = typeof(SyntaxDefinitionCatalog).Assembly;
         using var manifestStream = assembly.GetManifestResourceStream(_manifestResource) ??
@@ -190,6 +253,21 @@ public sealed class SyntaxDefinitionCatalog
         return entries.Count != 160
             ? throw new InvalidDataException("The embedded syntax-definition manifest must contain exactly 160 definitions.")
             : new SyntaxDefinitionCatalog(entries, ReadEmbeddedXml);
+    }
+
+    private static SyntaxDefinitionCatalog CreateDirectoryCatalog(
+        Dictionary<string, SyntaxDefinitionInfo> entries,
+        Dictionary<string, SyntaxDefinition> definitions,
+        int parseCount)
+    {
+        var catalog = new SyntaxDefinitionCatalog(
+            entries,
+            static (_, _) => throw new UnreachableException("Directory definitions are parsed during catalog construction."),
+            definitions)
+        {
+            _definitionParseCount = parseCount,
+        };
+        return catalog;
     }
 
     private static string ReadEmbeddedXml(SyntaxDefinitionCatalog self, SyntaxDefinitionInfo info)
@@ -234,6 +312,7 @@ public sealed class SyntaxDefinitionCatalog
             definition.MimeTypes,
             definition.AlternativeNames,
             definition.Author,
+            definition.Priority,
             license: string.Empty,
             sha256: string.Empty,
             bytes: 0,
@@ -263,6 +342,9 @@ public sealed class SyntaxDefinitionCatalog
                 SyntaxDefinitionReader.SplitList(element.GetProperty("mimetype").GetString()),
                 SyntaxDefinitionReader.SplitList(element.GetProperty("alternativeNames").GetString()),
                 element.GetProperty("author").GetString()!,
+                element.TryGetProperty("priority", out var priority) && priority.ValueKind == JsonValueKind.Number
+                    ? priority.GetInt32()
+                    : null,
                 element.GetProperty("license").GetString()!,
                 element.GetProperty("sha256").GetString()!,
                 element.GetProperty("bytes").GetInt32(),

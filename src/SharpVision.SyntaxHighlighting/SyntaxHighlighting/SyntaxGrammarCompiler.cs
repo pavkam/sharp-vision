@@ -31,15 +31,35 @@ internal sealed class SyntaxGrammarCompiler
     /// <returns>The fully resolved grammar.</returns>
     public SyntaxGrammar Compile(SyntaxDefinition definition)
     {
-        var grammar = GetOrCreateShell(definition);
+        var grammar = GetOrCreateShell(definition, out var created);
 
-        for (var i = 0; i < definition.Contexts.Count; i++)
+        try
         {
-            _ = grammar.GetOrResolveContext(i, this, _resolving);
-        }
+            for (var i = 0; i < definition.Contexts.Count; i++)
+            {
+                _ = grammar.GetOrResolveContext(i, this, _resolving);
+            }
 
-        return grammar;
+            return grammar;
+        }
+        catch
+        {
+            if (created)
+            {
+                _ = _grammars.Remove(definition.Name);
+            }
+
+            throw;
+        }
     }
+
+    /// <summary>Attempts to retrieve a grammar already compiled or reached by this catalog-owned
+    /// compiler session.</summary>
+    /// <param name="definitionName">The exact definition name.</param>
+    /// <param name="grammar">The existing grammar when found.</param>
+    /// <returns>True when the session already owns the grammar.</returns>
+    internal bool TryGetGrammar(string definitionName, out SyntaxGrammar grammar) =>
+        _grammars.TryGetValue(definitionName, out grammar!);
 
     /// <summary>Resolves another definition by name and compiles it, reusing an in-progress grammar.</summary>
     /// <param name="definitionName">The non-null definition name.</param>
@@ -55,15 +75,17 @@ internal sealed class SyntaxGrammarCompiler
         return definition is null ? null : Compile(definition);
     }
 
-    private SyntaxGrammar GetOrCreateShell(SyntaxDefinition definition)
+    private SyntaxGrammar GetOrCreateShell(SyntaxDefinition definition, out bool created)
     {
         if (_grammars.TryGetValue(definition.Name, out var existing))
         {
+            created = false;
             return existing;
         }
 
         var grammar = new SyntaxGrammar(definition);
         _grammars[definition.Name] = grammar;
+        created = true;
         return grammar;
     }
 }

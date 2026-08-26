@@ -41,9 +41,28 @@ public static class SyntaxDefinitionReader
     {
         ArgumentNullException.ThrowIfNull(xml);
 
+        using var stringReader = new StringReader(xml);
+        using var xmlReader = XmlReader.Create(stringReader, CreateSettings());
+        return Read(xmlReader);
+    }
+
+    /// <summary>Parses one complete definition directly from a bounded stream. This internal path
+    /// lets directory catalogs avoid allocating and retaining a second full XML string.</summary>
+    /// <param name="stream">The non-null readable definition stream.</param>
+    /// <returns>The immutable parsed definition.</returns>
+    internal static SyntaxDefinition Read(Stream stream)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+
+        using var xmlReader = XmlReader.Create(stream, CreateSettings());
+        return Read(xmlReader);
+    }
+
+    private static SyntaxDefinition Read(XmlReader xmlReader)
+    {
         try
         {
-            var document = LoadDocument(xml);
+            var document = XDocument.Load(xmlReader, LoadOptions.None);
             var language = document.Root ?? throw new FormatException("The document has no root element.");
 
             if (language.Name.LocalName != "language")
@@ -88,20 +107,14 @@ public static class SyntaxDefinitionReader
 
     #region Document loading
 
-    private static XDocument LoadDocument(string xml)
-    {
-        var settings = new XmlReaderSettings
+    private static XmlReaderSettings CreateSettings() =>
+        new()
         {
             DtdProcessing = DtdProcessing.Parse,
             XmlResolver = null,
             MaxCharactersFromEntities = _maxCharactersFromEntities,
             MaxCharactersInDocument = _maxCharactersInDocument,
         };
-
-        using var stringReader = new StringReader(xml);
-        using var xmlReader = XmlReader.Create(stringReader, settings);
-        return XDocument.Load(xmlReader, LoadOptions.None);
-    }
 
     #endregion
 
