@@ -1115,6 +1115,7 @@ namespace SharpVision.Controls.Display
         public ChaseIndicatorGlyphs(System.Text.Rune active, System.Text.Rune inactive) { }
         public System.Text.Rune Active { get; init; }
         public System.Text.Rune Inactive { get; init; }
+        public static SharpVision.Controls.Display.ChaseIndicatorGlyphs Default { get; }
     }
     public sealed class ChaseIndicatorStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Display.ChaseIndicatorStyle>
     {

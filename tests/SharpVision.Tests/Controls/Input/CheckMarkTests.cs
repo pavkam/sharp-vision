@@ -61,21 +61,15 @@ public sealed class CheckMarkTests
         mark.ShouldNotBe(CheckMark.Tick);
     }
 
-    /// <summary>Verifies WithGlyphs revalidates the replacement family instead of trusting it as
-    /// already-validated: a default-uninitialized CheckBoxGlyphs never ran through its own
-    /// constructor validation and carries the Rune default value - a non-printable control
-    /// character - for every mark, so WithGlyphs must reject it exactly as the CheckMark
-    /// constructor's own documented "cannot smuggle an unvalidated rune through" guarantee
-    /// promises.</summary>
+    /// <summary>Verifies WithGlyphs accepts the default-safe code-owned glyph family.</summary>
     [Fact]
-    public void WithGlyphs_WhenGivenDefaultUninitializedGlyphs_ThrowsInsteadOfSmugglingControlRune() =>
-        _ = Should.Throw<ArgumentException>(() => CheckMark.Tick.WithGlyphs(default));
+    public void WithGlyphs_WhenGivenDefaultGlyphs_UsesCodeOwnedFamily() =>
+        CheckMark.Tick.WithGlyphs(default).Glyphs.ShouldBe(CheckBoxGlyphs.Default);
 
-    /// <summary>Verifies the constructor itself rejects the same default-uninitialized glyph
-    /// family smuggling attempt.</summary>
+    /// <summary>Verifies construction normalizes the default-safe code-owned glyph family.</summary>
     [Fact]
-    public void Constructor_WhenGivenDefaultUninitializedGlyphs_ThrowsInsteadOfSmugglingControlRune() =>
-        _ = Should.Throw<ArgumentException>(() => new CheckMark(CheckBoxMarkStyle.Tick, default));
+    public void Constructor_WhenGivenDefaultGlyphs_UsesCodeOwnedFamily() =>
+        new CheckMark(CheckBoxMarkStyle.Tick, default).Glyphs.ShouldBe(CheckBoxGlyphs.Default);
 
     /// <summary>Verifies GlyphFor selects the exact glyph configured for each of the three
     /// documented states.</summary>

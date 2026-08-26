@@ -21,11 +21,14 @@ public readonly record struct ChaseIndicatorGlyphs: IAppearanceFragment
         Inactive = inactive.ValidateSingleCell(nameof(inactive));
     }
 
+    /// <summary>Gets the established active and inactive indicator pair.</summary>
+    public static ChaseIndicatorGlyphs Default { get; } = new(new Rune('●'), new Rune('◯'));
+
     /// <summary>Gets the active-position glyph.</summary>
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune Active
     {
-        get;
+        get => field.Value == 0 ? Default.Active : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -33,7 +36,7 @@ public readonly record struct ChaseIndicatorGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune Inactive
     {
-        get;
+        get => field.Value == 0 ? Default.Inactive : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 

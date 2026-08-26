@@ -25,6 +25,7 @@ public sealed class ThemeCatalogEntry
         ArgumentException.ThrowIfNullOrWhiteSpace(author);
         ArgumentException.ThrowIfNullOrWhiteSpace(license);
         ArgumentException.ThrowIfNullOrWhiteSpace(source);
+        _ = ThemeSlug.Validate(slug, nameof(slug));
 
         ArgumentOutOfRangeException.ThrowIfNotDefined(colorScheme, nameof(colorScheme), "The theme catalog color scheme is unknown.");
 

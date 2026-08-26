@@ -72,7 +72,7 @@ public sealed class Theme
         string source = "https://github.com/sharpvision/sharpvision")
     {
         name = RequireMetadata(name, nameof(name));
-        slug = RequireMetadata(slug, nameof(slug));
+        slug = ThemeSlug.Validate(RequireMetadata(slug, nameof(slug)), nameof(slug));
         author = RequireMetadata(author, nameof(author));
         license = RequireMetadata(license, nameof(license));
         source = RequireMetadata(source, nameof(source));
@@ -683,6 +683,7 @@ public sealed class Theme
     internal Thickness ResolveSectionThickness(JsonElement value, string context)
     {
         if (value.ValueKind != JsonValueKind.Object ||
+            !HasExactGeometryMembers(value) ||
             !value.TryGetProperty("x", out var x) ||
             !value.TryGetProperty("y", out var y) ||
             x.ValueKind != JsonValueKind.Number ||
@@ -705,12 +706,28 @@ public sealed class Theme
     // negative-value rejection here.
     internal Point ResolveSectionPoint(JsonElement value, string context) =>
         value.ValueKind != JsonValueKind.Object ||
+        !HasExactGeometryMembers(value) ||
         !value.TryGetProperty("x", out var x) ||
         !value.TryGetProperty("y", out var y) ||
         x.ValueKind != JsonValueKind.Number ||
         y.ValueKind != JsonValueKind.Number
             ? throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' must be an object with numeric 'x' and 'y'.")
             : new Point(x.GetInt32(), y.GetInt32());
+
+    private static bool HasExactGeometryMembers(JsonElement value)
+    {
+        var count = 0;
+
+        foreach (var property in value.EnumerateObject())
+        {
+            if (property.Name is not ("x" or "y") || ++count > 2)
+            {
+                return false;
+            }
+        }
+
+        return count == 2;
+    }
 
     private static readonly string[] _visualStateJsonNames =
     [

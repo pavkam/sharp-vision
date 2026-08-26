@@ -40,7 +40,7 @@ public readonly record struct ProgressBarGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune Fill
     {
-        get;
+        get => field.Value == 0 ? Default.Fill : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -48,7 +48,7 @@ public readonly record struct ProgressBarGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune Track
     {
-        get;
+        get => field.Value == 0 ? Default.Track : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -56,7 +56,7 @@ public readonly record struct ProgressBarGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune Indeterminate
     {
-        get;
+        get => field.Value == 0 ? Default.Indeterminate : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 

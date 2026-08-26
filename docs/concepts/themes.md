@@ -38,7 +38,9 @@ than a theme one: `ThemeCatalogEntry.Order` carries it, and an external document
 has none. Programmatic `Theme` construction rejects an undefined `ColorScheme`
 value and null or blank identity and provenance metadata before publishing the
 theme. `ThemeCatalogEntry` rejects the same undefined color-scheme state before
-publishing catalog metadata.
+publishing catalog metadata. A nonblank `slug` must be lowercase kebab case:
+ASCII letters and digits separated by single hyphens. The same portable grammar
+applies to parsed, programmatic, and catalog-entry slugs.
 
 ## Global values
 
@@ -240,8 +242,10 @@ The same rule set covers every other member kind a style section accepts:
 attributes take a literal attribute name/array or the JSON name of a global
 semantic value; border glyph styles and shadow geometry are allowed because they
 define the type's own chrome, not something a specific control instance owns.
-Enum-shaped leaves accept declared names and comma-separated declared flag names
-only; numeric ordinals and numeric flag bitsets are rejected as unstable wire
+Geometry objects contain exactly numeric `x` and `y` members; additional,
+duplicate, missing, or differently typed members are rejected. Enum-shaped
+leaves accept declared names and comma-separated declared flag names only;
+numeric ordinals and numeric flag bitsets are rejected as unstable wire
 representations. Individual controls may still set complete local styles that
 take precedence over everything a theme supplies.
 
@@ -266,7 +270,10 @@ case-insensitively: `dots`, `blocks`, `ascii`, `shades`, or `lines`. An absent
 field - including both zero-config defaults - resolves every one of those six
 styles to `GlyphFamily.Default`, the exact code-owned presentation each carried
 before this field existed; an unrecognized name fails with a source-labelled
-`InvalidDataException` like every other malformed theme value.
+`InvalidDataException` like every other malformed theme value. Complete public
+glyph-family structs also normalize their zero-initialized `default` value to
+their code-owned family, so assigning one through a typed style cannot defer
+invalid Rune failures to render.
 
 | `glyphs` value | Look           | Extracted from       |
 | -------------- | -------------- | -------------------- |
@@ -474,6 +481,10 @@ UTF-8, invalid element kinds, unknown top-level or `styles.*` key names, and
 malformed colors all fail with a source-labelled `InvalidDataException` - for
 `styles.*` leaf values specifically, at first resolution rather than at parse
 time (see [Style types](#style-types) above).
+
+Style-property metadata is cached once per style type; rejected JSON member
+names are never retained, so repeated invalid external documents cannot grow a
+process-lifetime negative-key cache.
 
 Assigning `Application.Theme` publishes an already-frozen theme through the
 retained control tree on the dispatcher; controls are not reconstructed. The

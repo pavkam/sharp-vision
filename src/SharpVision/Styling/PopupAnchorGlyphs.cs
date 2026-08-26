@@ -41,7 +41,7 @@ public readonly record struct PopupAnchorGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune PointingUp
     {
-        get;
+        get => field.Value == 0 ? Default.PointingUp : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -49,7 +49,7 @@ public readonly record struct PopupAnchorGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune PointingDown
     {
-        get;
+        get => field.Value == 0 ? Default.PointingDown : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -57,7 +57,7 @@ public readonly record struct PopupAnchorGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune PointingLeft
     {
-        get;
+        get => field.Value == 0 ? Default.PointingLeft : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -65,7 +65,7 @@ public readonly record struct PopupAnchorGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune PointingRight
     {
-        get;
+        get => field.Value == 0 ? Default.PointingRight : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 

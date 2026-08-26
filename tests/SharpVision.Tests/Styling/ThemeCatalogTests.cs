@@ -96,6 +96,36 @@ public sealed class ThemeCatalogTests
         theme.ResolveColor(SemanticColor.ControlText).ShouldBe(Color.FromHex("#e0e0e0"));
     }
 
+    /// <summary>Verifies unsafe external slugs are normalized as source-labelled data failures.</summary>
+    [Theory]
+    [InlineData("two words")]
+    [InlineData("../theme")]
+    [InlineData("name#part")]
+    public void Parse_WhenSlugIsNotUrlSafe_ThrowsInvalidDataException(string slug)
+    {
+        var json = ThemeJson.Create().Replace("\"slug\": \"t\"", $"\"slug\": \"{slug}\"", StringComparison.Ordinal);
+
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "unsafe-theme"));
+
+        error.Message.ShouldContain("unsafe-theme");
+        error.Message.ShouldContain("slug");
+    }
+
+    /// <summary>Verifies geometry objects reject extra members instead of silently discarding them.</summary>
+    [Fact]
+    public void Parse_WhenStyleGeometryHasUnknownMember_ThrowsInvalidDataException()
+    {
+        var json = ThemeJson.Create().Replace(
+            "\"offset\":{\"x\":0,\"y\":0}",
+            "\"offset\":{\"x\":0,\"y\":0,\"z\":1}",
+            StringComparison.Ordinal);
+
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "geometry-theme"));
+
+        error.Message.ShouldContain("geometry-theme");
+        error.Message.ShouldContain("offset");
+    }
+
     /// <summary>Verifies focused profile members overlay normal members without changing unrelated values.</summary>
     [Fact]
     public void Parse_WhenFocusedStateIsResolved_OverlaysNormalAppearance()

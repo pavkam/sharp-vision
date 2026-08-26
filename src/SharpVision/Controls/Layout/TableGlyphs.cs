@@ -91,7 +91,7 @@ public readonly record struct TableGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune Horizontal
     {
-        get;
+        get => field.Value == 0 ? Default.Horizontal : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -99,7 +99,7 @@ public readonly record struct TableGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune Vertical
     {
-        get;
+        get => field.Value == 0 ? Default.Vertical : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -107,7 +107,7 @@ public readonly record struct TableGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune Cross
     {
-        get;
+        get => field.Value == 0 ? Default.Cross : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -115,7 +115,7 @@ public readonly record struct TableGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune SortAscending
     {
-        get;
+        get => field.Value == 0 ? Default.SortAscending : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -123,7 +123,7 @@ public readonly record struct TableGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune SortDescending
     {
-        get;
+        get => field.Value == 0 ? Default.SortDescending : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -131,7 +131,7 @@ public readonly record struct TableGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune Placeholder
     {
-        get;
+        get => field.Value == 0 ? Default.Placeholder : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -140,7 +140,7 @@ public readonly record struct TableGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune PlaceholderError
     {
-        get;
+        get => field.Value == 0 ? Default.PlaceholderError : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 

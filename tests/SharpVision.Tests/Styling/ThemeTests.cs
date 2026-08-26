@@ -10,6 +10,20 @@ using System.Text.Json;
 /// <summary>Verifies public Theme construction preserves valid immutable metadata.</summary>
 public sealed class ThemeTests
 {
+    /// <summary>Verifies URL and file identifiers reject unsafe path, fragment, and whitespace syntax.</summary>
+    [Theory]
+    [InlineData("two words")]
+    [InlineData("../theme")]
+    [InlineData("name#part")]
+    public void Constructor_WhenSlugIsNotUrlSafe_ThrowsArgumentException(string slug) =>
+        _ = Should.Throw<ArgumentException>(() => new Theme(slug: slug));
+
+    /// <summary>Verifies catalog metadata applies the same URL-safe slug contract as loaded themes.</summary>
+    [Fact]
+    public void ThemeCatalogEntry_WhenSlugIsNotUrlSafe_ThrowsArgumentException() =>
+        _ = Should.Throw<ArgumentException>(() => new ThemeCatalogEntry(
+            "Theme", "../theme", ColorScheme.Dark, "Author", "MIT", "https://example.invalid/theme"));
+
     /// <summary>Verifies typed programmatic configuration covers global values, glyphs, and root styles.</summary>
     [Fact]
     public void SetThemeValues_WhenUnfrozen_ConfiguresTypedValuesUntilFreeze()
@@ -933,6 +947,21 @@ public sealed class ThemeTests
         _ = first.ShouldNotBeNull();
         first.ShouldBeSameAs(second);
         unknown.ShouldBeNull();
+    }
+
+    /// <summary>Verifies rejected member names never become process-lifetime cache entries.</summary>
+    [Fact]
+    public void ResolveProperty_WhenUnknownKeysVary_DoesNotRetainRejectedNames()
+    {
+        _ = ThemeStyleFragment.ResolveProperty(typeof(TestLeafStyle), "name");
+        var retained = ThemeStyleFragment.CachedEntryCount;
+
+        for (var index = 0; index < 256; index++)
+        {
+            ThemeStyleFragment.ResolveProperty(typeof(TestLeafStyle), $"unknown{index}").ShouldBeNull();
+        }
+
+        ThemeStyleFragment.CachedEntryCount.ShouldBe(retained);
     }
 
     private static Dictionary<string, JsonElement> ParseOverrides(string json) =>

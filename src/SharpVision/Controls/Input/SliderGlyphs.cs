@@ -41,7 +41,7 @@ public readonly record struct SliderGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune HorizontalTrack
     {
-        get;
+        get => field.Value == 0 ? Default.HorizontalTrack : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -49,7 +49,7 @@ public readonly record struct SliderGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune HorizontalFill
     {
-        get;
+        get => field.Value == 0 ? Default.HorizontalFill : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -57,7 +57,7 @@ public readonly record struct SliderGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune VerticalTrack
     {
-        get;
+        get => field.Value == 0 ? Default.VerticalTrack : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -65,7 +65,7 @@ public readonly record struct SliderGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune VerticalFill
     {
-        get;
+        get => field.Value == 0 ? Default.VerticalFill : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -73,7 +73,7 @@ public readonly record struct SliderGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune Thumb
     {
-        get;
+        get => field.Value == 0 ? Default.Thumb : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 

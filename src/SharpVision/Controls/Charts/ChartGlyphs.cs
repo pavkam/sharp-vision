@@ -56,7 +56,7 @@ public readonly record struct ChartGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune Bar
     {
-        get;
+        get => field.Value == 0 ? Default.Bar : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -64,7 +64,7 @@ public readonly record struct ChartGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune Point
     {
-        get;
+        get => field.Value == 0 ? Default.Point : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -72,7 +72,7 @@ public readonly record struct ChartGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune Line
     {
-        get;
+        get => field.Value == 0 ? Default.Line : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -80,7 +80,7 @@ public readonly record struct ChartGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune Area
     {
-        get;
+        get => field.Value == 0 ? Default.Area : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -88,7 +88,7 @@ public readonly record struct ChartGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune LegendMarker
     {
-        get;
+        get => field.Value == 0 ? Default.LegendMarker : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -96,7 +96,7 @@ public readonly record struct ChartGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune VerticalAxis
     {
-        get;
+        get => field.Value == 0 ? Default.VerticalAxis : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -104,7 +104,7 @@ public readonly record struct ChartGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune HorizontalAxis
     {
-        get;
+        get => field.Value == 0 ? Default.HorizontalAxis : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 

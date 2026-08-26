@@ -18,6 +18,11 @@ using System.Diagnostics.CodeAnalysis;
 /// theme document can author that is not one of the six.</summary>
 public sealed class StyleStatesTests
 {
+    /// <summary>Verifies a null Normal style is rejected at assignment rather than during adaptation.</summary>
+    [Fact]
+    public void Normal_WhenAssignedNull_ThrowsArgumentNullException() =>
+        _ = Should.Throw<ArgumentNullException>(() => new StyleStates<ControlStyle> { Normal = null! });
+
     private static Theme CreateTheme(
         string controlSides = "\"none\"",
         string controlExtra = "",

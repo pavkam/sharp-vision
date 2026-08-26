@@ -28,7 +28,7 @@ public readonly record struct RadioButtonGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune Unchecked
     {
-        get;
+        get => field.Value == 0 ? Default.Unchecked : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -36,7 +36,7 @@ public readonly record struct RadioButtonGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune Checked
     {
-        get;
+        get => field.Value == 0 ? Default.Checked : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 

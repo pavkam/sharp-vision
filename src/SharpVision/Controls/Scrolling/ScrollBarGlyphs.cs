@@ -68,7 +68,7 @@ public readonly record struct ScrollBarGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune VerticalDecrement
     {
-        get;
+        get => field.Value == 0 ? Default.VerticalDecrement : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -76,7 +76,7 @@ public readonly record struct ScrollBarGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune VerticalIncrement
     {
-        get;
+        get => field.Value == 0 ? Default.VerticalIncrement : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -84,7 +84,7 @@ public readonly record struct ScrollBarGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune HorizontalDecrement
     {
-        get;
+        get => field.Value == 0 ? Default.HorizontalDecrement : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -92,7 +92,7 @@ public readonly record struct ScrollBarGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune HorizontalIncrement
     {
-        get;
+        get => field.Value == 0 ? Default.HorizontalIncrement : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -100,7 +100,7 @@ public readonly record struct ScrollBarGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune BlockTrack
     {
-        get;
+        get => field.Value == 0 ? Default.BlockTrack : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -108,7 +108,7 @@ public readonly record struct ScrollBarGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune BlockThumb
     {
-        get;
+        get => field.Value == 0 ? Default.BlockThumb : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -116,7 +116,7 @@ public readonly record struct ScrollBarGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune HorizontalLineTrack
     {
-        get;
+        get => field.Value == 0 ? Default.HorizontalLineTrack : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -124,7 +124,7 @@ public readonly record struct ScrollBarGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune HorizontalLineThumb
     {
-        get;
+        get => field.Value == 0 ? Default.HorizontalLineThumb : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -132,7 +132,7 @@ public readonly record struct ScrollBarGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune VerticalLineTrack
     {
-        get;
+        get => field.Value == 0 ? Default.VerticalLineTrack : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 
@@ -140,7 +140,7 @@ public readonly record struct ScrollBarGlyphs: IAppearanceFragment
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public Rune VerticalLineThumb
     {
-        get;
+        get => field.Value == 0 ? Default.VerticalLineThumb : field;
         init => field = value.ValidateSingleCell(nameof(value));
     }
 

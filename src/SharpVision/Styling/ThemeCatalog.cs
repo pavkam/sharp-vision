@@ -260,7 +260,7 @@ public static class ThemeCatalog
         var theme = new Theme(
             palette,
             embedded ? ReadRequiredMetadata(definition.Name, "name", source) : Or(definition.Name, "Custom"),
-            embedded ? ReadRequiredMetadata(definition.Slug, "slug", source) : Or(definition.Slug, "custom"),
+            ReadSlug(definition.Slug, source, required: embedded),
             ReadColorScheme(definition.ColorScheme, source, required: embedded),
             embedded ? ReadRequiredMetadata(definition.Author, "author", source) : Or(definition.Author, "SharpVision contributors"),
             embedded ? ReadRequiredMetadata(definition.License, "license", source) : Or(definition.License, "MIT"),
@@ -491,7 +491,7 @@ public static class ThemeCatalog
         order = definition.Order;
         return new ThemeCatalogEntry(
             ReadRequiredMetadata(definition.Name, "name", resource),
-            ReadRequiredMetadata(definition.Slug, "slug", resource),
+            ReadSlug(definition.Slug, resource, required: true),
             ReadColorScheme(definition.ColorScheme, resource, required: true),
             ReadRequiredMetadata(definition.Author, "author", resource),
             ReadRequiredMetadata(definition.License, "license", resource),
@@ -527,6 +527,17 @@ public static class ThemeCatalog
         string.IsNullOrWhiteSpace(value)
             ? throw new InvalidDataException($"Theme '{source}' is missing required field '{name}'.")
             : value;
+
+    private static string ReadSlug(string? value, string source, bool required)
+    {
+        var slug = required
+            ? ReadRequiredMetadata(value, "slug", source)
+            : Or(value, "custom");
+
+        return ThemeSlug.IsValid(slug)
+            ? slug
+            : throw new InvalidDataException($"Theme '{source}' has invalid slug '{slug}'.");
+    }
 
     private static ColorScheme ReadColorScheme(string? value, string source, bool required)
     {
