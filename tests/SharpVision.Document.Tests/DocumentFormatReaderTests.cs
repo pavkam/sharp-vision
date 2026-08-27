@@ -641,4 +641,52 @@ public sealed class DocumentFormatReaderTests
                 .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("interloper"),
             TestContext.Current.CancellationToken);
     }
+
+    /// <summary>Verifies two overlapping <c>LoadAsync</c> calls on the same document
+    /// cannot silently clobber one another: whichever call's stream read resumes second discovers the
+    /// other's already-committed replacement and throws instead of overwriting it.</summary>
+    [Fact]
+    public async Task LoadAsync_WhenTwoLoadsOverlap_SecondToResumeThrowsInsteadOfOverwritingAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var document = new DocumentControl();
+        await dispatcher.InvokeAsync(
+            () => document.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+        await using var streamA = new PausableReadStream(Encoding.UTF8.GetBytes("from A"));
+        await using var streamB = new PausableReadStream(Encoding.UTF8.GetBytes("from B"));
+
+        // Act
+        var loadTaskA = await dispatcher.InvokeAsync(
+            () => document.LoadAsync(
+                streamA,
+                new PlainTextDocumentReaderProbe(),
+                cancellationToken: TestContext.Current.CancellationToken).AsTask(),
+            TestContext.Current.CancellationToken);
+        await streamA.Entered.WaitAsync(TestContext.Current.CancellationToken);
+
+        var loadTaskB = await dispatcher.InvokeAsync(
+            () => document.LoadAsync(
+                streamB,
+                new PlainTextDocumentReaderProbe(),
+                cancellationToken: TestContext.Current.CancellationToken).AsTask(),
+            TestContext.Current.CancellationToken);
+        await streamB.Entered.WaitAsync(TestContext.Current.CancellationToken);
+
+        // B resumes and commits first, while A is still suspended.
+        streamB.Release();
+        _ = await loadTaskB;
+
+        // A resumes second, discovering B's already-committed replacement.
+        streamA.Release();
+        var action = async () => await loadTaskA;
+
+        // Assert
+        _ = await action.ShouldThrowAsync<InvalidOperationException>();
+        await dispatcher.InvokeAsync(
+            () => document.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
+                .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("from B"),
+            TestContext.Current.CancellationToken);
+    }
 }

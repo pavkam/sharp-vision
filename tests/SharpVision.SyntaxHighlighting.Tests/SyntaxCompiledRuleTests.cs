@@ -120,6 +120,22 @@ public sealed class SyntaxCompiledRuleTests
         match.Length.ShouldBe(text.Length);
     }
 
+    /// <summary>
+    /// Verifies <c>\b</c> classifies a word boundary using Unicode word characters (PCRE2_UCP)
+    /// rather than only ASCII letters: without it, the accented "é" in "café" is wrongly treated as
+    /// a non-word character, so "caf" alone would satisfy <c>\b</c> at both ends as if "café" were
+    /// two words split right before the accented letter.
+    /// </summary>
+    [Fact]
+    public void TryMatch_WhenWordBoundaryPrecedesAccentedLetter_DoesNotSplitTheWord()
+    {
+        var rule = RegularExpressionRule(@"\bcaf\b");
+
+        var match = rule.TryMatch("café", 0, []);
+
+        match.Success.ShouldBeFalse();
+    }
+
     /// <summary>Verifies KDE's minimal flag inverts quantifier greediness for the complete pattern.</summary>
     [Fact]
     public void TryMatch_WhenRegularExpressionIsMinimal_PrefersShortestMatch()
