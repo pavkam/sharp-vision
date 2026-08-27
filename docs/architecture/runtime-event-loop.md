@@ -84,11 +84,26 @@ the first flushed frame; a zero-cell suspended layout starts without a frame.
 
 When bounded capability negotiation is enabled, startup order is:
 
-```text
-console open -> description resolve/suitability preflight -> Application/Session
--> Starting callback -> described base/keypad leases -> query batch
--> input/reply/resize collection -> profile publication
--> optional mode leases -> first resize/layout/frame -> Started callback
+```mermaid
+sequenceDiagram
+    participant ConsoleHost
+    participant DescriptionResolver
+    participant Application
+    participant Session
+    participant Dispatcher
+
+    ConsoleHost->>ConsoleHost: Open portable console host lease
+    ConsoleHost->>DescriptionResolver: Resolve description and preflight suitability
+    DescriptionResolver-->>ConsoleHost: Validated terminal profile candidate
+    ConsoleHost->>Application: Construct Application and Session
+    Application->>Dispatcher: Starting callback
+    Session->>Session: Acquire described base and keypad leases
+    Session->>Session: Send capability query batch
+    Session-->>Application: Collect input, replies, and resize during the query window
+    Application->>Application: Publish immutable capability profile
+    Session->>Session: Acquire optional mode leases
+    Application->>Application: First resize, layout, and frame
+    Application->>Dispatcher: Started callback
 ```
 
 User input remains live during the query window. The session retains only the
@@ -227,6 +242,49 @@ fault, or an unhandled callback — still overrides that cancellation.
 
 ### Exception-complete disposal
 
+```mermaid
+sequenceDiagram
+    participant Application
+    participant TerminalServices
+    participant Renderer
+    participant Session
+    participant StreamTransport
+    participant HostLease
+
+    Note over Application: lifetimeDiagnostic captured up front,<br/>from Renderer/Session, before any teardown runs
+
+    Application->>TerminalServices: Dispose (clipboard-timer teardown, marshaled to dispatcher)
+    TerminalServices-->>Application: Retry while the dispatcher queue is transiently full
+    alt retries exhausted within CleanupTimeout
+        TerminalServices--xApplication: Assign to local failure
+    end
+    Application->>Renderer: ShutdownAsync (bounded by CleanupTimeout)
+    alt Renderer.ShutdownAsync throws
+        Renderer--xApplication: Overwrite local failure (clipboard-timer failure, if any, is lost here)
+    end
+    Application->>Session: DisposeAsync
+    Session->>Session: Cancel lifetime source (try/catch, retain first exception)
+    Session->>Session: Dispose resize source (try/catch, retain first exception)
+    Session->>StreamTransport: DisposeAsync
+    StreamTransport->>StreamTransport: Dispose each owned stream exactly once (try/catch each)
+    StreamTransport-->>Session: First stream exception, if any
+    Session->>Session: Dispose lifetime source (try/catch, retain first exception)
+    Session--xApplication: Rethrow first retained exception via ExceptionDispatchInfo
+    alt Session.DisposeAsync throws
+        Application->>Application: failure ??= exception (kept only if still unset)
+    end
+    Application->>HostLease: DisposeHostLeaseAsync
+    alt DisposeHostLeaseAsync throws
+        HostLease--xApplication: failure ??= exception (kept only if still unset)
+    end
+    Note over Application: LastCleanupException ??= lifetimeDiagnostic<br/>?? Renderer.LastCleanupException ?? Session.LastCleanupException ?? failure -<br/>the pre-existing diagnostic and the components' own tracked<br/>exceptions outrank the locally collected failure
+    Application->>Application: Marshal FinalizeStopped to dispatcher once cleanup completes
+    Application-->>Application: Retry while the dispatcher queue is transiently full
+    alt retries exhausted within CleanupTimeout
+        Application--xApplication: Rethrow via ExceptionDispatchInfo
+    end
+```
+
 Every owned resource is attempted exactly once, in its documented order, even
 when an earlier one throws. `Session` disposal attempts the resize source, the
 transport, and the lifetime source; `StreamTransport` disposal attempts each
@@ -306,6 +364,31 @@ Reverse mode restoration writes through the transport, so disposal must never
 tear the transport down while a run is still unwinding its leases. Claiming the
 run slot and marking disposal are one atomic step under a single session lock,
 which yields exactly two orderings:
+
+```mermaid
+sequenceDiagram
+    participant RunCaller as RunAsync caller
+    participant DisposeCaller as DisposeAsync caller
+    participant Session
+
+    alt run claims the lifecycle lock first
+        RunCaller->>Session: RunAsync (acquire _lifecycle lock)
+        Session-->>RunCaller: _running = true; publish completion source
+        DisposeCaller->>Session: DisposeAsync (acquire _lifecycle lock)
+        Session-->>DisposeCaller: _disposed = true; wait for the active run's completion
+        RunCaller->>Session: Write and flush every reverse-mode disable sequence
+        Session-->>RunCaller: Completion signalled
+        DisposeCaller->>Session: Dispose resize source, transport, and lifetime source
+        Session-->>DisposeCaller: Teardown complete
+    else disposal begins first
+        DisposeCaller->>Session: DisposeAsync (acquire _lifecycle lock)
+        Session-->>DisposeCaller: _disposed = true; no active run to wait for
+        RunCaller->>Session: RunAsync (acquire _lifecycle lock)
+        Session--xRunCaller: ObjectDisposedException from the lifecycle guard (no mode lease acquired)
+        DisposeCaller->>Session: Dispose resize source, transport, and lifetime source
+        Session-->>DisposeCaller: Teardown complete
+    end
+```
 
 1. A run is active when disposal begins. `DisposeAsync` cancels the session
    lifetime, waits for that run to finish writing and flushing every disable
