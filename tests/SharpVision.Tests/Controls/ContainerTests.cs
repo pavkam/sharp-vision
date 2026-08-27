@@ -430,6 +430,35 @@ public sealed class ContainerTests
         container.VerticalOffset.ShouldBe(1);
     }
 
+    /// <summary>
+    /// Verifies PageDown still advances by at least one cell when the page-axis Viewport extent
+    /// is itself exactly zero, not just when PageOverlap consumes it. An always-visible horizontal
+    /// scrollbar claims the container's only available row here, so Viewport.Height computes to
+    /// Math.Max(0, 1 - 1) = 0 even though content is several rows tall - previously computing a
+    /// page step of exactly zero and silently turning PageUp/PageDown into permanent no-ops for
+    /// that axis instead of degrading to a smaller step.
+    /// </summary>
+    [Fact]
+    public void Key_WhenViewportExtentIsZero_StillAdvancesByAtLeastOneCell()
+    {
+        var container = new LayoutProbe
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Always
+        };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(container, new Size(4, 1));
+
+        var result = Router.Route(
+            container,
+            Events.Key,
+            new KeyEventArgs(new Stroke(Code.PageDown, character: null, nativeCode: 0, Modifiers.None, KeyAction.Press)));
+
+        result.IsHandled.ShouldBeTrue();
+        container.VerticalOffset.ShouldBe(1);
+    }
+
     /// <summary>Verifies a generated vertical scrollbar's SmallChange mirrors the owning
     /// container's LineSize instead of being left at the ScrollBar's own default.</summary>
     [Fact]
@@ -491,6 +520,32 @@ public sealed class ContainerTests
         new LayoutEngine().Layout(container, new Size(4, 10));
 
         var bar = container.HitTest(new Point(3, 4)).ShouldBeOfType<ScrollBar>();
+        bar.LargeChange.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies a generated vertical scrollbar's LargeChange is clamped to at least one cell when
+    /// the page-axis Viewport extent itself is exactly zero, mirroring the clamp already verified
+    /// for keyboard PageUp/PageDown in Key_WhenViewportExtentIsZero_StillAdvancesByAtLeastOneCell
+    /// above - a scrollbar-driven page click must not silently become a no-op either. The vertical
+    /// bar is located via the owned control tree rather than HitTest because a zero-height
+    /// Viewport also collapses the generated vertical bar's own on-screen rectangle to zero cells,
+    /// leaving it unreachable by a point hit-test even though it still exists and is synchronized.
+    /// </summary>
+    [Fact]
+    public void Synchronize_WhenViewportExtentIsZero_ClampsGeneratedBarLargeChangeToAtLeastOneCell()
+    {
+        var container = new LayoutProbe
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Always
+        };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(container, new Size(4, 1));
+
+        var bar = OwnedTree.FindAll<ScrollBar>(container)
+            .Single(candidate => candidate.Orientation == Orientation.Vertical);
         bar.LargeChange.ShouldBe(1);
     }
 

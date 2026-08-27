@@ -794,13 +794,17 @@ public abstract class Container: ControlBase
             : null;
     }
 
-    // Clamps the retained overlap to strictly less than the page axis extent so PageUp/PageDown
-    // always advance by at least one cell. PageOverlap has no configured upper bound tying it to
-    // Viewport (only non-negativity is validated), so a PageOverlap at or above the viewport
-    // extent would otherwise compute a page step of exactly zero, permanently turning PageUp and
-    // PageDown into silent no-ops for that axis instead of degrading to a smaller step.
+    // Clamps the retained overlap to strictly less than the page axis extent, and floors the
+    // overall result at one cell, so PageUp/PageDown always advance by at least one cell.
+    // PageOverlap has no configured upper bound tying it to Viewport (only non-negativity is
+    // validated), so a PageOverlap at or above the viewport extent would otherwise compute a page
+    // step of exactly zero. The outer floor also covers a page axis whose Viewport extent is
+    // itself zero (e.g. the only available row claimed by an always-visible cross-axis bar), which
+    // the overlap clamp alone cannot fix since there is no overlap left to reduce. Either case
+    // would otherwise permanently turn PageUp and PageDown into silent no-ops for that axis
+    // instead of degrading to a smaller step.
     [Pure]
-    private int PageStep(int extent) => extent - Math.Min(PageOverlap, Math.Max(0, extent - 1));
+    private int PageStep(int extent) => Math.Max(1, extent - Math.Min(PageOverlap, Math.Max(0, extent - 1)));
 
     private void Handle(PointerEventArgs eventArgs)
     {
