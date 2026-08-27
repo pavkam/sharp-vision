@@ -28,7 +28,11 @@ public sealed class NavigationViewItemCollection: IReadOnlyList<NavigationViewIt
     /// <exception cref="ArgumentException">The item already belongs to a control tree.</exception>
     /// <exception cref="InvalidOperationException">An attached owner is mutated off its dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">An attached owner or the item is disposed.</exception>
-    public void Add(NavigationViewItem item) => _owner.AddItemCore(item);
+    public void Add(NavigationViewItem item)
+    {
+        _owner.VerifyMutation();
+        _owner.AddItemCore(item);
+    }
 
     /// <summary>Removes one owned sub-item.</summary>
     /// <param name="item">The non-null candidate item.</param>
@@ -36,12 +40,20 @@ public sealed class NavigationViewItemCollection: IReadOnlyList<NavigationViewIt
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
     /// <exception cref="InvalidOperationException">An attached owner is mutated off its dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
-    public bool Remove(NavigationViewItem item) => _owner.RemoveItemCore(item);
+    public bool Remove(NavigationViewItem item)
+    {
+        _owner.VerifyMutation();
+        return _owner.RemoveItemCore(item);
+    }
 
     /// <summary>Removes every owned sub-item.</summary>
     /// <exception cref="InvalidOperationException">An attached owner is mutated off its dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
-    public void Clear() => _owner.ClearItemsCore();
+    public void Clear()
+    {
+        _owner.VerifyMutation();
+        _owner.ClearItemsCore();
+    }
 
     /// <inheritdoc/>
     public IEnumerator<NavigationViewItem> GetEnumerator()

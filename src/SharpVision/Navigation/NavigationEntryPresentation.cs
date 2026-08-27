@@ -30,4 +30,14 @@ internal readonly record struct NavigationEntryPresentation
 
     /// <summary>Gets the unique ownership transaction that captured this snapshot.</summary>
     public long Version { get; }
+
+    /// <summary>Creates a snapshot with the latest caller-authored focusability.</summary>
+    /// <param name="value">The requested focusability.</param>
+    /// <returns>The updated immutable snapshot.</returns>
+    public NavigationEntryPresentation WithFocusable(bool value) => new(value, IsTabStop, Version);
+
+    /// <summary>Creates a snapshot with the latest caller-authored tab-stop participation.</summary>
+    /// <param name="value">The requested tab-stop participation.</param>
+    /// <returns>The updated immutable snapshot.</returns>
+    public NavigationEntryPresentation WithTabStop(bool value) => new(IsFocusable, value, Version);
 }

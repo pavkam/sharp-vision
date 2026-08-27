@@ -21,8 +21,10 @@ public sealed class NavigationView: CompositeControlBase
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly Dictionary<ControlBase, NavigationEntryPresentation> _requestedPresentations = [];
     private bool _isHandlingKnownRemoval;
+    private bool _isWritingEntryFocusPolicy;
     private long _presentationVersion;
     private long _selectionVersion;
+    private ControlBase? _trackedCurrent;
 
     /// <summary>The selected item's last committed position in the complete semantic item order.
     /// Ordinary unavailability repairs locate the retained item in that live order. This snapshot
@@ -32,6 +34,9 @@ public sealed class NavigationView: CompositeControlBase
 
     /// <summary>Gets the retained authored-presentation count used to prove metadata retires with ownership.</summary>
     internal int RequestedPresentationCount => _requestedPresentations.Count;
+
+    /// <summary>Gets the private footer offset used to prove bounded footer exposure.</summary>
+    internal int FooterVerticalOffset => _footerStack.VerticalOffset;
 
     /// <summary>Gets or sets the complete local style for this control's generated scrollbar.</summary>
     /// <remarks>
@@ -152,13 +157,28 @@ public sealed class NavigationView: CompositeControlBase
     /// <param name="item">The non-null owned navigation entry.</param>
     /// <returns>True when at least one offset changed.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
-    /// <exception cref="ArgumentException">The item is not a descendant of the scrolling items container.</exception>
+    /// <exception cref="ArgumentException">The item is not owned by this navigation view.</exception>
     /// <exception cref="InvalidOperationException">The attached navigation view is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The navigation view is disposed.</exception>
     public bool BringItemIntoView(NavigationViewItem item)
     {
+        VerifyMutable();
         ArgumentNullException.ThrowIfNull(item);
-        return _itemsStack.BringIntoView(item);
+
+        if (!ReferenceEquals(item.FindNavigationView(), this))
+        {
+            throw new ArgumentException("The item is not owned by this navigation view.", nameof(item));
+        }
+
+        var mainX = _itemsStack.HorizontalOffset;
+        var mainY = _itemsStack.VerticalOffset;
+        var footerX = _footerStack.HorizontalOffset;
+        var footerY = _footerStack.VerticalOffset;
+        _ = RevealEntry(item);
+        return mainX != _itemsStack.HorizontalOffset ||
+               mainY != _itemsStack.VerticalOffset ||
+               footerX != _footerStack.HorizontalOffset ||
+               footerY != _footerStack.VerticalOffset;
     }
 
     /// <summary>Initializes a quiet square navigation background with an empty item collection.</summary>
@@ -170,7 +190,12 @@ public sealed class NavigationView: CompositeControlBase
             Visibility = Visibility.Collapsed,
         };
 
-        _footerStack = new LayoutStack();
+        _footerStack = new LayoutStack
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Never
+        };
         _itemsStack = new LayoutStack
         {
             AutoScroll = true,
@@ -188,6 +213,8 @@ public sealed class NavigationView: CompositeControlBase
 
         _itemsStack.Children.Changed += OnEntryHostChanged;
         _footerStack.Children.Changed += OnEntryHostChanged;
+        _itemsStack.BoundsChanged += OnNavigationHostBoundsChanged;
+        _footerStack.BoundsChanged += OnNavigationHostBoundsChanged;
 
         InitializeContent(root);
         _scrollBarStyle = InitializePartStyle(
@@ -244,6 +271,7 @@ public sealed class NavigationView: CompositeControlBase
     /// <exception cref="InvalidOperationException"><paramref name="item"/> is unavailable.</exception>
     public void SelectItem(NavigationViewItem item)
     {
+        VerifyMutable();
         ArgumentNullException.ThrowIfNull(item);
 
         if (!ReferenceEquals(item.FindNavigationView(), this))
@@ -256,9 +284,12 @@ public sealed class NavigationView: CompositeControlBase
             throw new InvalidOperationException("An unavailable navigation item cannot be selected.");
         }
 
-        _ = _navigator.SetCurrent(item);
+        _ = SetCurrent(item);
         Select(item);
     }
+
+    /// <summary>Verifies the owner before a public collection validates candidate-specific state.</summary>
+    internal void VerifyMutation() => VerifyMutable();
 
     /// <summary>Gets the item count for one section.</summary>
     internal int GetItemCount(bool isFooter) =>
@@ -275,6 +306,7 @@ public sealed class NavigationView: CompositeControlBase
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
     internal void InsertEntry(int index, ControlBase entry, bool isFooter)
     {
+        VerifyMutable();
         ValidateEntry(entry);
         var stack = isFooter ? _footerStack : _itemsStack;
 
@@ -296,6 +328,8 @@ public sealed class NavigationView: CompositeControlBase
 
     private bool RemoveEntryCore(ControlBase entry, bool isFooter, bool restorePresentation)
     {
+        VerifyMutable();
+        ArgumentNullException.ThrowIfNull(entry);
         var stack = isFooter ? _footerStack : _itemsStack;
 
         if (!stack.Children.Contains(entry))
@@ -332,6 +366,7 @@ public sealed class NavigationView: CompositeControlBase
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current entries.</exception>
     internal void RemoveEntryAt(int index, bool isFooter)
     {
+        VerifyMutable();
         var stack = isFooter ? _footerStack : _itemsStack;
 
         if ((uint) index >= (uint) stack.Children.Count)
@@ -350,6 +385,7 @@ public sealed class NavigationView: CompositeControlBase
     /// </exception>
     internal void MoveEntry(int oldIndex, int newIndex, bool isFooter)
     {
+        VerifyMutable();
         var stack = isFooter ? _footerStack : _itemsStack;
 
         if ((uint) oldIndex >= (uint) stack.Children.Count)
@@ -379,6 +415,7 @@ public sealed class NavigationView: CompositeControlBase
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current entries.</exception>
     internal void ReplaceEntryAt(int index, ControlBase entry, bool isFooter)
     {
+        VerifyMutable();
         ValidateEntry(entry);
         var stack = isFooter ? _footerStack : _itemsStack;
 
@@ -453,7 +490,7 @@ public sealed class NavigationView: CompositeControlBase
         // set at this point.
         if (_navigator.Current is { IsDisposing: true } or { IsDisposed: true })
         {
-            _ = _navigator.SetCurrent(null);
+            _ = SetCurrent(null);
         }
 
         if (SelectedItem is { IsDisposing: true } or { IsDisposed: true })
@@ -491,7 +528,7 @@ public sealed class NavigationView: CompositeControlBase
     {
         if (repair.IsCurrentRemoved)
         {
-            _ = _navigator.SetCurrent(null);
+            _ = SetCurrent(null);
         }
 
         if (repair.IsSelectedRemoved)
@@ -505,22 +542,24 @@ public sealed class NavigationView: CompositeControlBase
 
     private void ConfigureEntry(LayoutStack stack, ControlBase entry, long presentationVersion)
     {
+        entry.IsFocusable = false;
+
+        if (!IsCommitted(stack, entry, presentationVersion))
+        {
+            return;
+        }
+
+        entry.IsTabStop = false;
+
+        if (!IsCommitted(stack, entry, presentationVersion))
+        {
+            return;
+        }
+
+        entry.PropertyChanged += OnEntryFocusPolicyChanged;
+
         if (entry is NavigationViewItem item)
         {
-            item.IsFocusable = false;
-
-            if (!IsCommitted(stack, entry, presentationVersion))
-            {
-                return;
-            }
-
-            item.IsTabStop = false;
-
-            if (!IsCommitted(stack, entry, presentationVersion))
-            {
-                return;
-            }
-
             item.Invoked += OnItemInvoked;
         }
         else if (entry is NavigationViewGroup group)
@@ -537,6 +576,8 @@ public sealed class NavigationView: CompositeControlBase
 
     private void UnsubscribeEntry(ControlBase entry)
     {
+        entry.PropertyChanged -= OnEntryFocusPolicyChanged;
+
         if (entry is NavigationViewItem item)
         {
             item.Invoked -= OnItemInvoked;
@@ -544,6 +585,63 @@ public sealed class NavigationView: CompositeControlBase
         else if (entry is NavigationViewGroup group)
         {
             group.VisibilityChanged -= OnGroupVisibilityChanged;
+        }
+    }
+
+    private void OnEntryFocusPolicyChanged(
+        object? sender,
+        System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    {
+        if (_isWritingEntryFocusPolicy ||
+            sender is not ControlBase entry ||
+            !_requestedPresentations.TryGetValue(entry, out var presentation))
+        {
+            return;
+        }
+
+        if (eventArgs.PropertyName == nameof(IsFocusable))
+        {
+            _requestedPresentations[entry] = presentation.WithFocusable(entry.IsFocusable);
+
+            if (entry.IsFocusable)
+            {
+                WriteEntryFocusPolicy(entry, isFocusable: true);
+            }
+        }
+        else if (eventArgs.PropertyName == nameof(IsTabStop))
+        {
+            _requestedPresentations[entry] = presentation.WithTabStop(entry.IsTabStop);
+
+            if (entry.IsTabStop)
+            {
+                WriteEntryFocusPolicy(entry, isFocusable: false);
+            }
+        }
+    }
+
+    private void WriteEntryFocusPolicy(ControlBase entry, bool isFocusable)
+    {
+        if (entry.IsDisposed || entry.IsDisposing)
+        {
+            return;
+        }
+
+        _isWritingEntryFocusPolicy = true;
+
+        try
+        {
+            if (isFocusable)
+            {
+                entry.IsFocusable = false;
+            }
+            else
+            {
+                entry.IsTabStop = false;
+            }
+        }
+        finally
+        {
+            _isWritingEntryFocusPolicy = false;
         }
     }
 
@@ -561,22 +659,23 @@ public sealed class NavigationView: CompositeControlBase
 
     private static void RestorePresentation(ControlBase entry, NavigationEntryPresentation presentation)
     {
-        if (entry is not NavigationViewItem { Parent: null, IsDisposed: false, IsDisposing: false } item)
+        if (entry.Parent is not null || entry.IsDisposed || entry.IsDisposing)
         {
             return;
         }
 
-        item.IsFocusable = presentation.IsFocusable;
+        entry.IsFocusable = presentation.IsFocusable;
 
-        if (!item.IsDisposed && !item.IsDisposing)
+        if (!entry.IsDisposed && !entry.IsDisposing)
         {
-            item.IsTabStop = presentation.IsTabStop;
+            entry.IsTabStop = presentation.IsTabStop;
         }
     }
 
     /// <summary>Clears all entries in a section.</summary>
     internal void ClearEntries(bool isFooter)
     {
+        VerifyMutable();
         var stack = isFooter ? _footerStack : _itemsStack;
         var repair = PrepareRemoval(stack);
         var entries = stack.Children.ToArray();
@@ -618,7 +717,7 @@ public sealed class NavigationView: CompositeControlBase
     internal void NotifyItemFocused(NavigationViewItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        _ = _navigator.SetCurrent(item);
+        _ = SetCurrent(item);
         Select(item);
     }
 
@@ -631,7 +730,7 @@ public sealed class NavigationView: CompositeControlBase
 
         if (ReferenceEquals(item.FindNavigationView(), this))
         {
-            _ = _navigator.SetCurrent(item);
+            _ = SetCurrent(item);
             Select(item);
         }
     }
@@ -653,7 +752,7 @@ public sealed class NavigationView: CompositeControlBase
             return false;
         }
 
-        _ = _navigator.SetCurrent(item);
+        _ = SetCurrent(item);
 
         if (!ReferenceEquals(item.FindNavigationView(), this))
         {
@@ -697,7 +796,7 @@ public sealed class NavigationView: CompositeControlBase
     internal void NotifyGroupInvoked(NavigationViewGroup group)
     {
         ArgumentNullException.ThrowIfNull(group);
-        _ = _navigator.SetCurrent(group);
+        _ = SetCurrent(group);
     }
 
     /// <summary>Repairs selection after a retained group's own visibility changes, or after it
@@ -716,7 +815,7 @@ public sealed class NavigationView: CompositeControlBase
         if (_navigator.Current is { } current &&
             (ReferenceEquals(current, group) || IsDescendantOf(current, group)))
         {
-            _ = _navigator.SetCurrent(IsAvailable(group) ? group : null);
+            _ = SetCurrent(IsAvailable(group) ? group : null);
         }
 
         if (SelectedItem is null || IsAvailable(SelectedItem))
@@ -758,7 +857,7 @@ public sealed class NavigationView: CompositeControlBase
             if (endpoints.Count > 0)
             {
                 var target = eventArgs.Stroke.Code == Code.Home ? endpoints[0] : endpoints[^1];
-                _ = _navigator.SetCurrent(target);
+                _ = SetCurrent(target);
                 CommitCurrent(target);
                 eventArgs.IsHandled = true;
             }
@@ -776,7 +875,7 @@ public sealed class NavigationView: CompositeControlBase
             if (entries.Count > 0)
             {
                 var target = StepPage(entries, eventArgs.Stroke.Code == Code.PageDown ? 1 : -1);
-                _ = _navigator.SetCurrent(target);
+                _ = SetCurrent(target);
                 CommitCurrent(target);
                 eventArgs.IsHandled = true;
             }
@@ -819,7 +918,7 @@ public sealed class NavigationView: CompositeControlBase
 
             _requestedPresentations.Clear();
             SelectionChanged = null;
-            _ = _navigator.SetCurrent(null);
+            _ = SetCurrent(null);
             Select(null);
         }
     }
@@ -851,7 +950,7 @@ public sealed class NavigationView: CompositeControlBase
     {
         if (_navigator.Current is { } stale && !IsAvailable(stale))
         {
-            _ = _navigator.SetCurrent(null);
+            _ = SetCurrent(null);
         }
 
         if (_navigator.Current is null)
@@ -863,7 +962,7 @@ public sealed class NavigationView: CompositeControlBase
                 return false;
             }
 
-            _ = _navigator.SetCurrent(entries[0]);
+            _ = SetCurrent(entries[0]);
         }
 
         if (_navigator.Current is NavigationViewGroup group && IsAvailable(group))
@@ -888,9 +987,63 @@ public sealed class NavigationView: CompositeControlBase
             Select(item);
         }
 
-        if (IsDescendantOf(current, _itemsStack))
+        TrackCurrent(current);
+    }
+
+    private bool SetCurrent(ControlBase? current)
+    {
+        var changed = _navigator.SetCurrent(current);
+        TrackCurrent(current);
+        return changed;
+    }
+
+    private void TrackCurrent(ControlBase? current)
+    {
+        if (!ReferenceEquals(_navigator.Current, current))
         {
-            _ = _itemsStack.BringIntoView(current);
+            return;
+        }
+
+        if (!ReferenceEquals(_trackedCurrent, current))
+        {
+            _trackedCurrent?.BoundsChanged -= OnCurrentBoundsChanged;
+
+            _trackedCurrent = current;
+
+            _trackedCurrent?.BoundsChanged += OnCurrentBoundsChanged;
+        }
+
+        if (current is not null && !current.IsDisposed && !current.IsDisposing)
+        {
+            _ = RevealEntry(current);
+        }
+    }
+
+    private bool RevealEntry(ControlBase entry)
+    {
+        return IsDescendantOf(entry, _itemsStack)
+            ? _itemsStack.BringIntoView(entry)
+            : IsDescendantOf(entry, _footerStack) && _footerStack.BringIntoView(entry);
+    }
+
+    private void OnCurrentBoundsChanged(object? sender, EventArgs eventArgs)
+    {
+        _ = eventArgs;
+
+        if (sender is ControlBase current && ReferenceEquals(current, _navigator.Current))
+        {
+            _ = RevealEntry(current);
+        }
+    }
+
+    private void OnNavigationHostBoundsChanged(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+
+        if (_navigator.Current is { IsDisposed: false, IsDisposing: false } current)
+        {
+            _ = RevealEntry(current);
         }
     }
 
@@ -967,14 +1120,14 @@ public sealed class NavigationView: CompositeControlBase
         {
             if (ReferenceEquals(_navigator.Current, SelectedItem))
             {
-                _ = _navigator.SetCurrent(null);
+                _ = SetCurrent(null);
             }
 
             return;
         }
 
         var replacement = FindAvailableAdjacentTo(SelectedItem);
-        _ = _navigator.SetCurrent(replacement);
+        _ = SetCurrent(replacement);
         Select(replacement);
     }
 

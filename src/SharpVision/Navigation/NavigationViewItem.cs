@@ -44,12 +44,24 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
     protected override string? AccessKeyText => Text;
 
     /// <summary>Gets or sets an optional glyph prefix shown before the header.</summary>
+    /// <exception cref="ArgumentException">The value contains a terminal control character.</exception>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
     public string? Glyph
     {
         get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        set
+        {
+            if (value is not null)
+            {
+                ArgumentException.ThrowIfContainsControls(
+                    value,
+                    nameof(value),
+                    "A navigation item glyph cannot contain terminal controls.");
+            }
+
+            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        }
     }
 
     /// <summary>Gets whether this entry is the navigation view's selected item.</summary>

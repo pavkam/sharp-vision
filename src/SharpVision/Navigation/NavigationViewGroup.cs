@@ -17,6 +17,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     private readonly Dictionary<NavigationViewItem, NavigationItemPresentation> _requestedPresentations = [];
     private readonly PressBehavior _press;
     private readonly StyleSlot<NavigationViewGroupStyle> _style;
+    private bool _isWritingItemFocusPolicy;
     private long _presentationVersion;
 
     /// <summary>Initializes an expanded navigation group with no header.</summary>
@@ -112,6 +113,9 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     /// <summary>Gets the retained authored-presentation count used to prove metadata retires with ownership.</summary>
     internal int RequestedPresentationCount => _requestedPresentations.Count;
 
+    /// <summary>Verifies the owner before a public collection validates candidate-specific state.</summary>
+    internal void VerifyMutation() => VerifyMutable();
+
     /// <summary>Gets one sub-item by index.</summary>
     internal NavigationViewItem ItemAt(int index) => (NavigationViewItem) _stack.Children[index];
 
@@ -119,6 +123,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
     internal void AddItemCore(NavigationViewItem item)
     {
+        VerifyMutable();
         ArgumentNullException.ThrowIfNull(item);
 
         // Ownership is secured before any authored property is captured or
@@ -140,6 +145,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
 
     private bool RemoveItemCore(NavigationViewItem item, bool restorePresentation)
     {
+        VerifyMutable();
         ArgumentNullException.ThrowIfNull(item);
 
         if (!_stack.Children.Contains(item))
@@ -155,6 +161,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
         var presentation = TakePresentation(item);
 
         _ = _stack.Children.Remove(item);
+        item.PropertyChanged -= OnItemFocusPolicyChanged;
         item.Invoked -= OnItemInvoked;
 
         if (repair is { } value)
@@ -178,6 +185,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     /// <summary>Clears all sub-items.</summary>
     internal void ClearItemsCore()
     {
+        VerifyMutable();
         var owner = FindNavigationView();
         var repair = owner?.PrepareRemoval(this);
         var items = _stack.Children.OfType<NavigationViewItem>().ToArray();
@@ -195,6 +203,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
 
         foreach (var item in items)
         {
+            item.PropertyChanged -= OnItemFocusPolicyChanged;
             item.Invoked -= OnItemInvoked;
         }
 
@@ -228,7 +237,65 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
             return;
         }
 
+        item.PropertyChanged += OnItemFocusPolicyChanged;
         item.Invoked += OnItemInvoked;
+    }
+
+    private void OnItemFocusPolicyChanged(
+        object? sender,
+        System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    {
+        if (_isWritingItemFocusPolicy ||
+            sender is not NavigationViewItem item ||
+            !_requestedPresentations.TryGetValue(item, out var presentation))
+        {
+            return;
+        }
+
+        if (eventArgs.PropertyName == nameof(IsFocusable))
+        {
+            _requestedPresentations[item] = presentation.WithFocusable(item.IsFocusable);
+
+            if (item.IsFocusable)
+            {
+                WriteItemFocusPolicy(item, isFocusable: true);
+            }
+        }
+        else if (eventArgs.PropertyName == nameof(IsTabStop))
+        {
+            _requestedPresentations[item] = presentation.WithTabStop(item.IsTabStop);
+
+            if (item.IsTabStop)
+            {
+                WriteItemFocusPolicy(item, isFocusable: false);
+            }
+        }
+    }
+
+    private void WriteItemFocusPolicy(NavigationViewItem item, bool isFocusable)
+    {
+        if (item.IsDisposed || item.IsDisposing)
+        {
+            return;
+        }
+
+        _isWritingItemFocusPolicy = true;
+
+        try
+        {
+            if (isFocusable)
+            {
+                item.IsFocusable = false;
+            }
+            else
+            {
+                item.IsTabStop = false;
+            }
+        }
+        finally
+        {
+            _isWritingItemFocusPolicy = false;
+        }
     }
 
     [Pure]
@@ -255,7 +322,6 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     /// <summary>Retires descendant snapshots before owner-driven disposal skips direct child hooks.</summary>
     internal void RetirePresentationMetadataForOwnerDisposal() => _requestedPresentations.Clear();
 
-    /// <inheritdoc/>
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {

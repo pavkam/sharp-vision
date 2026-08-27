@@ -53,6 +53,33 @@ public sealed class NavigationViewItemTests
         item.Pending.ShouldBe(Invalidation.All);
     }
 
+    /// <summary>Verifies optional glyph text rejects every terminal cursor-control family before mutation.</summary>
+    [Theory]
+    [InlineData("X\nY")]
+    [InlineData("X\rY")]
+    [InlineData("X\tY")]
+    [InlineData("X\u001bY")]
+    public void Glyph_WhenValueContainsTerminalControl_ThrowsBeforeMutation(string glyph)
+    {
+        var item = new NavigationViewItem { Glyph = "界" };
+
+        _ = Should.Throw<ArgumentException>(() => item.Glyph = glyph);
+
+        item.Glyph.ShouldBe("界");
+    }
+
+    /// <summary>Verifies printable multi-cell and grapheme glyph text remains accepted unchanged.</summary>
+    [Theory]
+    [InlineData("界")]
+    [InlineData("👩‍💻")]
+    [InlineData("é")]
+    public void Glyph_WhenValueIsPrintableUnicode_RoundTrips(string glyph)
+    {
+        var item = new NavigationViewItem { Glyph = glyph };
+
+        item.Glyph.ShouldBe(glyph);
+    }
+
     /// <summary>Verifies a local Style round-trips through both Style and the resolved
     /// ActualStyle, and clearing it releases the item back to theme ownership.</summary>
     [Fact]

@@ -31,6 +31,7 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
         get => _owner.GetItem(index, _isFooter);
         set
         {
+            _owner.VerifyMutation();
             ArgumentNullException.ThrowIfNull(value);
             _owner.ReplaceEntryAt(index, value, _isFooter);
         }
@@ -42,6 +43,7 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <summary>Adds one detached navigation item.</summary>
     public void Add(NavigationViewItem item)
     {
+        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(item);
         _owner.AddEntry(item, _isFooter);
     }
@@ -49,6 +51,7 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <summary>Adds one detached navigation group.</summary>
     public void Add(NavigationViewGroup group)
     {
+        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(group);
         _owner.AddEntry(group, _isFooter);
     }
@@ -56,6 +59,7 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <summary>Adds one detached separator.</summary>
     public void Add(NavigationViewSeparator separator)
     {
+        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(separator);
         _owner.AddEntry(separator, _isFooter);
     }
@@ -64,6 +68,7 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
     public void Insert(int index, NavigationViewItem item)
     {
+        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(item);
         _owner.InsertEntry(index, item, _isFooter);
     }
@@ -72,6 +77,7 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
     public void Insert(int index, NavigationViewGroup group)
     {
+        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(group);
         _owner.InsertEntry(index, group, _isFooter);
     }
@@ -80,6 +86,7 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
     public void Insert(int index, NavigationViewSeparator separator)
     {
+        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(separator);
         _owner.InsertEntry(index, separator, _isFooter);
     }
@@ -87,6 +94,7 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <summary>Removes one owned item.</summary>
     public bool Remove(NavigationViewItem item)
     {
+        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(item);
         return _owner.RemoveEntry(item, _isFooter);
     }
@@ -94,6 +102,7 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <summary>Removes one owned group.</summary>
     public bool Remove(NavigationViewGroup group)
     {
+        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(group);
         return _owner.RemoveEntry(group, _isFooter);
     }
@@ -101,19 +110,28 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <summary>Removes one owned separator.</summary>
     public bool Remove(NavigationViewSeparator separator)
     {
+        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(separator);
         return _owner.RemoveEntry(separator, _isFooter);
     }
 
     /// <summary>Removes the owned entry at a position.</summary>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current entries.</exception>
-    public void RemoveAt(int index) => _owner.RemoveEntryAt(index, _isFooter);
+    public void RemoveAt(int index)
+    {
+        _owner.VerifyMutation();
+        _owner.RemoveEntryAt(index, _isFooter);
+    }
 
     /// <summary>Moves one owned entry to a different position, preserving its identity.</summary>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="oldIndex"/> or <paramref name="newIndex"/> is outside the current entries.
     /// </exception>
-    public void Move(int oldIndex, int newIndex) => _owner.MoveEntry(oldIndex, newIndex, _isFooter);
+    public void Move(int oldIndex, int newIndex)
+    {
+        _owner.VerifyMutation();
+        _owner.MoveEntry(oldIndex, newIndex, _isFooter);
+    }
 
     /// <summary>Gets the position of one entry, or -1 when it is not owned by this section.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
@@ -124,7 +142,11 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     }
 
     /// <summary>Removes every owned item.</summary>
-    public void Clear() => _owner.ClearEntries(_isFooter);
+    public void Clear()
+    {
+        _owner.VerifyMutation();
+        _owner.ClearEntries(_isFooter);
+    }
 
     /// <inheritdoc/>
     public IEnumerator<ControlBase> GetEnumerator()

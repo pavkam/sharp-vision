@@ -6,6 +6,31 @@ namespace SharpVision.Tests.Navigation;
 /// <summary>Verifies NavigationView composition, selection, groups, scrolling, mutation, Unicode, and resize through mounted surfaces.</summary>
 public sealed class NavigationViewSurfaceTests
 {
+    /// <summary>Verifies an offscreen item mnemonic makes its target current, selected, and visible.</summary>
+    [Fact]
+    public async Task AccessKey_WhenOffscreenItemMatches_RevealsSelectedTargetAsync()
+    {
+        var view = CreateView(header: null, 14);
+
+        for (var index = 0; index < 10; index++)
+        {
+            view.Items.Add(new NavigationViewItem { Text = $"Item {index}" });
+        }
+
+        var target = new NavigationViewItem { Text = "&Zoom" };
+        view.Items.Add(target);
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(14, 4),
+            TestContext.Current.CancellationToken);
+
+        await surface.SendAsync("\x1b[122;3:1u"u8.ToArray(), "Alt+Z");
+
+        view.SelectedItem.ShouldBeSameAs(target);
+        view.VerticalOffset.ShouldBeGreaterThan(0);
+        surface.ShouldHaveFocus(view);
+    }
+
     /// <summary>Verifies inactive and hovered items preserve the NavigationView background.</summary>
     [Fact]
     public async Task Pointer_WhenMovedOverItem_ChangesForegroundWithoutPaintingBackgroundAsync()

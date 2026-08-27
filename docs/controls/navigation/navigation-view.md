@@ -68,6 +68,10 @@ classDiagram
   ownership or the existing entry's forwarding and focus policy.
 - Moving an entry within either collection reorders the existing identity
   without detaching, reparenting, blurring, or reattaching it.
+- Every public collection mutation verifies the owning view or group on its
+  dispatcher before null, index, membership, identity, or no-op checks. A
+  rejected off-dispatcher call cannot inspect or partially change collection
+  state.
 - Entry insertion and replacement apply the view's focus policy transactionally.
   If a focus-property callback removes, clears, replaces, or disposes the
   incoming entry, that newer ownership snapshot wins and the interrupted
@@ -75,6 +79,10 @@ classDiagram
 - Removal and clear detach their complete entry snapshot and repair selection
   before restoring caller-authored focus properties. Restoration callbacks may
   safely begin another collection mutation against the committed state.
+- While owned, every item, group, separator, and grouped item remains
+  non-focusable and outside the tab order. Attempts to change either focus flag
+  are retained as the latest authored policy, normalized immediately, and
+  restored when the entry is detached.
 - `SelectItem` rejects null, unavailable items, and items owned by another
   navigation view.
 - `SelectionChanged` fires after a committed selection change. If an
@@ -89,11 +97,17 @@ separators. PageUp and PageDown move by as many entries as fill the committed
 viewport height minus `PageOverlap`, and they are handled even when the cursor
 cannot move any further, so the key never escapes to page an enclosing
 scrollable container. Home and End move to the first or last available entry.
-The current entry scrolls into view automatically. Enter and Space toggle a
-current group or invoke a current item without transferring focus, firing once
-per key hold and only with activation-eligible modifiers, while the navigation
-keys repeat while held. When no entry is current, activation first establishes
-the first available entry and then applies its action.
+The current entry scrolls into view automatically after keyboard navigation,
+programmatic selection, invocation, access-key activation, structural changes,
+group expansion, and viewport resize. The main and footer sections each use a
+bounded private vertical viewport; an overflowing footer remains visually pinned
+while its current descendant is revealed without exposing a second public scroll
+surface. `BringItemIntoView` accepts direct or grouped items from either section
+and returns whether an owning offset changed. Enter and Space toggle a current
+group or invoke a current item without transferring focus, firing once per key
+hold and only with activation-eligible modifiers, while the navigation keys
+repeat while held. When no entry is current, activation first establishes the
+first available entry and then applies its action.
 
 An entry that becomes hidden cannot remain selected or current. An entry that
 becomes disabled may retain its selected identity, but it immediately loses
@@ -124,7 +138,7 @@ otherwise. Pointer or programmatic selection updates the owning
 | Member                       | Type                                | Default        | Description                                                                                                |
 | ---------------------------- | ----------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------- |
 | Inherited `Text`             | `string`                            | `""`           | The label text.                                                                                            |
-| `Glyph`                      | `string?`                           | `null`         | An optional prefix shown before the label.                                                                 |
+| `Glyph`                      | `string?`                           | `null`         | An optional printable Unicode prefix shown before the label; terminal controls are rejected.               |
 | `IsSelected`                 | `bool`                              | `false`        | Read-only; whether this entry is the navigation view's selected item.                                      |
 | `StartAffix`                 | `Affix?`                            | `null`         | Optional leading edge-pinned decoration, reserved after the marker and glyph prefix and outside the label. |
 | `EndAffix`                   | `Affix?`                            | `null`         | Optional trailing edge-pinned decoration, reserved outside the label at the content box's far edge.        |
@@ -228,7 +242,8 @@ Ampersands in item and group headers declare
 [access keys](../../concepts/access-keys.md#focus-and-semantic-actions). An item
 mnemonic focuses the view, makes that item current, and invokes and selects it.
 A group mnemonic focuses the view, makes the group current, and toggles its
-expansion.
+expansion. Both paths reveal an offscreen matched entry before the next settled
+frame.
 
 ## Expected behavior
 

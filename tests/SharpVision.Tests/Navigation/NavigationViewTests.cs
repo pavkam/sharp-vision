@@ -1758,6 +1758,88 @@ public sealed class NavigationViewTests
         nav.VerticalOffset.ShouldBeGreaterThan(0);
     }
 
+    /// <summary>Verifies selection, invocation, insertion, group expansion, and resize all keep
+    /// the unchanged current main entry minimally revealed after settled layout.</summary>
+    [Theory]
+    [InlineData("select")]
+    [InlineData("invoke")]
+    [InlineData("insert")]
+    [InlineData("expand")]
+    [InlineData("resize")]
+    public void CurrentEntry_WhenChangedOrReflowed_RemainsRevealed(string operation)
+    {
+        var nav = new NavigationView();
+        var group = new NavigationViewGroup { Header = "Group", IsExpanded = false };
+        group.Items.Add(new NavigationViewItem { Text = "Child A" });
+        group.Items.Add(new NavigationViewItem { Text = "Child B" });
+        nav.Items.Add(group);
+        var items = Enumerable.Range(0, 8)
+            .Select(index => new NavigationViewItem { Text = $"Item {index}" })
+            .ToArray();
+
+        foreach (var item in items)
+        {
+            nav.Items.Add(item);
+        }
+
+        var layout = new LayoutEngine();
+        layout.Layout(nav, new Size(12, operation == "resize" ? 12 : 4));
+
+        if (operation == "invoke")
+        {
+            items[^1].PerformInvoke();
+        }
+        else
+        {
+            nav.SelectItem(items[^1]);
+        }
+
+        if (operation == "insert")
+        {
+            nav.VerticalOffset = 0;
+            nav.Items.Insert(0, new NavigationViewItem { Text = "Inserted" });
+        }
+        else if (operation == "expand")
+        {
+            nav.VerticalOffset = 0;
+            group.IsExpanded = true;
+        }
+
+        layout.Layout(nav, new Size(12, 4));
+
+        nav.SelectedItem.ShouldBeSameAs(items[^1]);
+        nav.VerticalOffset.ShouldBeGreaterThan(0);
+    }
+
+    /// <summary>Verifies direct and grouped footer entries use the owning view's bounded footer
+    /// exposure path, while already-visible pinned entries remain successful no-ops.</summary>
+    [Fact]
+    public void BringItemIntoView_WhenFooterOverflows_RevealsDirectAndGroupedOwnedItems()
+    {
+        var nav = new NavigationView();
+        var first = new NavigationViewItem { Text = "First" };
+        nav.FooterItems.Add(first);
+
+        for (var index = 0; index < 8; index++)
+        {
+            nav.FooterItems.Add(new NavigationViewItem { Text = $"Footer {index}" });
+        }
+
+        var group = new NavigationViewGroup { Header = "Group" };
+        var grouped = new NavigationViewItem { Text = "Grouped" };
+        group.Items.Add(grouped);
+        nav.FooterItems.Add(group);
+
+        var layout = new LayoutEngine();
+        layout.Layout(nav, new Size(12, 4));
+
+        _ = nav.BringItemIntoView(first);
+        layout.Layout(nav, new Size(12, 4));
+        nav.BringItemIntoView(first).ShouldBeFalse();
+        nav.BringItemIntoView(grouped).ShouldBeTrue();
+        nav.FooterVerticalOffset.ShouldBeGreaterThan(0);
+    }
+
     /// <summary>Verifies BringItemIntoView validates its argument like the underlying container does.</summary>
     [Fact]
     public void BringItemIntoView_WhenItemIsNull_ThrowsArgumentNullException()
@@ -1805,6 +1887,140 @@ public sealed class NavigationViewTests
         await dispatcher.InvokeAsync(() => nav.Attach(dispatcher), TestContext.Current.CancellationToken);
 
         _ = Should.Throw<InvalidOperationException>(() => nav.BringItemIntoView(item));
+    }
+
+    /// <summary>Verifies every view selection and collection mutation checks owner affinity before
+    /// changed, same-identity, same-index, or foreign membership paths.</summary>
+    [Fact]
+    public async Task Mutation_WhenAttachedOffThread_RejectsBeforeAnyNavigationStateChangesAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var first = new NavigationViewItem { Text = "First" };
+        var second = new NavigationViewItem { Text = "Second" };
+        var foreign = new NavigationViewItem { Text = "Foreign" };
+        var nav = new NavigationView();
+        nav.Items.Add(first);
+        nav.Items.Add(second);
+        nav.SelectItem(first);
+        await dispatcher.InvokeAsync(() => nav.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => nav.SelectItem(first));
+        _ = Should.Throw<InvalidOperationException>(() => nav.SelectItem(second));
+        _ = Should.Throw<InvalidOperationException>(() => nav.Items[0] = first);
+        _ = Should.Throw<InvalidOperationException>(() => nav.Items[0] = new NavigationViewItem { Text = "Replacement" });
+        _ = Should.Throw<InvalidOperationException>(() => nav.Items.Move(0, 0));
+        _ = Should.Throw<InvalidOperationException>(() => nav.Items.Move(0, 1));
+        _ = Should.Throw<InvalidOperationException>(() => nav.Items.Remove(foreign));
+        _ = Should.Throw<InvalidOperationException>(() => nav.Items.Remove(first));
+        _ = Should.Throw<InvalidOperationException>(() => nav.Items.Insert(0, new NavigationViewItem { Text = "Inserted" }));
+        _ = Should.Throw<InvalidOperationException>(nav.Items.Clear);
+
+        nav.Items.ShouldBe([first, second]);
+        nav.SelectedItem.ShouldBeSameAs(first);
+        first.IsSelected.ShouldBeTrue();
+        second.IsSelected.ShouldBeFalse();
+        nav.RequestedPresentationCount.ShouldBe(2);
+    }
+
+    /// <summary>Verifies grouped collection mutations check group affinity before changed and
+    /// no-op membership paths.</summary>
+    [Fact]
+    public async Task GroupMutation_WhenAttachedOffThread_RejectsBeforeAnyOwnershipChangesAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var first = new NavigationViewItem { Text = "First" };
+        var foreign = new NavigationViewItem { Text = "Foreign" };
+        var group = new NavigationViewGroup { Header = "Group" };
+        group.Items.Add(first);
+        await dispatcher.InvokeAsync(() => group.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => group.Items.Remove(foreign));
+        _ = Should.Throw<InvalidOperationException>(() => group.Items.Remove(first));
+        _ = Should.Throw<InvalidOperationException>(() => group.Items.Add(new NavigationViewItem { Text = "Added" }));
+        _ = Should.Throw<InvalidOperationException>(group.Items.Clear);
+
+        group.Items.ShouldBe([first]);
+        group.RequestedPresentationCount.ShouldBe(1);
+    }
+
+    /// <summary>Verifies every top-level entry kind remains non-focusable while owned and restores
+    /// the latest caller-authored focus policy after removal.</summary>
+    [Theory]
+    [InlineData("item")]
+    [InlineData("group")]
+    [InlineData("separator")]
+    public void EntryFocusPolicy_WhenCallerOverridesOwnedEntry_NormalizesAndRestoresLatestRequest(string kind)
+    {
+        ControlBase entry = kind switch
+        {
+            "item" => new NavigationViewItem { Text = "Item" },
+            "group" => new NavigationViewGroup { Header = "Group" },
+            "separator" => new NavigationViewSeparator(),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown navigation entry kind."),
+        };
+        entry.IsFocusable = true;
+        entry.IsTabStop = true;
+        var nav = new NavigationView();
+
+        if (entry is NavigationViewItem item)
+        {
+            nav.Items.Add(item);
+        }
+        else if (entry is NavigationViewGroup group)
+        {
+            nav.Items.Add(group);
+        }
+        else
+        {
+            nav.Items.Add((NavigationViewSeparator) entry);
+        }
+
+        entry.IsFocusable.ShouldBeFalse();
+        entry.IsTabStop.ShouldBeFalse();
+
+        entry.IsFocusable = true;
+        entry.IsTabStop = true;
+
+        entry.IsFocusable.ShouldBeFalse();
+        entry.IsTabStop.ShouldBeFalse();
+
+        if (entry is NavigationViewItem ownedItem)
+        {
+            nav.Items.Remove(ownedItem).ShouldBeTrue();
+        }
+        else if (entry is NavigationViewGroup ownedGroup)
+        {
+            nav.Items.Remove(ownedGroup).ShouldBeTrue();
+        }
+        else
+        {
+            nav.Items.Remove((NavigationViewSeparator) entry).ShouldBeTrue();
+        }
+
+        entry.IsFocusable.ShouldBeTrue();
+        entry.IsTabStop.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies grouped items normalize owned focus writes and restore the latest authored policy.</summary>
+    [Fact]
+    public void GroupItemFocusPolicy_WhenCallerOverridesOwnedItem_NormalizesAndRestoresLatestRequest()
+    {
+        var item = new NavigationViewItem { Text = "Item", IsFocusable = true, IsTabStop = true };
+        var group = new NavigationViewGroup { Header = "Group" };
+        group.Items.Add(item);
+
+        item.IsFocusable.ShouldBeFalse();
+        item.IsTabStop.ShouldBeFalse();
+
+        item.IsFocusable = true;
+        item.IsTabStop = true;
+
+        item.IsFocusable.ShouldBeFalse();
+        item.IsTabStop.ShouldBeFalse();
+
+        group.Items.Remove(item).ShouldBeTrue();
+        item.IsFocusable.ShouldBeTrue();
+        item.IsTabStop.ShouldBeTrue();
     }
 
     /// <summary>Verifies an item header carrying a terminal control character is rejected instead of
