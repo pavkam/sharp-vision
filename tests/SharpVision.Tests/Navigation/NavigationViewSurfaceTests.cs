@@ -41,6 +41,82 @@ public sealed class NavigationViewSurfaceTests
         // Assert
         firstOffset.ShouldBe(1);
         secondOffset.ShouldBe(2);
+        view.SelectedItem.ShouldBeSameAs(items[0]);
+    }
+
+    /// <summary>Verifies reverse wheel scrolling can move the last current item below the viewport
+    /// without its translated bounds revealing it again.</summary>
+    [Fact]
+    public async Task Wheel_WhenLastCurrentItemLeavesViewport_ProgressesUpWithoutRevealOscillationAsync()
+    {
+        // Arrange
+        var view = new NavigationView
+        {
+            Height = Length.Cells(4),
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        var items = Enumerable.Range(0, 10)
+            .Select(index => new NavigationViewItem { Text = $"Item {index}" })
+            .ToArray();
+
+        foreach (var item in items)
+        {
+            view.Items.Add(item);
+        }
+
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(16, 4),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => view.SelectItem(items[^1]), "select last navigation item");
+        var startingOffset = view.VerticalOffset;
+        startingOffset.ShouldBeGreaterThan(1);
+
+        // Act
+        await surface.Pointer.WheelAsync(view, default, wheelY: 1);
+        var firstOffset = view.VerticalOffset;
+        await surface.Pointer.WheelAsync(view, default, wheelY: 1);
+        var secondOffset = view.VerticalOffset;
+
+        // Assert
+        firstOffset.ShouldBe(startingOffset - 1);
+        secondOffset.ShouldBe(startingOffset - 2);
+        view.SelectedItem.ShouldBeSameAs(items[^1]);
+    }
+
+    /// <summary>Verifies a multi-cell wheel step remains intentional when it moves the current row
+    /// outside the viewport.</summary>
+    [Fact]
+    public async Task Wheel_WhenLineSizeExceedsOne_MovesByConfiguredStepWithoutRevealingCurrentItemAsync()
+    {
+        // Arrange
+        var view = new NavigationView
+        {
+            Height = Length.Cells(4),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            LineSize = 3
+        };
+        var items = Enumerable.Range(0, 10)
+            .Select(index => new NavigationViewItem { Text = $"Item {index}" })
+            .ToArray();
+
+        foreach (var item in items)
+        {
+            view.Items.Add(item);
+        }
+
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(16, 4),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => view.SelectItem(items[0]), "select first navigation item");
+
+        // Act
+        await surface.Pointer.WheelAsync(view, default, wheelY: -1);
+
+        // Assert
+        view.VerticalOffset.ShouldBe(3);
+        view.SelectedItem.ShouldBeSameAs(items[0]);
     }
 
     /// <summary>Verifies fixed header and footer regions proxy wheel input to the main scroller,
@@ -76,14 +152,18 @@ public sealed class NavigationViewSurfaceTests
             outer,
             new Size(16, 5),
             TestContext.Current.CancellationToken);
+        var selected = (NavigationViewItem) view.Items[0];
+        await surface.UpdateAsync(() => view.SelectItem(selected), "select first navigation item");
 
         await surface.Pointer.WheelAsync(view, default, wheelY: -1);
         view.VerticalOffset.ShouldBeGreaterThan(0);
+        view.SelectedItem.ShouldBeSameAs(selected);
         await surface.UpdateAsync(() => view.VerticalOffset = 0, "reset main offset");
 
         await surface.Pointer.WheelAsync(footer, default, wheelY: -1);
         view.VerticalOffset.ShouldBeGreaterThan(0);
         outer.VerticalOffset.ShouldBe(0);
+        view.SelectedItem.ShouldBeSameAs(selected);
 
         await surface.UpdateAsync(
             () => view.VerticalOffset = view.Extent.Height - view.Viewport.Height,
@@ -91,6 +171,53 @@ public sealed class NavigationViewSurfaceTests
         await surface.Pointer.WheelAsync(footer, default, wheelY: -1);
 
         outer.VerticalOffset.ShouldBeGreaterThan(0);
+        view.SelectedItem.ShouldBeSameAs(selected);
+    }
+
+    /// <summary>Verifies a zero wheel step leaves the record unhandled so an enclosing scrollable
+    /// container can consume it without disturbing navigation state.</summary>
+    [Fact]
+    public async Task Wheel_WhenLineSizeIsZero_BubblesToOuterContainerAsync()
+    {
+        // Arrange
+        var view = new NavigationView
+        {
+            Height = Length.Cells(4),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            LineSize = 0
+        };
+        var items = Enumerable.Range(0, 10)
+            .Select(index => new NavigationViewItem { Text = $"Item {index}" })
+            .ToArray();
+
+        foreach (var item in items)
+        {
+            view.Items.Add(item);
+        }
+
+        var outer = new Stack
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            Children =
+            {
+                view,
+                new ControlText("Below") { Height = Length.Cells(8) }
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            outer,
+            new Size(16, 5),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => view.SelectItem(items[0]), "select first navigation item");
+
+        // Act
+        await surface.Pointer.WheelAsync(view, default, wheelY: -1);
+
+        // Assert
+        view.VerticalOffset.ShouldBe(0);
+        outer.VerticalOffset.ShouldBe(1);
+        view.SelectedItem.ShouldBeSameAs(items[0]);
     }
 
     /// <summary>Verifies clearing descendants preserves a still-owned current group and the next
