@@ -240,16 +240,16 @@ public sealed class ProtocolParserTests
             observation => observation.Final.ShouldBe((byte) 'q'));
     }
 
-    /// <summary>Verifies BEL is payload data rather than a DCS terminator.</summary>
+    /// <summary>Verifies BEL is forbidden DCS payload rather than a terminator.</summary>
     [Fact]
-    public void Parse_WhenDcsContainsBell_PreservesBellUntilSt()
+    public void Parse_WhenDcsContainsBell_ReportsMalformedAtSt()
     {
         using ProtocolParser parser = new();
         var sink = new RecordingSink();
 
         parser.Parse("\u001bPqa\ab\u001b\\"u8, ref sink);
 
-        sink.Observations.ShouldHaveSingleItem().Second.ShouldBe("a\ab"u8.ToArray());
+        sink.Observations.ShouldHaveSingleItem().Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.Malformed);
     }
 
     /// <summary>Verifies DCS state survives every possible transport split.</summary>
@@ -775,29 +775,65 @@ public sealed class ProtocolParserTests
             observation => observation.First.ShouldBe("payload"u8.ToArray()));
     }
 
-    /// <summary>Verifies BEL is data in non-OSC strings.</summary>
+    /// <summary>Verifies BEL is forbidden APC payload rather than an OSC-style terminator.</summary>
     [Fact]
-    public void Parse_WhenApcContainsBell_PreservesBellUntilSt()
+    public void Parse_WhenApcContainsBell_ReportsMalformedAtSt()
     {
         using ProtocolParser parser = new();
         var sink = new RecordingSink();
 
         parser.Parse("\u001b_a\ab\u001b\\"u8, ref sink);
 
-        sink.Observations.ShouldHaveSingleItem().First.ShouldBe("a\ab"u8.ToArray());
+        sink.Observations.ShouldHaveSingleItem().Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.Malformed);
     }
 
-    /// <summary>Verifies ESC followed by a non-backslash remains in the payload.</summary>
+    /// <summary>Verifies an embedded ESC that is not ST makes a command string malformed and the
+    /// parser recovers at its terminator before delivering following input.</summary>
     [Fact]
-    public void Parse_WhenStringContainsNonTerminatingEscape_PreservesBothBytes()
+    public void Parse_WhenStringContainsNonTerminatingEscape_ReportsMalformedAndRecovers()
     {
         using ProtocolParser parser = new();
         var sink = new RecordingSink();
 
-        parser.Parse("\u001b]2;a\u001bXb\u001b\\"u8, ref sink);
+        parser.Parse("\u001b]2;a\u001bXb\u001b\\Z"u8, ref sink);
 
-        sink.Observations.ShouldHaveSingleItem().First.ShouldBe(
-            "2;a\u001bXb"u8.ToArray());
+        sink.Observations.Count.ShouldBe(2);
+        sink.Observations[0].Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.Malformed);
+        sink.Observations[0].Diagnostic!.Value.Kind.ShouldBe(SequenceKind.Osc);
+        sink.Observations[1].First.ShouldBe("Z"u8.ToArray());
+    }
+
+    /// <summary>Verifies every command-string family rejects forbidden C0 payload bytes and
+    /// recovers at ST to deliver an adjacent valid CSI.</summary>
+    [Fact]
+    public void Parse_WhenCommandStringsContainForbiddenC0_ReportsMalformedAndRecoversEveryFamily()
+    {
+        byte[] introducers = [(byte) ']', (byte) 'P', (byte) '_', (byte) '^', (byte) 'X'];
+        byte[] forbidden = [0x00, 0x07, 0x0e, 0x1f, 0x7f];
+
+        foreach (var introducer in introducers)
+        {
+            foreach (var invalid in forbidden)
+            {
+                if (introducer == (byte) ']' && invalid == ControlBytes.Bell)
+                {
+                    continue;
+                }
+
+                using ProtocolParser parser = new();
+                var sink = new RecordingSink();
+                byte[] prefix = introducer == (byte) 'P'
+                    ? [0x1b, introducer, (byte) 'q', (byte) 'a']
+                    : [0x1b, introducer, (byte) 'a'];
+                byte[] input = [.. prefix, invalid, (byte) 'b', 0x1b, (byte) '\\', 0x1b, (byte) '[', (byte) 'A'];
+
+                parser.Parse(input, ref sink);
+
+                sink.Observations.Count.ShouldBe(2, $"introducer {introducer:x2}, byte {invalid:x2}");
+                sink.Observations[0].Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.Malformed);
+                sink.Observations[1].Type.ShouldBe("Csi");
+            }
+        }
     }
 
     /// <summary>Verifies CAN aborts a string and returns directly to text.</summary>

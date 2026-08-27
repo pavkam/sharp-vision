@@ -77,8 +77,8 @@ identity; that separate boundary is specified by the
 Kitty query or override evidence wins globally. Otherwise, one shared
 non-retained graphics backend preserves frame paint order while choosing sixel
 for compatible RGBA placements with exact metrics and query/override evidence,
-or iTerm2 multipart for compatible PNG placements with query- or override-origin
-support, version-narrowed to iTerm2 3.5 or newer.
+or iTerm2 multipart for compatible PNG placements with an explicit
+override-origin assertion of iTerm2 3.5-or-newer support.
 
 > [!NOTE]
 >

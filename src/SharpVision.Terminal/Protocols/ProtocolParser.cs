@@ -417,14 +417,14 @@ public sealed class ProtocolParser: IDisposable
     private void Process<TSink>(byte value, long currentOffset, ref TSink sink)
         where TSink : ISequenceSink
     {
-        if (value == 0x7f)
-        {
-            return;
-        }
-
         if (IsStringState)
         {
             ProcessString(value, currentOffset, ref sink);
+            return;
+        }
+
+        if (value == 0x7f)
+        {
             return;
         }
 
@@ -697,19 +697,12 @@ public sealed class ProtocolParser: IDisposable
                 return;
             }
 
-            if (!TryAppendPayload(ControlBytes.Escape, currentOffset))
-            {
-                ProcessStringIgnore(value, ref sink);
-                return;
-            }
-
-            if (value == ControlBytes.Escape)
-            {
-                _state = ParserState.StringEscape;
-                return;
-            }
-
-            _state = ParserState.StringPayload;
+            BeginStringIgnore(DiagnosticCode.Malformed, currentOffset - 1);
+            _discarded++;
+            _state = value == ControlBytes.Escape
+                ? ParserState.StringIgnoreEscape
+                : ParserState.StringIgnore;
+            return;
         }
 
         if (value == ControlBytes.Escape)
@@ -735,6 +728,15 @@ public sealed class ProtocolParser: IDisposable
                 BeginStringIgnore(DiagnosticCode.Malformed, currentOffset);
             }
 
+            return;
+        }
+
+        if (value < 0x08 ||
+            (value > 0x0d && value < 0x20) ||
+            value == 0x7f ||
+            (_limits.AcceptEightBitControls && value is >= 0x80 and <= 0x9f))
+        {
+            BeginStringIgnore(DiagnosticCode.Malformed, currentOffset);
             return;
         }
 

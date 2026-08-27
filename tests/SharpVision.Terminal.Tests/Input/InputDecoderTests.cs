@@ -991,18 +991,33 @@ public sealed class InputDecoderTests
     }
 
     /// <summary>
-    /// Verifies associated text carrying a control codepoint (e.g. Enter or Tab reported as
-    /// text alongside their key event) is accepted, not rejected as malformed.
+    /// Verifies Kitty-forbidden C0, DEL, and C1 associated-text scalars are rejected while space
+    /// remains valid text.
     /// </summary>
     [Theory]
-    [InlineData("\u001b[97;1;13u", 13)]
-    [InlineData("\u001b[97;1;9u", 9)]
-    public void Decode_WhenAssociatedTextIsAControlCodepoint_EmitsText(string input, int codepoint)
+    [InlineData(0)]
+    [InlineData(9)]
+    [InlineData(10)]
+    [InlineData(13)]
+    [InlineData(31)]
+    [InlineData(127)]
+    [InlineData(128)]
+    public void Decode_WhenAssociatedTextIsControlCodepoint_ReportsMalformed(int codepoint)
     {
-        var sink = Decode(Encoding.UTF8.GetBytes(input));
+        var sink = Decode(Encoding.UTF8.GetBytes($"\u001b[97;1;{codepoint}ux"));
+
+        _ = sink.Diagnostics.ShouldHaveSingleItem();
+        sink.Text.Single().Value.ShouldBe(new Rune('x'));
+    }
+
+    /// <summary>Verifies the first printable scalar remains accepted as associated text.</summary>
+    [Fact]
+    public void Decode_WhenAssociatedTextIsSpace_EmitsText()
+    {
+        var sink = Decode("\u001b[97;1;32u"u8.ToArray());
 
         sink.Diagnostics.ShouldBeEmpty();
-        sink.Text.Single().Value.ShouldBe(new Rune(codepoint));
+        sink.Text.Single().Value.ShouldBe(new Rune(' '));
     }
 
     // ── Edge cases and malformed ──────────────────────────────────────────
@@ -1169,6 +1184,26 @@ public sealed class InputDecoderTests
             sink.Strokes.Count.ShouldBe(1, $"split {split}");
             sink.Text.Count.ShouldBe(2, $"split {split}");
             sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
+    /// <summary>Verifies a forbidden associated-text scalar reports once and recovers at every
+    /// transport split before a following printable byte.</summary>
+    [Fact]
+    public void Decode_WhenControlAssociatedTextIsFragmented_RejectsAndRecoversAtEverySplit()
+    {
+        var bytes = "\u001b[97;1;9ux"u8.ToArray();
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink);
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+            decoder.Complete();
+
+            sink.Diagnostics.Count.ShouldBe(1, $"split {split}");
+            sink.Text.Single().Value.ShouldBe(new Rune('x'), $"split {split}");
         }
     }
 

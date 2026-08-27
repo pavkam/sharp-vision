@@ -64,11 +64,10 @@ Level3/Level5 Shift codes have no corresponding `Modifiers` bit, so no exclusion
 is needed for them.
 
 Impossible scalars, modifier values outside 1-256, event values outside 1-3,
-extra groups, DEL and C1 control codepoints (0x7F-0x9F) in associated text, and
-excessive text fields report one redacted diagnostic and recover to the next
-input. Other control codepoints — including Enter (13) and Tab (9) reported as a
-key's own associated text — pass through as text scalars unchanged. Legacy
-decoding remains active for terminals where
+extra groups, C0, DEL, and C1 control codepoints (below 0x20 and 0x7F-0x9F) in
+associated text, and excessive text fields report one redacted diagnostic and
+recover to the next input. Space and all other valid non-control scalars remain
+accepted. Legacy decoding remains active for terminals where
 [`QueryTracker`](device-attributes.md#kitty-keyboard-detection) does not prove
 support.
 
@@ -85,7 +84,7 @@ lifecycle tests own nesting and cleanup.
 - [Kitty comprehensive keyboard protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/)
   defines enhancement flags, CSI-u fields, functional keys, events, and text.
 
-Source accessed 2026-07-28.
+Source accessed 2026-08-27.
 
 ## Expected behavior
 

@@ -483,6 +483,7 @@ internal sealed class KittyKeyDecoder
             if (++count > _maxAssociatedText ||
                 !TryDecimal(field, allowEmpty: false, out var value) ||
                 !Rune.TryCreate(value, out _) ||
+                value < 0x20 ||
                 value is >= 0x7f and <= 0x9f)
             {
                 return false;

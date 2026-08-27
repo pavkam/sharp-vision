@@ -102,15 +102,13 @@ public sealed class CapabilityDetectorTests
     }
 
     /// <summary>
-    /// Verifies TERM_PROGRAM_VERSION below iTerm2 3.5 withholds query-origin FILE evidence,
-    /// downgrading it to Unsupported instead of leaving it Supported. This proves the
-    /// corroborator can narrow — the multipart form this library emits did not exist yet, so a
-    /// bare Capabilities FILE=true reply from an older build cannot be trusted alone.
+    /// Verifies query-origin FILE evidence cannot authorize multipart output even when a version
+    /// is available, because the duplicated wire code does not prove which Boolean was reported.
     /// </summary>
     [Theory]
     [InlineData("3.4.0")]
     [InlineData("3.4.99")]
-    public void Detect_WhenTermProgramVersionPredatesMultipart_NarrowsItermImagesToUnsupported(
+    public void Detect_WhenQueryClaimsItermFileWithOlderVersion_DoesNotAuthorizeMultipartImages(
         string version)
     {
         var environment = new Dictionary<string, string?>
@@ -122,20 +120,19 @@ public sealed class CapabilityDetectorTests
 
         var capabilities = CapabilityDetector.Detect(environment, queries);
 
-        capabilities.ItermImages.ShouldBe(new Feature(CapabilitySupport.Unsupported, Origin.Query));
+        capabilities.ItermImages.ShouldBe(new Feature(CapabilitySupport.Tentative, Origin.Environment));
     }
 
     /// <summary>
-    /// Verifies TERM_PROGRAM_VERSION at or above iTerm2 3.5, or absent, or unparseable, never
-    /// itself grants ItermImages support -- it only narrows Supported evidence, so Query evidence
-    /// standing alone still reaches Supported in every one of these cases.
+    /// Verifies TERM_PROGRAM_VERSION at or above iTerm2 3.5, absent, or unparseable cannot turn
+    /// ambiguous query evidence into multipart authorization.
     /// </summary>
     [Theory]
     [InlineData("3.5.0")]
     [InlineData("4.0.0")]
     [InlineData("not-a-version")]
     [InlineData(null)]
-    public void Detect_WhenTermProgramVersionDoesNotPredateMultipart_LeavesQueryEvidenceSupported(
+    public void Detect_WhenQueryClaimsItermFileWithAnyVersion_DoesNotAuthorizeMultipartImages(
         string? version)
     {
         var environment = new Dictionary<string, string?>
@@ -147,7 +144,7 @@ public sealed class CapabilityDetectorTests
 
         var capabilities = CapabilityDetector.Detect(environment, queries);
 
-        capabilities.ItermImages.ShouldBe(new Feature(CapabilitySupport.Supported, Origin.Query));
+        capabilities.ItermImages.ShouldBe(new Feature(CapabilitySupport.Tentative, Origin.Environment));
     }
 
     /// <summary>

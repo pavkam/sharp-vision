@@ -122,6 +122,8 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
         var reconstruct = full || _invalidated || stateChanged;
         var repaint = SelectRepaints(front, back, encodable, blocked, reconstruct);
         using var output = new BoundedBufferWriter(_maxPreparedBytes, initialRentBytes: 256);
+        var candidate = new ArrayBufferWriter<byte>();
+        var finalCursorBytes = GetCursorByteCount(back.Cursor.Position);
         var placementCount = 0;
 
         try
@@ -149,24 +151,33 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
                     continue;
                 }
 
+                candidate.Clear();
+
                 // Classification decodes PNG once so an unsupported source is observable and a
                 // supported source does not pay for the same decode twice in one frame.
                 if (sixelImages[index] is { } sixelImage &&
                     TryGetSixelPixels(placement, metrics, enableSixel, out var pixels) &&
-                    TryWriteSixel(placement, sixelImage, pixels, sixelBackgrounds[index], output, remaining))
+                    TryWriteSixel(placement, sixelImage, pixels, sixelBackgrounds[index], candidate, remaining) &&
+                    TryCommitCandidate(candidate, output, remaining, finalCursorBytes))
                 {
                     placementCount++;
                     continue;
                 }
+
+                candidate.Clear();
 
                 // Classification already resolved (and, for an RGBA source, PNG-encoded) this
                 // placement's iTerm image once; reuse it here rather than encoding it again.
                 if (remaining > 0 &&
                     CanEncodeIterm(placement, enableIterm, itermImages[index], remaining))
                 {
-                    WriteIterm(placement, itermImages[index]!, output, remaining);
-                    placementCount++;
-                    continue;
+                    WriteIterm(placement, itermImages[index]!, candidate, remaining);
+
+                    if (TryCommitCandidate(candidate, output, remaining, finalCursorBytes))
+                    {
+                        placementCount++;
+                        continue;
+                    }
                 }
 
                 (skippedPlacements ??= []).Add(new GraphicsPlacementDiagnostic(
@@ -726,6 +737,38 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
     }
 
     #endregion
+
+    private static bool TryCommitCandidate(
+        ArrayBufferWriter<byte> candidate,
+        IBufferWriter<byte> destination,
+        int remaining,
+        int finalCursorBytes)
+    {
+        if (candidate.WrittenCount > remaining - finalCursorBytes)
+        {
+            return false;
+        }
+
+        destination.Write(candidate.WrittenSpan);
+        candidate.Clear();
+        return true;
+    }
+
+    private static int GetCursorByteCount(Point value) =>
+        4 + CountDecimalBytes(value.Y + 1) + CountDecimalBytes(value.X + 1);
+
+    private static int CountDecimalBytes(int value)
+    {
+        var count = 1;
+
+        while (value >= 10)
+        {
+            value /= 10;
+            count++;
+        }
+
+        return count;
+    }
 
     private static void WriteCursor(Point value, IBufferWriter<byte> destination) =>
         Csi.Position(new ProtocolWriter(destination), value.Y + 1, value.X + 1);

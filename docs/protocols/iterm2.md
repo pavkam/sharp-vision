@@ -12,7 +12,7 @@ Primary sources:
 - [iTerm2 Feature Reporting](https://iterm2.com/feature-reporting/) defines
   `Capabilities`, `TERM_FEATURES`, and the `FILE` feature boundary.
 
-Sources accessed 2026-07-20; Feature Reporting re-verified 2026-08-02.
+Sources accessed 2026-07-20; Feature Reporting re-verified 2026-08-27.
 
 iTerm2 accepts BEL or ST for OSC 1337. SharpVision emits canonical 7-bit OSC
 with ST (`ESC \`) only. The generic bounded parser continues to recognize and
@@ -80,33 +80,32 @@ globally because its retained backend supports RGBA and PNG. Without Kitty, one
 shared non-retained backend walks placements in original paint order: sixel
 handles RGBA only with supported query/override evidence and exact metrics;
 iTerm2 handles compatible PNG or RGBA (PNG-encoded on demand) only when
-`ItermImages` is Supported with Query or Override origin. This keeps mixed
-RGBA/PNG order intact and lets PNG or RGBA remain viable when sixel metrics are
-absent.
+`ItermImages` is Supported with Override origin. This keeps mixed RGBA/PNG order
+intact and lets PNG or RGBA remain viable when sixel metrics are absent.
 
 `ItermImages=true` is an explicit assertion that the destination implements the
 iTerm2 3.5-or-newer multipart protocol. Database and tentative `TERM_PROGRAM`
-evidence do not authorize output — only an explicit override, or a positive
-`OSC 1337 ; Capabilities` reply carrying the `FILE` code (see below), can.
+evidence and query replies do not authorize output; only an explicit override
+can assert multipart support unambiguously.
 
 Capability discovery consumes `OSC 1337 ; Capabilities` as query-origin
 evidence: `ActiveQueryDiscoveryStrategy` emits the query whenever the planning
 projection of `ItermImages` (baseline capabilities with environment evidence
 already applied, but never assigned back to the baseline itself) is
 `Unknown`/`Tentative` with no override, and parses the reply's concatenated
-feature codes for a bare `F`. Under a multiplexer, environment evidence already
-narrows `ItermImages` to `Unsupported`, so the probe is not written at all — a
-multiplexer cannot carry it and would only ever time out. A terminal that is
-asked and stays silent leaves `ItermImages` as absent query evidence rather than
-resolving it to an explicit `false`: `Origin.Query` means a bounded terminal
-query supplied the evidence, and a timeout supplied none. Coercing silence to
-`Unsupported`/`Query` used to overwrite a genuine `TERM_PROGRAM=iTerm.app`
-`Tentative`/`Environment` hint with the (identical, in this case)
-`Unsupported`/`Query` conclusion — strictly worse information, since it asserted
-"confirmed unsupported" where the truth was "unconfirmed". The batch also
-carries a terminating fence (a trailing `CSI 6n`) that retires every
-still-unanswered family, including this one, without granting it query-origin
-evidence — see
+feature codes for a bare Boolean `F`; integer-valued `F0` and `F1` tokens do not
+match. Under a multiplexer, environment evidence already narrows `ItermImages`
+to `Unsupported`, so the probe is not written at all — a multiplexer cannot
+carry it and would only ever time out. A terminal that is asked and stays silent
+leaves `ItermImages` as absent query evidence rather than resolving it to an
+explicit `false`: `Origin.Query` means a bounded terminal query supplied the
+evidence, and a timeout supplied none. Coercing silence to `Unsupported`/`Query`
+used to overwrite a genuine `TERM_PROGRAM=iTerm.app` `Tentative`/`Environment`
+hint with the (identical, in this case) `Unsupported`/`Query` conclusion —
+strictly worse information, since it asserted "confirmed unsupported" where the
+truth was "unconfirmed". The batch also carries a terminating fence (a trailing
+`CSI 6n`) that retires every still-unanswered family, including this one,
+without granting it query-origin evidence — see
 [Discovery pipeline](../architecture/discovery-pipeline.md#overview).
 `TERM_FEATURES` is not separately consumed: it would only ever set the same
 `Tentative`/`Environment` hint that `TERM_PROGRAM == "iTerm.app"` already sets,
@@ -119,19 +118,16 @@ doing the identical job was judged not worth adding.
 > `FOCUS_REPORTING` with no documented disambiguation (see Sources below) — this
 > library cannot tell which meaning a bare `F` in the reply denotes from the
 > code alone. `FocusReporting` is unaffected because it has its own unambiguous
-> DEC private mode query; only `ItermImages` reads the `F` code, and only in
-> combination with the version corroborator described next.
+> DEC private mode query. For `ItermImages`, absence of `F` proves that `FILE`
+> was not advertised, while presence remains ambiguous and supplies no positive
+> evidence.
 
-Because of that ambiguity, and because Feature Reporting predates iTerm2 3.5's
-multipart protocol while `FILE` documents only the legacy single-sequence form
-SharpVision never emits, a bare `FILE`/`F` reply is corroborated — never
-disambiguated — by `TERM_PROGRAM_VERSION`. `QueryEvidenceAdapter` downgrades an
-otherwise-Supported `ItermImages` value to `Unsupported` when
-`TERM_PROGRAM_VERSION` parses below `3.5`; an absent, unparseable, or `>= 3.5`
-version leaves Query (or a later Override) evidence untouched. This is narrowing
-only — the version can withhold Supported evidence but can never by itself grant
-it, consistent with `CapabilitySupport`'s own contract that `Tentative` "must
-not enable it."
+Because Feature Reporting predates iTerm2 3.5's multipart protocol and `FILE`
+documents only the legacy single-sequence form SharpVision never emits,
+`TERM_PROGRAM_VERSION` cannot repair that ambiguity. A version says which build
+is running, not whether the duplicated `F` token meant focus reporting, legacy
+file transfer, or both. Query evidence is therefore negative-only;
+`ItermImages=true` remains the sole authorization boundary.
 
 Application host selection creates the backend lazily after profile and resize
 publication and consumes semantic placements from the public Image control.
@@ -151,18 +147,19 @@ rejection of cover, partial-source, legacy `File`, BEL output, and Screen.
 
 The generic router accepts bounded OSC 1337 with ST or BEL at every split and
 recovers following input after overflow. Backend and real renderer tests cover
-cursor restoration, stale-pixel repair, intersecting and unrelated damage,
-transitive same- and mixed-protocol overlap repaint, unsupported-upper fallback,
-allocation-free synchronous phases, byte-quiet cleanup, independently routed
-tmux frames, transport failure, and full retry. Selector tests freeze
-Kitty-over-fallback priority, origin requirements (including that Query now
-authorizes iTerm2 output the same way it already does Kitty and sixel), route
+cursor restoration, complete prepared-output budgeting for placement anchors,
+transactions, route envelopes, and the final semantic cursor, stale-pixel
+repair, intersecting and unrelated damage, transitive same- and mixed-protocol
+overlap repaint, unsupported-upper fallback, allocation-free synchronous phases,
+byte-quiet cleanup, independently routed tmux frames, transport failure, and
+full retry. Selector tests freeze Kitty-over-fallback priority, origin
+requirements (including that Query cannot authorize iTerm2 output), route
 authorization, mixed paint order, and missing-metric PNG/RGBA viability.
-`ActiveQueryDiscoveryStrategy` tests cover the Capabilities query gate, `FILE`
-code parsing, and silent-terminal negative inference; `CapabilityDetector` tests
-cover the `TERM_PROGRAM_VERSION` narrowing corroborator.
-Application/public-control coverage shares the final-byte, conservative-route,
-and failure-safe shutdown tests with the other graphics backends.
+`ActiveQueryDiscoveryStrategy` tests cover the Capabilities query gate, Boolean
+versus integer feature tokens, ambiguous positive evidence, and silent-terminal
+negative inference. Application/public-control coverage shares the final-byte,
+conservative-route, and failure-safe shutdown tests with the other graphics
+backends.
 
 ## Sources
 
@@ -170,12 +167,12 @@ and failure-safe shutdown tests with the other graphics backends.
 - [iTerm2 Proprietary Escape Codes](https://iterm2.com/documentation-escape-codes.html)
 - [iTerm2 Feature Reporting](https://iterm2.com/feature-reporting/)
 
-Sources accessed 2026-07-28; Feature Reporting re-verified 2026-08-02.
+Sources accessed 2026-07-28; Feature Reporting re-verified 2026-08-27.
 
 ## Expected behavior
 
-| Layer     | Required evidence                                                                            |
-| --------- | -------------------------------------------------------------------------------------------- |
-| Writer    | Exact multipart metadata, Base64 chunks, limits, terminators, and validation.                |
-| Selection | Query- or Override-origin 3.5+ evidence, metrics/stretch constraints, and authorized routes. |
-| Rendering | Upload/paint order, damage repair, failure retry, cleanup, and final bytes.                  |
+| Layer     | Required evidence                                                                   |
+| --------- | ----------------------------------------------------------------------------------- |
+| Writer    | Exact multipart metadata, Base64 chunks, limits, terminators, and validation.       |
+| Selection | Override-origin 3.5+ assertion, metrics/stretch constraints, and authorized routes. |
+| Rendering | Upload/paint order, damage repair, failure retry, cleanup, and final bytes.         |

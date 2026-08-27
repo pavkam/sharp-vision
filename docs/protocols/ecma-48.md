@@ -27,6 +27,18 @@ a following `ESC [`, ends string recovery. This is standards-conformant: ECMA-48
 leaves recovery from an unterminated control string unspecified, so SharpVision
 deliberately uses terminator-only recovery.
 
+Command-string payload bytes follow ECMA-48 section 5.6: BS through CR and
+printable bytes are accepted, while other C0 bytes are malformed. BEL remains an
+explicit OSC terminator extension only. An `ESC` inside a string must begin ST;
+any other following byte makes the string malformed and enters bounded
+terminator-only recovery. With eight-bit controls enabled, C1 payload bytes are
+likewise rejected except for ST.
+
+The public `ProtocolWriter` applies the same boundary before output mutation.
+Generic APC, PM, SOS, and DCS payloads are printable ASCII. OSC text extensions
+accept well-formed UTF-8 without Unicode control scalars; malformed, overlong,
+surrogate, isolated-continuation, and raw C1 encodings are rejected atomically.
+
 Default limits bound parameter count, parameter magnitude, intermediate bytes,
 and string payload length. Options may lower or raise limits but cannot disable
 boundedness.
@@ -57,7 +69,7 @@ parser synchronization or throw in normal mode.
 - [ECMA-48, fifth edition, June 1991](https://ecma-international.org/publications-and-standards/standards/ecma-48/)
   defines the control-function architecture and byte classes used here.
 
-Source accessed 2026-07-28.
+Source accessed 2026-08-27.
 
 ## Expected behavior
 

@@ -12,13 +12,11 @@ using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
 /// <summary>Translates bounded query results into query-origin semantic evidence.</summary>
 internal static class QueryEvidenceAdapter
 {
-    private static readonly Version _multipartMinimumVersion = new(3, 5);
-
     extension(TerminalCapabilities capabilities)
     {
         /// <summary>Applies optional bounded query results to one immutable capability snapshot.</summary>
         /// <param name="queries">The optional bounded query results.</param>
-        /// <param name="environment">The non-null caller-supplied environment, used only to narrow iTerm2 evidence.</param>
+        /// <param name="environment">The non-null caller-supplied environment used by color refinement.</param>
         /// <returns>The original reference when <paramref name="queries"/> is null; otherwise a query-refined snapshot.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> or <paramref name="environment"/> is null.</exception>
         [Pure]
@@ -46,22 +44,13 @@ internal static class QueryEvidenceAdapter
                 KittyClipboard = Apply(capabilities.KittyClipboard, queries.KittyClipboard, Origin.Query),
                 KittyGraphics = Apply(capabilities.KittyGraphics, queries.KittyGraphics, Origin.Query),
                 Sixel = Apply(capabilities.Sixel, queries.Sixel, Origin.Query),
-                ItermImages = Apply(capabilities.ItermImages, queries.ItermImages, Origin.Query),
+                ItermImages = ApplyNegativeOnly(capabilities.ItermImages, queries.ItermImages, Origin.Query),
                 StyledUnderlines = Apply(capabilities.StyledUnderlines, queries.StyledUnderlines, Origin.Query),
                 UnderlineColor = Apply(capabilities.UnderlineColor, queries.UnderlineColor, Origin.Query),
                 Overline = Apply(capabilities.Overline, queries.Overline, Origin.Query)
             }, queries.CapabilityString, environment);
 
-            // Narrowing only, per docs/protocols/iterm2.md: multipart file transfer (the only
-            // iTerm2 image form this library emits) arrived in iTerm2 3.5, but the OSC 1337
-            // Capabilities FILE flag predates it and shares its wire code with FOCUS_REPORTING,
-            // so a bare FILE=true reply cannot alone prove multipart support. A parsed
-            // TERM_PROGRAM_VERSION below 3.5 withholds Supported evidence gathered above by
-            // downgrading it to Unsupported; an absent, unparseable, or >=3.5 version leaves it
-            // untouched. This can never promote evidence to Supported by itself — only Query (or
-            // a later explicit Override) evidence can do that, and Override always runs after
-            // this phase and is never touched here.
-            return refined with { ItermImages = NarrowItermImagesByVersion(refined.ItermImages, environment) };
+            return refined;
         }
     }
 
@@ -97,14 +86,9 @@ internal static class QueryEvidenceAdapter
         "Style",
         "IDE0051:Remove unused private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
-    private static Feature NarrowItermImagesByVersion(
-        Feature current,
-        IReadOnlyDictionary<string, string?> environment) =>
-        current.State == CapabilitySupport.Supported &&
-        environment.TryGetValue(EvidenceEnvironmentVars.TermProgramVersion, out var raw) &&
-        Version.TryParse(raw, out var version) &&
-        version < _multipartMinimumVersion
-            ? new Feature(CapabilitySupport.Unsupported, current.Origin)
+    private static Feature ApplyNegativeOnly(Feature current, bool? supported, Origin origin) =>
+        supported == false && current.Origin != Origin.Override
+            ? new Feature(CapabilitySupport.Unsupported, origin)
             : current;
 
     [SuppressMessage(

@@ -675,11 +675,10 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
         if (match == QueryMatch.Matched)
         {
-            // The published feature-reporting table assigns code "F" to both FILE and
-            // FOCUS_REPORTING (see docs/protocols/iterm2.md), so this positive reply is
-            // corroborated — not disambiguated — by QueryEvidenceAdapter's TERM_PROGRAM_VERSION
-            // narrowing before it can ever authorize multipart output.
-            _itermImages = response.HasFileCode;
+            // The published table assigns F to both FILE and FOCUS_REPORTING. Its absence proves
+            // FILE was not advertised, but its presence cannot identify which Boolean produced
+            // the token and therefore cannot authorize the multipart protocol SharpVision emits.
+            _itermImages = response.HasFileCode ? null : false;
             TryPublish();
         }
 

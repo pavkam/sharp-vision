@@ -7,6 +7,7 @@ using System.Buffers.Binary;
 
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Graphics;
+using SharpVision.Terminal.Iterm;
 using SharpVision.Terminal.Multiplexing;
 
 /// <summary>
@@ -96,6 +97,62 @@ public sealed class NonRetainedGraphicsBackendTests
             "\u001b[1;2H\u001b]1337;MultipartFile=size=57;width=1;height=1;preserveAspectRatio=1;inline=1\u001b\\"u8)
             .ShouldBeTrue();
         bytes.AsSpan().EndsWith("\u001b]1337;FileEnd\u001b\\\u001b[1;1H"u8).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies an iTerm transaction that exactly consumes the advertised remainder is
+    /// declined because the complete prepared budget must also hold its anchor and final cursor.</summary>
+    [Fact]
+    public void Prepare_WhenItermTransactionLeavesNoCursorBudget_SkipsWithoutThrowing()
+    {
+        var image = Png();
+        var itermImage = GraphicsImage.FromPng(image.Source);
+        var transaction = new ArrayBufferWriter<byte>();
+        ItermWriter.Write(itermImage, new Size(1, 1), PlacementMode.Contain, transaction);
+        using var backend = new NonRetainedGraphicsBackend(
+            enableSixel: false,
+            enableIterm: true,
+            maxPreparedBytes: transaction.WrittenCount);
+        using var frame = ItermFrame("a", (image, new Rect(0, 0, 1, 1), PlacementMode.Contain));
+
+        var result = Should.NotThrow(() => backend.Prepare(null, frame, full: true, Context()));
+
+        result.Placements.ShouldBe(0);
+        result.SkippedPlacements.ShouldHaveSingleItem().Reason.ShouldBe(
+            GraphicsPlacementSkipReason.OutputLimitExceeded);
+        WritePlacements(backend).ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies direct and routed multi-placement output reserves multi-digit anchor and
+    /// final cursor bytes as part of the exact complete prepared-output boundary.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Prepare_WhenCompleteItermOutputMeetsExactBudget_WritesAllWithoutOverflow(bool routed)
+    {
+        var route = routed ? TmuxRoute() : null;
+        using var frame = new Frame(new Size(12, 12));
+        frame.Canvas.DrawImage(Png(), new Rect(0, 0, 1, 1), PlacementMode.Contain);
+        frame.Canvas.DrawImage(Png(), new Rect(10, 10, 1, 1), PlacementMode.Contain);
+        frame.SetCursor(new Point(11, 11), visible: true);
+        using var reference = new NonRetainedGraphicsBackend(
+            enableSixel: false,
+            enableIterm: true,
+            route: route);
+        _ = reference.Prepare(null, frame, full: true, Context());
+        var exactBytes = WritePlacements(reference).Length;
+        using var exact = new NonRetainedGraphicsBackend(
+            enableSixel: false,
+            enableIterm: true,
+            maxPreparedBytes: exactBytes,
+            route: route);
+
+        var result = Should.NotThrow(() => exact.Prepare(null, frame, full: true, Context()));
+        var output = WritePlacements(exact);
+
+        result.Placements.ShouldBe(2);
+        result.SkippedPlacements.ShouldBeEmpty();
+        output.Length.ShouldBe(exactBytes);
+        output.AsSpan().EndsWith("\u001b[12;12H"u8).ShouldBeTrue();
     }
 
     /// <summary>Verifies a full-source RGBA placement is PNG-encoded on demand and reaches the

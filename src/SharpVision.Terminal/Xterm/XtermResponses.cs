@@ -229,7 +229,9 @@ public static class XtermResponses
                 index++;
             }
 
-            if (nameEnd - nameStart == 1 && value[nameStart] == code)
+            var isInteger = index != nameEnd;
+
+            if (!isInteger && nameEnd - nameStart == 1 && value[nameStart] == code)
             {
                 return true;
             }

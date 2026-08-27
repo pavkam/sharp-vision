@@ -105,17 +105,17 @@ public readonly struct ProtocolWriter
     /// Writes an operating system command with a decimal selector and ST.
     /// </summary>
     /// <param name="selector">The non-negative command selector.</param>
-    /// <param name="payload">UTF-8 or ASCII payload without control bytes.</param>
+    /// <param name="payload">Valid UTF-8 payload without control scalar values.</param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="selector"/> is negative.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="payload"/> contains a control byte.
+    /// <paramref name="payload"/> is malformed UTF-8 or contains a control scalar value.
     /// </exception>
     public void Osc([NonNegativeValue] int selector, ReadOnlySpan<byte> payload)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(selector);
-        ValidatePayload(payload, nameof(payload));
+        ValidateTextPayload(payload, nameof(payload));
 
         var selectorLength = CountDecimalBytes(selector);
         var length = checked(selectorLength + payload.Length + 5);
@@ -137,12 +137,12 @@ public readonly struct ProtocolWriter
     /// Writes an APC, PM, or SOS string with ST.
     /// </summary>
     /// <param name="kind">The generic string sequence family.</param>
-    /// <param name="payload">UTF-8 or ASCII payload without control bytes.</param>
+    /// <param name="payload">Printable ASCII command payload.</param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="kind"/> is not APC, PM, or SOS.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="payload"/> contains a control byte.
+    /// <paramref name="payload"/> contains a byte outside printable ASCII.
     /// </exception>
     public void Command(SequenceKind kind, ReadOnlySpan<byte> payload)
     {
@@ -164,7 +164,7 @@ public readonly struct ProtocolWriter
                 kind,
                 "Only APC, PM, and SOS are generic string families.")
         };
-        ValidatePayload(payload, nameof(payload));
+        ValidateCommandPayload(payload, nameof(payload));
 
         var length = checked(payload.Length + 4);
         var destination = _destination.GetSpan(length);
@@ -184,7 +184,7 @@ public readonly struct ProtocolWriter
     /// <param name="parameters">Bytes in the range 0x30 through 0x3f.</param>
     /// <param name="intermediates">Bytes in the range 0x20 through 0x2f.</param>
     /// <param name="final">A final byte in the range 0x40 through 0x7e.</param>
-    /// <param name="payload">UTF-8 or ASCII payload without control bytes.</param>
+    /// <param name="payload">Printable ASCII command payload.</param>
     /// <exception cref="ArgumentException">
     /// A header or payload byte is outside its grammar.
     /// </exception>
@@ -200,7 +200,7 @@ public readonly struct ProtocolWriter
         ValidateParameters(parameters, nameof(parameters));
         ValidateIntermediates(intermediates, nameof(intermediates));
         ValidateFinal(final, 0x40, nameof(final));
-        ValidatePayload(payload, nameof(payload));
+        ValidateCommandPayload(payload, nameof(payload));
 
         var length = checked(parameters.Length + intermediates.Length + payload.Length + 5);
         var destination = _destination.GetSpan(length);
@@ -269,16 +269,32 @@ public readonly struct ProtocolWriter
         }
     }
 
-    private static void ValidatePayload(ReadOnlySpan<byte> value, string parameterName)
+    private static void ValidateCommandPayload(ReadOnlySpan<byte> value, string parameterName)
     {
         foreach (var item in value)
         {
-            if (item is < 0x20 or 0x7f)
+            if (item is < 0x20 or > 0x7e)
             {
                 throw new ArgumentException(
-                    "A terminal string payload cannot contain control bytes.",
+                    "A command-string payload must contain printable ASCII only.",
                     parameterName);
             }
+        }
+    }
+
+    private static void ValidateTextPayload(ReadOnlySpan<byte> value, string parameterName)
+    {
+        while (!value.IsEmpty)
+        {
+            if (Rune.DecodeFromUtf8(value, out var rune, out var consumed) != OperationStatus.Done ||
+                Rune.GetUnicodeCategory(rune) == UnicodeCategory.Control)
+            {
+                throw new ArgumentException(
+                    "A text payload must be valid UTF-8 without control scalar values.",
+                    parameterName);
+            }
+
+            value = value[consumed..];
         }
     }
 

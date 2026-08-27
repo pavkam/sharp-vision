@@ -147,6 +147,41 @@ public sealed class ProtocolWriterTests
         destination.WrittenCount.ShouldBe(0);
     }
 
+    /// <summary>Verifies every string writer rejects malformed UTF-8 and generic command writers
+    /// additionally reject otherwise-valid non-ASCII text before requesting output memory.</summary>
+    [Fact]
+    public void StringCommands_WhenPayloadEncodingIsInvalid_ThrowBeforeWriting()
+    {
+        byte[][] malformedUtf8 =
+        [
+            [0x80],
+            [0xc0, 0x80],
+            [0xed, 0xa0, 0x80],
+            [0xff]
+        ];
+
+        foreach (var payload in malformedUtf8)
+        {
+            var destination = new ArrayBufferWriter<byte>();
+            var writer = new ProtocolWriter(destination);
+
+            _ = Should.Throw<ArgumentException>(() => writer.Osc(2, payload));
+            _ = Should.Throw<ArgumentException>(() => writer.Command(SequenceKind.Apc, payload));
+            _ = Should.Throw<ArgumentException>(() => writer.Dcs([], [], (byte) 'q', payload));
+            destination.WrittenCount.ShouldBe(0);
+        }
+
+        var unicode = "界"u8.ToArray();
+        var osc = new ArrayBufferWriter<byte>();
+        new ProtocolWriter(osc).Osc(2, unicode);
+        osc.WrittenSpan.IndexOf(unicode).ShouldBeGreaterThanOrEqualTo(0);
+
+        var command = new ArrayBufferWriter<byte>();
+        _ = Should.Throw<ArgumentException>(() => new ProtocolWriter(command).Command(SequenceKind.Pm, unicode));
+        _ = Should.Throw<ArgumentException>(() => new ProtocolWriter(command).Dcs([], [], (byte) 'q', unicode));
+        command.WrittenCount.ShouldBe(0);
+    }
+
     /// <summary>
     /// Verifies constructor argument validation.
     /// </summary>

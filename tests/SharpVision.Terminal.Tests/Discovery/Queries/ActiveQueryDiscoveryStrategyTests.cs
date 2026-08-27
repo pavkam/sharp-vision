@@ -610,9 +610,10 @@ public sealed class ActiveQueryDiscoveryStrategyTests
             new Feature(CapabilitySupport.Unsupported, Origin.Override));
     }
 
-    /// <summary>Verifies a reply carrying the FILE code proves query-origin support.</summary>
+    /// <summary>Verifies the duplicated F code cannot distinguish FILE from focus reporting and
+    /// therefore supplies no positive multipart-image evidence.</summary>
     [Fact]
-    public void Accept_WhenReplyContainsFileCode_RecordsQuerySupport()
+    public void Accept_WhenReplyContainsAmbiguousFileCode_DoesNotAuthorizeMultipartImages()
     {
         var negotiator = CreateIterm();
         _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
@@ -621,9 +622,24 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         negotiator.Accept(response).ShouldBe(QueryMatch.Matched);
         _ = negotiator.Complete();
 
-        negotiator.Results.ItermImages.ShouldBe(true);
+        negotiator.Results.ItermImages.ShouldBeNull();
         negotiator.Capabilities.ItermImages.ShouldBe(
-            new Feature(CapabilitySupport.Supported, Origin.Query));
+            new Feature(CapabilitySupport.Tentative, Origin.Environment));
+    }
+
+    /// <summary>Verifies integer-valued F tokens are not mistaken for the bare Boolean code, while
+    /// the specification's ignored non-alphanumeric suffix still leaves its valid prefix intact.</summary>
+    [Theory]
+    [InlineData("1337;Capabilities=F0", false)]
+    [InlineData("1337;Capabilities=F1", false)]
+    [InlineData("1337;Capabilities=F!ignored", true)]
+    public void TryOscItermCapabilities_WhenFTokenShapeVaries_RecognizesOnlyBareBooleanPrefix(
+        string value,
+        bool expected)
+    {
+        XtermResponses.TryOscItermCapabilities(Encoding.ASCII.GetBytes(value), out var response).ShouldBeTrue();
+
+        response.HasFileCode.ShouldBe(expected);
     }
 
     /// <summary>Verifies a reply without the FILE code proves query-origin absence.</summary>
