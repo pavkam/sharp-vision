@@ -65,13 +65,12 @@ rows count toward the accepted selection: with `Directories` or
 included in the accepted `FilePickerResult` alongside any selected files.
 
 Two more behaviors follow from `SelectionMode`, both described in detail in
-[Text and localization](#text-and-localization) and
-[Interaction](#interaction): in pure `Directories` mode the Open Button's
-default caption reads "Select" instead of "Open", since there is nothing to
-"open" when only directories are pickable; and typing a path that names an
-existing directory into the location input and pressing Enter selects that
-directory in `Directories` or `FilesAndDirectories` mode instead of navigating
-into it.
+[Text and localization](#text-and-localization) and [Interaction](#interaction):
+in pure `Directories` mode the Open Button's default caption reads "Select"
+instead of "Open", since there is nothing to "open" when only directories are
+pickable; and typing a path that names an existing directory into the location
+input and pressing Enter selects that directory in `Directories` or
+`FilesAndDirectories` mode instead of navigating into it.
 
 | Style property            | Default | Applies to                                                                |
 | ------------------------- | ------- | ------------------------------------------------------------------------- |
@@ -85,12 +84,12 @@ into it.
 `null` for a style property lets the corresponding owned part use its own
 semantic input profile.
 
-| Text property          | Default            |
-| ---------------------- | ------------------ |
-| `ParentDirectoryText`  | `"↑"`              |
-| `DirectoryPlaceholder` | `"Directory path"` |
-| `ShowHiddenText`       | `"Show &hidden"`   |
-| `CancelText`           | `"&Cancel"`        |
+| Text property          | Default                                       |
+| ---------------------- | --------------------------------------------- |
+| `ParentDirectoryText`  | `"↑"`                                         |
+| `DirectoryPlaceholder` | `"Directory path"`                            |
+| `ShowHiddenText`       | `"Show &hidden"`                              |
+| `CancelText`           | `"&Cancel"`                                   |
 | `OpenText`             | `"&Open"` (`"&Select"` in `Directories` mode) |
 
 Each setter rejects null. `FilePickerDialog` copies these values the same way it
