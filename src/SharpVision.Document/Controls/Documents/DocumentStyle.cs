@@ -97,9 +97,10 @@ public sealed record DocumentStyle: ControlStyle
     }
 
     /// <summary>Gets the standard document presentation.</summary>
-    // A bare Theme, not ThemeCatalog.Dark: this style has no internal access to SharpVision's own
-    // Theme.Unthemed (declared in a different assembly with no InternalsVisibleTo grant here), and
-    // Complete never reads the theme it is given, so any valid instance resolves identically.
+    // A bare Theme, not ThemeCatalog.Dark or SharpVision's internal Theme.Unthemed: this style
+    // stays independent of SharpVision's InternalsVisibleTo grant to this assembly rather than
+    // depending on it, and Complete never reads the theme it is given, so any valid instance
+    // resolves identically.
     public static new DocumentStyle Default => Complete(ControlStyle.Default, VisualState.Normal, new Theme());
 
     /// <summary>Gets the complete face used for level 1 and 2 headings. Levels 3 through 6 render in

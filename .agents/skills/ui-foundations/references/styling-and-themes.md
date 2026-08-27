@@ -114,9 +114,10 @@ explicit-key overload for a leaf or third-party section.
 - Raw `Border` and `Shadow` authoring is public on `ControlBase` but throws
   `InvalidOperationException` until a control calls the protected
   `EnableChromeAuthoring()`.
-- Dock, Grid, Stack, Overlay, GroupBox, Window, and Popup call it from their own
-  constructors. Do not add a `public new` hiding shim over `Border` or `Shadow`
-  on individual controls - call `EnableChromeAuthoring()` instead.
+- Dock, Grid, Stack, Overlay, GroupBox, Window, Popup, TabControl,
+  NavigationView, NavigationViewGroup, and NavigationViewSeparator call it from
+  their own constructors. Do not add a `public new` hiding shim over `Border`
+  or `Shadow` on individual controls - call `EnableChromeAuthoring()` instead.
 - Use `BorderGlyphStyle` and `SemanticColor` tokens such as `ControlBorder` and
   `ControlShadow`; retired `Glyphs` and `ButtonKind` APIs do not exist.
 - `ActualFace`/`ActualBorder`/`ActualShadow` are the **resolved** render-ready
@@ -145,14 +146,14 @@ explicit-key overload for a leaf or third-party section.
 - **Static initializer order.** A `static` member that reads other statics of
   the same class must be declared _after_ them; initializers run in textual
   order and a too-early declaration silently captures zeroed structs.
-- **`Theme.Unthemed` is internal.** A style type declared in another assembly
-  (`SharpVision.Document`, `SharpVision.SyntaxHighlighting`) has no
-  `InternalsVisibleTo` grant to reach `SharpVision`'s internal `Theme.Unthemed`,
-  so its static presets complete against a bare `new Theme()` instead — see
-  `DocumentStyle.Default` and `CodeViewStyle.Default`. `Complete` never actually
-  reads the theme it is given for these styles, so any valid instance resolves
-  identically; do not "fix" this by trying to reach `Theme.Unthemed` from
-  outside `SharpVision.dll`.
+- **`Theme.Unthemed` is internal.** `SharpVision.Document` and
+  `SharpVision.SyntaxHighlighting` do hold an `InternalsVisibleTo` grant onto
+  `SharpVision`, but their style types stay independent of that assembly-
+  boundary detail: `DocumentStyle.Default` and `CodeViewStyle.Default`
+  complete their static presets against a bare `new Theme()` rather than
+  `Theme.Unthemed`. `Complete` never actually reads the theme it is given for
+  these styles, so any valid instance resolves identically; do not "fix" this
+  by switching either style to `Theme.Unthemed`.
 - **Passive styles ignore interactive states.** Only `"input"` inherits
   `"control"`'s per-state deltas. Containers, windows, popups, and tooltips
   deliberately do not answer hover or focus — cascading into them tints every
