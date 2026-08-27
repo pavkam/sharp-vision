@@ -644,6 +644,11 @@ internal sealed class DocumentLayout
         ref int column,
         DocumentFaceKind? foregroundOverride)
     {
+        if (column == int.MaxValue)
+        {
+            return;
+        }
+
         if (token.Kind == DocumentFlowTokenKind.Break)
         {
             _runs.Add(DocumentVisualRun.ForRepeat(

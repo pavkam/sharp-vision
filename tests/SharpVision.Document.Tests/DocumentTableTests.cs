@@ -186,4 +186,54 @@ public sealed class DocumentTableTests
         checkBox.Bounds.Width.ShouldBe(int.MaxValue);
         render.Row(1).ShouldStartWith("|");
     }
+
+    /// <summary>Verifies a row can mix an extreme-width embedded control with a following cell's
+    /// ordinary content without overflowing table layout arithmetic during rendering.</summary>
+    [Fact]
+    public void Layout_WhenRowMixesExtremeControlCellWithFollowingCell_DoesNotThrow()
+    {
+        // Arrange
+        var checkBox = new CheckBox("wide") { Width = Length.Cells(int.MaxValue) };
+        var row = new DocumentTableRow
+        {
+            Cells =
+            {
+                new DocumentTableCell { Inlines = { new DocumentInlineControl(checkBox) } },
+                new DocumentTableCell("next")
+            }
+        };
+        var document = new Document { Blocks = { new DocumentTable { Rows = { row } } } };
+
+        // Act
+        using var probe = new DocumentRenderProbe(document, new Size(12, 1));
+
+        // Assert
+        probe.Row(0).ShouldStartWith("|");
+    }
+
+    /// <summary>Verifies a cell mixing an extreme-width embedded control with trailing text content
+    /// does not overflow table layout arithmetic during rendering.</summary>
+    [Fact]
+    public void Layout_WhenCellMixesExtremeControlWithTrailingText_DoesNotThrow()
+    {
+        // Arrange
+        var checkBox = new CheckBox("wide") { Width = Length.Cells(int.MaxValue) };
+        var row = new DocumentTableRow
+        {
+            Cells =
+            {
+                new DocumentTableCell
+                {
+                    Inlines = { new DocumentInlineControl(checkBox), new DocumentTextRun("tail") }
+                }
+            }
+        };
+        var document = new Document { Blocks = { new DocumentTable { Rows = { row } } } };
+
+        // Act
+        using var probe = new DocumentRenderProbe(document, new Size(12, 1));
+
+        // Assert
+        probe.Row(0).ShouldStartWith("|");
+    }
 }
