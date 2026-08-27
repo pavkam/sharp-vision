@@ -3,12 +3,12 @@
 
 namespace SharpVision.Dialogs;
 
+using Scrolling;
+
 using SharpVision.Controls.Display;
 using SharpVision.Controls.Input;
 using SharpVision.Controls.Layout;
 using SharpVision.Terminal.Input;
-
-using Scrolling;
 
 using Text;
 

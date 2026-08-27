@@ -109,7 +109,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 
     /// <summary>Gets whether this Window is currently open.</summary>
     /// <remarks>
-    /// Mirrors the intent of <see cref="SharpVision.Popups.Popup.IsOpen"/> - answering "is this surface open" - but is a
+    /// Mirrors the intent of <see cref="Popups.Popup.IsOpen"/> - answering "is this surface open" - but is a
     /// read-only computed query rather than a settable driver: Window's open/close mechanics remain
     /// owned by <see cref="ControlBase.Visibility"/> and <see cref="Close"/>. An attached, presented
     /// Window is open exactly while <see cref="FloatingSurfaceBase.IsSurfacePresented"/> holds.

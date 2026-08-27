@@ -14,7 +14,7 @@ using SharpVision.Terminal.Input;
 using LayoutStack = Layout.Stack;
 using TextEdit = Edit;
 using TextLayout = Text.Layout;
-using TextLine = Text.Line;
+using TextLine = Line;
 using TextSelection = Selection;
 
 /// <summary>
@@ -33,7 +33,7 @@ using TextSelection = Selection;
 /// normalized text, not to whatever line-ending bytes the assigned string happened to contain.
 /// </para>
 /// <para>
-/// By default (<see cref="Overflow"/> left at <see cref="SharpVision.Text.Overflow.Visible"/>),
+/// By default (<see cref="Overflow"/> left at <see cref="Overflow.Visible"/>),
 /// source lines are never wrapped: long lines scroll horizontally instead. Setting
 /// <see cref="Overflow"/> to any other value soft-wraps, clips, or ellipsizes every line against
 /// the viewport's own width instead - see <see cref="Overflow"/>'s own remarks. A tab character
@@ -79,7 +79,7 @@ public sealed class CodeView:
     private Rect _textSelectionMapViewport;
 
     /// <summary>Describes one rendered presentation row: either a whole logical source line - the
-    /// default <see cref="SharpVision.Text.Overflow.Visible"/> passthrough, or one
+    /// default <see cref="Overflow.Visible"/> passthrough, or one
     /// Clip/Ellipsis-truncated line - or one soft-wrapped segment of a logical line's text.</summary>
     /// <param name="SourceLine">The zero-based logical source line index into <see cref="_lines"/>.</param>
     /// <param name="Offset">The UTF-16 offset of this row's text within the source line.</param>
@@ -93,7 +93,7 @@ public sealed class CodeView:
     /// draw the collapsed-fold indicator.
     /// </param>
     /// <param name="HasEllipsis">Whether this row was truncated under
-    /// <see cref="SharpVision.Text.Overflow.Ellipsis"/>.</param>
+    /// <see cref="Overflow.Ellipsis"/>.</param>
     private readonly record struct PresentationRow(
         int SourceLine,
         int Offset,
@@ -862,18 +862,18 @@ public sealed class CodeView:
     /// <summary>Gets or sets how a projected line's horizontal overflow is handled.</summary>
     /// <remarks>
     /// <para>
-    /// <see cref="SharpVision.Text.Overflow.Visible"/>, the default, is exactly today's behavior:
+    /// <see cref="Overflow.Visible"/>, the default, is exactly today's behavior:
     /// every source line occupies one presentation row of unbounded width, and long lines scroll
     /// horizontally instead of wrapping - <see cref="Extent"/>'s width tracks the widest visible
     /// line.
     /// </para>
     /// <para>
     /// Any other value reformats every presentation row against the viewport's own text width,
-    /// using the identical <see cref="Text.Layout.Format"/> contract
-    /// <see cref="Controls.Display.Text.Overflow"/> already uses: <see cref="SharpVision.Text.Overflow.Wrap"/>
-    /// and <see cref="SharpVision.Text.Overflow.WrapAnywhere"/> split a long logical line into more
-    /// than one presentation row, while <see cref="SharpVision.Text.Overflow.Clip"/> and
-    /// <see cref="SharpVision.Text.Overflow.Ellipsis"/> keep one row and truncate it. Every one of
+    /// using the identical <see cref="TextLayout.Format"/> contract
+    /// <see cref="Display.Text.Overflow"/> already uses: <see cref="Overflow.Wrap"/>
+    /// and <see cref="Overflow.WrapAnywhere"/> split a long logical line into more
+    /// than one presentation row, while <see cref="Overflow.Clip"/> and
+    /// <see cref="Overflow.Ellipsis"/> keep one row and truncate it. Every one of
     /// these disables the horizontal extent entirely - <see cref="Extent"/>'s width becomes exactly
     /// <see cref="Viewport"/>'s width, since every row is now guaranteed to fit it, and
     /// <see cref="HorizontalOffset"/> can never move away from zero. A continuation row - any
@@ -883,7 +883,7 @@ public sealed class CodeView:
     /// </para>
     /// <para>
     /// A line containing tab characters may wrap slightly earlier than the exact viewport width
-    /// requires: <see cref="Text.Layout.Format"/> sizes a tab by its four-cell tab-stop expansion,
+    /// requires: <see cref="TextLayout.Format"/> sizes a tab by its four-cell tab-stop expansion,
     /// while this control always renders and measures a tab as exactly one cell (see the type
     /// remarks) - the wrap never overflows the viewport, only occasionally wraps a tab-heavy line
     /// more conservatively than strictly necessary.
@@ -936,7 +936,7 @@ public sealed class CodeView:
         : new Size(_rowsWidth ?? _extentWidth, _rows.Count);
 
     /// <summary>Rewraps the presentation-row projection against a measure-time width constraint -
-    /// for every <see cref="Overflow"/> value other than <see cref="SharpVision.Text.Overflow.Visible"/>,
+    /// for every <see cref="Overflow"/> value other than <see cref="Overflow.Visible"/>,
     /// which never depends on width - then measures the result.</summary>
     /// <remarks>
     /// Mirrors <c>JsonView.MeasureAndWrap</c>: the composed viewport always measures its content
@@ -1031,7 +1031,7 @@ public sealed class CodeView:
     /// transitions raised by an internal re-arrange in this loop - <see cref="Overflow"/> wrapping
     /// is opt-in, and a subscriber may observe more than one event for a single layout pass while a
     /// wrap reflow is settling the vertical-scrollbar/row-count coupling. Never entered while
-    /// <see cref="Overflow"/> is <see cref="SharpVision.Text.Overflow.Visible"/> (see
+    /// <see cref="Overflow"/> is <see cref="Overflow.Visible"/> (see
     /// <see cref="ArrangeOverride"/>), so the default projection never pays for this loop.
     /// </remarks>
     /// <param name="bounds">The content-box bounds this control's own arrange resolved.</param>
