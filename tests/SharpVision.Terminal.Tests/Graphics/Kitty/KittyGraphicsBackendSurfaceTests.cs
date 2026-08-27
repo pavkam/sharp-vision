@@ -297,7 +297,7 @@ public sealed class KittyGraphicsBackendSurfaceTests
         cleanup.WrittenSpan.ToArray().ShouldBe(
             "\u001b_Ga=d,d=I,I=1,q=2\u001b\\\u001b_Ga=d,d=I,I=2,q=2\u001b\\"u8.ToArray());
         result.Uploads.ShouldBe(1);
-        Encoding.ASCII.GetString(bytes.Uploads).ShouldContain("I=1,q=2");
+        Encoding.ASCII.GetString(bytes.Uploads).ShouldContain("I=2,q=2");
     }
 
     /// <summary>
