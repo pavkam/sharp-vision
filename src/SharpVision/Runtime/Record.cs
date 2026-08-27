@@ -10,6 +10,7 @@ using TerminalClipboardReply = ClipboardReply;
 using TerminalDiagnostic = Diagnostic;
 using TerminalFocus = Terminal.Input.TerminalFocus;
 using TerminalKittyClipboardPacket = Terminal.Kitty.Clipboard.KittyClipboardPacket;
+using TerminalKittyGraphicsResponse = Terminal.Kitty.Graphics.KittyGraphicsResponse;
 
 /// <summary>Stores one copied terminal input queue value without borrowed memory.</summary>
 internal readonly record struct Record
@@ -51,6 +52,9 @@ internal readonly record struct Record
 
     /// <summary>Gets a typed terminal capability-string response.</summary>
     public CapabilityResponse? CapabilityResponse { get; private init; }
+
+    /// <summary>Gets a decoded Kitty graphics acknowledgement.</summary>
+    public TerminalKittyGraphicsResponse? KittyGraphicsResponse { get; private init; }
 
     /// <summary>Gets a decoded OSC 52 clipboard reply.</summary>
     public TerminalClipboardReply ClipboardReply { get; private init; }
@@ -114,6 +118,11 @@ internal readonly record struct Record
     [Pure]
     public static Record From(CapabilityResponse value) =>
         new(RecordKind.CapabilityResponse) { CapabilityResponse = value };
+
+    /// <summary>Creates a decoded Kitty graphics acknowledgement record.</summary>
+    [Pure]
+    public static Record From(TerminalKittyGraphicsResponse value) =>
+        new(RecordKind.KittyGraphicsResponse) { KittyGraphicsResponse = value };
 
     /// <summary>Creates a decoded OSC 52 clipboard reply record.</summary>
     [Pure]

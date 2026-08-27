@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Graphics.Backends;
 
 using Graphics;
 
+using Kitty.Graphics;
+
 using Rendering;
 
 /// <summary>Defines one renderer-owned transactional terminal graphics backend.</summary>
@@ -19,6 +21,10 @@ using Rendering;
 /// </remarks>
 internal interface IGraphicsBackend: IDisposable
 {
+    /// <summary>Accepts an asynchronous Kitty graphics response relevant to retained ownership.</summary>
+    /// <param name="response">The non-null decoded response.</param>
+    public void Accept(KittyGraphicsResponse response) => ArgumentNullException.ThrowIfNull(response);
+
     /// <summary>Prepares a finite transaction without producing terminal output.</summary>
     /// <param name="front">The prior semantic front frame, or null before the first commit.</param>
     /// <param name="back">The borrowed target frame.</param>

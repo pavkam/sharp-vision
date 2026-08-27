@@ -56,6 +56,10 @@ public sealed class InputDecoderTests
         Modifiers.Shift | Modifiers.Alt | Modifiers.Control, false)]
     [InlineData("\u001b[<128;10;5M", Buttons.Back, InputAction.Press, 0, 0, Modifiers.None, false)]
     [InlineData("\u001b[<129;10;5M", Buttons.Forward, InputAction.Press, 0, 0, Modifiers.None, false)]
+    [InlineData("\u001b[<130;10;5M", Buttons.Extended10, InputAction.Press, 0, 0, Modifiers.None, false)]
+    [InlineData("\u001b[<131;10;5M", Buttons.Extended11, InputAction.Press, 0, 0, Modifiers.None, false)]
+    [InlineData("\u001b[<162;10;5M", Buttons.Extended10, InputAction.Move, 0, 0, Modifiers.None, true)]
+    [InlineData("\u001b[<163;10;5m", Buttons.Extended11, InputAction.Release, 0, 0, Modifiers.None, true)]
     public void Decode_WhenSgrMouseArrives_MapsSemanticPointer(
         string input,
         Buttons buttons,
@@ -426,8 +430,7 @@ public sealed class InputDecoderTests
     /// Verifies undefined extended buttons and truncated X10 reports recover safely.
     /// </summary>
     [Theory]
-    [InlineData("\u001b[<130;10;5M")]
-    [InlineData("\u001b[<131;10;5M")]
+    [InlineData("\u001b[<192;10;5M")]
     [InlineData("\u001b[M *")]
     public void Complete_WhenMouseEncodingIsInvalid_ReportsWithoutPointer(string input)
     {

@@ -9,7 +9,11 @@ using SharpVision.Terminal.Graphics;
 internal readonly struct KittyGraphicsPlacementState
 {
     /// <summary>Initializes one retained placement state.</summary>
-    public KittyGraphicsPlacementState(Placement placement, uint imageId, uint placementId)
+    public KittyGraphicsPlacementState(
+        Placement placement,
+        uint imageId,
+        uint placementId,
+        bool usesImageNumber = false)
     {
         if (placement.IsEmpty)
         {
@@ -21,6 +25,7 @@ internal readonly struct KittyGraphicsPlacementState
         Placement = placement;
         ImageId = imageId;
         PlacementId = placementId;
+        UsesImageNumber = usesImageNumber;
     }
 
     /// <summary>Gets the semantic placement.</summary>
@@ -31,4 +36,11 @@ internal readonly struct KittyGraphicsPlacementState
 
     /// <summary>Gets the renderer-owned placement identifier.</summary>
     public uint PlacementId { get; }
+
+    /// <summary>Gets whether <see cref="ImageId"/> is a client image number awaiting assignment.</summary>
+    public bool UsesImageNumber { get; }
+
+    /// <summary>Creates the same placement using its terminal-assigned image identifier.</summary>
+    public KittyGraphicsPlacementState WithAssignedImageId(uint imageId) =>
+        new(Placement, imageId, PlacementId);
 }

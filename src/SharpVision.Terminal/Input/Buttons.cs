@@ -24,5 +24,11 @@ public enum Buttons
     Back = 1 << 3,
 
     /// <summary>The second extended button.</summary>
-    Forward = 1 << 4
+    Forward = 1 << 4,
+
+    /// <summary>The xterm extended button numbered 10.</summary>
+    Extended10 = 1 << 5,
+
+    /// <summary>The xterm extended button numbered 11.</summary>
+    Extended11 = 1 << 6
 }

@@ -553,6 +553,8 @@ namespace SharpVision.Terminal.Input
         Secondary = 4,
         Back = 8,
         Forward = 16,
+        Extended10 = 32,
+        Extended11 = 64,
     }
     public enum Code
     {
@@ -1524,6 +1526,7 @@ namespace SharpVision.Terminal.Rendering
         public Renderer(int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
         public Renderer(SharpVision.Terminal.Capabilities.TerminalCapabilities capabilities, SharpVision.Terminal.Multiplexing.MultiplexerRoute? route = null, int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
         public System.Exception? LastCleanupException { get; }
+        public void AcceptKittyGraphicsResponse(SharpVision.Terminal.Kitty.Graphics.KittyGraphicsResponse response) { }
         public bool AttachCommittedFrame(SharpVision.Terminal.Rendering.Frame back) { }
         public void Dispose() { }
         public void Invalidate() { }

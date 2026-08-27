@@ -34,6 +34,7 @@ public sealed class Application:
     IMetricsResponseSink,
     IStatusResponseSink,
     ICapabilityResponseSink,
+    IKittyGraphicsResponseSink,
     IClipboardReplySink,
     IKittyClipboardPacketSink,
     IAsyncDisposable
@@ -755,6 +756,14 @@ public sealed class Application:
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+    public void Response(Terminal.Kitty.Graphics.KittyGraphicsResponse value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        Enqueue(Record.From(value));
+    }
+
+    /// <inheritdoc/>
     public void Response(in ClipboardReply value) => Enqueue(Record.From(value));
 
     /// <inheritdoc/>
@@ -1185,6 +1194,9 @@ public sealed class Application:
                 CapabilityResponseReceived?.Invoke(
                     this,
                     new CapabilityResponseEventArgs(record.CapabilityResponse!));
+                break;
+            case RecordKind.KittyGraphicsResponse:
+                _renderer?.AcceptKittyGraphicsResponse(record.KittyGraphicsResponse!);
                 break;
             case RecordKind.ClipboardReply:
                 _terminalServices.ReceiveClipboardReply(record.ClipboardReply);

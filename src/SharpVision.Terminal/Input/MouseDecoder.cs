@@ -200,7 +200,7 @@ internal sealed class MouseDecoder
         var low = code & 3;
 
         if (code is < 0 or > 255 ||
-            ((code & 128) != 0 && ((code & 64) != 0 || low is 2 or 3)))
+            ((code & 128) != 0 && (code & 64) != 0))
         {
             _report(DiagnosticCode.Malformed, SequenceKind.Csi);
             return;
@@ -274,11 +274,15 @@ internal sealed class MouseDecoder
                     throw new UnreachableException("A two-bit wheel selector must be bounded.");
             }
         }
+        else if (release)
+        {
+            action = PointerAction.Release;
+        }
         else if (motion)
         {
             action = PointerAction.Move;
         }
-        else if (release || low == 3)
+        else if (low == 3 && (code & 128) == 0)
         {
             action = PointerAction.Release;
         }
@@ -299,14 +303,16 @@ internal sealed class MouseDecoder
     private static Buttons DecodeButtons(int code)
     {
         var selector = code & 3;
-        return (code & 64) != 0 || selector == 3
+        return (code & 64) != 0 || (selector == 3 && (code & 128) == 0)
             ? Buttons.None
             : (code & 128) != 0
                 ? selector switch
                 {
                     0 => Buttons.Back,
                     1 => Buttons.Forward,
-                    _ => Buttons.None
+                    2 => Buttons.Extended10,
+                    3 => Buttons.Extended11,
+                    _ => throw new UnreachableException("A two-bit extended-button selector must be bounded.")
                 }
                 : selector switch
                 {

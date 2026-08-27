@@ -7,6 +7,7 @@ using SharpVision.Tests.Controls;
 
 using Terminal.Capabilities;
 using Terminal.Graphics;
+using Terminal.Kitty.Graphics;
 using Terminal.Multiplexing;
 
 using GraphicsImage = Terminal.Graphics.ImageSource;
@@ -15,6 +16,30 @@ using MultiplexerKind = Terminal.Multiplexing.MultiplexerKind;
 /// <summary>Verifies application startup, frame completion, suspension, and shutdown.</summary>
 public sealed partial class ApplicationTests
 {
+    /// <summary>Verifies hosted Kitty graphics acknowledgements reach the renderer backend so a
+    /// terminal-assigned image id replaces the temporary client image number.</summary>
+    [Fact]
+    public async Task Response_WhenKittyAssignsImageId_ForwardsAcknowledgementToRendererAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(4, 2)));
+        var backend = new RecordingGraphicsBackend();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        application.SeedRenderer(new Renderer(backend));
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var response = KittyGraphicsResponse.Parse("Gi=99,I=1;OK"u8);
+
+        application.Response(response);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        backend.Response.ShouldBeSameAs(response);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies unfinished programmatic Themes cannot be published as immutable state.</summary>
     [Fact]
     public async Task Theme_WhenAssignedUnfrozen_ThrowsBeforePublicationAsync()

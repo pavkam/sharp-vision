@@ -109,8 +109,7 @@ internal static class EnvironmentEvidenceAdapter
                     // SSH session, so a blanket environment-based guess must not clobber evidence
                     // that already outranks it (terminfo, an active query, or an explicit override) —
                     // only narrow it when nothing authoritative established support already.
-                    Osc52 = capabilities.Osc52.Authoritative ? capabilities.Osc52 : Feature.Unknown,
-                    KittyClipboard = new Feature(CapabilitySupport.Unsupported, Origin.Environment)
+                    Osc52 = capabilities.Osc52.Authoritative ? capabilities.Osc52 : Feature.Unknown
                 };
             }
 

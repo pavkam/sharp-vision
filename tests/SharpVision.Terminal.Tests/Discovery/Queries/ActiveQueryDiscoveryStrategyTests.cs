@@ -1400,11 +1400,11 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     }
 
     /// <summary>
-    /// Verifies SSH suppresses only the Kitty clipboard mode probe. OSC 1337 is unaffected by SSH
-    /// in <c>EnvironmentEvidenceAdapter</c>, so it must still be emitted.
+    /// Verifies SSH suppresses neither terminal query: process location is not terminal capability
+    /// evidence, and the remote terminal may route both protocols to the local emulator.
     /// </summary>
     [Fact]
-    public void TryStart_WhenSshIsDetected_OmitsOnlyClipboardProbe()
+    public void TryStart_WhenSshIsDetected_StillProbesTerminalCapabilities()
     {
         var written = Start(new Dictionary<string, string?>(StringComparer.Ordinal)
         {
@@ -1412,7 +1412,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
             ["SSH_CONNECTION"] = "10.0.0.1 22 10.0.0.2 22"
         });
 
-        written.ShouldNotContain("?5522$p");
+        written.ShouldContain("?5522$p");
         written.ShouldContain("1337;Capabilities");
     }
 

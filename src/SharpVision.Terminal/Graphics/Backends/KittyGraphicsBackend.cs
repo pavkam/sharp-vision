@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Graphics.Backends;
 
+using System.Collections.Concurrent;
+
 using Buffers;
 
 using Graphics;
@@ -22,7 +24,8 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     private readonly MultiplexerRoute? _route;
     private Dictionary<ulong, KittyGraphicsImageState> _images = [];
     private List<KittyGraphicsPlacementState> _placements = [];
-    private readonly List<uint> _uncertainImageIds;
+    private readonly Dictionary<uint, uint> _uncertainImages;
+    private readonly ConcurrentQueue<KittyGraphicsResponse> _responses = new();
     private readonly List<KittyGraphicsUncertainPlacementState> _uncertainPlacements;
     private Dictionary<ulong, KittyGraphicsImageState>? _preparedImages;
     private List<KittyGraphicsPlacementState>? _preparedPlacements;
@@ -61,7 +64,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxPreparedBytes);
         _imageIds = new KittyGraphicsIdentifierAllocator(maxImages);
         _placementIds = new KittyGraphicsIdentifierAllocator(maxPlacements);
-        _uncertainImageIds = new List<uint>(maxImages);
+        _uncertainImages = new Dictionary<uint, uint>(maxImages);
         _uncertainPlacements = new List<KittyGraphicsUncertainPlacementState>(maxPlacements);
         _maxPreparedBytes = maxPreparedBytes;
         _output = new BoundedBufferWriter(maxPreparedBytes, initialRentBytes: 256);
@@ -79,6 +82,18 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     #region Frame transactions
 
     /// <inheritdoc />
+    public void Accept(KittyGraphicsResponse response)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+
+        if (response.Valid && response.Succeeded && response.ImageId != 0 && response.ImageNumber != 0)
+        {
+            _responses.Enqueue(response);
+        }
+    }
+
+
+    /// <inheritdoc />
     public GraphicsBackendResult Prepare(
         Frame? front,
         Frame back,
@@ -87,6 +102,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     {
         ArgumentNullException.ThrowIfNull(back);
         ThrowIfDisposed();
+        ApplyAssignedImageIds();
 
         if (_prepared || _cleanupPrepared)
         {
@@ -158,9 +174,9 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             // identifier — safe in principle, but not yet proven safe across every
             // invalidate/retry interleaving. Falling back to a fresh rental here (or exhaustion,
             // if the allocator has no other room) is the conservative choice.
-            if (!neededImageIdentities.Contains(previous.Key) && !_uncertainImageIds.Contains(previous.Value.Id))
+            if (!neededImageIdentities.Contains(previous.Key) && !_uncertainImages.ContainsKey(previous.Value.Number))
             {
-                retiringImageIds.Enqueue(previous.Value.Id);
+                retiringImageIds.Enqueue(previous.Value.Number);
             }
         }
 
@@ -257,7 +273,11 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                     _placements[effectiveIndex].Placement.ImageIdentity == placement.ImageIdentity)
                 {
                     var previous = _placements[effectiveIndex];
-                    placementState = new KittyGraphicsPlacementState(placement, imageState.Id, previous.PlacementId);
+                    placementState = new KittyGraphicsPlacementState(
+                        placement,
+                        imageState.Reference,
+                        previous.PlacementId,
+                        imageState.UsesImageNumber);
                 }
                 else
                 {
@@ -274,8 +294,15 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                         rentedPlacements.Add(id);
                     }
 
-                    placementState = new KittyGraphicsPlacementState(placement, imageState.Id, id);
-                    rentedPlacementStates.Add(new KittyGraphicsUncertainPlacementState(imageState.Id, id));
+                    placementState = new KittyGraphicsPlacementState(
+                        placement,
+                        imageState.Reference,
+                        id,
+                        imageState.UsesImageNumber);
+                    rentedPlacementStates.Add(new KittyGraphicsUncertainPlacementState(
+                        imageState.Reference,
+                        id,
+                        imageState.UsesImageNumber));
                 }
 
                 placements.Add(placementState);
@@ -311,13 +338,15 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             output.Reset(remaining);
             var retiredPlacements = new List<uint>();
             var transferredImageIdSet = new HashSet<uint>(transferredImageIds);
-            var hardDeletedImageIds = new HashSet<uint>(_uncertainImageIds);
+            var hardDeletedImageIds = UncertainImageReferences();
 
             foreach (var previous in _images)
             {
-                if (!images.ContainsKey(previous.Key) && !transferredImageIdSet.Contains(previous.Value.Id))
+                if (!images.ContainsKey(previous.Key) && !transferredImageIdSet.Contains(previous.Value.Number))
                 {
-                    _ = hardDeletedImageIds.Add(previous.Value.Id);
+                    _ = hardDeletedImageIds.Add(new KittyGraphicsImageReference(
+                        previous.Value.Reference,
+                        previous.Value.UsesImageNumber));
                 }
             }
 
@@ -345,7 +374,9 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                 if (images.ContainsKey(previous.Placement.ImageIdentity))
                 {
                     KittyGraphicsWriter.Write(
-                        KittyGraphicsCommand.DeletePlacement(previous.ImageId, previous.PlacementId),
+                        UseImageReference(
+                            KittyGraphicsCommand.DeletePlacement(previous.ImageId, previous.PlacementId),
+                            previous.UsesImageNumber),
                         [],
                         output);
                     removalCount++;
@@ -365,7 +396,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             {
                 if (!images.ContainsKey(previous.Key))
                 {
-                    if (transferredImageIdSet.Contains(previous.Value.Id))
+                    if (transferredImageIdSet.Contains(previous.Value.Number))
                     {
                         // Reused directly by a new image above instead of retired: the upload
                         // already transmitted under this identifier, which is itself a protocol
@@ -374,8 +405,13 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                         continue;
                     }
 
-                    KittyGraphicsWriter.Write(KittyGraphicsCommand.DeleteImage(previous.Value.Id), [], output);
-                    retiredImages.Add(previous.Value.Id);
+                    KittyGraphicsWriter.Write(
+                        UseImageReference(
+                            KittyGraphicsCommand.DeleteImage(previous.Value.Reference),
+                            previous.Value.UsesImageNumber),
+                        [],
+                        output);
+                    retiredImages.Add(previous.Value.Number);
                     removalCount++;
                 }
             }
@@ -452,17 +488,23 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             // "owned by _images" to "owned by _uncertainImageIds," not newly consuming allocator
             // capacity the way a fresh rental does.
             Debug.Assert(
-                _uncertainImageIds.Count + _rentedImageIds!.Count <= _uncertainImageIds.Capacity,
+                _uncertainImages.Count + _rentedImageIds!.Count <= _imageIds.Capacity,
                 "The bounded image allocator must fit every uncertain rental.");
             Debug.Assert(
                 _uncertainPlacements.Count + _rentedPlacementStates!.Count <= _uncertainPlacements.Capacity,
                 "The bounded placement allocator must fit every uncertain rental.");
-            _uncertainImageIds.AddRange(_rentedImageIds!);
+            foreach (var number in _rentedImageIds!)
+            {
+                _ = _uncertainImages.TryAdd(number, 0);
+            }
 
             // A transferred identifier's upload is exactly as unconfirmed as a freshly rented
             // one's: it must be quarantined the same way, so a future transaction cannot reuse it
             // again until a delete tombstone for it has actually flushed.
-            _uncertainImageIds.AddRange(_transferredImageIds!);
+            foreach (var number in _transferredImageIds!)
+            {
+                _ = _uncertainImages.TryAdd(number, 0);
+            }
             _uncertainPlacements.AddRange(_rentedPlacementStates!);
             ClearPrepared(returnRented: false);
         }
@@ -484,6 +526,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     public int PrepareCleanup()
     {
         ThrowIfDisposed();
+        ApplyAssignedImageIds();
 
         if (_prepared || _cleanupPrepared)
         {
@@ -495,14 +538,17 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
         foreach (var image in _images.Values)
         {
-            KittyGraphicsWriter.Write(KittyGraphicsCommand.DeleteImage(image.Id), [], output);
+            KittyGraphicsWriter.Write(
+                UseImageReference(KittyGraphicsCommand.DeleteImage(image.Reference), image.UsesImageNumber),
+                [],
+                output);
         }
 
-        var hardDeletedImageIds = new HashSet<uint>(_uncertainImageIds);
+        var hardDeletedImageIds = UncertainImageReferences();
 
         foreach (var image in _images.Values)
         {
-            _ = hardDeletedImageIds.Add(image.Id);
+            _ = hardDeletedImageIds.Add(new KittyGraphicsImageReference(image.Reference, image.UsesImageNumber));
         }
 
         var cleanupCount = _images.Count + WriteUncertainDeletes(output, hardDeletedImageIds);
@@ -564,12 +610,12 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         WriteCursor(
             new Point(state.Placement.Destination.X, state.Placement.Destination.Y),
             destination);
-        var command = KittyGraphicsCommand.Place(
+        var command = UseImageReference(KittyGraphicsCommand.Place(
             state.ImageId,
             state.PlacementId,
             state.Placement.Source,
             new Size(state.Placement.Destination.Width, state.Placement.Destination.Height),
-            zIndex);
+            zIndex), state.UsesImageNumber);
 
         if (_route is null)
         {
@@ -593,7 +639,9 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     {
         var format = state.Image.Format == ImageFormat.Rgba ? KittyGraphicsFormat.Rgba : KittyGraphicsFormat.Png;
         KittyGraphicsWriter.WriteTransmission(
-            KittyGraphicsCommand.Transmit(state.Id, state.Image.Size, format),
+            UseImageReference(
+                KittyGraphicsCommand.Transmit(state.Reference, state.Image.Size, format),
+                state.UsesImageNumber),
             state.Image.Source,
             destination,
             maxPayloadBytes: state.Image.ByteCount);
@@ -604,6 +652,11 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         ArgumentNullException.ThrowIfNull(destination);
         destination.Write(bytes);
     }
+
+    private static KittyGraphicsCommand UseImageReference(
+        KittyGraphicsCommand command,
+        bool usesImageNumber) =>
+        usesImageNumber ? command.WithImageNumber() : command;
 
     private byte[] FinishApcPhase(BoundedBufferWriter output, ref int remaining)
     {
@@ -653,27 +706,88 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
     #region Identifier and prepared state
 
+    private void ApplyAssignedImageIds()
+    {
+        while (_responses.TryDequeue(out var response))
+        {
+            foreach (var identity in _images
+                .Where(pair => pair.Value.UsesImageNumber && pair.Value.Number == response.ImageNumber)
+                .Select(static pair => pair.Key)
+                .ToArray())
+            {
+                _images[identity] = _images[identity].WithAssignedId(response.ImageId);
+            }
+
+            for (var index = 0; index < _placements.Count; index++)
+            {
+                var placement = _placements[index];
+
+                if (placement.UsesImageNumber && placement.ImageId == response.ImageNumber)
+                {
+                    _placements[index] = placement.WithAssignedImageId(response.ImageId);
+                }
+            }
+
+            if (_uncertainImages.ContainsKey(response.ImageNumber))
+            {
+                _uncertainImages[response.ImageNumber] = response.ImageId;
+            }
+
+            for (var index = 0; index < _uncertainPlacements.Count; index++)
+            {
+                var placement = _uncertainPlacements[index];
+
+                if (placement.UsesImageNumber && placement.ImageId == response.ImageNumber)
+                {
+                    _uncertainPlacements[index] = placement.WithAssignedImageId(response.ImageId);
+                }
+            }
+        }
+    }
+
+    private HashSet<KittyGraphicsImageReference> UncertainImageReferences()
+    {
+        var references = new HashSet<KittyGraphicsImageReference>();
+
+        foreach (var image in _uncertainImages)
+        {
+            _ = references.Add(new KittyGraphicsImageReference(
+                image.Value == 0 ? image.Key : image.Value,
+                image.Value == 0));
+        }
+
+        return references;
+    }
+
     private int WriteUncertainDeletes(
         IBufferWriter<byte> destination,
-        HashSet<uint> hardDeletedImageIds)
+        HashSet<KittyGraphicsImageReference> hardDeletedImageIds)
     {
         var count = 0;
 
-        foreach (var imageId in _uncertainImageIds)
+        foreach (var image in _uncertainImages)
         {
-            KittyGraphicsWriter.Write(KittyGraphicsCommand.DeleteImage(imageId), [], destination);
+            var imageId = image.Value == 0 ? image.Key : image.Value;
+            KittyGraphicsWriter.Write(
+                UseImageReference(KittyGraphicsCommand.DeleteImage(imageId), image.Value == 0),
+                [],
+                destination);
             count++;
         }
 
         foreach (var placement in _uncertainPlacements)
         {
-            if (hardDeletedImageIds.Contains(placement.ImageId))
+            if (hardDeletedImageIds.Contains(new KittyGraphicsImageReference(
+                placement.ImageId,
+                placement.UsesImageNumber)))
             {
                 continue;
             }
 
             KittyGraphicsWriter.Write(
-                KittyGraphicsCommand.DeletePlacement(placement.ImageId, placement.PlacementId),
+                UseImageReference(
+                    KittyGraphicsCommand.DeletePlacement(placement.ImageId, placement.PlacementId),
+                    placement.UsesImageNumber),
                 [],
                 destination);
             count++;
@@ -699,7 +813,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
         foreach (var id in _retiredImageIds!)
         {
-            if (!_uncertainImageIds.Contains(id))
+            if (!_uncertainImages.ContainsKey(id))
             {
                 _imageIds.Return(id);
             }
@@ -720,9 +834,9 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
         foreach (var image in _images.Values)
         {
-            if (!_uncertainImageIds.Contains(image.Id))
+            if (!_uncertainImages.ContainsKey(image.Number))
             {
-                _imageIds.Return(image.Id);
+                _imageIds.Return(image.Number);
             }
         }
     }
@@ -747,13 +861,13 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             _placementIds.Return(placement.PlacementId);
         }
 
-        foreach (var imageId in _uncertainImageIds)
+        foreach (var imageNumber in _uncertainImages.Keys)
         {
-            _imageIds.Return(imageId);
+            _imageIds.Return(imageNumber);
         }
 
         _uncertainPlacements.Clear();
-        _uncertainImageIds.Clear();
+        _uncertainImages.Clear();
     }
 
     private void ReturnRented(List<uint> images, List<uint> placements)

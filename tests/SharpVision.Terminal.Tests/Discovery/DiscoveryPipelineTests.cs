@@ -73,7 +73,7 @@ public sealed class DiscoveryPipelineTests
     }
 
     /// <summary>
-    /// Verifies SSH and screen prevent unsafe clipboard assumptions.
+    /// Verifies screen narrows vendor clipboard protocols independently of SSH handling.
     /// </summary>
     [Fact]
     public void Detect_WhenSessionIsRemoteOrScreen_NarrowsClipboardHints()
@@ -111,7 +111,7 @@ public sealed class DiscoveryPipelineTests
             new DiscoveryContext(baseline, environment));
 
         capabilities.Osc52.ShouldBe(database);
-        capabilities.KittyClipboard.State.ShouldBe(CapabilitySupport.Unsupported);
+        capabilities.KittyClipboard.State.ShouldBe(CapabilitySupport.Unknown);
     }
 
     /// <summary>

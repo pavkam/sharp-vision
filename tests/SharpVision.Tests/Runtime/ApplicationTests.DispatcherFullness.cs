@@ -62,9 +62,12 @@ public sealed partial class ApplicationTests
     {
         while (true)
         {
+            var drained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
             try
             {
-                dispatcher.Post(static () => { });
+                dispatcher.Post(drained.SetResult);
+                await drained.Task.WaitAsync(cancellationToken);
                 return;
             }
             catch (InvalidOperationException)

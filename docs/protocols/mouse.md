@@ -4,7 +4,7 @@
 
 Primary source:
 [xterm mouse tracking](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html),
-patch 410, accessed 2026-07-11. Tracking modes include X10 9, VT200 1000,
+patch 410, accessed 2026-08-27. Tracking modes include X10 9, VT200 1000,
 button-event 1002, any-event 1003, UTF-8 encoding 1005, SGR cell encoding 1006,
 urxvt encoding 1015, and SGR pixel encoding 1016.
 
@@ -34,11 +34,15 @@ The X10 field reader honors the negotiated `Protocols.MouseCoordinates`,
 threaded into `Input.InputOptions.MouseCoordinates` from the same
 `Runtime.TerminalOptions.Coordinates` value that selects the write-side DECSET
 mode: raw single-byte fields under `MouseCoordinates.Default`, UTF-8 scalar
-fields under `MouseCoordinates.Utf8`. The two encodings are mutually ambiguous
-for field bytes at or above `0x80`, so the decoder cannot infer which is in
-force from the byte stream alone — the input and output sides must agree. `0x7F`
-(DEL) is a legal field byte (coordinate 95) under both encodings and is fed to a
-pending X10 report rather than being treated as a keystroke.
+fields under `MouseCoordinates.Utf8`. Xterm's bit-128 selectors preserve buttons
+8 through 11 as `Back`, `Forward`, `Extended10`, and `Extended11`; motion and
+SGR release retain the same typed button. Values beyond button 11 remain
+malformed because their modifier encoding is ambiguous. The two coordinate
+encodings are mutually ambiguous for field bytes at or above `0x80`, so the
+decoder cannot infer which is in force from the byte stream alone — the input
+and output sides must agree. `0x7F` (DEL) is a legal field byte (coordinate 95)
+under both encodings and is fed to a pending X10 report rather than being
+treated as a keystroke.
 
 Cell reports subtract the wire's one-based origin exactly once. With
 `Input.InputOptions.PixelMouse`, SGR coordinates are retained as zero-based

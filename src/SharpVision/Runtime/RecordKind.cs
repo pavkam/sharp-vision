@@ -39,6 +39,9 @@ internal enum RecordKind
     /// <summary>A typed terminal capability-string response.</summary>
     CapabilityResponse,
 
+    /// <summary>A decoded Kitty graphics acknowledgement.</summary>
+    KittyGraphicsResponse,
+
     /// <summary>A decoded OSC 52 clipboard reply.</summary>
     ClipboardReply,
 

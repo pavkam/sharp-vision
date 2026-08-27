@@ -242,7 +242,7 @@ public static class KittyGraphicsWriter
 
         if (command.Action == KittyGraphicsAction.Query)
         {
-            position = AppendField(destination, position, (byte) 'i', command.ImageId);
+            position = AppendField(destination, position, command.UsesImageNumber ? (byte) 'I' : (byte) 'i', command.ImageId);
             position = AppendField(destination, position, (byte) 's', command.PixelSize.Width);
             position = AppendField(destination, position, (byte) 'v', command.PixelSize.Height);
             position = AppendLiteralField(destination, position, (byte) 'a', (byte) 'q');
@@ -276,7 +276,7 @@ public static class KittyGraphicsWriter
                 position = AppendField(destination, position, (byte) 'v', command.PixelSize.Height);
             }
 
-            position = AppendField(destination, position, (byte) 'i', command.ImageId);
+            position = AppendField(destination, position, command.UsesImageNumber ? (byte) 'I' : (byte) 'i', command.ImageId);
 
             if (command.More)
             {
@@ -291,7 +291,7 @@ public static class KittyGraphicsWriter
         if (command.Action == KittyGraphicsAction.Place)
         {
             position = AppendLiteralField(destination, position, (byte) 'a', (byte) 'p');
-            position = AppendField(destination, position, (byte) 'i', command.ImageId);
+            position = AppendField(destination, position, command.UsesImageNumber ? (byte) 'I' : (byte) 'i', command.ImageId);
             position = AppendField(destination, position, (byte) 'p', command.PlacementId);
             position = AppendField(destination, position, (byte) 'x', command.Source.X);
             position = AppendField(destination, position, (byte) 'y', command.Source.Y);
@@ -357,7 +357,7 @@ public static class KittyGraphicsWriter
                 position = AppendField(destination, position, (byte) 'z', command.FrameGap);
             }
 
-            position = AppendField(destination, position, (byte) 'i', command.ImageId);
+            position = AppendField(destination, position, command.UsesImageNumber ? (byte) 'I' : (byte) 'i', command.ImageId);
 
             if (command.More)
             {
@@ -391,7 +391,7 @@ public static class KittyGraphicsWriter
             position,
             (byte) 'd',
             command.DeleteData ? (byte) 'I' : (byte) 'i');
-        position = AppendField(destination, position, (byte) 'i', command.ImageId);
+        position = AppendField(destination, position, command.UsesImageNumber ? (byte) 'I' : (byte) 'i', command.ImageId);
 
         if (!command.DeleteData)
         {

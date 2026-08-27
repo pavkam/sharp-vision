@@ -17,7 +17,9 @@ public readonly record struct Pointer
         Buttons.Middle |
         Buttons.Secondary |
         Buttons.Back |
-        Buttons.Forward;
+        Buttons.Forward |
+        Buttons.Extended10 |
+        Buttons.Extended11;
 
     private const Modifiers _allModifiers =
         Modifiers.Shift |

@@ -30,7 +30,8 @@ public sealed class KittyGraphicsCommand
         uint baseFrameId = 0,
         int frameGap = 0,
         KittyGraphicsAnimationControl control = default,
-        int loopCount = 0)
+        int loopCount = 0,
+        bool usesImageNumber = false)
     {
         Action = action;
         Medium = medium;
@@ -51,6 +52,7 @@ public sealed class KittyGraphicsCommand
         FrameGap = frameGap;
         Control = control;
         LoopCount = loopCount;
+        UsesImageNumber = usesImageNumber;
     }
 
     /// <summary>Gets the typed action.</summary>
@@ -67,6 +69,9 @@ public sealed class KittyGraphicsCommand
 
     /// <summary>Gets the nonzero renderer-owned image identifier.</summary>
     public uint ImageId { get; }
+
+    /// <summary>Gets whether the numeric image reference is encoded with Kitty's terminal-allocation <c>I</c> key.</summary>
+    internal bool UsesImageNumber { get; }
 
     /// <summary>Gets the nonzero renderer-owned placement identifier, or zero when absent.</summary>
     public uint PlacementId { get; }
@@ -415,7 +420,32 @@ public sealed class KittyGraphicsCommand
         DeleteData,
         FrameOffset,
         BaseFrameId,
-        FrameGap);
+        FrameGap,
+        usesImageNumber: UsesImageNumber);
+
+    /// <summary>Uses the command's image value as a terminal-allocation image number.</summary>
+    [Pure]
+    internal KittyGraphicsCommand WithImageNumber() => new(
+        Action,
+        Medium,
+        Format,
+        Compression,
+        ImageId,
+        PlacementId,
+        PixelSize,
+        Source,
+        Destination,
+        ZIndex,
+        Quiet,
+        DoNotMoveCursor,
+        More,
+        DeleteData,
+        FrameOffset,
+        BaseFrameId,
+        FrameGap,
+        Control,
+        LoopCount,
+        usesImageNumber: true);
 
     /// <summary>Creates a metadata-minimal continuation chunk for the given data-bearing action.</summary>
     [Pure]

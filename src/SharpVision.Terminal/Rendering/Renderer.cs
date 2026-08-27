@@ -10,6 +10,8 @@ using Capabilities;
 using Graphics;
 using Graphics.Backends;
 
+using Kitty.Graphics;
+
 /// <summary>
 /// Encodes semantic frame changes and commits state only after complete output.
 /// </summary>
@@ -170,6 +172,17 @@ public sealed class Renderer: IDisposable
             ThrowIfDisposed();
             return _front;
         }
+    }
+
+    /// <summary>Forwards a decoded Kitty graphics acknowledgement to retained backend ownership.</summary>
+    /// <param name="response">The non-null bounded response.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="response"/> is null.</exception>
+    /// <exception cref="ObjectDisposedException">The renderer is disposed.</exception>
+    public void AcceptKittyGraphicsResponse(KittyGraphicsResponse response)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+        ThrowIfDisposed();
+        _backend?.Accept(response);
     }
 
     /// <summary>

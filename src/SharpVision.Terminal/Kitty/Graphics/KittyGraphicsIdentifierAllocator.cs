@@ -20,6 +20,9 @@ internal sealed class KittyGraphicsIdentifierAllocator
         _active = new bool[checked(capacity + 1)];
     }
 
+    /// <summary>Gets the maximum simultaneous allocation count.</summary>
+    public int Capacity => _active.Length - 1;
+
     /// <summary>Rents one inactive nonzero identifier without allocation.</summary>
     /// <returns>The newly active identifier.</returns>
     /// <exception cref="InvalidOperationException">Every bounded identifier is active.</exception>

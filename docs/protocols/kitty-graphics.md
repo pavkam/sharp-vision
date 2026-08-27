@@ -4,7 +4,7 @@
 
 Primary source:
 [Kitty terminal graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/),
-accessed 2026-07-20. A command is APC `ESC _ G`, comma-separated control data,
+accessed 2026-08-27. A command is APC `ESC _ G`, comma-separated control data,
 an optional semicolon plus Base64 data, and ST `ESC \`.
 
 `Kitty.Graphics.KittyGraphicsCommand` and `Kitty.Graphics.KittyGraphicsWriter`
@@ -42,7 +42,8 @@ Typed and implemented behavior includes:
 - strict bounded typed response parsing and numeric correlation;
 - direct RGB, RGBA, and PNG upload, retained placement/update, and deletion;
 - optional zlib-compressed direct RGB or RGBA transmission;
-- renderer-owned finite image and placement identifiers;
+- terminal-allocated image identifiers correlated through finite client image
+  numbers, plus renderer-owned finite placement identifiers;
 - 4,096-byte maximum encoded data chunks with metadata-minimal continuation
   chunks;
 - transactional upload, cell, placement, and removal ordering;
@@ -82,7 +83,14 @@ Direct data is Base64 encoded into APC payloads no longer than 4,096 bytes. A
 non-final chunk therefore contains 3,072 raw bytes and has a Base64 length
 divisible by four. After the first chunk, only `m` and optional `q` metadata are
 emitted. One image finishes all chunks before another graphics command begins.
-The backend uses quiet mode 2 and never opens a terminal-supplied path.
+The backend uses quiet mode 2 and never opens a terminal-supplied path. Retained
+uploads use Kitty's capital `I` image-number field rather than claiming a
+process-local `i` image id. Kitty creates a fresh image even when another client
+used the same number. The acknowledgement is routed through `Application` and
+`Renderer` to the retained backend, which correlates the echoed `I` number and
+switches later placement and cleanup commands to the terminal-assigned `i` id.
+This prevents one client from replacing or deleting another client's image
+merely because both began allocating at one.
 
 `KittyGraphicsWriter.WriteEncoded` is a checked public convenience, not a way
 around validation. It accepts only query, transmit, or frame transmission
@@ -105,8 +113,10 @@ terminal save/restore slot. Kitty terminals are VT-compatible; this CUP
 requirement is part of backend selection.
 
 Updating the same semantic placement reuses its image/placement pair. Removing
-one placement of a shared image uses `a=d,d=i,i=...,p=...`. Removing the last
-use sends `a=d,d=I,i=...`, which frees image data and all its placements.
+one placement of a shared image uses `a=d,d=i,I=...,p=...` before
+acknowledgement and `a=d,d=i,i=...,p=...` afterwards. Removing the last use
+follows the same reference transition with `d=I`, freeing that exact image and
+all its placements.
 
 ## Frame transmission and animation control (protocol surface only)
 

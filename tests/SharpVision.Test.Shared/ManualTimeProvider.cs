@@ -10,6 +10,7 @@ public sealed class ManualTimeProvider: TimeProvider
     private readonly List<ManualTimer> _timers = [];
     private long _nextOrder;
     private long _timestamp;
+    private long _utcOffsetTicks;
 
     /// <inheritdoc/>
     public override long TimestampFrequency => TimeSpan.TicksPerSecond;
@@ -19,7 +20,11 @@ public sealed class ManualTimeProvider: TimeProvider
 
     /// <inheritdoc/>
     public override DateTimeOffset GetUtcNow() =>
-        DateTimeOffset.UnixEpoch + TimeSpan.FromTicks(_timestamp);
+        DateTimeOffset.UnixEpoch + TimeSpan.FromTicks(checked(_timestamp + _utcOffsetTicks));
+
+    /// <summary>Adjusts UTC wall time independently of the monotonic timer timestamp.</summary>
+    /// <param name="value">The signed wall-clock adjustment.</param>
+    public void AdjustUtc(TimeSpan value) => _utcOffsetTicks = checked(_utcOffsetTicks + value.Ticks);
 
     /// <inheritdoc/>
     public override ITimer CreateTimer(

@@ -1,6 +1,6 @@
 ﻿namespace SharpVision
 {
-    public sealed class Application : SharpVision.Terminal.Abstractions.ICapabilityResponseSink, SharpVision.Terminal.Abstractions.IClipboardReplySink, SharpVision.Terminal.Abstractions.IInputSink, SharpVision.Terminal.Abstractions.IKittyClipboardPacketSink, SharpVision.Terminal.Abstractions.IMetricsResponseSink, SharpVision.Terminal.Abstractions.IPaletteResponseSink, SharpVision.Terminal.Abstractions.IProtocolSink, SharpVision.Terminal.Abstractions.ISink, SharpVision.Terminal.Abstractions.IStatusResponseSink, System.IAsyncDisposable
+    public sealed class Application : SharpVision.Terminal.Abstractions.ICapabilityResponseSink, SharpVision.Terminal.Abstractions.IClipboardReplySink, SharpVision.Terminal.Abstractions.IInputSink, SharpVision.Terminal.Abstractions.IKittyClipboardPacketSink, SharpVision.Terminal.Abstractions.IKittyGraphicsResponseSink, SharpVision.Terminal.Abstractions.IMetricsResponseSink, SharpVision.Terminal.Abstractions.IPaletteResponseSink, SharpVision.Terminal.Abstractions.IProtocolSink, SharpVision.Terminal.Abstractions.ISink, SharpVision.Terminal.Abstractions.IStatusResponseSink, System.IAsyncDisposable
     {
         public Application(SharpVision.Controls.ControlBase root, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Abstractions.IResizeSource resize, SharpVision.Terminal.Runtime.TerminalOptions? options = null, System.IAsyncDisposable? hostLease = null, System.TimeProvider? timeProvider = null, bool? observeProcessSignals = default) { }
         public SharpVision.Windows.Window? ActiveWindow { get; }
@@ -49,6 +49,7 @@
         public void Profile(SharpVision.Terminal.Capabilities.TerminalCapabilities value) { }
         public void RefreshScreen() { }
         public void Response(SharpVision.Terminal.Kitty.Clipboard.KittyClipboardPacket value) { }
+        public void Response(SharpVision.Terminal.Kitty.Graphics.KittyGraphicsResponse value) { }
         public void Response(SharpVision.Terminal.Xterm.CapabilityResponse value) { }
         public void Response(in SharpVision.Terminal.Clipboard.ClipboardReply value) { }
         public void Response(in SharpVision.Terminal.Xterm.MetricsResponse value) { }

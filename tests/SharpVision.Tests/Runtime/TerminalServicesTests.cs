@@ -594,11 +594,14 @@ public sealed class TerminalServicesTests
         await negotiationQueryWritten.Task.WaitAsync(
             TimeSpan.FromSeconds(5),
             TestContext.Current.CancellationToken);
-        // No terminal reply is queued: every dispatched startup query shares the same
-        // configured QueryTimeout deadline, registered at essentially the same instant, so
-        // one advance past it times every one of them out together and negotiation falls back
-        // to Capabilities as-is - simpler and just as valid as answering the full query batch.
-        clock.Advance(configuredTimeout);
+        // The transport write can become observable just before the negotiation thread arms its
+        // final deadline. Advance and yield within a finite loop so this test synchronizes with the
+        // clock-owned state rather than relying on scheduler timing.
+        for (var attempt = 0; attempt < 10 && !starting.IsCompleted; attempt++)
+        {
+            clock.Advance(configuredTimeout);
+            await Task.Yield();
+        }
         await starting.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         application.Terminal.Clipboard.Request();
@@ -896,6 +899,108 @@ public sealed class TerminalServicesTests
         await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
 
         replies.Count.ShouldBe(1, "a completed request must not also time out");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies concurrent OSC 52 requests serialize each pending state transition with
+    /// its wire query, so the active timeout always names the selection written last.</summary>
+    [Fact]
+    public async Task Request_WhenOsc52CallersRace_KeepsPendingSelectionAlignedWithLastQueryAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { Osc52 = supported }
+        };
+        var clock = new ManualTimeProvider();
+        var timeout = new TaskCompletionSource<KittyClipboardReplyEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        ClipboardSelection? lastQuery = null;
+        var queryCount = 0;
+        terminal.Written += bytes =>
+        {
+            var clipboardIndex = bytes.Span.LastIndexOf("\u001b]52;c;?"u8);
+            var primaryIndex = bytes.Span.LastIndexOf("\u001b]52;p;?"u8);
+
+            if (clipboardIndex >= 0)
+            {
+                queryCount++;
+                lastQuery = ClipboardSelection.Clipboard;
+            }
+
+            if (primaryIndex >= 0)
+            {
+                queryCount++;
+
+                if (primaryIndex > clipboardIndex)
+                {
+                    lastQuery = ClipboardSelection.Primary;
+                }
+            }
+        };
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            options,
+            timeProvider: clock);
+        application.Terminal.Clipboard.KittyClipboardReplyReceived += (_, args) => timeout.TrySetResult(args);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        using var start = new Barrier(3);
+
+        var clipboard = Task.Run(() =>
+        {
+            _ = start.SignalAndWait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            application.Terminal.Clipboard.Request(ClipboardSelection.Clipboard);
+        }, TestContext.Current.CancellationToken);
+        var primary = Task.Run(() =>
+        {
+            _ = start.SignalAndWait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            application.Terminal.Clipboard.Request(ClipboardSelection.Primary);
+        }, TestContext.Current.CancellationToken);
+        _ = start.SignalAndWait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await Task.WhenAll(clipboard, primary);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        clock.Advance(QueryLimits.Default.QueryTimeout);
+
+        var result = await timeout.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        queryCount.ShouldBe(2);
+        result.Selection.ShouldBe(lastQuery!.Value);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a relative timer callback that arrives before the transaction's UTC
+    /// deadline reschedules the remainder instead of abandoning the live request.</summary>
+    [Fact]
+    public async Task Request_WhenKittyTimerFiresBeforeUtcDeadline_KeepsTransactionAliveAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var clock = new ManualTimeProvider();
+        var replies = new List<KittyClipboardReplyEventArgs>();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            KittyOptions(),
+            timeProvider: clock);
+        application.Terminal.Clipboard.KittyClipboardReplyReceived += (_, args) => replies.Add(args);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        application.Terminal.Clipboard.Request();
+        await FlushAsync(application);
+
+        clock.AdjustUtc(TimeSpan.FromSeconds(-1));
+        clock.Advance(QueryLimits.Default.QueryTimeout);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        replies.ShouldBeEmpty();
+
+        clock.AdjustUtc(TimeSpan.FromSeconds(1));
+        clock.Advance(TimeSpan.FromSeconds(1));
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        replies.Count.ShouldBe(1);
+        replies[0].IsSucceeded.ShouldBeFalse();
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 

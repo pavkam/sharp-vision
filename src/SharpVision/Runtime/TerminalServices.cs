@@ -308,20 +308,13 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
             return;
         }
 
-        var destination = new ArrayBufferWriter<byte>(8);
-        Osc52.Query(new ProtocolWriter(destination), selection);
-
-        // Assigned inside the posted callback, never here: Request is callable from any thread -
-        // it only reads capabilities - and the pending state is dispatcher-owned.
         try
         {
-            _application.Dispatcher.Post(() => StartOsc52Request(selection));
+            _application.Dispatcher.Post(() => PerformOsc52Request(selection));
         }
         catch (ObjectDisposedException)
         {
         }
-
-        _application.PostOutOfBand(destination.WrittenMemory);
     }
 
     /// <summary>Feeds a decoded OSC 52 reply to a pending request, ignoring unsolicited replies.</summary>
@@ -493,6 +486,17 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
         timer.Start();
     }
 
+    /// <summary>Atomically orders pending OSC 52 state with its matching terminal query.</summary>
+    /// <param name="selection">The selection being queried.</param>
+    private void PerformOsc52Request(Selection selection)
+    {
+        _application.Dispatcher.VerifyAccess();
+        StartOsc52Request(selection);
+        var destination = new ArrayBufferWriter<byte>(8);
+        Osc52.Query(new ProtocolWriter(destination), selection);
+        _application.PostOutOfBand(destination.WrittenMemory);
+    }
+
     private void OnOsc52Timeout()
     {
         if (!_pendingOsc52Request)
@@ -555,8 +559,20 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
             return;
         }
 
-        _ = transaction.CheckTimeout();
-        CompleteKittyTransaction(transaction);
+        _kittyTimeoutTimer?.Dispose();
+        _kittyTimeoutTimer = null;
+
+        if (transaction.CheckTimeout() || transaction.State is
+            KittyClipboardTransactionState.Completed or
+            KittyClipboardTransactionState.Failed or
+            KittyClipboardTransactionState.Cancelled or
+            KittyClipboardTransactionState.TimedOut)
+        {
+            CompleteKittyTransaction(transaction);
+            return;
+        }
+
+        ScheduleKittyTimeout(transaction);
     }
 
     private void CompleteKittyTransaction(KittyClipboardTransaction transaction)

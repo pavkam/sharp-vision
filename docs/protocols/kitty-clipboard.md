@@ -4,7 +4,7 @@
 
 Primary source:
 [Kitty clipboard protocol](https://sw.kovidgoyal.net/kitty/clipboard/), accessed
-2026-07-11. Plain-text OSC 52 and Kitty OSC 5522 are separate typed protocols.
+2026-08-27. Plain-text OSC 52 and Kitty OSC 5522 are separate typed protocols.
 
 OSC 52 transfers Base64 text to and from named selections when the terminal
 permits it. OSC 5522 uses `OSC 5522 ; metadata ; payload ST` for MIME-aware
@@ -38,6 +38,14 @@ an owned `Kitty.Clipboard.KittyClipboardResult` whose immutable item collection
 cannot be rewritten by consumers and whose disposal clears every transferred
 data buffer.
 
+SSH environment markers do not narrow Kitty clipboard support: they locate the
+client process, not the terminal receiving the protocol. The standard mode-5522
+DECRQM probe remains enabled over SSH, while an explicitly detected multiplexer
+without authorized two-way routing still suppresses the protocol. Runtime
+deadline callbacks recheck the transaction's UTC deadline; an early relative
+timer callback reschedules the remaining interval instead of discarding the
+active transaction.
+
 Correlation is checked before validity. A transaction bound to an `id` ignores
 any packet whose `id` does not match its own — malformed or well-formed,
 including a malformed packet whose `id` could not be recovered before its
@@ -63,6 +71,11 @@ timed-out, or cancelled operation through the single
 protocol served it, and for a `Write` served by OSC 5522. An OSC 52 `Write` is
 fire-and-forget - the protocol defines no acknowledgement for a write, so no
 transaction is opened and no event is raised.
+
+OSC 52 request state and its encoded query are posted as one dispatcher-owned
+operation. Concurrent callers therefore serialize in the same order on the wire
+and in the single pending-request slot; the last query written is always the
+request whose reply or timeout can complete.
 
 > [!WARNING]
 >

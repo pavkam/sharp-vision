@@ -7,6 +7,8 @@ using Buffers;
 
 using Graphics;
 
+using Kitty.Graphics;
+
 using Rendering;
 
 using ItermWriter = Iterm.ItermWriter;
@@ -18,6 +20,9 @@ using SixelWriter = Sixel.SixelWriter;
 /// </summary>
 internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
 {
+    /// <inheritdoc />
+    public void Accept(KittyGraphicsResponse response) => ArgumentNullException.ThrowIfNull(response);
+
     private readonly bool _enableIterm;
     private readonly bool _enableSixel;
     private readonly int _maxPreparedBytes;
