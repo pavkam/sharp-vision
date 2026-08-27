@@ -1974,6 +1974,80 @@ public sealed class MarkdownDocumentReaderTests
         }
     }
 
+    /// <summary>Verifies recursive block-quote nesting shares the exact same 64-level boundary as
+    /// list nesting, with content at the boundary parsed as real blocks rather than degraded text.</summary>
+    [Theory]
+    [InlineData(64, false)]
+    [InlineData(65, true)]
+    [InlineData(300, true)]
+    public void Read_WhenBlockQuoteNestingReachesReaderLimit_ReturnsBoundedTree(int levels, bool expectsDiagnostic)
+    {
+        // Arrange
+        var source = string.Concat(Enumerable.Repeat("> ", levels)) + "# heading";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.Blocks.ShouldNotBeEmpty();
+        result.Diagnostics.Count.ShouldBe(expectsDiagnostic ? 1 : 0);
+
+        if (expectsDiagnostic)
+        {
+            result.Diagnostics[0].Message.ShouldContain("nesting");
+        }
+        else
+        {
+            var block = result.Blocks.ShouldHaveSingleItem();
+
+            for (var level = 0; level < levels; level++)
+            {
+                block = block.ShouldBeOfType<DocumentBlockQuote>().Blocks.ShouldHaveSingleItem();
+            }
+
+            block.ShouldBeOfType<DocumentHeading>();
+        }
+    }
+
+    /// <summary>Verifies the callout-header branch of block-quote parsing uses the same 64-level
+    /// boundary as plain block quotes, without an off-by-one on the depth comparison.</summary>
+    [Theory]
+    [InlineData(64, false)]
+    [InlineData(65, true)]
+    public void Read_WhenCalloutNestingReachesReaderLimit_ReturnsBoundedTree(int levels, bool expectsDiagnostic)
+    {
+        // Arrange
+        var markers = string.Concat(Enumerable.Repeat("> ", levels));
+        var source = $"{markers}[!NOTE] Title\n{markers}Body";
+        var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = MarkdownExtension.Callouts });
+
+        // Act
+        var result = reader.Read(source);
+
+        // Assert
+        result.Diagnostics.Count.ShouldBe(expectsDiagnostic ? 1 : 0);
+
+        var block = result.Blocks.ShouldHaveSingleItem();
+
+        for (var level = 0; level < levels - 1; level++)
+        {
+            block = block.ShouldBeOfType<DocumentBlockQuote>().Blocks.ShouldHaveSingleItem();
+        }
+
+        if (expectsDiagnostic)
+        {
+            block.ShouldBeOfType<DocumentBlockQuote>();
+        }
+        else
+        {
+            var callout = block.ShouldBeOfType<DocumentCallout>();
+            callout.Kind.ShouldBe("NOTE");
+            callout.Title.ShouldBe("Title");
+            callout.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
+                .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("Body");
+        }
+    }
+
     /// <summary>Verifies hostile link, code-span, and extended-autolink candidates use bounded
     /// delimiter indexing instead of rescanning their remaining suffix at every opener.</summary>
     [Fact]

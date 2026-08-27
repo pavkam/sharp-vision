@@ -352,7 +352,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             index++;
         }
 
-        if (blockDepth + 1 < _maximumRecursiveBlockDepth && Has(MarkdownExtension.Callouts) &&
+        if (blockDepth < _maximumRecursiveBlockDepth && Has(MarkdownExtension.Callouts) &&
             TryCalloutHeader(quoted[0], out var kind, out var title))
         {
             quoted.RemoveAt(0);
@@ -368,7 +368,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
         var quote = new DocumentBlockQuote();
 
-        if (blockDepth + 1 >= _maximumRecursiveBlockDepth)
+        if (blockDepth >= _maximumRecursiveBlockDepth)
         {
             AddNestingLimitDiagnostic(diagnostics);
             quote.Blocks.Add(CreateParagraph(quoted));
