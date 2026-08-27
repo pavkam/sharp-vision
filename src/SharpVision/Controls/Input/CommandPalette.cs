@@ -253,17 +253,17 @@ public sealed class CommandPalette: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public Border FieldBorder
     {
-        get => _input.Border;
+        get => _input.ActualStyle.Border;
         set
         {
             VerifyMutable();
 
-            if (_input.Border == value)
+            if (_input.ActualStyle.Border == value)
             {
                 return;
             }
 
-            _input.Border = value;
+            _input.Style = _input.ActualStyle with { Border = value };
             NotifyPropertyChanged(nameof(FieldBorder), InvalidationImpact.None);
         }
     }
@@ -274,7 +274,20 @@ public sealed class CommandPalette: CompositeControlBase
     public void ResetFieldBorder()
     {
         VerifyMutable();
-        _input.ResetBorder();
+
+        if (_input.Style is not { } local)
+        {
+            return;
+        }
+
+        // The border alone returns to the theme-owned appearance; any other locally assigned
+        // facet (a shadow set through FieldShadow, for instance) survives untouched. Only when
+        // that leaves nothing but the theme-owned appearance does the local style collapse back
+        // to null, so a later theme swap keeps tracking the border live instead of staying pinned
+        // to today's resolved value.
+        var fallback = TextInputStyle.Definition.Resolve(null, _input.Theme);
+        var updated = local with { Border = fallback.Border };
+        _input.Style = updated == fallback ? null : updated;
         NotifyPropertyChanged(nameof(FieldBorder), InvalidationImpact.None);
     }
 
@@ -283,17 +296,17 @@ public sealed class CommandPalette: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public Shadow FieldShadow
     {
-        get => _input.Shadow;
+        get => _input.ActualStyle.Shadow;
         set
         {
             VerifyMutable();
 
-            if (_input.Shadow == value)
+            if (_input.ActualStyle.Shadow == value)
             {
                 return;
             }
 
-            _input.Shadow = value;
+            _input.Style = _input.ActualStyle with { Shadow = value };
             NotifyPropertyChanged(nameof(FieldShadow), InvalidationImpact.None);
         }
     }
@@ -304,7 +317,17 @@ public sealed class CommandPalette: CompositeControlBase
     public void ResetFieldShadow()
     {
         VerifyMutable();
-        _input.ResetShadow();
+
+        if (_input.Style is not { } local)
+        {
+            return;
+        }
+
+        // Mirrors ResetFieldBorder: only the shadow facet returns to the theme-owned appearance,
+        // collapsing the local style back to null only once nothing local remains.
+        var fallback = TextInputStyle.Definition.Resolve(null, _input.Theme);
+        var updated = local with { Shadow = fallback.Shadow };
+        _input.Style = updated == fallback ? null : updated;
         NotifyPropertyChanged(nameof(FieldShadow), InvalidationImpact.None);
     }
 

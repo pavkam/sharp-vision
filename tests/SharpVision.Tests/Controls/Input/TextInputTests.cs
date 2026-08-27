@@ -74,6 +74,105 @@ public sealed class TextInputTests
         control.ActualBorder.GlyphStyle.ShouldBe(BorderGlyphStyle.Heavy);
     }
 
+    /// <summary>Verifies the chrome-authoring surface stays sealed to TextInput - only the
+    /// well-known chrome/container primitives call EnableChromeAuthoring, and Border/Shadow flow
+    /// entirely through the themed Style/ActualStyle pair like every other leaf input control.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_ExposesThemedStyleInsteadOfRawChromeAuthoring()
+    {
+        // Arrange
+        using var control = new TextInput();
+
+        // Act
+
+        // Assert
+        control.Style.ShouldBeNull();
+        control.ActualStyle.AffixGap.ShouldBe(TextInputStyle.Default.AffixGap);
+        control.ActualStyle.DropDownGlyph.ShouldBe(TextInputStyle.Default.DropDownGlyph);
+        control.ActualStyle.Border.Sides.ShouldBe(TextInputStyle.Default.Border.Sides);
+        control.ActualStyle.Border.GlyphStyle.ShouldBe(TextInputStyle.Default.Border.GlyphStyle);
+        _ = Should.Throw<InvalidOperationException>(() => control.Border);
+        _ = Should.Throw<InvalidOperationException>(() => control.Shadow);
+    }
+
+    /// <summary>Verifies a local style assignment round-trips through Style/ActualStyle and is
+    /// reflected by the resolved chrome the rest of the control renders from.</summary>
+    [Fact]
+    public void Style_WhenLocalValueIsAssigned_RoundTripsAndDrivesActualChrome()
+    {
+        // Arrange
+        var local = TextInputStyle.Default with
+        {
+            Border = new Border(
+                BorderSide.None,
+                BorderGlyphStyle.Ascii,
+                Color.Default,
+                Color.Transparent,
+                TerminalAttributes.None)
+        };
+        using var control = new TextInput();
+
+        // Act
+        control.Style = local;
+
+        // Assert
+        control.Style.ShouldBe(local);
+        control.ActualStyle.ShouldBe(local);
+        control.ActualBorder.Sides.ShouldBe(BorderSide.None);
+    }
+
+    /// <summary>Verifies TextInput keeps its structural default while a Theme supplies its semantic
+    /// input profile, matching every other leaf control migrated onto the Style/ActualStyle pair.</summary>
+    [Fact]
+    public void Style_WhenThemeChanges_UsesSemanticInputAppearanceWithoutReplacingControlStructure()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            palette: "\"inputFace\":\"#0c2238\"",
+            inputGlyphStyle: "\"rounded\"",
+            inputExtra: """, "face": { "foreground": "inputFace" }"""));
+        using var control = new TextInput();
+
+        control.SetTheme(theme);
+        var expected = TextInputStyle.Definition.Resolve(null, theme);
+
+        control.Style.ShouldBeNull();
+        control.ActualStyle.ShouldBe(expected);
+        control.ActualFace.Foreground.Literal.ShouldBe(Color.Rgb(12, 34, 56));
+        control.ActualBorder.GlyphStyle.ShouldBe(BorderGlyphStyle.Rounded);
+
+        control.Style = TextInputStyle.Default;
+        control.ActualStyle.ShouldBe(TextInputStyle.Default);
+
+        control.Style = null;
+        control.Style.ShouldBeNull();
+        control.ActualStyle.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies style structure invalidates measurement while color-only changes invalidate rendering.</summary>
+    [Fact]
+    public void Style_WhenStructureOrColorChanges_InvalidatesTheExactPhase()
+    {
+        var coloredFace = new Face(
+            Color.Rgb(1, 2, 3),
+            TextInputStyle.Default.Face.Background,
+            TextInputStyle.Default.Face.Attributes,
+            TextInputStyle.Default.Face.Underline,
+            TextInputStyle.Default.Face.UnderlineColor);
+        var colored = TextInputStyle.Default with { Face = coloredFace };
+        var widerGap = TextInputStyle.Default with { AffixGap = TextInputStyle.Default.AffixGap + 1 };
+        using var control = new TextInput { Style = TextInputStyle.Default };
+        control.Clear(Invalidation.All);
+
+        control.Style = colored;
+
+        control.Pending.ShouldBe(Invalidation.Render);
+        control.Clear(Invalidation.All);
+
+        control.Style = widerGap;
+
+        control.Pending.ShouldBe(Invalidation.All);
+    }
+
     /// <summary>Verifies a disabled TextInput ignores character input and leaves committed text unchanged.</summary>
     [Fact]
     public void Dispatch_WhenDisabled_IgnoresCharacterInput()

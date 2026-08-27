@@ -1859,12 +1859,13 @@ namespace SharpVision.Controls.Input
         public required SharpVision.Styling.ControlColor TrackColor { get; init; }
         public new static SharpVision.Controls.Input.SliderStyle Default { get; }
     }
-    public sealed class TextInput : SharpVision.Controls.ControlBase, SharpVision.Runtime.IClipboardCopySource
+    public sealed class TextInput : SharpVision.Controls.ControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.TextInputStyle>, SharpVision.Runtime.IClipboardCopySource
     {
         public TextInput() { }
         public bool AcceptsReturn { get; set; }
         public bool AcceptsTab { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
+        public SharpVision.Controls.Input.TextInputStyle ActualStyle { get; }
         public bool CanRedo { get; }
         public bool CanUndo { get; }
         protected override bool CaptureTextSelectionOnPress { get; }
@@ -1882,6 +1883,7 @@ namespace SharpVision.Controls.Input
         public int SelectionStart { get; set; }
         public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
         public SharpVision.Styling.Affix? StartAffix { get; set; }
+        public SharpVision.Controls.Input.TextInputStyle? Style { get; set; }
         public string Text { get; set; }
         public int UndoLimit { get; set; }
         public int VerticalOffset { get; }
@@ -1895,7 +1897,6 @@ namespace SharpVision.Controls.Input
         protected override void CommitTextSelectionNavigation(SharpVision.Text.Selection selection) { }
         public string CopySelection() { }
         public string CutSelection() { }
-        protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected override SharpVision.Terminal.Geometry.Rect GetTextSelectionAdornmentBounds(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override string GetTextSelectionCopyText() { }
@@ -1917,6 +1918,11 @@ namespace SharpVision.Controls.Input
     public sealed class TextInputContextMenu : SharpVision.Menus.ContextMenu
     {
         protected override void Dispose(bool disposing) { }
+    }
+    public sealed class TextInputStyle : SharpVision.Styling.InputStyle, System.IEquatable<SharpVision.Controls.Input.TextInputStyle>
+    {
+        public TextInputStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow) { }
+        public new static SharpVision.Controls.Input.TextInputStyle Default { get; }
     }
     public sealed class TimeInput : SharpVision.Controls.InputBase
     {

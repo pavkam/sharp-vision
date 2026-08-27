@@ -17,7 +17,7 @@ using UnicodeWidth = Width;
 
 /// <summary>Defines a focusable grapheme-safe single- or multiline text editor.</summary>
 [PublicAPI]
-public sealed class TextInput: ControlBase, IClipboardCopySource
+public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextInputStyle>
 {
     private readonly List<EditResult> _undo = [];
     private readonly List<EditResult> _redo = [];
@@ -38,6 +38,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     private readonly ScrollBar _horizontal;
     private readonly ScrollBar _vertical;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
+    private readonly StyleSlot<TextInputStyle> _style;
     private Rect _editorBounds;
     private VisualLine[] _visualLines = [];
 
@@ -47,7 +48,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     /// <summary>Initializes an empty focusable single-line editor with a light one-cell border.</summary>
     public TextInput()
     {
-        EnableChromeAuthoring();
+        _style = InitializeStyle(TextInputStyle.Definition);
         _chrome = RegisterOwnedSlot(
             new OwnedControlOptions(
                 OwnedControlRole.FrameworkPart,
@@ -74,9 +75,17 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         IsTextSelectionEnabled = true;
     }
 
-    /// <inheritdoc/>
-    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
-        (theme ?? ThemeCatalog.Dark).GetStyleSet(InputStyle.Default).ToAppearanceStates();
+    /// <summary>Gets or sets the complete local presentation, or null for theme ownership.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public TextInputStyle? Style
+    {
+        get => _style.Local;
+        set => _style.Local = value;
+    }
+
+    /// <summary>Gets the complete local, theme-owned, or code-owned presentation.</summary>
+    public TextInputStyle ActualStyle => _style.Actual;
 
     /// <inheritdoc/>
     /// <summary>Raised before a text mutation and cancellable before commit.</summary>
@@ -712,7 +721,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
+        var affixes = MeasureAffixes(StartAffix, EndAffix, ActualStyle.AffixGap);
         var affixInset = affixes.StartCells + affixes.EndCells;
 
         if (WordWrap && constraint.Width is { } maxWidth)
@@ -773,7 +782,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
     {
         // Rendered against the undeflated content box - not _editorBounds - so an affix keeps
         // drawing even where the caret/selection viewport it deflated has shrunk to nothing.
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
+        var affixes = MeasureAffixes(StartAffix, EndAffix, ActualStyle.AffixGap);
         RenderAffixes(canvas, ContentBounds, affixes, StartAffix, EndAffix, ResolvedStyle);
 
         var bounds = _editorBounds;
@@ -1718,7 +1727,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource
         // never scroll with the text content.
         var bounds = DeflateForAffixes(
             ContentBounds,
-            MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap()));
+            MeasureAffixes(StartAffix, EndAffix, ActualStyle.AffixGap));
 
         if (WordWrap)
         {

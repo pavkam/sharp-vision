@@ -2,7 +2,8 @@
 
 ## Overview
 
-`TextInput` is declared `public sealed class TextInput : ControlBase`. Unlike
+`TextInput` is declared
+`public sealed class TextInput : ControlBase, IStyled<TextInputStyle>`. Unlike
 its input siblings, it derives directly from `ControlBase` — it is not an
 `InputBase` editor and has no press/activation state machine. It is a focusable
 single- or multiline text editor whose caret and selection indices always fall
@@ -37,6 +38,8 @@ classDiagram
 | `CursorShape`                      | `CursorShape`                                  | `CursorShape.Block`             | The protocol-neutral cursor shape requested while the editor has focus.                                                                             |
 | `StartAffix`                       | `Affix?`                                       | `null`                          | Optional leading edge-pinned decoration, reserved inboard of the border and outboard of the caret/selection viewport; never scrolls with the text.  |
 | `EndAffix`                         | `Affix?`                                       | `null`                          | Optional trailing edge-pinned decoration, reserved inboard of the border and outboard of the caret/selection viewport; never scrolls with the text. |
+| `Style`                            | `TextInputStyle?`                              | `null`                          | Optional complete developer-authored presentation.                                                                                                  |
+| `ActualStyle`                      | `TextInputStyle`                               | Resolved                        | Read-only; the complete local, theme-owned, or code-owned presentation.                                                                             |
 | `ScrollBars`                       | `ScrollBars`                                   | `ScrollBars.Both`               | The axes eligible for editor overflow scrolling.                                                                                                    |
 | `ShowScrollBars`                   | `ShowScrollBars`                               | `ShowScrollBars.WhenNeeded`     | The scrollbar reservation policy for enabled axes.                                                                                                  |
 | `ScrollBarStyle`                   | `ScrollBarStyle?`                              | `null`                          | Optional complete local style requested for the owned editor rails.                                                                                 |
@@ -85,16 +88,22 @@ components, and find/replace UI that need to edit content without reconstructing
 
 ## Default field chrome
 
-`TextInput` resolves the shared `InputStyle` (`styles.input`). Bundled themes
-paint its normal face with `SemanticColor.Surface` and provide a one-cell border
-on every edge. Hover, direct focus, and disabled state apply the theme's partial
-input overlays, while a caller-assigned complete face or border remains
-authoritative. The intrinsic
-[shared chrome](../../concepts/styling.md#shared-chrome) reserves those cells
-before the editor viewport, so text, selection, caret, pointer mapping, and the
-owned scrollbars all use the inset content box. Callers may choose another glyph
-family through a complete `Border`, or opt out by assigning a complete border
-whose `Sides` is `BorderSide.None`.
+`TextInputStyle : InputStyle` is a complete immutable presentation. It declares
+no `styles.*` theme key of its own and no structural members beyond what
+`InputStyle` already provides - it falls back entirely to the shared
+`InputStyle` (`styles.input`). Bundled themes paint its normal face with
+`SemanticColor.Surface` and provide a one-cell border on every edge. Hover,
+direct focus, and disabled state apply the theme's partial input overlays, while
+a locally assigned `Style` remains authoritative for every state. Assigning
+`Style` makes the whole style local, and assigning `null` hands ownership back
+to the Theme; `ActualStyle` never returns null, and it changes when an inherited
+Theme changes while `Style` is null. The intrinsic
+[shared chrome](../../concepts/styling.md#shared-chrome) reserves the resolved
+border's cells before the editor viewport, so text, selection, caret, pointer
+mapping, and the owned scrollbars all use the inset content box. Callers may
+choose another glyph family through a `with` expression over `ActualStyle` (or
+`TextInputStyle.Default`) assigned to `Style`, or opt out of the border by
+assigning a complete `Border` whose `Sides` is `BorderSide.None`.
 
 `StartAffix` and `EndAffix` reserve a fixed cell column inboard of the border,
 deflated away from the caret/selection viewport once, before any scroll or
