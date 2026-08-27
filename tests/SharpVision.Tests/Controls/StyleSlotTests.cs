@@ -273,6 +273,42 @@ public sealed class StyleSlotTests
         actualStyleNotifications.ShouldBe(1);
     }
 
+    /// <summary>The local-override counterpart to the file's Theme-owned regression: a slot with a
+    /// local style still delegates entirely to its Theme for every <see cref="SemanticColor"/>
+    /// member that style carries (here, <see cref="ButtonStyle.Filled"/>'s border color), so a swap
+    /// that changes what the Theme resolves that role to must still publish, even though the slot
+    /// never lost local ownership and <c>LocalValue</c> never changed.</summary>
+    [Fact]
+    public void PropagateTheme_WhenLocalOverrideResolvesDifferently_PublishesActualStyle()
+    {
+        using var probe = new StyleSlotProbe();
+        probe.Style = ButtonStyle.Filled;
+        var notifications = Observe(probe);
+        probe.PropagateTheme(ThemeCatalog.Parse(ThemeJson.Create(controlBorderForeground: "#111111")));
+        notifications.Clear();
+
+        probe.PropagateTheme(ThemeCatalog.Parse(ThemeJson.Create(controlBorderForeground: "#eeeeee")));
+
+        notifications.ShouldContain(nameof(StyleSlotProbe.ActualStyle));
+    }
+
+    /// <summary>The counter-case: a local override swapped between two themes that resolve every
+    /// semantic member identically must not publish, so this did not simply make every swap notify
+    /// while a local style is installed.</summary>
+    [Fact]
+    public void PropagateTheme_WhenLocalOverrideResolvesEqually_DoesNotPublish()
+    {
+        using var probe = new StyleSlotProbe();
+        probe.Style = ButtonStyle.Filled;
+        var notifications = Observe(probe);
+        probe.PropagateTheme(ThemeCatalog.Parse(ThemeJson.Create()));
+        notifications.Clear();
+
+        probe.PropagateTheme(ThemeCatalog.Parse(ThemeJson.Create()));
+
+        notifications.ShouldNotContain(nameof(StyleSlotProbe.ActualStyle));
+    }
+
     /// <summary>Verifies repeated resolved reads use one cached value without allocating.</summary>
     [Fact]
     public void Actual_WhenReadRepeatedly_UsesCachedAllocationFreeValue()

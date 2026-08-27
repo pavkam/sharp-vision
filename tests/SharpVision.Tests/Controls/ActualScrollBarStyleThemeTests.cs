@@ -122,10 +122,14 @@ public sealed class ActualScrollBarStyleThemeTests
         (control.Pending & Invalidation.Measure).ShouldBe(Invalidation.None);
     }
 
-    /// <summary>Verifies a Theme swap never publishes ActualScrollBarStyle while a local complete
-    /// style owns the resolved value.</summary>
+    /// <summary>Verifies a Theme swap still publishes ActualScrollBarStyle while a local complete
+    /// style owns the resolved value, as long as one of that style's semantic-color members
+    /// resolves differently under the new Theme. ScrollBarStyle.ThinBlock (via FullBlock) carries
+    /// SemanticColor.ControlText, which follows "foreground" - exactly the role the two themes
+    /// below differ on - so a viewer's rendered scrollbar genuinely changes even though the local
+    /// style object itself, and therefore ActualScrollBarStyle's equatable value, does not.</summary>
     [Fact]
-    public void PropagateTheme_WhenLocalStyleIsAssigned_DoesNotPublishActualScrollBarStyle()
+    public void PropagateTheme_WhenLocalStyleResolvesDifferently_PublishesActualScrollBarStyle()
     {
         var previousTheme = ThemeWithControl(Color.Rgb(1, 2, 3));
         var currentTheme = ThemeWithControl(Color.Rgb(4, 5, 6));
@@ -140,7 +144,7 @@ public sealed class ActualScrollBarStyleThemeTests
         container.PropagateTheme(currentTheme);
         editor.PropagateTheme(currentTheme);
 
-        notifications.ShouldNotContain(nameof(Container.ActualScrollBarStyle));
+        notifications.ShouldContain(nameof(Container.ActualScrollBarStyle));
         container.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.ThinBlock);
         editor.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.ThinBlock);
     }

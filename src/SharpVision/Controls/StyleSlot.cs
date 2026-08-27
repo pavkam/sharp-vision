@@ -92,7 +92,10 @@ public sealed class StyleSlot<TStyle>
 
     internal void PublishChanged(TStyle previous, TStyle current) => _changed?.Invoke(previous, current);
 
-    /// <summary>Publishes one Theme-owned resolved transition after the new Theme commits.</summary>
+    /// <summary>Publishes one resolved transition after the new Theme commits. When the slot owns a
+    /// local override, <paramref name="previous"/> and <paramref name="current"/> resolve to the
+    /// same object (the local value never changes on a Theme swap) even though the callback still
+    /// fires because a semantic member of that value resolves differently under the new Theme.</summary>
     internal void PublishThemeChanged(Theme? previous, Theme? current)
     {
         if (_changed is null)
@@ -244,13 +247,8 @@ public sealed class StyleSlot<TStyle>
     // colors), a narrower question than "did the resolved value change at all".
     internal string? GetThemeResolvedProperty(Theme? previous, Theme? current)
     {
-        if (LocalValue is not null)
-        {
-            return null;
-        }
-
-        var resolvedPrevious = Definition.Resolve(null, previous);
-        var resolvedCurrent = Definition.Resolve(null, current);
+        var resolvedPrevious = Definition.Resolve(LocalValue, previous);
+        var resolvedCurrent = Definition.Resolve(LocalValue, current);
         return !ResolvedValuesEqual(resolvedPrevious, previous, resolvedCurrent, current)
             ? ActualPropertyName
             : null;
