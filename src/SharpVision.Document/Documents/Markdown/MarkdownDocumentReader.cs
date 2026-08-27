@@ -1376,17 +1376,22 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         ClassifyEmphasisRun(string source, int index, int runLength)
     {
         var runEnd = index + runLength;
-        var beforeWhitespace = index == 0 || Rune.IsWhiteSpace(GetRuneBefore(source, index));
-        var afterWhitespace = runEnd >= source.Length || Rune.IsWhiteSpace(Rune.GetRuneAt(source, runEnd));
-        var beforePunctuation = index > 0 && IsPunctuationOrSymbol(GetRuneBefore(source, index));
-        var afterPunctuation = runEnd < source.Length && IsPunctuationOrSymbol(Rune.GetRuneAt(source, runEnd));
+        var hasRuneBefore = index > 0 && TryGetRuneBefore(source, index, out var runeBefore);
+        var hasRuneAfter = runEnd < source.Length && TryGetRuneAt(source, runEnd, out var runeAfter);
+        var beforeWhitespace = index == 0 || (hasRuneBefore && Rune.IsWhiteSpace(runeBefore));
+        var afterWhitespace = runEnd >= source.Length || (hasRuneAfter && Rune.IsWhiteSpace(runeAfter));
+        var beforePunctuation = hasRuneBefore && IsPunctuationOrSymbol(runeBefore);
+        var afterPunctuation = hasRuneAfter && IsPunctuationOrSymbol(runeAfter);
         var leftFlanking = !afterWhitespace && (!afterPunctuation || beforeWhitespace || beforePunctuation);
         var rightFlanking = !beforeWhitespace && (!beforePunctuation || afterWhitespace || afterPunctuation);
         return (leftFlanking, rightFlanking, beforePunctuation, afterPunctuation);
     }
 
+    /// <summary>Attempts to read the <see cref="Rune"/> immediately preceding <paramref name="index"/>,
+    /// tolerating an unpaired UTF-16 surrogate at that position by reporting failure instead of
+    /// throwing.</summary>
     [Pure]
-    private static Rune GetRuneBefore(string source, int index)
+    private static bool TryGetRuneBefore(string source, int index, out Rune rune)
     {
         var runeStart = index - 1;
 
@@ -1395,7 +1400,24 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             runeStart--;
         }
 
-        return Rune.GetRuneAt(source, runeStart);
+        return TryGetRuneAt(source, runeStart, out rune);
+    }
+
+    /// <summary>Attempts to read the <see cref="Rune"/> starting at <paramref name="index"/>, tolerating an
+    /// unpaired UTF-16 surrogate at that position (a lone low surrogate, or a high surrogate not followed
+    /// by a low surrogate) by reporting failure instead of throwing.</summary>
+    [Pure]
+    private static bool TryGetRuneAt(string source, int index, out Rune rune)
+    {
+        if (char.IsSurrogate(source[index]) &&
+            !(char.IsHighSurrogate(source[index]) && index + 1 < source.Length && char.IsLowSurrogate(source[index + 1])))
+        {
+            rune = default;
+            return false;
+        }
+
+        rune = Rune.GetRuneAt(source, index);
+        return true;
     }
 
     [Pure]

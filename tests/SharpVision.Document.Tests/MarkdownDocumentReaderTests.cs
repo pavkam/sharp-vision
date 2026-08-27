@@ -1229,6 +1229,92 @@ public sealed class MarkdownDocumentReaderTests
         paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("bar*");
     }
 
+    /// <summary>Verifies an unpaired high surrogate immediately before an emphasis opener does not
+    /// throw while classifying the delimiter run's flanking. Uses <c>[Fact]</c> rather than
+    /// <c>[Theory]</c>/<c>[InlineData]</c> because the xUnit v3 toolchain silently repairs unpaired
+    /// surrogates in inline data string arguments, which would hide the regression.</summary>
+    [Fact]
+    public void Read_WhenSourceHasUnpairedHighSurrogateBeforeEmphasisOpener_DoesNotThrow()
+    {
+        // Arrange
+        var source = "\uD800*foo*";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.ShouldNotBeNull();
+        result.Blocks.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies an unpaired low surrogate immediately before an emphasis opener does not
+    /// throw while classifying the delimiter run's flanking. See the sibling high-surrogate fact for
+    /// why this uses <c>[Fact]</c> instead of <c>[Theory]</c>.</summary>
+    [Fact]
+    public void Read_WhenSourceHasUnpairedLowSurrogateBeforeEmphasisOpener_DoesNotThrow()
+    {
+        // Arrange
+        var source = "\uDC00*foo*";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.ShouldNotBeNull();
+        result.Blocks.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies an unpaired low surrogate immediately before an emphasis closer does not
+    /// throw while classifying the delimiter run's flanking. See the sibling high-surrogate fact for
+    /// why this uses <c>[Fact]</c> instead of <c>[Theory]</c>.</summary>
+    [Fact]
+    public void Read_WhenSourceHasUnpairedLowSurrogateBeforeEmphasisCloser_DoesNotThrow()
+    {
+        // Arrange
+        var source = "a*foo\uDC00*bar";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.ShouldNotBeNull();
+        result.Blocks.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies an unpaired low surrogate immediately after an emphasis opener does not
+    /// throw while classifying the delimiter run's flanking. See the sibling high-surrogate fact for
+    /// why this uses <c>[Fact]</c> instead of <c>[Theory]</c>.</summary>
+    [Fact]
+    public void Read_WhenSourceHasUnpairedLowSurrogateAfterEmphasisOpener_DoesNotThrow()
+    {
+        // Arrange
+        var source = "a*\uDC00b*";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.ShouldNotBeNull();
+        result.Blocks.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies an unpaired high surrogate immediately after an emphasis opener does not
+    /// throw while classifying the delimiter run's flanking. See the sibling high-surrogate fact for
+    /// why this uses <c>[Fact]</c> instead of <c>[Theory]</c>.</summary>
+    [Fact]
+    public void Read_WhenSourceHasUnpairedHighSurrogateAfterEmphasisOpener_DoesNotThrow()
+    {
+        // Arrange
+        var source = "a*\uD800b*";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.ShouldNotBeNull();
+        result.Blocks.ShouldNotBeNull();
+    }
+
     /// <summary>Verifies both baseline hard-break forms remove their source markers.</summary>
     [Theory]
     [InlineData("alpha  \nbeta")]
