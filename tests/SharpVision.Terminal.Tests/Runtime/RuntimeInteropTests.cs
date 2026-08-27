@@ -27,6 +27,54 @@ public sealed class RuntimeInteropTests
         RuntimeInterop.TerminalDevicesMatch(first.SlaveDescriptor, second.SlaveDescriptor).ShouldBeFalse();
     }
 
+    /// <summary>Verifies the controlling-terminal alias identifies the same terminal as standard
+    /// input and output even when the operating system reports a different pathname for it.</summary>
+    [Fact]
+    public void TerminalDevicesMatch_WhenControllingTerminalUsesAlias_TreatsDescriptorsAsSame()
+    {
+        Assert.SkipUnless(
+            OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
+            "Terminal device identity requires Unix terminal descriptors.");
+        Assert.SkipUnless(
+            RuntimeInterop.TerminalDevicesMatch(
+                RuntimeInterop.StandardInputFileDescriptor,
+                RuntimeInterop.StandardOutputFileDescriptor),
+            "The test process requires standard input and output on the same terminal.");
+        using var controllingTerminal = new FileStream(
+            "/dev/tty",
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite);
+        var descriptor = (int) controllingTerminal.SafeFileHandle.DangerousGetHandle();
+
+        RuntimeInterop.TerminalDevicesMatch(
+            RuntimeInterop.StandardInputFileDescriptor,
+            descriptor).ShouldBeTrue();
+        RuntimeInterop.TerminalDevicesMatch(
+            RuntimeInterop.StandardOutputFileDescriptor,
+            descriptor).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies different reported paths still identify one terminal when POSIX reports
+    /// the same controlling session, while different sessions remain distinct.</summary>
+    [Fact]
+    public void TerminalIdentitiesMatch_WhenPathsAliasControllingSession_UsesSessionIdentity()
+    {
+        var actualPath = "/dev/ttys003"u8;
+        var controllingAlias = "/dev/tty"u8;
+
+        RuntimeInterop.TerminalIdentitiesMatch(
+            actualPath,
+            firstSessionId: 42,
+            controllingAlias,
+            secondSessionId: 42).ShouldBeTrue();
+        RuntimeInterop.TerminalIdentitiesMatch(
+            actualPath,
+            firstSessionId: 42,
+            controllingAlias,
+            secondSessionId: 84).ShouldBeFalse();
+    }
+
     /// <summary>
     /// Verifies the default mode enables VT input and clears line/echo input.
     /// </summary>

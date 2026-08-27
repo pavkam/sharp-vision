@@ -63,7 +63,8 @@ internal static partial class RuntimeInterop
     /// <summary>Determines whether two descriptors resolve to the same Unix terminal device.</summary>
     /// <param name="first">The first non-negative descriptor.</param>
     /// <param name="second">The second non-negative descriptor.</param>
-    /// <returns>True only when both descriptors have the same POSIX terminal name.</returns>
+    /// <returns>True only when both descriptors have the same POSIX terminal path or identify the
+    /// controlling terminal of the same session.</returns>
     public static bool TerminalDevicesMatch(int first, int second)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(first);
@@ -75,9 +76,32 @@ internal static partial class RuntimeInterop
         var secondLength = ReadTerminalName(second, secondName);
 
         return firstLength >= 0 &&
-               firstLength == secondLength &&
-               firstName[..firstLength].SequenceEqual(secondName[..secondLength]);
+               secondLength >= 0 &&
+               TerminalIdentitiesMatch(
+            firstName[..firstLength],
+            GetTerminalSessionId(first),
+            secondName[..secondLength],
+            GetTerminalSessionId(second));
     }
+
+    /// <summary>Determines whether terminal paths identify the same device directly or as aliases
+    /// for the controlling terminal of one POSIX session. This seam proves that <c>/dev/tty</c>
+    /// remains equivalent when <c>ttyname_r</c> reports its literal alias.</summary>
+    /// <param name="firstPath">The first terminal path without a null terminator.</param>
+    /// <param name="firstSessionId">The first terminal's controlling-session identifier, or a
+    /// negative value when the descriptor is not a controlling terminal.</param>
+    /// <param name="secondPath">The second terminal path without a null terminator.</param>
+    /// <param name="secondSessionId">The second terminal's controlling-session identifier, or a
+    /// negative value when the descriptor is not a controlling terminal.</param>
+    /// <returns>True when the paths match or both terminals belong to the same controlling
+    /// session.</returns>
+    internal static bool TerminalIdentitiesMatch(
+        ReadOnlySpan<byte> firstPath,
+        int firstSessionId,
+        ReadOnlySpan<byte> secondPath,
+        int secondSessionId) =>
+        firstPath.SequenceEqual(secondPath) ||
+        (firstSessionId >= 0 && firstSessionId == secondSessionId);
 
     private static unsafe int ReadTerminalName(int fileDescriptor, Span<byte> destination)
     {
@@ -94,6 +118,9 @@ internal static partial class RuntimeInterop
 
     [LibraryImport("libc", EntryPoint = "ttyname_r")]
     private static unsafe partial int TtyName(int fileDescriptor, byte* destination, nuint length);
+
+    [LibraryImport("libc", EntryPoint = "tcgetsid")]
+    private static partial int GetTerminalSessionId(int fileDescriptor);
 
     // TCSANOW: apply attribute changes immediately (identical value on Linux and Darwin).
     private const int _setAttributesNow = 0;

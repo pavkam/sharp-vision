@@ -422,14 +422,22 @@ twice.
 `UnixConsoleHost.Open` first opens `/dev/tty` and resolves the POSIX terminal
 name for that descriptor and standard input and output through
 [`ttyname_r`](https://pubs.opengroup.org/onlinepubs/9799919799/functions/ttyname.html).
-All three names must identify the same terminal device; a mismatch fails before
-raw mode, resize observation, or output can begin. It then enters raw mode
-through `UnixConsoleMode.Enter`, which calls `tcgetattr`/`tcsetattr` directly:
-it captures the current terminal state (`tcgetattr`) for restoration, then
-derives a raw-mode state with `cfmakeraw` and, unless `CaptureControlKeys` is
-`true`, re-enables `ISIG` in `c_lflag` after `cfmakeraw` clears it (so Ctrl+C
-keeps raising the host's signal instead of arriving as a decoded key). No
-subprocess is spawned for entry or restoration. The `/dev/tty` descriptor is a
+Equal names identify the same device directly. When `/dev/tty` is reported as
+that literal alias instead of the concrete device path used by the standard
+streams, the host compares their controlling-session identifiers through
+[`tcgetsid`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/tcgetsid.3.html).
+POSIX.1-2024 permits at most one
+[controlling terminal per session](https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap03.html#tag_03_87),
+so equal non-negative identifiers prove that the paths are aliases for the same
+terminal without accepting a terminal owned by another session. These sources
+were checked on 2026-08-27. A mismatch fails before raw mode, resize
+observation, or output can begin. The host then enters raw mode through
+`UnixConsoleMode.Enter`, which calls `tcgetattr`/`tcsetattr` directly: it
+captures the current terminal state (`tcgetattr`) for restoration, then derives
+a raw-mode state with `cfmakeraw` and, unless `CaptureControlKeys` is `true`,
+re-enables `ISIG` in `c_lflag` after `cfmakeraw` clears it (so Ctrl+C keeps
+raising the host's signal instead of arriving as a decoded key). No subprocess
+is spawned for entry or restoration. The `/dev/tty` descriptor is a
 one-byte-buffered asynchronous input stream and is wrapped with a raw
 `FileStream` over the now-verified borrowed standard-output descriptor in a
 `StreamTransport`. This host never calls `Console.OpenStandardOutput()`,
