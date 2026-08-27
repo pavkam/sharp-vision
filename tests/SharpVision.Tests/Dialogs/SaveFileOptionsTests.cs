@@ -167,11 +167,11 @@ public sealed class SaveFileOptionsTests
 
         options.ReadyText.ShouldBe("Listo");
         options.LoadingText.ShouldBe("Cargando…");
-        options.CountFormat.ShouldBe((Func<int, int, string>) CountFormat);
-        options.OverwriteMessageFormat.ShouldBe((Func<string, string>) OverwriteMessageFormat);
+        options.CountFormat.ShouldBe(CountFormat);
+        options.OverwriteMessageFormat.ShouldBe(OverwriteMessageFormat);
         copy.ReadyText.ShouldBe("Listo");
         copy.LoadingText.ShouldBe("Cargando…");
-        copy.CountFormat.ShouldBe((Func<int, int, string>) CountFormat);
-        copy.OverwriteMessageFormat.ShouldBe((Func<string, string>) OverwriteMessageFormat);
+        copy.CountFormat.ShouldBe(CountFormat);
+        copy.OverwriteMessageFormat.ShouldBe(OverwriteMessageFormat);
     }
 }

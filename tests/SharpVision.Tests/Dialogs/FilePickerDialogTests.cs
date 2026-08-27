@@ -1431,8 +1431,8 @@ public sealed class FilePickerDialogTests
 
         copy.ReadyText.ShouldBe("Listo");
         copy.LoadingText.ShouldBe("Cargando…");
-        copy.CountFormat.ShouldBe((Func<int, int, string>) CountFormat);
-        copy.SelectionFormat.ShouldBe((Func<int, string>) SelectionFormat);
+        copy.CountFormat.ShouldBe(CountFormat);
+        copy.SelectionFormat.ShouldBe(SelectionFormat);
         dialog.ReadyText.ShouldBe("Listo");
         dialog.LoadingText.ShouldBe("Cargando…");
         dialog.CountFormat(3, 5).ShouldBe("3f/5d");

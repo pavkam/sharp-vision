@@ -9,6 +9,7 @@ using SharpVision.Controls.Layout;
 using SharpVision.Terminal.Input;
 
 using Scrolling;
+
 using Text;
 
 using DisplayText = Controls.Display.Text;
@@ -536,8 +537,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
     // silent no-op that also steals the keys from anything else that might want them.
     private bool TryScrollMessage(Code code)
     {
-        if (code != Code.Up && code != Code.Down && code != Code.PageUp && code != Code.PageDown &&
-            code != Code.Home && code != Code.End)
+        if (code is not (Code.Up or Code.Down or Code.PageUp or Code.PageDown or Code.Home or Code.End))
         {
             return false;
         }

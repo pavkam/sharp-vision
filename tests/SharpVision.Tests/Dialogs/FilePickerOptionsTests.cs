@@ -129,11 +129,11 @@ public sealed class FilePickerOptionsTests
 
         options.ReadyText.ShouldBe("Listo");
         options.LoadingText.ShouldBe("Cargando…");
-        options.CountFormat.ShouldBe((Func<int, int, string>) CountFormat);
-        options.SelectionFormat.ShouldBe((Func<int, string>) SelectionFormat);
+        options.CountFormat.ShouldBe(CountFormat);
+        options.SelectionFormat.ShouldBe(SelectionFormat);
         copy.ReadyText.ShouldBe("Listo");
         copy.LoadingText.ShouldBe("Cargando…");
-        copy.CountFormat.ShouldBe((Func<int, int, string>) CountFormat);
-        copy.SelectionFormat.ShouldBe((Func<int, string>) SelectionFormat);
+        copy.CountFormat.ShouldBe(CountFormat);
+        copy.SelectionFormat.ShouldBe(SelectionFormat);
     }
 }

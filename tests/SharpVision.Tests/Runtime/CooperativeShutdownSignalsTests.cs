@@ -52,7 +52,7 @@ public sealed class CooperativeShutdownSignalsTests
 
         // Act
         blockingCall.Start();
-        entered.Wait(TimeSpan.FromSeconds(5)).ShouldBeTrue();
+        entered.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken).ShouldBeTrue();
 
         // Assert - nothing has completed the callback's task yet, so the call above must still be
         // blocked inside InvokeTerminationSignal regardless of scheduling: completed can only be
@@ -62,7 +62,7 @@ public sealed class CooperativeShutdownSignalsTests
 
         completionSource.SetResult();
 
-        completed.Wait(TimeSpan.FromSeconds(5)).ShouldBeTrue();
+        completed.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken).ShouldBeTrue();
     }
 
     /// <summary>Verifies the non-Windows branch fires the callback without waiting for its
@@ -80,10 +80,10 @@ public sealed class CooperativeShutdownSignalsTests
         {
             CooperativeShutdownSignals.InvokeTerminationSignal(() => neverCompletes, isWindows: false);
             completed.Set();
-        });
+        }, TestContext.Current.CancellationToken);
 
         // Assert
-        completed.Wait(TimeSpan.FromSeconds(5)).ShouldBeTrue();
+        completed.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken).ShouldBeTrue();
         call.IsCompletedSuccessfully.ShouldBeTrue();
     }
 

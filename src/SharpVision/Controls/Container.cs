@@ -787,14 +787,11 @@ public abstract class Container: ControlBase
             return pageAxisIsVertical ? (0, -VerticalOffset) : (-HorizontalOffset, 0);
         }
 
-        if (code == Code.End)
-        {
-            return pageAxisIsVertical
+        return code == Code.End
+            ? pageAxisIsVertical
                 ? (0, Difference(MaximumY(), VerticalOffset))
-                : (Difference(MaximumX(), HorizontalOffset), 0);
-        }
-
-        return null;
+                : (Difference(MaximumX(), HorizontalOffset), 0)
+            : null;
     }
 
     // Clamps the retained overlap to strictly less than the page axis extent so PageUp/PageDown

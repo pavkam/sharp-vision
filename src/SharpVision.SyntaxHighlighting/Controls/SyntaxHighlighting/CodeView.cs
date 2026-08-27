@@ -1497,12 +1497,7 @@ public sealed class CodeView:
 
         // A continuation row never shows a fold arrow - see Overflow's remarks - so a press
         // landing on one cannot toggle anything.
-        if (!row.IsFirstSegment)
-        {
-            return false;
-        }
-
-        return _foldStartRanges.ContainsKey(row.SourceLine) && ToggleFold(row.SourceLine);
+        return row.IsFirstSegment && _foldStartRanges.ContainsKey(row.SourceLine) && ToggleFold(row.SourceLine);
     }
 
     #endregion

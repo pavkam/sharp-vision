@@ -1598,8 +1598,8 @@ public sealed class CodeViewSurfaceTests
                 }
             }
 
-            firstKeywordCell.ShouldNotBeNull();
-            var keywordColor = surface.Cell(firstKeywordCell!.Value).Style.Foreground;
+            _ = firstKeywordCell.ShouldNotBeNull();
+            var keywordColor = surface.Cell(firstKeywordCell.Value).Style.Foreground;
             keywordColor.ShouldNotBe(normalColor);
 
             Point? laterRowKeywordCell = null;
@@ -1616,8 +1616,8 @@ public sealed class CodeViewSurfaceTests
                 }
             }
 
-            laterRowKeywordCell.ShouldNotBeNull();
-            surface.Cell(laterRowKeywordCell!.Value).Style.Foreground.ShouldBe(keywordColor);
+            _ = laterRowKeywordCell.ShouldNotBeNull();
+            surface.Cell(laterRowKeywordCell.Value).Style.Foreground.ShouldBe(keywordColor);
         }
         finally
         {

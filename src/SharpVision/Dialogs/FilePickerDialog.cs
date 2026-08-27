@@ -309,15 +309,18 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
     {
         FileSelectionMode.Directories => entry.IsDirectory,
         FileSelectionMode.FilesAndDirectories => true,
+        FileSelectionMode.Files => !entry.IsDirectory,
         _ => !entry.IsDirectory
     };
 
     private void PublishSelection()
     {
-        _selectedEntries = FileList.SelectedItems
-            .OfType<FilePickerEntry>()
-            .Where(AcceptsEntry)
-            .ToArray();
+        _selectedEntries =
+        [
+            .. FileList.SelectedItems
+                .OfType<FilePickerEntry>()
+                .Where(AcceptsEntry)
+        ];
         SelectedPaths = Array.AsReadOnly(_selectedEntries.Select(static entry => entry.FullPath).ToArray());
         _openButton.IsEnabled = SelectedPaths.Count > 0;
         SetStatus(SelectedPaths.Count == 0

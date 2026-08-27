@@ -76,7 +76,7 @@ internal sealed class CooperativeShutdownSignals: IDisposable
         void OnPosixSignal(PosixSignalContext context)
         {
             context.Cancel = true;
-            onSignal();
+            _ = onSignal();
         }
 
         void OnPosixTerminationSignal(PosixSignalContext context)
@@ -95,7 +95,7 @@ internal sealed class CooperativeShutdownSignals: IDisposable
                 scope._onCancel = (_, eventArgs) =>
                 {
                     eventArgs.Cancel = true;
-                    onSignal();
+                    _ = onSignal();
                 };
                 Console.CancelKeyPress += scope._onCancel;
             }
@@ -130,7 +130,7 @@ internal sealed class CooperativeShutdownSignals: IDisposable
     {
         if (!isWindows)
         {
-            onSignal();
+            _ = onSignal();
 
             return;
         }
