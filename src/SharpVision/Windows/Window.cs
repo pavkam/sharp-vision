@@ -107,6 +107,18 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         NotifyPropertyChanged(nameof(IsActive), InvalidationImpact.None);
     }
 
+    /// <summary>Gets whether this Window is currently open.</summary>
+    /// <remarks>
+    /// Mirrors the intent of <see cref="SharpVision.Popups.Popup.IsOpen"/> - answering "is this surface open" - but is a
+    /// read-only computed query rather than a settable driver: Window's open/close mechanics remain
+    /// owned by <see cref="ControlBase.Visibility"/> and <see cref="Close"/>. An attached, presented
+    /// Window is open exactly while <see cref="FloatingSurfaceBase.IsSurfacePresented"/> holds.
+    /// An unattached Window is never presented - it has no attach transition to opt into - so a
+    /// never-attached Window that is <see cref="Visibility.Visible"/> and has not yet completed a
+    /// <see cref="Close"/> since is also considered open. This is precisely the logical negation of
+    /// the closed-guard <see cref="Close"/> checks before running its veto/collapse sequence.
+    /// </remarks>
+    public bool IsOpen => IsSurfacePresented || (Visibility == Visibility.Visible && !_closedSinceVisible);
 
     /// <summary>Makes this Window visible and enters one application-owned modal presentation rooted at it.</summary>
     /// <param name="outsideInteraction">

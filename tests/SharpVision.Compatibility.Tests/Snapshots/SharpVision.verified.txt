@@ -4320,6 +4320,7 @@ namespace SharpVision.Windows
         public string Header { get; set; }
         public SharpVision.Windows.WindowTitlePlacement HeaderPlacement { get; set; }
         public bool IsActive { get; }
+        public bool IsOpen { get; }
         protected override SharpVision.Terminal.Geometry.Rect VisualBounds { get; }
         public event System.EventHandler? Shown;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }

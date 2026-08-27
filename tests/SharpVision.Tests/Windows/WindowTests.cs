@@ -1384,6 +1384,189 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies IsOpen is true once an attached Window is presented.</summary>
+    [Fact]
+    public async Task IsOpen_WhenPresented_IsTrueAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var window = new Window { CanMove = false, CanClose = true };
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+
+            window.IsOpen.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies IsOpen turns false once a real close commits (the Window collapses and
+    /// its surface presentation clears), matching Close()'s default collapse behavior.</summary>
+    [Fact]
+    public async Task IsOpen_WhenClosedAfterPresented_IsFalseAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var window = new Window { CanMove = false, CanClose = true };
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+
+            window.Close();
+
+            window.IsOpen.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a never-attached, still-Visible Window reports IsOpen true - it has no
+    /// IsSurfacePresented transition to be open through, so IsOpen falls back to the same
+    /// Visible-and-not-yet-closed substitute bit RequestClose's own guard relies on.</summary>
+    [Fact]
+    public void IsOpen_WhenNeverAttachedAndVisible_IsTrue()
+    {
+        var window = new Window();
+
+        window.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies closing a never-attached, still-Visible Window turns IsOpen false even
+    /// though nothing ever collapses it, mirroring the substitute open/closed bit Close() itself
+    /// sets for exactly this shape.</summary>
+    [Fact]
+    public void IsOpen_WhenNeverAttachedWindowIsClosed_IsFalse()
+    {
+        var window = new Window();
+
+        window.Close();
+
+        window.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies Visibility returning to Visible after a never-attached close makes IsOpen
+    /// true again, matching the substitute bit's own reset in OnWindowPropertyChanged.</summary>
+    [Fact]
+    public void IsOpen_WhenNeverAttachedWindowIsShownAgainAfterClosing_IsTrueAgain()
+    {
+        var window = new Window();
+        window.Close();
+
+        window.Visibility = Visibility.Collapsed;
+        window.Visibility = Visibility.Visible;
+
+        window.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies setting Visibility to Collapsed directly (bypassing Close()) still turns
+    /// IsOpen false, since the underlying surface presentation clears either way.</summary>
+    [Fact]
+    public async Task IsOpen_WhenVisibilitySetToCollapsedDirectly_IsFalseAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var window = new Window { CanMove = false, CanClose = true };
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+
+            window.Visibility = Visibility.Collapsed;
+
+            window.IsOpen.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies IsOpen recovers to true once Visibility returns to Visible after a direct
+    /// (non-Close()) collapse, since the Window re-presents through the same attach-time path.</summary>
+    [Fact]
+    public async Task IsOpen_WhenVisibilityReturnsToVisibleAfterDirectCollapse_IsTrueAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var window = new Window { CanMove = false, CanClose = true };
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+            window.Visibility = Visibility.Collapsed;
+
+            window.Visibility = Visibility.Visible;
+
+            window.IsOpen.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies IsOpen stays true throughout a Closing handler that has not (yet) taken
+    /// responsibility for Visibility itself: RequestClose only collapses <em>after</em> Closing
+    /// returns, so IsSurfacePresented - and therefore IsOpen - has not changed yet while a
+    /// non-retaining handler runs. IsOpen only turns false once the whole Close() call has
+    /// returned and the default collapse has committed, matching the existing CloseRequested/
+    /// Closing/Closed ordering tests, which likewise assert final state only after the call returns.</summary>
+    [Fact]
+    public async Task IsOpen_DuringAndAfterNonRetainingClosingHandler_IsTrueThenFalseAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var isOpenDuringClosing = false;
+            var window = new Window
+            {
+                CanMove = false,
+                CanClose = true,
+                CloseOnEscape = true,
+                HeaderPlacement = WindowTitlePlacement.Center
+            };
+            window.Closing += (_, _) => isOpenDuringClosing = window.IsOpen;
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+
+            _ = Router.Route(window, Events.Key, Key(Code.Escape));
+
+            isOpenDuringClosing.ShouldBeTrue();
+            window.IsOpen.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies IsOpen stays true throughout and after a Closing handler that retains the
+    /// Window by re-showing it, mirroring Dispatch_WhenClosingHandlerReopensTheWindow_LeavesItVisibleAsync.</summary>
+    [Fact]
+    public async Task IsOpen_WhenClosingHandlerRetainsWindow_IsTrueThroughoutAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var isOpenAfterReopen = false;
+            var window = new Window
+            {
+                CanMove = false,
+                CanClose = true,
+                CloseOnEscape = true,
+                HeaderPlacement = WindowTitlePlacement.Center
+            };
+            window.Closing += (_, _) =>
+            {
+                window.Visibility = Visibility.Collapsed;
+                window.Visibility = Visibility.Visible;
+                isOpenAfterReopen = window.IsOpen;
+            };
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+
+            _ = Router.Route(window, Events.Key, Key(Code.Escape));
+
+            isOpenAfterReopen.ShouldBeTrue();
+            window.IsOpen.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies the close-affordance press collapses the window by default, matching Escape and Dismiss.</summary>
     [Fact]
     public async Task Close_WhenPrimaryPressReleasesOnTarget_CollapsesWindowByDefaultAsync()
