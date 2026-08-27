@@ -2013,6 +2013,26 @@ public sealed class TextInputTests
         control.CaretIndex.ShouldBe(4);
     }
 
+    /// <summary>Verifies Up/Down through several consecutive blank word-wrapped rows always steps
+    /// away from the row it started on rather than resolving back across it, reproducing the
+    /// caret-inversion regression where a blank-row offset bound to whichever real row was
+    /// textually nearer (even the wrong direction away) instead of the visually adjacent one.</summary>
+    [Fact]
+    public void Dispatch_WhenNavigatingAcrossConsecutiveBlankWrappedRows_NeverReversesDirection()
+    {
+        var control = new TextInput { Text = "a\n\n\n\nb", WordWrap = true, AcceptsReturn = true };
+        control.SetTheme(TestThemes.BorderlessInput);
+        new LayoutEngine().Layout(control, new Size(8, 10));
+
+        control.CaretIndex = 2;
+        Key(control, Code.Down, Modifiers.None);
+        control.CaretIndex.ShouldBeGreaterThan(2);
+
+        control.CaretIndex = 4;
+        Key(control, Code.Up, Modifiers.None);
+        control.CaretIndex.ShouldBeLessThan(4);
+    }
+
     /// <summary>Verifies losing focus during pointer selection releases capture and held state.</summary>
     [Fact]
     public async Task Dispatch_WhenFocusLeavesDuringPointerDrag_CancelsCaptureAsync()

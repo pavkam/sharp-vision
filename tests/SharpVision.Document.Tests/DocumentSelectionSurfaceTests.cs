@@ -165,6 +165,56 @@ public sealed class DocumentSelectionSurfaceTests
             TestContext.Current.CancellationToken)).ShouldBe(document.SelectionMap.HitTest(new Point(3, 2)));
     }
 
+    /// <summary>Verifies Up/Down through several consecutive hard-broken blank lines inside one
+    /// paragraph always steps away from the row it started on rather than resolving back across
+    /// it, the same caret-inversion regression covered for TextInput and CodeView but through
+    /// Document's own selection map, where a run of <see cref="DocumentLineBreak"/> inlines (unlike
+    /// the single geometry-free row a block gap leaves above) produces several real blank rows.</summary>
+    [Fact]
+    public async Task Keyboard_WhenNavigatingAcrossConsecutiveBlankBreakLines_NeverReversesDirectionAsync()
+    {
+        var paragraph = new DocumentParagraph
+        {
+            Inlines =
+            {
+                new DocumentTextRun("abcd"),
+                new DocumentLineBreak(),
+                new DocumentLineBreak(),
+                new DocumentLineBreak(),
+                new DocumentLineBreak(),
+                new DocumentTextRun("wxyz")
+            }
+        };
+        var document = new Document { Blocks = { paragraph } };
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(10, 8),
+            TestContext.Current.CancellationToken);
+        document.SelectionMap.Text.ShouldBe("abcd\n\n\n\nwxyz");
+        var firstBlankOffset = document.SelectionMap.Text.IndexOf("\n\n\n\n", StringComparison.Ordinal) + 1;
+        var lastBlankOffset = document.SelectionMap.Text.IndexOf("wxyz", StringComparison.Ordinal) - 1;
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                document.SetSelection(new Selection(firstBlankOffset, firstBlankOffset));
+                document.Focus().ShouldBeTrue();
+            },
+            "establish caret one row into the blank run, nearest the first line");
+        await RouteKeyAsync(surface, document, Code.Down, Modifiers.None);
+        (await surface.Application.Dispatcher.InvokeAsync(
+            () => document.Selection.Caret,
+            TestContext.Current.CancellationToken)).ShouldBeGreaterThan(firstBlankOffset);
+
+        await surface.UpdateAsync(
+            () => document.SetSelection(new Selection(lastBlankOffset, lastBlankOffset)),
+            "establish caret one row into the blank run, nearest the second line");
+        await RouteKeyAsync(surface, document, Code.Up, Modifiers.None);
+        (await surface.Application.Dispatcher.InvokeAsync(
+            () => document.Selection.Caret,
+            TestContext.Current.CancellationToken)).ShouldBeLessThan(lastBlankOffset);
+    }
+
     /// <summary>Verifies keyboard caret reveal remains confined to the active modal plane and
     /// cannot scroll an enclosing container outside that plane.</summary>
     [Fact]

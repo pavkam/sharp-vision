@@ -67,6 +67,29 @@ public sealed class TextSelectionMapTests
         map.VisualLineBoundary(1, end: true).ShouldBe(2);
     }
 
+    /// <summary>Verifies an offset inside a run of several consecutive blank rows never resolves to
+    /// a row before the run, reproducing the caret-inversion regression where the tie-break between
+    /// the flanking semantic glyphs compared raw UTF-16 character distance instead of visual row
+    /// distance: "a" ends only one character before the offset while "b" starts three characters
+    /// after it, so the nearer-by-characters glyph ("a") used to win despite its row lying on the
+    /// wrong side of the requested offset.</summary>
+    [Fact]
+    public void TryGetVisualPosition_WhenOffsetIsInsideConsecutiveBlankRows_DoesNotResolveBeforeTheRun()
+    {
+        var map = new TextSelectionMap(
+            "a\n\n\n\nb",
+            [
+                new TextSelectionGlyph(new Selection(0, 1), new Rect(0, 0, 1, 1)),
+                new TextSelectionGlyph(new Selection(5, 6), new Rect(0, 4, 1, 1))
+            ],
+            [],
+            5);
+
+        map.TryGetVisualPosition(2, out var row, out _);
+
+        row.ShouldNotBe(0);
+    }
+
     /// <summary>Verifies long rows use the bounded binary query index rather than a linear scan.</summary>
     [Fact]
     public void HitTest_WhenRowIsLong_InspectsLogarithmicEntries()

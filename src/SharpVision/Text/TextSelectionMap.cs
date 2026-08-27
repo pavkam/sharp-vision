@@ -285,11 +285,7 @@ internal sealed class TextSelectionMap
         }
 
         var previous = low > 0 ? _semanticPrefixMaxEndIndexes[low - 1] : -1;
-        var previousDistance = previous >= 0 ? offset - _semanticPrefixMaxEnds[low - 1] : int.MaxValue;
-        var nextDistance = low < _semanticGlyphIndexes.Length
-            ? _glyphs[_semanticGlyphIndexes[low]].Range.Start - offset
-            : int.MaxValue;
-        var selected = nextDistance <= previousDistance ? low : previous;
+        var selected = SelectNearestSemanticCandidate(offset, low, previous);
 
         if (selected < 0 || selected >= _semanticGlyphIndexes.Length)
         {
@@ -300,6 +296,80 @@ internal sealed class TextSelectionMap
         inspectedEntries++;
         glyph = _glyphs[_semanticGlyphIndexes[selected]];
         return true;
+    }
+
+    /// <summary>Chooses the previous or next semantic glyph flanking one unmapped offset.</summary>
+    /// <param name="offset">The semantic endpoint that matched no glyph exactly.</param>
+    /// <param name="low">The candidate index at or after <paramref name="offset"/>, or the length.</param>
+    /// <param name="previous">The candidate index with the greatest end before <paramref name="offset"/>, or -1.</param>
+    /// <returns>The selected index into <see cref="_semanticGlyphIndexes"/>, or -1 when neither exists.</returns>
+    /// <remarks>
+    /// Candidates on the same visual row, or on immediately adjacent rows with no blank row
+    /// between them, compare raw UTF-16 distance — the ordinary "hug the nearer side" placement
+    /// used for same-row whitespace and for an everyday caret sitting at the very end of one line
+    /// right before the next. Candidates separated by at least one fully blank row instead compare
+    /// how many line-break clusters lie on each side and favor the farther one. A blank run has no
+    /// glyph of its own, so every offset inside it would otherwise resolve to whichever real row
+    /// is nearer — the same real row keyboard Up/Down lands back on through
+    /// <see cref="BuildNearestOffsets"/>'s sparse-row lookup after a single step. Favoring the
+    /// nearer row there makes a step away from it collapse right back, and can even reverse
+    /// direction across several consecutive blank rows. Favoring the farther row instead
+    /// guarantees the endpoint a subsequent same-direction step derives, via
+    /// <see cref="OffsetAtVisualColumn"/>, lies on the correct side of the original offset.
+    /// </remarks>
+    private int SelectNearestSemanticCandidate(int offset, int low, int previous)
+    {
+        if (previous < 0)
+        {
+            return low < _semanticGlyphIndexes.Length ? low : -1;
+        }
+
+        if (low >= _semanticGlyphIndexes.Length)
+        {
+            return previous;
+        }
+
+        var previousGlyph = _glyphs[_semanticGlyphIndexes[previous]];
+        var nextGlyph = _glyphs[_semanticGlyphIndexes[low]];
+        var previousEnd = _semanticPrefixMaxEnds[low - 1];
+        var nextStart = nextGlyph.Range.Start;
+        var previousRow = previousGlyph.Bounds.Bottom - 1;
+        var nextRow = nextGlyph.Bounds.Y;
+
+        if (nextRow - previousRow <= 1)
+        {
+            var previousDistance = offset - previousEnd;
+            var nextDistance = nextStart - offset;
+            return nextDistance <= previousDistance ? low : previous;
+        }
+
+        var previousRowDistance = CountLineBreaks(previousEnd, offset);
+        var nextRowDistance = CountLineBreaks(offset, nextStart);
+        return previousRowDistance <= nextRowDistance ? low : previous;
+    }
+
+    /// <summary>Counts line-break grapheme clusters in one semantic range, one per crossed visual row.</summary>
+    /// <param name="start">The inclusive UTF-16 start of the range.</param>
+    /// <param name="end">The exclusive UTF-16 end of the range.</param>
+    private int CountLineBreaks(int start, int end)
+    {
+        if (end <= start)
+        {
+            return 0;
+        }
+
+        var count = 0;
+        var span = Text.AsSpan(start, end - start);
+
+        foreach (var grapheme in Graphemes.Enumerate(span))
+        {
+            if (span.Slice(grapheme.Offset, grapheme.Length).IndexOfAny('\r', '\n') >= 0)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     private int BinarySearchBoundary(int offset, out int inspectedEntries)

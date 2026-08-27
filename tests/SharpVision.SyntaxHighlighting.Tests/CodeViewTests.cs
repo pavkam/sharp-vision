@@ -795,4 +795,33 @@ public sealed class CodeViewTests
 
         Should.NotThrow(view.RequestClipboardCopy);
     }
+
+    /// <summary>Verifies Up/Down through several consecutive blank source lines always steps away
+    /// from the row it started on rather than resolving back across it, reproducing the caret-
+    /// inversion regression against real syntax-highlighted source rather than the synthetic map
+    /// used by the lower-level <c>TextSelectionMap</c> unit test.</summary>
+    [Fact]
+    public void Dispatch_WhenNavigatingAcrossConsecutiveBlankSourceLines_NeverReversesDirection()
+    {
+        const string sourceCode = "fn a() {}\n\n\n\nfn b() {}\n";
+        var view = new CodeView { Code = sourceCode, Language = "Rust", Width = Length.Cells(20), Height = Length.Cells(10) };
+        view.Measure(new Constraint(20, 10));
+        view.Arrange(new Rect(0, 0, 20, 10));
+        var firstBlankOffset = view.Code.IndexOf("\n\n\n\n", StringComparison.Ordinal) + 1;
+        var lastBlankOffset = view.Code.IndexOf("fn b", StringComparison.Ordinal) - 1;
+
+        view.SetSelection(new Selection(firstBlankOffset, firstBlankOffset));
+        Key(view, Code.Down, Modifiers.None);
+        view.Selection.Caret.ShouldBeGreaterThan(firstBlankOffset);
+
+        view.SetSelection(new Selection(lastBlankOffset, lastBlankOffset));
+        Key(view, Code.Up, Modifiers.None);
+        view.Selection.Caret.ShouldBeLessThan(lastBlankOffset);
+    }
+
+    private static void Key(CodeView view, Code code, Modifiers modifiers) =>
+        Router.Route(
+            view,
+            Events.Key,
+            new KeyEventArgs(new Stroke(code, character: null, nativeCode: 0, modifiers, KeyAction.Press)));
 }
