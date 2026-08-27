@@ -7,6 +7,9 @@ using SharpVision.Controls.Documents;
 using SharpVision.Controls.Input;
 using SharpVision.Controls.Layout;
 using SharpVision.Layout;
+using SharpVision.Terminal.Capabilities;
+using SharpVision.Terminal.Runtime;
+using SharpVision.Terminal.Unicode;
 
 /// <summary>Verifies CodeView's mounted rendering, keyboard, and pointer behavior.</summary>
 public sealed class CodeViewSurfaceTests
@@ -1559,6 +1562,39 @@ public sealed class CodeViewSurfaceTests
         }
 
         surface.Cell(new Point(view.Viewport.Width - 1, 0)).Text.ShouldBe("…");
+    }
+
+    /// <summary>Verifies <see cref="Overflow.Ellipsis"/> resolves the shared ellipsis glyph through
+    /// its ambiguous-width-safe fallback instead of drawing the raw two-cell "…" directly. The
+    /// truncation point always lands on the row's last available cell, so under
+    /// <see cref="Ambiguous.Wide"/> a raw, unresolved "…" would not fit alongside its own
+    /// continuation cell there and the wide-cluster clip policy would silently drop it - leaving
+    /// that cell blank - rather than corrupting the fold indicator that would otherwise follow it.
+    /// Resolving through the fallback keeps the glyph exactly one cell so it always renders.</summary>
+    [Fact]
+    public async Task Overflow_WhenSetToEllipsisUnderAmbiguousWide_RendersOneCellFallbackGlyphAsync()
+    {
+        var view = new CodeView { Code = new string('a', 40), Overflow = Overflow.Ellipsis, IsFoldingEnabled = false };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(10, 5),
+            TerminalOptions.Minimal with
+            {
+                Capabilities = TerminalCapabilities.Conservative with { AmbiguousWidth = Ambiguous.Wide }
+            },
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        view.Extent.Height.ShouldBe(1);
+        view.Extent.Width.ShouldBe(view.Viewport.Width);
+
+        for (var x = 0; x < view.Viewport.Width - 1; x++)
+        {
+            surface.Cell(new Point(x, 0)).Text.ShouldBe("a");
+        }
+
+        var lastCell = surface.Cell(new Point(view.Viewport.Width - 1, 0));
+        lastCell.Text.ShouldBe(".");
     }
 
     /// <summary>Verifies clicking a wrapped line's continuation row (its second or later

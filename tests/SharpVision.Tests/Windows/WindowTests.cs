@@ -465,6 +465,39 @@ public sealed class WindowTests
         FrameOracle.Get(frame, new Point(11, 0)).ShouldBe("╗");
     }
 
+    /// <summary>Verifies a Right-aligned overflowing header resolves the ellipsis glyph through its
+    /// ambiguous-width-safe fallback instead of drawing the raw two-cell "…" directly. The offset
+    /// math places the truncated title against a one-cell-ellipsis assumption
+    /// (<c>cells = 2.Add(line.Cells)</c>); a raw, unresolved "…" under
+    /// <see cref="Ambiguous.Wide"/> would actually draw two cells, silently consuming the reserved
+    /// separator cell before the border and leaving no gap between the title and the frame.
+    /// Resolving through the fallback keeps the glyph exactly one cell so the reserved separator
+    /// survives untouched.</summary>
+    [Fact]
+    public void Render_WhenRightAlignedHeaderOverflowsUnderAmbiguousWide_RendersOneCellFallbackGlyph()
+    {
+        var window = new Window
+        {
+            Header = "中中中中中中中中中中",
+            Width = Length.Cells(12),
+            Height = Length.Cells(3),
+            HeaderPlacement = WindowTitlePlacement.Right,
+            CanClose = false
+        };
+        window.SetCellPolicy(new UnicodePolicy(Ambiguous.Wide));
+        var size = new Size(12, 3);
+        new LayoutEngine().Layout(window, size);
+        using Frame frame = new(size, ambiguousWidth: Ambiguous.Wide);
+
+        window.Render(frame.Canvas);
+
+        var row = string.Concat(Enumerable.Range(0, 12).Select(x => FrameOracle.Get(frame, new Point(x, 0))));
+        row.ShouldBe("╔═ 中中中中中中. ╗");
+        row.ShouldNotContain("…");
+        FrameOracle.Get(frame, new Point(10, 0)).ShouldBe(" ");
+        FrameOracle.Get(frame, new Point(11, 0)).ShouldBe("╗");
+    }
+
     /// <summary>Verifies the Turbo Vision block shadow occupies only translated cells outside the window body.</summary>
     [Fact]
     public void Render_WhenBlockShadowIsEnabled_DrawsOutsideBodyWithoutCoveringContent()

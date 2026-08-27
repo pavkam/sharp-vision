@@ -449,7 +449,12 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
                     lines);
                 var line = lines[0];
                 var truncated = headerText.AsSpan(line.Offset, line.Length);
-                headerText = line.HasEllipsis ? string.Concat(truncated, "…") : truncated.ToString();
+                var ellipsisGlyph = ControlGlyphs.Text.Ellipsis.Value.Resolve(
+                    ControlGlyphs.Text.Ellipsis.Fallback,
+                    CellPolicy.AmbiguousWidth);
+                headerText = line.HasEllipsis
+                    ? string.Concat(truncated, ellipsisGlyph.ToString())
+                    : truncated.ToString();
                 cells = 2.Add(line.Cells);
             }
 
