@@ -933,6 +933,40 @@ public sealed class SessionTests
     }
 
     /// <summary>
+    /// Verifies a resize that becomes ready in the same tick as a closing (EOF) read is still
+    /// forwarded even while startup negotiation is still pending — the identical setup as the
+    /// sibling test above, just with negotiation still outstanding when the tie occurs.
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenResizeIsReadyAtTheSameTickAsEofDuringNegotiation_StillForwardsResizeAsync()
+    {
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var options = TerminalOptions.Minimal with
+        {
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?>(),
+                limits: QueryLimits.Default with { MaxConcurrentQueries = 8 })
+        };
+        var expected = new Dimensions(new Size(120, 40), new Size(1200, 800));
+
+        // No negotiation replies are ever queued and the transport is closed before RunAsync
+        // even starts, so the very first read resolves directly to EOF while negotiation is
+        // still pending; the resize is queued beforehand so it races that EOF read on the very
+        // first iteration.
+        transport.Close();
+        resize.Resize(expected);
+
+        await using Session session = new(transport, resize, sink, options);
+
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        sink.Resizes.ShouldBe([expected]);
+        sink.ClosedCount.ShouldBe(1);
+    }
+
+    /// <summary>
     /// Verifies partial startup failure restores attempted modes and preserves identity.
     /// </summary>
     [Fact]

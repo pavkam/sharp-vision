@@ -794,7 +794,18 @@ public sealed class Session: IAsyncDisposable
                         ready = true;
                         deadline = null;
 
-                        if (hasPendingResize)
+                        if (resize.IsCompleted)
+                        {
+                            // A resize that becomes ready in the same tick as this EOF read
+                            // must still be observed, even while negotiation was still
+                            // pending. Newest wins: this same-tick resize supersedes any
+                            // earlier one already buffered into pendingResize above.
+                            var dimensions = await resize.ConfigureAwait(false);
+                            router.SetGeometry(dimensions.Cells, dimensions.Pixels);
+                            _sink.Resize(in dimensions);
+                            hasPendingResize = false;
+                        }
+                        else if (hasPendingResize)
                         {
                             _sink.Resize(in pendingResize);
                             hasPendingResize = false;
