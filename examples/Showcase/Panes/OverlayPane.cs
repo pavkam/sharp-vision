@@ -297,7 +297,7 @@ internal sealed class OverlayPane: CompositeControlBase
                     "Input passes through decoration",
                     "Click the visible overlap. Decorative overlay is not hit-test-visible, so the underlying Button receives activation.",
                     new DocColumn(transparent, pointerStatus),
-                    "decoration.HitTestVisible = false;")),
+                    "decoration.IsHitTestVisible = false;")),
             new DocSection(
                 "🧩",
                 "Alignment and sizing",
