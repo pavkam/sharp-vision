@@ -9,6 +9,7 @@ using System.Buffers.Binary;
 internal static partial class RuntimeInterop
 {
     private const nuint _linuxGetSize = 0x5413;
+    private const int _setAttributesFlush = 2;
     private const int _terminalNameBufferLength = 4096;
 
     /// <summary>Reads cell and pixel dimensions from one terminal file descriptor.</summary>
@@ -172,6 +173,21 @@ internal static partial class RuntimeInterop
         fixed (byte* pointer = state)
         {
             return TcSetAttr(fileDescriptor, _setAttributesNow, pointer) == 0;
+        }
+    }
+
+    /// <summary>
+    /// Restores captured termios state after output drains and discards input received but not
+    /// read, preventing an incomplete terminal report from reaching the resumed shell.
+    /// </summary>
+    /// <param name="fileDescriptor">The non-negative terminal descriptor.</param>
+    /// <param name="state">The platform-sized captured state, unmodified since capture.</param>
+    /// <returns>True when the pending input was flushed and the state was applied.</returns>
+    public static unsafe bool TryRestoreTerminalAttributes(int fileDescriptor, byte[] state)
+    {
+        fixed (byte* pointer = state)
+        {
+            return TcSetAttr(fileDescriptor, _setAttributesFlush, pointer) == 0;
         }
     }
 

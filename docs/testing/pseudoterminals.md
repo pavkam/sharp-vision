@@ -31,10 +31,10 @@ surfaces as a real test failure rather than a silent skip.
 
 The tests verify startup queries, alternate-screen/cursor/mode changes, resize
 delivery, bracketed paste, focus reporting, cell and pixel mouse where the host
-supports it, output batching, shutdown restoration, child exit, transport
-disconnect, and the signal and cancellation paths. Multiplexer framing and
-capability narrowing are verified separately, through exact-byte and
-deterministic capability tests.
+supports it, output batching, shutdown restoration including unread-input
+discard before canonical echo resumes, child exit, transport disconnect, and the
+signal and cancellation paths. Multiplexer framing and capability narrowing are
+verified separately, through exact-byte and deterministic capability tests.
 
 Capability-negotiation proof requires the exact bounded query batch, ordinary
 input delivery while replies are still pending, one finite shared deadline,

@@ -157,7 +157,10 @@ public sealed class UnixConsoleModeTests
             getAttributes: _ => RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var state)
                 ? state
                 : null,
-            setAttributes: (_, state) => RuntimeInterop.TrySetTerminalAttributes(pty.SlaveDescriptor, state));
+            setAttributes: (_, state) => RuntimeInterop.TrySetTerminalAttributes(pty.SlaveDescriptor, state),
+            restoreAttributes: (_, state) => RuntimeInterop.TryRestoreTerminalAttributes(
+                pty.SlaveDescriptor,
+                state));
 
         RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var afterEnter).ShouldBeTrue();
         afterEnter.ShouldBe(RuntimeInterop.ComputeRawTerminalAttributes(before, captureControlKeys));
@@ -166,5 +169,52 @@ public sealed class UnixConsoleModeTests
 
         RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var afterRestore).ShouldBeTrue();
         afterRestore.ShouldBe(before);
+    }
+
+    /// <summary>
+    /// Verifies restoration discards an unread mouse-report tail before echo and canonical input
+    /// can expose it to the shell that resumes after the application exits.
+    /// </summary>
+    [Fact]
+    public async Task Dispose_WhenUnreadPointerTailIsPending_DiscardsItBeforeRestoringAttributesAsync()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires a Unix pseudoterminal.");
+
+        await using var pty = UnixPseudoterminal.Open();
+        var mode = UnixConsoleMode.Enter(
+            captureControlKeys: false,
+            getAttributes: _ => RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var state)
+                ? state
+                : null,
+            setAttributes: (_, state) => RuntimeInterop.TrySetTerminalAttributes(pty.SlaveDescriptor, state),
+            restoreAttributes: (_, state) => RuntimeInterop.TryRestoreTerminalAttributes(
+                pty.SlaveDescriptor,
+                state));
+        var pointerTail = "35;193;5M"u8.ToArray();
+        await pty.Master.WriteAsync(pointerTail, TestContext.Current.CancellationToken);
+        await pty.Master.FlushAsync(TestContext.Current.CancellationToken);
+
+        mode.Dispose();
+
+        var received = new byte[pointerTail.Length];
+        var read = pty.Slave.ReadAsync(received, TestContext.Current.CancellationToken).AsTask();
+        var boundary = Task.Delay(TimeSpan.FromMilliseconds(250), TestContext.Current.CancellationToken);
+        var completed = await Task.WhenAny(read, boundary);
+        var leaked = ReferenceEquals(completed, read);
+        await pty.CloseMasterAsync();
+
+        if (!read.IsCompleted)
+        {
+            try
+            {
+                _ = await read;
+            }
+            catch (IOException)
+            {
+                // Closing a PTY master may report EOF or EIO on its blocked slave read.
+            }
+        }
+
+        leaked.ShouldBeFalse("the unread pointer tail survived terminal restoration");
     }
 }

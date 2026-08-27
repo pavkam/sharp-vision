@@ -294,6 +294,14 @@ first exception is retained and rethrown after the remaining cleanup finishes,
 so one failure never abandons unrelated handles or buffered output. A stream
 supplied as both input and output is attempted exactly once.
 
+After session VT cleanup has stopped mouse reporting, the Unix host lease
+restores its captured termios state with `TCSAFLUSH`. POSIX requires this mode
+to drain output and discard input received but not read before applying the
+restored attributes, so the incomplete tail of an exit-click report cannot
+become echoed shell input when canonical mode resumes. This follows
+[`tcsetattr`](https://pubs.opengroup.org/onlinepubs/9799919799/functions/tcsetattr.html)
+from POSIX.1-2024, accessed 2026-08-27.
+
 `Application`'s own terminal-resource cleanup step marshals clipboard-timer
 teardown onto the dispatcher thread and, separately, marshals `FinalizeStopped`
 onto it once cleanup completes. Both crossings retry with a short delay while

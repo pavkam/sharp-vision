@@ -88,8 +88,10 @@ through pointer capture and hit testing to final control output.
 pair; `Runtime.Session` enables cell input only with proven `CellMouse` support
 and pixel input only with proven `PixelMouse` support. A non-default coordinate
 mode is enabled before tracking begins; shutdown stops tracking before resetting
-the coordinate mode, so an event cannot race across coordinate grammars.
-Tentative terminal-name hints never activate them.
+the coordinate mode, so an event cannot race across coordinate grammars. The
+Unix platform restore then discards any report tail that was already received
+but remained unread before canonical echo returns. Tentative terminal-name hints
+never activate the modes.
 
 ## Sources
 
