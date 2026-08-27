@@ -130,6 +130,10 @@ key suppresses the built-in selection change. Shift, Alt, Control, and combined
 modifier variants of the tab commands remain unhandled for application
 shortcuts.
 
+Selectable text projects only the selected page's semantic content. Collapsed
+pages and the private generated header strip do not contribute; changing
+selection immediately changes the projection to the newly presented page.
+
 ## TabItem
 
 `TabItem` extends [`ContentControl`](../content-control.md#api), adding

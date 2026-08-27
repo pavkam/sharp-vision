@@ -6,6 +6,47 @@ namespace SharpVision.Tests.Controls.Collections;
 /// <summary>Proves tab selection and navigation through mounted terminal surfaces.</summary>
 public sealed class TabControlSurfaceTests
 {
+    /// <summary>Verifies selectable text follows the one presented page, preserves Unicode
+    /// graphemes, and excludes both collapsed pages and private header chrome.</summary>
+    [Fact]
+    public async Task SelectableText_WhenSelectedPageChanges_ProjectsOnlyVisiblePageContentAsync()
+    {
+        // Arrange
+        var tabs = new TabControl
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            IsTextSelectionEnabled = true
+        };
+        tabs.Items.Add(new TabItem { HeaderText = "First header", Content = new ControlText("Hidden page") });
+        tabs.Items.Add(new TabItem { HeaderText = "Second header", Content = new ControlText("A\u0301界") });
+        tabs.SelectedIndex = 1;
+        await using var surface = await ComponentSurface.MountAsync(
+            tabs,
+            new Size(20, 4),
+            TestContext.Current.CancellationToken);
+        SelectableTextSnapshot? snapshot = null;
+
+        // Act
+        await surface.UpdateAsync(
+            () => snapshot = tabs.GetSelectableTextSnapshot(),
+            "project selected tab text");
+
+        // Assert
+        snapshot.ShouldNotBeNull().Text.ShouldBe("A\u0301界");
+        snapshot.IsAuthoritative.ShouldBeFalse();
+        snapshot.Glyphs.Count.ShouldBe(2);
+        snapshot.Glyphs[0].Range.ShouldBe(new Selection(0, 2));
+        snapshot.Glyphs[1].Bounds.Width.ShouldBe(2);
+
+        await surface.UpdateAsync(() => tabs.SelectedIndex = 0, "select first page");
+        await surface.UpdateAsync(
+            () => snapshot = tabs.GetSelectableTextSnapshot(),
+            "project replacement selected tab text");
+
+        snapshot.ShouldNotBeNull().Text.ShouldBe("Hidden page");
+    }
+
     /// <summary>Verifies a TabControl with three tabs renders the header row with labels, dividers, and the accent underline.</summary>
     [Fact]
     public async Task Render_WhenThreeTabsAreMounted_DrawsHeaderRowWithDividersAndUnderlineAsync()

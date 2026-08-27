@@ -278,6 +278,19 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             : TryNavigate(key.Stroke.Code);
     }
 
+    /// <inheritdoc/>
+    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    {
+        ArgumentNullException.ThrowIfNull(children);
+
+        if (SelectedItem is { } selectedItem)
+        {
+            children.Add(selectedItem);
+        }
+
+        return true;
+    }
+
     [NonNegativeValue]
     internal int ItemCount => ItemControlCount;
 
