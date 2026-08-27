@@ -19,8 +19,8 @@ internal sealed class FlyoutPane: CompositeControlBase
         // Basic flyout with action content.
         var status = new Text("No action taken.");
         var trigger = new Button { Text = "&Options" };
-        var confirmButton = new Button { Text = "&Confirm" };
-        var cancelButton = new Button { Text = "C&ancel" };
+        var confirmButton = new Button { Text = "Confir&m" };
+        var cancelButton = new Button { Text = "Canc&el" };
         var actionRow = new Stack
         {
             Orientation = Orientation.Horizontal,

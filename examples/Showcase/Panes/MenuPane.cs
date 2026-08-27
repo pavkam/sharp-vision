@@ -180,7 +180,7 @@ internal sealed class MenuPane: CompositeControlBase
                 "&Sort by",
                 sortBy => sortBy
                     .Radio(
-                        "&Name",
+                        "N&ame",
                         groupName: "sort",
                         isChecked: true,
                         onInvoke: () => builderStatus.Content = "Invoked: Sort by Name")
@@ -189,7 +189,7 @@ internal sealed class MenuPane: CompositeControlBase
                         groupName: "sort",
                         onInvoke: () => builderStatus.Content = "Invoked: Sort by Date")
                     .Radio(
-                        "&Size",
+                        "Si&ze",
                         groupName: "sort",
                         onInvoke: () => builderStatus.Content = "Invoked: Sort by Size"))
             .Build();
@@ -243,7 +243,7 @@ internal sealed class MenuPane: CompositeControlBase
                     "Fluent builder chain",
                     "Navigate with <reverse>Up</reverse>/<reverse>Down</reverse> arrows and <reverse>Enter</reverse> to invoke. <reverse>Right</reverse> opens Sort by; the three entries share one radio group.",
                     new DocColumn(builderFrame, builderStatus),
-                    "var menu = MenuBuilder.Vertical()\n    .Item(\"&Refresh\", shortcut: \"F5\", onInvoke: Refresh)\n    .Item(\"Re&name\", onInvoke: Rename)\n    .Check(\"Show &hidden files\", onInvoke: ToggleHidden)\n    .Separator()\n    .Submenu(\"&Sort by\", sortBy => sortBy\n        .Radio(\"&Name\", groupName: \"sort\", isChecked: true, onInvoke: SortByName)\n        .Radio(\"&Date\", groupName: \"sort\", onInvoke: SortByDate)\n        .Radio(\"&Size\", groupName: \"sort\", onInvoke: SortBySize))\n    .Build();")),
+                    "var menu = MenuBuilder.Vertical()\n    .Item(\"&Refresh\", shortcut: \"F5\", onInvoke: Refresh)\n    .Item(\"Re&name\", onInvoke: Rename)\n    .Check(\"Show &hidden files\", onInvoke: ToggleHidden)\n    .Separator()\n    .Submenu(\"&Sort by\", sortBy => sortBy\n        .Radio(\"N&ame\", groupName: \"sort\", isChecked: true, onInvoke: SortByName)\n        .Radio(\"&Date\", groupName: \"sort\", onInvoke: SortByDate)\n        .Radio(\"Si&ze\", groupName: \"sort\", onInvoke: SortBySize))\n    .Build();")),
             new DocSection(
                 "📑",
                 "Context menu",

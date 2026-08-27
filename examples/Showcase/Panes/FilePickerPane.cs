@@ -92,7 +92,7 @@ internal sealed class FilePickerPane: CompositeControlBase
 
     private static Button CreateLocalizedLauncher(Text status)
     {
-        var launcher = new Button { Text = "Localized (&options)" };
+        var launcher = new Button { Text = "&Localized (options)" };
         launcher.Click += async (_, _) =>
         {
             var result = await FilePickerDialog.ShowAsync(

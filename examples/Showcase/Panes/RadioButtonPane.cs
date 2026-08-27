@@ -136,7 +136,7 @@ internal sealed class RadioButtonPane: CompositeControlBase
             IsChecked = true,
             EndAffix = new Affix("★", "*", SemanticColor.Warning)
         };
-        var recommendedBalanced = new RadioButton { Text = "&Recommended: Balanced", GroupName = "recommendation" };
+        var recommendedBalanced = new RadioButton { Text = "Recommended: Balance&d", GroupName = "recommendation" };
 
         return new DocPage(
             Title,

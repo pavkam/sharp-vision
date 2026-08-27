@@ -116,7 +116,7 @@ internal sealed class CheckBoxPane: CompositeControlBase
         // StartAffix reserves a fixed cell for an application-owned priority marker.
         var priority = new CheckBox
         {
-            Text = "&Escalate to on-call",
+            Text = "Esca&late to on-call",
             StartAffix = new Affix("!", "!", SemanticColor.Error)
         };
 
@@ -131,7 +131,7 @@ internal sealed class CheckBoxPane: CompositeControlBase
                 Underline.None,
                 Color.Default)
             },
-            new CheckBox { Text = "Include meta&data", IsChecked = true },
+            new CheckBox { Text = "Include metadat&a", IsChecked = true },
             new CheckBox { Text = "Compr&ess output" },
             disabled));
 

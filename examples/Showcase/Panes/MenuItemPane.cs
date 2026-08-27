@@ -29,7 +29,7 @@ internal sealed class MenuItemPane: CompositeControlBase
         var moreItem = new MenuItem { Text = "More &options", Submenu = infoSubmenu };
         var saveItem = new MenuItem { Text = "&Save", ShortcutText = "Ctrl+S" };
         var undoItem = new MenuItem { Text = "&Undo", ShortcutText = "Ctrl+Z" };
-        var autoSaveItem = new MenuItem { Text = "Auto &save", Kind = MenuItemKind.Check, IsChecked = true };
+        var autoSaveItem = new MenuItem { Text = "Au&to save", Kind = MenuItemKind.Check, IsChecked = true };
         var compactItem = new MenuItem
         {
             Text = "&Compact",
@@ -94,7 +94,7 @@ internal sealed class MenuItemPane: CompositeControlBase
                         "menu.Items.Add(new MenuItem { Text = \"More &options\", Submenu = submenu });\n" +
                         "menu.Items.Add(new MenuSeparator());\n" +
                         "menu.Items.Add(new MenuItem { Text = \"&Save\", ShortcutText = \"Ctrl+S\" });\n" +
-                        "menu.Items.Add(new MenuItem\n{\n    Text = \"Auto &save\",\n    Kind = MenuItemKind.Check,\n    IsChecked = true,\n});\n" +
+                        "menu.Items.Add(new MenuItem\n{\n    Text = \"Au&to save\",\n    Kind = MenuItemKind.Check,\n    IsChecked = true,\n});\n" +
                         "menu.Items.Add(new MenuItem { Text = \"&Deploy\", IsEnabled = false });")));
     }
 

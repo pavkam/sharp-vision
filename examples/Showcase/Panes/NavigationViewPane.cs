@@ -49,13 +49,13 @@ internal sealed class NavigationViewPane: CompositeControlBase
 
         // EndAffix reserves a fixed cell for an application-owned unread-count badge.
         var badgeStatus = new Text("Selected: none");
-        var badges = new NavigationView { Header = "&INBOX", Width = Length.Cells(24), Height = Length.Cells(8) };
+        var badges = new NavigationView { Header = "INB&OX", Width = Length.Cells(24), Height = Length.Cells(8) };
         badges.Items.Add(new NavigationViewItem
         {
-            Text = "&Unread",
+            Text = "U&nread",
             EndAffix = new Affix("●", "*", SemanticColor.Error)
         });
-        badges.Items.Add(new NavigationViewItem { Text = "&Archive" });
+        badges.Items.Add(new NavigationViewItem { Text = "Arc&hive" });
         badges.SelectionChanged += (_, _) =>
             badgeStatus.Content = $"Selected: {DocCaption.PlainCaption(badges.SelectedItem?.Text ?? "none")}";
 
@@ -83,6 +83,6 @@ internal sealed class NavigationViewPane: CompositeControlBase
                 new DocExample("Unread-count badge",
                     "The badge dot sits in its own reserved cell after the label and never shares space with the caption.",
                     new DocColumn(badges, badgeStatus),
-                    "nav.Items.Add(new NavigationViewItem\n{\n    Text = \"&Unread\",\n    EndAffix = new Affix(\"●\", \"*\", SemanticColor.Error)\n});")));
+                    "nav.Items.Add(new NavigationViewItem\n{\n    Text = \"U&nread\",\n    EndAffix = new Affix(\"●\", \"*\", SemanticColor.Error)\n});")));
     }
 }

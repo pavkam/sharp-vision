@@ -29,7 +29,7 @@ internal sealed class ButtonPane: CompositeControlBase
             _ => commandEnabled.IsChecked == true);
         var commandButton = new Button
         {
-            Text = "&Deploy command",
+            Text = "Depl&oy command",
             Command = command,
             CommandParameter = "release"
         };
