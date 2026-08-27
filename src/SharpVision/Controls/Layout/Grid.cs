@@ -556,7 +556,10 @@ public sealed class Grid: Container
                 {
                     reserved += available.HasValue
                         ? resolvedNonAbsorbing![index]
-                        : (int) definitions[index].Length.Value;
+                        : Math.Clamp(
+                            (int) definitions[index].Length.Value,
+                            definitions[index].Minimum,
+                            definitions[index].Maximum);
                 }
             }
 

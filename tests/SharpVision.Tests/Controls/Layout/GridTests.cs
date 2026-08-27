@@ -119,6 +119,47 @@ public sealed class GridTests
         grid.DesiredSize.Width.ShouldBe(20);
     }
 
+    /// <summary>Verifies the unbounded branch's reserved-space calculation for a spanned Cells
+    /// track respects the track's own Minimum, instead of reading Length.Value directly. Without
+    /// the clamp, the sibling Auto track over-absorbs the gap between the track's raw 2-cell
+    /// length and its enforced 10-cell minimum, inflating the Grid's desired width to 28 instead
+    /// of the correct minimal fit of 20.</summary>
+    [Fact]
+    public void Measure_WhenSpannedCellsTrackHasMinimumUnbounded_DoesNotInflateAutoColumn()
+    {
+        var grid = new Grid();
+        grid.Columns.Add(Track.Cells(2, minimum: 10));
+        grid.Columns.Add(Track.Auto());
+        var child = new ProbeControl(new Size(20, 1));
+        Grid.SetColumnSpan(child, 2);
+        grid.Children.Add(child);
+
+        grid.Measure(new Constraint(null, null));
+
+        grid.DesiredSize.Width.ShouldBe(20);
+    }
+
+    /// <summary>Verifies the unbounded branch's reserved-space calculation for a spanned Cells
+    /// track respects the track's own Maximum, instead of reading Length.Value directly. Without
+    /// the clamp, the reserved share is wildly overstated (50 cells for a track capped at 5),
+    /// so the sibling Auto track absorbs nothing and the child is effectively starved down to
+    /// the track's raw, unclamped length. With the fix, the Auto column compensates with the
+    /// remaining 15 cells so the Grid's desired width reaches the child's full 20.</summary>
+    [Fact]
+    public void Measure_WhenSpannedCellsTrackHasMaximumUnbounded_AutoColumnCompensates()
+    {
+        var grid = new Grid();
+        grid.Columns.Add(Track.Cells(50, maximum: 5));
+        grid.Columns.Add(Track.Auto());
+        var child = new ProbeControl(new Size(20, 1));
+        Grid.SetColumnSpan(child, 2);
+        grid.Children.Add(child);
+
+        grid.Measure(new Constraint(null, null));
+
+        grid.DesiredSize.Width.ShouldBe(20);
+    }
+
     /// <summary>Verifies a child spanning a Percent track and an Auto track gets its full
     /// intrinsic width.</summary>
     [Fact]
