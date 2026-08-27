@@ -157,12 +157,17 @@ the dialog within budget, the action bar never has to compete for space at all:
 its divider and buttons always keep their full, natural size, regardless of how
 long the message grows.
 
-> [!IMPORTANT]
->
-> **Implementation gap:** the message area is not keyboard-scrollable. Focus
-> sits on the action buttons, which are siblings of the scrolling message host,
-> so arrow keys, Page Up/Down, Home, and End never reach it — a keyboard-only
-> user cannot scroll a long message today.
+Focus sits on the action buttons, which are siblings of the scrolling message
+host rather than its ancestors, so normal routed key handling never reaches it.
+MessageBox forwards Up, Down, Page Up, Page Down, Home, and End directly into
+the message host instead - using the same line and page step `Container`'s own
+key handling would - so a keyboard-only user can still scroll a long message
+without moving focus off the buttons. Left and Right are not forwarded: the
+message area only scrolls vertically, so there is no horizontal extent for them
+to move. A short message that never overflows leaves all of these keys
+unhandled, and a modifier beyond Shift or a lock key (Ctrl, Alt, Super, Hyper,
+or Meta) makes the whole chord ineligible, so neither swallows a key meant for
+something else.
 
 The button group is centered horizontally and its buttons share the widest
 label's width. Captions use the Button default centered text alignment, and

@@ -8,6 +8,7 @@ using SharpVision.Controls.Input;
 using SharpVision.Controls.Layout;
 using SharpVision.Terminal.Input;
 
+using Scrolling;
 using Text;
 
 using DisplayText = Controls.Display.Text;
@@ -35,6 +36,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
     private readonly StyleSlot<ButtonStyle> _buttonStyle;
     private readonly StyleSlot<SeparatorStyle> _separatorStyle;
     private readonly DisplayText _messageText;
+    private readonly LayoutStack _messageHost;
     private readonly Grid _actionBar;
 
     #region Construction and contract
@@ -66,7 +68,13 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
         MaxHeight = 20;
         HorizontalAlignment = HorizontalAlignment.Center;
         VerticalAlignment = VerticalAlignment.Center;
-        Content = CreateContent(message, _buttons, out _messageText, out _actionBar, out var separator);
+        Content = CreateContent(
+            message,
+            _buttons,
+            out _messageText,
+            out _messageHost,
+            out _actionBar,
+            out var separator);
         _buttonStyle = InitializePartStyle(
             ButtonStyle.ForwardingDefinition,
             nameof(ButtonStyle));
@@ -345,7 +353,13 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
 
     #endregion
 
-    private Grid CreateContent(string message, Button[] buttons, out DisplayText messageText, out Grid actionBar, out Separator separator)
+    private Grid CreateContent(
+        string message,
+        Button[] buttons,
+        out DisplayText messageText,
+        out LayoutStack messageHost,
+        out Grid actionBar,
+        out Separator separator)
     {
         var style = ActualStyle;
         messageText = new DisplayText(message)
@@ -363,7 +377,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
         // vertically auto-scrolling Stack instead means that overflow becomes reachable by scrolling
         // rather than lost, mirroring how FileDialogBase gives its own growable list region scrolling
         // instead of letting it compete for space through an outer Grid-shrink.
-        var messageHost = new LayoutStack
+        messageHost = new LayoutStack
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
@@ -493,13 +507,49 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
     {
         _ = sender;
 
-        if (eventArgs.Phase == RoutingPhase.Bubble &&
-            eventArgs.IsInitialKeyDown &&
-            eventArgs.Stroke.Code == Code.Escape &&
-            eventArgs.Stroke.Modifiers.IsActivationEligible())
+        if (eventArgs.Phase != RoutingPhase.Bubble ||
+            !eventArgs.IsInitialKeyDown ||
+            !eventArgs.Stroke.Modifiers.IsActivationEligible())
+        {
+            return;
+        }
+
+        if (eventArgs.Stroke.Code == Code.Escape)
         {
             eventArgs.IsHandled = Cancel();
+            return;
         }
+
+        eventArgs.IsHandled = TryScrollMessage(eventArgs.Stroke.Code);
+    }
+
+    // Container.OnEvent only calls Handle(KeyEventArgs) when the Container itself sits on the
+    // routed event's path (an ancestor of, or equal to, the focused control). Initial focus lands
+    // on an action Button (see ShowCoreAsync/PresentAsync) and stays there by design, and
+    // _messageHost is a sibling of the action bar rather than an ancestor of any Button, so it is
+    // never on that path and Container's own key handling never reaches it. This forwards the
+    // same navigation keys directly into _messageHost, computing the identical delta
+    // Container.Handle would via the shared Container.ComputeKeyScrollDelta, so the message area
+    // stays reachable by keyboard without moving focus off the action buttons or duplicating the
+    // scroll math. Left/Right are deliberately excluded: _messageHost only sets
+    // ScrollBars.Vertical, so it has no horizontal extent to scroll - forwarding them would be a
+    // silent no-op that also steals the keys from anything else that might want them.
+    private bool TryScrollMessage(Code code)
+    {
+        if (code != Code.Up && code != Code.Down && code != Code.PageUp && code != Code.PageDown &&
+            code != Code.Home && code != Code.End)
+        {
+            return false;
+        }
+
+        if (_messageHost.Extent.Height <= _messageHost.Viewport.Height)
+        {
+            return false;
+        }
+
+        var delta = _messageHost.ComputeKeyScrollDelta(code);
+
+        return delta is not null && _messageHost.ScrollBy(delta.Value.X, delta.Value.Y, ScrollCause.Keyboard);
     }
 
     private protected override WindowStyle ResolveCloseChromeStyle(Theme? theme) =>

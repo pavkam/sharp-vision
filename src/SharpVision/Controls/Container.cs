@@ -721,59 +721,80 @@ public abstract class Container: ControlBase
             return;
         }
 
-        var code = eventArgs.Stroke.Code;
+        var delta = ComputeKeyScrollDelta(eventArgs.Stroke.Code);
 
+        if (delta is null)
+        {
+            return;
+        }
+
+        eventArgs.IsHandled = PropagateScroll(delta.Value.X, delta.Value.Y, ScrollCause.Keyboard);
+    }
+
+    /// <summary>Maps a navigation key code to the axis-aware scroll delta <see
+    /// cref="Handle(KeyEventArgs)"/> would apply, or null when the code has no scroll mapping.</summary>
+    /// <remarks>
+    /// Factored out so a caller that must forward a key into this container from outside normal
+    /// event routing - <c>MessageBox</c>'s message area is the motivating case, since it sits as a
+    /// sibling of the focused action Button rather than an ancestor on the routed path - can reuse
+    /// the exact same PageUp/PageDown/Home/End/arrow-key math instead of maintaining a second copy
+    /// that could drift out of sync with this one.
+    /// </remarks>
+    /// <param name="code">The non-null key code from the originating stroke.</param>
+    /// <returns>The signed (x, y) delta, or null when <paramref name="code"/> has no mapping.</returns>
+    internal (int X, int Y)? ComputeKeyScrollDelta(Code code)
+    {
         // PageUp/PageDown and Home/End prefer the vertical axis - matching the pre-existing
         // vertical-only mapping for the common case - and fall back to horizontal only when this
         // container cannot scroll vertically at all, so a horizontal-only container still has a
         // fast-travel key instead of consuming all four for nothing.
         var pageAxisIsVertical = (ScrollBars & ScrollBars.Vertical) != 0 || (ScrollBars & ScrollBars.Horizontal) == 0;
 
-        int x;
-        int y;
-
         if (code == Code.Left)
         {
-            (x, y) = (-LineSize, 0);
+            return (-LineSize, 0);
         }
-        else if (code == Code.Right)
+
+        if (code == Code.Right)
         {
-            (x, y) = (LineSize, 0);
+            return (LineSize, 0);
         }
-        else if (code == Code.Up)
+
+        if (code == Code.Up)
         {
-            (x, y) = (0, -LineSize);
+            return (0, -LineSize);
         }
-        else if (code == Code.Down)
+
+        if (code == Code.Down)
         {
-            (x, y) = (0, LineSize);
+            return (0, LineSize);
         }
-        else if (code == Code.PageUp)
+
+        if (code == Code.PageUp)
         {
             var page = PageStep(pageAxisIsVertical ? Viewport.Height : Viewport.Width);
-            (x, y) = pageAxisIsVertical ? (0, -page) : (-page, 0);
+            return pageAxisIsVertical ? (0, -page) : (-page, 0);
         }
-        else if (code == Code.PageDown)
+
+        if (code == Code.PageDown)
         {
             var page = PageStep(pageAxisIsVertical ? Viewport.Height : Viewport.Width);
-            (x, y) = pageAxisIsVertical ? (0, page) : (page, 0);
+            return pageAxisIsVertical ? (0, page) : (page, 0);
         }
-        else if (code == Code.Home)
+
+        if (code == Code.Home)
         {
-            (x, y) = pageAxisIsVertical ? (0, -VerticalOffset) : (-HorizontalOffset, 0);
+            return pageAxisIsVertical ? (0, -VerticalOffset) : (-HorizontalOffset, 0);
         }
-        else if (code == Code.End)
+
+        if (code == Code.End)
         {
-            (x, y) = pageAxisIsVertical
+            return pageAxisIsVertical
                 ? (0, Difference(MaximumY(), VerticalOffset))
                 : (Difference(MaximumX(), HorizontalOffset), 0);
         }
-        else
-        {
-            return;
-        }
 
-        eventArgs.IsHandled = PropagateScroll(x, y, ScrollCause.Keyboard);
+        return null;
     }
 
     // Clamps the retained overlap to strictly less than the page axis extent so PageUp/PageDown

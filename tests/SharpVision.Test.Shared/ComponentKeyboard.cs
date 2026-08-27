@@ -64,7 +64,13 @@ public sealed class ComponentKeyboard
                 (Code.Right, Modifiers.None) => _surface.SendAsync("\u001b[C"u8.ToArray(), "press Right"),
                 (Code.Left, Modifiers.Shift) => _surface.SendAsync("\u001b[1;2D"u8.ToArray(), "press Shift+Left"),
                 (Code.Home, Modifiers.None) => _surface.SendAsync("\u001b[H"u8.ToArray(), "press Home"),
+                (Code.Home, _) => _surface.SendAsync(
+                    Encoding.ASCII.GetBytes($"\u001b[1;{KittyModifiers(modifiers)}H"),
+                    $"press {modifiers}+Home"),
                 (Code.End, Modifiers.None) => _surface.SendAsync("\u001b[F"u8.ToArray(), "press End"),
+                (Code.End, _) => _surface.SendAsync(
+                    Encoding.ASCII.GetBytes($"\u001b[1;{KittyModifiers(modifiers)}F"),
+                    $"press {modifiers}+End"),
                 (Code.PageUp, Modifiers.None) => _surface.SendAsync("\u001b[5~"u8.ToArray(), "press PageUp"),
                 (Code.PageDown, Modifiers.None) => _surface.SendAsync("\u001b[6~"u8.ToArray(), "press PageDown"),
                 (Code.Backspace, Modifiers.None) => _surface.SendAsync(new byte[] { 0x7f }, "press Backspace"),

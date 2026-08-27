@@ -275,6 +275,161 @@ public sealed class MessageBoxSurfaceTests
         _ = await pending!;
     }
 
+    /// <summary>Verifies arrow, PageUp/PageDown, and Home/End keys scroll an overflowing message
+    /// area while keeping focus on the default action Button, mirroring the exact delta
+    /// <c>Container.Handle(KeyEventArgs)</c> would apply had the key actually routed there.</summary>
+    [Fact]
+    public async Task Input_WhenMessageOverflowsAndNavigationKeysArePressed_ScrollsMessageAreaWithoutMovingFocusAsync()
+    {
+        // Arrange
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(40, 24),
+            TestContext.Current.CancellationToken);
+        Task<MessageBoxResult>? pending = null;
+
+        // Same narrow-host, five-repeat message shape as
+        // Render_WhenMessageExceedsHeightBudget_KeepsActionBarVisibleAsync, which is already
+        // confirmed to wrap past the message row's own height ceiling and require scrolling.
+        var longMessage = string.Concat(Enumerable.Repeat(
+            "The requested operation could not be completed because several validation rules " +
+            "failed, and each failing rule is described here in enough detail for the operator " +
+            "to diagnose it. ",
+            5));
+
+        // Act
+        await surface.UpdateAsync(
+            () => pending = MessageBox.ShowAsync(opener, longMessage, "Validation Failed", MessageBoxButtons.OkCancel),
+            "show an overflowing MessageBox");
+        var messageBox = OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldNotBeNull();
+        var messageText = OwnedTree.Find<ControlText>(messageBox).ShouldNotBeNull();
+        var messageHost = messageText.Parent.ShouldBeOfType<Stack>();
+        var okButton = FindAll<Button>(messageBox).First(static button => button.Text == "&OK");
+
+        // Assert: this message genuinely overflows, and focus starts on the default (OK) action.
+        messageHost.Extent.Height.ShouldBeGreaterThan(messageHost.Viewport.Height);
+        messageHost.VerticalOffset.ShouldBe(0);
+        okButton.IsFocused.ShouldBeTrue();
+
+        // Assert: Down advances one line without moving focus off the button.
+        await surface.Keyboard.PressAsync(Code.Down);
+        messageHost.VerticalOffset.ShouldBe(1);
+        okButton.IsFocused.ShouldBeTrue();
+
+        // Assert: Up retreats one line.
+        await surface.Keyboard.PressAsync(Code.Up);
+        messageHost.VerticalOffset.ShouldBe(0);
+
+        // Assert: PageDown advances by a full page.
+        await surface.Keyboard.PressAsync(Code.PageDown);
+        var afterPageDown = messageHost.VerticalOffset;
+        afterPageDown.ShouldBeGreaterThan(0);
+        var maximumOffset = messageHost.Extent.Height - messageHost.Viewport.Height;
+        afterPageDown.ShouldBeLessThanOrEqualTo(maximumOffset);
+
+        // Assert: PageUp retreats by a full page (back toward the top).
+        await surface.Keyboard.PressAsync(Code.PageUp);
+        messageHost.VerticalOffset.ShouldBeLessThan(afterPageDown);
+
+        // Assert: End jumps straight to the maximum offset.
+        await surface.Keyboard.PressAsync(Code.End);
+        messageHost.VerticalOffset.ShouldBe(maximumOffset);
+        okButton.IsFocused.ShouldBeTrue();
+
+        // Assert: Home jumps straight back to zero.
+        await surface.Keyboard.PressAsync(Code.Home);
+        messageHost.VerticalOffset.ShouldBe(0);
+        okButton.IsFocused.ShouldBeTrue();
+
+        await surface.Keyboard.PressAsync(Code.Escape);
+        _ = await pending!;
+    }
+
+    /// <summary>Verifies a short message that never overflows its viewport leaves the navigation
+    /// keys completely unhandled - no offset change, no side effect - so a plain OK message box
+    /// does not have Down/Up/PageDown/PageUp/Home/End silently swallowed by scrolling that was
+    /// never reachable in the first place.</summary>
+    [Fact]
+    public async Task Input_WhenMessageDoesNotOverflowAndNavigationKeysArePressed_LeavesStateUnchangedAsync()
+    {
+        // Arrange
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(60, 20),
+            TestContext.Current.CancellationToken);
+        Task<MessageBoxResult>? pending = null;
+
+        // Act
+        await surface.UpdateAsync(
+            () => pending = MessageBox.ShowAsync(opener, "File saved.", "Confirm"),
+            "show a short MessageBox");
+        var messageBox = OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldNotBeNull();
+        var messageText = OwnedTree.Find<ControlText>(messageBox).ShouldNotBeNull();
+        var messageHost = messageText.Parent.ShouldBeOfType<Stack>();
+        var okButton = FindAll<Button>(messageBox).First(static button => button.Text == "&OK");
+
+        // Assert: nothing to scroll in the first place.
+        messageHost.Extent.Height.ShouldBeLessThanOrEqualTo(messageHost.Viewport.Height);
+
+        foreach (var code in new[] { Code.Down, Code.Up, Code.PageDown, Code.PageUp, Code.End, Code.Home })
+        {
+            await surface.Keyboard.PressAsync(code);
+            messageHost.VerticalOffset.ShouldBe(0);
+            okButton.IsFocused.ShouldBeTrue();
+            pending!.IsCompleted.ShouldBeFalse();
+        }
+
+        await surface.Keyboard.PressAsync(Code.Escape);
+        _ = await pending!;
+    }
+
+    /// <summary>Verifies a Ctrl+End chord on an overflowing message is not treated as a plain End:
+    /// <c>ActivationModifiers.IsActivationEligible()</c> gates the forwarding out for any modifier
+    /// beyond Shift/CapsLock/NumLock, so the chord is left completely unhandled rather than
+    /// silently jumping the message area to its bottom.</summary>
+    [Fact]
+    public async Task Input_WhenCtrlEndIsPressedOnOverflowingMessage_DoesNotScrollAsync()
+    {
+        // Arrange
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(40, 24),
+            TestContext.Current.CancellationToken);
+        Task<MessageBoxResult>? pending = null;
+
+        var longMessage = string.Concat(Enumerable.Repeat(
+            "The requested operation could not be completed because several validation rules " +
+            "failed, and each failing rule is described here in enough detail for the operator " +
+            "to diagnose it. ",
+            5));
+
+        // Act
+        await surface.UpdateAsync(
+            () => pending = MessageBox.ShowAsync(opener, longMessage, "Validation Failed", MessageBoxButtons.OkCancel),
+            "show an overflowing MessageBox");
+        var messageBox = OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldNotBeNull();
+        var messageText = OwnedTree.Find<ControlText>(messageBox).ShouldNotBeNull();
+        var messageHost = messageText.Parent.ShouldBeOfType<Stack>();
+        var okButton = FindAll<Button>(messageBox).First(static button => button.Text == "&OK");
+
+        messageHost.Extent.Height.ShouldBeGreaterThan(messageHost.Viewport.Height);
+
+        // Assert
+        await surface.Keyboard.PressAsync(Code.End, Modifiers.Control);
+        messageHost.VerticalOffset.ShouldBe(0);
+        okButton.IsFocused.ShouldBeTrue();
+        pending!.IsCompleted.ShouldBeFalse();
+
+        await surface.Keyboard.PressAsync(Code.Escape);
+        _ = await pending!;
+    }
+
     /// <summary>Verifies Tab cycles through MessageBox buttons and Enter activates the focused one.</summary>
     [Fact]
     public async Task Input_WhenTabAndEnterAreUsed_CyclesToSecondButtonAndActivatesAsync()
