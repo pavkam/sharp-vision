@@ -4,23 +4,20 @@
 
 `SharpVision.Dialogs.FilePickerDialog` is a sealed
 `FileDialogBase<FilePickerResult>` specialization for choosing existing local
-files. It is a single responsive
+files or directories. It is a single responsive
 [`Window`](../controls/windows/window.md#overview) surface that contains a
 location bar, a scrolling `ListView`, a filter selector, a hidden-entry toggle,
-status text, and Open and Cancel actions. Directories are navigation targets
-only and never appear in accepted results.
+status text, and Open and Cancel actions. A directory is always a
+double-click/Enter navigation target; whether it can also be part of the
+accepted result is controlled by `FilePickerOptions.SelectionMode` (see
+[FilePickerOptions](#filepickeroptions) and
+[Text and localization](#text-and-localization)).
 
 The picker does not create, rename, delete, or save files. When the user needs
 to choose a path for a later write, use
-[`SaveFileDialog`](save-file-dialog.md#overview) instead.
-
-> [!IMPORTANT]
->
-> **Implementation gap:** no dialog in the family can select a directory as its
-> result. `FilePickerDialog` filters directories out of the published selection
-> unconditionally and `SaveFileDialog` rejects a directory target, so an
-> application that needs "choose a folder" must compose its own browsing surface
-> today.
+[`SaveFileDialog`](save-file-dialog.md#overview) instead — `SaveFileDialog`
+still rejects a directory target regardless of `FilePickerDialog`'s selection
+mode.
 
 ## API
 
@@ -45,6 +42,7 @@ pattern is rooted, or a pattern contains a directory separator.
 | `Title`            | `Open File`                                      | Rejects null or blank values.                                         |
 | `InitialDirectory` | Construction-time `Environment.CurrentDirectory` | Rejects null or blank values; dialog construction canonicalizes it.   |
 | `AllowMultiple`    | `false`                                          | Selects single or multiple ListView semantics.                        |
+| `SelectionMode`    | `FileSelectionMode.Files`                        | Which entry kinds the accepted selection may contain (see below).     |
 | `ShowHidden`       | `false`                                          | Includes dot-prefixed and hidden-attribute entries initially.         |
 | `MaxVisibleRows`   | `20`                                             | Rejects non-positive values; caps visible ListView content rows.      |
 | `Filters`          | `[FilePickerFilter.AllFiles]`                    | Copies a non-null, non-empty list without null entries.               |
@@ -53,6 +51,18 @@ pattern is rooted, or a pattern contains a directory separator.
 Each setter validates its value before storing it. `FilePickerDialog` copies the
 complete options value during construction, so changing an options object
 afterwards never affects a dialog that is already showing.
+
+`FileSelectionMode` has three members: `Files` (the default - a directory is
+never part of the accepted selection), `Directories` (a file is never part of
+the accepted selection), and `FilesAndDirectories` (either kind can be
+accepted). A `Filter` still applies only to file basenames in every mode -
+directories always stay visible so the user can navigate into them regardless
+of `SelectionMode`. Navigation-on-invoke (double-click or Enter on a directory)
+is unaffected by `SelectionMode`; it always navigates, in every mode - only a
+file commits on double-click or Enter. What `SelectionMode` changes is which
+rows count toward the accepted selection the Open Button commits: with
+`Directories` or `FilesAndDirectories`, a selected directory row enables Open
+and is included in the accepted `FilePickerResult` alongside any selected files.
 
 | Style property            | Default | Applies to                                                                |
 | ------------------------- | ------- | ------------------------------------------------------------------------- |
@@ -81,18 +91,24 @@ copies every other option (see [Text and localization](#text-and-localization)).
 
 `IsAccepted` tells you whether the user chose Open rather than Cancel, Escape,
 or the frame close control. `Paths` is a read-only snapshot, owned by the
-result, of fully qualified canonical file paths in stable display order.
-`SelectedPath` returns the first path, or null when there is none. A cancelled
-result has `IsAccepted == false`, an empty `Paths`, and a null `SelectedPath`.
+result, of fully qualified canonical paths in stable display order.
+`SelectedPath` returns the first path, or null when there is none. `Entries` is
+a parallel read-only snapshot of `FilePickerResultEntry` (`Path`, `IsDirectory`)
+in the same order as `Paths`, so a caller of a `Directories` or
+`FilesAndDirectories` picker can tell which accepted paths are directories
+without probing the filesystem again; every entry's `IsDirectory` is `false`
+for the default `Files` mode. A cancelled result has `IsAccepted == false`, an
+empty `Paths` and `Entries`, and a null `SelectedPath`.
 
 ### FilePickerDialog state
 
 `CurrentDirectory` is the last directory that was successfully committed, as a
 canonical path. `ShowHidden` and `FilterIndex` report the current options.
-`SelectedPaths` contains only the selected file rows. `IsLoading` reports
-whether an enumeration is still outstanding, and `Status` describes loading
-progress, entry counts, the current selection, or a recoverable error without
-exposing any private controls.
+`SelectedPaths` contains the selected rows that `SelectionMode` accepts - only
+files by default, only directories or both when a directory-aware mode is
+active. `IsLoading` reports whether an enumeration is still outstanding, and
+`Status` describes loading progress, entry counts, the current selection, or a
+recoverable error without exposing any private controls.
 
 `CancelButtonStyle`/`ActualCancelButtonStyle`, `ShowHiddenCheckBoxStyle`/
 `ActualShowHiddenCheckBoxStyle`, `FileListScrollBarStyle`/
@@ -254,8 +270,10 @@ link cycles cannot create traversal cycles.
   path and stays disabled without a file selection. Committing a directory
   navigates into it; committing a file accepts the current file selection.
 - ListView selection follows the existing single, Control-toggle, and
-  Shift-range semantics. Directory rows can become current or selected visually,
-  but `SelectedPaths` filters them out.
+  Shift-range semantics. Directory rows can always become current or selected
+  visually; whether `SelectedPaths` retains a selected directory row depends on
+  `SelectionMode` - the default `Files` mode filters them out, exactly as
+  before this mode existed.
 
 > [!NOTE]
 >

@@ -288,6 +288,161 @@ public sealed class FilePickerDialogTests
         result.Paths.ShouldHaveSingleItem().ShouldBe(file);
     }
 
+    /// <summary>Verifies the default Files selection mode behaves byte-identically to the picker's
+    /// pre-existing behavior: a selected directory row never enables Open and never appears in the
+    /// accepted selection - a regression guard for FileSelectionMode's addition.</summary>
+    [Fact]
+    public async Task SelectionAndInvocation_WhenModeIsFilesAndDirectoryIsClicked_NeverEnablesOpenAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-mode-files-default"));
+        var subdirectory = Path.Combine(directory, "sub");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory, new FilePickerEntry("sub", subdirectory, isDirectory: true, isHidden: false));
+        source.AddDirectory(subdirectory);
+        var dialog = new FilePickerDialog(
+            new FilePickerOptions { InitialDirectory = directory, SelectionMode = FileSelectionMode.Files },
+            source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(100, 40),
+            TestContext.Current.CancellationToken);
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+        var openButton = OwnedTree.FindAll<Button>(dialog).Single(static button => button.IsDefault);
+
+        // Act
+        await surface.Pointer.ClickAsync(list, new Point(1, 0));
+
+        // Assert
+        list.SelectedIndex.ShouldBe(0);
+        dialog.SelectedPaths.ShouldBeEmpty();
+        openButton.IsEnabled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a picker in Directories mode lets a single click on a directory row enable
+    /// Open, and the Open Button then accepts that directory - the exact interaction FileSelectionMode
+    /// exists to add, while navigation-on-invoke (double-click or Enter) is untouched by the mode.</summary>
+    [Fact]
+    public async Task SelectionAndInvocation_WhenModeIsDirectoriesAndDirectoryIsSelected_EnablesOpenAndAcceptsAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-mode-directories"));
+        var subdirectory = Path.Combine(directory, "sub");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory, new FilePickerEntry("sub", subdirectory, isDirectory: true, isHidden: false));
+        source.AddDirectory(subdirectory);
+        var dialog = new FilePickerDialog(
+            new FilePickerOptions { InitialDirectory = directory, SelectionMode = FileSelectionMode.Directories },
+            source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(100, 40),
+            TestContext.Current.CancellationToken);
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+        var openButton = OwnedTree.FindAll<Button>(dialog).Single(static button => button.IsDefault);
+
+        // Act: one click only selects
+        await surface.Pointer.ClickAsync(list, new Point(1, 0));
+
+        // Assert
+        list.SelectedIndex.ShouldBe(0);
+        dialog.SelectedPaths.ShouldHaveSingleItem().ShouldBe(subdirectory);
+        openButton.IsEnabled.ShouldBeTrue();
+        dialog.HasSelectedResult.ShouldBeFalse();
+
+        // Act: the Open button commits the already-selected directory
+        await surface.Pointer.ClickAsync(openButton);
+
+        // Assert
+        dialog.HasSelectedResult.ShouldBeTrue();
+        var result = dialog.SelectedResult.ShouldNotBeNull();
+        result.IsAccepted.ShouldBeTrue();
+        result.Paths.ShouldHaveSingleItem().ShouldBe(subdirectory);
+        result.Entries.ShouldHaveSingleItem().IsDirectory.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies double-clicking a directory row in Directories mode still navigates into it
+    /// instead of accepting it - only the Open Button commits a directory selection, matching the
+    /// picker's existing select-then-commit model unchanged by FileSelectionMode.</summary>
+    [Fact]
+    public async Task SelectionAndInvocation_WhenModeIsDirectoriesAndDirectoryIsDoubleClicked_StillNavigatesAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-mode-directories-navigate"));
+        var subdirectory = Path.Combine(directory, "sub");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory, new FilePickerEntry("sub", subdirectory, isDirectory: true, isHidden: false));
+        source.AddDirectory(subdirectory);
+        var dialog = new FilePickerDialog(
+            new FilePickerOptions { InitialDirectory = directory, SelectionMode = FileSelectionMode.Directories },
+            source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(100, 40),
+            TestContext.Current.CancellationToken);
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+
+        // Act: a double-click still navigates into the directory
+        await surface.Pointer.ClickAsync(list, new Point(1, 0));
+        await surface.Pointer.ClickAsync(list, new Point(1, 0));
+        await DialogWait.UntilAsync(surface, dialog, () => !dialog.IsLoading && dialog.CurrentDirectory == subdirectory);
+
+        // Assert
+        dialog.CurrentDirectory.ShouldBe(subdirectory);
+        dialog.HasSelectedResult.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a picker in FilesAndDirectories mode accepts both a selected file and a
+    /// selected directory together into the same result.</summary>
+    [Fact]
+    public async Task SelectionAndInvocation_WhenModeIsFilesAndDirectories_AcceptsBothKindsAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-mode-both"));
+        var subdirectory = Path.Combine(directory, "sub");
+        var file = Path.Combine(directory, "notes.txt");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(
+            directory,
+            new FilePickerEntry("sub", subdirectory, isDirectory: true, isHidden: false),
+            new FilePickerEntry("notes.txt", file, isDirectory: false, isHidden: false));
+        source.AddDirectory(subdirectory);
+        var dialog = new FilePickerDialog(
+            new FilePickerOptions
+            {
+                InitialDirectory = directory,
+                AllowMultiple = true,
+                SelectionMode = FileSelectionMode.FilesAndDirectories
+            },
+            source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(100, 40),
+            TestContext.Current.CancellationToken);
+        var openButton = OwnedTree.FindAll<Button>(dialog).Single(static button => button.IsDefault);
+        var directoryRow = OwnedTree.FindAll<ControlText>(dialog)
+            .Single(text => text.Content.StartsWith("▸ sub", StringComparison.Ordinal));
+        var fileRow = OwnedTree.FindAll<ControlText>(dialog)
+            .Single(text => text.Content.StartsWith("· notes.txt", StringComparison.Ordinal));
+
+        // Act: select both rows with a Control-held second click, exactly like any other
+        // multi-selection in a Multiple-mode ListView
+        await surface.Pointer.ClickAsync(directoryRow.Parent.ShouldNotBeNull());
+        await surface.Pointer.ClickAsync(fileRow.Parent.ShouldNotBeNull(), Modifiers.Control);
+        await surface.Pointer.ClickAsync(openButton);
+
+        // Assert
+        dialog.HasSelectedResult.ShouldBeTrue();
+        var result = dialog.SelectedResult.ShouldNotBeNull();
+        result.IsAccepted.ShouldBeTrue();
+        result.Paths.Count.ShouldBe(2);
+        result.Paths.ShouldContain(subdirectory);
+        result.Paths.ShouldContain(file);
+        result.Entries.Count.ShouldBe(2);
+        result.Entries.Count(static entry => entry.IsDirectory).ShouldBe(1);
+        result.Entries.Count(static entry => !entry.IsDirectory).ShouldBe(1);
+    }
+
     /// <summary>Verifies navigating into a directory whose name contains a control character - legal
     /// filesystem data on POSIX - degrades to a status message instead of force-stopping the
     /// application when the unrepresentable name reaches TextInput.Text.</summary>

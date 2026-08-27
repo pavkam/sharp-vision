@@ -6,7 +6,7 @@ namespace SharpVision.Tests.Dialogs;
 /// <summary>Verifies immutable result behavior for file-picker values.</summary>
 public sealed class FilePickerResultTests
 {
-    /// <summary>Verifies accepted and cancelled results own stable path snapshots.</summary>
+    /// <summary>Verifies accepted and cancelled results own stable path and entry snapshots.</summary>
     [Fact]
     public void Create_WhenResultIsProduced_OwnsPathsAndExposesSinglePathConvenience()
     {
@@ -15,12 +15,16 @@ public sealed class FilePickerResultTests
         // Path.IsPathFullyQualified requires a drive or UNC root to satisfy.
         var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-result-contract"));
         var first = Path.Combine(root, "a.cs");
-        var second = Path.Combine(root, "b.cs");
-        var paths = new[] { first, second };
+        var second = Path.Combine(root, "sub");
+        var entries = new[]
+        {
+            new FilePickerResultEntry(first, isDirectory: false),
+            new FilePickerResultEntry(second, isDirectory: true)
+        };
 
         // Act
-        var accepted = FilePickerResult.Accept(paths);
-        paths[0] = Path.Combine(root, "changed.cs");
+        var accepted = FilePickerResult.Accept(entries);
+        entries[0] = new FilePickerResultEntry(Path.Combine(root, "changed.cs"), isDirectory: false);
         var cancelled = FilePickerResult.Cancelled;
 
         // Assert
@@ -29,8 +33,14 @@ public sealed class FilePickerResultTests
         accepted.Paths[0].ShouldBe(first);
         accepted.Paths[1].ShouldBe(second);
         accepted.SelectedPath.ShouldBe(first);
+        accepted.Entries.Count.ShouldBe(2);
+        accepted.Entries[0].Path.ShouldBe(first);
+        accepted.Entries[0].IsDirectory.ShouldBeFalse();
+        accepted.Entries[1].Path.ShouldBe(second);
+        accepted.Entries[1].IsDirectory.ShouldBeTrue();
         cancelled.IsAccepted.ShouldBeFalse();
         cancelled.Paths.ShouldBeEmpty();
+        cancelled.Entries.ShouldBeEmpty();
         cancelled.SelectedPath.ShouldBeNull();
     }
 
@@ -45,9 +55,10 @@ public sealed class FilePickerResultTests
 
         _ = Should.Throw<ArgumentNullException>(() => FilePickerResult.Accept(null!));
         _ = Should.Throw<ArgumentException>(() => FilePickerResult.Accept([]));
-        _ = Should.Throw<ArgumentNullException>(() => FilePickerResult.Accept([null!]));
-        _ = Should.Throw<ArgumentException>(() => FilePickerResult.Accept([" "]));
-        _ = Should.Throw<ArgumentException>(() => FilePickerResult.Accept(["a.cs"]));
-        _ = Should.Throw<ArgumentException>(() => FilePickerResult.Accept([valid, "relative.cs"]));
+        _ = Should.Throw<ArgumentNullException>(() => FilePickerResult.Accept([new FilePickerResultEntry(null!, false)]));
+        _ = Should.Throw<ArgumentException>(() => FilePickerResult.Accept([new FilePickerResultEntry(" ", false)]));
+        _ = Should.Throw<ArgumentException>(() => FilePickerResult.Accept([new FilePickerResultEntry("a.cs", false)]));
+        _ = Should.Throw<ArgumentException>(() => FilePickerResult.Accept(
+            [new FilePickerResultEntry(valid, false), new FilePickerResultEntry("relative.cs", false)]));
     }
 }

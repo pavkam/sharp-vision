@@ -8,10 +8,14 @@ using Controls.Collections;
 using SharpVision.Controls.Input;
 using SharpVision.Controls.Layout;
 
-/// <summary>Provides a responsive modal surface for choosing one or more existing local files.</summary>
+/// <summary>Provides a responsive modal surface for choosing one or more existing local files or
+/// directories.</summary>
 /// <remarks>
 /// The retained dialog enumerates one directory away from the dispatcher and commits only the newest
-/// result on the owning dispatcher. Directories are navigation targets and never appear in accepted paths.
+/// result on the owning dispatcher. A directory is always a navigation target on double-click or
+/// Enter; whether it can also be a final accepted selection depends on
+/// <see cref="FilePickerOptions.SelectionMode"/> - with the default
+/// <see cref="FileSelectionMode.Files"/>, a directory never appears in accepted paths.
 /// </remarks>
 [PublicAPI]
 public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<FilePickerDialogStyle>
@@ -21,6 +25,9 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
     private readonly Button _openButton;
     private readonly StyleSlot<ButtonStyle> _openButtonStyle;
     private readonly StyleSlot<FilePickerDialogStyle> _style;
+    private readonly FileSelectionMode _selectionMode;
+
+    private FilePickerEntry[] _selectedEntries = [];
 
     #region Construction and state
 
@@ -57,6 +64,7 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
             FilePickerResult.Cancelled)
     {
         _style = InitializeStyle(FilePickerDialogStyle.Definition);
+        _selectionMode = options.SelectionMode;
         _openButton = new Button
         {
             Text = OpenText,
@@ -101,7 +109,9 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
         }
     }
 
-    /// <summary>Gets the selected canonical file paths in stable display order.</summary>
+    /// <summary>Gets the selected canonical paths accepted by <see cref="FilePickerOptions.SelectionMode"/>,
+    /// in stable display order. With the default <see cref="FileSelectionMode.Files"/>, a selected
+    /// directory row is excluded.</summary>
     public IReadOnlyList<string> SelectedPaths { get; private set; } = Array.AsReadOnly<string>([]);
 
     /// <summary>Gets or sets the complete local aggregate presentation, or null to let the active
@@ -279,9 +289,12 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
 
     private void CompleteAccepted()
     {
-        if (SelectedPaths.Count > 0)
+        if (_selectedEntries.Length > 0)
         {
-            _ = Complete(FilePickerResult.Accept(SelectedPaths));
+            _ = Complete(FilePickerResult.Accept(
+                _selectedEntries
+                    .Select(static entry => new FilePickerResultEntry(entry.FullPath, entry.IsDirectory))
+                    .ToArray()));
         }
     }
 
@@ -292,14 +305,20 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
         CompleteAccepted();
     }
 
+    private bool AcceptsEntry(FilePickerEntry entry) => _selectionMode switch
+    {
+        FileSelectionMode.Directories => entry.IsDirectory,
+        FileSelectionMode.FilesAndDirectories => true,
+        _ => !entry.IsDirectory
+    };
+
     private void PublishSelection()
     {
-        SelectedPaths = Array.AsReadOnly(
-            FileList.SelectedItems
-                .OfType<FilePickerEntry>()
-                .Where(static entry => !entry.IsDirectory)
-                .Select(static entry => entry.FullPath)
-                .ToArray());
+        _selectedEntries = FileList.SelectedItems
+            .OfType<FilePickerEntry>()
+            .Where(AcceptsEntry)
+            .ToArray();
+        SelectedPaths = Array.AsReadOnly(_selectedEntries.Select(static entry => entry.FullPath).ToArray());
         _openButton.IsEnabled = SelectedPaths.Count > 0;
         SetStatus(SelectedPaths.Count == 0
             ? SnapshotStatus

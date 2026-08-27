@@ -2534,6 +2534,7 @@ namespace SharpVision.Dialogs
         public string ParentDirectoryText { get; set; }
         public string? ReadyText { get; set; }
         public System.Func<int, string>? SelectionFormat { get; set; }
+        public SharpVision.Dialogs.FileSelectionMode SelectionMode { get; set; }
         public bool ShowHidden { get; set; }
         public SharpVision.Controls.Input.CheckBoxStyle? ShowHiddenCheckBoxStyle { get; set; }
         public string ShowHiddenText { get; set; }
@@ -2542,10 +2543,23 @@ namespace SharpVision.Dialogs
     }
     public sealed class FilePickerResult
     {
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Dialogs.FilePickerResultEntry> Entries { get; }
         public bool IsAccepted { get; }
         public System.Collections.Generic.IReadOnlyList<string> Paths { get; }
         public string? SelectedPath { get; }
         public static SharpVision.Dialogs.FilePickerResult Cancelled { get; }
+    }
+    public readonly struct FilePickerResultEntry : System.IEquatable<SharpVision.Dialogs.FilePickerResultEntry>
+    {
+        public FilePickerResultEntry(string path, bool isDirectory) { }
+        public bool IsDirectory { get; }
+        public string Path { get; }
+    }
+    public enum FileSelectionMode
+    {
+        Files = 0,
+        Directories = 1,
+        FilesAndDirectories = 2,
     }
     public sealed class MessageBox : SharpVision.Dialogs.Dialog<SharpVision.Dialogs.MessageBoxResult>, SharpVision.Controls.IStyled<SharpVision.Dialogs.MessageBoxStyle>
     {

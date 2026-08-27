@@ -27,6 +27,7 @@ public sealed class FilePickerOptionsTests
         options.Title.ShouldBe("Open File");
         options.InitialDirectory.ShouldBe(Environment.CurrentDirectory);
         options.AllowMultiple.ShouldBeFalse();
+        options.SelectionMode.ShouldBe(FileSelectionMode.Files);
         options.ShowHidden.ShouldBeFalse();
         options.MaxVisibleRows.ShouldBe(20);
         options.FilterIndex.ShouldBe(0);
@@ -93,13 +94,18 @@ public sealed class FilePickerOptionsTests
         var options = new FilePickerOptions
         {
             AllowMultiple = true,
+            SelectionMode = FileSelectionMode.FilesAndDirectories,
             ShowHidden = true,
             Style = style
         };
 
         options.AllowMultiple.ShouldBeTrue();
+        options.SelectionMode.ShouldBe(FileSelectionMode.FilesAndDirectories);
         options.ShowHidden.ShouldBeTrue();
         options.Style.ShouldBe(style);
+
+        var copy = options.Copy();
+        copy.SelectionMode.ShouldBe(FileSelectionMode.FilesAndDirectories);
     }
 
     /// <summary>Verifies the status texts and formatters round-trip through their own getters and

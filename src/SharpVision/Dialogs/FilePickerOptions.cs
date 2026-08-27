@@ -51,6 +51,13 @@ public sealed class FilePickerOptions
     /// <summary>Gets or sets whether the picker permits more than one selected file.</summary>
     public bool AllowMultiple { get; set; }
 
+    /// <summary>Gets or sets which entry kinds the picker accepts into its final selection. The
+    /// default, <see cref="FileSelectionMode.Files"/>, matches the picker's behavior before this
+    /// mode existed: a directory is always a navigation target and never a final selection.
+    /// Navigation-on-invoke (double-click or Enter on a directory) still navigates into it in
+    /// every mode.</summary>
+    public FileSelectionMode SelectionMode { get; set; } = FileSelectionMode.Files;
+
     /// <summary>Gets or sets whether hidden entries are initially listed.</summary>
     public bool ShowHidden { get; set; }
 
@@ -223,6 +230,7 @@ public sealed class FilePickerOptions
         Title = Title,
         InitialDirectory = InitialDirectory,
         AllowMultiple = AllowMultiple,
+        SelectionMode = SelectionMode,
         ShowHidden = ShowHidden,
         MaxVisibleRows = MaxVisibleRows,
         Filters = Filters,
