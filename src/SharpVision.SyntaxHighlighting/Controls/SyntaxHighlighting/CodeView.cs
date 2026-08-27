@@ -13,6 +13,8 @@ using SharpVision.Terminal.Input;
 
 using LayoutStack = Layout.Stack;
 using TextEdit = Edit;
+using TextLayout = Text.Layout;
+using TextLine = Text.Line;
 using TextSelection = Selection;
 
 /// <summary>
@@ -31,9 +33,11 @@ using TextSelection = Selection;
 /// normalized text, not to whatever line-ending bytes the assigned string happened to contain.
 /// </para>
 /// <para>
-/// Unlike an editor, source lines are never wrapped: long lines scroll horizontally instead. A
-/// tab character measures and draws as exactly one cell; this control does not implement
-/// tab-stop expansion.
+/// By default (<see cref="Overflow"/> left at <see cref="SharpVision.Text.Overflow.Visible"/>),
+/// source lines are never wrapped: long lines scroll horizontally instead. Setting
+/// <see cref="Overflow"/> to any other value soft-wraps, clips, or ellipsizes every line against
+/// the viewport's own width instead - see <see cref="Overflow"/>'s own remarks. A tab character
+/// measures and draws as exactly one cell; this control does not implement tab-stop expansion.
 /// </para>
 /// <para>
 /// Rendering, scrolling, hit testing, and selection share extended-grapheme cell geometry. When a
@@ -64,12 +68,39 @@ public sealed class CodeView:
     private readonly HashSet<int> _foldedStartLines = [];
     private Dictionary<int, SyntaxFoldRange> _foldStartRanges = [];
     private int _extentWidth;
+    private List<PresentationRow> _rows = [];
+    private int? _rowsWidth;
+    private Constraint _lastMeasureConstraint;
     private int? _pendingRevealOffset;
     private List<int>? _pendingRevealProjection;
     private Dispatcher? _pendingRevealDispatcher;
     private TextSelectionMap? _textSelectionMap;
-    private List<int>? _textSelectionMapProjection;
+    private List<PresentationRow>? _textSelectionMapProjection;
     private Rect _textSelectionMapViewport;
+
+    /// <summary>Describes one rendered presentation row: either a whole logical source line - the
+    /// default <see cref="SharpVision.Text.Overflow.Visible"/> passthrough, or one
+    /// Clip/Ellipsis-truncated line - or one soft-wrapped segment of a logical line's text.</summary>
+    /// <param name="SourceLine">The zero-based logical source line index into <see cref="_lines"/>.</param>
+    /// <param name="Offset">The UTF-16 offset of this row's text within the source line.</param>
+    /// <param name="Length">The UTF-16 length of this row's text within the source line.</param>
+    /// <param name="IsFirstSegment">
+    /// Whether this is the first presentation row for its source line - the only segment that
+    /// draws the fold-gutter arrow; every later continuation row leaves the gutter blank.
+    /// </param>
+    /// <param name="IsLastSegment">
+    /// Whether this is the last presentation row for its source line - the only segment that can
+    /// draw the collapsed-fold indicator.
+    /// </param>
+    /// <param name="HasEllipsis">Whether this row was truncated under
+    /// <see cref="SharpVision.Text.Overflow.Ellipsis"/>.</param>
+    private readonly record struct PresentationRow(
+        int SourceLine,
+        int Offset,
+        int Length,
+        bool IsFirstSegment,
+        bool IsLastSegment,
+        bool HasEllipsis);
 
     /// <summary>Gets how many projected source lines the most recent selectable snapshot inspected.
     /// This test seam proves projection work remains bounded by the clipped viewport.</summary>
@@ -372,29 +403,29 @@ public sealed class CodeView:
             viewport.Height);
         clip = clip.Intersect(textViewport);
         var glyphs = new List<SelectableTextGlyph>();
-        var firstVisibleIndex = (int) Math.Clamp(
+        var firstRowIndex = (int) Math.Clamp(
             (long) VerticalOffset + clip.Y - viewport.Y,
             0,
-            _visibleLines.Count);
-        var lastVisibleIndex = (int) Math.Clamp(
+            _rows.Count);
+        var lastRowIndex = (int) Math.Clamp(
             (long) VerticalOffset + clip.Bottom - viewport.Y,
-            firstVisibleIndex,
-            _visibleLines.Count);
+            firstRowIndex,
+            _rows.Count);
 
-        for (var visibleIndex = firstVisibleIndex; visibleIndex < lastVisibleIndex; visibleIndex++)
+        for (var rowIndex = firstRowIndex; rowIndex < lastRowIndex; rowIndex++)
         {
             LastSelectableTextSnapshotInspectedLineCount++;
-            var sourceLine = _visibleLines[visibleIndex];
-            var y = viewport.Y + visibleIndex - VerticalOffset;
+            var row = _rows[rowIndex];
+            var y = viewport.Y + rowIndex - VerticalOffset;
 
-            var line = _lines[sourceLine];
-            var lineStart = LineStartOffset(sourceLine);
+            var line = _lines[row.SourceLine].AsSpan(row.Offset, row.Length);
+            var lineStart = LineStartOffset(row.SourceLine) + row.Offset;
             var cells = 0;
 
             foreach (var grapheme in Graphemes.Enumerate(line))
             {
                 LastSelectableTextSnapshotInspectedGraphemeCount++;
-                var cluster = line.AsSpan(grapheme.Offset, grapheme.Length);
+                var cluster = line.Slice(grapheme.Offset, grapheme.Length);
                 var width = CodeClusterWidth(cluster);
                 var absolute = new Rect(
                     viewport.X + GutterWidth + cells - HorizontalOffset,
@@ -618,20 +649,20 @@ public sealed class CodeView:
         var originX = viewport.X - Bounds.X + GutterWidth;
         var originY = viewport.Y - Bounds.Y;
 
-        for (var visibleIndex = 0; visibleIndex < _visibleLines.Count; visibleIndex++)
+        for (var rowIndex = 0; rowIndex < _rows.Count; rowIndex++)
         {
-            var sourceLine = _visibleLines[visibleIndex];
-            var text = _lines[sourceLine];
-            var lineStart = LineStartOffset(sourceLine);
+            var row = _rows[rowIndex];
+            var text = _lines[row.SourceLine].AsSpan(row.Offset, row.Length);
+            var lineStart = LineStartOffset(row.SourceLine) + row.Offset;
             var x = 0;
 
             foreach (var grapheme in Graphemes.Enumerate(text))
             {
-                var cluster = text.AsSpan(grapheme.Offset, grapheme.Length);
+                var cluster = text.Slice(grapheme.Offset, grapheme.Length);
                 var width = CodeClusterWidth(cluster);
                 glyphs.Add(new SelectableTextGlyph(
                     new TextSelection(lineStart + grapheme.Offset, lineStart + grapheme.Offset + grapheme.Length),
-                    new Rect(originX + x, originY + visibleIndex, width, 1)));
+                    new Rect(originX + x, originY + rowIndex, width, 1)));
                 x += width;
             }
         }
@@ -650,7 +681,7 @@ public sealed class CodeView:
             viewport.Height);
 
         if (_textSelectionMap is { } cached &&
-            ReferenceEquals(_textSelectionMapProjection, _visibleLines) &&
+            ReferenceEquals(_textSelectionMapProjection, _rows) &&
             _textSelectionMapViewport == localViewport)
         {
             return cached;
@@ -660,31 +691,31 @@ public sealed class CodeView:
         var originX = localViewport.X + GutterWidth;
         var originY = localViewport.Y;
 
-        for (var visibleIndex = 0; visibleIndex < _visibleLines.Count; visibleIndex++)
+        for (var rowIndex = 0; rowIndex < _rows.Count; rowIndex++)
         {
-            var sourceLine = _visibleLines[visibleIndex];
-            var text = _lines[sourceLine];
-            var lineStart = LineStartOffset(sourceLine);
+            var row = _rows[rowIndex];
+            var text = _lines[row.SourceLine].AsSpan(row.Offset, row.Length);
+            var lineStart = LineStartOffset(row.SourceLine) + row.Offset;
             var x = 0;
 
             foreach (var grapheme in Graphemes.Enumerate(text))
             {
-                var cluster = text.AsSpan(grapheme.Offset, grapheme.Length);
+                var cluster = text.Slice(grapheme.Offset, grapheme.Length);
                 var width = CodeClusterWidth(cluster);
 
                 if (width > 0)
                 {
                     glyphs.Add(new TextSelectionGlyph(
                         new TextSelection(lineStart + grapheme.Offset, lineStart + grapheme.Offset + grapheme.Length),
-                        new Rect(originX + x, originY + visibleIndex, width, 1)));
+                        new Rect(originX + x, originY + rowIndex, width, 1)));
                 }
 
                 x += width;
             }
         }
 
-        _textSelectionMap = new TextSelectionMap(NormalizedCode, [.. glyphs], [], _visibleLines.Count);
-        _textSelectionMapProjection = _visibleLines;
+        _textSelectionMap = new TextSelectionMap(NormalizedCode, [.. glyphs], [], _rows.Count);
+        _textSelectionMapProjection = _rows;
         _textSelectionMapViewport = localViewport;
         TextSelectionMapBuildCount++;
         return _textSelectionMap;
@@ -828,15 +859,110 @@ public sealed class CodeView:
     /// <summary>Gets the normalized (line endings collapsed to <c>\n</c>) source text.</summary>
     private string NormalizedCode { get; set; } = string.Empty;
 
-    /// <summary>Measures the content extent from the current visible-line projection.</summary>
+    /// <summary>Gets or sets how a projected line's horizontal overflow is handled.</summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="SharpVision.Text.Overflow.Visible"/>, the default, is exactly today's behavior:
+    /// every source line occupies one presentation row of unbounded width, and long lines scroll
+    /// horizontally instead of wrapping - <see cref="Extent"/>'s width tracks the widest visible
+    /// line.
+    /// </para>
+    /// <para>
+    /// Any other value reformats every presentation row against the viewport's own text width,
+    /// using the identical <see cref="Text.Layout.Format"/> contract
+    /// <see cref="Controls.Display.Text.Overflow"/> already uses: <see cref="SharpVision.Text.Overflow.Wrap"/>
+    /// and <see cref="SharpVision.Text.Overflow.WrapAnywhere"/> split a long logical line into more
+    /// than one presentation row, while <see cref="SharpVision.Text.Overflow.Clip"/> and
+    /// <see cref="SharpVision.Text.Overflow.Ellipsis"/> keep one row and truncate it. Every one of
+    /// these disables the horizontal extent entirely - <see cref="Extent"/>'s width becomes exactly
+    /// <see cref="Viewport"/>'s width, since every row is now guaranteed to fit it, and
+    /// <see cref="HorizontalOffset"/> can never move away from zero. A continuation row - any
+    /// presentation row after the first for one wrapped logical line - never repeats the
+    /// fold-gutter arrow: folding operates on whole logical lines, so the gutter is left blank for
+    /// every row but the first.
+    /// </para>
+    /// <para>
+    /// A line containing tab characters may wrap slightly earlier than the exact viewport width
+    /// requires: <see cref="Text.Layout.Format"/> sizes a tab by its four-cell tab-stop expansion,
+    /// while this control always renders and measures a tab as exactly one cell (see the type
+    /// remarks) - the wrap never overflows the viewport, only occasionally wraps a tab-heavy line
+    /// more conservatively than strictly necessary.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Overflow Overflow
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNotDefined(value);
+            VerifyMutable();
+
+            _ = SetPropertyAndSynchronize(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                () =>
+                {
+                    _rowsWidth = null;
+                    _rows = BuildPassthroughRows(_visibleLines);
+                    _content.RequestInvalidate(InvalidationImpact.Measure);
+                });
+        }
+    } = Overflow.Visible;
+
+    /// <summary>Measures the content extent from the current presentation-row projection.</summary>
     /// <returns>The width-and-height extent in terminal cells.</returns>
     [Pure]
-    internal Size MeasureProjection() => new(_extentWidth, _visibleLines.Count);
+    internal Size MeasureProjection() => Overflow == Overflow.Visible
+        ? new Size(_extentWidth, _rows.Count)
+        : new Size(_rowsWidth ?? 0, _rows.Count);
+
+    /// <summary>Rewraps the presentation-row projection against a measure-time width constraint -
+    /// for every <see cref="Overflow"/> value other than <see cref="SharpVision.Text.Overflow.Visible"/>,
+    /// which never depends on width - then measures the result.</summary>
+    /// <remarks>
+    /// Mirrors <c>JsonView.MeasureAndWrap</c>: the composed viewport always measures its content
+    /// unbounded on the horizontal axis (a scrollable axis is measured unbounded so it can report
+    /// its natural extent), so a null width here is that routine per-child probe, not a signal that
+    /// this control's own host is genuinely unconstrained. <see cref="ReconcileProjectionWidth"/>
+    /// is what actually keeps the projection matched to the real, scrollbar-reservation-aware width
+    /// once arrange resolves it.
+    /// </remarks>
+    /// <param name="width">The available width in cells, or null when unconstrained.</param>
+    /// <returns>The width-aware visual extent in terminal cells.</returns>
+    internal Size MeasureAndWrap(int? width)
+    {
+        if (Overflow != Overflow.Visible && width is { } bounded && bounded > 0 && _rowsWidth != bounded)
+        {
+            _rowsWidth = bounded;
+            _rows = BuildWrappedRows(_visibleLines, bounded);
+        }
+
+        return MeasureProjection();
+    }
+
+    /// <inheritdoc/>
+    protected override Size MeasureOverride(Constraint constraint)
+    {
+        // Stashed for ReconcileProjectionWidth, which needs to remeasure the composed viewport
+        // with the exact same constraint this control itself received - see JsonView's identical
+        // field for the full rationale.
+        _lastMeasureConstraint = constraint;
+        return base.MeasureOverride(constraint);
+    }
 
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
         base.ArrangeOverride(bounds);
+
+        if (Overflow != Overflow.Visible)
+        {
+            ReconcileProjectionWidth(bounds);
+        }
 
         if (!_pendingRevealOffset.HasValue)
         {
@@ -877,6 +1003,44 @@ public sealed class CodeView:
         }
     }
 
+    /// <summary>Keeps the wrapped presentation-row projection matched to the composed viewport's
+    /// real, scrollbar-reservation-aware width, entirely within the current layout transaction.</summary>
+    /// <remarks>
+    /// Mirrors <c>JsonView.ReconcileProjectionWidth</c>: the composed viewport measures its content
+    /// unbounded on the horizontal axis (see <see cref="MeasureAndWrap"/>), so the only place the
+    /// real width - after a vertical scrollbar has claimed its column - becomes known is here, once
+    /// the arrange this override delegated to has resolved it. Rewrapping can itself change the
+    /// projected row count enough to flip whether a vertical scrollbar is needed at all, so this
+    /// reruns for as many rounds as it takes to settle, bounded defensively against runaway growth.
+    /// Unlike JsonView, this does not coalesce the composed viewport's own <see cref="ScrollChanged"/>
+    /// transitions raised by an internal re-arrange in this loop - <see cref="Overflow"/> wrapping
+    /// is opt-in, and a subscriber may observe more than one event for a single layout pass while a
+    /// wrap reflow is settling the vertical-scrollbar/row-count coupling. Never entered while
+    /// <see cref="Overflow"/> is <see cref="SharpVision.Text.Overflow.Visible"/> (see
+    /// <see cref="ArrangeOverride"/>), so the default projection never pays for this loop.
+    /// </remarks>
+    /// <param name="bounds">The content-box bounds this control's own arrange resolved.</param>
+    private void ReconcileProjectionWidth(Rect bounds)
+    {
+        for (var attempt = 0; attempt < 4; attempt++)
+        {
+            var viewportWidth = _stack.Viewport.Width;
+
+            if (viewportWidth <= 0 || _rowsWidth == viewportWidth)
+            {
+                return;
+            }
+
+            _rowsWidth = viewportWidth;
+            _rows = BuildWrappedRows(_visibleLines, viewportWidth);
+
+            _stack.InvalidateSelf(Invalidation.Measure);
+            _content.InvalidateSelf(Invalidation.Measure);
+            _stack.Measure(_lastMeasureConstraint);
+            _stack.Arrange(bounds, widthResolved: true, heightResolved: true);
+        }
+    }
+
     /// <summary>Draws every visible projected line intersecting the clipped content surface.</summary>
     /// <param name="canvas">The clipped semantic canvas.</param>
     /// <param name="bounds">The content surface bounds.</param>
@@ -884,24 +1048,24 @@ public sealed class CodeView:
     {
         LastRenderInspectedGraphemeCount = 0;
         var first = Math.Max(0, canvas.Bounds.Y - bounds.Y);
-        var last = Math.Min(_visibleLines.Count, canvas.Bounds.Bottom - bounds.Y);
+        var last = Math.Min(_rows.Count, canvas.Bounds.Bottom - bounds.Y);
         var style = ActualStyle;
         var gutterStyle = ResolvedStyle.WithForeground(ResolveColor(style.GutterColor, Theme));
         var viewportX = SelectableTextViewportAbsolute().X;
 
-        for (var row = first; row < last; row++)
+        for (var rowIndex = first; rowIndex < last; rowIndex++)
         {
-            var sourceLine = _visibleLines[row];
-            var y = bounds.Y + row;
+            var row = _rows[rowIndex];
+            var y = bounds.Y + rowIndex;
             var x = viewportX;
 
-            if (IsFoldingEnabled)
+            if (IsFoldingEnabled && row.IsFirstSegment)
             {
-                DrawGutter(canvas, sourceLine, gutterStyle, style, x, y);
+                DrawGutter(canvas, row.SourceLine, gutterStyle, style, x, y);
             }
 
             x += GutterWidth;
-            DrawLine(canvas, sourceLine, style, x, y);
+            DrawLine(canvas, row, style, x, y);
         }
     }
 
@@ -918,9 +1082,10 @@ public sealed class CodeView:
         _ = canvas.Draw(buffer[..written], new Point(x, y), gutterStyle);
     }
 
-    private void DrawLine(TerminalCanvas canvas, int sourceLine, CodeViewStyle style, int x, int y)
+    private void DrawLine(TerminalCanvas canvas, PresentationRow row, CodeViewStyle style, int x, int y)
     {
-        var text = _lines[sourceLine];
+        var sourceLine = row.SourceLine;
+        var text = _lines[sourceLine].AsSpan(row.Offset, row.Length);
         var tokens = _result.Lines[sourceLine].Tokens;
         var column = 0;
         var tokenIndex = 0;
@@ -931,12 +1096,14 @@ public sealed class CodeView:
             LastRenderInspectedGraphemeCount++;
             Debug.Assert(tokens.Count > 0, "Tokenization covers every non-empty source line.");
 
-            while (tokenIndex + 1 < tokens.Count && grapheme.Offset >= tokens[tokenIndex].Start + tokens[tokenIndex].Length)
+            var lineOffset = row.Offset + grapheme.Offset;
+
+            while (tokenIndex + 1 < tokens.Count && lineOffset >= tokens[tokenIndex].Start + tokens[tokenIndex].Length)
             {
                 tokenIndex++;
             }
 
-            var cluster = text.AsSpan(grapheme.Offset, grapheme.Length);
+            var cluster = text.Slice(grapheme.Offset, grapheme.Length);
             var width = CodeClusterWidth(cluster);
             var drawX = x + column - HorizontalOffset;
 
@@ -959,7 +1126,21 @@ public sealed class CodeView:
             column += width;
         }
 
-        if (reachedLineEnd && IsFoldingEnabled && IsFolded(sourceLine))
+        if (reachedLineEnd && row.HasEllipsis && column >= HorizontalOffset)
+        {
+            var drawX = x + column - HorizontalOffset;
+
+            if ((long) drawX + 1 <= canvas.Bounds.Right)
+            {
+                var ellipsisStyle = ResolvedStyle.WithForeground(ResolveColor(style.NormalColor, Theme));
+                Span<char> buffer = stackalloc char[2];
+                var written = ControlGlyphs.Text.Ellipsis.Value.EncodeToUtf16(buffer);
+                _ = canvas.Draw(buffer[..written], new Point(drawX, y), ellipsisStyle);
+                column += 1;
+            }
+        }
+
+        if (reachedLineEnd && row.IsLastSegment && IsFoldingEnabled && IsFolded(sourceLine))
         {
             var indicatorStyle = ResolvedStyle.WithForeground(ResolveColor(style.GutterColor, Theme));
             DrawSlice(canvas, _foldIndicator, indicatorStyle, x, y, ref column, HorizontalOffset, BackgroundMode.Transparent);
@@ -1077,9 +1258,10 @@ public sealed class CodeView:
         }
 
         var line = LineAt(offset);
-        var visibleIndex = projection.BinarySearch(line);
+        var lineOffset = offset - LineStartOffset(line);
+        var rowIndex = FindRowIndex(_rows, line, lineOffset);
 
-        if (visibleIndex < 0)
+        if (rowIndex < 0)
         {
             return false;
         }
@@ -1088,13 +1270,13 @@ public sealed class CodeView:
         var previousVertical = VerticalOffset;
         var targetVertical = previousVertical;
 
-        if (Viewport.Height > 0 && visibleIndex < previousVertical)
+        if (Viewport.Height > 0 && rowIndex < previousVertical)
         {
-            targetVertical = visibleIndex;
+            targetVertical = rowIndex;
         }
-        else if (Viewport.Height > 0 && visibleIndex >= previousVertical + Viewport.Height)
+        else if (Viewport.Height > 0 && rowIndex >= previousVertical + Viewport.Height)
         {
-            targetVertical = visibleIndex - Viewport.Height + 1;
+            targetVertical = rowIndex - Viewport.Height + 1;
         }
 
         if (targetVertical != previousVertical)
@@ -1107,7 +1289,7 @@ public sealed class CodeView:
             }
         }
 
-        var column = MeasureCodeCellsToOffset(line, offset - LineStartOffset(line));
+        var column = MeasureCodeCellsInRow(_rows[rowIndex], lineOffset);
 
         // The gutter occupies the leftmost GutterWidth cells of Viewport.Width and never scrolls,
         // so only the remaining cells actually show scrolled text columns. Comparing column against
@@ -1157,31 +1339,102 @@ public sealed class CodeView:
         ReferenceEquals(_visibleLines, projection) &&
         offset >= 0 && offset <= NormalizedCode.Length;
 
+    /// <summary>Measures the cell width of one presentation row's own text up to a within-line
+    /// offset (never before the row's own start).</summary>
+    /// <param name="row">The presentation row whose slice of the source line owns the offset.</param>
+    /// <param name="lineOffset">A UTF-16 offset within the row's full source line.</param>
+    /// <returns>The rendered cell width from the row's own start up to the offset.</returns>
     [Pure]
-    private int MeasureCodeCellsToOffset(int line, int offset)
-        => MeasureCodeCells(_lines[line].AsSpan(0, offset));
+    private int MeasureCodeCellsInRow(PresentationRow row, int lineOffset)
+        => MeasureCodeCells(_lines[row.SourceLine].AsSpan(row.Offset, lineOffset - row.Offset));
 
+    /// <summary>Finds the within-line UTF-16 offset nearest a target cell column inside one
+    /// presentation row, then reports it relative to the row's full source line.</summary>
+    /// <param name="row">The presentation row to search.</param>
+    /// <param name="targetCells">The target cell column relative to the row's own start.</param>
+    /// <returns>A within-line UTF-16 offset (relative to the source line, not the row).</returns>
     [Pure]
-    private int OffsetForCodeCells(int line, int targetCells)
+    private int OffsetForCodeCells(PresentationRow row, int targetCells)
     {
-        var text = _lines[line];
+        var text = _lines[row.SourceLine].AsSpan(row.Offset, row.Length);
         var cells = 0;
 
         foreach (var grapheme in Graphemes.Enumerate(text))
         {
-            var width = CodeClusterWidth(text.AsSpan(grapheme.Offset, grapheme.Length));
+            var width = CodeClusterWidth(text.Slice(grapheme.Offset, grapheme.Length));
 
             if (targetCells < cells + width)
             {
-                return targetCells - cells < (width + 1) / 2
+                return row.Offset + (targetCells - cells < (width + 1) / 2
                     ? grapheme.Offset
-                    : grapheme.Offset + grapheme.Length;
+                    : grapheme.Offset + grapheme.Length);
             }
 
             cells += width;
         }
 
-        return text.Length;
+        return row.Offset + text.Length;
+    }
+
+    /// <summary>Finds the presentation row that owns a within-line offset for one logical line.</summary>
+    /// <remarks>
+    /// <paramref name="rows"/> is sorted non-decreasing by <see cref="PresentationRow.SourceLine"/>
+    /// - it is built by iterating the fold-filtered logical-line projection in order, contributing
+    /// one or more consecutive rows per line - so a binary search finds the leftmost row for
+    /// <paramref name="line"/>, and a short forward scan (bounded by how many segments that one
+    /// line wrapped into) finds the exact segment containing <paramref name="lineOffset"/>.
+    /// </remarks>
+    /// <param name="rows">The current presentation-row projection.</param>
+    /// <param name="line">The zero-based logical source line index.</param>
+    /// <param name="lineOffset">A UTF-16 offset within the logical line's own text.</param>
+    /// <returns>The owning row's index in <paramref name="rows"/>, or -1 when the line is not projected.</returns>
+    [Pure]
+    private static int FindRowIndex(List<PresentationRow> rows, int line, int lineOffset)
+    {
+        var low = 0;
+        var high = rows.Count - 1;
+        var firstMatch = -1;
+
+        while (low <= high)
+        {
+            var middle = low + ((high - low) / 2);
+            var candidate = rows[middle].SourceLine;
+
+            if (candidate < line)
+            {
+                low = middle + 1;
+            }
+            else if (candidate > line)
+            {
+                high = middle - 1;
+            }
+            else
+            {
+                firstMatch = middle;
+                high = middle - 1;
+            }
+        }
+
+        if (firstMatch < 0)
+        {
+            return -1;
+        }
+
+        var index = firstMatch;
+
+        while (index < rows.Count && rows[index].SourceLine == line)
+        {
+            var row = rows[index];
+
+            if (lineOffset < row.Offset + row.Length || row.IsLastSegment)
+            {
+                return index;
+            }
+
+            index++;
+        }
+
+        return firstMatch;
     }
 
     #endregion
@@ -1233,15 +1486,23 @@ public sealed class CodeView:
             return false;
         }
 
-        var row = pressedCells.Y - viewport.Y + VerticalOffset;
+        var rowIndex = pressedCells.Y - viewport.Y + VerticalOffset;
 
-        if (row < 0 || row >= _visibleLines.Count)
+        if (rowIndex < 0 || rowIndex >= _rows.Count)
         {
             return false;
         }
 
-        var sourceLine = _visibleLines[row];
-        return _foldStartRanges.ContainsKey(sourceLine) && ToggleFold(sourceLine);
+        var row = _rows[rowIndex];
+
+        // A continuation row never shows a fold arrow - see Overflow's remarks - so a press
+        // landing on one cannot toggle anything.
+        if (!row.IsFirstSegment)
+        {
+            return false;
+        }
+
+        return _foldStartRanges.ContainsKey(row.SourceLine) && ToggleFold(row.SourceLine);
     }
 
     #endregion
@@ -1266,19 +1527,19 @@ public sealed class CodeView:
     private int? OffsetAt(Point cells)
     {
         var viewport = SelectableTextViewportAbsolute();
-        var row = cells.Y - viewport.Y + VerticalOffset;
+        var rowIndex = cells.Y - viewport.Y + VerticalOffset;
 
-        if (row < 0 || row >= _visibleLines.Count)
+        if (rowIndex < 0 || rowIndex >= _rows.Count)
         {
             return null;
         }
 
-        var sourceLine = _visibleLines[row];
+        var row = _rows[rowIndex];
         Debug.Assert(
-            sourceLine >= 0 && sourceLine < _lines.Length,
-            "RebuildVisibleLines only ever appends indices it iterated over _lines with, so every entry is a valid source-line index.");
+            row.SourceLine >= 0 && row.SourceLine < _lines.Length,
+            "BuildPassthroughRows/BuildWrappedRows only ever project indices iterated over _visibleLines, which only ever holds valid source-line indices.");
         var column = Math.Max(0, cells.X - viewport.X - GutterWidth + HorizontalOffset);
-        return LineStartOffset(sourceLine) + OffsetForCodeCells(sourceLine, column);
+        return LineStartOffset(row.SourceLine) + OffsetForCodeCells(row, column);
     }
 
     #endregion
@@ -1390,6 +1651,77 @@ public sealed class CodeView:
                 _extentWidth,
                 GutterWidth + MeasureCodeCells(_lines[line]) + indicatorWidth);
         }
+
+        // Rebuilding always resets to the trivial one-row-per-line passthrough rather than
+        // preserving a previously wrapped projection: it needs no width and is exactly correct for
+        // the default Overflow.Visible, and for any other Overflow value it is a safe placeholder
+        // until the next ArrangeOverride's ReconcileProjectionWidth rewraps it against the real
+        // viewport width - mirroring how JsonView resets _lines to _sourceLines on every rebuild.
+        _rows = BuildPassthroughRows(_visibleLines);
+        _rowsWidth = null;
+    }
+
+    [Pure]
+    private List<PresentationRow> BuildPassthroughRows(List<int> visibleLines)
+    {
+        var rows = new List<PresentationRow>(visibleLines.Count);
+
+        foreach (var sourceLine in visibleLines)
+        {
+            rows.Add(new PresentationRow(
+                sourceLine,
+                0,
+                _lines[sourceLine].Length,
+                IsFirstSegment: true,
+                IsLastSegment: true,
+                HasEllipsis: false));
+        }
+
+        return rows;
+    }
+
+    /// <summary>Wraps, clips, or ellipsizes every projected logical line against the given raw
+    /// viewport width - which includes the fold gutter's own reserved, non-scrolling columns.</summary>
+    /// <param name="visibleLines">The fold-filtered logical-line projection.</param>
+    /// <param name="rawViewportWidth">
+    /// The composed viewport's own committed width, gutter included.
+    /// </param>
+    /// <returns>One or more presentation rows per projected logical line.</returns>
+    [Pure]
+    private List<PresentationRow> BuildWrappedRows(List<int> visibleLines, int rawViewportWidth)
+    {
+        var rows = new List<PresentationRow>(visibleLines.Count);
+        var overflow = Overflow;
+        var width = Math.Max(0, rawViewportWidth - GutterWidth);
+
+        foreach (var sourceLine in visibleLines)
+        {
+            var text = _lines[sourceLine];
+
+            if (text.Length == 0)
+            {
+                rows.Add(new PresentationRow(sourceLine, 0, 0, IsFirstSegment: true, IsLastSegment: true, HasEllipsis: false));
+                continue;
+            }
+
+            var required = TextLayout.Format(text, width, overflow, Alignment.Start, CellPolicy.AmbiguousWidth, []);
+            var segments = new TextLine[required];
+            _ = TextLayout.Format(text, width, overflow, Alignment.Start, CellPolicy.AmbiguousWidth, segments);
+
+            for (var index = 0; index < segments.Length; index++)
+            {
+                var segment = segments[index];
+                rows.Add(new PresentationRow(
+                    sourceLine,
+                    segment.Offset,
+                    segment.Length,
+                    IsFirstSegment: index == 0,
+                    IsLastSegment: index == segments.Length - 1,
+                    HasEllipsis: segment.HasEllipsis));
+            }
+        }
+
+        return rows;
     }
 
     [Pure]

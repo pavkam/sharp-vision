@@ -26,7 +26,7 @@ internal sealed class CodeViewContent: ControlBase
     internal void RequestInvalidate(InvalidationImpact impact) => Invalidate(impact);
 
     /// <inheritdoc/>
-    protected override Size MeasureOverride(Constraint constraint) => _owner.MeasureProjection();
+    protected override Size MeasureOverride(Constraint constraint) => _owner.MeasureAndWrap(constraint.Width);
 
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas) => _owner.RenderProjectedContent(canvas, ContentBounds);

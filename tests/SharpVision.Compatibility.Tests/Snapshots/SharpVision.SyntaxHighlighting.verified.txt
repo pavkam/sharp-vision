@@ -16,6 +16,7 @@
         public bool IsFoldingEnabled { get; set; }
         public string? Language { get; set; }
         public int LineSize { get; set; }
+        public SharpVision.Text.Overflow Overflow { get; set; }
         public int PageOverlap { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
@@ -41,6 +42,7 @@
         public bool IsFoldStart(int line) { }
         public bool IsFolded(int line) { }
         protected override bool IsTextSelectionPointerTarget(SharpVision.Controls.ControlBase? originalSource, SharpVision.Terminal.Geometry.Point cells) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnTextSelectionCommitted(SharpVision.Input.TextSelectionChangedEventArgs eventArgs) { }
         public bool RevealSelectableTextOffset(int offset) { }

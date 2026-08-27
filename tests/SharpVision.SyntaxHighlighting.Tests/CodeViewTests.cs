@@ -206,6 +206,18 @@ public sealed class CodeViewTests
         view.SelectedText.ShouldBe(string.Empty);
         view.IsFocusable.ShouldBeTrue();
         view.IsTabStop.ShouldBeTrue();
+        view.Overflow.ShouldBe(Overflow.Visible);
+    }
+
+    /// <summary>Verifies an unknown Overflow value is rejected before any observable state changes.</summary>
+    [Fact]
+    public void Overflow_WhenSetToAnUndefinedValue_ThrowsArgumentOutOfRangeException()
+    {
+        var view = new CodeView();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => view.Overflow = (Overflow) 99);
+
+        view.Overflow.ShouldBe(Overflow.Visible);
     }
 
     /// <summary>Verifies assigning Code resets the selection and is retained verbatim.</summary>

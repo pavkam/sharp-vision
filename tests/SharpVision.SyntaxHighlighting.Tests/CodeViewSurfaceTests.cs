@@ -1463,6 +1463,197 @@ public sealed class CodeViewSurfaceTests
         surface.Cell(new Point(0, foldStart)).Text.ShouldBe("X");
     }
 
+    /// <summary>Verifies the default <see cref="CodeView.Overflow"/> - <see cref="Overflow.Visible"/>
+    /// - leaves a long line's presentation exactly as before soft wrapping existed: one
+    /// presentation row per source line, an unbounded content extent wider than the viewport, and
+    /// ordinary horizontal scrolling. This is the regression guard for every unwrapped call site
+    /// this feature repointed at the new presentation-row projection.</summary>
+    [Fact]
+    public async Task Overflow_WhenLeftAtDefault_LeavesLongLinesUnwrappedAndHorizontallyScrollableAsync()
+    {
+        var longLine = new string('x', 40);
+        var view = new CodeView { Code = $"{longLine}\nshort\n" };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(10, 5),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        view.Overflow.ShouldBe(Overflow.Visible);
+        view.Extent.Height.ShouldBe(2);
+        view.Extent.Width.ShouldBeGreaterThan(view.Viewport.Width);
+
+        await surface.UpdateAsync(
+            () => view.ScrollSelectableTextViewport(100, 0).ShouldBeTrue(),
+            "scroll the unwrapped long line horizontally");
+
+        view.HorizontalOffset.ShouldBeGreaterThan(0);
+    }
+
+    /// <summary>Verifies switching <see cref="CodeView.Overflow"/> to <see cref="Overflow.WrapAnywhere"/>
+    /// disables the horizontal extent - it settles to exactly the viewport's own width - and splits
+    /// a line that used to overflow horizontally into more than one presentation row.</summary>
+    [Fact]
+    public async Task Overflow_WhenSetToWrapAnywhere_DisablesHorizontalExtentAndAddsPresentationRowsAsync()
+    {
+        var view = new CodeView { Code = new string('x', 60), IsFoldingEnabled = false };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 10),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        var unwrappedHeight = view.Extent.Height;
+        view.Extent.Width.ShouldBeGreaterThan(view.Viewport.Width);
+
+        await surface.UpdateAsync(() => view.Overflow = Overflow.WrapAnywhere, "enable wrap-anywhere");
+
+        view.Extent.Width.ShouldBe(view.Viewport.Width);
+        view.Extent.Height.ShouldBeGreaterThan(unwrappedHeight);
+        view.HorizontalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies clicking a wrapped line's continuation row (its second or later
+    /// presentation row) lands the caret on the correct logical offset - the same offset the
+    /// clicked cell's own rendered character came from - rather than clamping to the first row.</summary>
+    [Fact]
+    public async Task Pointer_WhenClickingAWrappedContinuationRow_LandsOnTheCorrectLogicalOffsetAsync()
+    {
+        var line = string.Concat(Enumerable.Range(0, 60).Select(static index => (char) ('a' + (index % 26))));
+        var view = new CodeView { Code = line, Overflow = Overflow.WrapAnywhere, IsFoldingEnabled = false };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(16, 10),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        view.Extent.Height.ShouldBeGreaterThan(1);
+
+        await surface.Pointer.ClickAsync(view, new Point(0, 0));
+        var firstRowCaret = view.Selection.Caret;
+        surface.Cell(new Point(0, 0)).Text.ShouldBe(line[firstRowCaret].ToString());
+
+        await surface.Pointer.ClickAsync(view, new Point(0, 1));
+        var secondRowCaret = view.Selection.Caret;
+
+        secondRowCaret.ShouldBeGreaterThan(firstRowCaret);
+        surface.Cell(new Point(0, 1)).Text.ShouldBe(line[secondRowCaret].ToString());
+    }
+
+    /// <summary>Verifies a syntax token that spans across a wrap boundary keeps its own color on
+    /// every presentation row it covers, proving <c>DrawLine</c> re-seeks the correct token for
+    /// each wrapped row instead of defaulting to the line's first token.</summary>
+    [Fact]
+    public async Task Render_WhenAKeywordTokenSpansAWrapBoundary_KeepsItsColorAcrossPresentationRowsAsync()
+    {
+        var directory = Directory.CreateTempSubdirectory("sharpvision-code-view-wrap-token-");
+
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(directory.FullName, "wraptoken.xml"),
+                """
+                <language name="WrapToken" section="Sources" extensions="*.wt" version="1" kateversion="5.0">
+                  <highlighting>
+                    <contexts>
+                      <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+                        <StringDetect attribute="Accent" context="#stay" String="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"/>
+                      </context>
+                    </contexts>
+                    <itemDatas>
+                      <itemData name="Normal Text" defStyleNum="dsNormal"/>
+                      <itemData name="Accent" defStyleNum="dsKeyword"/>
+                    </itemDatas>
+                  </highlighting>
+                </language>
+                """);
+            var code = new string('a', 20) + new string('b', 40);
+            var view = new CodeView
+            {
+                Catalog = SyntaxDefinitionCatalog.FromDirectory(directory.FullName),
+                Language = "WrapToken",
+                Code = code,
+                Overflow = Overflow.WrapAnywhere,
+                IsFoldingEnabled = false,
+            };
+            await using var surface = await ComponentSurface.MountAsync(
+                view,
+                new Size(8, 20),
+                TestThemes.BorderlessContainer,
+                TestContext.Current.CancellationToken);
+
+            view.Extent.Height.ShouldBeGreaterThan(1);
+
+            var normalColor = surface.Cell(new Point(0, 0)).Style.Foreground;
+            Point? firstKeywordCell = null;
+
+            for (var y = 0; y < view.Extent.Height && firstKeywordCell is null; y++)
+            {
+                for (var x = 0; x < view.Viewport.Width; x++)
+                {
+                    if (surface.Cell(new Point(x, y)).Text == "b")
+                    {
+                        firstKeywordCell = new Point(x, y);
+                        break;
+                    }
+                }
+            }
+
+            firstKeywordCell.ShouldNotBeNull();
+            var keywordColor = surface.Cell(firstKeywordCell!.Value).Style.Foreground;
+            keywordColor.ShouldNotBe(normalColor);
+
+            Point? laterRowKeywordCell = null;
+
+            for (var y = firstKeywordCell.Value.Y + 1; y < view.Extent.Height && laterRowKeywordCell is null; y++)
+            {
+                for (var x = 0; x < view.Viewport.Width; x++)
+                {
+                    if (surface.Cell(new Point(x, y)).Text == "b")
+                    {
+                        laterRowKeywordCell = new Point(x, y);
+                        break;
+                    }
+                }
+            }
+
+            laterRowKeywordCell.ShouldNotBeNull();
+            surface.Cell(laterRowKeywordCell!.Value).Style.Foreground.ShouldBe(keywordColor);
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    /// <summary>Verifies folding still hides interior lines and reports the same collapsed row
+    /// count while <see cref="CodeView.Overflow"/> is a soft-wrapping value - folding operates on
+    /// whole logical lines regardless of the presentation-row projection.</summary>
+    [Fact]
+    public async Task Fold_WhenCollapsedWithWrapEnabled_HidesInteriorLinesTheSameAsVisibleOverflowAsync()
+    {
+        var view = new CodeView
+        {
+            Code = "fn main() {\n    let x = 1;\n}\nafter()\n",
+            Language = "Rust",
+            Overflow = Overflow.Wrap,
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 5),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        var foldStart = Enumerable.Range(0, 4).First(view.IsFoldStart);
+
+        await surface.UpdateAsync(() => view.SetFolded(foldStart, true), "collapse the fold with wrap enabled");
+
+        view.Extent.Height.ShouldBe(3);
+        view.IsFolded(foldStart).ShouldBeTrue();
+
+        await surface.UpdateAsync(() => view.SetFolded(foldStart, false), "expand the fold again");
+
+        view.Extent.Height.ShouldBe(4);
+    }
+
     private static Theme WithSemanticColor(SemanticColor role, Color value)
     {
         var source = ThemeCatalog.Dark;

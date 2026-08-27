@@ -14,16 +14,13 @@ the focusable-container Theme fallback, preserving normal container geometry
 while applying the standard focused border cue.
 
 Line endings normalize to LF before tokenization or selection. Offsets are
-UTF-16 grapheme boundaries in that normalized string. Lines never wrap, and a
-tab is one semantic character and exactly one displayed cell. The control owns
-its normalized text and token projection; callers retain the assigned source
-string and catalog.
-
-> [!IMPORTANT]
->
-> **Implementation gap:** there is no opt-in soft-wrap mode. Long lines only
-> scroll horizontally, so a host that cannot afford horizontal scrolling has no
-> way to keep a long line fully visible inside `CodeView`.
+UTF-16 grapheme boundaries in that normalized string. By default
+(`Overflow.Visible`), lines never wrap: long lines only scroll horizontally.
+Setting `Overflow` to `Wrap`, `WrapAnywhere`, `Clip`, or `Ellipsis` instead
+reformats every line against the viewport's own width - see
+[Soft wrapping](#soft-wrapping). A tab is one semantic character and exactly one
+displayed cell regardless of `Overflow`. The control owns its normalized text
+and token projection; callers retain the assigned source string and catalog.
 
 ## Inheritance
 
@@ -53,6 +50,7 @@ classDiagram
 | `Viewport`                                                   | `Size`                                        | Layout-dependent               | Read-only committed visible extent in cells.                                                                         |
 | `HorizontalOffset`, `VerticalOffset`                         | `int`                                         | `0`                            | Valid committed content offsets; reject values beyond the current extent.                                            |
 | `LineSize`                                                   | `int`                                         | `1`                            | Non-negative wheel-scroll cell increment.                                                                            |
+| `Overflow`                                                   | `Overflow`                                    | `Visible`                      | How a line's horizontal overflow is handled; see [Soft wrapping](#soft-wrapping).                                    |
 | `PageOverlap`                                                | `int`                                         | `0`                            | Non-negative cells retained between page commands.                                                                   |
 | `Selection`                                                  | `Selection`                                   | Empty at `0`                   | Read-only directional range over normalized `Code`.                                                                  |
 | Inherited `IsTextSelectionEnabled`                           | `bool`                                        | `true`                         | Enabled by the constructor; disabling clears CodeView selection and gestures.                                        |
@@ -174,19 +172,53 @@ also detects the changed source text and clears its stale combined selection.
 A fold range comes from a grammar's region markers or indentation folding.
 Collapsing hides lines strictly inside the range while preserving `Code`, token
 offsets, and `Selection`. The start line remains visible and displays a
-collapsed indicator. The indicator contributes to `Extent.Width`, so every cell
-remains reachable by horizontal scrolling. An exclusive primary-button press on
-the gutter glyph toggles the fold without moving the caret; a chord containing
-another held button is not a fold command. Nested collapsed ranges are projected
-with range-boundary deltas and one line scan, keeping collapse and folding
-re-enable work linear in the number of folds plus source lines rather than
-repeatedly marking shared interiors.
+collapsed indicator. Under the default `Overflow.Visible` the indicator
+contributes to `Extent.Width`, so every cell remains reachable by horizontal
+scrolling; under any other `Overflow` value the indicator is simply part of the
+last presentation row's own wrapped or truncated text, since the horizontal
+extent is disabled entirely (see [Soft wrapping](#soft-wrapping)). An exclusive
+primary-button press on the gutter glyph toggles the fold without moving the
+caret; a chord containing another held button is not a fold command. Nested
+collapsed ranges are projected with range-boundary deltas and one line scan,
+keeping collapse and folding re-enable work linear in the number of folds plus
+source lines rather than repeatedly marking shared interiors.
 
 Setting `IsFoldingEnabled` false removes the gutter and shows every line while
 retaining stored fold states; restoring it resumes those states. Selection and
 copy always use full normalized source text, including folded lines. Navigation
 uses visible lines, while an explicit semantic reveal expands a containing fold
 before positioning the viewport.
+
+## Soft wrapping
+
+`Overflow` selects how a projected line's horizontal overflow is handled,
+reusing the same `SharpVision.Text.Overflow` enum and `Text.Layout.Format`
+contract `Text.Overflow` already uses. `Visible`, the default, is exactly the
+behavior described above: one presentation row per source line, unbounded width,
+horizontal scrolling for long lines. Any other value reformats every line
+against the viewport's own text width instead:
+
+- `Wrap` and `WrapAnywhere` split a long logical line into more than one
+  presentation row - word-wrapped or grapheme-wrapped, respectively.
+- `Clip` and `Ellipsis` keep one row per line and truncate it, the latter
+  reserving space for a trailing ellipsis marker.
+
+Every non-`Visible` value disables the horizontal extent entirely: `Extent`'s
+width becomes exactly `Viewport`'s width, since every row is now guaranteed to
+fit it, and `HorizontalOffset` can never move away from zero. A continuation
+row - any presentation row after the first for one wrapped logical line - never
+repeats the fold-gutter arrow, since folding still operates on whole logical
+lines; the gutter is left blank for every row but the first, and the
+collapsed-fold indicator only ever appears after a line's last presentation row.
+Caret and selection navigation, hit testing, and reveal all resolve through
+presentation rows, so they land on the correct logical offset regardless of
+which row of a wrapped line they touch.
+
+A line containing tab characters may wrap slightly earlier than the exact
+viewport width requires: wrapping sizes a tab by its four-cell tab-stop
+expansion, while rendering always measures and draws a tab as exactly one cell.
+The wrap never overflows the viewport - it only occasionally wraps a tab-heavy
+line more conservatively than strictly necessary.
 
 ## Syntax definitions and catalogs
 
@@ -228,8 +260,10 @@ var copied = view.CopySelection();
   definition's own optional literal color hints are never read. A token boundary
   inside an extended grapheme does not split rendering: the token containing the
   first UTF-16 code unit styles the complete cluster.
-- Normalization uses LF, selection never splits a grapheme, tabs occupy one
-  semantic character and one displayed cell, and long lines never wrap.
+- Normalization uses LF, selection never splits a grapheme, and tabs occupy one
+  semantic character and one displayed cell. Long lines never wrap under the
+  default `Overflow.Visible`; any other `Overflow` value wraps, clips, or
+  ellipsizes every line against the viewport's own width instead.
 - Folded and offscreen source remains copyable while contributing no stale hit
   geometry.
 - Selection reveal expands containing folds, completes after detached layout,
