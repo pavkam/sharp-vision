@@ -6,6 +6,43 @@ namespace SharpVision.Tests.Navigation;
 /// <summary>Verifies NavigationView composition, selection, groups, scrolling, mutation, Unicode, and resize through mounted surfaces.</summary>
 public sealed class NavigationViewSurfaceTests
 {
+    /// <summary>Verifies wheel scrolling may move the current item outside the viewport without
+    /// its scroll-translated bounds being mistaken for a structural change that reveals it again.</summary>
+    [Fact]
+    public async Task Wheel_WhenCurrentItemLeavesViewport_ProgressesWithoutRevealOscillationAsync()
+    {
+        // Arrange
+        var view = new NavigationView
+        {
+            Height = Length.Cells(4),
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        var items = Enumerable.Range(0, 10)
+            .Select(index => new NavigationViewItem { Text = $"Item {index}" })
+            .ToArray();
+
+        foreach (var item in items)
+        {
+            view.Items.Add(item);
+        }
+
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(16, 4),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => view.SelectItem(items[0]), "select first navigation item");
+
+        // Act
+        await surface.Pointer.WheelAsync(view, default, wheelY: -1);
+        var firstOffset = view.VerticalOffset;
+        await surface.Pointer.WheelAsync(view, default, wheelY: -1);
+        var secondOffset = view.VerticalOffset;
+
+        // Assert
+        firstOffset.ShouldBe(1);
+        secondOffset.ShouldBe(2);
+    }
+
     /// <summary>Verifies fixed header and footer regions proxy wheel input to the main scroller,
     /// while an exhausted view leaves the record available to an enclosing scroll container.</summary>
     [Fact]

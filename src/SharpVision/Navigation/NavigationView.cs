@@ -25,6 +25,7 @@ public sealed class NavigationView: CompositeControlBase
     private long _presentationVersion;
     private long _selectionVersion;
     private ControlBase? _trackedCurrent;
+    private Rect _trackedCurrentLogicalBounds;
 
     /// <summary>The selected item's last committed position in the complete semantic item order.
     /// Ordinary unavailability repairs locate the retained item in that live order. This snapshot
@@ -1071,6 +1072,7 @@ public sealed class NavigationView: CompositeControlBase
             _trackedCurrent?.BoundsChanged -= OnCurrentBoundsChanged;
 
             _trackedCurrent = current;
+            _trackedCurrentLogicalBounds = current is null ? default : GetLogicalBounds(current);
 
             _trackedCurrent?.BoundsChanged += OnCurrentBoundsChanged;
         }
@@ -1088,12 +1090,34 @@ public sealed class NavigationView: CompositeControlBase
             : IsDescendantOf(entry, _footerStack) && _footerStack.BringIntoView(entry);
     }
 
+    private Rect GetLogicalBounds(ControlBase entry)
+    {
+        var bounds = entry.Bounds;
+        var stack = IsDescendantOf(entry, _itemsStack) ? _itemsStack : _footerStack;
+        return new Rect(
+            bounds.X.Add(stack.HorizontalOffset),
+            bounds.Y.Add(stack.VerticalOffset),
+            bounds.Width,
+            bounds.Height);
+    }
+
     private void OnCurrentBoundsChanged(object? sender, EventArgs eventArgs)
     {
         _ = eventArgs;
 
         if (sender is ControlBase current && ReferenceEquals(current, _navigator.Current))
         {
+            var logicalBounds = GetLogicalBounds(current);
+
+            // Scrolling translates arranged child bounds by the inverse offset. The logical
+            // bounds stay unchanged in that case, so revealing the current entry would merely
+            // undo an intentional wheel, scrollbar, or programmatic scroll.
+            if (logicalBounds == _trackedCurrentLogicalBounds)
+            {
+                return;
+            }
+
+            _trackedCurrentLogicalBounds = logicalBounds;
             _ = RevealEntry(current);
         }
     }

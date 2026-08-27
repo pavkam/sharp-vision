@@ -129,7 +129,11 @@ not keep former entries alive through presentation metadata.
 
 `LineSize` forwards the mouse wheel's cell step to the generated scroll
 container from every point in the view, including its fixed header and footer.
-At a main-section endpoint, an unconsumed wheel record remains available to an
+Wheel scrolling preserves the current and selected identities but may move their
+rows outside the viewport; only an explicit navigation, selection, structure,
+expansion, or resize transition reveals the current entry again. A scroll-only
+translation of arranged row bounds never triggers that reveal path. At a
+main-section endpoint, an unconsumed wheel record remains available to an
 enclosing scrollable container. Keyboard Up and Down always move by exactly one
 entry regardless of this value.
 
