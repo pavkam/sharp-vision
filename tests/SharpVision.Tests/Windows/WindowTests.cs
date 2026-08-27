@@ -491,11 +491,14 @@ public sealed class WindowTests
 
         window.Render(frame.Canvas);
 
+        // Ambiguous.Wide degrades every box-drawing glyph to its ASCII fallback, not just the
+        // truncated header's ellipsis - the border itself renders as "+"/"-" here, matching how
+        // any other Ambiguous.Wide-policy frame in this codebase renders its border.
         var row = string.Concat(Enumerable.Range(0, 12).Select(x => FrameOracle.Get(frame, new Point(x, 0))));
-        row.ShouldBe("╔═ 中中中中中中. ╗");
+        row.ShouldBe("+- 中中中中中中. +");
         row.ShouldNotContain("…");
         FrameOracle.Get(frame, new Point(10, 0)).ShouldBe(" ");
-        FrameOracle.Get(frame, new Point(11, 0)).ShouldBe("╗");
+        FrameOracle.Get(frame, new Point(11, 0)).ShouldBe("+");
     }
 
     /// <summary>Verifies the Turbo Vision block shadow occupies only translated cells outside the window body.</summary>

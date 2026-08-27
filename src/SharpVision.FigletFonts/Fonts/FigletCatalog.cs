@@ -24,7 +24,7 @@ public sealed class FigletCatalog
 
     private readonly Dictionary<string, FigletFontInfo> _entries;
     private readonly Dictionary<string, Func<FigletCatalog, FigletLimits, FigletFont>> _loaders;
-    private readonly Dictionary<(string Name, FigletLimits Limits), Lazy<FigletFont>> _cache = new();
+    private readonly Dictionary<(string Name, FigletLimits Limits), Lazy<FigletFont>> _cache = [];
     private readonly Lock _cacheGate = new();
     private int _embeddedResourceReadCount;
 
