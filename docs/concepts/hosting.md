@@ -160,6 +160,78 @@ terminal-description resolution - because no instance exists yet for anything to
 hook into; that narrow gap still hits the OS default disposition, same as it
 would before the constructor of any object exists in any shape.
 
+The two shapes above share a gap and an `OnAttach` trade-off but differ in where
+their registration begins and how long it lasts. The sequence diagrams below
+make each timeline explicit.
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant Run as RunCoreAsync
+    participant Signals as CooperativeShutdownSignals
+    participant Build as Builder.Build()
+    participant Attach as Screen.OnAttach
+    participant App as Application
+    participant OS as OS signal
+
+    Caller->>Run: RunAsync(...)
+
+    alt Signal arrives before registration
+        OS-->>Run: SIGTERM / SIGHUP / Ctrl+C
+        Note over Run,OS: Uncovered gap - no registration exists yet,<br/>so the OS default disposition kills the process
+    else Registration is live for the rest of this run
+        Run->>Signals: Register(observeCtrlC, cancel linked token)
+        Run->>Build: Build()
+        Build->>Attach: OnAttach() (synchronous)
+        opt Signal arrives during OnAttach
+            OS-->>Signals: SIGTERM / SIGHUP / Ctrl+C
+            Signals->>Run: cancel linked token
+            Note over Attach: Cancelled cooperatively, but OnAttach still<br/>runs to completion - aborting arbitrary user<br/>code mid-execution would be unsafe
+        end
+        Attach-->>Build: returns
+        Build-->>Run: Application
+        Run->>App: StartAsync, await Completion, StopAsync
+        App-->>Run: Completion (Cancelled if a signal landed)
+        Run->>Signals: Dispose()
+    end
+```
+
+The advanced shape has no `RunCoreAsync` wrapping it, so `Application`'s own
+constructor opens and closes the equivalent window itself:
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant Build as Builder.Build()
+    participant App as Application
+    participant Signals as CooperativeShutdownSignals
+    participant Attach as Screen.OnAttach
+    participant OS as OS signal
+
+    Caller->>Build: Build()
+
+    alt Signal arrives before the constructor runs
+        OS-->>Build: SIGTERM / SIGHUP / Ctrl+C
+        Note over Build,OS: Uncovered gap - no Application instance exists<br/>yet for anything to hook into
+    else Registration is live from construction onward
+        Build->>App: new Application(..., observeProcessSignals: true)
+        App->>Signals: Register(observeCtrlC, RequestCooperativeStop)
+        App-->>Build: constructed, registration live
+        Build->>Attach: OnAttach() (synchronous, via dispatcher)
+        opt Signal arrives during OnAttach
+            OS-->>Signals: SIGTERM / SIGHUP / Ctrl+C
+            Signals->>App: RequestCooperativeStop()
+            Note over Attach: Cancelled cooperatively, but OnAttach still<br/>runs to completion - same guarded trade-off<br/>as the simple shapes
+        end
+        Attach-->>Build: returns
+        Build-->>Caller: Application returned
+        Caller->>App: StartAsync()
+        Note over App: A signal latched before StartAsync resolves<br/>right here instead of being lost
+        Caller->>App: await Completion, then StopAsync()
+        App->>Signals: Dispose() (on Stopped)
+    end
+```
+
 Session startup expands the complete description-owned alternate-screen,
 cursor-visibility, and required application-key pairs before any transport
 output. Missing, one-sided, parameter-consuming, empty, and over-limit optional
