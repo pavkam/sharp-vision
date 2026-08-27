@@ -2020,7 +2020,7 @@ public sealed class TextInputTests
     [Fact]
     public void Dispatch_WhenNavigatingAcrossConsecutiveBlankWrappedRows_NeverReversesDirection()
     {
-        var control = new TextInput { Text = "a\n\n\n\nb", WordWrap = true, AcceptsReturn = true };
+        var control = new TextInput { AcceptsReturn = true, WordWrap = true, Text = "a\n\n\n\nb" };
         control.SetTheme(TestThemes.BorderlessInput);
         new LayoutEngine().Layout(control, new Size(8, 10));
 

@@ -65,7 +65,6 @@ public sealed class Document:
     private int _layoutWidth = -1;
     private int _horizontalOffset;
     private TextSelectionMap _selectionSemanticMap = TextSelectionMap.Empty;
-    private ulong _structureVersion;
 
     /// <summary>Initializes an empty scrollable document.</summary>
     public Document()
@@ -193,7 +192,7 @@ public sealed class Document:
         // suspended on a stream read below. LoadCore rechecks this against the current version before
         // touching Blocks, so a race is reported instead of silently discarding the interloper's
         // already-committed mutation.
-        var expectedVersion = _structureVersion;
+        var expectedVersion = StructureVersion;
 
         try
         {
@@ -298,7 +297,7 @@ public sealed class Document:
         // intervening, already-committed mutation. This must run before the snapshot/rollback logic
         // below even begins: that logic's own Clear+Add will itself bump the version, but only after
         // this check has already passed.
-        if (expectedVersion is { } expected && expected != _structureVersion)
+        if (expectedVersion is { } expected && expected != StructureVersion)
         {
             throw new InvalidOperationException(
                 "The document's block structure was mutated by other dispatcher-scheduled work while " +
@@ -384,7 +383,7 @@ public sealed class Document:
     /// anywhere in the tree, or a <see cref="Load"/>/<see cref="LoadAsync"/> replacement - bumps this
     /// counter exactly once through the single <see cref="InvalidateStructure"/> choke point.
     /// </remarks>
-    internal ulong StructureVersion => _structureVersion;
+    internal ulong StructureVersion { get; private set; }
 
     /// <summary>Reconciles retained-control membership after the semantic tree changes, then
     /// invalidates measured and rendered content.</summary>
@@ -395,7 +394,7 @@ public sealed class Document:
         // this call already committed to Blocks by the time any caller reaches here.
         unchecked
         {
-            _structureVersion++;
+            StructureVersion++;
         }
 
         _presenter.ReconcileControls();

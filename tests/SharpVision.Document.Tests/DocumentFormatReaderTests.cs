@@ -8,6 +8,16 @@ using DocumentControl = Controls.Documents.Document;
 /// <summary>Verifies the format abstraction, bounded input, and stream-loading surface.</summary>
 public sealed class DocumentFormatReaderTests
 {
+    /// <summary>A deliberately distinct exception type simulating an application-level failure from a
+    /// focus callback, so tests can assert the original exception propagates without conflating it with
+    /// a library-raised exception such as <see cref="InvalidOperationException"/>.</summary>
+    private sealed class SimulatedCallbackFailureException: Exception
+    {
+        public SimulatedCallbackFailureException(string message) : base(message)
+        {
+        }
+    }
+
     /// <summary>Verifies a non-Markdown reader can supply the structure consumed by Document.</summary>
     [Fact]
     public void Load_WhenCustomFormatReaderIsUsed_AppliesItsDetachedTree()
@@ -437,7 +447,7 @@ public sealed class DocumentFormatReaderTests
             new Size(30, 5),
             TestContext.Current.CancellationToken);
         await surface.UpdateAsync(() => button.Focus().ShouldBeTrue(), "focus embedded control");
-        button.FocusLeft += (_, _) => throw new ApplicationException("focus callback failed");
+        button.FocusLeft += (_, _) => throw new SimulatedCallbackFailureException("focus callback failed");
 
         // Act
         var action = async () => await surface.UpdateAsync(
@@ -445,9 +455,9 @@ public sealed class DocumentFormatReaderTests
             "load replacement");
 
         // Assert
-        _ = await action.ShouldThrowAsync<ApplicationException>();
+        _ = await action.ShouldThrowAsync<SimulatedCallbackFailureException>();
         document.Blocks.ShouldHaveSingleItem().ShouldBeSameAs(original);
-        button.Parent.ShouldNotBeNull();
+        _ = button.Parent.ShouldNotBeNull();
     }
 
     /// <summary>Verifies a synchronous load whose focused embedded control's FocusLeft handler
@@ -475,7 +485,7 @@ public sealed class DocumentFormatReaderTests
         // Assert
         _ = await action.ShouldThrowAsync<InvalidOperationException>();
         document.Blocks.ShouldHaveSingleItem().ShouldBeSameAs(original);
-        button.Parent.ShouldNotBeNull();
+        _ = button.Parent.ShouldNotBeNull();
     }
 
     /// <summary>Verifies an asynchronous stream load whose focused embedded control's FocusLeft
@@ -492,7 +502,7 @@ public sealed class DocumentFormatReaderTests
             new Size(30, 5),
             TestContext.Current.CancellationToken);
         await surface.UpdateAsync(() => button.Focus().ShouldBeTrue(), "focus embedded control");
-        button.FocusLeft += (_, _) => throw new ApplicationException("focus callback failed");
+        button.FocusLeft += (_, _) => throw new SimulatedCallbackFailureException("focus callback failed");
         await using var stream = new MemoryStream(Encoding.UTF8.GetBytes("replacement"));
 
         // Act
@@ -505,9 +515,9 @@ public sealed class DocumentFormatReaderTests
         var action = async () => await loadTask;
 
         // Assert
-        _ = await action.ShouldThrowAsync<ApplicationException>();
+        _ = await action.ShouldThrowAsync<SimulatedCallbackFailureException>();
         document.Blocks.ShouldHaveSingleItem().ShouldBeSameAs(original);
-        button.Parent.ShouldNotBeNull();
+        _ = button.Parent.ShouldNotBeNull();
     }
 
     /// <summary>Verifies an asynchronous stream load whose focused embedded control's FocusLeft
@@ -540,7 +550,7 @@ public sealed class DocumentFormatReaderTests
         // Assert
         _ = await action.ShouldThrowAsync<InvalidOperationException>();
         document.Blocks.ShouldHaveSingleItem().ShouldBeSameAs(original);
-        button.Parent.ShouldNotBeNull();
+        _ = button.Parent.ShouldNotBeNull();
     }
 
     /// <summary>Verifies a synchronous load still replaces content normally, consuming the exact

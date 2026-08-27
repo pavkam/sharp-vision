@@ -1376,8 +1376,10 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         ClassifyEmphasisRun(string source, int index, int runLength)
     {
         var runEnd = index + runLength;
-        var hasRuneBefore = index > 0 && TryGetRuneBefore(source, index, out var runeBefore);
-        var hasRuneAfter = runEnd < source.Length && TryGetRuneAt(source, runEnd, out var runeAfter);
+        Rune runeBefore = default;
+        Rune runeAfter = default;
+        var hasRuneBefore = index > 0 && TryGetRuneBefore(source, index, out runeBefore);
+        var hasRuneAfter = runEnd < source.Length && TryGetRuneAt(source, runEnd, out runeAfter);
         var beforeWhitespace = index == 0 || (hasRuneBefore && Rune.IsWhiteSpace(runeBefore));
         var afterWhitespace = runEnd >= source.Length || (hasRuneAfter && Rune.IsWhiteSpace(runeAfter));
         var beforePunctuation = hasRuneBefore && IsPunctuationOrSymbol(runeBefore);

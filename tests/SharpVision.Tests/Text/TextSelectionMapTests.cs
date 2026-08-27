@@ -85,7 +85,7 @@ public sealed class TextSelectionMapTests
             [],
             5);
 
-        map.TryGetVisualPosition(2, out var row, out _);
+        _ = map.TryGetVisualPosition(2, out var row, out _);
 
         row.ShouldNotBe(0);
     }

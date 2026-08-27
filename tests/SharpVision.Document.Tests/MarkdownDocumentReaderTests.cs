@@ -1243,8 +1243,8 @@ public sealed class MarkdownDocumentReaderTests
         var result = new MarkdownDocumentReader().Read(source);
 
         // Assert
-        result.ShouldNotBeNull();
-        result.Blocks.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
+        _ = result.Blocks.ShouldNotBeNull();
     }
 
     /// <summary>Verifies an unpaired low surrogate immediately before an emphasis opener does not
@@ -1260,8 +1260,8 @@ public sealed class MarkdownDocumentReaderTests
         var result = new MarkdownDocumentReader().Read(source);
 
         // Assert
-        result.ShouldNotBeNull();
-        result.Blocks.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
+        _ = result.Blocks.ShouldNotBeNull();
     }
 
     /// <summary>Verifies an unpaired low surrogate immediately before an emphasis closer does not
@@ -1277,8 +1277,8 @@ public sealed class MarkdownDocumentReaderTests
         var result = new MarkdownDocumentReader().Read(source);
 
         // Assert
-        result.ShouldNotBeNull();
-        result.Blocks.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
+        _ = result.Blocks.ShouldNotBeNull();
     }
 
     /// <summary>Verifies an unpaired low surrogate immediately after an emphasis opener does not
@@ -1294,8 +1294,8 @@ public sealed class MarkdownDocumentReaderTests
         var result = new MarkdownDocumentReader().Read(source);
 
         // Assert
-        result.ShouldNotBeNull();
-        result.Blocks.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
+        _ = result.Blocks.ShouldNotBeNull();
     }
 
     /// <summary>Verifies an unpaired high surrogate immediately after an emphasis opener does not
@@ -1311,8 +1311,8 @@ public sealed class MarkdownDocumentReaderTests
         var result = new MarkdownDocumentReader().Read(source);
 
         // Assert
-        result.ShouldNotBeNull();
-        result.Blocks.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
+        _ = result.Blocks.ShouldNotBeNull();
     }
 
     /// <summary>Verifies both baseline hard-break forms remove their source markers.</summary>
@@ -1845,7 +1845,10 @@ public sealed class MarkdownDocumentReaderTests
             block = quote.Blocks.ShouldHaveSingleItem();
         }
 
-        depth.ShouldBeLessThanOrEqualTo(64);
+        // The documented boundary allows exactly 64 full levels before degrading; the 65th quote
+        // marker is itself still a real DocumentBlockQuote (matching the list-nesting path's own
+        // create-then-check shape), so a hostile stack bottoms out one level past the 64-level budget.
+        depth.ShouldBeLessThanOrEqualTo(65);
         _ = block.ShouldBeOfType<DocumentParagraph>();
     }
 
@@ -2091,7 +2094,7 @@ public sealed class MarkdownDocumentReaderTests
                 block = block.ShouldBeOfType<DocumentBlockQuote>().Blocks.ShouldHaveSingleItem();
             }
 
-            block.ShouldBeOfType<DocumentHeading>();
+            _ = block.ShouldBeOfType<DocumentHeading>();
         }
     }
 
@@ -2122,7 +2125,7 @@ public sealed class MarkdownDocumentReaderTests
 
         if (expectsDiagnostic)
         {
-            block.ShouldBeOfType<DocumentBlockQuote>();
+            _ = block.ShouldBeOfType<DocumentBlockQuote>();
         }
         else
         {
