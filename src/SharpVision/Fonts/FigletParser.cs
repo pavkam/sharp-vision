@@ -264,9 +264,9 @@ internal static class FigletParser
             }
 
             var endMark = encoded[^1];
-            var end = encoded.Length - 1;
+            var end = encoded.Length;
 
-            if (row == height - 1 && end > 0 && encoded[end - 1] == endMark)
+            while (end > 0 && encoded[end - 1] == endMark)
             {
                 end--;
             }

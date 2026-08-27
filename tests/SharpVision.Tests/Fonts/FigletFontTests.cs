@@ -213,6 +213,29 @@ public sealed class FigletFontTests
         }
     }
 
+    /// <summary>Verifies a trailing endmark run longer than the standard one-character
+    /// (non-final row) or two-character (final row) convention is stripped in its entirety, per
+    /// the FIGfont spec's "sequence of ... identical characters" rule, instead of only the
+    /// conventional count being removed and leaving stray endmark characters embedded in the
+    /// parsed glyph.</summary>
+    [Fact]
+    public void Load_WhenGlyphRowHasLongerThanConventionalEndmarkRun_StripsEntireRun()
+    {
+        const int height = 2;
+        var builder = new StringBuilder(CreateFontWithoutGermanBlock(height));
+
+        // A hand-authored glyph whose rows carry a longer-than-conventional run of the endmark
+        // character: 3 on the non-final row (instead of the usual 1) and 4 on the final row
+        // (instead of the usual 2).
+        _ = builder.Append("9732 extra\n").Append("X@@@\n").Append("X@@@@\n");
+
+        using var stream = Stream(builder.ToString());
+
+        var font = FigletFont.Load(stream, "long-endmark-run");
+
+        font.Render(RuneFor(9732)).ShouldBe("X\nX");
+    }
+
     #endregion
 
     #region Rendering
