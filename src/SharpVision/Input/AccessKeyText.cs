@@ -25,6 +25,17 @@ internal static class AccessKeyText
         {
             for (var index = 0; index < text.Length; index++)
             {
+                if (text[index] == '<')
+                {
+                    var close = text[(index + 1)..].IndexOf('>');
+
+                    if (close >= 0)
+                    {
+                        index += close + 1;
+                        continue;
+                    }
+                }
+
                 if (text[index] != '&')
                 {
                     continue;
@@ -227,6 +238,20 @@ internal static class AccessKeyText
 
         for (var index = 0; index < source.Length; index++)
         {
+            if (source[index] == '<')
+            {
+                var close = source[(index + 1)..].IndexOf('>');
+
+                if (close >= 0)
+                {
+                    var tagLength = close + 2;
+                    source.Slice(index, tagLength).CopyTo(destination[written..]);
+                    written += tagLength;
+                    index += tagLength - 1;
+                    continue;
+                }
+            }
+
             if (source[index] != '&')
             {
                 destination[written++] = source[index];

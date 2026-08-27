@@ -320,6 +320,36 @@ public sealed class TextTests
         style.Hyperlink.ShouldBe("https://example.test");
     }
 
+    /// <summary>Verifies an unescaped ampersand in a link tag's target survives mnemonic collapsing
+    /// intact instead of corrupting the tag into literal markup syntax. UseMnemonic must scan
+    /// mnemonic markers with tag-boundary awareness, so the query-string ampersand inside
+    /// &lt;link=...&gt; is never mistaken for an access-key marker.</summary>
+    [Fact]
+    public void Render_WhenMnemonicContentHasUnescapedAmpersandInLinkTarget_PreservesTagAndHyperlink()
+    {
+        const string content = "<link=https://x?a=1&b=2>Click here</link>";
+        ControlText withMnemonic = new(content) { UseMnemonic = true };
+        ControlText withoutMnemonic = new(content);
+        var engine = new LayoutEngine();
+        engine.Layout(withMnemonic, new Size(60, 1));
+        engine.Layout(withoutMnemonic, new Size(60, 1));
+        using Frame frame = new(new Size(60, 1));
+        using Frame reference = new(new Size(60, 1));
+
+        withMnemonic.Render(frame.Canvas);
+        withoutMnemonic.Render(reference.Canvas);
+
+        for (var index = 0; index < "Click here".Length; index++)
+        {
+            var point = new Point(index, 0);
+            FrameOracle.Get(frame, point).ShouldBe(FrameOracle.Get(reference, point));
+        }
+
+        FrameOracle.Get(frame, default).ShouldBe("C");
+        frame.GetCell(default).Style.Hyperlink.ShouldBe("https://x?a=1&b=2");
+        FrameOracle.Get(frame, new Point("Click here".Length, 0)).ShouldBe(string.Empty);
+    }
+
     /// <summary>Verifies a markup boundary inside one grapheme never splits its cell ownership.</summary>
     [Fact]
     public void Render_WhenStyleBoundarySplitsGrapheme_UsesStyleAtClusterStart()
