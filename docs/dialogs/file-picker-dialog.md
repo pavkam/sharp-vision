@@ -57,12 +57,21 @@ never part of the accepted selection), `Directories` (a file is never part of
 the accepted selection), and `FilesAndDirectories` (either kind can be
 accepted). A `Filter` still applies only to file basenames in every mode -
 directories always stay visible so the user can navigate into them regardless of
-`SelectionMode`. Navigation-on-invoke (double-click or Enter on a directory) is
-unaffected by `SelectionMode`; it always navigates, in every mode - only a file
-commits on double-click or Enter. What `SelectionMode` changes is which rows
-count toward the accepted selection the Open Button commits: with `Directories`
-or `FilesAndDirectories`, a selected directory row enables Open and is included
-in the accepted `FilePickerResult` alongside any selected files.
+`SelectionMode`. Navigation-on-invoke (double-click or Enter on a directory row)
+is unaffected by `SelectionMode`; it always navigates, in every mode - only a
+file commits on double-click or Enter. What `SelectionMode` changes is which
+rows count toward the accepted selection: with `Directories` or
+`FilesAndDirectories`, a selected directory row enables the Open Button and is
+included in the accepted `FilePickerResult` alongside any selected files.
+
+Two more behaviors follow from `SelectionMode`, both described in detail in
+[Text and localization](#text-and-localization) and
+[Interaction](#interaction): in pure `Directories` mode the Open Button's
+default caption reads "Select" instead of "Open", since there is nothing to
+"open" when only directories are pickable; and typing a path that names an
+existing directory into the location input and pressing Enter selects that
+directory in `Directories` or `FilesAndDirectories` mode instead of navigating
+into it.
 
 | Style property            | Default | Applies to                                                                |
 | ------------------------- | ------- | ------------------------------------------------------------------------- |
@@ -82,7 +91,7 @@ semantic input profile.
 | `DirectoryPlaceholder` | `"Directory path"` |
 | `ShowHiddenText`       | `"Show &hidden"`   |
 | `CancelText`           | `"&Cancel"`        |
-| `OpenText`             | `"&Open"`          |
+| `OpenText`             | `"&Open"` (`"&Select"` in `Directories` mode) |
 
 Each setter rejects null. `FilePickerDialog` copies these values the same way it
 copies every other option (see [Text and localization](#text-and-localization)).
@@ -162,6 +171,12 @@ in-flight status wording. Every setter validates non-null before mutating.
 `FilePickerOptions` carries the caption and placeholder texts, plus
 `CountFormat`, `SelectionFormat`, `ReadyText`, and `LoadingText`, to `ShowAsync`
 — a null option value leaves the constructed dialog's own default in place.
+
+`FilePickerOptions.OpenText` follows that same null-means-default rule: leaving
+it null lets the dialog pick its own mode-aware default (`"&Select"` in pure
+`Directories` mode, `"&Open"` otherwise); explicitly setting it to any non-null
+value - including a caller-chosen `"&Open"` in `Directories` mode - always wins
+and is never overridden by `SelectionMode`.
 
 ## Presentation and ownership
 
@@ -262,7 +277,14 @@ link cycles cannot create traversal cycles.
   the parent directory. Backspace matches a plain command after ignoring Caps
   Lock and Num Lock; Control, Alt, Super, Hyper, Meta, and larger chords remain
   unhandled. The Button disables at a root.
-- Pressing Enter in the location input loads that text's canonical directory.
+- Pressing Enter in the location input loads that text's canonical directory -
+  unless the text names an existing directory and `SelectionMode` is
+  `Directories` or `FilesAndDirectories`, in which case that directory is
+  accepted as the final selection instead, exactly as if it had been selected in
+  the ListView and committed with the Open (or Select) Button. A path that names
+  a file, does not exist, or is submitted in `Files` mode still only navigates
+  (and reports the usual recoverable error for a missing or inaccessible
+  target).
 - The ListView follows select-then-commit: a single primary pointer click on any
   row - file or directory - only selects it. Committing a row takes Enter or a
   second pointer click (a double-click); the Open Button runs only the accept
@@ -282,9 +304,11 @@ link cycles cannot create traversal cycles.
 > on a file does not accept. Enter behaves the same way under a
 > non-activation-eligible modifier.
 
-- Committing a file accepts the current file selection, whether the commit came
-  from Enter, a double-click, or the Open Button. Open is enabled only while at
-  least one file is selected.
+- Committing a row accepts the current selection, whether the commit came from
+  Enter, a double-click, or the Open (or Select) Button. The Button is enabled
+  only while `SelectedPaths` is non-empty - at least one file selected in
+  `Files` mode, at least one file or directory selected in `Directories` or
+  `FilesAndDirectories` mode.
 - Changing the filter or the Show hidden toggle starts a replacement load. When
   it succeeds, the selection is remapped by canonical path: entries still
   present stay selected, while filtered or removed entries leave the selection.
@@ -344,9 +368,14 @@ The behavior above is verified end to end, so callers can rely on it:
 - Missing and denied directories, synchronous and asynchronous failures,
   cancellation, stale completions, detach, and disposal are all handled without
   violating dispatcher affinity.
-- Single and multiple selection work as configured, directories never reach the
-  result, and parent, path, and Backspace navigation plus select-then-commit
-  keyboard and pointer invocation behave as described.
+- Single and multiple selection work as configured, and parent, path, and
+  Backspace navigation plus select-then-commit keyboard and pointer invocation
+  behave as described.
+- The Open Button's default caption is mode-aware ("Select" in pure
+  `Directories` mode, "Open" otherwise) but a caller-supplied `OpenText` always
+  wins over that default. Submitting a location-input path that names an
+  existing directory selects it in `Directories` and `FilesAndDirectories` mode
+  instead of navigating, while every other submitted path still navigates.
 - Open, Cancel, Escape, and frame close each complete the dialog. Modality
   isolates the background, Tab stays confined, focus is restored, and the host
   is cleaned up.

@@ -86,7 +86,7 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
         DirectoryPlaceholder = options.DirectoryPlaceholder;
         ShowHiddenText = options.ShowHiddenText;
         CancelText = options.CancelText;
-        OpenText = options.OpenText;
+        OpenText = options.OpenText ?? DefaultOpenText(_selectionMode);
 
         if (options.ReadyText is { } readyText)
         {
@@ -141,7 +141,11 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
     /// <summary>Gets the resolved Open Button style.</summary>
     public ButtonStyle ActualOpenButtonStyle => _openButtonStyle.Actual;
 
-    /// <summary>Gets or sets the non-null caption for the Open action.</summary>
+    /// <summary>Gets or sets the non-null caption for the Open action. Defaults to
+    /// <see cref="FilePickerOptions.OpenText"/> when the caller supplied one, otherwise to
+    /// <c>"&amp;Select"</c> in <see cref="FileSelectionMode.Directories"/> mode - since there is
+    /// nothing to "open" when only directories are pickable - and to <c>"&amp;Open"</c> in every
+    /// other mode.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
     /// <exception cref="InvalidOperationException">The attached dialog is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The dialog is disposed.</exception>
@@ -183,6 +187,13 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
         FilePickerDialogStyle.Definition.Resolve(_style.LocalValue, theme);
 
     private static string DefaultSelectionFormat(int count) => $"{count} {(count == 1 ? "file" : "files")} selected";
+
+    /// <summary>Resolves the mode-aware default Open-action caption used when the caller did not
+    /// explicitly supply <see cref="FilePickerOptions.OpenText"/>.</summary>
+    /// <param name="selectionMode">The picker's selection mode.</param>
+    /// <returns><c>"&amp;Select"</c> in pure directory mode; <c>"&amp;Open"</c> otherwise.</returns>
+    private static string DefaultOpenText(FileSelectionMode selectionMode) =>
+        selectionMode == FileSelectionMode.Directories ? "&Select" : "&Open";
 
     #region Presentation
 
@@ -296,6 +307,18 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
                     .Select(static entry => new FilePickerResultEntry(entry.FullPath, entry.IsDirectory))
                     .ToArray()));
         }
+    }
+
+    /// <inheritdoc/>
+    private protected override bool TryAcceptTypedDirectory(string canonicalDirectory)
+    {
+        if (_selectionMode == FileSelectionMode.Files)
+        {
+            return false;
+        }
+
+        _ = Complete(FilePickerResult.Accept([new FilePickerResultEntry(canonicalDirectory, isDirectory: true)]));
+        return true;
     }
 
     private void OnOpenClicked(object? sender, EventArgs eventArgs)

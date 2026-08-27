@@ -803,6 +803,85 @@ public sealed class FilePickerDialogTests
         dialog.Status.ShouldContain("does not exist");
     }
 
+    /// <summary>Verifies typing an existing directory's path into the location input and pressing
+    /// Enter accepts that directory as the final selection in Directories mode instead of
+    /// navigating into it - the typed-path counterpart to selecting the directory row and
+    /// committing it with the Select Button.</summary>
+    [Fact]
+    public async Task PathSubmission_WhenModeIsDirectoriesAndPathNamesExistingDirectory_AcceptsItAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-path-select-directory"));
+        var subdirectory = Path.Combine(directory, "sub");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory, new FilePickerEntry("sub", subdirectory, isDirectory: true, isHidden: false));
+        source.AddDirectory(subdirectory);
+        var dialog = new FilePickerDialog(
+            new FilePickerOptions { InitialDirectory = directory, SelectionMode = FileSelectionMode.Directories },
+            source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(80, 24),
+            TestContext.Current.CancellationToken);
+        var path = OwnedTree.Find<TextInput>(dialog).ShouldNotBeNull();
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                path.Text = subdirectory;
+                surface.Application.Focus.Focus(path).ShouldBeTrue();
+            },
+            "type an existing directory path in Directories mode");
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        dialog.HasSelectedResult.ShouldBeTrue();
+        var result = dialog.SelectedResult.ShouldNotBeNull();
+        result.IsAccepted.ShouldBeTrue();
+        result.Paths.ShouldHaveSingleItem().ShouldBe(subdirectory);
+        result.Entries.ShouldHaveSingleItem().IsDirectory.ShouldBeTrue();
+        dialog.CurrentDirectory.ShouldBe(directory);
+    }
+
+    /// <summary>Verifies typing an existing directory's path into the location input and pressing
+    /// Enter still navigates into it in the default Files selection mode - a regression guard for
+    /// FileSelectionMode.Directories' new typed-path acceptance behavior.</summary>
+    [Fact]
+    public async Task PathSubmission_WhenModeIsFilesAndPathNamesExistingDirectory_StillNavigatesAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-path-navigate-directory"));
+        var subdirectory = Path.Combine(directory, "sub");
+        var childFile = Path.Combine(subdirectory, "Child.cs");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory, new FilePickerEntry("sub", subdirectory, isDirectory: true, isHidden: false));
+        source.AddDirectory(subdirectory, new FilePickerEntry("Child.cs", childFile, isDirectory: false, isHidden: false));
+        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(80, 24),
+            TestContext.Current.CancellationToken);
+        var path = OwnedTree.Find<TextInput>(dialog).ShouldNotBeNull();
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                path.Text = subdirectory;
+                surface.Application.Focus.Focus(path).ShouldBeTrue();
+            },
+            "type an existing directory path in Files mode");
+        await surface.Keyboard.PressAsync(Code.Enter);
+        await DialogWait.UntilAsync(surface, dialog, () => !dialog.IsLoading && dialog.CurrentDirectory == subdirectory);
+
+        // Assert
+        dialog.CurrentDirectory.ShouldBe(subdirectory);
+        dialog.HasSelectedResult.ShouldBeFalse();
+        list.Items.Count.ShouldBe(1);
+    }
+
     /// <summary>Verifies a late completion from a cancelled generation cannot overwrite newer rows.</summary>
     [Fact]
     public async Task Reload_WhenOlderRequestCompletesLast_IgnoresStaleSnapshotAsync()
@@ -1644,6 +1723,51 @@ public sealed class FilePickerDialogTests
 
         dialog.OpenText.ShouldBe("&Open");
         dialog.DirectoryPlaceholder.ShouldBe("Directory path");
+    }
+
+    /// <summary>Verifies a Directories-mode dialog whose options do not set OpenText defaults the
+    /// commit Button's caption to "Select" instead of "Open", since there is nothing to "open" when
+    /// only directories are pickable.</summary>
+    [Fact]
+    public void OpenText_WhenModeIsDirectoriesAndNotExplicitlySet_DefaultsToSelect()
+    {
+        using var dialog = new FilePickerDialog(
+            new FilePickerOptions { SelectionMode = FileSelectionMode.Directories },
+            new FakeFilePickerFileSystem());
+        var openButton = OwnedTree.FindAll<Button>(dialog).Single(static button => button.IsDefault);
+
+        dialog.OpenText.ShouldBe("&Select");
+        openButton.Text.ShouldBe("&Select");
+    }
+
+    /// <summary>Verifies a Directories-mode dialog whose options explicitly set OpenText keeps that
+    /// caller value instead of being overridden by the mode-aware default - a regression guard for
+    /// the "an explicit caller choice always wins" rule.</summary>
+    [Fact]
+    public void OpenText_WhenModeIsDirectoriesAndExplicitlySet_KeepsCallerValue()
+    {
+        using var dialog = new FilePickerDialog(
+            new FilePickerOptions { SelectionMode = FileSelectionMode.Directories, OpenText = "&Open" },
+            new FakeFilePickerFileSystem());
+        var openButton = OwnedTree.FindAll<Button>(dialog).Single(static button => button.IsDefault);
+
+        dialog.OpenText.ShouldBe("&Open");
+        openButton.Text.ShouldBe("&Open");
+    }
+
+    /// <summary>Verifies the default Files selection mode still defaults OpenText to "&amp;Open" -
+    /// a byte-identical regression guard for FileSelectionMode.Directories' new mode-aware
+    /// default.</summary>
+    [Fact]
+    public void OpenText_WhenModeIsFiles_DefaultsToOpen()
+    {
+        using var dialog = new FilePickerDialog(
+            new FilePickerOptions { SelectionMode = FileSelectionMode.Files },
+            new FakeFilePickerFileSystem());
+        var openButton = OwnedTree.FindAll<Button>(dialog).Single(static button => button.IsDefault);
+
+        dialog.OpenText.ShouldBe("&Open");
+        openButton.Text.ShouldBe("&Open");
     }
 
     /// <summary>Verifies a custom selection formatter builds the status text shown while at least

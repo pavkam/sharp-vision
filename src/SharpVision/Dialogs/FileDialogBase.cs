@@ -527,6 +527,21 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     /// <param name="cause">The activation cause (keyboard or pointer).</param>
     private protected abstract void OnFileItemInvoked(FilePickerEntry entry, ActivationCause cause);
 
+    /// <summary>Called when a submitted location-input path canonicalizes to an existing directory,
+    /// before that directory would otherwise be treated as a navigation target. A dialog that
+    /// overrides this to accept the directory as a final selection (mirroring what a directory
+    /// click followed by its own commit control would do) returns true, which skips navigation
+    /// entirely. The base implementation always returns false, so <see cref="Navigate"/> runs
+    /// exactly as before this hook existed - the correct behavior for a dialog with no
+    /// directory-selection concept.</summary>
+    /// <param name="canonicalDirectory">The canonical directory path the submitted text resolved to.</param>
+    /// <returns>true if the directory was accepted as a selection; false to navigate into it as usual.</returns>
+    private protected virtual bool TryAcceptTypedDirectory(string canonicalDirectory)
+    {
+        _ = canonicalDirectory;
+        return false;
+    }
+
     private void OnUpClicked(object? sender, EventArgs eventArgs)
     {
         _ = sender;
@@ -537,7 +552,33 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     private void OnPathSubmitted(object? sender, SubmittedEventArgs eventArgs)
     {
         _ = sender;
-        Navigate(eventArgs.Text);
+        var text = eventArgs.Text;
+
+        if (TryAcceptTypedPathAsDirectory(text))
+        {
+            return;
+        }
+
+        Navigate(text);
+    }
+
+    /// <summary>Canonicalizes <paramref name="path"/> and, if it names an existing directory,
+    /// offers it to <see cref="TryAcceptTypedDirectory"/> instead of treating it as a navigation
+    /// target. Any canonicalization failure falls through to the caller's existing
+    /// <see cref="Navigate"/> fallback, which reports the same failure consistently.</summary>
+    /// <param name="path">The raw submitted text.</param>
+    /// <returns>true if the path was accepted as a directory selection.</returns>
+    private bool TryAcceptTypedPathAsDirectory(string path)
+    {
+        try
+        {
+            var canonical = FileSystem.GetFullPath(path);
+            return FileSystem.DirectoryExists(canonical) && TryAcceptTypedDirectory(canonical);
+        }
+        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     private void OnSelectionChanged(object? sender, ListSelectionChangedEventArgs eventArgs)

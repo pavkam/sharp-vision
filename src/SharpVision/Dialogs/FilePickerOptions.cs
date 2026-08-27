@@ -195,17 +195,11 @@ public sealed class FilePickerOptions
         }
     } = "&Cancel";
 
-    /// <summary>Gets or sets the non-null caption for the Open action.</summary>
-    /// <exception cref="ArgumentNullException">The value is null.</exception>
-    public string OpenText
-    {
-        get;
-        set
-        {
-            ArgumentNullException.ThrowIfNull(value);
-            field = value;
-        }
-    } = "&Open";
+    /// <summary>Gets or sets the caption for the Open action, or null to let the dialog use its own
+    /// default - which is <c>"&amp;Select"</c> when <see cref="SelectionMode"/> is
+    /// <see cref="FileSelectionMode.Directories"/>, since there is nothing to "open" when only
+    /// directories are pickable, and <c>"&amp;Open"</c> otherwise.</summary>
+    public string? OpenText { get; set; }
 
     /// <summary>Gets or sets the status text used while no request is outstanding, or null to let
     /// the dialog use its own default.</summary>
