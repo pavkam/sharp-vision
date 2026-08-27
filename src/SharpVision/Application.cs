@@ -1630,10 +1630,11 @@ public sealed class Application:
         {
             // A live render may have a backend transaction prepared while transport flush is
             // outstanding. Invalidation belongs to the next render boundary, after that
-            // transaction has committed or failed. UpdateGraphicsBackend shares that hazard for
-            // the same reason - swapping the backend out from under a prepared transaction could
-            // commit or invalidate the wrong instance - and guards against it itself, returning
-            // false as a no-op instead of throwing. A race only defers reselection to the next
+            // transaction has committed or failed. UpdateGraphicsBackend only ever selects a
+            // backend when none exists yet - an existing backend already re-checks authoritative
+            // support per frame and is left untouched here - but selecting one for the first time
+            // still shares the in-flight-render hazard, so it guards against that itself, returning
+            // false as a no-op instead of throwing. A race only defers selection to the next
             // capability republish; it does not lose it, and the pending invalidation flag below
             // still forces a full redraw at the next render boundary either way.
             var policy = _options.Multiplexing ?? _options.Negotiation?.Multiplexing;

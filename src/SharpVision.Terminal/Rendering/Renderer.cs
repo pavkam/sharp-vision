@@ -717,7 +717,6 @@ public sealed class Renderer: IDisposable
     public bool UpdateGraphicsBackend(TerminalCapabilities capabilities, MultiplexerRoute? route)
     {
         ArgumentNullException.ThrowIfNull(capabilities);
-        ThrowIfDisposed();
 
         if (_backend is not null)
         {
@@ -731,6 +730,12 @@ public sealed class Renderer: IDisposable
 
         try
         {
+            // Disposal is checked only after the claim, mirroring RenderAsync: a Dispose() that
+            // fully completes in the window between the outer null check and this claim would
+            // otherwise leave _backend null but _disposed set, and an unguarded ThrowIfDisposed()
+            // here would already have passed - resurrecting a backend onto an already-torn-down
+            // renderer that no later Dispose() call would ever release.
+            ThrowIfDisposed();
             _backend ??= GraphicsBackendSelector.Create(capabilities, route);
         }
         finally
