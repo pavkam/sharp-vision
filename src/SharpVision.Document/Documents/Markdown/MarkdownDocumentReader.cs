@@ -16,6 +16,12 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     private const int _maximumRecursiveBlockDepth = 64;
     private const string _nestingLimitDiagnostic =
         "Markdown block nesting exceeded the supported limit; deeper markers remain literal.";
+
+    /// <summary>Maximum characters allowed between <c>&amp;</c> and its terminating <c>;</c> when
+    /// scanning for a character reference; bounds the lookahead so a bare, unterminated ampersand
+    /// never triggers an unbounded scan.</summary>
+    private const int _maximumCharacterReferenceBodyLength = 12;
+
     private readonly MarkdownExtension _extensions;
 
     /// <summary>Initializes a baseline CommonMark reader.</summary>
@@ -692,6 +698,14 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             {
                 _ = plain.Append(source[index + 1]);
                 index += 2;
+                continue;
+            }
+
+            if (source[index] == '&' &&
+                TryDecodeCharacterReference(source, index, out var referenceLength, out var decoded))
+            {
+                _ = plain.Append(decoded);
+                index += referenceLength;
                 continue;
             }
 
@@ -1398,12 +1412,144 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             if (source[index] == '\\' && index + 1 < source.Length && IsEscapablePunctuation(source[index + 1]))
             {
                 index++;
+                _ = result.Append(source[index]);
+                continue;
+            }
+
+            if (source[index] == '&' &&
+                TryDecodeCharacterReference(source, index, out var referenceLength, out var decoded))
+            {
+                _ = result.Append(decoded);
+                index += referenceLength - 1;
+                continue;
             }
 
             _ = result.Append(source[index]);
         }
 
         return result.ToString();
+    }
+
+    /// <summary>Attempts to decode an HTML character reference (named or numeric) starting at the
+    /// <c>&amp;</c> found at <paramref name="index"/>. On success, <paramref name="length"/> is the
+    /// number of source characters the reference occupies (including the leading <c>&amp;</c> and
+    /// trailing <c>;</c>) and <paramref name="decoded"/> holds the replacement text. On failure the
+    /// <c>&amp;</c> and everything after it are left completely untouched by the caller.</summary>
+    [Pure]
+    private static bool TryDecodeCharacterReference(string source, int index, out int length, out string decoded)
+    {
+        length = 0;
+        decoded = string.Empty;
+
+        var scanLimit = Math.Min(source.Length, index + _maximumCharacterReferenceBodyLength + 2);
+        var semicolon = -1;
+
+        for (var cursor = index + 1; cursor < scanLimit; cursor++)
+        {
+            if (source[cursor] == ';')
+            {
+                semicolon = cursor;
+                break;
+            }
+
+            if (source[cursor] is not ('#' or 'x' or 'X' or (>= 'a' and <= 'z') or (>= 'A' and <= 'Z') or
+                (>= '0' and <= '9')))
+            {
+                break;
+            }
+        }
+
+        if (semicolon < 0)
+        {
+            return false;
+        }
+
+        var body = source.AsSpan(index + 1, semicolon - index - 1);
+
+        if (!(body.Length > 0 && body[0] == '#'
+                ? TryDecodeNumericReference(body[1..], out decoded)
+                : TryDecodeNamedReference(body, out decoded)))
+        {
+            return false;
+        }
+
+        length = semicolon - index + 1;
+        return true;
+    }
+
+    /// <summary>Decodes a decimal (<c>N</c>) or hexadecimal (<c>xN</c>/<c>XN</c>) numeric character
+    /// reference body. Per the CommonMark/HTML5 numeric-reference rules, the null code point, code
+    /// points beyond U+10FFFF, and surrogate-range code points all decode to U+FFFD rather than
+    /// being rejected.</summary>
+    [Pure]
+    private static bool TryDecodeNumericReference(ReadOnlySpan<char> digits, out string decoded)
+    {
+        decoded = string.Empty;
+
+        if (digits.Length == 0)
+        {
+            return false;
+        }
+
+        int codepoint;
+
+        if (digits[0] is 'x' or 'X')
+        {
+            var hexDigits = digits[1..];
+
+            if (hexDigits.Length == 0 ||
+                !int.TryParse(hexDigits, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out codepoint))
+            {
+                return false;
+            }
+        }
+        else if (!int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out codepoint))
+        {
+            return false;
+        }
+
+        var rune = codepoint != 0 && Rune.TryCreate(codepoint, out var parsed) ? parsed : Rune.ReplacementChar;
+        decoded = rune.ToString();
+        return true;
+    }
+
+    /// <summary>Decodes a curated set of named character references: the five XML entities, the
+    /// highest-frequency typographic and arrow entities, and a small set of accented Latin letters.
+    /// Any name outside this curated set fails and is left completely literal by the caller - this
+    /// reader does not attempt the full ~2200-entry HTML5 named-reference table.</summary>
+    [Pure]
+    private static bool TryDecodeNamedReference(ReadOnlySpan<char> name, out string decoded)
+    {
+        decoded = name switch
+        {
+            "amp" => "&",
+            "lt" => "<",
+            "gt" => ">",
+            "quot" => "\"",
+            "apos" => "'",
+            "nbsp" => " ",
+            "copy" => "©",
+            "reg" => "®",
+            "trade" => "™",
+            "hellip" => "…",
+            "mdash" => "—",
+            "ndash" => "–",
+            "larr" => "←",
+            "rarr" => "→",
+            "uarr" => "↑",
+            "darr" => "↓",
+            "eacute" => "é",
+            "egrave" => "è",
+            "agrave" => "à",
+            "auml" => "ä",
+            "ouml" => "ö",
+            "uuml" => "ü",
+            "ntilde" => "ñ",
+            "ccedil" => "ç",
+            _ => string.Empty
+        };
+
+        return decoded.Length > 0;
     }
 
     [Pure]

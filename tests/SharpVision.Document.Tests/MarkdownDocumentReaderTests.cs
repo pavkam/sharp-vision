@@ -788,6 +788,93 @@ public sealed class MarkdownDocumentReaderTests
             .ShouldBe("*literal* and [label](target)");
     }
 
+    /// <summary>Verifies a named HTML entity in ordinary paragraph text decodes to its character,
+    /// the common case behind reports of literal <c>&amp;amp;</c> surviving into rendered text.</summary>
+    [Fact]
+    public void Read_WhenParagraphContainsNamedEntity_DecodesToCharacter()
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read("Fish &amp; Chips")
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text
+            .ShouldBe("Fish & Chips");
+    }
+
+    /// <summary>Verifies both decimal and hexadecimal numeric character references decode to the
+    /// matching Unicode character.</summary>
+    [Theory]
+    [InlineData("&#65;")]
+    [InlineData("&#x41;")]
+    [InlineData("&#X41;")]
+    public void Read_WhenParagraphContainsNumericEntity_DecodesToCharacter(string source)
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read(source)
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("A");
+    }
+
+    /// <summary>Verifies a numeric reference outside the valid Unicode scalar-value range - past
+    /// U+10FFFF or inside the surrogate range - decodes to the replacement character rather than
+    /// being rejected outright, matching the CommonMark/HTML5 numeric-reference rule.</summary>
+    [Theory]
+    [InlineData("&#x110000;")]
+    [InlineData("&#xD800;")]
+    public void Read_WhenNumericEntityIsOutOfRange_DecodesToReplacementCharacter(string source)
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read(source)
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("�");
+    }
+
+    /// <summary>Verifies an unrecognized named reference is left completely literal, including its
+    /// ampersand and semicolon, rather than guessed or partially decoded.</summary>
+    [Fact]
+    public void Read_WhenNamedEntityIsUnknown_PreservesLiteralText()
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read("&foobar;")
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("&foobar;");
+    }
+
+    /// <summary>Verifies a numeric reference that decodes to an emphasis marker does not itself
+    /// trigger emphasis parsing - the decoded character is appended directly to the plain-text run
+    /// and never revisited by the structural inline checks.</summary>
+    [Fact]
+    public void Read_WhenNumericEntityDecodesToAsterisk_DoesNotTriggerEmphasis()
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read("a&#42;b&#42;c")
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("a*b*c");
+    }
+
+    /// <summary>Verifies an entity reference inside a code span is preserved completely literally;
+    /// code spans are extracted before the plain-text/entity path ever runs.</summary>
+    [Fact]
+    public void Read_WhenEntityAppearsInsideCodeSpan_PreservesLiteralText()
+    {
+        // Arrange and act
+        var code = new MarkdownDocumentReader().Read("`&amp;`")
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentCodeSpan>();
+
+        // Assert
+        code.Text.ShouldBe("&amp;");
+    }
+
     /// <summary>Verifies double-underscore strong emphasis - the extremely common alternative
     /// spelling to <c>**</c> - is recognized, matching CommonMark's own two equivalent strong
     /// delimiters.</summary>
@@ -1447,6 +1534,22 @@ public sealed class MarkdownDocumentReaderTests
     public void Read_WhenLinkDestinationUsesAllowedSpacingOrEscapes_ProducesDecodedTarget(
         string source,
         string expected)
+    {
+        // Arrange and act
+        var link = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentLink>();
+
+        // Assert
+        link.Target.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies a bare and an angle-bracketed link destination both decode HTML entities,
+    /// confirming the reader's internal punctuation-unescaping step now also decodes entities.</summary>
+    [Theory]
+    [InlineData("[link](/a&amp;b)", "/a&b")]
+    [InlineData("[link](</a&amp;b>)", "/a&b")]
+    public void Read_WhenLinkDestinationContainsEntity_ProducesDecodedTarget(string source, string expected)
     {
         // Arrange and act
         var link = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
