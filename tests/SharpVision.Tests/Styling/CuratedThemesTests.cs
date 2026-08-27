@@ -180,7 +180,8 @@ public sealed class CuratedThemesTests
         theme.Resolve(focused.EdgeColors.ResolveTop(focused.Foreground)).ShouldBe(Color.FromHex("#0000aa"));
         theme.Resolve(focused.EdgeColors.ResolveRight(focused.Foreground)).ShouldBe(Color.FromHex("#55ffff"));
         theme.Resolve(disabled.EdgeColors.ResolveTop(disabled.Foreground)).ShouldBe(Color.FromHex("#555555"));
-        theme.Resolve(disabled.EdgeColors.ResolveRight(disabled.Foreground)).ShouldBe(Color.FromHex("#aaaaaa"));
+        theme.Resolve(disabled.EdgeColors.ResolveRight(disabled.Foreground)).ShouldBe(Color.FromHex("#ffffff"));
+        theme.Resolve(disabled.EdgeColors.ResolveBottom(disabled.Foreground)).ShouldBe(Color.FromHex("#ffffff"));
         theme.Resolve(activeWindow.EdgeColors.ResolveTop(activeWindow.Foreground)).ShouldBe(Color.FromHex("#55ffff"));
         theme.Resolve(activeWindow.EdgeColors.ResolveRight(activeWindow.Foreground)).ShouldBe(Color.FromHex("#0000aa"));
         theme.Resolve(theme.Window.Normal.Shadow.Foreground).ShouldBe(Color.FromHex("#000000"));

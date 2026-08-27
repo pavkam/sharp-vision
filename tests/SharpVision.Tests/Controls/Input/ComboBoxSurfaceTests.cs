@@ -6,6 +6,40 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves ComboBox and its transient list through mounted terminal surfaces.</summary>
 public sealed class ComboBoxSurfaceTests
 {
+    /// <summary>Verifies Turbo Vision preserves the bright bottom edge of a disabled sunken field.</summary>
+    [Fact]
+    public async Task Render_WhenTurboVisionComboBoxIsDisabled_KeepsBottomBorderVisibleAsync()
+    {
+        // Arrange
+        var combo = new ComboBox
+        {
+            Items = ["Locked choice"],
+            SelectedIndex = 0,
+            IsEnabled = false,
+            Width = Length.Cells(12),
+            Height = Length.Cells(3)
+        };
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            combo,
+            new Size(12, 3),
+            options,
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.UpdateAsync(
+            () => surface.Application.Theme = ThemeCatalog.Load("turbo-vision"),
+            "apply Turbo Vision to the disabled ComboBox");
+
+        // Assert
+        var bottom = surface.Cell(new Point(5, 2)).Style;
+        bottom.Foreground.ShouldBe(Color.FromHex("#ffffff"));
+        bottom.Foreground.ShouldNotBe(bottom.Background);
+    }
+
     /// <summary>Verifies selectable and editable inputs paint the theme's raised input surface.</summary>
     [Fact]
     public async Task Theme_WhenInputControlsAreMounted_UsesSurfaceBackgroundAsync()

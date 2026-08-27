@@ -190,8 +190,8 @@
           "foreground": "disabledBorder",
           "edgeColors": {
             "top": "darkGray",
-            "right": "lightGray",
-            "bottom": "lightGray",
+            "right": "white",
+            "bottom": "white",
             "left": "darkGray"
           }
         }
