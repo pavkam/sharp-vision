@@ -884,6 +884,63 @@ public sealed class MarkdownDocumentReaderTests
         blocks.ShouldNotContain(static block => block is DocumentSeparator);
     }
 
+    /// <summary>Verifies a tab preceding a bullet marker is measured as CommonMark indentation - a
+    /// tab expands to the next 4-column stop, clearing the three-column marker threshold on its
+    /// own - so the line remains literal paragraph text instead of becoming a list.</summary>
+    [Fact]
+    public void Read_WhenListMarkerIsPrecededByTab_RemainsLiteralParagraphText()
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read("\t- item").Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("\t- item");
+    }
+
+    /// <summary>Verifies a tab preceding a block quote marker is measured as CommonMark indentation,
+    /// so the line remains literal paragraph text instead of becoming a block quote.</summary>
+    [Fact]
+    public void Read_WhenBlockQuoteMarkerIsPrecededByTab_RemainsLiteralParagraphText()
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read("\t> quoted").Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("\t> quoted");
+    }
+
+    /// <summary>Verifies a tab preceding a fence opener is measured as CommonMark indentation, so
+    /// the line remains literal paragraph text instead of opening a fenced code block.</summary>
+    [Fact]
+    public void Read_WhenFenceOpenerIsPrecededByTab_RemainsLiteralParagraphText()
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read("\t```").Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("\t```");
+    }
+
+    /// <summary>Verifies a fenced code body line's own leading tab is removed as part of the fence's
+    /// structural indentation, the same way a leading space would be, rather than surviving as a
+    /// literal character because the indent scan stopped counting at the tab.</summary>
+    [Fact]
+    public void Read_WhenFencedCodeBodyLineStartsWithTab_StripsStructuralTab()
+    {
+        // Arrange
+        const string source = "  ```\n\tcode\n  ```";
+
+        // Act
+        var code = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentCodeBlock>();
+
+        // Assert
+        code.Text.ShouldBe("code");
+    }
+
     /// <summary>Verifies intraword underscores are ordinary text rather than emphasis delimiters.</summary>
     [Fact]
     public void Read_WhenUnderscoresAreIntraword_DoesNotCreateEmphasis()
@@ -1309,6 +1366,30 @@ public sealed class MarkdownDocumentReaderTests
         list.Items.Count.ShouldBe(2);
         list.Items[0].Blocks.Count.ShouldBe(2);
         _ = list.Items[0].Blocks[1].ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem();
+    }
+
+    /// <summary>Verifies a tab-indented nested marker is recognized through the same structural
+    /// indentation removal as a space-indented one. CommonMark expands a tab to the next 4-column
+    /// stop, which alone clears the parent item's two-column marker width; before that expansion
+    /// was measured, the leading tab was never stripped and the nested marker text stayed literal
+    /// inside the parent's paragraph instead of starting a nested list.</summary>
+    [Fact]
+    public void Read_WhenNestedListMarkerIsIndentedWithTab_RecognizesNestedList()
+    {
+        // Arrange
+        const string source = "- item\n\t- nested";
+
+        // Act
+        var item = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem();
+
+        // Assert
+        item.Blocks.Count.ShouldBe(2);
+        item.Blocks[0].ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("item");
+        item.Blocks[1].ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem().Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("nested");
     }
 
     /// <summary>Verifies balanced parentheses remain part of an inline-link destination.</summary>

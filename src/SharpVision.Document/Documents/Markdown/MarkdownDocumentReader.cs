@@ -184,7 +184,13 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             }
 
             var line = lines[index];
-            var removableIndent = Math.Min(fence.Indent, CountLeadingSpaces(line));
+
+            // fence.Indent is a column budget from a marker whose own opening indentation is
+            // guaranteed tab-free (see TryFenceOpener), so it doubles as a character count there.
+            // The body line's own leading run may contain tabs; clamping against its char length
+            // (rather than its expanded column count) keeps the slice inside the whitespace run -
+            // an atomic-tab simplification, not full CommonMark partial-tab column splitting.
+            var removableIndent = Math.Min(fence.Indent, CountLeadingIndentation(line).Length);
             _ = body.Append(line.AsSpan(removableIndent));
             hasBodyLine = true;
             index++;
@@ -202,16 +208,16 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     [Pure]
     private static bool TryFenceOpener(string source, out MarkdownFence fence)
     {
-        var indent = CountLeadingSpaces(source);
+        var indent = CountLeadingIndentation(source);
 
-        if (indent > 3 || indent >= source.Length || source[indent] is not ('`' or '~'))
+        if (indent.Column > 3 || indent.Length >= source.Length || source[indent.Length] is not ('`' or '~'))
         {
             fence = default;
             return false;
         }
 
-        var marker = source[indent];
-        var length = CountRun(source, indent, marker);
+        var marker = source[indent.Length];
+        var length = CountRun(source, indent.Length, marker);
 
         if (length < 3)
         {
@@ -219,7 +225,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             return false;
         }
 
-        var info = source[(indent + length)..].Trim();
+        var info = source[(indent.Length + length)..].Trim();
 
         if (marker == '`' && info.Contains('`'))
         {
@@ -227,35 +233,35 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             return false;
         }
 
-        fence = new MarkdownFence(marker, length, indent, info);
+        fence = new MarkdownFence(marker, length, indent.Column, info);
         return true;
     }
 
     [Pure]
     private static bool IsFenceCloser(string source, MarkdownFence fence)
     {
-        var indent = CountLeadingSpaces(source);
+        var indent = CountLeadingIndentation(source);
 
-        if (indent > 3 || indent >= source.Length || source[indent] != fence.Marker)
+        if (indent.Column > 3 || indent.Length >= source.Length || source[indent.Length] != fence.Marker)
         {
             return false;
         }
 
-        var length = CountRun(source, indent, fence.Marker);
-        return length >= fence.Length && source.AsSpan(indent + length).Trim().IsEmpty;
+        var length = CountRun(source, indent.Length, fence.Marker);
+        return length >= fence.Length && source.AsSpan(indent.Length + length).Trim().IsEmpty;
     }
 
     private bool TryHeading(string line, [NotNullWhen(true)] out DocumentHeading? heading)
     {
-        var indent = CountLeadingSpaces(line);
+        var indent = CountLeadingIndentation(line);
 
-        if (indent > 3)
+        if (indent.Column > 3)
         {
             heading = null;
             return false;
         }
 
-        var trimmed = line[indent..];
+        var trimmed = line[indent.Length..];
         var level = 0;
 
         while (level < trimmed.Length && level < 6 && trimmed[level] == '#')
@@ -407,8 +413,12 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
                 // CommonMark lazy continuation: an under-indented, marker-less line still belongs
                 // to the item when it continues an already-open paragraph and does not itself look
-                // like the start of another block; otherwise it ends the item as before.
-                if (!IsBlankLine(lines[index]) && CountLeadingSpaces(lines[index]) <= firstMarker.Indent &&
+                // like the start of another block; otherwise it ends the item as before. The
+                // indentation check compares columns - a tab counts toward the threshold even
+                // though CountLeadingIndentation only expands it to its next 4-column stop rather
+                // than splitting it (the "atomic tab" simplification).
+                if (!IsBlankLine(lines[index]) &&
+                    CountLeadingIndentation(lines[index]).Column <= firstMarker.Indent &&
                     (!paragraphOpen || IsParagraphInterruptingBlockStart(lines[index])))
                 {
                     break;
@@ -447,7 +457,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                         break;
                     }
 
-                    if (CountLeadingSpaces(lines[afterBlankIndex]) <= firstMarker.Indent)
+                    if (CountLeadingIndentation(lines[afterBlankIndex]).Column <= firstMarker.Indent)
                     {
                         index = afterBlankIndex;
                         break;
@@ -458,7 +468,15 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 }
                 else
                 {
-                    var remove = Math.Min(marker.Indent + marker.MarkerWidth, CountLeadingSpaces(lines[index]));
+                    // marker.Indent + marker.MarkerWidth is a column budget derived from a marker
+                    // whose own indentation is guaranteed tab-free, so it doubles as a character
+                    // count here. The candidate line's own leading run may contain tabs; clamping
+                    // against its char length (not its expanded column count) keeps the slice
+                    // inside the whitespace run - the same atomic-tab simplification as the fenced
+                    // code body strip above.
+                    var remove = Math.Min(
+                        marker.Indent + marker.MarkerWidth,
+                        CountLeadingIndentation(lines[index]).Length);
                     var content = lines[index][remove..];
                     continuation.Add(content);
                     paragraphOpen = !IsBlankLine(content) && !IsParagraphInterruptingBlockStart(content);
@@ -618,10 +636,12 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     [Pure]
     private static string TrimParagraphOpening(string line)
     {
-        var spaces = CountLeadingSpaces(line);
-        return spaces <= 3 && (spaces == line.Length || line[spaces] != '\t')
-            ? line[spaces..]
-            : line;
+        // A leading tab always expands to at least column 4 (CountLeadingIndentation rounds up to
+        // the next 4-column stop), so comparing the true column - rather than the old space-only
+        // count with an ad-hoc "next char is a tab" refusal - already keeps a tab-adjacent opening
+        // untouched, making that separate check obsolete.
+        var indent = CountLeadingIndentation(line);
+        return indent.Column <= 3 ? line[indent.Length..] : line;
     }
 
     private void ParseInlines(string source, DocumentInlineCollection destination, bool insideLink = false)
@@ -1640,15 +1660,15 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     [Pure]
     private static bool TryListMarker(string line, out MarkdownListMarker marker)
     {
-        var indent = CountLeadingSpaces(line);
+        var indent = CountLeadingIndentation(line);
 
-        if (indent > 3)
+        if (indent.Column > 3)
         {
             marker = default;
             return false;
         }
 
-        var trimmed = line[indent..];
+        var trimmed = line[indent.Length..];
 
         if (trimmed.Length > 0 && trimmed[0] is '-' or '+' or '*')
         {
@@ -1657,7 +1677,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             if (suffix.IsEmpty || ContainsOnlyListMarkerWhitespace(suffix))
             {
                 marker = new MarkdownListMarker(
-                    indent,
+                    indent.Column,
                     isOrdered: false,
                     delimiter: trimmed[0],
                     start: 1,
@@ -1671,7 +1691,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             if (spacing > 0)
             {
                 marker = new MarkdownListMarker(
-                    indent,
+                    indent.Column,
                     isOrdered: false,
                     delimiter: trimmed[0],
                     start: 1,
@@ -1702,7 +1722,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             if (suffix.IsEmpty || ContainsOnlyListMarkerWhitespace(suffix))
             {
                 marker = new MarkdownListMarker(
-                    indent,
+                    indent.Column,
                     isOrdered: true,
                     delimiter: trimmed[digits],
                     start,
@@ -1716,7 +1736,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             if (spacing > 0)
             {
                 marker = new MarkdownListMarker(
-                    indent,
+                    indent.Column,
                     isOrdered: true,
                     delimiter: trimmed[digits],
                     start,
@@ -1935,21 +1955,21 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     [Pure]
     private static bool IsRule(string line)
     {
-        var indent = CountLeadingSpaces(line);
+        var indent = CountLeadingIndentation(line);
 
         // The optional indentation prefix is distinct from whitespace between markers. Keeping
-        // that boundary explicit prevents a leading tab - an indented-code shape under the
-        // reader's documented tab limitation - from being discarded as if it were an interior
-        // separator.
-        if (indent > 3 || indent >= line.Length || line[indent] is not ('-' or '*' or '_'))
+        // that boundary explicit prevents a leading tab - which now expands to a full 4-column
+        // stop and so almost always exceeds the 3-column prefix budget on its own - from being
+        // discarded as if it were an interior separator.
+        if (indent.Column > 3 || indent.Length >= line.Length || line[indent.Length] is not ('-' or '*' or '_'))
         {
             return false;
         }
 
-        var marker = line[indent];
+        var marker = line[indent.Length];
         var markerCount = 0;
 
-        for (var index = indent; index < line.Length; index++)
+        for (var index = indent.Length; index < line.Length; index++)
         {
             if (line[index] == marker)
             {
@@ -1967,15 +1987,15 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     [Pure]
     private static bool TrySetextUnderline(string source, out int level)
     {
-        var indent = CountLeadingSpaces(source);
+        var indent = CountLeadingIndentation(source);
 
-        if (indent > 3)
+        if (indent.Column > 3)
         {
             level = 0;
             return false;
         }
 
-        var value = source[indent..].TrimEnd();
+        var value = source[indent.Length..].TrimEnd();
 
         if (value.Length == 0 || value.Any(character => character != value[0]) || value[0] is not ('=' or '-'))
         {
@@ -2007,15 +2027,15 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     [Pure]
     private static bool TryBlockQuoteMarker(string source, out int contentStart)
     {
-        var indent = CountLeadingSpaces(source);
+        var indent = CountLeadingIndentation(source);
 
-        if (indent > 3 || indent >= source.Length || source[indent] != '>')
+        if (indent.Column > 3 || indent.Length >= source.Length || source[indent.Length] != '>')
         {
             contentStart = 0;
             return false;
         }
 
-        contentStart = indent + 1;
+        contentStart = indent.Length + 1;
 
         if (contentStart < source.Length && source[contentStart] == ' ')
         {
@@ -2025,17 +2045,38 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         return true;
     }
 
+    /// <summary>Measures a line's leading run of spaces and tabs.</summary>
+    /// <returns>The indentation width in columns - each tab rounds up to the next 4-column stop
+    /// per CommonMark §2.2 ("atomic tab": a tab that straddles a threshold rounds to its full stop
+    /// rather than being split, so the column is not a character offset) - alongside the number of
+    /// characters the run actually occupies, which callers use as the char/slice offset instead.
+    /// </returns>
     [Pure]
-    private static int CountLeadingSpaces(string source)
+    private static (int Column, int Length) CountLeadingIndentation(string source)
     {
-        var count = 0;
+        var column = 0;
+        var length = 0;
 
-        while (count < source.Length && source[count] == ' ')
+        while (length < source.Length)
         {
-            count++;
+            if (source[length] == ' ')
+            {
+                column++;
+                length++;
+                continue;
+            }
+
+            if (source[length] == '\t')
+            {
+                column += 4 - (column % 4);
+                length++;
+                continue;
+            }
+
+            break;
         }
 
-        return count;
+        return (column, length);
     }
 
     [Pure]

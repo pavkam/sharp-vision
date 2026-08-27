@@ -151,11 +151,11 @@ Block-quote recognition, paragraph interruption, and quote-line consumption use
 the same marker grammar. A `>` marker may be preceded by zero through three
 literal spaces; four or more spaces leave it as literal paragraph content. A
 line that carries neither a block quote's `>` marker nor a list item's own
-indentation still continues that container's open paragraph as a CommonMark
-lazy continuation, provided the line does not itself look like the start of
-another block; a blank line always closes that eligibility. Nested containers
-each track their own open-paragraph state independently, so lazy continuation
-composes correctly through arbitrary nesting.
+indentation still continues that container's open paragraph as a CommonMark lazy
+continuation, provided the line does not itself look like the start of another
+block; a blank line always closes that eligibility. Nested containers each track
+their own open-paragraph state independently, so lazy continuation composes
+correctly through arbitrary nesting.
 
 Thematic breaks accept at least three matching `*`, `-`, or `_` markers with any
 mixture of spaces and tabs between or after them, following the
@@ -169,19 +169,23 @@ literal paragraph content and the result contains one deterministic diagnostic,
 keeping hostile input bounded without discarding source text or leaking the
 semantic tree's insertion exception.
 
+Leading indentation for headings, block quotes, lists, and fenced code openers
+expands a tab to the next 4-column stop, following
+[CommonMark §2.2](https://spec.commonmark.org/0.31.2/#tabs), rather than
+treating it as a single unmeasured character; a tab therefore reaches the
+zero-to-three-column threshold - and beyond - on its own. A body or continuation
+line's own leading tab is likewise consumed as one structural indentation
+character, the same as a leading space, up to the container's indent budget. The
+reader treats a tab atomically: it is never split across a threshold boundary,
+so removing only part of a tab's four-column width - CommonMark's full
+partial-tab splitting - is not implemented.
+
 > [!IMPORTANT]
 >
-> **Implementation gap:** two CommonMark behaviors are not implemented yet.
-> The reader should follow the CommonMark rule in each case; current behavior
-> differs as described.
+> **Implementation gap:** one CommonMark behavior is not implemented yet. The
+> reader should follow the CommonMark rule; current behavior differs as
+> described.
 >
-> - **Tab indentation.** CommonMark expands a tab to the next 4-column stop when
->   measuring a list, block-quote, or code-fence indent. This reader's
->   block-start detectors count only literal space characters toward that
->   measurement, so a tab-indented marker is not recognized as indentation at
->   all; the tab itself survives as a literal character in the resulting text.
->   This applies only to structural indentation - a tab inside an already-parsed
->   code block or inline flow expands correctly.
 > - **HTML entities.** `&amp;`, `&#65;`, and similar entity references pass
 >   through completely literally; this reader does not decode them.
 
