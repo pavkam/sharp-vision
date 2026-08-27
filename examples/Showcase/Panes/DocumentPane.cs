@@ -51,7 +51,7 @@ internal sealed class DocumentPane: CompositeControlBase
 
         var document = new Document
         {
-            Width = Length.Cells(64),
+            Width = Length.Cells(46),
             Height = Length.Cells(18),
         };
         document.Blocks.Add(new DocumentHeading(2, "One continuous selection"));
@@ -79,7 +79,7 @@ internal sealed class DocumentPane: CompositeControlBase
             IsTabStop = true,
             IsTextSelectionEnabled = true,
             Orientation = Orientation.Vertical,
-            Width = Length.Cells(64),
+            Width = Length.Cells(46),
             Children =
             {
                 new Text("This is an ordinary Stack, not a Document."),
@@ -141,7 +141,7 @@ internal sealed class DocumentPane: CompositeControlBase
 
     private static DocSection CreateTextSection()
     {
-        var document = new Document { Width = Length.Cells(64) };
+        var document = new Document { Width = Length.Cells(46) };
         document.Blocks.Add(new DocumentHeading(1, "SharpVision"));
         document.Blocks.Add(new DocumentParagraph(
             "Build rich terminal apps without giving up <b>Unicode</b>, <i>predictable layout</i>, " +
@@ -202,7 +202,7 @@ internal sealed class DocumentPane: CompositeControlBase
             "independent of the <info>Clicked</info> handler below. Resize the window to watch " +
             "every link wrap with its surrounding words like any other text."));
 
-        var document = new Document { Width = Length.Cells(64) };
+        var document = new Document { Width = Length.Cells(46) };
         document.Blocks.Add(paragraph);
 
         var section = new Stack
@@ -223,7 +223,7 @@ internal sealed class DocumentPane: CompositeControlBase
         ctaParagraph.Inlines.Add(new DocumentTextRun("  "));
         ctaParagraph.Inlines.Add(pricingButton);
 
-        var ctaDocument = new Document { Width = Length.Cells(60) };
+        var ctaDocument = new Document { Width = Length.Cells(46) };
         ctaDocument.Blocks.Add(ctaParagraph);
         var ctaSection = new Stack { Children = { ctaDocument, ctaStatus } };
 
@@ -276,7 +276,7 @@ internal sealed class DocumentPane: CompositeControlBase
         submit.Click += (_, _) => status.Content =
             $"Submitted: updates={updates.IsChecked}, channel={(stable.IsChecked ? "stable" : "preview")}";
 
-        var document = new Document { Width = Length.Cells(60) };
+        var document = new Document { Width = Length.Cells(46) };
         document.Blocks.Add(new DocumentHeading(2, "Release preferences"));
         document.Blocks.Add(new DocumentParagraph("Choose how this application should contact you."));
         document.Blocks.Add(new DocumentBlockControl(updates));
@@ -326,7 +326,7 @@ internal sealed class DocumentPane: CompositeControlBase
             numbered.Items.Add(new DocumentListItem($"Step {step} - still lines up at two digits"));
         }
 
-        var document = new Document { Width = Length.Cells(64) };
+        var document = new Document { Width = Length.Cells(46) };
         document.Blocks.Add(new DocumentHeading(2, "Bulleted, with nesting"));
         document.Blocks.Add(bulleted);
         document.Blocks.Add(new DocumentHeading(2, "Numbered past nine"));
@@ -340,7 +340,7 @@ internal sealed class DocumentPane: CompositeControlBase
             "This is CommonMark's loose-list model - the opposite of the tight nesting shown " +
             "above, where an item's own paragraph sits directly against its nested list."));
         looseFirst.Items.Add(new DocumentListItem("Set IsLoose to true to switch a list between the two."));
-        var looseDocument = new Document { Width = Length.Cells(60) };
+        var looseDocument = new Document { Width = Length.Cells(46) };
         looseDocument.Blocks.Add(looseFirst);
 
         return new DocSection(
@@ -399,7 +399,7 @@ internal sealed class DocumentPane: CompositeControlBase
             "directly:"));
         outerQuote.Blocks.Add(innerQuote);
 
-        var document = new Document { Width = Length.Cells(60) };
+        var document = new Document { Width = Length.Cells(46) };
         document.Blocks.Add(outerQuote);
 
         return new DocSection(
@@ -424,7 +424,7 @@ internal sealed class DocumentPane: CompositeControlBase
 
     private static DocSection CreateCodeSection()
     {
-        var document = new Document { Width = Length.Cells(64) };
+        var document = new Document { Width = Length.Cells(46) };
         document.Blocks.Add(new DocumentHeading(3, "Quick start"));
         document.Blocks.Add(new DocumentCodeBlock(
             "var document = new Document();\n" +
@@ -459,7 +459,7 @@ internal sealed class DocumentPane: CompositeControlBase
 
     private static DocSection CreateFlagshipSection()
     {
-        var document = new Document { Width = Length.Cells(92) };
+        var document = new Document { Width = Length.Cells(46) };
 
         document.Blocks.Add(new DocumentHeading(1, "TermFlow"));
 
