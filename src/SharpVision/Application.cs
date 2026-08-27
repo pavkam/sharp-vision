@@ -2630,7 +2630,7 @@ public sealed class Application:
             }
             catch (Exception exception)
             {
-                failure = exception;
+                failure ??= exception;
             }
         }
 

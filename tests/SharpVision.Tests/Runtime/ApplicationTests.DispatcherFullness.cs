@@ -794,4 +794,61 @@ public sealed partial class ApplicationTests
 
         await application.DisposeAsync();
     }
+
+    /// <summary>
+    /// Verifies <c>DisposeTerminalResourcesAsync</c> preserves the first-recorded
+    /// <c>TerminalServices.Dispose</c> cleanup failure instead of letting a later
+    /// <c>renderer.ShutdownAsync</c> failure silently replace it. The dispatcher queue is kept
+    /// saturated for the whole <see cref="TerminalOptions.CleanupTimeout"/> window so the bounded
+    /// retry around <c>TerminalServices.Dispose</c> (see
+    /// <see cref="DisposeTerminalResourcesAsync_WhenQueueNeverDrainsWithinCleanupTimeout_GivesUpAndRecordsFailureAsync"/>,
+    /// its sibling on the give-up side of the same retry) itself gives up and returns a real
+    /// <see cref="InvalidOperationException"/> as the first failure - not a substitute or a
+    /// reflection-only fake. A live Kitty graphics backend then forces
+    /// <c>Renderer.ShutdownAsync</c>'s own remote-cleanup write to fail with a distinct
+    /// <see cref="IOException"/> right after, exactly as
+    /// <c>StopAsync_WhenGraphicsCleanupFails_StillDisposesSessionTransportAsync</c> proves that
+    /// write is genuinely reachable. Before the fix at the renderer catch site, the second failure
+    /// unconditionally overwrote the first; this asserts the first failure - the one the method's
+    /// own remarks say guards a real armed-<c>DispatcherTimer</c> resource leak - survives.
+    /// </summary>
+    [Fact]
+    public async Task DisposeTerminalResourcesAsync_WhenRendererShutdownAlsoFails_PreservesFirstFailureAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(1, 1), new Size(2, 3)));
+        var options = Options(kitty: true) with { CleanupTimeout = TimeSpan.FromMilliseconds(50) };
+        var application = new Application(
+            new GraphicsProbeControl(Rgba()),
+            terminal,
+            terminal,
+            options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var rendererFailure = new IOException("renderer shutdown failed");
+        terminal.FailWriteNumber = terminal.Writes.Count + 1;
+        terminal.WriteFailure = rendererFailure;
+
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        try
+        {
+            var disposeTerminalResources = typeof(Application).GetMethod(
+                "DisposeTerminalResourcesAsync",
+                BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+            var task = (Task<Exception?>) disposeTerminalResources.Invoke(application, null)!;
+            var failure = await task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+            _ = failure.ShouldBeOfType<InvalidOperationException>();
+            failure.ShouldNotBeSameAs(rendererFailure);
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        await application.DisposeAsync();
+    }
 }
