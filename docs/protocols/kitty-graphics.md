@@ -116,7 +116,10 @@ Updating the same semantic placement reuses its image/placement pair. Removing
 one placement of a shared image uses `a=d,d=i,I=...,p=...` before
 acknowledgement and `a=d,d=i,i=...,p=...` afterwards. Removing the last use
 follows the same reference transition with `d=I`, freeing that exact image and
-all its placements.
+all its placements. When a frame removes the final visible Kitty placement, the
+renderer also performs a complete cell reconstruction. Its standard clear-screen
+operation clears retained raster state before replacement cells are painted,
+while the exact hard deletes still release the corresponding stored image data.
 
 ## Frame transmission and animation control (protocol surface only)
 

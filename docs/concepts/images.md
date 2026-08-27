@@ -100,10 +100,12 @@ an approved passthrough instead of silently degrading to the unsafe direct path.
 The public [`Image` control](../controls/display/image.md#overview) paints a
 deterministic cell fallback and records only a semantic placement. Exact resize
 metrics are inherited through the control tree before layout and are passed to
-the renderer for the same frame. `Application` awaits finite graphics shutdown
-before `Session` disposes the borrowed transport; Kitty deletes and flushes
-remote state first, and a cleanup failure cannot skip transport or host-lease
-disposal.
+the renderer for the same frame. Leaving the last Kitty-backed image surface
+clears the visible raster layer and reconstructs the replacement cell frame, so
+switching views cannot retain pixels from a detached image control.
+`Application` awaits finite graphics shutdown before `Session` disposes the
+borrowed transport; Kitty deletes and flushes remote state first, and a cleanup
+failure cannot skip transport or host-lease disposal.
 
 Once a backend family is selected, it is fixed for that `Application` lifetime.
 Every selected backend still revalidates the current profile on each frame:

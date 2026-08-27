@@ -138,7 +138,12 @@ public sealed class KittyGraphicsBackendTests
         Encoding.ASCII.GetString(movementBytes.Placements).ShouldSatisfyAllConditions(
             value => value.ShouldContain("\u001b[2;3H\u001b_Ga=p,I=1,p=1"),
             value => value.ShouldEndWith("\u001b[1;1H"));
-        removal.ShouldBe(new GraphicsBackendResult(changed: true, uploads: 0, placements: 0, removals: 1));
+        removal.ShouldBe(new GraphicsBackendResult(
+            changed: true,
+            uploads: 0,
+            placements: 0,
+            removals: 1,
+            fullCellRedraw: true));
         Encoding.ASCII.GetString(removalBytes.Removals).ShouldBe("\u001b_Ga=d,d=I,I=1,q=2\u001b\\");
     }
 

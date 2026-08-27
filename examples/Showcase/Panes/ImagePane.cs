@@ -84,7 +84,7 @@ internal sealed class ImagePane: CompositeControlBase
         new DocSection(
             "🖼️",
             "Fitting and fallback",
-            "Contain, cover, and stretch share the same protocol-neutral control. The final card forces the unsupported-terminal path without changing application code.",
+            "Contain, cover, and stretch share the same protocol-neutral control. Switch to another pane to verify that retained raster content leaves with this page; the final card forces the unsupported-terminal path without changing application code.",
             new DocExample(
                 "Responsive image grid",
                 "Resize the page to compare fitting. Exact cell metrics guide intrinsic size; the semantic shade and alternate text remain the portable evidence layer.",

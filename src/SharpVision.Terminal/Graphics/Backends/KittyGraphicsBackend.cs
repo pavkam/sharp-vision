@@ -446,12 +446,19 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             _retiredImageIds = retiredImages;
             _retiredPlacementIds = retiredPlacements;
             _prepared = true;
+
+            // A retained image is independent of ordinary cell damage. When the last placement
+            // leaves the frame, request the same clear-and-reconstruct boundary used by
+            // non-retained graphics. The Kitty protocol explicitly requires the standard clear
+            // screen operation to clear visible images, while the exact hard deletes below still
+            // release their stored image data.
+            var requiresFinalPlacementClear = _placements.Count != 0 && placements.Count == 0;
             return new GraphicsBackendResult(
                 uploadCount + placementCount + removalCount != 0,
                 uploadCount,
                 placementCount,
                 removalCount,
-                fullCellRedraw: false,
+                fullCellRedraw: requiresFinalPlacementClear,
                 skippedPlacements);
         }
         catch

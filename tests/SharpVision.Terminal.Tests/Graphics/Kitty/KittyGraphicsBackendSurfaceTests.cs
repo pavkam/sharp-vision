@@ -141,6 +141,33 @@ public sealed class KittyGraphicsBackendSurfaceTests
 
     #region Cleanup and lifetime
 
+    /// <summary>Verifies leaving an image-bearing surface clears retained raster state before drawing ordinary cells.</summary>
+    [Fact]
+    public async Task RenderAsync_WhenLastKittyPlacementDisappears_ClearsScreenBeforeReplacementCellsAsync()
+    {
+        using var renderer = new Renderer(new KittyGraphicsBackend());
+        await using var transport = new FakeTransport();
+        using var imageFrame = Frame("old", (Image(1), new Rect(0, 0, 4, 1)));
+        using var cellFrame = Frame("next");
+        _ = await renderer.RenderAsync(imageFrame, transport, KittyCapabilities, CancellationToken.None);
+        transport.Writes.Clear();
+
+        var result = await renderer.RenderAsync(
+            cellFrame,
+            transport,
+            KittyCapabilities,
+            CancellationToken.None);
+
+        var bytes = transport.Writes.ShouldHaveSingleItem();
+        var clear = bytes.AsSpan().IndexOf("\u001b[2J"u8);
+        var cells = bytes.AsSpan().IndexOf("next"u8);
+        var removal = bytes.AsSpan().IndexOf("\u001b_Ga=d,d=I,I=1,q=2\u001b\\"u8);
+        result.Full.ShouldBeTrue();
+        clear.ShouldBeGreaterThanOrEqualTo(0);
+        cells.ShouldBeGreaterThan(clear);
+        removal.ShouldBeGreaterThan(cells);
+    }
+
     /// <summary>Verifies failure invalidation quarantines newly rented IDs without allocation.</summary>
     [Fact]
     public void Invalidate_WhenPreparedHasRentedIds_QuarantinesWithoutAllocation()
