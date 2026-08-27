@@ -192,7 +192,11 @@ public sealed class WindowSurfaceTests
         Overlay.SetLeft(outside, Length.Cells(12));
         var root = new Overlay { Children = { window, outside } };
         var capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor };
-        var options = TerminalOptions.Minimal with { Capabilities = capabilities };
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = capabilities,
+            Coordinates = MouseCoordinates.Pixel
+        };
         await using var surface = await ComponentSurface.MountAsync(
             root,
             new Size(24, 7),
@@ -563,6 +567,7 @@ public sealed class WindowSurfaceTests
         await using var surface = await ComponentSurface.MountAsync(
             stage,
             new Size(30, 15),
+            TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel },
             TestContext.Current.CancellationToken);
 
         // Act — begin a title drag, then leave the terminal with the button still held
@@ -955,6 +960,7 @@ public sealed class WindowSurfaceTests
         await using var surface = await ComponentSurface.MountAsync(
             stage,
             new Size(30, 15),
+            TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel },
             TestContext.Current.CancellationToken);
 
         // Act — begin a corner resize, then leave the terminal with the button still held

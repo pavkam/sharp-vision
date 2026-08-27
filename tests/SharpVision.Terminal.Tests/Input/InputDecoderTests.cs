@@ -172,17 +172,86 @@ public sealed class InputDecoderTests
         pointer.CellPositionInferred.ShouldBeFalse();
     }
 
-    /// <summary>
-    /// Verifies the mouse-leave sentinel remains distinct from invalid zero coordinates.
-    /// </summary>
+    /// <summary>Verifies Kitty's bit-8 SGR pixel marker emits a coordinate-free leave even when
+    /// the terminal supplies ordinary positive coordinates.</summary>
     [Fact]
-    public void Decode_WhenMouseLeaves_EmitsLeaveWithoutCoordinates()
+    public void Decode_WhenKittyPixelMouseLeaves_EmitsLeaveWithoutCoordinates()
     {
-        var pointer = DecodePointer("\u001b[<35;0;0M"u8.ToArray());
+        var sink = new RecordingInputSink();
+        using InputDecoder decoder = new(sink, new InputOptions { PixelMouse = true });
+
+        decoder.Decode("\u001b[<160;77;99M"u8);
+        decoder.Complete();
+
+        var pointer = sink.Pointers.ShouldHaveSingleItem();
 
         pointer.Action.ShouldBe(InputAction.Leave);
         pointer.Cells.ShouldBe(default);
+        pointer.Pixels.ShouldBe(default);
+        pointer.Modifiers.ShouldBe(Modifiers.None);
         pointer.MotionReported.ShouldBeTrue();
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies every other button/modifier bit and both zero and positive coordinates
+    /// are ignored for a Kitty leave marker at every read boundary.</summary>
+    /// <param name="code">The bit-8-marked button value.</param>
+    /// <param name="x">The ignored wire x coordinate.</param>
+    /// <param name="y">The ignored wire y coordinate.</param>
+    [Theory]
+    [InlineData(128, 0, 0)]
+    [InlineData(165, 77, 99)]
+    [InlineData(255, 1, 2)]
+    public void Decode_WhenKittyLeaveBitsAndCoordinatesVaryAtEverySplit_EmitsOneLeave(
+        int code,
+        int x,
+        int y)
+    {
+        var sequence = Encoding.ASCII.GetBytes($"\u001b[<{code};{x};{y}M");
+
+        for (var split = 0; split <= sequence.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink, new InputOptions { PixelMouse = true });
+
+            decoder.Decode(sequence.AsSpan(0, split));
+            decoder.Decode(sequence.AsSpan(split));
+            decoder.Complete();
+
+            var pointer = sink.Pointers.ShouldHaveSingleItem($"split {split}");
+            pointer.Action.ShouldBe(InputAction.Leave);
+            pointer.Cells.ShouldBeNull();
+            pointer.Pixels.ShouldBeNull();
+            pointer.Modifiers.ShouldBe(Modifiers.None);
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
+    /// <summary>Verifies bit 8 in cell mode remains an extended-button report rather than being
+    /// promoted to Kitty's pixel-only leave extension.</summary>
+    [Fact]
+    public void Decode_WhenBitEightArrivesInCellMode_DecodesOrdinaryPointer()
+    {
+        var pointer = DecodePointer("\u001b[<160;10;20M"u8.ToArray());
+
+        pointer.Action.ShouldBe(InputAction.Move);
+        pointer.Buttons.ShouldBe(Buttons.Back);
+        pointer.Cells.ShouldBe(new Point(9, 19));
+    }
+
+    /// <summary>Verifies the former zero-coordinate selector-three heuristic is malformed when
+    /// no Kitty bit-8 marker is present.</summary>
+    [Fact]
+    public void Decode_WhenZeroCoordinateMotionHasNoKittyMarker_ReportsMalformedWithoutLeave()
+    {
+        var sink = new RecordingInputSink();
+        using InputDecoder decoder = new(sink, new InputOptions { PixelMouse = true });
+
+        decoder.Decode("\u001b[<35;0;0M"u8);
+        decoder.Complete();
+
+        sink.Pointers.ShouldBeEmpty();
+        sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Malformed);
     }
 
     /// <summary>

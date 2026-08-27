@@ -98,7 +98,9 @@ public sealed class ComponentSurface: IAsyncDisposable
         }
 
         var terminal = new ComponentTerminal(size);
-        _ = terminal.QueueResize(new Dimensions(size));
+        _ = terminal.QueueResize(new Dimensions(
+            size,
+            options.Coordinates == MouseCoordinates.Pixel ? size : null));
         var application = new Application(
             screen,
             terminal,
@@ -142,6 +144,26 @@ public sealed class ComponentSurface: IAsyncDisposable
         ManualTimeProvider? timeProvider,
         CancellationToken cancellationToken) =>
         await MountAsync(control, size, timeProvider, TerminalOptions.Minimal, theme: null, cancellationToken);
+
+    /// <summary>Mounts one detached control with a deterministic application clock and explicit
+    /// terminal mode policy.</summary>
+    /// <param name="control">The non-null detached control to mount.</param>
+    /// <param name="size">The positive terminal surface size.</param>
+    /// <param name="timeProvider">The non-null deterministic application clock.</param>
+    /// <param name="options">The non-null terminal profile and mode policy.</param>
+    /// <param name="cancellationToken">Requests cancellation while the first frame settles.</param>
+    /// <returns>The started component surface after its first rendered frame.</returns>
+    /// <exception cref="ArgumentNullException">A required argument is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">A surface dimension is not positive.</exception>
+    /// <exception cref="ArgumentException"><paramref name="control"/> is attached or already owned.</exception>
+    /// <exception cref="ObjectDisposedException"><paramref name="control"/> is disposed.</exception>
+    public static async Task<ComponentSurface> MountAsync(
+        ControlBase control,
+        Size size,
+        ManualTimeProvider? timeProvider,
+        TerminalOptions options,
+        CancellationToken cancellationToken) =>
+        await MountAsync(control, size, timeProvider, options, theme: null, cancellationToken);
 
     /// <summary>Mounts one detached control with a deterministic application clock and an explicit
     /// application theme.</summary>
@@ -202,7 +224,9 @@ public sealed class ComponentSurface: IAsyncDisposable
         var host = new Overlay { IsFocusable = true };
         host.Children.Add(control);
         var terminal = new ComponentTerminal(size);
-        _ = terminal.QueueResize(new Dimensions(size));
+        _ = terminal.QueueResize(new Dimensions(
+            size,
+            options.Coordinates == MouseCoordinates.Pixel ? size : null));
         var application = new Application(
             host,
             terminal,

@@ -196,17 +196,16 @@ internal sealed class MouseDecoder
 
     private void EmitPointer(int code, int wireX, int wireY, bool release)
     {
-        var motion = (code & 32) != 0;
-        var low = code & 3;
-
-        if (code is < 0 or > 255 ||
-            ((code & 128) != 0 && (code & 64) != 0))
+        if (code is < 0 or > 255)
         {
             _report(DiagnosticCode.Malformed, SequenceKind.Csi);
             return;
         }
 
-        if (wireX == 0 && wireY == 0 && motion && low == 3)
+        // Kitty reserves bit 8 as a leave marker only in SGR pixel mode. Every other button,
+        // modifier, and coordinate field is explicitly unreliable for this event and must not
+        // influence the coordinate-free value published to the UI.
+        if (_pixelMouse && !release && (code & 128) != 0)
         {
             var leave = new Pointer(
                 null,
@@ -215,10 +214,19 @@ internal sealed class MouseDecoder
                 PointerAction.Leave,
                 0,
                 0,
-                DecodeMouseModifiers(code),
+                Modifiers.None,
                 true,
                 false);
             _sink.Input(in leave);
+            return;
+        }
+
+        var motion = (code & 32) != 0;
+        var low = code & 3;
+
+        if ((code & 128) != 0 && (code & 64) != 0)
+        {
+            _report(DiagnosticCode.Malformed, SequenceKind.Csi);
             return;
         }
 

@@ -97,6 +97,9 @@ public sealed class XtermResponsesTests
     [InlineData("4;1080;1920", ResponseKind.WindowPixels, 1920, 1080)]
     [InlineData("6;20;10", ResponseKind.CellPixels, 10, 20)]
     [InlineData("8;40;120", ResponseKind.WindowCells, 120, 40)]
+    [InlineData("4;2160;70000", ResponseKind.WindowPixels, 70000, 2160)]
+    [InlineData("6;70000;10", ResponseKind.CellPixels, 10, 70000)]
+    [InlineData("8;40;70000", ResponseKind.WindowCells, 70000, 40)]
     public void TryCsi_WhenMetricsReportIsValid_ReturnsTypedSize(
         string parameters,
         ResponseKind expected,
@@ -128,7 +131,8 @@ public sealed class XtermResponsesTests
     [Theory]
     [InlineData("4;0;10")]
     [InlineData("6;10;0")]
-    [InlineData("8;65536;80")]
+    [InlineData("8;2147483648;80")]
+    [InlineData("4;80;999999999999999999999999")]
     [InlineData("9;40;120")]
     public void TryMetricsCsi_WhenDimensionsAreInvalid_ReturnsFalse(string parameters)
     {

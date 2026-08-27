@@ -12,7 +12,7 @@ public readonly record struct MetricsResponse
 {
     /// <summary>Initializes one validated geometry response.</summary>
     /// <param name="kind">The window-pixel, cell-pixel, or window-cell family.</param>
-    /// <param name="size">The positive bounded width and height.</param>
+    /// <param name="size">The positive width and height representable by <see cref="Size"/>.</param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// The response family or either dimension is invalid.
     /// </exception>
@@ -25,10 +25,9 @@ public readonly record struct MetricsResponse
             throw new ArgumentOutOfRangeException(nameof(kind), kind, "The response is not a metrics family.");
         }
 
-        if (size.Width is <= 0 or > ushort.MaxValue ||
-            size.Height is <= 0 or > ushort.MaxValue)
+        if (size.Width <= 0 || size.Height <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(size), size, "Metrics dimensions must be from 1 through 65535.");
+            throw new ArgumentOutOfRangeException(nameof(size), size, "Metrics dimensions must be positive.");
         }
 
         Kind = kind;

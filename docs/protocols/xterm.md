@@ -4,7 +4,7 @@
 
 Primary source:
 [XTerm Control Sequences, patch 410](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html),
-updated 2026-04-19 and accessed 2026-07-20. The source combines ECMA, DEC, and
+updated 2026-04-19 and accessed 2026-08-27. The source combines ECMA, DEC, and
 xterm extensions; each SharpVision API retains that origin.
 
 xterm is the modern compatibility baseline for alternate screen, bracketed
@@ -79,6 +79,19 @@ negative reply. A matched reply produces query-origin `XtermKeyboard` evidence.
 configured modifyOtherKeys level and always records the exact initial-value
 restore before attempting the enable write.
 
+## Window metrics
+
+SharpVision recognizes XTWINOPS reports `CSI 4 ; height ; width t`,
+`CSI 6 ; height ; width t`, and `CSI 8 ; height ; width t` as window pixels,
+cell pixels, and window cells respectively. Both dimensions must be positive and
+fit a signed 32-bit `Size`; values above 65,535 remain valid. Xterm's unsigned 0
+through 65,535 restriction belongs to `CSI 3 ; x ; y t` window positions, which
+SharpVision does not parse as metrics.
+
+Every fragmented size report produces the same owned `MetricsResponse`.
+Malformed decimal fields, zero dimensions, and values beyond `int.MaxValue` are
+rejected before capability discovery or pixel-to-cell mapping can consume them.
+
 ## Compatibility boundaries
 
 DEC originals remain distinct from xterm private modes. Typed DCS replies have
@@ -92,7 +105,7 @@ without changing capability evidence. tmux, GNU screen, SSH, and misleading
 - [XTerm Control Sequences, patch level 410, 2026-04-19](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
   defines the selected xterm extensions and compatibility behavior.
 
-Source accessed 2026-07-28.
+Source accessed 2026-08-27.
 
 ## Expected behavior
 

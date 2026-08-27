@@ -302,7 +302,7 @@ public sealed class ComponentPointer
     /// <returns>A task completed after hover, press, and capture cleanup settle.</returns>
     public async Task LeaveAsync()
     {
-        await _surface.SendAsync("\u001b[<35;0;0M"u8.ToArray(), "leave terminal pointer surface");
+        await _surface.SendAsync("\u001b[<160;1;1M"u8.ToArray(), "leave terminal pointer surface");
         _lastPoint = null;
         _primaryModifiers = Modifiers.None;
         _primaryPressed = false;

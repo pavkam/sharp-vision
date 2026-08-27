@@ -259,7 +259,7 @@ public static class XtermResponses
             return false;
         }
 
-        var reader = new Parameters(parameters, maxCount: 3, maxValue: ushort.MaxValue);
+        var reader = new Parameters(parameters, maxCount: 3, maxValue: int.MaxValue);
 
         if (reader.PrivateMarker != 0 ||
             !TryReadValues(ref reader, minimum: 3, out var values) ||

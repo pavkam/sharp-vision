@@ -354,6 +354,7 @@ public sealed class ComponentSurfaceTests
         await using var surface = await ComponentSurface.MountAsync(
             button,
             new Size(10, 3),
+            TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel },
             TestContext.Current.CancellationToken);
         await surface.Pointer.MoveToAsync(button);
         await surface.Pointer.PressAsync();

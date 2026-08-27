@@ -152,7 +152,7 @@ public sealed class TerminalProtocolCompatibilityTests
             red: 1,
             green: 2,
             blue: 3);
-        var metrics = new MetricsResponse(ResponseKind.WindowPixels, new Size(65535, 65535));
+        var metrics = new MetricsResponse(ResponseKind.WindowPixels, new Size(int.MaxValue, int.MaxValue));
         var status = new StatusResponse(StatusName.ModifyOtherKeys, isValid: true, ">4;2m"u8);
         var extensionStatus = new StatusResponse(StatusName.Unknown, isValid: true, "?999h"u8);
         var failure = new StatusResponse(StatusName.Unknown, isValid: false, []);
@@ -166,7 +166,7 @@ public sealed class TerminalProtocolCompatibilityTests
         emptyMetrics.Kind.ShouldBe(ResponseKind.None);
         palette.Index.ShouldBe(255);
         foreground.Index.ShouldBeNull();
-        metrics.Size.ShouldBe(new Size(65535, 65535));
+        metrics.Size.ShouldBe(new Size(int.MaxValue, int.MaxValue));
         status.Name.ShouldBe(StatusName.ModifyOtherKeys);
         extensionStatus.Name.ShouldBe(StatusName.Unknown);
         extensionStatus.Valid.ShouldBeTrue();

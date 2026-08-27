@@ -90,6 +90,9 @@ public sealed class ProtocolRouterTests
     [InlineData("\u001b[4;1080;1920t", ResponseKind.WindowPixels)]
     [InlineData("\u001b[6;20;10t", ResponseKind.CellPixels)]
     [InlineData("\u001b[8;40;120t", ResponseKind.WindowCells)]
+    [InlineData("\u001b[4;2160;70000t", ResponseKind.WindowPixels)]
+    [InlineData("\u001b[6;70000;10t", ResponseKind.CellPixels)]
+    [InlineData("\u001b[8;40;70000t", ResponseKind.WindowCells)]
     public void Route_WhenMetricsReplyIsFragmented_DeliversOwnedResponse(
         string input,
         ResponseKind expected)

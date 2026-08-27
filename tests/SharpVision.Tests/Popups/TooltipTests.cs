@@ -400,6 +400,7 @@ public sealed class TooltipTests
             anchor,
             new Size(18, 7),
             clock,
+            TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel },
             TestContext.Current.CancellationToken);
 
         await surface.Pointer.MoveToAsync(anchor);
@@ -610,6 +611,7 @@ public sealed class TooltipTests
             anchor,
             new Size(18, 7),
             clock,
+            TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel },
             TestContext.Current.CancellationToken);
 
         await surface.Pointer.MoveToAsync(anchor);

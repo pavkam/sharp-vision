@@ -28,7 +28,7 @@ safe mode leases and restores previous tracking on shutdown.
 report following `CSI M`, urxvt decimal reports, and SGR reports with `<`. All
 fragmented fields remain bounded. Button codes preserve primary, middle,
 secondary, back, and forward buttons; modifier bits, motion, release, four wheel
-directions, and the zero-coordinate leave sentinel remain distinct.
+directions, and Kitty's bit-8 pixel-mode leave marker remain distinct.
 
 The X10 field reader honors the negotiated `Protocols.MouseCoordinates`,
 threaded into `Input.InputOptions.MouseCoordinates` from the same
@@ -43,6 +43,12 @@ decoder cannot infer which is in force from the byte stream alone — the input
 and output sides must agree. `0x7F` (DEL) is a legal field byte (coordinate 95)
 under both encodings and is fed to a pending X10 report rather than being
 treated as a keystroke.
+
+Kitty leave-window reports are recognized only while SGR pixel input is active.
+Bit 8 of the button value is the complete leave identity; all other button and
+modifier bits and both reported pixel coordinates are ignored, producing one
+coordinate-free `Leave`. The same bit in cell mode retains xterm's extended
+button meaning, and zero coordinates without the marker remain malformed.
 
 Cell reports subtract the wire's one-based origin exactly once. With
 `Input.InputOptions.PixelMouse`, SGR coordinates are retained as zero-based
@@ -92,6 +98,9 @@ Tentative terminal-name hints never activate them.
 - [iTerm2 terminal feature reporting](https://iterm2.com/feature-reporting/)
   specifies coordinate-first enable and tracking-first disable ordering to avoid
   mouse-report races.
+- [Kitty miscellaneous protocol extensions](https://sw.kovidgoyal.net/kitty/misc-protocol/#reporting-when-the-mouse-leaves-the-window)
+  define bit 8 as the SGR pixel leave marker and require every other field to be
+  ignored.
 
 Sources accessed 2026-08-27.
 
