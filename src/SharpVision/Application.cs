@@ -2099,6 +2099,11 @@ public sealed class Application:
         }
 
         Idle?.Invoke(this, EventArgs.Empty);
+
+        if (!IsRendering && !Suspended() && Root.Pending != Invalidation.None)
+        {
+            ProcessInvalidation();
+        }
     }
 
     private async Task ObserveRenderAsync(

@@ -199,6 +199,53 @@ public sealed partial class ApplicationTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a control invalidated directly from an <c>Idle</c> handler - an ordinary
+    /// property mutation, not queued dispatcher work - is rendered promptly instead of being
+    /// stranded until unrelated dispatcher work happens to arrive and re-arm idle detection.
+    /// </summary>
+    [Fact]
+    public async Task Idle_WhenHandlerInvalidatesAControl_RendersPromptlyAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var probe = new ProbeControl { Content = "a".AsMemory() };
+        await using Application application = new(probe, terminal, terminal, TerminalOptions.Minimal);
+        var frames = 0;
+        var idles = 0;
+        var secondFrame = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.FrameRendered += (_, _) =>
+        {
+            frames++;
+
+            if (frames == 2)
+            {
+                secondFrame.TrySetResult();
+            }
+        };
+        application.Idle += (_, _) =>
+        {
+            idles++;
+
+            if (idles == 1)
+            {
+                // An ordinary, idiomatic mutation performed from Idle - not queuing more dispatcher
+                // work, just invalidating a control the way any property setter would.
+                probe.Content = "b".AsMemory();
+                probe.InvalidateKernel(InvalidationImpact.Render);
+            }
+        };
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        // With nothing else happening on the dispatcher, the invalidation raised from inside the
+        // first Idle callback must still reach a render without waiting for unrelated dispatcher
+        // work to arrive and re-arm idle detection.
+        await secondFrame.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        frames.ShouldBe(2);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a record enqueued while DrainInput's finally block is between resetting the
     /// wake latch and re-checking the queue is still delivered, instead of being stranded until some
     /// unrelated later Enqueue happens to re-arm the latch. The window is a handful of CPU
