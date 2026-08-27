@@ -701,6 +701,119 @@ public sealed class DialogTests
         surface.Application.Modality.Active.ShouldBeNull();
     }
 
+    /// <summary>Verifies a handler cancelling CloseRequested during a Complete() attempt leaves the
+    /// dialog exactly as it was: still presented, still attached, its modal scope still active, and
+    /// neither Closing nor Closed raised - mirroring WindowTests' own CloseRequested veto coverage.</summary>
+    [Fact]
+    public async Task Complete_WhenCloseRequestedCancels_LeavesDialogPresentedAndRaisesNeitherClosingNorClosedAsync()
+    {
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            TestContext.Current.CancellationToken);
+        var dialog = new TestDialog();
+        Task<bool>? pending = null;
+        var closingCalls = 0;
+        var closedCalls = 0;
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                pending = dialog.Present(opener, initialFocus: null, CancellationToken.None);
+                dialog.CloseRequested += (_, eventArgs) => eventArgs.Cancel = true;
+                dialog.Closing += (_, _) => closingCalls++;
+                dialog.Closed += (_, _) => closedCalls++;
+            },
+            "present dialog with a vetoing close handler");
+        var scope = surface.Application.Modality.Active.ShouldNotBeNull();
+
+        await surface.UpdateAsync(() => dialog.Accept(true), "attempt a vetoed completion");
+
+        pending!.IsCompleted.ShouldBeFalse();
+        dialog.IsDisposed.ShouldBeFalse();
+        _ = dialog.Parent.ShouldNotBeNull();
+        scope.IsActive.ShouldBeTrue();
+        closingCalls.ShouldBe(0);
+        closedCalls.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a handler cancelling CloseRequested during external-token cancellation - the
+    /// dialog's other completion path, latched through TryBeginCancellation rather than
+    /// TryBeginResult - leaves the dialog just as untouched as a vetoed Complete() attempt.</summary>
+    [Fact]
+    public async Task PresentAsync_WhenExternalCancellationIsVetoed_LeavesDialogPresentedAndRaisesNeitherClosingNorClosedAsync()
+    {
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            TestContext.Current.CancellationToken);
+        using var cancellation = new CancellationTokenSource();
+        var dialog = new TestDialog();
+        Task<bool>? pending = null;
+        var closingCalls = 0;
+        var closedCalls = 0;
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                pending = dialog.Present(opener, initialFocus: null, cancellation.Token);
+                dialog.CloseRequested += (_, eventArgs) => eventArgs.Cancel = true;
+                dialog.Closing += (_, _) => closingCalls++;
+                dialog.Closed += (_, _) => closedCalls++;
+            },
+            "present a token-cancellable dialog with a vetoing close handler");
+        var scope = surface.Application.Modality.Active.ShouldNotBeNull();
+
+        await cancellation.CancelAsync();
+        await surface.UpdateAsync(static () => { }, "settle the vetoed cancellation attempt");
+
+        pending!.IsCompleted.ShouldBeFalse();
+        dialog.IsDisposed.ShouldBeFalse();
+        _ = dialog.Parent.ShouldNotBeNull();
+        scope.IsActive.ShouldBeTrue();
+        closingCalls.ShouldBe(0);
+        closedCalls.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a vetoed Complete() attempt does not wedge the dialog: once the CloseRequested
+    /// handler stops cancelling, a later Complete() call still commits its result, tears down the
+    /// modal scope, and disposes the dialog exactly as an unobstructed completion would.</summary>
+    [Fact]
+    public async Task Complete_WhenRetriedAfterAVetoedCloseRequested_SucceedsAsync()
+    {
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            TestContext.Current.CancellationToken);
+        var dialog = new TestDialog();
+        Task<bool>? pending = null;
+        var cancelNextRequest = true;
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                pending = dialog.Present(opener, initialFocus: null, CancellationToken.None);
+                dialog.CloseRequested += (_, eventArgs) => eventArgs.Cancel = cancelNextRequest;
+            },
+            "present dialog with a togglable veto");
+
+        await surface.UpdateAsync(() => dialog.Accept(true), "attempt a vetoed completion");
+        pending!.IsCompleted.ShouldBeFalse();
+
+        cancelNextRequest = false;
+        await surface.UpdateAsync(() => dialog.Accept(false), "retry completion after the veto clears");
+
+        (await pending!).ShouldBeFalse();
+        dialog.IsDisposed.ShouldBeTrue();
+        dialog.Parent.ShouldBeNull();
+    }
+
     /// <summary>Verifies pending detached completion prevents cross-dispatcher reattachment.</summary>
     [Fact]
     public async Task Detach_WhenCompletionIsPending_RejectsReattachmentToAnotherDispatcherAsync()

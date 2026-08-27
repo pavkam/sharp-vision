@@ -287,6 +287,7 @@ public abstract class Dialog<TResult>: Window
     private void FinishCompletion()
     {
         ExceptionDispatchInfo? failure = null;
+        var vetoed = false;
 
         _isFinishingCompletion = true;
 
@@ -294,29 +295,63 @@ public abstract class Dialog<TResult>: Window
         {
             if (IsSurfacePresented && !IsDisposed)
             {
-                ExceptionAggregation.Capture(ClosePresentedDialog, ref failure);
+                var closed = true;
+                ExceptionAggregation.Capture(() => closed = ClosePresentedDialog(), ref failure);
+
+                // A handler vetoing CloseRequested reports failure through the returned bool, not
+                // an exception, so only a clean (non-exceptional) false counts as a veto. An actual
+                // exception from the close attempt still falls through to the unconditional cleanup
+                // below, preserving the existing exception-aggregation behavior for that case.
+                vetoed = failure is null && !closed;
             }
 
-            CleanupPresentation(dispose: true, ref failure);
+            if (vetoed)
+            {
+                RollbackPendingCompletion();
+            }
+            else
+            {
+                CleanupPresentation(dispose: true, ref failure);
+            }
         }
         finally
         {
             _isFinishingCompletion = false;
         }
 
-        SettleCompletion();
+        if (!vetoed)
+        {
+            SettleCompletion();
+        }
+
         failure?.Throw();
     }
 
-    private void ClosePresentedDialog()
-    {
-        if (_closingRequestObserved)
-        {
-            _ = CloseSurfaceAfterClosingRequest(static () => { }, RemoveFromHost);
-            return;
-        }
+    private bool ClosePresentedDialog() =>
+        _closingRequestObserved
+            ? CloseSurfaceAfterClosingRequest(static () => { }, RemoveFromHost)
+            : CloseSurface(static () => { }, RemoveFromHost);
 
-        _ = CloseSurface(static () => { }, RemoveFromHost);
+    /// <summary>Undoes a latched <see cref="TryBeginResult"/>/<see cref="TryBeginCancellation"/> commit
+    /// after the close attempt it was staged for turned out to be vetoed by a <c>CloseRequested</c>
+    /// handler, so a later <see cref="Complete"/>/cancellation attempt can be retried cleanly.</summary>
+    private void RollbackPendingCompletion()
+    {
+        lock (_completionGate)
+        {
+            _completed = false;
+            _hasPendingResult = false;
+            _pendingResult = default;
+            _completesWithCancellation = false;
+            _pendingCancellationToken = default;
+
+            // The scheduling cycle that led to this now-vetoed FinishCompletion call has already
+            // marked itself invoked (RunScheduledCompletion sets this before calling FinishCompletion),
+            // and never resets on its own since only one cycle is ever expected to run. A retried
+            // Complete/cancellation needs a fresh cycle to actually reach FinishCompletion again
+            // rather than have ScheduleCompletion silently decline to re-post.
+            _scheduledInvoked = false;
+        }
     }
 
     private bool TryBeginResult(TResult result)
