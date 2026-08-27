@@ -24,9 +24,27 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     private readonly MultiplexerRoute? _route;
     private Dictionary<ulong, KittyGraphicsImageState> _images = [];
     private List<KittyGraphicsPlacementState> _placements = [];
-    private readonly Dictionary<uint, uint> _uncertainImages;
+
+    // Quarantined identifiers are double-buffered rather than kept in one set, because the two
+    // sources that quarantine an identifier need different flush timing from the very next
+    // ReturnUncertain call:
+    //  - Invalidate() runs as its own standalone call, never immediately followed by
+    //    ReturnUncertain in the same method. Its entries go straight into "prior" so the very
+    //    next ReturnUncertain (whichever future Commit/CommitCleanup/Dispose calls it) reclaims
+    //    them right away - exactly the original single-set behavior.
+    //  - ReturnRetired/ReturnAllCommitted run immediately before ReturnUncertain, in the same
+    //    Commit/CommitCleanup call. An identifier they just quarantined must NOT be reclaimed by
+    //    that same call's ReturnUncertain (zero real protection), so they add to "current"
+    //    instead. ReturnUncertain only ever flushes "prior," then rotates the two, promoting this
+    //    transaction's additions to be the next cycle's flush candidates.
+    // Either way, an identifier gets exactly one full untouched cycle of protection before it can
+    // be handed to an unrelated image, matching Invalidate()'s original guarantee - without
+    // needing to snapshot anything or allocate on every call.
+    private Dictionary<uint, uint> _uncertainImages;
+    private Dictionary<uint, uint> _priorUncertainImages;
     private readonly ConcurrentQueue<KittyGraphicsResponse> _responses = new();
-    private readonly List<KittyGraphicsUncertainPlacementState> _uncertainPlacements;
+    private List<KittyGraphicsUncertainPlacementState> _uncertainPlacements;
+    private List<KittyGraphicsUncertainPlacementState> _priorUncertainPlacements;
     private Dictionary<ulong, KittyGraphicsImageState>? _preparedImages;
     private List<KittyGraphicsPlacementState>? _preparedPlacements;
     private List<uint>? _rentedImageIds;
@@ -65,7 +83,9 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         _imageIds = new KittyGraphicsIdentifierAllocator(maxImages);
         _placementIds = new KittyGraphicsIdentifierAllocator(maxPlacements);
         _uncertainImages = new Dictionary<uint, uint>(maxImages);
+        _priorUncertainImages = new Dictionary<uint, uint>(maxImages);
         _uncertainPlacements = new List<KittyGraphicsUncertainPlacementState>(maxPlacements);
+        _priorUncertainPlacements = new List<KittyGraphicsUncertainPlacementState>(maxPlacements);
         _maxPreparedBytes = maxPreparedBytes;
         _output = new BoundedBufferWriter(maxPreparedBytes, initialRentBytes: 256);
         _route = route;
@@ -174,7 +194,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             // identifier — safe in principle, but not yet proven safe across every
             // invalidate/retry interleaving. Falling back to a fresh rental here (or exhaustion,
             // if the allocator has no other room) is the conservative choice.
-            if (!neededImageIdentities.Contains(previous.Key) && !_uncertainImages.ContainsKey(previous.Value.Number))
+            if (!neededImageIdentities.Contains(previous.Key) && !IsUncertainImage(previous.Value.Number))
             {
                 retiringImageIds.Enqueue(previous.Value.Number);
             }
@@ -488,14 +508,19 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             // "owned by _images" to "owned by _uncertainImageIds," not newly consuming allocator
             // capacity the way a fresh rental does.
             Debug.Assert(
-                _uncertainImages.Count + _rentedImageIds!.Count <= _imageIds.Capacity,
+                _uncertainImages.Count + _priorUncertainImages.Count + _rentedImageIds!.Count <=
+                    _imageIds.Capacity,
                 "The bounded image allocator must fit every uncertain rental.");
             Debug.Assert(
-                _uncertainPlacements.Count + _rentedPlacementStates!.Count <= _uncertainPlacements.Capacity,
+                _uncertainPlacements.Count + _priorUncertainPlacements.Count + _rentedPlacementStates!.Count <=
+                    _uncertainPlacements.Capacity,
                 "The bounded placement allocator must fit every uncertain rental.");
+            // These go straight into the "prior" bucket - see the field comment above - so the
+            // very next ReturnUncertain call reclaims them, exactly as before this identifier was
+            // split into two buckets.
             foreach (var number in _rentedImageIds!)
             {
-                _ = _uncertainImages.TryAdd(number, 0);
+                _ = _priorUncertainImages.TryAdd(number, 0);
             }
 
             // A transferred identifier's upload is exactly as unconfirmed as a freshly rented
@@ -503,9 +528,9 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             // again until a delete tombstone for it has actually flushed.
             foreach (var number in _transferredImageIds!)
             {
-                _ = _uncertainImages.TryAdd(number, 0);
+                _ = _priorUncertainImages.TryAdd(number, 0);
             }
-            _uncertainPlacements.AddRange(_rentedPlacementStates!);
+            _priorUncertainPlacements.AddRange(_rentedPlacementStates!);
             ClearPrepared(returnRented: false);
         }
 
@@ -728,19 +753,32 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                 }
             }
 
-            if (_uncertainImages.ContainsKey(response.ImageNumber))
-            {
-                _uncertainImages[response.ImageNumber] = response.ImageId;
-            }
+            ApplyAssignedUncertainImageId(_uncertainImages, response);
+            ApplyAssignedUncertainImageId(_priorUncertainImages, response);
+            ApplyAssignedUncertainPlacementId(_uncertainPlacements, response);
+            ApplyAssignedUncertainPlacementId(_priorUncertainPlacements, response);
+        }
+    }
 
-            for (var index = 0; index < _uncertainPlacements.Count; index++)
-            {
-                var placement = _uncertainPlacements[index];
+    private static void ApplyAssignedUncertainImageId(Dictionary<uint, uint> images, KittyGraphicsResponse response)
+    {
+        if (images.ContainsKey(response.ImageNumber))
+        {
+            images[response.ImageNumber] = response.ImageId;
+        }
+    }
 
-                if (placement.UsesImageNumber && placement.ImageId == response.ImageNumber)
-                {
-                    _uncertainPlacements[index] = placement.WithAssignedImageId(response.ImageId);
-                }
+    private static void ApplyAssignedUncertainPlacementId(
+        List<KittyGraphicsUncertainPlacementState> placements,
+        KittyGraphicsResponse response)
+    {
+        for (var index = 0; index < placements.Count; index++)
+        {
+            var placement = placements[index];
+
+            if (placement.UsesImageNumber && placement.ImageId == response.ImageNumber)
+            {
+                placements[index] = placement.WithAssignedImageId(response.ImageId);
             }
         }
     }
@@ -748,24 +786,39 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     private HashSet<KittyGraphicsImageReference> UncertainImageReferences()
     {
         var references = new HashSet<KittyGraphicsImageReference>();
+        AddUncertainImageReferences(_uncertainImages, references);
+        AddUncertainImageReferences(_priorUncertainImages, references);
+        return references;
+    }
 
-        foreach (var image in _uncertainImages)
+    private static void AddUncertainImageReferences(
+        Dictionary<uint, uint> images,
+        HashSet<KittyGraphicsImageReference> references)
+    {
+        foreach (var image in images)
         {
             _ = references.Add(new KittyGraphicsImageReference(
                 image.Value == 0 ? image.Key : image.Value,
                 image.Value == 0));
         }
-
-        return references;
     }
 
     private int WriteUncertainDeletes(
         IBufferWriter<byte> destination,
         HashSet<KittyGraphicsImageReference> hardDeletedImageIds)
     {
+        var count = WriteUncertainImageDeletes(_uncertainImages, destination);
+        count += WriteUncertainImageDeletes(_priorUncertainImages, destination);
+        count += WriteUncertainPlacementDeletes(_uncertainPlacements, destination, hardDeletedImageIds);
+        count += WriteUncertainPlacementDeletes(_priorUncertainPlacements, destination, hardDeletedImageIds);
+        return count;
+    }
+
+    private static int WriteUncertainImageDeletes(Dictionary<uint, uint> images, IBufferWriter<byte> destination)
+    {
         var count = 0;
 
-        foreach (var image in _uncertainImages)
+        foreach (var image in images)
         {
             var imageId = image.Value == 0 ? image.Key : image.Value;
             KittyGraphicsWriter.Write(
@@ -775,7 +828,17 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             count++;
         }
 
-        foreach (var placement in _uncertainPlacements)
+        return count;
+    }
+
+    private static int WriteUncertainPlacementDeletes(
+        List<KittyGraphicsUncertainPlacementState> placements,
+        IBufferWriter<byte> destination,
+        HashSet<KittyGraphicsImageReference> hardDeletedImageIds)
+    {
+        var count = 0;
+
+        foreach (var placement in placements)
         {
             if (hardDeletedImageIds.Contains(new KittyGraphicsImageReference(
                 placement.ImageId,
@@ -798,14 +861,31 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
     private void ReturnRetired()
     {
-        // A retiring identifier can also already be quarantined in the uncertain sets: an earlier
+        // A retiring identifier can also already be quarantined in an uncertain set: an earlier
         // transaction may have transferred it directly from a still-committed entry and then been
-        // invalidated, leaving it referenced by both the (unchanged) committed state and the
-        // uncertain set at once. ReturnUncertain, called right after this in every caller, is the
-        // one that returns it; returning it here too would double-free it.
+        // invalidated, leaving it referenced by both the (unchanged) committed state and a
+        // quarantine bucket at once. ReturnUncertain owns reclaiming an already-quarantined
+        // identifier on its own schedule; returning or re-quarantining one here too would double-
+        // free it or track it twice.
+        //
+        // A retiring identifier that is NOT already quarantined but still awaits its own transmit
+        // response (UsesImageNumber/its placement's UsesImageNumber is still true) cannot be
+        // returned directly either: the terminal may yet deliver a stale response correlated by
+        // this exact number, and handing the number to an unrelated later image before that
+        // response arrives would misattribute it. Such an identifier is quarantined instead, via
+        // the same _uncertainImages/_uncertainPlacements bucket Invalidate() uses.
         foreach (var id in _retiredPlacementIds!)
         {
-            if (!IsUncertainPlacement(id))
+            if (IsUncertainPlacement(id))
+            {
+                continue;
+            }
+
+            if (TryGetUnconfirmedRetiredPlacementImageId(id, out var imageId))
+            {
+                _uncertainPlacements.Add(new KittyGraphicsUncertainPlacementState(imageId, id, usesImageNumber: true));
+            }
+            else
             {
                 _placementIds.Return(id);
             }
@@ -813,28 +893,94 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
         foreach (var id in _retiredImageIds!)
         {
-            if (!_uncertainImages.ContainsKey(id))
+            if (IsUncertainImage(id))
+            {
+                continue;
+            }
+
+            if (IsUnconfirmedRetiredImage(id))
+            {
+                _ = _uncertainImages.TryAdd(id, 0);
+            }
+            else
             {
                 _imageIds.Return(id);
             }
         }
     }
 
-    private void ReturnAllCommitted()
+    /// <summary>Finds whether the pre-commit image still identified by <paramref name="number"/> was never
+    /// confirmed by the terminal, using the committed state that is about to be replaced.</summary>
+    private bool IsUnconfirmedRetiredImage(uint number)
     {
-        // See the identical caution in ReturnRetired: a still-committed entry's identifier can
-        // already be quarantined as uncertain by an earlier transferred-and-invalidated attempt.
+        // Enumerates _images directly rather than through _images.Values: the ValueCollection
+        // wrapper is allocated lazily on its first-ever access, and this lookup can otherwise be
+        // the very first thing to touch it on the hot Commit path.
+        foreach (var pair in _images)
+        {
+            if (pair.Value.Number == number)
+            {
+                return pair.Value.UsesImageNumber;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Finds whether the pre-commit placement still identified by <paramref name="placementId"/>
+    /// referenced an image never confirmed by the terminal, using the committed state that is about to be
+    /// replaced.</summary>
+    private bool TryGetUnconfirmedRetiredPlacementImageId(uint placementId, out uint imageId)
+    {
         foreach (var placement in _placements)
         {
-            if (!IsUncertainPlacement(placement.PlacementId))
+            if (placement.PlacementId == placementId)
+            {
+                imageId = placement.ImageId;
+                return placement.UsesImageNumber;
+            }
+        }
+
+        imageId = 0;
+        return false;
+    }
+
+    private void ReturnAllCommitted()
+    {
+        // See the identical caution in ReturnRetired, for both the double-free case and the
+        // still-unconfirmed case.
+        foreach (var placement in _placements)
+        {
+            if (IsUncertainPlacement(placement.PlacementId))
+            {
+                continue;
+            }
+
+            if (placement.UsesImageNumber)
+            {
+                _uncertainPlacements.Add(new KittyGraphicsUncertainPlacementState(
+                    placement.ImageId, placement.PlacementId, usesImageNumber: true));
+            }
+            else
             {
                 _placementIds.Return(placement.PlacementId);
             }
         }
 
-        foreach (var image in _images.Values)
+        foreach (var pair in _images)
         {
-            if (!_uncertainImages.ContainsKey(image.Number))
+            var image = pair.Value;
+
+            if (IsUncertainImage(image.Number))
+            {
+                continue;
+            }
+
+            if (image.UsesImageNumber)
+            {
+                _ = _uncertainImages.TryAdd(image.Number, 0);
+            }
+            else
             {
                 _imageIds.Return(image.Number);
             }
@@ -851,23 +997,47 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             }
         }
 
+        foreach (var placement in _priorUncertainPlacements)
+        {
+            if (placement.PlacementId == placementId)
+            {
+                return true;
+            }
+        }
+
         return false;
     }
 
+    private bool IsUncertainImage(uint number) =>
+        _uncertainImages.ContainsKey(number) || _priorUncertainImages.ContainsKey(number);
+
     private void ReturnUncertain()
     {
-        foreach (var placement in _uncertainPlacements)
+        // Only the "prior" bucket - whatever was already quarantined going into this cycle - is
+        // ever reclaimed here. The "current" bucket may have just been populated by
+        // ReturnRetired/ReturnAllCommitted above (same call, same cycle); flushing it here too
+        // would give a newly retired-but-unconfirmed identifier zero real protection. Rotating
+        // the two buckets instead promotes this cycle's additions to be next cycle's flush
+        // candidates, giving every quarantined identifier exactly one full untouched cycle before
+        // it can be handed to an unrelated image.
+        foreach (var placement in _priorUncertainPlacements)
         {
             _placementIds.Return(placement.PlacementId);
         }
 
-        foreach (var imageNumber in _uncertainImages.Keys)
+        // Enumerates the dictionary directly rather than through its .Keys wrapper: like
+        // .Values, that wrapper is allocated lazily on first-ever access, and this can be the
+        // first thing to touch it on the hot Commit/CommitCleanup path.
+        foreach (var pair in _priorUncertainImages)
         {
-            _imageIds.Return(imageNumber);
+            _imageIds.Return(pair.Key);
         }
 
-        _uncertainPlacements.Clear();
-        _uncertainImages.Clear();
+        _priorUncertainPlacements.Clear();
+        _priorUncertainImages.Clear();
+
+        (_uncertainPlacements, _priorUncertainPlacements) = (_priorUncertainPlacements, _uncertainPlacements);
+        (_uncertainImages, _priorUncertainImages) = (_priorUncertainImages, _uncertainImages);
     }
 
     private void ReturnRented(List<uint> images, List<uint> placements)

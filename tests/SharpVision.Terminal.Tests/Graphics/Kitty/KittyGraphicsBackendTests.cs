@@ -62,6 +62,52 @@ public sealed class KittyGraphicsBackendTests
         Encoding.ASCII.GetString(cleanup.WrittenSpan).ShouldBe("\u001b_Ga=d,d=I,i=99,q=2\u001b\\");
     }
 
+    /// <summary>Verifies a cleanly retired image whose transmit response has not yet arrived keeps its
+    /// client-side number quarantined rather than returning it to the pool immediately, so a later
+    /// unrelated image cannot rent the exact same number and later be misattributed by the first
+    /// image's own stale terminal response.</summary>
+    [Fact]
+    public void Accept_WhenStaleResponseArrivesAfterRetiredNumberWasReused_DoesNotMisattributeToLaterImage()
+    {
+        using var backend = new KittyGraphicsBackend();
+        var imageA = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        var imageB = GraphicsImage.FromRgba(new Size(1, 1), [4, 5, 6, 255]);
+        using var frameA = Frame(imageA, new Rect(0, 0, 1, 1));
+        using var empty = new RenderFrame(new Size(4, 2));
+        using var frameB = Frame(imageB, new Rect(0, 0, 1, 1));
+        using var frameBMoved = Frame(imageB, new Rect(2, 1, 1, 1));
+
+        // Image A rents Number 1 and transmits. Its assignment response is deliberately never
+        // accepted here, simulating a still-outstanding terminal round-trip.
+        _ = backend.Prepare(null, frameA, full: true);
+        var aBytes = WritePrepared(backend);
+        backend.Commit();
+
+        // A's only placement retires. Number 1 must be quarantined rather than returned outright.
+        _ = backend.Prepare(frameA, empty, full: false);
+        _ = WritePrepared(backend);
+        backend.Commit();
+
+        // Image B is prepared and committed next. It must rent a fresh number rather than reuse
+        // A's still-quarantined one.
+        _ = backend.Prepare(empty, frameB, full: false);
+        var bBytes = WritePrepared(backend);
+        backend.Commit();
+
+        // A's stale transmit response finally arrives, claiming Number 1.
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=77,I=1;OK"u8));
+
+        // Draining the response (and forcing B's placement to be rewritten by moving it) must not
+        // retarget B, which never used Number 1.
+        _ = backend.Prepare(frameB, frameBMoved, full: false);
+        var moved = WritePrepared(backend);
+
+        Encoding.ASCII.GetString(aBytes.Uploads).ShouldContain(",I=1,");
+        Encoding.ASCII.GetString(bBytes.Uploads).ShouldContain(",I=2,");
+        Encoding.ASCII.GetString(moved.Placements).ShouldContain("I=2");
+        Encoding.ASCII.GetString(moved.Placements).ShouldNotContain("i=77");
+    }
+
     /// <summary>Verifies upload, cursor-positioned placement, movement reuse, and last-use deletion.</summary>
     [Fact]
     public void Prepare_WhenImageMoves_ReusesIdsWithoutUploadingAndDeletesOnLastUse()
