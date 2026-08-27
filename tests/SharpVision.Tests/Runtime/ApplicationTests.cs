@@ -230,7 +230,7 @@ public sealed partial class ApplicationTests
         {
             if (++frameCount >= 2)
             {
-                secondFrame.TrySetResult();
+                _ = secondFrame.TrySetResult();
             }
         };
 

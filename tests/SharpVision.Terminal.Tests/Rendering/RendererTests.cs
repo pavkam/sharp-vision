@@ -781,9 +781,11 @@ public sealed class RendererTests
         Encoding.UTF8.GetString(actualTransport.Writes.Single()).ShouldContain("text");
     }
 
-    /// <summary>Verifies republished capability evidence disposes the previous backend and reselects.</summary>
+    /// <summary>Verifies a backend that already exists is left untouched by republished capability
+    /// evidence - it already re-checks authoritative support per frame and gracefully self-cleans
+    /// on revocation, so replacing it here would discard that state before it can run.</summary>
     [Fact]
-    public async Task UpdateGraphicsBackend_WhenCapabilitiesChange_DisposesAndReselectsBackendAsync()
+    public async Task UpdateGraphicsBackend_WhenBackendAlreadyExists_LeavesItUntouchedAsync()
     {
         var initialBackend = new FakeGraphicsBackend();
         using Renderer renderer = new(initialBackend);
@@ -800,8 +802,8 @@ public sealed class RendererTests
 
         var changed = renderer.UpdateGraphicsBackend(TerminalCapabilities.Conservative, route: null);
 
-        changed.ShouldBeTrue();
-        initialBackend.DisposeCount.ShouldBe(1);
+        changed.ShouldBeFalse();
+        initialBackend.DisposeCount.ShouldBe(0);
 
         using var after = CreateGraphicsFrame(withImage: true, "other");
         _ = await renderer.RenderAsync(
@@ -810,9 +812,8 @@ public sealed class RendererTests
             TerminalCapabilities.Conservative,
             TestContext.Current.CancellationToken);
 
-        // TerminalCapabilities.Conservative authorizes no graphics protocol, so the reselected
-        // backend is null and the fake's marker no longer appears in subsequent output.
-        Encoding.UTF8.GetString(transport.Writes[^1]).ShouldNotContain("<place>");
+        // The pre-existing backend was never swapped, so it keeps handling frames itself.
+        Encoding.UTF8.GetString(transport.Writes[^1]).ShouldContain("<place>");
     }
 
     /// <summary>Verifies capability evidence actually reaching Kitty authorization activates the protocol.</summary>
@@ -848,12 +849,12 @@ public sealed class RendererTests
         Encoding.UTF8.GetString(transport.Writes[^1]).ShouldContain("_G");
     }
 
-    /// <summary>Verifies backend reselection is skipped while a frame render is in flight.</summary>
+    /// <summary>Verifies backend selection is skipped while a frame render is in flight, and applies
+    /// once the render completes.</summary>
     [Fact]
-    public async Task UpdateGraphicsBackend_WhenRenderIsInFlight_LeavesBackendUnchangedAsync()
+    public async Task UpdateGraphicsBackend_WhenRenderIsInFlight_IsSkippedThenAppliesAfterwardAsync()
     {
-        var backend = new FakeGraphicsBackend();
-        using var renderer = new Renderer(backend);
+        using var renderer = new Renderer(TerminalCapabilities.Conservative);
         await using var transport = new FakeTransport();
         using var frame = CreateGraphicsFrame(withImage: true);
         transport.Block();
@@ -864,18 +865,30 @@ public sealed class RendererTests
             CancellationToken.None).AsTask();
         await transport.WriteStarted;
 
-        var duringRender = renderer.UpdateGraphicsBackend(TerminalCapabilities.Conservative, route: null);
+        var kittyCapabilities = TerminalCapabilities.Conservative with
+        {
+            KittyGraphics = new Feature(CapabilitySupport.Supported, Origin.Query)
+        };
+
+        var duringRender = renderer.UpdateGraphicsBackend(kittyCapabilities, route: null);
 
         transport.Release();
         _ = await render;
 
         duringRender.ShouldBeFalse();
-        backend.DisposeCount.ShouldBe(0);
 
-        var afterRender = renderer.UpdateGraphicsBackend(TerminalCapabilities.Conservative, route: null);
+        var afterRender = renderer.UpdateGraphicsBackend(kittyCapabilities, route: null);
 
         afterRender.ShouldBeTrue();
-        backend.DisposeCount.ShouldBe(1);
+
+        using var after = CreateGraphicsFrame(withImage: true, "other");
+        _ = await renderer.RenderAsync(
+            after,
+            transport,
+            kittyCapabilities,
+            TestContext.Current.CancellationToken);
+
+        Encoding.UTF8.GetString(transport.Writes[^1]).ShouldContain("_G");
     }
 
     /// <summary>Verifies resize reconstructs unchanged graphics and commits the new exact front.</summary>
@@ -1387,7 +1400,7 @@ public sealed class RendererTests
         using var frame = new Frame(new Size(1, 1));
         backend.BlockDispose();
 
-        var disposing = Task.Run(renderer.Dispose);
+        var disposing = Task.Run(renderer.Dispose, TestContext.Current.CancellationToken);
         await backend.DisposeStarted;
 
         try

@@ -675,37 +675,54 @@ public sealed class Renderer: IDisposable
         _front.CopyFrom(back);
     }
 
-    /// <summary>Reselects the owned graphics backend from republished capability evidence.</summary>
+    /// <summary>Selects a graphics backend from republished capability evidence when none was
+    /// previously chosen.</summary>
     /// <remarks>
     /// <para>
     /// A host that reconstructs its renderer through the capability-driven constructor selects a
-    /// graphics backend exactly once, at construction. When capability evidence changes later in the
-    /// session - for example a delayed authoritative confirmation of Kitty support - nothing
-    /// reconsiders that choice unless a caller invokes this method. The previously selected backend
-    /// is disposed and <see cref="GraphicsBackendSelector.Create"/> runs again against the new
-    /// evidence and the same route the renderer was originally constructed with; the route itself
-    /// never changes at runtime.
+    /// graphics backend exactly once, at construction. When the negotiated evidence at that point
+    /// proved no graphics protocol (Kitty, sixel, or iTerm2 images), <see
+    /// cref="GraphicsBackendSelector.Create"/> returns <see langword="null"/> and nothing
+    /// reconsiders that choice later - even after a delayed authoritative confirmation (e.g. a
+    /// late DA2/Kitty query response) proves support the constructor could not yet see. This method
+    /// closes that gap by re-running <see cref="GraphicsBackendSelector.Create"/> against the new
+    /// evidence, but only when no backend exists yet.
     /// </para>
     /// <para>
-    /// This does not by itself force a redraw. A caller that swaps the backend is responsible for
-    /// invalidating the renderer (directly, or by deferring to the next render boundary) so the next
-    /// frame is encoded against the newly selected backend instead of silently reusing stale front
-    /// state prepared under the previous one.
+    /// A backend that already exists is intentionally left untouched. Both shipped backends
+    /// (<c>KittyGraphicsBackend</c>, <c>NonRetainedGraphicsBackend</c>) already re-check
+    /// <see cref="GraphicsBackendSelector.Authoritative"/> against the live profile on every
+    /// <c>Prepare</c> call and gracefully emit removal commands for previously placed content when
+    /// their own protocol is revoked - disposing and replacing that instance here would discard its
+    /// placement-tracking state before it gets a chance to run that self-cleanup, silently dropping
+    /// the removal. Recovering from a downgrade to a *different* still-supported protocol (e.g.
+    /// Kitty revoked while sixel remains) is not handled by this method.
+    /// </para>
+    /// <para>
+    /// This does not by itself force a redraw. A caller that selects a backend for the first time
+    /// this way is responsible for invalidating the renderer (directly, or by deferring to the next
+    /// render boundary) so the next frame is encoded against it instead of continuing to emit only
+    /// the ordinary-cell fallback.
     /// </para>
     /// </remarks>
     /// <param name="capabilities">The non-null re-negotiated capability evidence.</param>
     /// <param name="route">The same multiplexer route originally supplied to this renderer, if any.</param>
     /// <returns>
-    /// <see langword="true"/> when the backend was disposed and reselected; <see langword="false"/>
-    /// when a render was currently in progress and the existing backend was left untouched, since
-    /// swapping it mid-transaction could commit or invalidate the wrong instance.
+    /// <see langword="true"/> when a backend was newly selected because none existed before;
+    /// <see langword="false"/> when a backend already existed (left untouched - see remarks) or a
+    /// render was currently in progress.
     /// </returns>
     /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> is null.</exception>
     /// <exception cref="ObjectDisposedException">The renderer is disposed.</exception>
-    internal bool UpdateGraphicsBackend(TerminalCapabilities capabilities, MultiplexerRoute? route)
+    public bool UpdateGraphicsBackend(TerminalCapabilities capabilities, MultiplexerRoute? route)
     {
         ArgumentNullException.ThrowIfNull(capabilities);
         ThrowIfDisposed();
+
+        if (_backend is not null)
+        {
+            return false;
+        }
 
         if (Interlocked.CompareExchange(ref _rendering, 1, 0) != 0)
         {
@@ -714,15 +731,14 @@ public sealed class Renderer: IDisposable
 
         try
         {
-            _backend?.Dispose();
-            _backend = GraphicsBackendSelector.Create(capabilities, route);
+            _backend ??= GraphicsBackendSelector.Create(capabilities, route);
         }
         finally
         {
             Volatile.Write(ref _rendering, 0);
         }
 
-        return true;
+        return _backend is not null;
     }
 
     private void DisposeOwnedState()

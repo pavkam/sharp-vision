@@ -369,16 +369,16 @@ public sealed class TextInputTests
         var field = typeof(TextInput).GetField(
             "_visualLines",
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
-        var lines = (Array)field.GetValue(control)!;
+        var lines = (Array) field.GetValue(control)!;
         var snapshots = new VisualLineSnapshot[lines.Length];
 
         for (var i = 0; i < lines.Length; i++)
         {
             var line = lines.GetValue(i)!;
             var type = line.GetType();
-            var offset = (int)type.GetProperty("Offset")!.GetValue(line)!;
-            var length = (int)type.GetProperty("Length")!.GetValue(line)!;
-            var cells = (int)type.GetProperty("Cells")!.GetValue(line)!;
+            var offset = (int) type.GetProperty("Offset")!.GetValue(line)!;
+            var length = (int) type.GetProperty("Length")!.GetValue(line)!;
+            var cells = (int) type.GetProperty("Cells")!.GetValue(line)!;
             snapshots[i] = new VisualLineSnapshot(offset, length, cells);
         }
 

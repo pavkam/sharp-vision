@@ -165,12 +165,8 @@ internal static class FigletParser
             // follows catches a different failure: a tag-driven loop stopping early because it hit
             // the limit while genuine tag/glyph lines remained unconsumed, which no longer shows up
             // as a raw count overrun since those loops stop at exactly the limit.
-            if (glyphs.Count > limits.MaxGlyphs)
-            {
-                throw new InvalidDataException("The FIG-font glyph count exceeds the configured limit.");
-            }
-
-            return cursor < lines.Length && lines[cursor..].Any(line => line.Length != 0)
+            return glyphs.Count > limits.MaxGlyphs
+                    || (cursor < lines.Length && lines[cursor..].Any(line => line.Length != 0))
                 ? throw new InvalidDataException("The FIG-font glyph count exceeds the configured limit.")
                 : new FigletFont(
                     name,

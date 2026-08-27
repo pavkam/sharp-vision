@@ -1531,6 +1531,7 @@ namespace SharpVision.Terminal.Rendering
         public System.Threading.Tasks.ValueTask<SharpVision.Terminal.Rendering.RenderMetrics> RenderAsync(SharpVision.Terminal.Rendering.Frame back, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Capabilities.TerminalProfile profile, System.Threading.CancellationToken cancellationToken) { }
         public System.Threading.Tasks.ValueTask<SharpVision.Terminal.Rendering.RenderMetrics> RenderAsync(SharpVision.Terminal.Rendering.Frame back, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Capabilities.TerminalProfile profile, SharpVision.Terminal.Geometry.CellMetrics? cellMetrics, System.Threading.CancellationToken cancellationToken) { }
         public System.Threading.Tasks.ValueTask ShutdownAsync(SharpVision.Terminal.Abstractions.ITransport transport, System.Threading.CancellationToken cancellationToken = default) { }
+        public bool UpdateGraphicsBackend(SharpVision.Terminal.Capabilities.TerminalCapabilities capabilities, SharpVision.Terminal.Multiplexing.MultiplexerRoute? route) { }
     }
     public enum Shade
     {
