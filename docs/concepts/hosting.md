@@ -109,20 +109,32 @@ cancellation — the application latches the signal request, so a
 remain stable for compatibility: `Redirected=0`, `Completed=1`, `Cancelled=2`,
 `Failed=3`, and the appended `UnsupportedTerminal=4`.
 
-On Unix, `SIGTERM` and `SIGHUP` also drive the same cooperative shutdown,
-through their own `PosixSignalRegistration`s reusing the Ctrl+C cancellation
-callback and token. Unlike `SIGINT`/`SIGQUIT`, these two are registered
-unconditionally - `TreatControlCAsInput` has no effect on them - because they
-are the signals a process manager, container orchestrator, systemd unit, or
-plain `kill` sends to request graceful termination, not Ctrl+C. The same
-cooperative shutdown should cover the equivalent involuntary exits on Windows.
+`SIGTERM` and `SIGHUP` also drive the same cooperative shutdown, on every
+platform, through their own `PosixSignalRegistration`s reusing the Ctrl+C
+cancellation callback and token. Unlike `SIGINT`/`SIGQUIT`, these two are
+registered unconditionally - `TreatControlCAsInput` has no effect on them -
+because they are the signals a process manager, container orchestrator, systemd
+unit, or plain `kill` sends to request graceful termination on Unix, not Ctrl+C.
+On Windows, the runtime maps them to `CTRL_SHUTDOWN_EVENT` (system shutdown) and
+`CTRL_CLOSE_EVENT` (console window closed), so the same two registrations cover
+a console close and a system shutdown there too.
 
 > [!IMPORTANT]
 >
-> **Implementation gap:** Windows has no equivalent registration.
-> `CTRL_CLOSE_EVENT`, `CTRL_LOGOFF_EVENT`, and `CTRL_SHUTDOWN_EVENT` are not
-> handled, so a console-window close, logoff, or system shutdown on Windows
-> bypasses `Application.StopAsync` and its terminal-mode restoration.
+> **Windows blocks synchronously to fit the OS deadline.** Unlike Unix, which
+> waits indefinitely for cleanup once the signal handler cancels it, Windows
+> kills the process once every registered console-control handler has returned -
+> or after about five seconds, whichever comes first. The `SIGTERM`/`SIGHUP`
+> callback on Windows therefore blocks synchronously until the requested stop
+> (cancel, stop, and terminal-mode restoration) actually finishes, instead of
+> firing it fire-and-forget the way Ctrl+C and Unix's own `SIGTERM`/`SIGHUP` do.
+> `CleanupTimeout` defaults to one second, comfortably inside that five-second
+> budget.
+>
+> **Logoff is intentionally out of scope.** `CTRL_LOGOFF_EVENT` is not handled:
+> Microsoft documents it as delivered only to services, never to interactive
+> console applications, which is what this library targets, so there is nothing
+> to observe here - not a gap to close later.
 
 A signal that lands while `Build()` is blocked inside the screen's synchronous
 `OnAttach` is still cancelled cooperatively - the linked token is cancelled and

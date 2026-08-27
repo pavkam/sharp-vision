@@ -69,6 +69,50 @@ public sealed class ApplicationProcessSignalTests
         await application.DisposeAsync();
     }
 
+    /// <summary>Verifies the callback's returned task represents the real stop completing - cancel,
+    /// stop, and terminal-mode restoration - rather than an already-completed stand-in returned
+    /// before that work finishes. This is what
+    /// <c>CooperativeShutdownSignals.InvokeTerminationSignal</c> relies on when it blocks
+    /// synchronously on this exact task for Windows' <c>SIGTERM</c>/<c>SIGHUP</c> registration
+    /// (mapped to <c>CTRL_SHUTDOWN_EVENT</c>/<c>CTRL_CLOSE_EVENT</c>, which - unlike Unix - does not
+    /// wait indefinitely for cleanup once the handler returns): if this method returned a task that
+    /// completed before the host lease was actually restored, that blocking wait would return too
+    /// early and race the OS's own process teardown.</summary>
+    [Fact]
+    public async Task RequestCooperativeStop_ReturnedTask_CompletesOnlyAfterHostLeaseRestoredAsync()
+    {
+        // Arrange
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var hostLease = new ProcessSignalRestoreLeaseProbe();
+        var application = new Application(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal,
+            hostLease: hostLease,
+            observeProcessSignals: true);
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.Started += (_, _) => started.TrySetResult();
+
+        // Act
+        var running = application.RunAsync(TestContext.Current.CancellationToken);
+        await started.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        var stopTask = InvokeRequestCooperativeStopReturningTask(application);
+        await stopTask.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        // Assert - the returned task has already completed here, so the host lease it guards must
+        // already be restored: a caller blocking on this task (as the Windows termination path
+        // does) would correctly have waited for the real cleanup, not raced ahead of it.
+        hostLease.Disposals.ShouldBe(1);
+
+        await running.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        application.Completion.IsCompletedSuccessfully.ShouldBeTrue();
+
+        await application.DisposeAsync();
+    }
+
     /// <summary>Verifies a signal delivered before <c>StartAsync</c> is ever called - standing in for
     /// one landing during <c>Build()</c>'s synchronous <c>OnAttach</c>, which runs before the caller
     /// can reach <c>StartAsync</c> at all - still resolves cleanly through
@@ -146,6 +190,15 @@ public sealed class ApplicationProcessSignalTests
         typeof(Application)
             .GetMethod("RequestCooperativeStop", BindingFlags.Instance | BindingFlags.NonPublic)!
             .Invoke(application, null);
+
+    /// <summary>Invokes <c>RequestCooperativeStop</c> via reflection and returns its result as the
+    /// <see cref="Task"/> it now returns - what
+    /// <see cref="RequestCooperativeStop_ReturnedTask_CompletesOnlyAfterHostLeaseRestoredAsync"/>
+    /// depends on.</summary>
+    private static Task InvokeRequestCooperativeStopReturningTask(Application application) =>
+        (Task) typeof(Application)
+            .GetMethod("RequestCooperativeStop", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(application, null)!;
 
     /// <summary>Records host-lease disposal as a proxy for "terminal mode restored" - the same role
     /// <c>ConsoleApplicationRestoreLease</c> plays for the <c>ConsoleApplicationBuilder</c>-driven

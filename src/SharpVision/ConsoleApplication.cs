@@ -73,6 +73,15 @@ public static class ConsoleApplication
         // a concurrently-running callback - and Cancel() on an already-disposed source throws
         // ObjectDisposedException, which is fatal to the whole process from a signal-handling
         // thread. Once teardown has started, the token no longer matters, so this is a plain no-op.
+        //
+        // Cancel() itself is synchronous and instantaneous, so this returns the already-completed
+        // task: on Windows, blocking on it inside the SIGTERM/SIGHUP registration (see
+        // CooperativeShutdownSignals) is a no-op that returns immediately. That is fine - the
+        // Application this method builds below registers its own independent scope around the same
+        // signals (see its constructor's observeProcessSignals), and that registration's own
+        // callback is the one that actually blocks until StopAsync finishes; the OS only tears the
+        // process down once every registered handler for the signal has returned, including that
+        // one.
         var signals = CooperativeShutdownSignals.Register(observeCtrlC, () =>
         {
             try
@@ -82,6 +91,8 @@ public static class ConsoleApplication
             catch (ObjectDisposedException)
             {
             }
+
+            return Task.CompletedTask;
         });
 
         // The registration above must be live before `builder.Build()` runs, not just around the

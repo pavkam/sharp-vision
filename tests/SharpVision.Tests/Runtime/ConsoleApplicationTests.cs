@@ -232,7 +232,11 @@ public sealed class ConsoleApplicationTests
     [InlineData(15)]
     public async Task RunCoreAsync_WhenRealPosixSignalRaised_StopsCleanlyAsync(int signal)
     {
-        Assert.SkipUnless(!OperatingSystem.IsWindows(), "SIGTERM/SIGHUP registration is Unix-only.");
+        // Registration itself is no longer Unix-only, but raising the signal below goes through a
+        // direct libc `kill(2)` P/Invoke, which does not exist on Windows: there is no equivalent
+        // way to synthesize a CTRL_CLOSE_EVENT/CTRL_SHUTDOWN_EVENT from within the same process, so
+        // this test - the raise mechanism, not the feature it exercises - stays Unix-only.
+        Assert.SkipUnless(!OperatingSystem.IsWindows(), "Raising a signal via libc kill(2) requires Unix.");
 
         // Arrange
         var screen = new StartedSignalScreen();

@@ -134,10 +134,11 @@ public sealed class Application:
     /// registration around the whole build-and-run sequence. A non-null value registers, right here
     /// in the constructor so the registration is live for the rest of this instance's life
     /// (including a caller's synchronous attach code that runs before <see cref="StartAsync"/> is
-    /// ever reached): <c>SIGTERM</c>/<c>SIGHUP</c> unconditionally on Unix, and Ctrl+C gated by the
-    /// value itself - true observes it as cooperative shutdown, false leaves it to reach the screen
-    /// as decoded input. A signal observed before <see cref="StartAsync"/> is called only latches a
-    /// request that call itself resolves; see <see cref="RequestCooperativeStop"/>.
+    /// ever reached): <c>SIGTERM</c>/<c>SIGHUP</c> unconditionally on every platform, and Ctrl+C
+    /// gated by the value itself - true observes it as cooperative shutdown, false leaves it to
+    /// reach the screen as decoded input. A signal observed before <see cref="StartAsync"/> is
+    /// called only latches a request that call itself resolves; see
+    /// <see cref="RequestCooperativeStop"/>.
     /// <see cref="ConsoleApplicationBuilder.Build"/> passes a non-null value derived from
     /// <see cref="ConsoleRunOptions.TreatControlCAsInput"/>, so every application it builds -
     /// including the bare <c>Build()</c> + <c>RunAsync()</c> shape that has no other registration
@@ -552,8 +553,8 @@ public sealed class Application:
     }
 
     /// <summary>
-    /// The callback registered process signals invoke (see the constructor). Runs on an arbitrary
-    /// signal-handling thread.
+    /// The callback registered process signals invoke (see the constructor), returning the task
+    /// that represents the requested stop finishing. Runs on an arbitrary signal-handling thread.
     /// </summary>
     /// <remarks>
     /// When nothing has started yet - a signal landing during <c>Build()</c>'s synchronous
@@ -563,18 +564,25 @@ public sealed class Application:
     /// started, <see cref="StopAsync"/> is the same cooperative path an external caller uses;
     /// <see cref="Observe"/> swallows the resulting task so an abandoned await here never surfaces
     /// as an unobserved-exception crash, and <see cref="StopAsync"/>'s own dispatcher-affine
-    /// queuing and <c>_stopping</c> guard make it safe to invoke from this thread.
+    /// queuing and <c>_stopping</c> guard make it safe to invoke from this thread. Returning the
+    /// same task (rather than only observing it) lets <c>CooperativeShutdownSignals</c> block on it
+    /// for the Windows <c>SIGTERM</c>/<c>SIGHUP</c> registration - see
+    /// <c>CooperativeShutdownSignals.InvokeTerminationSignal</c> - while every other registration
+    /// (Ctrl+C on every platform, and Unix's own <c>SIGTERM</c>/<c>SIGHUP</c>) still fires it and
+    /// moves on without waiting, exactly as before.
     /// <para>
     /// <see cref="StopAsync"/> is itself <c>async</c>, so an exception from its own body - including
     /// one <c>Dispatcher.InvokeAsync</c> can throw synchronously for a disposed or full dispatcher -
     /// is captured into the returned <see cref="ValueTask"/> rather than thrown here, and
     /// <see cref="Observe"/> already swallows a pre-faulted task exactly like one that faults later.
-    /// The try/catch below is defense in depth against that invariant ever changing:
-    /// <c>CooperativeShutdownSignals</c> requires <c>onSignal</c> to never throw onto the
-    /// signal-handling thread.
+    /// The try/catch below is defense in depth against that invariant ever changing: this callback
+    /// must never throw before returning a task, and <c>CooperativeShutdownSignals</c> is
+    /// responsible for never letting that returned task's own fault escape onto the
+    /// signal-handling thread either (it awaits and swallows it for the blocking Windows path; the
+    /// non-blocking paths already rely on <see cref="Observe"/> here for the same reason).
     /// </para>
     /// </remarks>
-    private void RequestCooperativeStop()
+    private Task RequestCooperativeStop()
     {
         _stopRequestedBySignal = true;
 
@@ -583,15 +591,22 @@ public sealed class Application:
             _signalRequestedStopBeforeStart = true;
         }
 
+        Task task;
+
         try
         {
-            Observe(StopAsync(CancellationToken.None).AsTask());
+            task = StopAsync(CancellationToken.None).AsTask();
         }
         catch (Exception exception) when (exception is ObjectDisposedException or InvalidOperationException)
         {
             // See the remarks above: not expected to be reachable given StopAsync's async
             // signature, but this callback must never throw onto the signal-handling thread.
+            return Task.CompletedTask;
         }
+
+        Observe(task);
+
+        return task;
     }
 
     /// <summary>Unregisters this application's process-signal scope at most once.</summary>
