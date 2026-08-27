@@ -293,7 +293,7 @@ public sealed class ConsoleApplicationBuilderTests
                 new Feature(CapabilitySupport.Supported, Origin.Query));
             session.Backend.ShouldBeSameAs(initialBackend);
             JoinedWrites(transport).ShouldEndWith(
-                "\u001b[<u\u001b[?1006l\u001b[?1003l\u001b[?2004l" +
+                "\u001b[<u\u001b[?1003l\u001b[?1006l\u001b[?2004l" +
                 "\u001b[?1004l\u001b[?25h\u001b[?1049l");
         }
         finally

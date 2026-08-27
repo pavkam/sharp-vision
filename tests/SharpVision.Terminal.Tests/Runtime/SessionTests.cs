@@ -601,8 +601,8 @@ public sealed class SessionTests
         transport.JoinedWrites.ShouldBe(
             "\u001b[?u\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
             "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p" +
-            "\u001b[?1004h\u001b[?2004h\u001b[?1000h\u001b[?1006h\u001b[>3u" +
-            "\u001b[<u\u001b[?1006l\u001b[?1000l\u001b[?2004l\u001b[?1004l");
+            "\u001b[?1004h\u001b[?2004h\u001b[?1006h\u001b[?1000h\u001b[>3u" +
+            "\u001b[<u\u001b[?1000l\u001b[?1006l\u001b[?2004l\u001b[?1004l");
     }
 
     /// <summary>Verifies synchronous host geometry suppresses lower-confidence geometry probes.</summary>
@@ -831,8 +831,8 @@ public sealed class SessionTests
         sink.ClosedCount.ShouldBe(1);
         transport.JoinedWrites.ShouldBe(
             "\u001b[?1049h\u001b[?25l\u001b[?1004h\u001b[?2004h" +
-            "\u001b[?1000h\u001b[?1006h\u001b[>3u" +
-            "\u001b[<u\u001b[?1006l\u001b[?1000l\u001b[?2004l" +
+            "\u001b[?1006h\u001b[?1000h\u001b[>3u" +
+            "\u001b[<u\u001b[?1000l\u001b[?1006l\u001b[?2004l" +
             "\u001b[?1004l\u001b[?25h\u001b[?1049l");
     }
 
@@ -2241,7 +2241,7 @@ public sealed class SessionTests
 
         // Compared against the same session's own enable sequence rather than a hardcoded list, so
         // this keeps meaning if the lease set changes.
-        foreach (var disable in new[] { "[?1049l", "[?25h", "[?1006l", "[?1000l" })
+        foreach (var disable in new[] { "[?1049l", "[?25h", "[?1000l", "[?1006l" })
         {
             written.Contains(disable, StringComparison.Ordinal).ShouldBeTrue(
                 $"the walk must resume far enough to emit '{disable}', but saw '{written}'");

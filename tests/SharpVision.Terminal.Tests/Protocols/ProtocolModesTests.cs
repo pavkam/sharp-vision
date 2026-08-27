@@ -104,7 +104,7 @@ public sealed class ProtocolModesTests
 
         destination.WrittenSpan.ToArray().ShouldBe(
             Encoding.ASCII.GetBytes(
-                $"\u001b[?{mode}h\u001b[?1006h\u001b[?1006l\u001b[?{mode}l"));
+                $"\u001b[?1006h\u001b[?{mode}h\u001b[?{mode}l\u001b[?1006l"));
     }
 
     /// <summary>
@@ -122,11 +122,16 @@ public sealed class ProtocolModesTests
     {
         var destination = new ArrayBufferWriter<byte>();
 
-        ProtocolModes.Mouse(new ProtocolWriter(destination), MouseTracking.Press, coordinates, enabled: true);
+        var writer = new ProtocolWriter(destination);
 
-        var suffix = mode == 0 ? string.Empty : $"\u001b[?{mode}h";
+        ProtocolModes.Mouse(writer, MouseTracking.Press, coordinates, enabled: true);
+        ProtocolModes.Mouse(writer, MouseTracking.Press, coordinates, enabled: false);
+
+        var expected = mode == 0
+            ? "\u001b[?1000h\u001b[?1000l"
+            : $"\u001b[?{mode}h\u001b[?1000h\u001b[?1000l\u001b[?{mode}l";
         destination.WrittenSpan.ToArray().ShouldBe(
-            Encoding.ASCII.GetBytes($"\u001b[?1000h{suffix}"));
+            Encoding.ASCII.GetBytes(expected));
     }
 
     /// <summary>

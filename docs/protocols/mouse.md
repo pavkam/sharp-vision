@@ -80,16 +80,20 @@ through pointer capture and hit testing to final control output.
 `ProtocolModes.Mouse` owns exact mode 9/1000/1002/1003 tracking and
 1005/1006/1015/1016 coordinate commands. `Runtime.TerminalOptions` selects the
 pair; `Runtime.Session` enables cell input only with proven `CellMouse` support
-and pixel input only with proven `PixelMouse` support, then restores coordinate
-and tracking modes in reverse. Tentative terminal-name hints never activate
-them.
+and pixel input only with proven `PixelMouse` support. A non-default coordinate
+mode is enabled before tracking begins; shutdown stops tracking before resetting
+the coordinate mode, so an event cannot race across coordinate grammars.
+Tentative terminal-name hints never activate them.
 
 ## Sources
 
 - [XTerm Control Sequences, patch level 410](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
   defines modes 9, 1000, 1002, 1003, 1005, 1006, 1015, and 1016.
+- [iTerm2 terminal feature reporting](https://iterm2.com/feature-reporting/)
+  specifies coordinate-first enable and tracking-first disable ordering to avoid
+  mouse-report races.
 
-Source accessed 2026-07-28.
+Sources accessed 2026-08-27.
 
 ## Expected behavior
 

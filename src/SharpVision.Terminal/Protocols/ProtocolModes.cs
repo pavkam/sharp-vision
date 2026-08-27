@@ -87,21 +87,20 @@ public static class ProtocolModes
 
         if (enabled)
         {
-            SetPrivate(writer, (int) tracking, enabled: true);
-
             if (coordinates != MouseCoordinates.Default)
             {
                 SetPrivate(writer, (int) coordinates, enabled: true);
             }
 
+            SetPrivate(writer, (int) tracking, enabled: true);
             return;
         }
+
+        SetPrivate(writer, (int) tracking, enabled: false);
 
         if (coordinates != MouseCoordinates.Default)
         {
             SetPrivate(writer, (int) coordinates, enabled: false);
         }
-
-        SetPrivate(writer, (int) tracking, enabled: false);
     }
 }

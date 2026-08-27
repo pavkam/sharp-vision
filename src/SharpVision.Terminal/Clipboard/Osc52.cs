@@ -223,16 +223,25 @@ public static class Osc52
             return true;
         }
 
+        var hasSelection = false;
+        selection = default;
+
         foreach (var candidate in pc)
         {
-            if (TryGetSelection(candidate, out selection))
+            if (!TryGetSelection(candidate, out var candidateSelection))
             {
-                return true;
+                selection = default;
+                return false;
+            }
+
+            if (!hasSelection)
+            {
+                selection = candidateSelection;
+                hasSelection = true;
             }
         }
 
-        selection = default;
-        return false;
+        return hasSelection;
     }
 
     [Pure]

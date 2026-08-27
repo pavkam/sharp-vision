@@ -33,6 +33,12 @@ internal static class Png
             var offset = Signature.Length;
             var first = true;
             var hasData = false;
+            var dataEnded = false;
+            var hasPalette = false;
+            var hasTransparency = false;
+            var bitDepth = (byte) 0;
+            var colorType = (byte) 0;
+            var paletteEntries = 0;
             Size size = default;
 
             while (offset <= source.Length - 12)
@@ -50,7 +56,7 @@ internal static class Png
                 var storedCrc = BinaryPrimitives.ReadUInt32BigEndian(source.Slice(offset + 8 + count, 4));
                 offset = checked(offset + count + 12);
 
-                if (ComputeCrc32(type, data) != storedCrc || IsUnknownCriticalChunk(type))
+                if (!IsValidChunkType(type) || ComputeCrc32(type, data) != storedCrc)
                 {
                     throw Invalid();
                 }
@@ -63,13 +69,51 @@ internal static class Png
                     }
 
                     size = ReadHeader(data);
+                    bitDepth = data[8];
+                    colorType = data[9];
                     first = false;
                     continue;
                 }
 
+                if (type.SequenceEqual("IHDR"u8) || IsUnknownCriticalChunk(type))
+                {
+                    throw Invalid();
+                }
+
                 if (type.SequenceEqual("IDAT"u8))
                 {
+                    if (dataEnded || (colorType == 3 && !hasPalette))
+                    {
+                        throw Invalid();
+                    }
+
                     hasData = true;
+                    continue;
+                }
+
+                dataEnded = hasData;
+
+                if (type.SequenceEqual("PLTE"u8))
+                {
+                    if (hasPalette || hasData)
+                    {
+                        throw Invalid();
+                    }
+
+                    paletteEntries = ValidatePalette(data, colorType, bitDepth);
+                    hasPalette = true;
+                    continue;
+                }
+
+                if (type.SequenceEqual("tRNS"u8))
+                {
+                    if (hasTransparency || hasData ||
+                        !IsValidTransparency(data, colorType, hasPalette, paletteEntries))
+                    {
+                        throw Invalid();
+                    }
+
+                    hasTransparency = true;
                     continue;
                 }
 
@@ -87,8 +131,8 @@ internal static class Png
         /// <summary>
         /// Decodes a non-interlaced, 8- or 16-bit-depth PNG to straight (non-premultiplied)
         /// RGBA8888, four bytes per pixel in row-major order. Supports every PNG color type
-        /// (grayscale, RGB, indexed, grayscale with alpha, RGBA); an indexed source without a
-        /// required <c>PLTE</c> chunk is rejected. A 16-bit-per-channel sample narrows to 8 bits
+        /// (grayscale, RGB, indexed, grayscale with alpha, RGBA); an indexed source without its
+        /// required <c>PLTE</c> chunk is structurally invalid. A 16-bit-per-channel sample narrows to 8 bits
         /// by keeping its most significant byte. Interlaced sources and depths other than 8 or 16
         /// bits per channel are outside this decoder's scope and are reported through
         /// <see cref="NotSupportedException"/> rather than approximated.
@@ -96,8 +140,7 @@ internal static class Png
         /// <returns>Owned RGBA8888 pixel bytes, exactly width times height times four in length.</returns>
         /// <exception cref="ArgumentException">The PNG structure or required header fields are invalid.</exception>
         /// <exception cref="NotSupportedException">
-        /// The source is interlaced, uses a bit depth other than 8 or 16, or is indexed without a
-        /// <c>PLTE</c> chunk.
+        /// The source is interlaced or uses a bit depth other than 8 or 16.
         /// </exception>
         [Pure]
         public byte[] DecodeRgba()
@@ -241,6 +284,42 @@ internal static class Png
         6 => bitDepth is 8 or 16,
         _ => false
     };
+
+    /// <summary>Validates the PNG chunk-type alphabet and the uppercase reserved third byte.</summary>
+    private static bool IsValidChunkType(ReadOnlySpan<byte> type) =>
+        type.Length == 4 &&
+        IsAsciiLetter(type[0]) &&
+        IsAsciiLetter(type[1]) &&
+        type[2] is >= (byte) 'A' and <= (byte) 'Z' &&
+        IsAsciiLetter(type[3]);
+
+    private static bool IsAsciiLetter(byte value) =>
+        value is (>= (byte) 'A' and <= (byte) 'Z') or (>= (byte) 'a' and <= (byte) 'z');
+
+    /// <summary>Validates palette shape and its relationship to the IHDR color type and depth.</summary>
+    private static int ValidatePalette(ReadOnlySpan<byte> data, byte colorType, byte bitDepth)
+    {
+        if (colorType is not (2 or 3 or 6) || data.Length is < 3 or > 768 || data.Length % 3 != 0)
+        {
+            throw Invalid();
+        }
+
+        var entries = data.Length / 3;
+
+        return colorType == 3 && entries > (1 << bitDepth) ? throw Invalid() : entries;
+    }
+
+    private static bool IsValidTransparency(
+        ReadOnlySpan<byte> data,
+        byte colorType,
+        bool hasPalette,
+        int paletteEntries) => colorType switch
+        {
+            0 => data.Length == 2,
+            2 => data.Length == 6,
+            3 => hasPalette && data.Length <= paletteEntries,
+            _ => false
+        };
 
     private static bool IsUnknownCriticalChunk(ReadOnlySpan<byte> type) =>
         (type[0] & 0x20) == 0 &&

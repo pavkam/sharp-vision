@@ -118,6 +118,9 @@ public sealed class Osc52Tests
     [InlineData("52;c;/w==", 16)]
     [InlineData("52;c;YWJj", 2)]
     [InlineData("52;yz;YQ==", 16)]
+    [InlineData("52;xc;YQ==", 16)]
+    [InlineData("52;cx;YQ==", 16)]
+    [InlineData("52;c!p;YQ==", 16)]
     [InlineData("52;c", 16)]
     public void Decode_WhenReplyIsInvalid_ReturnsMalformed(string payload, int maximum)
     {
@@ -127,6 +130,33 @@ public sealed class Osc52Tests
 
         result.Status.ShouldBe(ClipboardStatus.Malformed);
         result.Data.Length.ShouldBe(0);
+    }
+
+    /// <summary>Verifies an invalid character anywhere in the selection list remains malformed
+    /// across every possible parser read boundary.</summary>
+    /// <param name="selectionList">The malformed selection list.</param>
+    [Theory]
+    [InlineData("xc")]
+    [InlineData("cx")]
+    [InlineData("c!p")]
+    public void Decode_WhenSelectionListContainsInvalidCharacterAtAnyReadSplit_ReturnsMalformed(
+        string selectionList)
+    {
+        var sequence = Encoding.ASCII.GetBytes($"\u001b]52;{selectionList};YQ==\u001b\\");
+
+        for (var split = 0; split <= sequence.Length; split++)
+        {
+            using ProtocolParser parser = new();
+            var sink = new RecordingSink();
+
+            parser.Parse(sequence.AsSpan(0, split), ref sink);
+            parser.Parse(sequence.AsSpan(split), ref sink);
+            var observation = sink.Observations.ShouldHaveSingleItem();
+            var result = Osc52.Decode(observation.First, maxBytes: 16);
+
+            result.Status.ShouldBe(ClipboardStatus.Malformed, $"split {split}");
+            result.Data.Length.ShouldBe(0);
+        }
     }
 
     /// <summary>

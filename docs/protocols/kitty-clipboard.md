@@ -17,6 +17,11 @@ padded Base64 chunk. Chunks for one MIME type remain contiguous. An empty
 terminal/multiplexer. Clipboard payloads, passwords, and permission tokens are
 redacted from diagnostics.
 
+An OSC 52 `Pc` field is empty or an ordered list made entirely from `c`, `p`,
+`q`, `s`, and `0` through `7`. SharpVision resolves a valid list to its first
+selection and rejects the whole reply if any list character is invalid; it never
+skips malformed bytes to manufacture a successful correlation.
+
 ## Detection and state
 
 `CSI ? 5522 $ p` queries support; DECRPM values 0 or 4 mean unsupported and 1,
@@ -104,9 +109,10 @@ from the reply to an application-issued operation.
 
 Chunking behavior is pinned at 0, 1, 4095, 4096, 4097, and 8192 bytes, along
 with reads, list, aliases, primary selection, credentials, permissions, every
-status, and terminators. The parser accepts every split point and rejects
-malformed metadata, Base64, or ordering before recovering. Cancellation, limits,
-binary data, and writer-to-parser-to-transaction integration are also covered.
+status, and terminators. OSC 52 selection-list validation and the packet parser
+accept every split point and reject malformed metadata, Base64, or ordering
+before recovering. Cancellation, limits, binary data, and
+writer-to-parser-to-transaction integration are also covered.
 
 ## Sources
 

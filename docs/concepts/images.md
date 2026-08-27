@@ -10,9 +10,9 @@ buffer afterward cannot change what is rendered.
 The first source representations are:
 
 - sRGB RGBA with exactly four bytes per pixel in red, green, blue, alpha order;
-- encoded PNG with a validated signature, IHDR, chunk boundaries, per-chunk
-  CRCs, recognized critical chunks, IDAT presence, IEND termination, and
-  positive pixel dimensions.
+- encoded PNG with a validated signature, IHDR, chunk boundaries and type codes,
+  per-chunk CRCs, critical-chunk ordering, palette legality, consecutive IDAT
+  data, IEND termination, and positive pixel dimensions.
 
 PNG validation establishes safe ownership and dimensions. The decoder converts
 non-interlaced, 8- or 16-bit grayscale, RGB, indexed, grayscale-alpha, and RGBA
@@ -66,10 +66,15 @@ every chunk CRC covers its type and data according to the
 The same specification's
 [chunk naming rules](https://www.w3.org/TR/png-3/#5Chunk-naming-conventions)
 make unknown critical chunks fatal while unknown ancillary chunks remain
-skippable. Truncated, overflowing, trailing, corrupted, structurally invalid,
-and policy-exceeding containers fail without publishing an image. Raster
-decoding requires exactly the declared scanline bytes after decompression;
-shorter or longer payloads are rejected rather than partially decoded.
+skippable. Chunk type codes contain only ASCII letters and keep their reserved
+third byte uppercase. The shared structural pass also requires one leading IHDR,
+no duplicate or late PLTE/tRNS chunks, consecutive IDAT chunks, and one final
+IEND. PLTE contains 1 to 256 complete RGB entries, appears only for color types
+2, 3, or 6, and cannot exceed an indexed source's bit-depth range. Truncated,
+overflowing, trailing, corrupted, structurally invalid, and policy-exceeding
+containers fail without publishing an image. Raster decoding requires exactly
+the declared scanline bytes after decompression; shorter or longer payloads are
+rejected rather than partially decoded.
 
 Every image receives a stable, nonzero, process-local identity. The identity is
 semantic cache input - it is not a terminal protocol identifier and not a

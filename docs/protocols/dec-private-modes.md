@@ -55,9 +55,10 @@ ownership and reverse-order terminal restoration are implemented by
 [`Runtime.Session`](../architecture/runtime-event-loop.md#terminal-session-implementation).
 
 `ProtocolModes.Mouse` validates the tracking and coordinate enums before
-writing. Enable order is tracking then coordinate encoding; disable order is
-coordinate then tracking. This makes each pair reversible and prevents partially
-written output for invalid combinations.
+writing. It enables the coordinate encoding before event tracking and disables
+event tracking before the coordinate encoding. Every event emitted while
+tracking is active therefore uses the decoder's selected grammar. Default
+coordinates omit the coordinate-mode writes entirely.
 
 ## Sources
 

@@ -210,13 +210,13 @@ public sealed class PngTests
         decoded.ShouldBe([0x2A, 0x2A, 0x2A, 0, 0x2A, 0x2A, 0x2A, 255]);
     }
 
-    /// <summary>Verifies an indexed source without a PLTE chunk is reported rather than misdecoded.</summary>
+    /// <summary>Verifies an indexed source without its required PLTE chunk is structurally rejected.</summary>
     [Fact]
-    public void DecodeRgba_WhenIndexedSourceHasNoPalette_ThrowsNotSupported()
+    public void DecodeRgba_WhenIndexedSourceHasNoPalette_ThrowsArgumentException()
     {
         var source = CreateDecodablePng(1, 1, colorType: 3, bitDepth: 8, [0], [[0]]);
 
-        _ = Should.Throw<NotSupportedException>(() => source.AsSpan().DecodeRgba());
+        _ = Should.Throw<ArgumentException>(() => source.AsSpan().DecodeRgba());
     }
 
     /// <summary>Verifies decompressed bytes beyond the declared scanlines are rejected.</summary>
@@ -287,6 +287,128 @@ public sealed class PngTests
         _ = Should.Throw<ArgumentException>(() => critical.AsSpan().DecodeRgba());
         ancillary.AsSpan().ReadSize().ShouldBe(new Size(1, 1));
         ancillary.AsSpan().DecodeRgba().ShouldBe([42, 42, 42, 255]);
+    }
+
+    /// <summary>Verifies the shared container boundary rejects every forbidden critical-chunk
+    /// transition before either dimensions or decoded pixels are published.</summary>
+    /// <param name="violation">The critical-chunk ordering violation to construct.</param>
+    [Theory]
+    [InlineData("duplicate-header")]
+    [InlineData("duplicate-palette")]
+    [InlineData("late-palette")]
+    [InlineData("late-transparency")]
+    [InlineData("separated-data")]
+    public void ReadSize_WhenCriticalChunkOrderIsInvalid_RejectsContainer(string violation)
+    {
+        var grayscale = CreateDecodablePng(1, 1, colorType: 0, bitDepth: 8, [0], [[42]]);
+        var indexed = CreateDecodablePng(
+            1,
+            1,
+            colorType: 3,
+            bitDepth: 8,
+            [0],
+            [[0]],
+            palette: [10, 20, 30]);
+        var source = violation switch
+        {
+            "duplicate-header" => InsertBeforeChunk(
+                grayscale,
+                "IDAT"u8,
+                "IHDR"u8,
+                ReadChunkData(grayscale, "IHDR"u8)),
+            "duplicate-palette" => InsertBeforeChunk(indexed, "IDAT"u8, "PLTE"u8, [40, 50, 60]),
+            "late-palette" => InsertBeforeChunk(grayscale, "IEND"u8, "PLTE"u8, [10, 20, 30]),
+            "late-transparency" => InsertBeforeChunk(grayscale, "IEND"u8, "tRNS"u8, [0, 42]),
+            "separated-data" => InsertBeforeChunk(
+                InsertBeforeChunk(grayscale, "IEND"u8, "aBCD"u8, [1]),
+                "IEND"u8,
+                "IDAT"u8,
+                []),
+            _ => throw new ArgumentOutOfRangeException(nameof(violation))
+        };
+
+        _ = Should.Throw<ArgumentException>(() => source.AsSpan().ReadSize());
+        _ = Should.Throw<ArgumentException>(() => source.AsSpan().DecodeRgba());
+    }
+
+    /// <summary>Verifies consecutive IDAT chunks remain valid and decode as one compressed
+    /// stream after enforcing the ordering state machine.</summary>
+    [Fact]
+    public void DecodeRgba_WhenDataChunksAreConsecutive_DecodesCombinedStream()
+    {
+        var source = CreateDecodablePng(1, 1, colorType: 0, bitDepth: 8, [0], [[42]]);
+        var withEmptyLeadingData = InsertBeforeChunk(source, "IDAT"u8, "IDAT"u8, []);
+
+        withEmptyLeadingData.AsSpan().ReadSize().ShouldBe(new Size(1, 1));
+        withEmptyLeadingData.AsSpan().DecodeRgba().ShouldBe([42, 42, 42, 255]);
+    }
+
+    /// <summary>Verifies malformed PLTE shapes, forbidden color types, and indexed bit-depth
+    /// limits are rejected by the structural ownership boundary.</summary>
+    /// <param name="violation">The palette violation to construct.</param>
+    [Theory]
+    [InlineData("empty")]
+    [InlineData("partial-entry")]
+    [InlineData("too-many-entries")]
+    [InlineData("grayscale")]
+    [InlineData("grayscale-alpha")]
+    [InlineData("indexed-depth")]
+    public void ReadSize_WhenPaletteViolatesHeaderRules_RejectsContainer(string violation)
+    {
+        var colorType = violation == "grayscale-alpha" ? (byte) 4 : violation == "indexed-depth" ? (byte) 3 : (byte) 0;
+        var bitDepth = violation == "indexed-depth" ? (byte) 1 : (byte) 8;
+        var channels = colorType == 4 ? 2 : 1;
+        var source = CreateDecodablePng(1, 1, colorType, bitDepth, [0], [new byte[channels]]);
+        var palette = violation switch
+        {
+            "empty" => [],
+            "partial-entry" => new byte[4],
+            "too-many-entries" => new byte[257 * 3],
+            "indexed-depth" => new byte[3 * 3],
+            _ => new byte[3]
+        };
+        source = InsertBeforeChunk(source, "IDAT"u8, "PLTE"u8, palette);
+
+        _ = Should.Throw<ArgumentException>(() => source.AsSpan().ReadSize());
+        _ = Should.Throw<ArgumentException>(() => source.AsSpan().DecodeRgba());
+    }
+
+    /// <summary>Verifies optional palettes remain valid for truecolor sources, including the
+    /// maximum 256-entry palette.</summary>
+    /// <param name="colorType">The truecolor PNG color type.</param>
+    /// <param name="row">The decoded source samples.</param>
+    [Theory]
+    [InlineData((byte) 2, new byte[] { 1, 2, 3 })]
+    [InlineData((byte) 6, new byte[] { 1, 2, 3, 4 })]
+    public void ReadSize_WhenOptionalPaletteIsValid_AcceptsTruecolorSource(byte colorType, byte[] row)
+    {
+        var source = CreateDecodablePng(
+            1,
+            1,
+            colorType,
+            bitDepth: 8,
+            [0],
+            [row],
+            palette: new byte[256 * 3]);
+
+        source.AsSpan().ReadSize().ShouldBe(new Size(1, 1));
+        source.AsSpan().DecodeRgba().Length.ShouldBe(4);
+    }
+
+    /// <summary>Verifies chunk type bytes must be ASCII letters and must keep the reserved third
+    /// letter uppercase before unknown ancillary handling is considered.</summary>
+    /// <param name="invalidType">The invalid four-byte chunk type.</param>
+    [Theory]
+    [InlineData("a1CD")]
+    [InlineData("aBC0")]
+    [InlineData("aBcD")]
+    public void ReadSize_WhenChunkTypeCodeIsInvalid_RejectsContainer(string invalidType)
+    {
+        var source = CreateDecodablePng(1, 1, colorType: 0, bitDepth: 8, [0], [[42]]);
+        var malformed = InsertBeforeIdat(source, Encoding.ASCII.GetBytes(invalidType), [1]);
+
+        _ = Should.Throw<ArgumentException>(() => malformed.AsSpan().ReadSize());
+        _ = Should.Throw<ArgumentException>(() => malformed.AsSpan().DecodeRgba());
     }
 
     /// <summary>Verifies encoding then decoding arbitrary RGBA pixels, including varied alpha and
@@ -491,11 +613,18 @@ public sealed class PngTests
     private static byte[] InsertBeforeIdat(
         byte[] source,
         ReadOnlySpan<byte> type,
+        ReadOnlySpan<byte> data) =>
+        InsertBeforeChunk(source, "IDAT"u8, type, data);
+
+    private static byte[] InsertBeforeChunk(
+        byte[] source,
+        ReadOnlySpan<byte> beforeType,
+        ReadOnlySpan<byte> type,
         ReadOnlySpan<byte> data)
     {
         var offset = 8;
 
-        while (!source.AsSpan(offset + 4, 4).SequenceEqual("IDAT"u8))
+        while (!source.AsSpan(offset + 4, 4).SequenceEqual(beforeType))
         {
             offset += BinaryPrimitives.ReadInt32BigEndian(source.AsSpan(offset, 4)) + 12;
         }
@@ -505,6 +634,19 @@ public sealed class PngTests
         WriteRawChunk(result, type, data);
         result.Write(source.AsSpan(offset));
         return result.ToArray();
+    }
+
+    private static byte[] ReadChunkData(byte[] source, ReadOnlySpan<byte> type)
+    {
+        var offset = 8;
+
+        while (!source.AsSpan(offset + 4, 4).SequenceEqual(type))
+        {
+            offset += BinaryPrimitives.ReadInt32BigEndian(source.AsSpan(offset, 4)) + 12;
+        }
+
+        var length = BinaryPrimitives.ReadInt32BigEndian(source.AsSpan(offset, 4));
+        return source.AsSpan(offset + 8, length).ToArray();
     }
 
     private static uint ComputeCrc32(ReadOnlySpan<byte> type, ReadOnlySpan<byte> data)
