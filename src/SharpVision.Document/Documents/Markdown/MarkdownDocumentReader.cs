@@ -420,11 +420,21 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 // CommonMark lazy continuation: an under-indented, marker-less line still belongs
                 // to the item when it continues an already-open paragraph and does not itself look
                 // like the start of another block; otherwise it ends the item as before. The
-                // indentation check compares columns - a tab counts toward the threshold even
+                // required column for guaranteed (non-lazy) continuation is the item's content
+                // column - marker.Indent + marker.MarkerWidth - not the bare marker indent: a line
+                // that reaches the marker column but falls short of the content column is still
+                // under-indented for this item and must not be treated as anything but a lazy-
+                // continuation candidate. A line whose column reaches the content column exactly is
+                // sufficiently indented and always belongs to the item as an ordinary child block,
+                // regardless of paragraphOpen, so the comparison is strict: only columns strictly
+                // less than the content column count as under-indented (compare CommonMark's
+                // "- # Foo\n  ## Bar\n  Baz" example, where "Baz" follows a heading - not a
+                // paragraph - yet still continues the item because it reaches the content column).
+                // The indentation check compares columns - a tab counts toward the threshold even
                 // though CountLeadingIndentation only expands it to its next 4-column stop rather
                 // than splitting it (the "atomic tab" simplification).
                 if (!IsBlankLine(lines[index]) &&
-                    CountLeadingIndentation(lines[index]).Column <= firstMarker.Indent &&
+                    CountLeadingIndentation(lines[index]).Column < marker.Indent + marker.MarkerWidth &&
                     (!paragraphOpen || IsParagraphInterruptingBlockStart(lines[index])))
                 {
                     break;
@@ -463,7 +473,13 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                         break;
                     }
 
-                    if (CountLeadingIndentation(lines[afterBlankIndex]).Column <= firstMarker.Indent)
+                    // A blank line always ends any open paragraph (see the paragraphOpen = false
+                    // above), so a line following one or more blank lines can only continue the
+                    // item as an ordinary, properly indented child block - never as a lazy
+                    // continuation. It therefore needs the same content-column threshold, and the
+                    // same strict "<" as the check above: reaching the content column exactly is
+                    // sufficient indentation and must not end the item.
+                    if (CountLeadingIndentation(lines[afterBlankIndex]).Column < marker.Indent + marker.MarkerWidth)
                     {
                         index = afterBlankIndex;
                         break;

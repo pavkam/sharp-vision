@@ -2052,6 +2052,52 @@ public sealed class MarkdownDocumentReaderTests
             .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("Heading");
     }
 
+    /// <summary>Verifies the lazy-continuation break check measures a candidate line against the
+    /// item's full content column - marker indent plus marker width - rather than the bare marker
+    /// indent. A three-space-indented bullet has a content column of five (indent three plus the
+    /// "- " marker's own width of two); a lone leading tab always expands to column four, which
+    /// clears the bare indent (three) but still falls short of the true content column (five). The
+    /// item's own last block is a heading (not a paragraph), so lazy continuation can never apply,
+    /// and the under-indented tab line must end the item and the list instead of being swallowed as
+    /// item content.</summary>
+    [Fact]
+    public void Read_WhenTabIndentedLineFallsShortOfWidenedItemContentColumn_EndsListItem()
+    {
+        // Arrange and act
+        var blocks = new MarkdownDocumentReader().Read("   - # heading\n\t***").Blocks;
+
+        // Assert
+        blocks.Count.ShouldBe(2);
+        var list = blocks[0].ShouldBeOfType<DocumentList>();
+        list.Items.ShouldHaveSingleItem().Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentHeading>()
+            .Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("heading");
+        blocks[1].ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("\t***");
+    }
+
+    /// <summary>Verifies a line that reaches the item's content column exactly always continues the
+    /// item as an ordinary child block, even when the item's last block is not a paragraph - the
+    /// break check must use a strict "less than" comparison against the content column, not
+    /// "less than or equal to", or an exact-column match would incorrectly end the item. Mirrors
+    /// CommonMark's own worked example of a heading followed by further indented item content.
+    /// </summary>
+    [Fact]
+    public void Read_WhenLineReachesContentColumnExactly_ContinuesItemAfterNonParagraphBlock()
+    {
+        // Arrange and act
+        var item = new MarkdownDocumentReader().Read("- # Foo\n  ## Bar\n  Baz").Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem();
+
+        // Assert
+        item.Blocks.Count.ShouldBe(3);
+        item.Blocks[0].ShouldBeOfType<DocumentHeading>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("Foo");
+        item.Blocks[1].ShouldBeOfType<DocumentHeading>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("Bar");
+        item.Blocks[2].ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("Baz");
+    }
+
     /// <summary>Verifies lazy continuation composes across nesting levels: a block quote nested
     /// inside a list item still absorbs a bare line that carries neither the item's own indentation
     /// nor the quote's '&gt;' marker, because each level independently tracks its own open
