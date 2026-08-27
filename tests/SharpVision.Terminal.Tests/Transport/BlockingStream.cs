@@ -14,6 +14,9 @@ internal sealed class BlockingStream: MemoryStream
 
     private int _active;
 
+    /// <summary>Gets the number of disposal attempts.</summary>
+    internal int DisposeCount { get; private set; }
+
     /// <summary>Gets a task completed after the first write starts.</summary>
     internal Task FirstStarted => _firstStarted.Task;
 
@@ -37,5 +40,12 @@ internal sealed class BlockingStream: MemoryStream
         await _release.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
         Writes.Add(Encoding.UTF8.GetString(buffer.Span));
         _active--;
+    }
+
+    /// <inheritdoc/>
+    protected override void Dispose(bool disposing)
+    {
+        DisposeCount++;
+        base.Dispose(disposing);
     }
 }

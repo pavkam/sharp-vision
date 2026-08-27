@@ -9,6 +9,7 @@ using System.Buffers.Binary;
 internal static partial class RuntimeInterop
 {
     private const nuint _linuxGetSize = 0x5413;
+    private const int _terminalNameBufferLength = 4096;
 
     /// <summary>Reads cell and pixel dimensions from one terminal file descriptor.</summary>
     /// <param name="fileDescriptor">The non-negative terminal descriptor.</param>
@@ -58,6 +59,41 @@ internal static partial class RuntimeInterop
     /// <summary>The POSIX standard-input file descriptor, the raw-mode target the caller's shell
     /// wired to this process's controlling terminal.</summary>
     public const int StandardInputFileDescriptor = 0;
+
+    /// <summary>Determines whether two descriptors resolve to the same Unix terminal device.</summary>
+    /// <param name="first">The first non-negative descriptor.</param>
+    /// <param name="second">The second non-negative descriptor.</param>
+    /// <returns>True only when both descriptors have the same POSIX terminal name.</returns>
+    public static bool TerminalDevicesMatch(int first, int second)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(first);
+        ArgumentOutOfRangeException.ThrowIfNegative(second);
+
+        Span<byte> firstName = stackalloc byte[_terminalNameBufferLength];
+        Span<byte> secondName = stackalloc byte[_terminalNameBufferLength];
+        var firstLength = ReadTerminalName(first, firstName);
+        var secondLength = ReadTerminalName(second, secondName);
+
+        return firstLength >= 0 &&
+               firstLength == secondLength &&
+               firstName[..firstLength].SequenceEqual(secondName[..secondLength]);
+    }
+
+    private static unsafe int ReadTerminalName(int fileDescriptor, Span<byte> destination)
+    {
+        fixed (byte* pointer = destination)
+        {
+            if (TtyName(fileDescriptor, pointer, (nuint) destination.Length) != 0)
+            {
+                return -1;
+            }
+        }
+
+        return destination.IndexOf((byte) 0);
+    }
+
+    [LibraryImport("libc", EntryPoint = "ttyname_r")]
+    private static unsafe partial int TtyName(int fileDescriptor, byte* destination, nuint length);
 
     // TCSANOW: apply attribute changes immediately (identical value on Linux and Darwin).
     private const int _setAttributesNow = 0;

@@ -15,6 +15,45 @@ namespace SharpVision.Terminal.Tests.Runtime;
 [SupportedOSPlatform("macos")]
 public sealed class UnixConsoleHostTests
 {
+    /// <summary>Verifies descriptor identity is established before raw-mode or resize mutation,
+    /// and a rejected controlling descriptor is still closed.</summary>
+    [Fact]
+    public void Open_WhenTerminalDevicesDiffer_RejectsBeforeRawMode()
+    {
+        Assert.SkipUnless(
+            OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
+            "Unix terminal identity requires Linux or macOS.");
+        SafeFileHandle? handle = null;
+        var modeEntered = false;
+        var resizeCreated = false;
+
+        var thrown = Should.Throw<IOException>(() => UnixConsoleHost.Open(
+            new ConsoleHostOptions(),
+            () =>
+            {
+                var stream = new FileStream("/dev/null", FileMode.Open, FileAccess.Read);
+                handle = stream.SafeFileHandle;
+                return stream;
+            },
+            _ =>
+            {
+                modeEntered = true;
+                throw new InvalidOperationException("Raw mode must not be entered.");
+            },
+            _ =>
+            {
+                resizeCreated = true;
+                throw new InvalidOperationException("Resize must not be created.");
+            },
+            static (_, _) => false));
+
+        thrown.Message.ShouldContain("same terminal device");
+        modeEntered.ShouldBeFalse();
+        resizeCreated.ShouldBeFalse();
+        _ = handle.ShouldNotBeNull();
+        handle.IsClosed.ShouldBeTrue();
+    }
+
     /// <summary>
     /// Verifies repeated complete host lifecycles close every <c>/dev/tty</c> handle they opened.
     /// </summary>

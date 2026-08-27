@@ -43,17 +43,10 @@ internal static class UnixConsoleHost
     [MustDisposeResource]
     internal static ConsoleConnection Open(
         ConsoleHostOptions options,
-        [InstantHandle] Func<SafeFileHandle, IResizeSource> createResize)
-    {
-        Debug.Assert(createResize is not null, "The console host always supplies a resize factory.");
-        var mode = UnixConsoleMode.Enter(options.CaptureControlKeys);
-        FileStream? input = null;
-        StreamTransport? transport = null;
-        IResizeSource? resize = null;
-
-        try
-        {
-            input = new FileStream(
+        [InstantHandle] Func<SafeFileHandle, IResizeSource> createResize) =>
+        Open(
+            options,
+            static () => new FileStream(
                 "/dev/tty",
                 new FileStreamOptions
                 {
@@ -62,7 +55,55 @@ internal static class UnixConsoleHost
                     Options = FileOptions.Asynchronous,
                     Share = FileShare.ReadWrite,
                     BufferSize = 1
-                });
+                }),
+            static captureControlKeys => UnixConsoleMode.Enter(captureControlKeys),
+            createResize,
+            RuntimeInterop.TerminalDevicesMatch);
+
+    /// <summary>Opens a Unix console through deterministic device, mode, resize, and identity
+    /// boundaries so tests can prove mismatched terminals are rejected before mutation.</summary>
+    /// <param name="options">The validated host policy.</param>
+    /// <param name="openInput">Opens the controlling terminal input descriptor.</param>
+    /// <param name="enterMode">Enters raw mode after terminal identity is established.</param>
+    /// <param name="createResize">Builds resize observation over the controlling terminal.</param>
+    /// <param name="terminalDevicesMatch">Compares two terminal descriptors for identity.</param>
+    /// <returns>A connection whose disposal restores the terminal input mode.</returns>
+    /// <exception cref="IOException">The descriptors differ or console resources cannot be prepared.</exception>
+    [MustDisposeResource]
+    internal static ConsoleConnection Open(
+        ConsoleHostOptions options,
+        Func<FileStream> openInput,
+        Func<bool, IDisposable> enterMode,
+        [InstantHandle] Func<SafeFileHandle, IResizeSource> createResize,
+        Func<int, int, bool> terminalDevicesMatch)
+    {
+        Debug.Assert(openInput is not null, "The console host always supplies an input factory.");
+        Debug.Assert(enterMode is not null, "The console host always supplies a mode factory.");
+        Debug.Assert(createResize is not null, "The console host always supplies a resize factory.");
+        Debug.Assert(terminalDevicesMatch is not null, "The console host always supplies terminal identity.");
+        IDisposable? mode = null;
+        FileStream? input = null;
+        StreamTransport? transport = null;
+        IResizeSource? resize = null;
+
+        try
+        {
+            input = openInput();
+
+            var inputFileDescriptor = (int) input.SafeFileHandle.DangerousGetHandle();
+
+            if (!terminalDevicesMatch(
+                    RuntimeInterop.StandardInputFileDescriptor,
+                    inputFileDescriptor) ||
+                !terminalDevicesMatch(
+                    RuntimeInterop.StandardOutputFileDescriptor,
+                    inputFileDescriptor))
+            {
+                throw new IOException(
+                    "Standard input, standard output, and the controlling terminal must identify the same terminal device.");
+            }
+
+            mode = enterMode(options.CaptureControlKeys);
             // Never touch System.Console here. Writing through Console.OpenStandardOutput()
             // (rather than merely opening it) initializes the BCL's Unix console, which reads
             // terminfo and emits smkx (application keypad mode) on the first write - and once
@@ -88,12 +129,10 @@ internal static class UnixConsoleHost
                 resize,
                 mode,
                 DescriptionPlatform.Unix,
-                // The descriptor this host actually opened and verified refers to a terminal,
-                // rather than an assumed standard-output descriptor: when stdout is redirected —
-                // precisely the case the /dev/tty open above exists to handle — description
-                // resolution against a hardcoded 1 would query a descriptor that is not a
-                // terminal at all.
-                outputFileDescriptor: (int) input.SafeFileHandle.DangerousGetHandle(),
+                // Description resolution uses the descriptor this host opened and verified as
+                // the shared terminal identity, instead of re-assuming the standard-output
+                // descriptor after validation.
+                outputFileDescriptor: inputFileDescriptor,
                 windowsVirtualTerminal: false);
         }
         catch

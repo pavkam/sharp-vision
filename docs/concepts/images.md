@@ -10,8 +10,9 @@ buffer afterward cannot change what is rendered.
 The first source representations are:
 
 - sRGB RGBA with exactly four bytes per pixel in red, green, blue, alpha order;
-- encoded PNG with a validated signature, IHDR, chunk boundaries, IDAT presence,
-  IEND termination, and positive pixel dimensions.
+- encoded PNG with a validated signature, IHDR, chunk boundaries, per-chunk
+  CRCs, recognized critical chunks, IDAT presence, IEND termination, and
+  positive pixel dimensions.
 
 PNG validation establishes safe ownership and dimensions. The decoder converts
 non-interlaced, 8- or 16-bit grayscale, RGB, indexed, grayscale-alpha, and RGBA
@@ -60,10 +61,15 @@ pixel limit cannot exceed the area addressable by its dimension limit.
 
 RGBA dimensions, the exact byte count, and checked multiplication are validated
 before copying. PNG chunk lengths are treated as untrusted big-endian values;
-truncated, overflowing, trailing, structurally invalid, and policy-exceeding
-containers fail without publishing an image. Raster decoding requires exactly
-the declared scanline bytes after decompression; shorter or longer payloads are
-rejected rather than partially decoded.
+every chunk CRC covers its type and data according to the
+[PNG Third Edition CRC algorithm](https://www.w3.org/TR/png-3/#5CRC-algorithm).
+The same specification's
+[chunk naming rules](https://www.w3.org/TR/png-3/#5Chunk-naming-conventions)
+make unknown critical chunks fatal while unknown ancillary chunks remain
+skippable. Truncated, overflowing, trailing, corrupted, structurally invalid,
+and policy-exceeding containers fail without publishing an image. Raster
+decoding requires exactly the declared scanline bytes after decompression;
+shorter or longer payloads are rejected rather than partially decoded.
 
 Every image receives a stable, nonzero, process-local identity. The identity is
 semantic cache input - it is not a terminal protocol identifier and not a

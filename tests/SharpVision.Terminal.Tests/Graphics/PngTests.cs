@@ -3,6 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Graphics;
 
+using System.Buffers.Binary;
 using System.IO.Compression;
 
 using SharpVision.Terminal.Graphics;
@@ -244,6 +245,50 @@ public sealed class PngTests
         _ = Should.Throw<ArgumentException>(() => source.AsSpan().DecodeRgba());
     }
 
+    /// <summary>Verifies every critical and decoded ancillary chunk is protected by its stored
+    /// CRC before either structural publication or pixel decoding can consume it.</summary>
+    /// <param name="chunkType">The chunk whose protected bytes are corrupted.</param>
+    /// <param name="dataOffset">The data-byte offset to corrupt, or null to corrupt the stored CRC.</param>
+    [Theory]
+    [InlineData("IHDR", 2)]
+    [InlineData("PLTE", 0)]
+    [InlineData("tRNS", 0)]
+    [InlineData("IDAT", 0)]
+    [InlineData("IEND", null)]
+    public void ReadSize_WhenAnyConsumedChunkCrcDoesNotMatch_RejectsContainer(
+        string chunkType,
+        int? dataOffset)
+    {
+        var source = CreateDecodablePng(
+            1,
+            1,
+            colorType: 3,
+            bitDepth: 8,
+            [0],
+            [[0]],
+            palette: [10, 20, 30],
+            trns: [255]);
+        CorruptChunk(source, chunkType, dataOffset);
+
+        _ = Should.Throw<ArgumentException>(() => source.AsSpan().ReadSize());
+        _ = Should.Throw<ArgumentException>(() => source.AsSpan().DecodeRgba());
+    }
+
+    /// <summary>Verifies an unknown critical chunk is fatal at the shared ownership boundary,
+    /// while an unknown ancillary chunk remains safely skippable.</summary>
+    [Fact]
+    public void ReadSize_WhenUnknownChunkCriticalityVaries_RejectsOnlyCriticalChunk()
+    {
+        var source = CreateDecodablePng(1, 1, colorType: 0, bitDepth: 8, [0], [[42]]);
+        var critical = InsertBeforeIdat(source, "ABCD"u8, [1]);
+        var ancillary = InsertBeforeIdat(source, "aBCD"u8, [1]);
+
+        _ = Should.Throw<ArgumentException>(() => critical.AsSpan().ReadSize());
+        _ = Should.Throw<ArgumentException>(() => critical.AsSpan().DecodeRgba());
+        ancillary.AsSpan().ReadSize().ShouldBe(new Size(1, 1));
+        ancillary.AsSpan().DecodeRgba().ShouldBe([42, 42, 42, 255]);
+    }
+
     /// <summary>Verifies encoding then decoding arbitrary RGBA pixels, including varied alpha and
     /// multiple rows, reproduces the exact original bytes; this repository has no external
     /// reference PNG decoder to check against, so round-tripping through the existing, unmodified
@@ -301,8 +346,7 @@ public sealed class PngTests
     }
 
     /// <summary>Verifies the emitted IEND chunk carries the fixed, well-known CRC-32 for an empty
-    /// "IEND" chunk type, since <c>DecodeRgba</c> never itself validates a chunk's CRC and so
-    /// cannot prove this encoder computed it correctly.</summary>
+    /// "IEND" chunk type.</summary>
     [Fact]
     public void Encode_Always_EmitsTheWellKnownIendCrc()
     {
@@ -417,7 +461,79 @@ public sealed class PngTests
         buffer.Write(length);
         buffer.Write(type);
         buffer.Write(data);
-        buffer.Write([0, 0, 0, 0]);
+        WriteInt32(length, unchecked((int) ComputeCrc32(type, data)));
+        buffer.Write(length);
+    }
+
+    private static void CorruptChunk(byte[] source, string chunkType, int? dataOffset)
+    {
+        var offset = 8;
+
+        while (offset <= source.Length - 12)
+        {
+            var length = BinaryPrimitives.ReadInt32BigEndian(source.AsSpan(offset, 4));
+
+            if (Encoding.ASCII.GetString(source, offset + 4, 4) == chunkType)
+            {
+                var corruptOffset = dataOffset.HasValue
+                    ? offset + 8 + dataOffset.Value
+                    : offset + 8 + length;
+                source[corruptOffset] ^= 1;
+                return;
+            }
+
+            offset += length + 12;
+        }
+
+        throw new InvalidOperationException($"The PNG fixture has no {chunkType} chunk.");
+    }
+
+    private static byte[] InsertBeforeIdat(
+        byte[] source,
+        ReadOnlySpan<byte> type,
+        ReadOnlySpan<byte> data)
+    {
+        var offset = 8;
+
+        while (!source.AsSpan(offset + 4, 4).SequenceEqual("IDAT"u8))
+        {
+            offset += BinaryPrimitives.ReadInt32BigEndian(source.AsSpan(offset, 4)) + 12;
+        }
+
+        using var result = new MemoryStream();
+        result.Write(source.AsSpan(0, offset));
+        WriteRawChunk(result, type, data);
+        result.Write(source.AsSpan(offset));
+        return result.ToArray();
+    }
+
+    private static uint ComputeCrc32(ReadOnlySpan<byte> type, ReadOnlySpan<byte> data)
+    {
+        var crc = uint.MaxValue;
+
+        foreach (var value in type)
+        {
+            crc = UpdateCrc32(crc, value);
+        }
+
+        foreach (var value in data)
+        {
+            crc = UpdateCrc32(crc, value);
+        }
+
+        return crc ^ uint.MaxValue;
+    }
+
+    private static uint UpdateCrc32(uint crc, byte value)
+    {
+        crc ^= value;
+
+        for (var bit = 0; bit < 8; bit++)
+        {
+            crc = (crc & 1) != 0 ? 0xEDB88320u ^ (crc >> 1) : crc >> 1;
+        }
+
+        return crc;
     }
 
     private static void WriteInt32(Span<byte> destination, int value)

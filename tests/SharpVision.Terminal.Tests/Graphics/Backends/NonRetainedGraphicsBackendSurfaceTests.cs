@@ -5,6 +5,7 @@ namespace SharpVision.Terminal.Tests.Graphics.Backends;
 
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Graphics;
+using SharpVision.Terminal.Tests.Support;
 
 /// <summary>
 /// Proves iTerm2 and sixel stale-pixel repair, diagnostics, and protocol authorization through
@@ -277,17 +278,7 @@ public sealed class NonRetainedGraphicsBackendSurfaceTests
         new Size(1, 1),
         [255, 0, 0, 255]);
 
-    private static GraphicsImage Png() => GraphicsImage.FromPng([
-        137, 80, 78, 71, 13, 10, 26, 10,
-        0, 0, 0, 13, 73, 72, 68, 82,
-        0, 0, 0, 1, 0, 0, 0, 1,
-        8, 6, 0, 0, 0,
-        0, 0, 0, 0,
-        0, 0, 0, 0, 73, 68, 65, 84,
-        0, 0, 0, 0,
-        0, 0, 0, 0, 73, 69, 78, 68,
-        0, 0, 0, 0
-    ]);
+    private static GraphicsImage Png() => GraphicsImage.FromPng(PngTestData.CreateContainer());
 
     private static TerminalProfile Profile() => TerminalProfile.CreateAnsi(
         TerminalCapabilities.Conservative with

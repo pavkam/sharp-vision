@@ -217,8 +217,10 @@ Protocol encoders write synchronously to caller spans or an
 dispatcher boundary must be an owned immutable value or a copy. A
 `ReadOnlyMemory<T>` API documents whether the caller or the library owns its
 backing storage. `StreamTransport` borrows its input and output streams until
-disposal and serializes writes and flushes. Stream ownership is decided per
-stream: the `leaveOpen` overload applies one decision to both streams, while
+disposal and serializes writes and flushes. Disposal closes admission, waits for
+every operation admitted before that boundary to leave the serialization gate,
+and only then disposes the gate and owned streams. Stream ownership is decided
+per stream: the `leaveOpen` overload applies one decision to both streams, while
 `StreamTransport(input, output, leaveInputOpen, leaveOutputOpen)` lets a
 transport own the device it was handed while borrowing another. A stream
 supplied as both input and output is closed at most once. A host that opens its

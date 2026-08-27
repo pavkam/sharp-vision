@@ -376,8 +376,10 @@ supplies an explicit owned `TerminalProfile` and disables native discovery.
 
 `ConsoleHost.Open(ConsoleHostOptions)` is the single Terminal-layer seam that
 selects a platform strategy and returns a `ConsoleConnection`. Advanced hosts
-that bypass `ConsoleApplication` entirely can call it directly. The public
-surface exposes only `ConsoleHost`, `ConsoleHostOptions`, and
+that bypass `ConsoleApplication` entirely can call it directly, but the same
+interactive-stream precondition still applies: redirected standard input or
+output raises `InvalidOperationException` before any raw or VT mode is changed.
+The public surface exposes only `ConsoleHost`, `ConsoleHostOptions`, and
 `ConsoleConnection`; the platform strategies (`UnixConsoleHost`,
 `WindowsConsoleHost`) and their raw/VT mode leases (`UnixConsoleMode`,
 `WindowsConsoleMode`) are internal implementation details.
@@ -417,14 +419,19 @@ twice.
 
 ### Unix
 
-`UnixConsoleHost.Open` enters raw mode through `UnixConsoleMode.Enter`, which
-calls `tcgetattr`/`tcsetattr` directly: it captures the current terminal state
-(`tcgetattr`) for restoration, then derives a raw-mode state with `cfmakeraw`
-and, unless `CaptureControlKeys` is `true`, re-enables `ISIG` in `c_lflag` after
-`cfmakeraw` clears it (so Ctrl+C keeps raising the host's signal instead of
-arriving as a decoded key). No subprocess is spawned for entry or restoration.
-It opens `/dev/tty` as a one-byte-buffered asynchronous input stream and wraps
-it with a raw `FileStream` over the borrowed standard-output descriptor in a
+`UnixConsoleHost.Open` first opens `/dev/tty` and resolves the POSIX terminal
+name for that descriptor and standard input and output through
+[`ttyname_r`](https://pubs.opengroup.org/onlinepubs/9799919799/functions/ttyname.html).
+All three names must identify the same terminal device; a mismatch fails before
+raw mode, resize observation, or output can begin. It then enters raw mode
+through `UnixConsoleMode.Enter`, which calls `tcgetattr`/`tcsetattr` directly:
+it captures the current terminal state (`tcgetattr`) for restoration, then
+derives a raw-mode state with `cfmakeraw` and, unless `CaptureControlKeys` is
+`true`, re-enables `ISIG` in `c_lflag` after `cfmakeraw` clears it (so Ctrl+C
+keeps raising the host's signal instead of arriving as a decoded key). No
+subprocess is spawned for entry or restoration. The `/dev/tty` descriptor is a
+one-byte-buffered asynchronous input stream and is wrapped with a raw
+`FileStream` over the now-verified borrowed standard-output descriptor in a
 `StreamTransport`. This host never calls `Console.OpenStandardOutput()`,
 `Console.Error`, `Console.Out`, or `Console.CancelKeyPress`: on Unix, the _first
 write_ through any of those initializes the BCL's Unix console, which emits

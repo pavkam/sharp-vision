@@ -266,6 +266,7 @@ sequenceDiagram
     Session->>Session: Cancel lifetime source (try/catch, retain first exception)
     Session->>Session: Dispose resize source (try/catch, retain first exception)
     Session->>StreamTransport: DisposeAsync
+    StreamTransport->>StreamTransport: Close admission and await every admitted writer or flush
     StreamTransport->>StreamTransport: Dispose each owned stream exactly once (try/catch each)
     StreamTransport-->>Session: First stream exception, if any
     Session->>Session: Dispose lifetime source (try/catch, retain first exception)
@@ -288,9 +289,10 @@ sequenceDiagram
 Every owned resource is attempted exactly once, in its documented order, even
 when an earlier one throws. `Session` disposal attempts the resize source, the
 transport, and the lifetime source; `StreamTransport` disposal attempts each
-stream it owns. The first exception is retained and rethrown after the remaining
-cleanup finishes, so one failure never abandons unrelated handles or buffered
-output. A stream supplied as both input and output is attempted exactly once.
+stream it owns after all operations admitted before disposal have settled. The
+first exception is retained and rethrown after the remaining cleanup finishes,
+so one failure never abandons unrelated handles or buffered output. A stream
+supplied as both input and output is attempted exactly once.
 
 `Application`'s own terminal-resource cleanup step marshals clipboard-timer
 teardown onto the dispatcher thread and, separately, marshals `FinalizeStopped`

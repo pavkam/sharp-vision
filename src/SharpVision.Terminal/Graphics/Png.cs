@@ -47,7 +47,13 @@ internal static class Png
                 var count = (int) length;
                 var type = source.Slice(offset + 4, 4);
                 var data = source.Slice(offset + 8, count);
+                var storedCrc = BinaryPrimitives.ReadUInt32BigEndian(source.Slice(offset + 8 + count, 4));
                 offset = checked(offset + count + 12);
+
+                if (ComputeCrc32(type, data) != storedCrc || IsUnknownCriticalChunk(type))
+                {
+                    throw Invalid();
+                }
 
                 if (first)
                 {
@@ -235,6 +241,13 @@ internal static class Png
         6 => bitDepth is 8 or 16,
         _ => false
     };
+
+    private static bool IsUnknownCriticalChunk(ReadOnlySpan<byte> type) =>
+        (type[0] & 0x20) == 0 &&
+        !type.SequenceEqual("IHDR"u8) &&
+        !type.SequenceEqual("PLTE"u8) &&
+        !type.SequenceEqual("IDAT"u8) &&
+        !type.SequenceEqual("IEND"u8);
 
     [SuppressMessage(
         "Style",

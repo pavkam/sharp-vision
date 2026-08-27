@@ -25,6 +25,7 @@ public interface IConsoleHost
     /// <param name="options">The non-null host policy.</param>
     /// <returns>A connection exposing the transport and resize source and owning the restore lease.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">Standard input or output is redirected.</exception>
     /// <exception cref="PlatformNotSupportedException">The current platform is not supported.</exception>
     /// <exception cref="IOException">The console cannot enter raw or VT mode.</exception>
     [MustDisposeResource]

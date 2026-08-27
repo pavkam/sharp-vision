@@ -5,6 +5,7 @@ namespace SharpVision.Terminal.Tests.Graphics.Sixel;
 
 using SharpVision.Terminal.Graphics;
 using SharpVision.Terminal.Sixel;
+using SharpVision.Terminal.Tests.Support;
 
 /// <summary>Proves deterministic bounded sixel encoding from owned RGBA pixels.</summary>
 public sealed class SixelWriterTests
@@ -149,19 +150,7 @@ public sealed class SixelWriterTests
     [Fact]
     public void Write_WhenImageIsPng_RejectsWithoutWriting()
     {
-        byte[] png =
-        [
-            137, 80, 78, 71, 13, 10, 26, 10,
-            0, 0, 0, 13, 73, 72, 68, 82,
-            0, 0, 0, 1, 0, 0, 0, 1,
-            8, 6, 0, 0, 0,
-            0, 0, 0, 0,
-            0, 0, 0, 0, 73, 68, 65, 84,
-            0, 0, 0, 0,
-            0, 0, 0, 0, 73, 69, 78, 68,
-            0, 0, 0, 0
-        ];
-        var image = GraphicsImage.FromPng(png);
+        var image = GraphicsImage.FromPng(PngTestData.CreateContainer());
         var output = new ArrayBufferWriter<byte>();
 
         _ = Should.Throw<NotSupportedException>(() => SixelWriter.Write(

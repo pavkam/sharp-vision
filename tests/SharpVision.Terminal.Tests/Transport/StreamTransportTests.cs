@@ -86,6 +86,30 @@ public sealed class StreamTransportTests
         output.Writes.ShouldBe(["one"]);
     }
 
+    /// <summary>Verifies disposal cannot invalidate the serialization gate while writes and a
+    /// flush that were admitted before disposal are still queued on it.</summary>
+    [Fact]
+    public async Task DisposeAsync_WhenWritesAndFlushAreQueued_AllOperationsSettleBeforeStreamDisposalAsync()
+    {
+        await using BlockingStream output = new();
+        var transport = new StreamTransport(Stream.Null, output, leaveInputOpen: true, leaveOutputOpen: false);
+        var first = transport.WriteAsync("one"u8.ToArray(), TestContext.Current.CancellationToken).AsTask();
+        await output.FirstStarted;
+        var second = transport.WriteAsync("two"u8.ToArray(), TestContext.Current.CancellationToken).AsTask();
+        var flush = transport.FlushAsync(TestContext.Current.CancellationToken).AsTask();
+
+        var disposal = transport.DisposeAsync().AsTask();
+        output.Release();
+
+        await first.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        _ = await Should.ThrowAsync<ObjectDisposedException>(async () =>
+            await second.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        _ = await Should.ThrowAsync<ObjectDisposedException>(async () =>
+            await flush.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        await disposal.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        output.DisposeCount.ShouldBe(1);
+    }
+
     /// <summary>
     /// Verifies leave-open controls stream ownership and disposal is idempotent.
     /// </summary>

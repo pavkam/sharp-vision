@@ -2265,20 +2265,11 @@ public sealed partial class ApplicationTests
     private static GraphicsImage Png() => GraphicsImage.FromPng(Convert.FromBase64String(
         "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEUlEQVR4nGP4z8DA8B+MgBgAHfAD/dPQfSYAAAAASUVORK5CYII="));
 
-    // Structurally valid enough to pass IHDR/size validation, but its IDAT chunk is not valid
-    // zlib data, so DecodeRgba (which sixel needs) throws; iTerm2 would still transmit these
-    // bytes verbatim, which is exactly why this fixture is paired with a sixel-only backend.
-    private static GraphicsImage UndecodablePng() => GraphicsImage.FromPng([
-        137, 80, 78, 71, 13, 10, 26, 10,
-        0, 0, 0, 13, 73, 72, 68, 82,
-        0, 0, 0, 1, 0, 0, 0, 1,
-        8, 6, 0, 0, 0,
-        0, 0, 0, 0,
-        0, 0, 0, 0, 73, 68, 65, 84,
-        0, 0, 0, 0,
-        0, 0, 0, 0, 73, 69, 78, 68,
-        0, 0, 0, 0
-    ]);
+    // Structurally valid with correct chunk CRCs, but its empty IDAT chunk is not valid zlib
+    // data, so DecodeRgba (which sixel needs) throws; iTerm2 would still transmit these bytes
+    // verbatim, which is exactly why this fixture is paired with a sixel-only backend.
+    private static GraphicsImage UndecodablePng() => GraphicsImage.FromPng(Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAElEQVQ1rwYeAAAAAElFTkSuQmCC"));
 
     private static byte[] NegotiationReplies() => Encoding.ASCII.GetBytes(
         "\u001b[?1016;1$y\u001b[?1006;1$y\u001b[?2004;1$y" +

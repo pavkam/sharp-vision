@@ -3,11 +3,10 @@
 
 namespace SharpVision.Terminal.Tests.Graphics;
 
-using System.Buffers.Binary;
-
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Graphics;
 using SharpVision.Terminal.Multiplexing;
+using SharpVision.Terminal.Tests.Support;
 
 
 /// <summary>Proves authoritative backend priority and mixed per-placement fallback.</summary>
@@ -288,21 +287,7 @@ public sealed class GraphicsBackendSelectorTests
         });
 
 
-    private static GraphicsImage Png()
-    {
-        var payload = new byte[57];
-        ReadOnlySpan<byte> signature = [137, 80, 78, 71, 13, 10, 26, 10];
-        signature.CopyTo(payload);
-        BinaryPrimitives.WriteUInt32BigEndian(payload.AsSpan(8), 13);
-        "IHDR"u8.CopyTo(payload.AsSpan(12));
-        BinaryPrimitives.WriteUInt32BigEndian(payload.AsSpan(16), 1);
-        BinaryPrimitives.WriteUInt32BigEndian(payload.AsSpan(20), 1);
-        payload[24] = 8;
-        payload[25] = 6;
-        "IDAT"u8.CopyTo(payload.AsSpan(37));
-        "IEND"u8.CopyTo(payload.AsSpan(49));
-        return GraphicsImage.FromPng(payload);
-    }
+    private static GraphicsImage Png() => GraphicsImage.FromPng(PngTestData.CreateContainer());
 
     private static byte[] WritePlacements(IGraphicsBackend backend)
     {

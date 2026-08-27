@@ -3,10 +3,10 @@
 
 namespace SharpVision.Terminal.Tests.Graphics.Kitty;
 
-using System.Buffers.Binary;
 using System.IO.Compression;
 
 using SharpVision.Terminal.Kitty.Graphics;
+using SharpVision.Terminal.Tests.Support;
 
 /// <summary>Proves canonical bounded Kitty graphics command encoding.</summary>
 public sealed class KittyGraphicsWriterTests
@@ -611,23 +611,7 @@ public sealed class KittyGraphicsWriterTests
 
     #region Helpers
 
-    private static byte[] CreatePngPayload(int dataBytes)
-    {
-        var payload = new byte[57 + dataBytes];
-        ReadOnlySpan<byte> signature = [137, 80, 78, 71, 13, 10, 26, 10];
-        signature.CopyTo(payload);
-        BinaryPrimitives.WriteUInt32BigEndian(payload.AsSpan(8), 13);
-        "IHDR"u8.CopyTo(payload.AsSpan(12));
-        BinaryPrimitives.WriteUInt32BigEndian(payload.AsSpan(16), 1);
-        BinaryPrimitives.WriteUInt32BigEndian(payload.AsSpan(20), 1);
-        payload[24] = 8;
-        payload[25] = 6;
-        BinaryPrimitives.WriteUInt32BigEndian(payload.AsSpan(33), (uint) dataBytes);
-        "IDAT"u8.CopyTo(payload.AsSpan(37));
-        var iend = 45 + dataBytes;
-        "IEND"u8.CopyTo(payload.AsSpan(iend + 4));
-        return payload;
-    }
+    private static byte[] CreatePngPayload(int dataBytes) => PngTestData.CreateContainer(dataBytes);
 
     #endregion
 }

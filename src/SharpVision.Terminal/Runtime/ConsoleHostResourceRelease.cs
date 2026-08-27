@@ -23,8 +23,13 @@ internal static class ConsoleHostResourceRelease
     /// <see cref="IAsyncDisposable"/>, so a same-named <c>IDisposable</c> overload would make every
     /// stream release ambiguous.
     /// </remarks>
-    public static void ReleaseMode(IDisposable mode)
+    public static void ReleaseMode(IDisposable? mode)
     {
+        if (mode is null)
+        {
+            return;
+        }
+
         try
         {
             mode.Dispose();

@@ -3,12 +3,11 @@
 
 namespace SharpVision.Terminal.Tests.Graphics.Backends;
 
-using System.Buffers.Binary;
-
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Graphics;
 using SharpVision.Terminal.Iterm;
 using SharpVision.Terminal.Multiplexing;
+using SharpVision.Terminal.Tests.Support;
 
 /// <summary>
 /// Proves the shared non-retained sixel/iTerm backend degrades deterministically instead of
@@ -824,22 +823,7 @@ public sealed class NonRetainedGraphicsBackendTests
     }
 
     private static GraphicsImage Png(int width = 1, int dataBytes = 0)
-    {
-        var payload = new byte[57 + dataBytes];
-        ReadOnlySpan<byte> signature = [137, 80, 78, 71, 13, 10, 26, 10];
-        signature.CopyTo(payload);
-        BinaryPrimitives.WriteUInt32BigEndian(payload.AsSpan(8), 13);
-        "IHDR"u8.CopyTo(payload.AsSpan(12));
-        BinaryPrimitives.WriteUInt32BigEndian(payload.AsSpan(16), (uint) width);
-        BinaryPrimitives.WriteUInt32BigEndian(payload.AsSpan(20), 1);
-        payload[24] = 8;
-        payload[25] = 6;
-        BinaryPrimitives.WriteUInt32BigEndian(payload.AsSpan(33), (uint) dataBytes);
-        "IDAT"u8.CopyTo(payload.AsSpan(37));
-        var iend = 45 + dataBytes;
-        "IEND"u8.CopyTo(payload.AsSpan(iend + 4));
-        return GraphicsImage.FromPng(payload);
-    }
+        => GraphicsImage.FromPng(PngTestData.CreateContainer(dataBytes, width));
 
     private static Frame PaintedFrame(GraphicsImage image, bool imageLast)
     {
@@ -920,18 +904,7 @@ public sealed class NonRetainedGraphicsBackendTests
         new Size(1, 1),
         [255, 0, 0, 255]);
 
-    private static GraphicsImage Png() => GraphicsImage.FromPng(
-    [
-        137, 80, 78, 71, 13, 10, 26, 10,
-        0, 0, 0, 13, 73, 72, 68, 82,
-        0, 0, 0, 1, 0, 0, 0, 1,
-        8, 6, 0, 0, 0,
-        0, 0, 0, 0,
-        0, 0, 0, 0, 73, 68, 65, 84,
-        0, 0, 0, 0,
-        0, 0, 0, 0, 73, 69, 78, 68,
-        0, 0, 0, 0
-    ]);
+    private static GraphicsImage Png() => GraphicsImage.FromPng(PngTestData.CreateContainer());
 
     private static Frame SixelFrame(
         string text,

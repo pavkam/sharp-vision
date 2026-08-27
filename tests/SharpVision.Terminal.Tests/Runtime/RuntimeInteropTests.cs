@@ -5,12 +5,28 @@
 
 namespace SharpVision.Terminal.Tests.Runtime;
 
+using SharpVision.Terminal.Tests.Support;
 
 /// <summary>
 /// Verifies the pure bit-math behind the Windows console-mode boundary.
 /// </summary>
 public sealed class RuntimeInteropTests
 {
+    /// <summary>Verifies terminal identity is descriptor-specific, so separate ttys cannot be
+    /// treated as one interactive console merely because each descriptor is a tty.</summary>
+    [Fact]
+    public async Task TerminalDevicesMatch_WhenDescriptorsNameSameOrDifferentPtys_DistinguishesIdentityAsync()
+    {
+        Assert.SkipUnless(
+            OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
+            "Terminal device identity requires Unix pseudoterminals.");
+        await using var first = UnixPseudoterminal.Open();
+        await using var second = UnixPseudoterminal.Open();
+
+        RuntimeInterop.TerminalDevicesMatch(first.SlaveDescriptor, first.SlaveDescriptor).ShouldBeTrue();
+        RuntimeInterop.TerminalDevicesMatch(first.SlaveDescriptor, second.SlaveDescriptor).ShouldBeFalse();
+    }
+
     /// <summary>
     /// Verifies the default mode enables VT input and clears line/echo input.
     /// </summary>

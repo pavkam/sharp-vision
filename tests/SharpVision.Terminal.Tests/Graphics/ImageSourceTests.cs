@@ -4,6 +4,7 @@
 namespace SharpVision.Terminal.Tests.Graphics;
 
 using SharpVision.Terminal.Graphics;
+using SharpVision.Terminal.Tests.Support;
 
 /// <summary>Verifies bounded owned RGBA and PNG image values.</summary>
 public sealed class ImageSourceTests
@@ -116,30 +117,6 @@ public sealed class ImageSourceTests
                 new ImageLimits(maxDimension: 2, maxPixels: 4, maxSourceBytes: 56)));
     }
 
-    private static byte[] CreatePng(int width, int height)
-    {
-        byte[] result =
-        [
-            137, 80, 78, 71, 13, 10, 26, 10,
-            0, 0, 0, 13, 73, 72, 68, 82,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            8, 6, 0, 0, 0,
-            0, 0, 0, 0,
-            0, 0, 0, 0, 73, 68, 65, 84,
-            0, 0, 0, 0,
-            0, 0, 0, 0, 73, 69, 78, 68,
-            0, 0, 0, 0
-        ];
-        WriteInt32(result.AsSpan(16, 4), width);
-        WriteInt32(result.AsSpan(20, 4), height);
-        return result;
-    }
-
-    private static void WriteInt32(Span<byte> destination, int value)
-    {
-        destination[0] = (byte) (value >> 24);
-        destination[1] = (byte) (value >> 16);
-        destination[2] = (byte) (value >> 8);
-        destination[3] = (byte) value;
-    }
+    private static byte[] CreatePng(int width, int height) =>
+        PngTestData.CreateContainer(width: width, height: height);
 }

@@ -17,12 +17,16 @@ public sealed class StreamTransport: ITransport
     private readonly bool _leaveInputOpen;
     private readonly bool _leaveOutputOpen;
     private readonly SemaphoreSlim _writeGate = new(1, 1);
+    private readonly Lock _lifecycleGate = new();
+    private readonly TaskCompletionSource _operationsDrained =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     // POSIX EIO. .NET maps a failing Unix read to IOException carrying the raw errno in
     // HResult, so this compares against the errno value rather than an HRESULT.
     private const int _inputOutputErrorNumber = 5;
 
     private int _disposed;
+    private int _activeOperations;
 
     /// <summary>Initializes a validated stream transport with one shared ownership decision.</summary>
     /// <remarks>
@@ -130,17 +134,25 @@ public sealed class StreamTransport: ITransport
         ReadOnlyMemory<byte> source,
         CancellationToken cancellationToken)
     {
-        ThrowIfDisposed();
-        await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        EnterOperation();
 
         try
         {
-            ThrowIfDisposed();
-            await _output.WriteAsync(source, cancellationToken).ConfigureAwait(false);
+            await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+            try
+            {
+                ThrowIfDisposed();
+                await _output.WriteAsync(source, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _ = _writeGate.Release();
+            }
         }
         finally
         {
-            _ = _writeGate.Release();
+            ExitOperation();
         }
     }
 
@@ -148,17 +160,25 @@ public sealed class StreamTransport: ITransport
     /// <exception cref="ObjectDisposedException">The transport is disposed.</exception>
     public async ValueTask FlushAsync(CancellationToken cancellationToken)
     {
-        ThrowIfDisposed();
-        await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        EnterOperation();
 
         try
         {
-            ThrowIfDisposed();
-            await _output.FlushAsync(cancellationToken).ConfigureAwait(false);
+            await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+            try
+            {
+                ThrowIfDisposed();
+                await _output.FlushAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _ = _writeGate.Release();
+            }
         }
         finally
         {
-            _ = _writeGate.Release();
+            ExitOperation();
         }
     }
 
@@ -174,7 +194,15 @@ public sealed class StreamTransport: ITransport
             return;
         }
 
-        await _writeGate.WaitAsync().ConfigureAwait(false);
+        lock (_lifecycleGate)
+        {
+            if (_activeOperations == 0)
+            {
+                _ = _operationsDrained.TrySetResult();
+            }
+        }
+
+        await _operationsDrained.Task.ConfigureAwait(false);
 
         try
         {
@@ -219,8 +247,30 @@ public sealed class StreamTransport: ITransport
         }
         finally
         {
-            _ = _writeGate.Release();
             _writeGate.Dispose();
+        }
+    }
+
+    private void EnterOperation()
+    {
+        lock (_lifecycleGate)
+        {
+            ThrowIfDisposed();
+            _activeOperations = checked(_activeOperations + 1);
+        }
+    }
+
+    private void ExitOperation()
+    {
+        lock (_lifecycleGate)
+        {
+            _activeOperations--;
+            Debug.Assert(_activeOperations >= 0, "Every admitted transport operation exits exactly once.");
+
+            if (_activeOperations == 0 && Volatile.Read(ref _disposed) != 0)
+            {
+                _ = _operationsDrained.TrySetResult();
+            }
         }
     }
 
