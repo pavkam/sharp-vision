@@ -1058,6 +1058,21 @@ public sealed class Application:
             {
                 FlushOutOfBand();
             }
+            else if (_stopping && HasPendingOutOfBand())
+            {
+                // A stop can commit while this very frame's write was in flight (BeginStopping
+                // runs on the dispatcher thread and can only observe _stopping/_lifetime between
+                // dispatcher turns, never mid-write). Nothing downstream of here - FinalizeStopped,
+                // ObserveSessionAsync, DisposeTerminalResourcesAsync - ever looks at _outOfBand
+                // again, so bytes queued behind this frame (Bell/SetTitle/clipboard OSC writes)
+                // would otherwise be silently and permanently dropped. FlushOutOfBand itself is not
+                // reusable for this: it writes with _lifetime.Token, which BeginStopping already
+                // cancelled in the same synchronous step that set _stopping, so handing it to the
+                // transport now would fault immediately with an OperationCanceledException that
+                // CompleteOutOfBand's _lifetime.IsCancellationRequested check then treats as
+                // unreportable - stranding the bytes through a different silent path instead.
+                FlushOutOfBandOnStop();
+            }
             else if (_renderRequested || Root.Pending != Invalidation.None)
             {
                 _renderRequested = false;
@@ -1069,6 +1084,95 @@ public sealed class Application:
             hold.Dispose();
             _ = completion.TrySetResult();
         }
+    }
+
+    /// <summary>
+    /// Flushes out-of-band bytes still buffered when a stop commits between this frame's write
+    /// completing and <see cref="CompleteRender"/> deciding what runs next. Mirrors
+    /// <see cref="FlushOutOfBand"/>'s <see cref="IsRendering"/>/<c>_renderTask</c> bookkeeping so
+    /// <see cref="ObserveSessionAsync"/>'s shutdown drain (<c>do { await _renderTask; } while
+    /// (IsRendering);</c>) waits for this write before <see cref="DisposeTerminalResourcesAsync"/>
+    /// tears the transport down - which is otherwise still alive and open here, since that same
+    /// drain is what let teardown reach this point in the first place.
+    /// </summary>
+    private void FlushOutOfBandOnStop()
+    {
+        Dispatcher.VerifyAccess();
+        Debug.Assert(!IsRendering, "Out-of-band flush must not overlap a frame render.");
+
+        byte[] payload;
+
+        lock (_gate)
+        {
+            if (_outOfBand.WrittenCount == 0)
+            {
+                return;
+            }
+
+            payload = _outOfBand.WrittenSpan.ToArray();
+            _outOfBand.Clear();
+        }
+
+        var hold = Dispatcher.Hold();
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _renderTask = completion.Task;
+        IsRendering = true;
+        _ = ObserveOutOfBandOnStopAsync(payload, hold, completion);
+    }
+
+    /// <summary>
+    /// Writes and observes a <see cref="FlushOutOfBandOnStop"/> payload, then retires it the same
+    /// way <see cref="ObserveOutOfBandAsync"/>/<see cref="CompleteOutOfBand"/> retire a normal
+    /// out-of-band write - except the write itself uses a fresh, <see
+    /// cref="TerminalOptions.CleanupTimeout"/>-bounded token (the same pattern
+    /// <see cref="DisposeTerminalResourcesAsync"/> already uses for <c>renderer.ShutdownAsync</c>)
+    /// rather than the already-cancelled <c>_lifetime.Token</c>, and any failure is folded into
+    /// <see cref="LastCleanupException"/> - this codebase's convention for shutdown-path
+    /// diagnostics - rather than routed through <see cref="Report"/>, which exists for a still
+    /// running application and no longer applies once <c>_stopping</c> is set.
+    /// </summary>
+    private async Task ObserveOutOfBandOnStopAsync(byte[] payload, IDisposable hold, TaskCompletionSource completion)
+    {
+        Exception? failure = null;
+
+        try
+        {
+            using var timeout = new CancellationTokenSource(_options.CleanupTimeout, _timeProvider);
+            await _transport.WriteAsync(payload, timeout.Token).ConfigureAwait(false);
+            await _transport.FlushAsync(timeout.Token).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            failure = exception;
+        }
+
+        PostCompletionOrReportFault(
+            () =>
+            {
+                Dispatcher.VerifyAccess();
+
+                try
+                {
+                    IsRendering = false;
+                    LastCleanupException ??= failure;
+                }
+                finally
+                {
+                    hold.Dispose();
+                    _ = completion.TrySetResult();
+                }
+            },
+            () =>
+            {
+                // ObserveOutOfBandOnStopAsync's own completion never ran, so - as with the matching
+                // retirement in ObserveRenderAsync/ObserveOutOfBandAsync - IsRendering must be put
+                // back here or ObserveSessionAsync's shutdown drain would spin forever on an
+                // IsRendering left permanently true.
+                IsRendering = false;
+                LastCleanupException ??= failure;
+                hold.Dispose();
+                _ = completion.TrySetResult();
+            });
     }
 
     private void Dispatch(Record record)

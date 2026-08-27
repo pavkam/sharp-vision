@@ -2632,6 +2632,96 @@ public sealed partial class ApplicationTests
             async () => await application.StopAsync(TestContext.Current.CancellationToken));
     }
 
+    /// <summary>Verifies out-of-band bytes buffered behind an in-flight frame are still flushed to
+    /// the wire when a forced stop (a session/transport closure) commits before that frame's write
+    /// completes. CompleteRender's stopping branch used to gate the flush on <c>!_stopping</c> with
+    /// no fallback, so bytes buffered under a not-yet-stopping guarantee were silently and
+    /// permanently stranded once stopping committed first - with <c>Failure</c> and
+    /// <c>LastCleanupException</c> both staying null.</summary>
+    [Fact]
+    public async Task CompleteRender_WhenStopCommitsWhileOutOfBandIsBuffered_FlushesBufferedOutOfBandBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var probe = new ProbeControl { Content = "a".AsMemory() };
+        await using Application application = new(probe, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        terminal.PauseFlush();
+
+        // A frame render is already in flight (its transport write/flush will not complete until
+        // it is released below).
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                probe.Content = "b".AsMemory();
+                probe.InvalidateKernel(InvalidationImpact.Render);
+            },
+            TestContext.Current.CancellationToken);
+        await WaitForAsync(() => application.IsRendering, TimeSpan.FromSeconds(5));
+
+        // Buffer an out-of-band write while the render is in flight.
+        application.PostOutOfBand(new byte[] { 0x07 });
+
+        // Commit a forced stop (session closure) BEFORE that frame's write completes. Shutdown()
+        // funnels through the identical ISink.Closed() path a real transport closure would use.
+        application.Shutdown();
+
+        // Guarantee the queued Closed record has already been dispatched (and _stopping latched)
+        // before releasing the paused write: Enqueue's dispatcher wake was posted strictly before
+        // this InvokeAsync call, so FIFO ordering on the same dispatcher queue guarantees it.
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        terminal.ReleaseFlush(); // let the in-flight frame's write succeed
+
+        await application.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        terminal.Writes.ShouldContain(write => write.Length > 0); // the frame itself landed
+        terminal.Writes.ShouldContain(write => write.Length == 1 && write[0] == 0x07); // BEL still sent
+        application.Failure.ShouldBeNull();
+        application.LastCleanupException.ShouldBeNull();
+    }
+
+    /// <summary>Control for
+    /// <see cref="CompleteRender_WhenStopCommitsWhileOutOfBandIsBuffered_FlushesBufferedOutOfBandBytesAsync"/>:
+    /// identical scaffold but without the concurrent <c>Shutdown()</c> call, isolating the stop
+    /// race as the only variable. Out-of-band bytes buffered behind an in-flight frame have always
+    /// been flushed correctly once that frame's write completes, in the ordinary (non-racing)
+    /// case.</summary>
+    [Fact]
+    public async Task CompleteRender_WhenNoStopRaces_FlushesBufferedOutOfBandBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var probe = new ProbeControl { Content = "a".AsMemory() };
+        await using Application application = new(probe, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        terminal.PauseFlush();
+
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                probe.Content = "b".AsMemory();
+                probe.InvalidateKernel(InvalidationImpact.Render);
+            },
+            TestContext.Current.CancellationToken);
+        await WaitForAsync(() => application.IsRendering, TimeSpan.FromSeconds(5));
+
+        application.PostOutOfBand(new byte[] { 0x07 });
+
+        terminal.ReleaseFlush();
+
+        await WaitForAsync(
+            () => terminal.Writes.Any(write => write.Length == 1 && write[0] == 0x07),
+            TimeSpan.FromSeconds(5));
+
+        application.Failure.ShouldBeNull();
+        application.LastCleanupException.ShouldBeNull();
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     // IsRendering has no change notification of its own, so a condition built on it cannot be
     // awaited through an event or a completion source. Polling the flag is the only available
     // signal; the wait stays real wall-clock by necessity, not oversight.
