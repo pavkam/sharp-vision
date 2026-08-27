@@ -10,7 +10,10 @@ public enum DiagnosticCode
     /// <summary>A sequence violated its byte grammar.</summary>
     Malformed,
 
-    /// <summary>CAN or SUB cancelled an active sequence.</summary>
+    /// <summary>
+    /// An active sequence was abandoned before completion, by CAN, SUB, or a
+    /// fresh ESC restarting a new sequence.
+    /// </summary>
     Cancelled,
 
     /// <summary>Input ended while a sequence was incomplete.</summary>

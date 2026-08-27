@@ -423,7 +423,7 @@ public sealed class ProtocolParser: IDisposable
             return;
         }
 
-        if (value == 0x7f)
+        if (value == 0x7f && !IsIgnoring)
         {
             return;
         }
@@ -433,6 +433,15 @@ public sealed class ProtocolParser: IDisposable
             if (IsIgnoring)
             {
                 ReportPending(ref sink);
+            }
+            else if (_state != ParserState.Ground)
+            {
+                var diagnostic = new Diagnostic(
+                    DiagnosticCode.Cancelled,
+                    CurrentKind,
+                    currentOffset,
+                    0);
+                sink.Report(in diagnostic);
             }
 
             ClearHeader();

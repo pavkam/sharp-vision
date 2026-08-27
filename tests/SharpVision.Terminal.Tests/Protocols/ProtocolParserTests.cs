@@ -220,6 +220,28 @@ public sealed class ProtocolParserTests
         sink.Observations[1].First.ShouldBe("x"u8.ToArray());
     }
 
+    /// <summary>
+    /// Verifies a fresh ESC restarting a sequence while mid-header in a non-ignoring state
+    /// reports the abandoned sequence exactly like CAN/SUB cancellation does, rather than
+    /// silently discarding it.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenEscRestartsMidHeaderCsi_ReportsCancelled()
+    {
+        using ProtocolParser parser = new();
+        var sink = new RecordingSink();
+        byte[] input = [0x1b, (byte) '[', (byte) '1', 0x1b, (byte) 'A'];
+
+        parser.Parse(input, ref sink);
+
+        sink.Observations.Count.ShouldBe(2);
+        _ = sink.Observations[0].Diagnostic.ShouldNotBeNull();
+        sink.Observations[0].Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.Cancelled);
+        sink.Observations[0].Diagnostic!.Value.Kind.ShouldBe(SequenceKind.Csi);
+        sink.Observations[1].Type.ShouldBe("Escape");
+        sink.Observations[1].Final.ShouldBe((byte) 'A');
+    }
+
     #endregion
 
     #region DCS header, payload, termination, and recovery
@@ -270,6 +292,35 @@ public sealed class ProtocolParserTests
         sink.Observations.Count.ShouldBe(2);
         sink.Observations[0].Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.ParameterLimit);
         sink.Observations[0].Diagnostic!.Value.Kind.ShouldBe(SequenceKind.Dcs);
+        sink.Observations[1].First.ShouldBe("X"u8.ToArray());
+    }
+
+    /// <summary>
+    /// Verifies a DEL byte arriving during DcsHeaderIgnore recovery is counted toward
+    /// DiscardedBytes rather than silently absorbed.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenDelOccursDuringDcsHeaderIgnore_CountsItAsDiscarded()
+    {
+        var limits = ParserLimits.Default with { MaxParameterBytes = 2 };
+        using ProtocolParser parser = new(limits);
+        var sink = new RecordingSink();
+
+        // "123" exceeds the two-byte parameter limit on its third byte, entering
+        // DcsHeaderIgnore; the DEL that follows must still be counted before the final byte
+        // 'q' transitions to StringIgnore and 'secret' is discarded until CAN cancels it.
+        byte[] input =
+        [
+            0x1b, (byte) 'P', (byte) '1', (byte) '2', (byte) '3', 0x7f, (byte) 'q',
+            (byte) 's', (byte) 'e', (byte) 'c', (byte) 'r', (byte) 'e', (byte) 't',
+            0x18, (byte) 'X'
+        ];
+
+        parser.Parse(input, ref sink);
+
+        sink.Observations.Count.ShouldBe(2);
+        sink.Observations[0].Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.ParameterLimit);
+        sink.Observations[0].Diagnostic!.Value.DiscardedBytes.ShouldBe(8);
         sink.Observations[1].First.ShouldBe("X"u8.ToArray());
     }
 
@@ -465,6 +516,32 @@ public sealed class ProtocolParserTests
     }
 
     /// <summary>
+    /// Verifies a DEL byte arriving during CsiIgnore recovery is counted toward
+    /// DiscardedBytes rather than silently absorbed.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenDelOccursDuringCsiIgnore_CountsItAsDiscarded()
+    {
+        var limits = ParserLimits.Default with { MaxParameterBytes = 2 };
+        using ProtocolParser parser = new(limits);
+        var sink = new RecordingSink();
+
+        // "123" exceeds the two-byte parameter limit on its third byte, entering CsiIgnore;
+        // the DEL that follows must still be counted before the final byte 'm' ends recovery.
+        byte[] input =
+        [
+            0x1b, (byte) '[', (byte) '1', (byte) '2', (byte) '3', 0x7f, (byte) 'm', (byte) 'X'
+        ];
+
+        parser.Parse(input, ref sink);
+
+        sink.Observations.Count.ShouldBe(2);
+        sink.Observations[0].Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.ParameterLimit);
+        sink.Observations[0].Diagnostic!.Value.DiscardedBytes.ShouldBe(2);
+        sink.Observations[1].First.ShouldBe("X"u8.ToArray());
+    }
+
+    /// <summary>
     /// Verifies intermediate overflow reports once and resumes after the final byte.
     /// </summary>
     [Fact]
@@ -478,6 +555,33 @@ public sealed class ProtocolParserTests
 
         sink.Observations.Count.ShouldBe(2);
         sink.Observations[0].Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.IntermediateLimit);
+        sink.Observations[1].First.ShouldBe("X"u8.ToArray());
+    }
+
+    /// <summary>
+    /// Verifies a DEL byte arriving during EscapeIgnore recovery is counted toward
+    /// DiscardedBytes rather than silently absorbed.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenDelOccursDuringEscapeIgnore_CountsItAsDiscarded()
+    {
+        var limits = ParserLimits.Default with { MaxIntermediateBytes = 1 };
+        using ProtocolParser parser = new(limits);
+        var sink = new RecordingSink();
+
+        // '$' exceeds the one-byte intermediate limit already filled by '(', entering
+        // EscapeIgnore; the DEL that follows must still be counted before the final byte
+        // 'B' ends recovery.
+        byte[] input =
+        [
+            0x1b, (byte) '(', (byte) '$', 0x7f, (byte) 'B', (byte) 'X'
+        ];
+
+        parser.Parse(input, ref sink);
+
+        sink.Observations.Count.ShouldBe(2);
+        sink.Observations[0].Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.IntermediateLimit);
+        sink.Observations[0].Diagnostic!.Value.DiscardedBytes.ShouldBe(2);
         sink.Observations[1].First.ShouldBe("X"u8.ToArray());
     }
 
