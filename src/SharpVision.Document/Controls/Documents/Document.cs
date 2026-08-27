@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Documents;
 
+using System.Runtime.ExceptionServices;
+
 using SharpVision.Controls.Scrolling;
 using SharpVision.Documents;
 using SharpVision.Runtime;
@@ -63,6 +65,7 @@ public sealed class Document:
     private int _layoutWidth = -1;
     private int _horizontalOffset;
     private TextSelectionMap _selectionSemanticMap = TextSelectionMap.Empty;
+    private ulong _structureVersion;
 
     /// <summary>Initializes an empty scrollable document.</summary>
     public Document()
@@ -114,6 +117,13 @@ public sealed class Document:
     /// the current tree unchanged; a successful load transfers every result root into this document,
     /// so the same result cannot be loaded again.
     /// </remarks>
+    /// <remarks>
+    /// Replacement is transactional. A subscriber notified synchronously while the previous tree is
+    /// detached or the new one is attached - for example a focused embedded control's
+    /// <c>FocusLeft</c> - can throw or attempt its own reentrant mutation without turning a failed
+    /// load into content loss: this document's blocks are restored to what they held before the call
+    /// began, and the triggering exception then propagates.
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="reader"/> is null.</exception>
     /// <exception cref="ArgumentException">The reader result is no longer a detached tree.</exception>
     /// <exception cref="ArgumentOutOfRangeException">The source exceeds an enabled reader limit.</exception>
@@ -141,13 +151,20 @@ public sealed class Document:
     /// seeking, any failure restores its original byte position. A non-seekable source remains at
     /// the position reached by decoding because consumed bytes cannot be restored.
     /// </remarks>
+    /// <remarks>
+    /// The block structure this call started against is recorded before the first asynchronous read.
+    /// If other dispatcher-scheduled work structurally mutates <see cref="Blocks"/> while this call is
+    /// suspended awaiting the stream, replacement is rejected instead of silently discarding that
+    /// already-committed mutation.
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="reader"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="source"/> is not readable, or the reader
     /// result is no longer one complete detached tree.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Decoded content exceeds the configured limit.</exception>
     /// <exception cref="DecoderFallbackException">The source contains malformed data for its
     /// explicit or byte-order-mark-selected Unicode encoding.</exception>
-    /// <exception cref="InvalidOperationException">The attached document is mutated off-dispatcher.</exception>
+    /// <exception cref="InvalidOperationException">The attached document is mutated off-dispatcher, or
+    /// other dispatcher-scheduled work structurally mutated it while this call was suspended.</exception>
     /// <exception cref="ObjectDisposedException">The document or source stream is disposed.</exception>
     /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> is canceled.</exception>
     public async ValueTask<DocumentReadResult> LoadAsync(
@@ -169,6 +186,14 @@ public sealed class Document:
         options ??= new DocumentReadOptions();
         encoding ??= new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
         var initialPosition = source.CanSeek ? source.Position : (long?) null;
+
+        // Captured before the first await: the dispatcher resumes a suspended continuation by
+        // re-posting it to the back of its queue, so other dispatcher-scheduled work - a plain
+        // Blocks edit, or a second overlapping LoadAsync - can run and commit while this method is
+        // suspended on a stream read below. LoadCore rechecks this against the current version before
+        // touching Blocks, so a race is reported instead of silently discarding the interloper's
+        // already-committed mutation.
+        var expectedVersion = _structureVersion;
 
         try
         {
@@ -237,7 +262,13 @@ public sealed class Document:
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            return LoadCore(builder.ToString(), reader, options, observeCancellation: true, cancellationToken);
+            return LoadCore(
+                builder.ToString(),
+                reader,
+                options,
+                observeCancellation: true,
+                cancellationToken,
+                expectedVersion);
         }
         catch
         {
@@ -255,9 +286,25 @@ public sealed class Document:
         IDocumentFormatReader reader,
         DocumentReadOptions? options,
         bool observeCancellation,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ulong? expectedVersion = null)
     {
         VerifyMutable();
+
+        // An asynchronous load captures the structure version before its first await. Checking it
+        // here, before anything else in this method runs, catches other dispatcher-scheduled work
+        // that mutated Blocks while this load's stream reads were suspended - the read result no
+        // longer describes what would be replaced, so proceeding would silently discard that
+        // intervening, already-committed mutation. This must run before the snapshot/rollback logic
+        // below even begins: that logic's own Clear+Add will itself bump the version, but only after
+        // this check has already passed.
+        if (expectedVersion is { } expected && expected != _structureVersion)
+        {
+            throw new InvalidOperationException(
+                "The document's block structure was mutated by other dispatcher-scheduled work while " +
+                "this asynchronous load was in flight. The read content no longer corresponds to the " +
+                "tree it would replace, so it was discarded instead of silently overwriting that change.");
+        }
 
         if (observeCancellation)
         {
@@ -279,14 +326,43 @@ public sealed class Document:
             cancellationToken.ThrowIfCancellationRequested();
         }
 
-        Blocks.Clear();
+        // Snapshotted before mutation starts so a callback that interrupts the replacement - fired
+        // synchronously from Blocks.Clear() or Blocks.Add() reconciling retained-control membership -
+        // can be rolled back to the exact tree this load found, whether it threw its own exception or
+        // tripped the owned-control reentrancy guard partway through.
+        var oldBlocks = Blocks.ToList();
 
-        foreach (var block in result.Blocks)
+        try
         {
-            Blocks.Add(block);
+            Blocks.Clear();
+
+            foreach (var block in result.Blocks)
+            {
+                Blocks.Add(block);
+            }
+        }
+        catch (Exception exception)
+        {
+            var failure = ExceptionDispatchInfo.Capture(exception);
+            ExceptionAggregation.Capture(() => RestoreBlocks(oldBlocks), ref failure);
+            failure!.Throw();
+            throw;
         }
 
         return result;
+    }
+
+    /// <summary>Restores the block collection to a previously captured snapshot after a failed
+    /// replacement.</summary>
+    /// <param name="oldBlocks">The exact roots owned before the failed replacement began.</param>
+    private void RestoreBlocks(List<DocumentBlock> oldBlocks)
+    {
+        Blocks.Clear();
+
+        foreach (var block in oldBlocks)
+        {
+            Blocks.Add(block);
+        }
     }
 
     /// <summary>Gets how many structural reconciliations have run, exposing the invariant that
@@ -301,10 +377,27 @@ public sealed class Document:
         InvalidateRetainedDescendant(_surface, InvalidationImpact.Measure);
     }
 
+    /// <summary>Gets how many times the block structure has actually changed, so in-flight
+    /// asynchronous work can detect a mutation that happened while it was suspended.</summary>
+    /// <remarks>
+    /// Every structural mutation - a direct <see cref="Blocks"/> edit, a nested collection edit
+    /// anywhere in the tree, or a <see cref="Load"/>/<see cref="LoadAsync"/> replacement - bumps this
+    /// counter exactly once through the single <see cref="InvalidateStructure"/> choke point.
+    /// </remarks>
+    internal ulong StructureVersion => _structureVersion;
+
     /// <summary>Reconciles retained-control membership after the semantic tree changes, then
     /// invalidates measured and rendered content.</summary>
     internal void InvalidateStructure()
     {
+        // Bumped before reconciliation runs, because reconciliation can synchronously drive focus
+        // changes whose handlers observe or race this version - the structural edit that triggered
+        // this call already committed to Blocks by the time any caller reaches here.
+        unchecked
+        {
+            _structureVersion++;
+        }
+
         _presenter.ReconcileControls();
         InvalidateContent();
     }

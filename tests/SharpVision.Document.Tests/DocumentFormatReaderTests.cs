@@ -422,4 +422,213 @@ public sealed class DocumentFormatReaderTests
         _ = Should.Throw<ObjectDisposedException>(() => new DocumentReadResult([paragraph]));
         paragraph.IsAttached.ShouldBeFalse();
     }
+
+    /// <summary>Verifies a synchronous load whose focused embedded control's FocusLeft handler throws
+    /// while the tree is being replaced restores the exact original blocks instead of losing content.</summary>
+    [Fact]
+    public async Task Load_WhenFocusedControlFocusLeftThrowsDuringReplacement_RestoresOriginalBlocksAsync()
+    {
+        // Arrange
+        var button = new Button("focused");
+        var original = new DocumentBlockControl(button);
+        var document = new DocumentControl { Blocks = { original } };
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(30, 5),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => button.Focus().ShouldBeTrue(), "focus embedded control");
+        button.FocusLeft += (_, _) => throw new ApplicationException("focus callback failed");
+
+        // Act
+        var action = async () => await surface.UpdateAsync(
+            () => document.Load("replacement", new MarkdownDocumentReader()),
+            "load replacement");
+
+        // Assert
+        _ = await action.ShouldThrowAsync<ApplicationException>();
+        document.Blocks.ShouldHaveSingleItem().ShouldBeSameAs(original);
+        button.Parent.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies a synchronous load whose focused embedded control's FocusLeft handler
+    /// reenters with its own Blocks mutation trips the owned-control reentrancy guard and still
+    /// restores the exact original blocks instead of leaving the reentrant item as the sole root.</summary>
+    [Fact]
+    public async Task Load_WhenFocusLeftReentersWithBlocksMutation_RestoresOriginalBlocksAsync()
+    {
+        // Arrange
+        var button = new Button("focused");
+        var original = new DocumentBlockControl(button);
+        var document = new DocumentControl { Blocks = { original } };
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(30, 5),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => button.Focus().ShouldBeTrue(), "focus embedded control");
+        button.FocusLeft += (_, _) => document.Blocks.Add(new DocumentParagraph("reentrant"));
+
+        // Act
+        var action = async () => await surface.UpdateAsync(
+            () => document.Load("replacement", new MarkdownDocumentReader()),
+            "load replacement");
+
+        // Assert
+        _ = await action.ShouldThrowAsync<InvalidOperationException>();
+        document.Blocks.ShouldHaveSingleItem().ShouldBeSameAs(original);
+        button.Parent.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies an asynchronous stream load whose focused embedded control's FocusLeft
+    /// handler throws while the tree is being replaced restores the exact original blocks.</summary>
+    [Fact]
+    public async Task LoadAsync_WhenFocusedControlFocusLeftThrowsDuringReplacement_RestoresOriginalBlocksAsync()
+    {
+        // Arrange
+        var button = new Button("focused");
+        var original = new DocumentBlockControl(button);
+        var document = new DocumentControl { Blocks = { original } };
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(30, 5),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => button.Focus().ShouldBeTrue(), "focus embedded control");
+        button.FocusLeft += (_, _) => throw new ApplicationException("focus callback failed");
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes("replacement"));
+
+        // Act
+        var loadTask = await surface.Application.Dispatcher.InvokeAsync(
+            () => document.LoadAsync(
+                stream,
+                new PlainTextDocumentReaderProbe(),
+                cancellationToken: TestContext.Current.CancellationToken).AsTask(),
+            TestContext.Current.CancellationToken);
+        var action = async () => await loadTask;
+
+        // Assert
+        _ = await action.ShouldThrowAsync<ApplicationException>();
+        document.Blocks.ShouldHaveSingleItem().ShouldBeSameAs(original);
+        button.Parent.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies an asynchronous stream load whose focused embedded control's FocusLeft
+    /// handler reenters with its own Blocks mutation still restores the exact original blocks after
+    /// the owned-control reentrancy guard rejects it.</summary>
+    [Fact]
+    public async Task LoadAsync_WhenFocusLeftReentersWithBlocksMutation_RestoresOriginalBlocksAsync()
+    {
+        // Arrange
+        var button = new Button("focused");
+        var original = new DocumentBlockControl(button);
+        var document = new DocumentControl { Blocks = { original } };
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(30, 5),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => button.Focus().ShouldBeTrue(), "focus embedded control");
+        button.FocusLeft += (_, _) => document.Blocks.Add(new DocumentParagraph("reentrant"));
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes("replacement"));
+
+        // Act
+        var loadTask = await surface.Application.Dispatcher.InvokeAsync(
+            () => document.LoadAsync(
+                stream,
+                new PlainTextDocumentReaderProbe(),
+                cancellationToken: TestContext.Current.CancellationToken).AsTask(),
+            TestContext.Current.CancellationToken);
+        var action = async () => await loadTask;
+
+        // Assert
+        _ = await action.ShouldThrowAsync<InvalidOperationException>();
+        document.Blocks.ShouldHaveSingleItem().ShouldBeSameAs(original);
+        button.Parent.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies a synchronous load still replaces content normally, consuming the exact
+    /// result roots, when a focused embedded control's FocusLeft handler does not interfere.</summary>
+    [Fact]
+    public async Task Load_WhenFocusedControlLoseFocusWithoutInterference_ReplacesContentNormallyAsync()
+    {
+        // Arrange
+        var button = new Button("focused");
+        var document = new DocumentControl { Blocks = { new DocumentBlockControl(button) } };
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(30, 5),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => button.Focus().ShouldBeTrue(), "focus embedded control");
+
+        // Act
+        await surface.UpdateAsync(
+            () => document.Load("replacement", new PlainTextDocumentReaderProbe()),
+            "load replacement");
+
+        // Assert
+        document.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("replacement");
+    }
+
+    /// <summary>Verifies an asynchronous stream load still replaces content normally, consuming the
+    /// exact result roots, when a focused embedded control's FocusLeft handler does not interfere.</summary>
+    [Fact]
+    public async Task LoadAsync_WhenFocusedControlLoseFocusWithoutInterference_ReplacesContentNormallyAsync()
+    {
+        // Arrange
+        var button = new Button("focused");
+        var document = new DocumentControl { Blocks = { new DocumentBlockControl(button) } };
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(30, 5),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => button.Focus().ShouldBeTrue(), "focus embedded control");
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes("replacement"));
+
+        // Act
+        var loadTask = await surface.Application.Dispatcher.InvokeAsync(
+            () => document.LoadAsync(
+                stream,
+                new PlainTextDocumentReaderProbe(),
+                cancellationToken: TestContext.Current.CancellationToken).AsTask(),
+            TestContext.Current.CancellationToken);
+        _ = await loadTask;
+
+        // Assert
+        document.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("replacement");
+    }
+
+    /// <summary>Verifies an asynchronous load rejects replacement instead of silently discarding an
+    /// already-committed structural mutation made by other dispatcher-scheduled work while this
+    /// load's stream read was suspended.</summary>
+    [Fact]
+    public async Task LoadAsync_WhenBlocksChangeWhileSuspended_ThrowsInsteadOfDiscardingTheChangeAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var document = new DocumentControl();
+        await dispatcher.InvokeAsync(
+            () => document.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+        await using var stream = new PausableReadStream(Encoding.UTF8.GetBytes("new text"));
+
+        // Act
+        var loadTask = await dispatcher.InvokeAsync(
+            () => document.LoadAsync(
+                stream,
+                new PlainTextDocumentReaderProbe(),
+                cancellationToken: TestContext.Current.CancellationToken).AsTask(),
+            TestContext.Current.CancellationToken);
+        await stream.Entered.WaitAsync(TestContext.Current.CancellationToken);
+        await dispatcher.InvokeAsync(
+            () => document.Blocks.Add(new DocumentParagraph("interloper")),
+            TestContext.Current.CancellationToken);
+        stream.Release();
+        var action = async () => await loadTask;
+
+        // Assert
+        _ = await action.ShouldThrowAsync<InvalidOperationException>();
+        await dispatcher.InvokeAsync(
+            () => document.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
+                .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("interloper"),
+            TestContext.Current.CancellationToken);
+    }
 }
