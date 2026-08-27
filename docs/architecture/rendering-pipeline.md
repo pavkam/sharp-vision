@@ -107,21 +107,21 @@ cleanup, Session disposal, and host-lease disposal are attempted in order,
 without one failure skipping later lifetime boundaries; the earliest lifetime
 diagnostic is retained.
 
-Graphics-backend family selection stays fixed for the Application lifetime, but
-it is not an irrevocable capability grant. Each graphics backend rechecks the
-current frame profile. Revocation deletes retained Kitty state or performs a
-complete cell repair for sixel/iTerm2, and suppresses further graphics. Later
-profiles cannot promote a renderer created without an `IGraphicsBackend` or
-switch its graphics-backend family; fresh Application construction performs
-fresh selection.
+Graphics-backend family selection stays fixed for the Application lifetime once
+it happens, but it is not an irrevocable capability grant. Each graphics backend
+rechecks the current frame profile. Revocation deletes retained Kitty state or
+performs a complete cell repair for sixel/iTerm2, and suppresses further
+graphics. A backend, once selected, cannot be replaced or switched to a
+different family; fresh Application construction performs fresh selection.
 
 > [!NOTE]
 >
-> The recheck is one-way: later evidence can only revoke, never promote.
-> Selection happens once, at the lazily created renderer's construction, so
-> authoritative graphics evidence that arrives after the first render is
-> silently unusable for the rest of the process — only a new `Application`
-> observes it.
+> The recheck can revoke an already-selected backend, but it can never switch it
+> to a different family. A renderer that has no backend yet — because
+> capabilities showed no graphics support when it was constructed — is not stuck
+> that way: the first later capability republish that proves authoritative
+> graphics support selects a backend for it, the same as if that evidence had
+> been available at construction.
 
 Terminal backend identity is independently fixed in `TerminalContext` and cannot
 be inferred from this choice.

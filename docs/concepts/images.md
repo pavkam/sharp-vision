@@ -100,13 +100,16 @@ before `Session` disposes the borrowed transport; Kitty deletes and flushes
 remote state first, and a cleanup failure cannot skip transport or host-lease
 disposal.
 
-The backend family is fixed for one `Application` lifetime. Every selected
-backend still revalidates the current profile on each frame: revocation removes
-retained Kitty state or requests complete non-retained cell repair, and emits no
-new graphics. A later profile cannot promote a cell-only renderer or switch the
-selected backend family; constructing a new `Application` performs fresh
-selection. If authoritative evidence for the already-selected family returns,
-that family may resume through its ordinary full-repair path.
+Once a backend family is selected, it is fixed for that `Application` lifetime.
+Every selected backend still revalidates the current profile on each frame:
+revocation removes retained Kitty state or requests complete non-retained cell
+repair, and emits no new graphics. A later profile cannot switch the selected
+backend family; constructing a new `Application` performs fresh selection. If
+authoritative evidence for the already-selected family returns, that family may
+resume through its ordinary full-repair path. A renderer that has no backend yet
+is not held to cell-only fallback forever: the first later profile that proves
+authoritative graphics support promotes it to that backend family, the same as
+if the evidence had been available when the renderer was constructed.
 
 ## Expected behavior
 

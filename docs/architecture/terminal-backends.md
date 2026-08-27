@@ -6,13 +6,13 @@ One SharpVision application uses one physical terminal connection and one fixed
 terminal backend identity. The connection, backend identity, protocol
 extensions, capabilities, and graphics backend are separate boundaries:
 
-| Boundary            | Responsibility                                                               | Lifetime                            |
-| ------------------- | ---------------------------------------------------------------------------- | ----------------------------------- |
-| Connection          | Owns TTY transport, resize source, and the platform restore lease            | Console host open through shutdown  |
-| Terminal backend    | Identifies the VT, xterm, Kitty, or iTerm2 emulator family                   | Fixed for one application lifetime  |
-| Protocol extension  | Describes reusable typed behavior layered over the inherited protocol family | Immutable backend metadata          |
-| Capability evidence | Authorizes optional behavior for the current immutable terminal profile      | May be refined by bounded discovery |
-| Graphics backend    | Prepares and commits renderer-owned image transactions                       | Renderer construction through stop  |
+| Boundary            | Responsibility                                                               | Lifetime                                            |
+| ------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------- |
+| Connection          | Owns TTY transport, resize source, and the platform restore lease            | Console host open through shutdown                  |
+| Terminal backend    | Identifies the VT, xterm, Kitty, or iTerm2 emulator family                   | Fixed for one application lifetime                  |
+| Protocol extension  | Describes reusable typed behavior layered over the inherited protocol family | Immutable backend metadata                          |
+| Capability evidence | Authorizes optional behavior for the current immutable terminal profile      | May be refined by bounded discovery                 |
+| Graphics backend    | Prepares and commits renderer-owned image transactions                       | First selection through stop, once a backend exists |
 
 `ConsoleConnection` is the physical connection boundary; it neither identifies
 the emulator nor authorizes optional output. `TerminalBackend` is immutable
@@ -112,8 +112,10 @@ chooses a Kitty or shared non-retained graphics backend only from authoritative
 capability evidence and an authorized route. It does not resolve terminal
 identity.
 
-Renderer construction fixes the graphics backend family for that application.
-Every frame still rechecks the current capability evidence, so a later
+Once a graphics backend is selected, it is fixed as the graphics backend family
+for that application; a renderer that has not yet selected one can still acquire
+its first backend on a later capability republish that proves authoritative
+support. Every frame still rechecks the current capability evidence, so a later
 revocation can remove or repair graphics without replacing the graphics backend.
 The [rendering pipeline](rendering-pipeline.md#overview) owns transaction
 ordering, cell fallback, invalidation, and cleanup. The
