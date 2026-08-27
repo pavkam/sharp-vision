@@ -149,7 +149,13 @@ lines. An empty body remains distinct from multiple empty body lines.
 
 Block-quote recognition, paragraph interruption, and quote-line consumption use
 the same marker grammar. A `>` marker may be preceded by zero through three
-literal spaces; four or more spaces leave it as literal paragraph content.
+literal spaces; four or more spaces leave it as literal paragraph content. A
+line that carries neither a block quote's `>` marker nor a list item's own
+indentation still continues that container's open paragraph as a CommonMark
+lazy continuation, provided the line does not itself look like the start of
+another block; a blank line always closes that eligibility. Nested containers
+each track their own open-paragraph state independently, so lazy continuation
+composes correctly through arbitrary nesting.
 
 Thematic breaks accept at least three matching `*`, `-`, or `_` markers with any
 mixture of spaces and tabs between or after them, following the
@@ -165,7 +171,7 @@ semantic tree's insertion exception.
 
 > [!IMPORTANT]
 >
-> **Implementation gap:** three CommonMark behaviors are not implemented yet.
+> **Implementation gap:** two CommonMark behaviors are not implemented yet.
 > The reader should follow the CommonMark rule in each case; current behavior
 > differs as described.
 >
@@ -176,10 +182,6 @@ semantic tree's insertion exception.
 >   all; the tab itself survives as a literal character in the resulting text.
 >   This applies only to structural indentation - a tab inside an already-parsed
 >   code block or inline flow expands correctly.
-> - **Lazy continuation.** A line that fails to repeat a block quote's `>`
->   marker, or a list item's own indentation, but is otherwise ordinary text
->   ends that quote or list item immediately instead of continuing its enclosing
->   paragraph, the way CommonMark's lazy-continuation rule requires.
 > - **HTML entities.** `&amp;`, `&#65;`, and similar entity references pass
 >   through completely literally; this reader does not decode them.
 

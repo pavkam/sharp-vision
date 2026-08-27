@@ -314,10 +314,29 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         List<DocumentDiagnostic> diagnostics)
     {
         var quoted = new List<string>();
+        var paragraphOpen = false;
 
-        while (index < lines.Length && TryBlockQuoteMarker(lines[index], out var contentStart))
+        while (index < lines.Length)
         {
-            quoted.Add(lines[index][contentStart..]);
+            if (TryBlockQuoteMarker(lines[index], out var contentStart))
+            {
+                var content = lines[index][contentStart..];
+                quoted.Add(content);
+                paragraphOpen = !IsBlankLine(content) && !IsParagraphInterruptingBlockStart(content);
+                index++;
+                continue;
+            }
+
+            // CommonMark lazy continuation: a line that carries no '>' marker still belongs to
+            // the quote when it continues an already-open paragraph and does not itself look like
+            // the start of another block. A blank line (handled by the loop condition failing on
+            // IsBlankLine below) always closes that eligibility.
+            if (!paragraphOpen || IsBlankLine(lines[index]) || IsParagraphInterruptingBlockStart(lines[index]))
+            {
+                break;
+            }
+
+            quoted.Add(lines[index]);
             index++;
         }
 
@@ -376,6 +395,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             var item = new DocumentListItem();
             var continuation = new List<string>();
             var endListAfterItem = false;
+            var paragraphOpen = marker.Content.Length > 0 && !IsParagraphInterruptingBlockStart(marker.Content);
             index++;
 
             while (index < lines.Length)
@@ -385,13 +405,18 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                     break;
                 }
 
-                if (!IsBlankLine(lines[index]) && CountLeadingSpaces(lines[index]) <= firstMarker.Indent)
+                // CommonMark lazy continuation: an under-indented, marker-less line still belongs
+                // to the item when it continues an already-open paragraph and does not itself look
+                // like the start of another block; otherwise it ends the item as before.
+                if (!IsBlankLine(lines[index]) && CountLeadingSpaces(lines[index]) <= firstMarker.Indent &&
+                    (!paragraphOpen || IsParagraphInterruptingBlockStart(lines[index])))
                 {
                     break;
                 }
 
                 if (IsBlankLine(lines[index]))
                 {
+                    paragraphOpen = false;
                     var afterBlankIndex = index + 1;
 
                     while (afterBlankIndex < lines.Length && IsBlankLine(lines[afterBlankIndex]))
@@ -434,7 +459,9 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 else
                 {
                     var remove = Math.Min(marker.Indent + marker.MarkerWidth, CountLeadingSpaces(lines[index]));
-                    continuation.Add(lines[index][remove..]);
+                    var content = lines[index][remove..];
+                    continuation.Add(content);
+                    paragraphOpen = !IsBlankLine(content) && !IsParagraphInterruptingBlockStart(content);
                 }
 
                 index++;

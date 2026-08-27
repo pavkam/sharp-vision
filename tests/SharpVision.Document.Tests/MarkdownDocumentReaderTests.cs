@@ -93,13 +93,14 @@ public sealed class MarkdownDocumentReaderTests
         }
     }
 
-    /// <summary>Verifies an over-indented marker neither interrupts a paragraph nor remains inside
-    /// a preceding block quote.</summary>
+    /// <summary>Verifies an over-indented marker neither interrupts a paragraph (at the document
+    /// root) nor remains inside a preceding block quote once a blank line has already closed that
+    /// quote's lazy-continuation eligibility.</summary>
     [Fact]
     public void Read_WhenOverIndentedBlockQuoteMarkerFollowsContent_PreservesLiteralParagraphContent()
     {
         // Arrange
-        const string source = "paragraph\n    > literal\n\n> quoted\n    > sibling";
+        const string source = "paragraph\n    > literal\n\n> quoted\n\n    > sibling";
 
         // Act
         var result = new MarkdownDocumentReader().Read(source);
@@ -114,6 +115,67 @@ public sealed class MarkdownDocumentReaderTests
             .ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("quoted");
         result.Blocks[2].ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
             .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("    > sibling");
+    }
+
+    /// <summary>Verifies CommonMark lazy continuation: a wrapped line that carries no '&gt;' marker
+    /// still belongs to the block quote's open paragraph.</summary>
+    [Fact]
+    public void Read_WhenBlockQuoteParagraphWrapsWithoutMarker_ContinuesInsideQuote()
+    {
+        // Arrange
+        const string source = "> wrapped\ncontinued line";
+
+        // Act
+        var quote = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentBlockQuote>();
+
+        // Assert
+        var paragraph = quote.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+        paragraph.Inlines.Count.ShouldBe(3);
+        paragraph.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("wrapped");
+        _ = paragraph.Inlines[1].ShouldBeOfType<DocumentSoftBreak>();
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("continued line");
+    }
+
+    /// <summary>Verifies a blank line always closes lazy-continuation eligibility, so text following
+    /// it becomes a separate block instead of joining the quote's paragraph.</summary>
+    [Fact]
+    public void Read_WhenBlankLineFollowsBlockQuoteParagraph_EndsLazyContinuationEligibility()
+    {
+        // Arrange
+        const string source = "> quoted\n\nafter";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.Blocks.Count.ShouldBe(2);
+        result.Blocks[0].ShouldBeOfType<DocumentBlockQuote>().Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("quoted");
+        result.Blocks[1].ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("after");
+    }
+
+    /// <summary>Verifies a marker-less line that itself looks like another block's start still
+    /// interrupts the quote's open paragraph instead of being absorbed as a lazy continuation.
+    /// </summary>
+    [Fact]
+    public void Read_WhenMarkerLessLineLooksLikeHeading_InterruptsBlockQuoteParagraph()
+    {
+        // Arrange
+        const string source = "> quoted\n# Heading";
+
+        // Act
+        var result = new MarkdownDocumentReader().Read(source);
+
+        // Assert
+        result.Blocks.Count.ShouldBe(2);
+        result.Blocks[0].ShouldBeOfType<DocumentBlockQuote>().Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("quoted");
+        result.Blocks[1].ShouldBeOfType<DocumentHeading>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("Heading");
     }
 
     /// <summary>Verifies the largest permitted ordered marker remains a numbered list marker.</summary>
@@ -1766,6 +1828,62 @@ public sealed class MarkdownDocumentReaderTests
         // Assert
         var paragraph = item.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
         paragraph.Inlines.Count.ShouldBe(3);
+        _ = paragraph.Inlines[1].ShouldBeOfType<DocumentSoftBreak>();
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("continued");
+    }
+
+    /// <summary>Verifies CommonMark lazy continuation: a second line starting at column zero - well
+    /// under the marker's own indentation - still continues the item's open paragraph rather than
+    /// ending the item.</summary>
+    [Fact]
+    public void Read_WhenListItemContinuationLineStartsAtColumnZero_ContinuesItem()
+    {
+        // Arrange and act
+        var item = new MarkdownDocumentReader().Read("- item\ncontinued").Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem();
+
+        // Assert
+        var paragraph = item.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+        paragraph.Inlines.Count.ShouldBe(3);
+        paragraph.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("item");
+        _ = paragraph.Inlines[1].ShouldBeOfType<DocumentSoftBreak>();
+        paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("continued");
+    }
+
+    /// <summary>Verifies a marker-less line that itself looks like another block's start still
+    /// interrupts a list item's open paragraph - and ends the list, since the line no longer
+    /// carries any marker at all - instead of being absorbed as a lazy continuation.</summary>
+    [Fact]
+    public void Read_WhenMarkerLessLineLooksLikeHeading_InterruptsListItemParagraph()
+    {
+        // Arrange and act
+        var result = new MarkdownDocumentReader().Read("- item\n# Heading");
+
+        // Assert
+        result.Blocks.Count.ShouldBe(2);
+        var list = result.Blocks[0].ShouldBeOfType<DocumentList>();
+        list.Items.ShouldHaveSingleItem().Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>()
+            .Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("item");
+        result.Blocks[1].ShouldBeOfType<DocumentHeading>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("Heading");
+    }
+
+    /// <summary>Verifies lazy continuation composes across nesting levels: a block quote nested
+    /// inside a list item still absorbs a bare line that carries neither the item's own indentation
+    /// nor the quote's '&gt;' marker, because each level independently tracks its own open
+    /// paragraph.</summary>
+    [Fact]
+    public void Read_WhenQuoteNestedInListHasBareContinuationLine_ContinuesQuoteParagraph()
+    {
+        // Arrange and act
+        var item = new MarkdownDocumentReader().Read("- > quoted\n  continued").Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem();
+
+        // Assert
+        var paragraph = item.Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentBlockQuote>().Blocks
+            .ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+        paragraph.Inlines.Count.ShouldBe(3);
+        paragraph.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("quoted");
         _ = paragraph.Inlines[1].ShouldBeOfType<DocumentSoftBreak>();
         paragraph.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("continued");
     }
