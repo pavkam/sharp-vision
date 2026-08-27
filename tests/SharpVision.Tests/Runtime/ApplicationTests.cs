@@ -612,6 +612,95 @@ public sealed partial class ApplicationTests
     }
 
     /// <summary>
+    /// Verifies a nested StopAsync call made from inside a Stopping handler does not report its
+    /// own completion until real cleanup has actually run. The nested call is absorbed by the
+    /// _raisingStopping reentrancy guard while still nested inside the outer, not-yet-returned
+    /// Stopping raise; it must wait for that raise's real outcome instead of observing _stopping
+    /// mid-raise, where it is still guaranteed false purely because of where in the call stack it
+    /// happens to be read.
+    /// </summary>
+    [Fact]
+    public async Task StopAsync_WhenCalledFromStoppingHandler_WaitsForCleanupBeforeCompletingAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        Task? nestedTask = null;
+        var nestedCompletedDuringRaise = false;
+
+        application.Stopping += OnStopping;
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        var completedNested = nestedTask.ShouldNotBeNull();
+
+        // The bug this guards against: the nested call's own task must not already report
+        // success while still nested inside the very Stopping raise it asked to join - cleanup
+        // has not run yet at that synchronous point.
+        nestedCompletedDuringRaise.ShouldBeFalse();
+
+        await completedNested;
+
+        completedNested.IsCompletedSuccessfully.ShouldBeTrue();
+        terminal.Disposals.ShouldBeGreaterThan(0);
+        return;
+
+        void OnStopping(object? sender, StoppingEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            nestedTask = application.StopAsync().AsTask();
+            nestedCompletedDuringRaise = nestedTask.IsCompleted;
+        }
+    }
+
+    /// <summary>
+    /// Verifies a nested StopAsync call made from a Stopping handler that also cancels the request
+    /// returns promptly rather than hanging: the outer raise it joined was canceled, so there is no
+    /// completion to wait for.
+    /// </summary>
+    [Fact]
+    public async Task StopAsync_WhenHandlerCancelsAndCallsNested_NestedReturnsPromptlyAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        Task? nestedTask = null;
+
+        application.Stopping += OnStopping;
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        var completedNested = nestedTask.ShouldNotBeNull();
+
+        // Bounded so a regression hangs the assertion instead of the whole test run.
+        await completedNested.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        completedNested.IsCompletedSuccessfully.ShouldBeTrue();
+        application.Completion.IsCompleted.ShouldBeFalse();
+        return;
+
+        void OnStopping(object? sender, StoppingEventArgs eventArgs)
+        {
+            _ = sender;
+            eventArgs.Cancel = true;
+            nestedTask = application.StopAsync().AsTask();
+        }
+    }
+
+    /// <summary>
     /// Verifies a handler that cancels the request while also requesting shutdown again leaves the
     /// application running: a nested unforced request cannot override the cancellation it saw.
     /// </summary>

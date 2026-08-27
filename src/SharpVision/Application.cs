@@ -82,6 +82,15 @@ public sealed class Application:
     private bool _startedRaised;
     private bool _raisingStopping;
     private bool _forcedWhileRaising;
+
+    // Per-raise-cycle signal for a same-thread nested StopAsync call absorbed by the
+    // _raisingStopping reentrancy guard in BeginStopping: freshly allocated right before Stopping
+    // is raised, and resolved only after that raise's outcome (proceeded to real stopping, or
+    // canceled) is final. A nested caller awaits this instead of reading _stopping mid-raise,
+    // where it is still guaranteed false regardless of how the outer call concludes. Non-null only
+    // while a raise for the current cycle is in flight or its outcome has not yet been observed.
+    private TaskCompletionSource? _stoppingRaiseSignal;
+
     // Monotonic, in this order: _stopped implies _stopping. FinalizeStopped is the sole writer of
     // both once it is reached, so no path can produce "stopped but not stopping" - a state the
     // lifecycle model cannot express and that no single guard can represent.
@@ -533,9 +542,11 @@ public sealed class Application:
                 () => BeginStopping(forced: false, exception: null),
                 CancellationToken.None).AsTask();
 
+            Task? raiseSignal;
+
             try
             {
-                await request.WaitAsync(cancellationToken);
+                raiseSignal = await request.WaitAsync(cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -544,6 +555,18 @@ public sealed class Application:
                 Observe(request);
 
                 throw;
+            }
+
+            if (raiseSignal is not null)
+            {
+                // A Stopping handler already raising on this same thread absorbed the request
+                // (BeginStopping's _raisingStopping reentrancy guard) - _stopping is still
+                // guaranteed false here no matter how far that outer raise has progressed on the
+                // call stack above this one. Wait for that raise's own per-cycle outcome instead
+                // of racing it on a snapshot that is stale by construction; once it settles,
+                // _stopping (and, if it proceeded, eventually _completion) reflect the real,
+                // finished outcome for the check below.
+                await raiseSignal.WaitAsync(cancellationToken);
             }
         }
 
@@ -900,14 +923,14 @@ public sealed class Application:
         Enqueue(Record.Fault(exception));
     }
 
-    private void BeginStopping(bool forced, Exception? exception)
+    private Task? BeginStopping(bool forced, Exception? exception)
     {
         Dispatcher.VerifyAccess();
 
         if (_stopping)
         {
             Failure ??= exception;
-            return;
+            return null;
         }
 
         if (_raisingStopping)
@@ -916,15 +939,20 @@ public sealed class Application:
             // the dispatcher thread, so without this guard the nested request would raise the
             // same cancellable event again and recurse until the stack is exhausted. One stop
             // request raises Stopping exactly once; a nested forced request must still override
-            // a handler that cancelled this one.
+            // a handler that cancelled this one. Handing back the in-progress raise's own signal
+            // (rather than nothing) lets a nested caller wait for that raise's real outcome
+            // instead of reading _stopping mid-raise, where it is still guaranteed false no
+            // matter how the outer call concludes.
             _forcedWhileRaising |= forced;
             Failure ??= exception;
 
-            return;
+            return _stoppingRaiseSignal!.Task;
         }
 
         var eventArgs = new StoppingEventArgs();
         _raisingStopping = true;
+        var raiseSignal = new TaskCompletionSource();
+        _stoppingRaiseSignal = raiseSignal;
 
         try
         {
@@ -945,13 +973,21 @@ public sealed class Application:
 
         if (eventArgs.Cancel && !forced && !_forcedWhileRaising)
         {
-            return;
+            _stoppingRaiseSignal = null;
+            raiseSignal.SetResult();
+
+            return null;
         }
 
         _forcedWhileRaising = false;
         _stopping = true;
         Failure ??= exception;
         _lifetime.Cancel();
+
+        _stoppingRaiseSignal = null;
+        raiseSignal.SetResult();
+
+        return null;
     }
 
     private static void Observe(Task task)
