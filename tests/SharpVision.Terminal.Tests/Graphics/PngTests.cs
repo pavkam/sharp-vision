@@ -119,26 +119,241 @@ public sealed class PngTests
         decoded.ShouldBe(row);
     }
 
-    /// <summary>Verifies an interlaced source is reported rather than misdecoded.</summary>
+    /// <summary>Verifies 1-, 2-, and 4-bit grayscale samples unpack MSB-first and scale to 8 bits
+    /// by exact bit replication (factor 255, 85, or 17 respectively), with no tRNS present.</summary>
     [Fact]
-    public void DecodeRgba_WhenSourceIsInterlaced_ThrowsNotSupported()
+    public void DecodeRgba_WhenColorTypeIsGrayscaleAndBitDepthIsOne_ScalesByBitReplication()
     {
-        var source = CreateDecodablePng(1, 1, colorType: 2, bitDepth: 8, [0], [[1, 2, 3]], interlace: 1);
+        // Two 1-bit samples per byte, MSB-first: 0b10_000000 packs samples [1, 0].
+        var row = PackSamples(bitDepth: 1, 1, 0);
+        var source = CreateDecodablePng(2, 1, colorType: 0, bitDepth: 1, [0], [row]);
 
-        _ = Should.Throw<NotSupportedException>(() => source.AsSpan().DecodeRgba());
+        var decoded = source.AsSpan().DecodeRgba();
+
+        decoded.ShouldBe([255, 255, 255, 255, 0, 0, 0, 255]);
     }
 
-    /// <summary>Verifies sub-8-bit depths are reported rather than misdecoded; Adam7 interlacing
-    /// and depths below 8 bits per channel remain outside this decoder's scope.</summary>
-    [Theory]
-    [InlineData((byte) 1)]
-    [InlineData((byte) 2)]
-    [InlineData((byte) 4)]
-    public void DecodeRgba_WhenBitDepthIsSubByte_ThrowsNotSupported(byte bitDepth)
+    /// <summary>Verifies 2-bit grayscale unpacking and bit-replication scaling across every
+    /// representable native value.</summary>
+    [Fact]
+    public void DecodeRgba_WhenColorTypeIsGrayscaleAndBitDepthIsTwo_ScalesByBitReplication()
     {
-        var source = CreateDecodablePng(8, 1, colorType: 0, bitDepth: bitDepth, [0], [[0xFF]]);
+        var row = PackSamples(bitDepth: 2, 0, 1, 2, 3);
+        var source = CreateDecodablePng(4, 1, colorType: 0, bitDepth: 2, [0], [row]);
 
-        _ = Should.Throw<NotSupportedException>(() => source.AsSpan().DecodeRgba());
+        var decoded = source.AsSpan().DecodeRgba();
+
+        decoded.ShouldBe(
+        [
+            0, 0, 0, 255,
+            85, 85, 85, 255,
+            170, 170, 170, 255,
+            255, 255, 255, 255
+        ]);
+    }
+
+    /// <summary>Verifies 4-bit grayscale unpacking and bit-replication scaling, and that the tRNS
+    /// comparison uses the native (unscaled) sample value rather than the scaled output.</summary>
+    [Fact]
+    public void DecodeRgba_WhenColorTypeIsGrayscaleAndBitDepthIsFour_ComparesTrnsAtNativeWidth()
+    {
+        var row = PackSamples(bitDepth: 4, 0, 5, 15);
+        var source = CreateDecodablePng(3, 1, colorType: 0, bitDepth: 4, [0], [row], trns: [0, 5]);
+
+        var decoded = source.AsSpan().DecodeRgba();
+
+        decoded.ShouldBe(
+        [
+            0, 0, 0, 255,
+            85, 85, 85, 0,
+            255, 255, 255, 255
+        ]);
+    }
+
+    /// <summary>Verifies a sub-8-bit indexed source unpacks MSB-first and uses each native index
+    /// exactly, without any bit-replication scaling.</summary>
+    [Fact]
+    public void DecodeRgba_WhenColorTypeIsIndexedAndBitDepthIsFour_UsesNativeIndexUnscaled()
+    {
+        byte[] palette = [10, 20, 30, 40, 50, 60, 70, 80, 90];
+        var row = PackSamples(bitDepth: 4, 1, 2);
+        var source = CreateDecodablePng(2, 1, colorType: 3, bitDepth: 4, [0], [row], palette);
+
+        var decoded = source.AsSpan().DecodeRgba();
+
+        decoded.ShouldBe([40, 50, 60, 255, 70, 80, 90, 255]);
+    }
+
+    /// <summary>Verifies a sub-8-bit indexed source with only 2 bits per sample, exercising a
+    /// packed byte holding four native indices.</summary>
+    [Fact]
+    public void DecodeRgba_WhenColorTypeIsIndexedAndBitDepthIsTwo_ResolvesEveryPackedIndex()
+    {
+        byte[] palette = [1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4];
+        var row = PackSamples(bitDepth: 2, 0, 1, 2, 3);
+        var source = CreateDecodablePng(4, 1, colorType: 3, bitDepth: 2, [0], [row], palette);
+
+        var decoded = source.AsSpan().DecodeRgba();
+
+        decoded.ShouldBe(
+        [
+            1, 1, 1, 255,
+            2, 2, 2, 255,
+            3, 3, 3, 255,
+            4, 4, 4, 255
+        ]);
+    }
+
+    /// <summary>Verifies an Adam7-interlaced grayscale source decodes correctly at a size small
+    /// enough that four of the seven passes contribute zero bytes.</summary>
+    [Fact]
+    public void DecodeRgba_WhenColorTypeIsGrayscaleAndSourceIsInterlaced_ScattersEveryPass()
+    {
+        var source = CreateInterlacedPng(2, 2, colorType: 0, bitDepth: 8, channels: 1, GrayscaleSampleAt);
+
+        var decoded = source.AsSpan().DecodeRgba();
+
+        decoded.ShouldBe(
+        [
+            50, 50, 50, 255, 100, 100, 100, 255,
+            150, 150, 150, 255, 200, 200, 200, 255
+        ]);
+
+        static int[] GrayscaleSampleAt(int x, int y) => (x, y) switch
+        {
+            (0, 0) => [50],
+            (1, 0) => [100],
+            (0, 1) => [150],
+            (1, 1) => [200],
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+
+    /// <summary>Verifies an Adam7-interlaced truecolor (RGB) source scatters every pass to its
+    /// correct final position.</summary>
+    [Fact]
+    public void DecodeRgba_WhenColorTypeIsRgbAndSourceIsInterlaced_ScattersEveryPass()
+    {
+        var source = CreateInterlacedPng(2, 2, colorType: 2, bitDepth: 8, channels: 3, RgbSampleAt);
+
+        var decoded = source.AsSpan().DecodeRgba();
+
+        decoded.ShouldBe(
+        [
+            10, 20, 30, 255, 40, 50, 60, 255,
+            70, 80, 90, 255, 100, 110, 120, 255
+        ]);
+
+        static int[] RgbSampleAt(int x, int y) => (x, y) switch
+        {
+            (0, 0) => [10, 20, 30],
+            (1, 0) => [40, 50, 60],
+            (0, 1) => [70, 80, 90],
+            (1, 1) => [100, 110, 120],
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+
+    /// <summary>Verifies an Adam7-interlaced indexed source resolves through PLTE at each
+    /// scattered position.</summary>
+    [Fact]
+    public void DecodeRgba_WhenColorTypeIsIndexedAndSourceIsInterlaced_ScattersEveryPass()
+    {
+        byte[] palette = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        var source = CreateInterlacedPng(2, 2, colorType: 3, bitDepth: 8, channels: 1, IndexSampleAt, palette);
+
+        var decoded = source.AsSpan().DecodeRgba();
+
+        decoded.ShouldBe(
+        [
+            1, 2, 3, 255, 4, 5, 6, 255,
+            7, 8, 9, 255, 10, 11, 12, 255
+        ]);
+
+        static int[] IndexSampleAt(int x, int y) => (x, y) switch
+        {
+            (0, 0) => [0],
+            (1, 0) => [1],
+            (0, 1) => [2],
+            (1, 1) => [3],
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+
+    /// <summary>Verifies an Adam7-interlaced grayscale-with-alpha source preserves both channels
+    /// at every scattered position.</summary>
+    [Fact]
+    public void DecodeRgba_WhenColorTypeIsGrayscaleAlphaAndSourceIsInterlaced_ScattersEveryPass()
+    {
+        var source = CreateInterlacedPng(2, 2, colorType: 4, bitDepth: 8, channels: 2, GrayAlphaSampleAt);
+
+        var decoded = source.AsSpan().DecodeRgba();
+
+        decoded.ShouldBe(
+        [
+            10, 10, 10, 255, 20, 20, 20, 200,
+            30, 30, 30, 100, 40, 40, 40, 0
+        ]);
+
+        static int[] GrayAlphaSampleAt(int x, int y) => (x, y) switch
+        {
+            (0, 0) => [10, 255],
+            (1, 0) => [20, 200],
+            (0, 1) => [30, 100],
+            (1, 1) => [40, 0],
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+
+    /// <summary>Verifies an Adam7-interlaced RGBA source passes every channel through unchanged
+    /// at each scattered position.</summary>
+    [Fact]
+    public void DecodeRgba_WhenColorTypeIsRgbaAndSourceIsInterlaced_ScattersEveryPass()
+    {
+        var source = CreateInterlacedPng(2, 2, colorType: 6, bitDepth: 8, channels: 4, RgbaSampleAt);
+
+        var decoded = source.AsSpan().DecodeRgba();
+
+        decoded.ShouldBe(
+        [
+            1, 2, 3, 4, 5, 6, 7, 8,
+            9, 10, 11, 12, 13, 14, 15, 16
+        ]);
+
+        static int[] RgbaSampleAt(int x, int y) => (x, y) switch
+        {
+            (0, 0) => [1, 2, 3, 4],
+            (1, 0) => [5, 6, 7, 8],
+            (0, 1) => [9, 10, 11, 12],
+            (1, 1) => [13, 14, 15, 16],
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+
+    /// <summary>Verifies Adam7 interlacing and sub-8-bit unpacking compose correctly: a 2-bit
+    /// grayscale source, scattered across passes, still scales each native sample by bit
+    /// replication after being placed at its final position.</summary>
+    [Fact]
+    public void DecodeRgba_WhenBitDepthIsSubByteAndSourceIsInterlaced_ScattersAndScales()
+    {
+        var source = CreateInterlacedPng(2, 2, colorType: 0, bitDepth: 2, channels: 1, SubByteSampleAt);
+
+        var decoded = source.AsSpan().DecodeRgba();
+
+        decoded.ShouldBe(
+        [
+            0, 0, 0, 255, 85, 85, 85, 255,
+            170, 170, 170, 255, 255, 255, 255, 255
+        ]);
+
+        static int[] SubByteSampleAt(int x, int y) => (x, y) switch
+        {
+            (0, 0) => [0],
+            (1, 0) => [1],
+            (0, 1) => [2],
+            (1, 1) => [3],
+            _ => throw new ArgumentOutOfRangeException()
+        };
     }
 
     /// <summary>Verifies 16-bit grayscale samples narrow to 8 bits by keeping the most significant
@@ -503,6 +718,141 @@ public sealed class PngTests
 
         _ = Should.Throw<ArgumentException>(
             () => Png.Encode(new Size(1, 1), [1, 2, 3], buffer));
+    }
+
+    /// <summary>The seven Adam7 passes in stream order, as (start column, start row, column
+    /// stride, row stride), mirroring the PNG specification's interlacing grid.</summary>
+    private static readonly (int StartX, int StartY, int StrideX, int StrideY)[] _adam7Passes =
+    [
+        (0, 0, 8, 8),
+        (4, 0, 8, 8),
+        (0, 4, 4, 8),
+        (2, 0, 4, 4),
+        (0, 2, 2, 4),
+        (1, 0, 2, 2),
+        (0, 1, 1, 2)
+    ];
+
+    /// <summary>Packs a row of native-depth channel samples into scanline bytes: one or two
+    /// big-endian bytes per sample at 8- or 16-bit depth, or MSB-first bit-packed bytes below 8
+    /// bits, exactly as PNG stores scanline samples.</summary>
+    private static byte[] PackSamples(byte bitDepth, params int[] samples)
+    {
+        if (bitDepth >= 8)
+        {
+            var bytesPerSample = bitDepth / 8;
+            var row = new byte[samples.Length * bytesPerSample];
+
+            for (var i = 0; i < samples.Length; i++)
+            {
+                if (bytesPerSample == 2)
+                {
+                    row[i * 2] = (byte) (samples[i] >> 8);
+                    row[(i * 2) + 1] = (byte) samples[i];
+                }
+                else
+                {
+                    row[i] = (byte) samples[i];
+                }
+            }
+
+            return row;
+        }
+
+        var stride = ((samples.Length * bitDepth) + 7) / 8;
+        var packed = new byte[stride];
+
+        for (var i = 0; i < samples.Length; i++)
+        {
+            var bitOffset = i * bitDepth;
+            var byteIndex = bitOffset / 8;
+            var shift = 8 - bitDepth - (bitOffset % 8);
+            packed[byteIndex] |= (byte) (samples[i] << shift);
+        }
+
+        return packed;
+    }
+
+    /// <summary>Builds a minimal Adam7-interlaced PNG fixture. Every scanline in every
+    /// contributing pass uses filter type "None"; a pass whose computed width or height is zero
+    /// contributes no bytes at all, not even a filter-type byte. <paramref name="sampleAt"/>
+    /// supplies the full image's native-depth per-channel samples at each final coordinate, so
+    /// the same function that builds the fixture also derives the expected decoded output.</summary>
+    private static byte[] CreateInterlacedPng(
+        int width,
+        int height,
+        byte colorType,
+        byte bitDepth,
+        int channels,
+        Func<int, int, int[]> sampleAt,
+        byte[]? palette = null,
+        byte[]? trns = null)
+    {
+        using var buffer = new MemoryStream();
+        buffer.Write([137, 80, 78, 71, 13, 10, 26, 10]);
+
+        WriteChunk(buffer, "IHDR"u8, ihdr =>
+        {
+            WriteInt32(ihdr, width);
+            WriteInt32(ihdr[4..], height);
+            ihdr[8] = bitDepth;
+            ihdr[9] = colorType;
+            ihdr[10] = 0;
+            ihdr[11] = 0;
+            ihdr[12] = 1; // Interlace method: Adam7.
+        }, 13);
+
+        if (palette is not null)
+        {
+            WriteRawChunk(buffer, "PLTE"u8, palette);
+        }
+
+        if (trns is not null)
+        {
+            WriteRawChunk(buffer, "tRNS"u8, trns);
+        }
+
+        using (var scanlines = new MemoryStream())
+        {
+            foreach (var (startX, startY, strideX, strideY) in _adam7Passes)
+            {
+                var passWidth = width > startX ? (width - startX + strideX - 1) / strideX : 0;
+                var passHeight = height > startY ? (height - startY + strideY - 1) / strideY : 0;
+
+                if (passWidth == 0 || passHeight == 0)
+                {
+                    continue;
+                }
+
+                for (var row = 0; row < passHeight; row++)
+                {
+                    var y = startY + (row * strideY);
+                    var samples = new int[passWidth * channels];
+
+                    for (var col = 0; col < passWidth; col++)
+                    {
+                        var x = startX + (col * strideX);
+                        sampleAt(x, y).CopyTo(samples, col * channels);
+                    }
+
+                    scanlines.WriteByte(0);
+                    scanlines.Write(PackSamples(bitDepth, samples));
+                }
+            }
+
+            using var compressed = new MemoryStream();
+
+            using (var zlib = new ZLibStream(compressed, CompressionLevel.NoCompression, leaveOpen: true))
+            {
+                scanlines.Position = 0;
+                scanlines.CopyTo(zlib);
+            }
+
+            WriteRawChunk(buffer, "IDAT"u8, compressed.ToArray());
+        }
+
+        WriteRawChunk(buffer, "IEND"u8, []);
+        return buffer.ToArray();
     }
 
     private static byte[] CreateDecodablePng(

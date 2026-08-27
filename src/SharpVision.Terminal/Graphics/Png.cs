@@ -8,7 +8,8 @@ using System.Buffers.Binary;
 using System.IO.Compression;
 
 /// <summary>Validates the bounded PNG container subset required for owned transmission, and
-/// decodes a conservative non-interlaced, 8- or 16-bit-depth subset to straight RGBA8888.</summary>
+/// decodes every validated PNG color type, bit depth, and interlace method to straight
+/// RGBA8888.</summary>
 internal static class Png
 {
     [SuppressMessage(
@@ -129,36 +130,25 @@ internal static class Png
         }
 
         /// <summary>
-        /// Decodes a non-interlaced, 8- or 16-bit-depth PNG to straight (non-premultiplied)
-        /// RGBA8888, four bytes per pixel in row-major order. Supports every PNG color type
-        /// (grayscale, RGB, indexed, grayscale with alpha, RGBA); an indexed source without its
-        /// required <c>PLTE</c> chunk is structurally invalid. A 16-bit-per-channel sample narrows to 8 bits
-        /// by keeping its most significant byte. Interlaced sources and depths other than 8 or 16
-        /// bits per channel are outside this decoder's scope and are reported through
-        /// <see cref="NotSupportedException"/> rather than approximated.
+        /// Decodes a PNG to straight (non-premultiplied) RGBA8888, four bytes per pixel in
+        /// row-major order. Supports every PNG color type (grayscale, RGB, indexed, grayscale
+        /// with alpha, RGBA), every color-type-valid bit depth (1, 2, 4, 8, or 16 bits per
+        /// channel), and both the "None" and Adam7 interlace methods; an indexed source without
+        /// its required <c>PLTE</c> chunk is structurally invalid. A 16-bit-per-channel sample
+        /// narrows to 8 bits by keeping its most significant byte. A sub-8-bit grayscale sample is
+        /// scaled to 8 bits by exact bit replication; a sub-8-bit indexed sample is used exactly as
+        /// its native palette index, unscaled.
         /// </summary>
         /// <returns>Owned RGBA8888 pixel bytes, exactly width times height times four in length.</returns>
         /// <exception cref="ArgumentException">The PNG structure or required header fields are invalid.</exception>
         /// <exception cref="NotSupportedException">
-        /// The source is interlaced or uses a bit depth other than 8 or 16.
+        /// The decoded PNG scanline data would exceed the supported bound.
         /// </exception>
         [Pure]
         public byte[] DecodeRgba()
         {
             var size = source.ReadSize();
             var (bitDepth, colorType, interlace) = ReadDecodeHeader(source);
-
-            if (interlace != 0)
-            {
-                throw new NotSupportedException("Interlaced PNG sources are not supported.");
-            }
-
-            if (bitDepth is not (8 or 16))
-            {
-                throw new NotSupportedException(
-                    $"PNG bit depth {bitDepth} is not supported; only 8 or 16 bits per channel is decoded.");
-            }
-
             var channels = ChannelsFor(colorType);
             byte[]? palette = null;
             byte[]? transparency = null;
@@ -197,50 +187,15 @@ internal static class Png
 
             ValidateTransparency(colorType, palette, transparency);
 
-            var bytesPerSample = bitDepth / 8;
-            var stride = checked(size.Width * channels * bytesPerSample);
-            var rawLength = checked((long) size.Height * (stride + 1));
+            var nativeBytesPerSample = bitDepth >= 8 ? bitDepth / 8 : 0;
+            var outputBytesPerSample = bitDepth >= 8 ? nativeBytesPerSample : 1;
+            var filterDistance = Math.Max(1, channels * nativeBytesPerSample);
 
-            if (rawLength > int.MaxValue)
-            {
-                throw new NotSupportedException("The decoded PNG scanline data exceeds the supported bound.");
-            }
+            var pixels = interlace == 0
+                ? DecodeNonInterlaced(idat, size, channels, bitDepth, nativeBytesPerSample, filterDistance)
+                : DecodeAdam7(idat, size, channels, bitDepth, nativeBytesPerSample, filterDistance);
 
-            var raw = new byte[(int) rawLength];
-
-            using (var compressed = new MemoryStream(idat.WrittenSpan.ToArray(), writable: false))
-            using (var zlib = new ZLibStream(compressed, CompressionMode.Decompress))
-            {
-                try
-                {
-                    zlib.ReadExactly(raw);
-
-                    if (zlib.ReadByte() != -1)
-                    {
-                        throw new ArgumentException(
-                            "The PNG compressed scanline data exceeds its declared dimensions.",
-                            "source");
-                    }
-                }
-                catch (EndOfStreamException exception)
-                {
-                    throw new ArgumentException(
-                        "The PNG compressed scanline data is shorter than its declared dimensions require.",
-                        "source",
-                        exception);
-                }
-                catch (InvalidDataException exception)
-                {
-                    throw new ArgumentException(
-                        "The PNG compressed scanline data is invalid.",
-                        "source",
-                        exception);
-                }
-
-            }
-
-            var pixels = Defilter(raw, size.Height, stride, channels * bytesPerSample);
-            return ToRgba(pixels, size, colorType, channels, bytesPerSample, palette, transparency);
+            return ToRgba(pixels, size, colorType, channels, outputBytesPerSample, palette, transparency, bitDepth);
         }
     }
 
@@ -273,6 +228,214 @@ internal static class Png
     {
         var data = source.Slice(Signature.Length + 8, 13);
         return (data[8], data[9], data[12]);
+    }
+
+    /// <summary>The seven Adam7 passes in stream order, as (start column, start row, column
+    /// stride, row stride).</summary>
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Read only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    private static readonly (int StartX, int StartY, int StrideX, int StrideY)[] _adam7Passes =
+    [
+        (0, 0, 8, 8),
+        (4, 0, 8, 8),
+        (0, 4, 4, 8),
+        (2, 0, 4, 4),
+        (0, 2, 2, 4),
+        (1, 0, 2, 2),
+        (0, 1, 1, 2)
+    ];
+
+    /// <summary>Decompresses the concatenated <c>IDAT</c> stream into exactly
+    /// <paramref name="raw"/>'s length of raw scanline bytes, rejecting a stream that is shorter,
+    /// longer, or otherwise malformed.</summary>
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    private static void Decompress(ArrayBufferWriter<byte> idat, byte[] raw)
+    {
+        using var compressed = new MemoryStream(idat.WrittenSpan.ToArray(), writable: false);
+        using var zlib = new ZLibStream(compressed, CompressionMode.Decompress);
+
+        try
+        {
+            zlib.ReadExactly(raw);
+
+            if (zlib.ReadByte() != -1)
+            {
+                throw new ArgumentException(
+                    "The PNG compressed scanline data exceeds its declared dimensions.",
+                    nameof(raw));
+            }
+        }
+        catch (EndOfStreamException exception)
+        {
+            throw new ArgumentException(
+                "The PNG compressed scanline data is shorter than its declared dimensions require.",
+                nameof(raw),
+                exception);
+        }
+        catch (InvalidDataException exception)
+        {
+            throw new ArgumentException(
+                "The PNG compressed scanline data is invalid.",
+                nameof(raw),
+                exception);
+        }
+    }
+
+    /// <summary>Decodes a "None" (non-interlaced) scanline stream to defiltered, sub-8-bit-unpacked
+    /// pixel bytes in row-major order.</summary>
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    private static byte[] DecodeNonInterlaced(
+        ArrayBufferWriter<byte> idat,
+        Size size,
+        int channels,
+        byte bitDepth,
+        int nativeBytesPerSample,
+        int filterDistance)
+    {
+        var stride = bitDepth >= 8
+            ? size.Width * channels * nativeBytesPerSample
+            : ((size.Width * bitDepth) + 7) / 8;
+        var rawLength = checked((long) size.Height * (stride + 1));
+
+        if (rawLength > int.MaxValue)
+        {
+            throw new NotSupportedException("The decoded PNG scanline data exceeds the supported bound.");
+        }
+
+        var raw = new byte[(int) rawLength];
+        Decompress(idat, raw);
+
+        var defiltered = Defilter(raw, size.Height, stride, filterDistance);
+        return bitDepth >= 8 ? defiltered : Unpack(defiltered, size.Width, size.Height, stride, bitDepth);
+    }
+
+    /// <summary>Decodes an Adam7-interlaced scanline stream: each of the seven passes is its own
+    /// independently filtered and compressed mini-image, concatenated in stream order, which this
+    /// defilters (and, for sub-8-bit depths, unpacks) one pass at a time before scattering its
+    /// pixels into the final full-image raster.</summary>
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    private static byte[] DecodeAdam7(
+        ArrayBufferWriter<byte> idat,
+        Size size,
+        int channels,
+        byte bitDepth,
+        int nativeBytesPerSample,
+        int filterDistance)
+    {
+        var passWidths = new int[7];
+        var passHeights = new int[7];
+        var passStrides = new int[7];
+        var rawLength = 0L;
+
+        for (var i = 0; i < 7; i++)
+        {
+            var (startX, startY, strideX, strideY) = _adam7Passes[i];
+            var passWidth = size.Width > startX ? (size.Width - startX + strideX - 1) / strideX : 0;
+            var passHeight = size.Height > startY ? (size.Height - startY + strideY - 1) / strideY : 0;
+            passWidths[i] = passWidth;
+            passHeights[i] = passHeight;
+
+            if (passWidth == 0 || passHeight == 0)
+            {
+                continue;
+            }
+
+            var passStride = bitDepth >= 8
+                ? passWidth * channels * nativeBytesPerSample
+                : ((passWidth * bitDepth) + 7) / 8;
+            passStrides[i] = passStride;
+            rawLength = checked(rawLength + ((long) passHeight * (passStride + 1)));
+        }
+
+        if (rawLength > int.MaxValue)
+        {
+            throw new NotSupportedException("The decoded PNG scanline data exceeds the supported bound.");
+        }
+
+        var raw = new byte[(int) rawLength];
+        Decompress(idat, raw);
+
+        var outputBytesPerSample = bitDepth >= 8 ? nativeBytesPerSample : 1;
+        var pixelStride = channels * outputBytesPerSample;
+        var pixels = new byte[checked(size.Width * size.Height * pixelStride)];
+        var rawOffset = 0;
+
+        for (var i = 0; i < 7; i++)
+        {
+            var passWidth = passWidths[i];
+            var passHeight = passHeights[i];
+
+            if (passWidth == 0 || passHeight == 0)
+            {
+                continue;
+            }
+
+            var (startX, startY, strideX, strideY) = _adam7Passes[i];
+            var passStride = passStrides[i];
+            var passRawLength = passHeight * (passStride + 1);
+            var passRaw = raw.AsSpan(rawOffset, passRawLength);
+            rawOffset += passRawLength;
+
+            var passDefiltered = Defilter(passRaw, passHeight, passStride, filterDistance);
+            var passPixels = bitDepth >= 8
+                ? passDefiltered
+                : Unpack(passDefiltered, passWidth, passHeight, passStride, bitDepth);
+
+            for (var row = 0; row < passHeight; row++)
+            {
+                var destY = startY + (row * strideY);
+
+                for (var col = 0; col < passWidth; col++)
+                {
+                    var destX = startX + (col * strideX);
+                    var sourceOffset = ((row * passWidth) + col) * pixelStride;
+                    var destinationOffset = ((destY * size.Width) + destX) * pixelStride;
+                    passPixels.AsSpan(sourceOffset, pixelStride)
+                        .CopyTo(pixels.AsSpan(destinationOffset, pixelStride));
+                }
+            }
+        }
+
+        return pixels;
+    }
+
+    /// <summary>Unpacks MSB-first sub-8-bit samples (one channel per pixel; grayscale or indexed
+    /// only) into one native-depth byte per sample, still unscaled.</summary>
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    private static byte[] Unpack(ReadOnlySpan<byte> packed, int width, int height, int stride, byte bitDepth)
+    {
+        var unpacked = new byte[width * height];
+        var mask = (1 << bitDepth) - 1;
+
+        for (var row = 0; row < height; row++)
+        {
+            var rowBytes = packed.Slice(row * stride, stride);
+            var rowOut = unpacked.AsSpan(row * width, width);
+
+            for (var i = 0; i < width; i++)
+            {
+                var bitOffset = i * bitDepth;
+                var byteIndex = bitOffset / 8;
+                var shift = 8 - bitDepth - (bitOffset % 8);
+                rowOut[i] = (byte) ((rowBytes[byteIndex] >> shift) & mask);
+            }
+        }
+
+        return unpacked;
     }
 
     private static bool IsValidDepth(byte colorType, byte bitDepth) => colorType switch
@@ -405,7 +568,8 @@ internal static class Png
         int channels,
         int bytesPerSample,
         byte[]? palette,
-        byte[]? transparency)
+        byte[]? transparency,
+        byte bitDepth)
     {
         var rgba = new byte[checked(size.Width * size.Height * 4)];
         var pixelStride = channels * bytesPerSample;
@@ -418,7 +582,8 @@ internal static class Png
             switch (colorType)
             {
                 case 0:
-                    destination[0] = destination[1] = destination[2] = NarrowSample(source, 0, bytesPerSample);
+                    destination[0] = destination[1] = destination[2] =
+                        ScaleGraySample(NarrowSample(source, 0, bytesPerSample), bitDepth);
                     destination[3] = transparency is not null &&
                                      ReadSample(source, 0, bytesPerSample) == ReadTransparencySample(transparency)
                         ? (byte) 0
@@ -475,6 +640,12 @@ internal static class Png
     /// the whole sample when the source is already 8 bits per channel.</summary>
     private static byte NarrowSample(ReadOnlySpan<byte> source, int channelIndex, int bytesPerSample) =>
         source[channelIndex * bytesPerSample];
+
+    /// <summary>Scales a native-depth grayscale sample to 8 bits by exact bit replication (a
+    /// factor of 255, 85, or 17 for 1-, 2-, or 4-bit depths); 8- and 16-bit samples are already at
+    /// their final width by the time they reach here and pass through unchanged.</summary>
+    private static byte ScaleGraySample(byte value, byte bitDepth) =>
+        bitDepth < 8 ? (byte) (value * (255 / ((1 << bitDepth) - 1))) : value;
 
     /// <summary>Reads a scanline sample at its native bit depth, before any narrowing, so it can be
     /// compared against a <c>tRNS</c> value at the same width.</summary>
