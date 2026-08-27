@@ -835,13 +835,7 @@ public sealed class Application:
             _profileWake = true;
         }
 
-        try
-        {
-            Dispatcher.Post(DrainProfile);
-        }
-        catch (ObjectDisposedException)
-        {
-        }
+        PostOrResetWake(DrainProfile, () => _profileWake = false);
     }
 
     /// <inheritdoc/>
@@ -863,13 +857,7 @@ public sealed class Application:
             _resizeWake = true;
         }
 
-        try
-        {
-            Dispatcher.Post(DrainResize);
-        }
-        catch (ObjectDisposedException)
-        {
-        }
+        PostOrResetWake(DrainResize, () => _resizeWake = false);
     }
 
     /// <summary>Requests a cooperative, orderly application exit.</summary>
@@ -1502,13 +1490,7 @@ public sealed class Application:
 
             if (repost)
             {
-                try
-                {
-                    Dispatcher.Post(DrainInput);
-                }
-                catch (ObjectDisposedException)
-                {
-                }
+                PostOrResetWake(DrainInput, () => _inputWake = false);
             }
         }
     }
@@ -1642,6 +1624,56 @@ public sealed class Application:
         ProcessInvalidation();
     }
 
+    /// <summary>
+    /// Posts <paramref name="work"/> to the dispatcher on behalf of a "latch, then post" wake site
+    /// - <see cref="Profile"/>, the resize sink, <see cref="Enqueue"/>, <see cref="WakeInput"/>,
+    /// <see cref="PostOutOfBand"/>, and <see cref="DrainInput"/>'s own repost. Every one of those
+    /// sites sets its wake flag <c>true</c> under <c>_gate</c> and then leaves the lock
+    /// before attempting the post, so that <see cref="Dispatcher.VerifyAccess"/>-guarded drain
+    /// method is the only other code that ever touches the flag while a post is outstanding - it
+    /// resets the flag to <c>false</c> once the corresponding drain runs, per callback, on the
+    /// single dispatcher thread. That single-flight invariant is exactly what makes the reset
+    /// below safe without re-checking anything: since the caller only reaches this method after
+    /// observing the flag transition from <c>false</c> to <c>true</c> itself (or, for the
+    /// <see cref="DrainInput"/> repost, from inside the same locked section that just reset it),
+    /// no concurrent caller can have re-armed the flag in the meantime - a second latch attempt
+    /// would have seen it already <c>true</c> and returned without posting, and the drain that
+    /// would otherwise clear it never got scheduled, because this very post attempt is the one
+    /// that failed.
+    /// </summary>
+    /// <param name="work">The dispatcher callback to post.</param>
+    /// <param name="resetWake">Clears the wake flag guarding this post. Invoked under
+    /// <c>_gate</c>, and only when <paramref name="work"/> failed to schedule for a reason
+    /// other than the dispatcher already being disposed.</param>
+    /// <exception cref="InvalidOperationException">The dispatcher queue is full. A subsequent,
+    /// ordinary call into the same wake site can retry once the queue drains, exactly as if this
+    /// call had never latched the flag in the first place.</exception>
+    private void PostOrResetWake(Action work, Action resetWake)
+    {
+        try
+        {
+            Dispatcher.Post(work);
+        }
+        catch (ObjectDisposedException)
+        {
+            // A disposed dispatcher is terminal - nothing will ever post again, so leaving the
+            // flag latched true is harmless; there is no "later, healthy call" left to un-stick.
+        }
+        catch (Exception)
+        {
+            // Anything else (a full queue, most commonly) is the transient, recoverable condition
+            // this method exists to un-stick: without this reset the flag would stay true forever,
+            // and every later call into this site would return silently, never even attempting
+            // another post, no matter how healthy the dispatcher becomes afterward.
+            lock (_gate)
+            {
+                resetWake();
+            }
+
+            throw;
+        }
+    }
+
     private void Enqueue(Record record)
     {
         lock (_gate)
@@ -1666,13 +1698,7 @@ public sealed class Application:
             _inputWake = true;
         }
 
-        try
-        {
-            Dispatcher.Post(DrainInput);
-        }
-        catch (ObjectDisposedException)
-        {
-        }
+        PostOrResetWake(DrainInput, () => _inputWake = false);
     }
 
     private void ApplyCapabilities(TerminalCapabilities value)
@@ -2207,13 +2233,7 @@ public sealed class Application:
             _outOfBandWake = true;
         }
 
-        try
-        {
-            Dispatcher.Post(DrainOutOfBand);
-        }
-        catch (ObjectDisposedException)
-        {
-        }
+        PostOrResetWake(DrainOutOfBand, () => _outOfBandWake = false);
     }
 
     private void DrainOutOfBand()
@@ -2606,13 +2626,7 @@ public sealed class Application:
 
         if (post)
         {
-            try
-            {
-                Dispatcher.Post(DrainInput);
-            }
-            catch (ObjectDisposedException)
-            {
-            }
+            PostOrResetWake(DrainInput, () => _inputWake = false);
         }
     }
 

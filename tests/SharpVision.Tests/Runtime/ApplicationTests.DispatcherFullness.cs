@@ -480,4 +480,318 @@ public sealed partial class ApplicationTests
 
         stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(1));
     }
+
+    // #769: none of the six sites above ever rolled the wake flag back when the Post attempt
+    // itself failed with anything other than ObjectDisposedException - so a single transient
+    // full-queue trip, survived via a handled UnhandledException or simply outlived once the
+    // backlog drained, permanently and silently froze that entire pipeline for the rest of the
+    // run: every later, ordinary call saw the flag still latched true and returned without even
+    // attempting another Post. The *_WhenDispatcherQueueIsFull_PropagatesInvalidOperationExceptionAsync
+    // tests above only ever asserted the exception itself propagates; the tests below extend each
+    // one to also prove a later, ordinary call - made only once the dispatcher has genuinely
+    // recovered - is still applied instead of swallowed.
+
+    /// <summary>Verifies the profile-wake site recovers from a full-queue trip: once the dispatcher
+    /// drains, a later, ordinary <see cref="Application.Profile"/> call is actually applied instead
+    /// of the flag staying stuck latched from the failed post.</summary>
+    [Fact]
+    public async Task Profile_AfterQueueFullTrip_LaterOrdinaryProfileIsAppliedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        try
+        {
+            _ = Should.Throw<InvalidOperationException>(
+                () => application.Profile(TerminalCapabilities.Conservative));
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        // The dispatcher is now completely healthy again. A brand-new, ordinary profile update
+        // arrives.
+        var laterProfile = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor };
+        Should.NotThrow(() => application.Profile(laterProfile));
+
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // BUG (pre-fix): the profile pipeline stayed permanently frozen, so this later call never
+        // reached DrainProfile and Capabilities never moved off whatever the tree attached with.
+        application.Capabilities.ShouldBeSameAs(laterProfile);
+
+        await application.DisposeAsync();
+    }
+
+    /// <summary>Verifies the resize-wake site recovers from a full-queue trip: once the dispatcher
+    /// drains, a later, ordinary resize is actually applied instead of the flag staying stuck
+    /// latched from the failed post. Mirrors the exact reproducer filed with #769.</summary>
+    [Fact]
+    public async Task Resize_AfterQueueFullTrip_LaterOrdinaryResizeIsAppliedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        application.UnhandledException += static (_, eventArgs) => eventArgs.IsHandled = true;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        application.Size.ShouldBe(new Size(10, 4));
+
+        var resizeEvents = 0;
+        application.Resize += (_, _) => resizeEvents++;
+
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        var trippingResize = new Dimensions(new Size(20, 8));
+
+        try
+        {
+            _ = Should.Throw<InvalidOperationException>(
+                () => ((ISink) application).Resize(in trippingResize));
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        // The dispatcher is now completely healthy again. A brand-new, ordinary resize arrives.
+        var laterResize = new Dimensions(new Size(30, 12));
+        Should.NotThrow(() => ((ISink) application).Resize(in laterResize));
+
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        await Task.Delay(TimeSpan.FromMilliseconds(200), TestContext.Current.CancellationToken);
+
+        // BUG (pre-fix): the resize pipeline stayed permanently frozen at its pre-trip size.
+        application.Size.ShouldBe(new Size(30, 12));
+        resizeEvents.ShouldBeGreaterThan(0);
+
+        await application.DisposeAsync();
+    }
+
+    /// <summary>Verifies <c>Enqueue</c>, reached through <see cref="Application.Input(in Stroke)"/>,
+    /// recovers from a full-queue trip: once the dispatcher drains, a later, ordinary keystroke is
+    /// actually routed instead of the flag staying stuck latched from the failed post.</summary>
+    [Fact]
+    public async Task Input_AfterQueueFullTrip_LaterOrdinaryInputIsAppliedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var root = new ProbeControl { IsFocusable = true };
+        var observedCodes = new List<Code>();
+        _ = root.AddHandler(Events.Key, (_, eventArgs) => observedCodes.Add(((KeyEventArgs) eventArgs).Stroke.Code));
+        var application = new Application(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(root).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        var trippingStroke = PlainStroke(Code.Enter);
+
+        try
+        {
+            _ = Should.Throw<InvalidOperationException>(() => application.Input(in trippingStroke));
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        // The dispatcher is now completely healthy again. A brand-new, ordinary keystroke arrives.
+        var laterStroke = PlainStroke(Code.Escape);
+        Should.NotThrow(() => application.Input(in laterStroke));
+
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // BUG (pre-fix): the input pipeline stayed permanently frozen, so neither this later
+        // keystroke - nor the tripping one still sitting in _input - was ever routed.
+        observedCodes.ShouldContain(Code.Escape);
+
+        await application.DisposeAsync();
+    }
+
+    /// <summary>Verifies <c>DrainInput</c>'s own repost recovers from a full-queue trip: once the
+    /// application survives the resulting <see cref="Application.UnhandledException"/> report and
+    /// the backlog it triggered finishes draining on its own, a later, ordinary keystroke is still
+    /// routed instead of the flag staying stuck latched from the failed repost.</summary>
+    [Fact]
+    public async Task DrainInput_AfterRepostQueueFullTrip_LaterOrdinaryInputIsAppliedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var root = new ProbeControl { IsFocusable = true };
+        var observedCodes = new List<Code>();
+        _ = root.AddHandler(Events.Key, (_, eventArgs) => observedCodes.Add(((KeyEventArgs) eventArgs).Stroke.Code));
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(root).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        var innerStroke = PlainStroke(Code.Enter);
+
+        // Same "concurrent Enqueue inside the reset window" seam as
+        // DrainInput_WhenRepostFindsQueueFull_SetsApplicationFailureAsync above, but this time the
+        // application is left running afterward instead of tearing down.
+        application.DrainInputRaceHookForTests = () =>
+        {
+            application.Input(in innerStroke);
+
+            while (true)
+            {
+                try
+                {
+                    application.Dispatcher.Post(static () => { });
+                }
+                catch (InvalidOperationException)
+                {
+                    break;
+                }
+            }
+        };
+
+        var failureObserved = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            eventArgs.IsHandled = true;
+            failureObserved.TrySetResult();
+        };
+
+        var outerStroke = PlainStroke(Code.Escape);
+        application.Input(in outerStroke);
+
+        await failureObserved.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        application.DrainInputRaceHookForTests = null;
+
+        // The backlog the hook filled above drains on its own - nothing in the hook blocks the
+        // dispatcher thread, it only fills the queue from inside a callback already running on it.
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        observedCodes.Clear();
+
+        // The dispatcher is now completely healthy again. A brand-new, ordinary keystroke arrives.
+        var laterStroke = PlainStroke(Code.Tab);
+        Should.NotThrow(() => application.Input(in laterStroke));
+
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // BUG (pre-fix): the input pipeline stayed permanently frozen after the repost trip, so
+        // this later keystroke was never routed.
+        observedCodes.ShouldContain(Code.Tab);
+    }
+
+    /// <summary>Verifies <c>WakeInput</c> recovers from a full-queue trip: once the dispatcher
+    /// drains, a later call actually dispatches the record still sitting in <c>_input</c> from the
+    /// earlier trip, instead of the flag staying stuck latched from the failed post. Reflection
+    /// drives the private method directly, exactly as
+    /// <see cref="WakeInput_WhenDispatcherQueueIsFull_PropagatesInvalidOperationExceptionAsync"/>
+    /// does above.</summary>
+    [Fact]
+    public async Task WakeInput_AfterQueueFullTrip_LaterCallDispatchesPendingInputAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var root = new ProbeControl { IsFocusable = true };
+        var observedCodes = new List<Code>();
+        _ = root.AddHandler(Events.Key, (_, eventArgs) => observedCodes.Add(((KeyEventArgs) eventArgs).Stroke.Code));
+        var application = new Application(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(root).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        var wakeInput = typeof(Application)
+            .GetMethod("WakeInput", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        try
+        {
+            var stroke = PlainStroke(Code.Enter);
+
+            // Enqueue's own post attempt observes the saturated queue and throws here - an
+            // incidental exercise of the already-covered Input site - but the record still lands
+            // in _input, and this fix's own reset already leaves _inputWake false: exactly
+            // WakeInput's precondition, as in the sibling test above.
+            _ = Should.Throw<InvalidOperationException>(() => application.Input(in stroke));
+
+            var thrown = Should.Throw<TargetInvocationException>(() => wakeInput.Invoke(application, null));
+            _ = thrown.InnerException.ShouldBeOfType<InvalidOperationException>();
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        // The dispatcher is now completely healthy again, and the record from the tripping Input
+        // call above is still sitting in _input, undispatched. A later, ordinary WakeInput call
+        // must actually schedule and run the drain instead of finding a permanently stuck latch.
+        _ = Should.NotThrow(() => wakeInput.Invoke(application, null));
+
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // BUG (pre-fix): the input pipeline stayed permanently frozen, so the record from the
+        // tripping Input call above was never dispatched.
+        observedCodes.ShouldContain(Code.Enter);
+
+        await application.DisposeAsync();
+    }
+
+    /// <summary>Verifies <c>PostOutOfBand</c> recovers from a full-queue trip: once the dispatcher
+    /// drains, a later, ordinary out-of-band write is actually flushed to the transport instead of
+    /// the flag staying stuck latched from the failed post.</summary>
+    [Fact]
+    public async Task PostOutOfBand_AfterQueueFullTrip_LaterOrdinaryPostIsAppliedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var laterWritten = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += memory =>
+        {
+            if (memory.Span.IndexOf((byte) 0x08) >= 0)
+            {
+                _ = laterWritten.TrySetResult();
+            }
+        };
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        ReadOnlyMemory<byte> trippingBytes = new byte[] { 0x07 };
+
+        try
+        {
+            _ = Should.Throw<InvalidOperationException>(() => application.PostOutOfBand(trippingBytes));
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        // The dispatcher is now completely healthy again. A brand-new, ordinary out-of-band write
+        // arrives.
+        ReadOnlyMemory<byte> laterBytes = new byte[] { 0x08 };
+        Should.NotThrow(() => application.PostOutOfBand(laterBytes));
+
+        // BUG (pre-fix): the out-of-band pipeline stayed permanently frozen, so this later write
+        // never reached the transport and this would time out instead.
+        await laterWritten.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        await application.DisposeAsync();
+    }
 }
