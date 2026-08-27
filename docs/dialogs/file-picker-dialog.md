@@ -56,13 +56,13 @@ afterwards never affects a dialog that is already showing.
 never part of the accepted selection), `Directories` (a file is never part of
 the accepted selection), and `FilesAndDirectories` (either kind can be
 accepted). A `Filter` still applies only to file basenames in every mode -
-directories always stay visible so the user can navigate into them regardless
-of `SelectionMode`. Navigation-on-invoke (double-click or Enter on a directory)
-is unaffected by `SelectionMode`; it always navigates, in every mode - only a
-file commits on double-click or Enter. What `SelectionMode` changes is which
-rows count toward the accepted selection the Open Button commits: with
-`Directories` or `FilesAndDirectories`, a selected directory row enables Open
-and is included in the accepted `FilePickerResult` alongside any selected files.
+directories always stay visible so the user can navigate into them regardless of
+`SelectionMode`. Navigation-on-invoke (double-click or Enter on a directory) is
+unaffected by `SelectionMode`; it always navigates, in every mode - only a file
+commits on double-click or Enter. What `SelectionMode` changes is which rows
+count toward the accepted selection the Open Button commits: with `Directories`
+or `FilesAndDirectories`, a selected directory row enables Open and is included
+in the accepted `FilePickerResult` alongside any selected files.
 
 | Style property            | Default | Applies to                                                                |
 | ------------------------- | ------- | ------------------------------------------------------------------------- |
@@ -96,9 +96,9 @@ result, of fully qualified canonical paths in stable display order.
 a parallel read-only snapshot of `FilePickerResultEntry` (`Path`, `IsDirectory`)
 in the same order as `Paths`, so a caller of a `Directories` or
 `FilesAndDirectories` picker can tell which accepted paths are directories
-without probing the filesystem again; every entry's `IsDirectory` is `false`
-for the default `Files` mode. A cancelled result has `IsAccepted == false`, an
-empty `Paths` and `Entries`, and a null `SelectedPath`.
+without probing the filesystem again; every entry's `IsDirectory` is `false` for
+the default `Files` mode. A cancelled result has `IsAccepted == false`, an empty
+`Paths` and `Entries`, and a null `SelectedPath`.
 
 ### FilePickerDialog state
 
@@ -160,9 +160,8 @@ count) builds the entry-count status text after a successful load;
 one file is selected. `ReadyText` and `LoadingText` (inherited) set the idle and
 in-flight status wording. Every setter validates non-null before mutating.
 `FilePickerOptions` carries the caption and placeholder texts, plus
-`CountFormat`, `SelectionFormat`, `ReadyText`, and `LoadingText`, to
-`ShowAsync` — a null option value leaves the constructed dialog's own default
-in place.
+`CountFormat`, `SelectionFormat`, `ReadyText`, and `LoadingText`, to `ShowAsync`
+— a null option value leaves the constructed dialog's own default in place.
 
 ## Presentation and ownership
 
@@ -272,8 +271,8 @@ link cycles cannot create traversal cycles.
 - ListView selection follows the existing single, Control-toggle, and
   Shift-range semantics. Directory rows can always become current or selected
   visually; whether `SelectedPaths` retains a selected directory row depends on
-  `SelectionMode` - the default `Files` mode filters them out, exactly as
-  before this mode existed.
+  `SelectionMode` - the default `Files` mode filters them out, exactly as before
+  this mode existed.
 
 > [!NOTE]
 >

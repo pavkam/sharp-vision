@@ -260,8 +260,8 @@ caption, label, or placeholder in place — no control is ever recreated.
 entry-count status wording. Every setter validates non-null before mutating.
 `SaveFileOptions` carries the caption texts, `CountFormat`, `ReadyText`,
 `LoadingText`, and the overwrite title, message formatter, captions, and style
-to `ShowAsync` — a null option value leaves the constructed dialog's own
-default in place.
+to `ShowAsync` — a null option value leaves the constructed dialog's own default
+in place.
 
 ## Example
 

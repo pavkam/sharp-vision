@@ -180,16 +180,16 @@ reader treats a tab atomically: it is never split across a threshold boundary,
 so removing only part of a tab's four-column width - CommonMark's full
 partial-tab splitting - is not implemented.
 
-HTML character references are decoded against a curated table rather
-than the full HTML5 named-reference list: the five XML entities (`&amp;`,
-`&lt;`, `&gt;`, `&quot;`, `&apos;`), a small set of common typographic and arrow
-entities (`&nbsp;`, `&copy;`, `&reg;`, `&trade;`, `&hellip;`, `&mdash;`,
-`&ndash;`, `&larr;`, `&rarr;`, `&uarr;`, `&darr;`), a handful of accented Latin
-letters (`&eacute;`, `&egrave;`, `&agrave;`, `&auml;`, `&ouml;`, `&uuml;`,
-`&ntilde;`, `&ccedil;`), and decimal (`&#65;`) or hexadecimal (`&#x41;`) numeric
-references. A named reference outside this curated set is left completely
-literal - including the `&` and `;` - rather than guessed or partially decoded.
-A numeric reference for the null code point, a code point past U+10FFFF, or a
+HTML character references are decoded against a curated table rather than the
+full HTML5 named-reference list: the five XML entities (`&amp;`, `&lt;`, `&gt;`,
+`&quot;`, `&apos;`), a small set of common typographic and arrow entities
+(`&nbsp;`, `&copy;`, `&reg;`, `&trade;`, `&hellip;`, `&mdash;`, `&ndash;`,
+`&larr;`, `&rarr;`, `&uarr;`, `&darr;`), a handful of accented Latin letters
+(`&eacute;`, `&egrave;`, `&agrave;`, `&auml;`, `&ouml;`, `&uuml;`, `&ntilde;`,
+`&ccedil;`), and decimal (`&#65;`) or hexadecimal (`&#x41;`) numeric references.
+A named reference outside this curated set is left completely literal -
+including the `&` and `;` - rather than guessed or partially decoded. A numeric
+reference for the null code point, a code point past U+10FFFF, or a
 surrogate-range code point decodes to the replacement character (U+FFFD) instead
 of being rejected.
 
