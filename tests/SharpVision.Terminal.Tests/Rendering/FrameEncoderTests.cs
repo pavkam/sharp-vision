@@ -243,6 +243,24 @@ public sealed class FrameEncoderTests
         destination.WrittenSpan.EndsWith("\u001b[1;2H\u001b[?25h"u8).ShouldBeTrue();
     }
 
+    /// <summary>
+    /// Verifies a visibility-only cursor change at an unchanged position skips the redundant
+    /// cursor-position program, since the physical cursor is already left there.
+    /// </summary>
+    [Fact]
+    public void Encode_WhenOnlyCursorVisibilityChanges_OmitsCursorPosition()
+    {
+        using var front = Create("ab");
+        front.SetCursor(new Point(1, 0), visible: true);
+        using var back = Create("ab");
+        back.SetCursor(new Point(1, 0), visible: false);
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = FrameEncoder.Encode(front, back, destination, TrueColorCapabilities);
+
+        destination.WrittenSpan.ToArray().ShouldBe("\u001b[?25l"u8.ToArray());
+    }
+
     private static Frame Create(string value)
     {
         var frame = new Frame(new Size(value.Length, 1));

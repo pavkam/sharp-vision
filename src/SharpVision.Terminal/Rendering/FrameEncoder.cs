@@ -179,9 +179,9 @@ public static class FrameEncoder
         }
 
         ResetStyle(destination, style, profile, interpreter);
-        var cursorChanged = redraw || front!.Cursor != back.Cursor;
+        var positionChanged = redraw || front!.Cursor.Position != back.Cursor.Position;
 
-        if ((spanCount > 0 || cursorChanged) && back.Size is { Width: > 0, Height: > 0 })
+        if ((spanCount > 0 || positionChanged) && back.Size is { Width: > 0, Height: > 0 })
         {
             WriteRequired(
                 profile,
