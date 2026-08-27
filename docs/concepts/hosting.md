@@ -128,8 +128,13 @@ a console close and a system shutdown there too.
 > callback on Windows therefore blocks synchronously until the requested stop
 > (cancel, stop, and terminal-mode restoration) actually finishes, instead of
 > firing it fire-and-forget the way Ctrl+C and Unix's own `SIGTERM`/`SIGHUP` do.
-> `CleanupTimeout` defaults to one second, comfortably inside that five-second
-> budget.
+> `CleanupTimeout` defaults to one second and bounds the parts of shutdown this
+> library owns - reverse terminal-mode restoration and the transport-read drain
+> - well inside that five-second budget. It does not bound a `Stopping` handler,
+> render completion, or a custom transport's own disposal, which run to
+> completion first: a slow one can still exceed the OS deadline and be killed
+> mid-cleanup. Keep `Stopping` handlers and custom transport/backend teardown
+> fast on Windows for this reason.
 >
 > **Logoff is intentionally out of scope.** `CTRL_LOGOFF_EVENT` is not handled:
 > Microsoft documents it as delivered only to services, never to interactive

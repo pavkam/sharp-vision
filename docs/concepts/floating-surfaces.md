@@ -102,9 +102,11 @@ timer and stack registration.
 > **Implementation gap:** Window's close affordance, `CloseOnEscape`, and modal
 > dismiss all funnel into one hand-rolled close sequence instead of routing
 > through the shared `CloseSurface` engine the rest of the Popup family and
-> `Dialog<TResult>` use. Window has no separate _public_ open flag -
-> `Visibility == IsVisible` is its open state - and a `Closing` handler may
-> retain the Window by touching `Visibility`, which the engine's own
+> `Dialog<TResult>` use. Window now exposes a public read-only `IsOpen`, but it
+> is a computed query over existing state, not a settable driver like
+> `Popup.IsOpen` - Window's actual open/close transition is still driven by
+> `Visibility` and the hand-rolled sequence below, because a `Closing` handler
+> may retain the Window by touching `Visibility`, which the engine's own
 > `commitClosingState` does not support. A never-attached, still-visible Window
 > has no presentation to tear down and so no `IsSurfacePresented` transition a
 > repeat could be detected from; Window's `RequestClose` keeps a private latch,
