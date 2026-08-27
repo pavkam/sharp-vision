@@ -124,7 +124,18 @@ public sealed class UnixConsoleHostTests
         try
         {
             using var probe = new FileStream("/dev/tty", FileMode.Open, FileAccess.Read);
-            return true;
+
+            // Open itself rejects a /dev/tty that doesn't identify the same device as standard
+            // input and output (a redirected build agent can still have /dev/tty openable while
+            // stdin/stdout are piped elsewhere), so the skip guard must mirror that same check or
+            // it lets a run it cannot complete through past this probe.
+            var probeFileDescriptor = (int) probe.SafeFileHandle.DangerousGetHandle();
+            return RuntimeInterop.TerminalDevicesMatch(
+                       RuntimeInterop.StandardInputFileDescriptor,
+                       probeFileDescriptor) &&
+                   RuntimeInterop.TerminalDevicesMatch(
+                       RuntimeInterop.StandardOutputFileDescriptor,
+                       probeFileDescriptor);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
