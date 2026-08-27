@@ -704,6 +704,15 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         {
             PropertyChanged -= OnWindowPropertyChanged;
             Shown = null;
+
+            // A Window disposed directly (for example `using var window = new Window(...)`)
+            // without a prior Close() never runs RequestClose's own latch-setting sequence:
+            // base.OnUnavailable above already released presentation, but Visibility and this
+            // latch are untouched, so a still-Visible Window's IsOpen would otherwise keep
+            // reading true after Dispose. Set the substitute bit directly here, mirroring what
+            // a completed RequestClose already does, without touching Visibility itself -
+            // Visibility is the authored input, _closedSinceVisible is the derived bit.
+            _closedSinceVisible = true;
         }
 
         failure?.Throw();

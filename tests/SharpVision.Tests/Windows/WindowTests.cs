@@ -1421,6 +1421,50 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies IsOpen turns false for an attached, presented Window that is disposed
+    /// directly (e.g. <c>using var window = new Window(...)</c>) without a prior Close() call.
+    /// This is the adversarial-review regression case: OnUnavailable's base call releases
+    /// IsSurfacePresented, but nothing else touched Visibility or the never-attached substitute
+    /// bit, so IsOpen previously kept reading true post-Dispose. OnUnavailable now sets that bit
+    /// directly for ReleaseReason.Disposed, mirroring what a completed Close() already does.</summary>
+    [Fact]
+    public async Task IsOpen_WhenPresentedWindowIsDisposedWithoutClose_IsFalseAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var window = new Window { CanMove = false, CanClose = true };
+            var root = new Overlay { Children = { window } };
+            new LayoutEngine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+            window.IsOpen.ShouldBeTrue();
+
+            window.Dispose();
+
+            window.IsOpen.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies IsOpen turns false for a never-attached, still-Visible Window that is
+    /// disposed directly without a prior Close() call. A never-attached control still receives
+    /// its full OnUnavailable(ReleaseReason.Disposed) callback (ControlBase.NotifyUnavailable
+    /// calls it unconditionally, with no attachment guard), so this exercises the very same
+    /// OnUnavailable code path as the presented case above rather than a distinct one - covered
+    /// separately anyway since it is the shape the reviewer called out explicitly as a plausible
+    /// separate path, and because it also confirms the fix does not rely on IsSurfacePresented
+    /// ever having been true.</summary>
+    [Fact]
+    public void IsOpen_WhenNeverAttachedWindowIsDisposedWithoutClose_IsFalse()
+    {
+        var window = new Window();
+        window.IsOpen.ShouldBeTrue();
+
+        window.Dispose();
+
+        window.IsOpen.ShouldBeFalse();
+    }
+
     /// <summary>Verifies a never-attached, still-Visible Window reports IsOpen true - it has no
     /// IsSurfacePresented transition to be open through, so IsOpen falls back to the same
     /// Visible-and-not-yet-closed substitute bit RequestClose's own guard relies on.</summary>
