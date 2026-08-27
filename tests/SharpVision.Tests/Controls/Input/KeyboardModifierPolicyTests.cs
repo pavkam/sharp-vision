@@ -59,6 +59,7 @@ public sealed class KeyboardModifierPolicyTests
             VerifyScrollBar(modifiers, expectedHandled: true);
             VerifyColorPlane(modifiers, expectedHandled: true);
             VerifyCalendar(modifiers, expectedHandled: true);
+            VerifyContainer(modifiers, expectedHandled: true);
         }
 
         foreach (var modifiers in ineligible)
@@ -67,6 +68,7 @@ public sealed class KeyboardModifierPolicyTests
             VerifyScrollBar(modifiers, expectedHandled: false);
             VerifyColorPlane(modifiers, expectedHandled: false);
             VerifyCalendar(modifiers, expectedHandled: false);
+            VerifyContainer(modifiers, expectedHandled: false);
         }
     }
 
@@ -184,5 +186,27 @@ public sealed class KeyboardModifierPolicyTests
         var key = new KeyEventArgs(new Stroke(code, null, 0, modifiers, KeyAction.Press));
         _ = Router.Route(control, Events.Key, key);
         return key;
+    }
+
+    private static void VerifyContainer(Modifiers modifiers, bool expectedHandled)
+    {
+        foreach (var code in new[]
+                 {
+                     Code.Left, Code.Right, Code.Up, Code.Down,
+                     Code.Home, Code.End, Code.PageUp, Code.PageDown
+                 })
+        {
+            var control = new LayoutProbe { AutoScroll = true, ScrollBars = ScrollBars.Both, LineSize = 2 };
+            control.Children.Add(new ProbeControl(new Size(40, 40)));
+            new LayoutEngine().Layout(control, new Size(10, 10));
+            control.HorizontalOffset = 5;
+            control.VerticalOffset = 5;
+
+            var key = Route(control, code, modifiers);
+
+            key.IsHandled.ShouldBe(expectedHandled, $"Container {code} with {modifiers}");
+            (control.HorizontalOffset != 5 || control.VerticalOffset != 5)
+                .ShouldBe(expectedHandled, $"Container {code} with {modifiers}");
+        }
     }
 }
