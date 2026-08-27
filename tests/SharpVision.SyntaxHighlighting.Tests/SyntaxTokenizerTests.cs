@@ -188,6 +188,25 @@ public sealed class SyntaxTokenizerTests
         result.FoldRanges.ShouldBeEmpty();
     }
 
+    /// <summary>
+    /// Verifies the embedded ChangeLog definition's author-name pattern (<c>(\w\s*)+</c>) matches a
+    /// complete accented name as one run instead of stopping at the first non-ASCII letter, the
+    /// same PCRE2_UCP-backed Unicode property classification Qt's QRegularExpression - and
+    /// therefore upstream Kate - always applies to <c>\w</c>.
+    /// </summary>
+    [Fact]
+    public void Tokenize_WhenChangeLogEntryHasAccentedAuthorName_KeepsTheCompleteNameAsOneRun()
+    {
+        var grammar = SyntaxDefinitionCatalog.Default.GetGrammar("ChangeLog");
+        var source = "2024-01-01  José García <jose@example.com>\n";
+
+        var result = SyntaxTokenizer.Tokenize(grammar, source);
+
+        var nameToken = result.Lines[0].Tokens.Single(token =>
+            source.Substring(token.Start, token.Length).Contains("José", StringComparison.Ordinal));
+        source.Substring(nameToken.Start, nameToken.Length).ShouldBe("José García ");
+    }
+
     private const string _dynamicHeredocLanguage = """
         <language name="Heredoc" section="Sources" extensions="*.h" version="1" kateversion="5.0">
           <highlighting>

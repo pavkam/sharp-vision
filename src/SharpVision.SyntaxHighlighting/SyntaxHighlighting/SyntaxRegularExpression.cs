@@ -24,7 +24,7 @@ internal static class SyntaxRegularExpression
     {
         ArgumentNullException.ThrowIfNull(pattern);
 
-        var options = PcreOptions.Utf |
+        var options = PcreOptions.Utf | PcreOptions.Ucp |
             (insensitive ? PcreOptions.IgnoreCase : PcreOptions.None) |
             (minimal ? PcreOptions.Ungreedy : PcreOptions.None);
 

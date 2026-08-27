@@ -89,6 +89,37 @@ public sealed class SyntaxCompiledRuleTests
         match.Length.ShouldBe(expectedLength);
     }
 
+    /// <summary>Gets Unicode-class patterns and non-ASCII input Qt's PCRE2_UCP-backed dialect
+    /// classifies as a single complete match, versus the ASCII-only prefix a plain PCRE2 build
+    /// without PCRE2_UCP would stop at.</summary>
+    public static TheoryData<string, string> UnicodePropertyClassPatterns() =>
+        new()
+        {
+            { @"\w+", "café" },
+            { @"\w+", "变量" },
+            { @"\d+", "١٢٣" }, // Arabic-indic digits 1 2 3
+            { @"\s+", "  " }, // no-break space, em space
+        };
+
+    /// <summary>
+    /// Verifies <c>\w</c>/<c>\d</c>/<c>\s</c> use Unicode property classification (PCRE2_UCP, the
+    /// dialect Qt's QRegularExpression - and therefore upstream KDE/KSyntaxHighlighting - always
+    /// enables) rather than matching only the ASCII subset of each class.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(UnicodePropertyClassPatterns))]
+    public void TryMatch_WhenPatternUsesUnicodePropertyClass_MatchesCompleteNonAsciiInput(
+        string pattern,
+        string text)
+    {
+        var rule = RegularExpressionRule(pattern);
+
+        var match = rule.TryMatch(text, 0, []);
+
+        match.Success.ShouldBeTrue();
+        match.Length.ShouldBe(text.Length);
+    }
+
     /// <summary>Verifies KDE's minimal flag inverts quantifier greediness for the complete pattern.</summary>
     [Fact]
     public void TryMatch_WhenRegularExpressionIsMinimal_PrefersShortestMatch()
