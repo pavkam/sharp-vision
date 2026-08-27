@@ -331,6 +331,51 @@ public sealed class NavigationViewSurfaceTests
                              """);
     }
 
+    /// <summary>Verifies group painting and pointer activation plus separator painting use their
+    /// deflated content boxes, never intrinsic border or padding cells.</summary>
+    [Fact]
+    public async Task Chrome_WhenGroupAndSeparatorAreInset_AlignsRenderingAndPointerToContentAsync()
+    {
+        var group = new NavigationViewGroup
+        {
+            Header = "Group",
+            Border = AppearanceTestValues.Border(BorderSide.All, BorderGlyphStyle.Ascii),
+            Padding = new Thickness(1)
+        };
+        var child = new NavigationViewItem { Text = "Child" };
+        group.Items.Add(child);
+        var separator = new NavigationViewSeparator
+        {
+            Border = AppearanceTestValues.Border(BorderSide.All, BorderGlyphStyle.Ascii),
+            Padding = new Thickness(1)
+        };
+        var view = CreateView(header: null, 18);
+        view.Items.Add(group);
+        view.Items.Add(separator);
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(18, 12),
+            TestContext.Current.CancellationToken);
+
+        var groupContent = group.ContentBounds;
+        surface.Cell(new Point(groupContent.X, group.Bounds.Y)).Text.ShouldBe("-");
+        surface.Cell(new Point(group.Bounds.X, groupContent.Y)).Text.ShouldBe("|");
+        surface.Cell(new Point(groupContent.X + 3, groupContent.Y)).Text.ShouldBe("G");
+        child.Bounds.Y.ShouldBe(groupContent.Y + 1);
+
+        await surface.Pointer.ClickAsync(
+            group,
+            new Point(groupContent.X - group.Bounds.X + 1, groupContent.Y - group.Bounds.Y));
+
+        group.IsExpanded.ShouldBeFalse();
+        var separatorContent = separator.ContentBounds;
+        surface.Cell(new Point(separator.Bounds.X, separatorContent.Y)).Text.ShouldBe("|");
+        surface.Cell(new Point(separatorContent.X - 1, separatorContent.Y)).Text.ShouldBe(" ");
+        surface.Cell(new Point(separatorContent.X, separatorContent.Y)).Text.ShouldBe("─");
+        surface.Cell(new Point(separatorContent.Right - 1, separatorContent.Y)).Text.ShouldBe("─");
+        surface.Cell(new Point(separatorContent.Right, separatorContent.Y)).Text.ShouldBe(" ");
+    }
+
     /// <summary>Verifies collapsing the selected item's own Visibility directly - not a removal,
     /// not an ancestor group toggling - repairs selection and the rendered output reflects the
     /// adjacent item taking over.</summary>

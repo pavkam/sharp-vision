@@ -12,6 +12,7 @@ public sealed class NavigationViewSeparator: ControlBase, IStyled<NavigationView
     /// <summary>Initializes a non-focusable and non-hit-testable separator.</summary>
     public NavigationViewSeparator()
     {
+        EnableChromeAuthoring();
         _style = InitializeStyle(NavigationViewSeparatorStyle.Definition);
         HorizontalAlignment = HorizontalAlignment.Stretch;
         IsHitTestVisible = false;
@@ -39,12 +40,12 @@ public sealed class NavigationViewSeparator: ControlBase, IStyled<NavigationView
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        if (Bounds.Width == 0 || Bounds.Height == 0)
+        if (ContentBounds.Width == 0 || ContentBounds.Height == 0)
         {
             return;
         }
 
         var glyph = ActualStyle.Glyph.Resolve(ControlGlyphs.Navigation.Separator.Fallback, CellPolicy.AmbiguousWidth);
-        canvas.DrawHorizontalLine(Bounds, glyph, ResolvedStyle);
+        canvas.DrawHorizontalLine(ContentBounds, glyph, ResolvedStyle);
     }
 }

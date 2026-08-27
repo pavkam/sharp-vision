@@ -121,7 +121,15 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     public Length Width
     {
         get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        set
+        {
+            VerifyMutable();
+
+            if (!TryHandleWidthRequest(value))
+            {
+                _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+            }
+        }
     }
 
     /// <summary>Gets or sets the requested border-box height.</summary>
@@ -134,7 +142,15 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     public Length Height
     {
         get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        set
+        {
+            VerifyMutable();
+
+            if (!TryHandleHeightRequest(value))
+            {
+                _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+            }
+        }
     }
 
     /// <summary>Gets or sets the non-negative minimum border-box width.</summary>
@@ -259,6 +275,11 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                 : InvalidationImpact.Render;
             VerifyMutable();
 
+            if (TryHandleVisibilityRequest(value))
+            {
+                return;
+            }
+
             if (field == value)
             {
                 return;
@@ -304,6 +325,36 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             failure?.Throw();
         }
     } = Visibility.Visible;
+
+    /// <summary>Lets a retained owner capture an authored width request while preserving private
+    /// live presentation geometry.</summary>
+    /// <param name="value">The validated requested width.</param>
+    /// <returns>True when the owner consumed the request; otherwise, false.</returns>
+    internal virtual bool TryHandleWidthRequest(Length value)
+    {
+        _ = value;
+        return false;
+    }
+
+    /// <summary>Lets a retained owner capture an authored height request while preserving private
+    /// live presentation geometry.</summary>
+    /// <param name="value">The validated requested height.</param>
+    /// <returns>True when the owner consumed the request; otherwise, false.</returns>
+    internal virtual bool TryHandleHeightRequest(Length value)
+    {
+        _ = value;
+        return false;
+    }
+
+    /// <summary>Lets a retained owner capture an authored visibility request even when private
+    /// live presentation already has the same value.</summary>
+    /// <param name="value">The validated requested visibility.</param>
+    /// <returns>True when the owner consumed the request; otherwise, false.</returns>
+    internal virtual bool TryHandleVisibilityRequest(Visibility value)
+    {
+        _ = value;
+        return false;
+    }
 
     /// <summary>Gets or sets whether local behavior accepts input.</summary>
     /// <remarks>

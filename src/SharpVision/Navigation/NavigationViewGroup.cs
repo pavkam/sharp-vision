@@ -23,6 +23,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     /// <summary>Initializes an expanded navigation group with no header.</summary>
     public NavigationViewGroup()
     {
+        EnableChromeAuthoring();
         _style = InitializeStyle(NavigationViewGroupStyle.Definition);
         _stack = new LayoutStack();
         _childrenSlot = RegisterOwnedSlot(
@@ -39,7 +40,11 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
         IsFocusable = false;
         IsTabStop = false;
         _press = new PressBehavior(
-            () => new Rect(Bounds.X, Bounds.Y, Bounds.Width, Math.Min(1, Bounds.Height)),
+            () => new Rect(
+                ContentBounds.X,
+                ContentBounds.Y,
+                ContentBounds.Width,
+                Math.Min(1, ContentBounds.Height)),
             () => !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible,
             () => true,
             () => FindNavigationView()?.Focus() == true,
@@ -352,7 +357,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        if (Bounds.Width == 0 || Bounds.Height == 0)
+        if (ContentBounds.Width == 0 || ContentBounds.Height == 0)
         {
             return;
         }
@@ -363,7 +368,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
         var glyph = (IsExpanded ? ActualStyle.ExpandedGlyph : ActualStyle.CollapsedGlyph).Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
         var leading = canvas.Draw(
             $" {glyph} ".AsSpan(),
-            new Point(Bounds.X, Bounds.Y),
+            new Point(ContentBounds.X, ContentBounds.Y),
             ResolvedStyle,
             background: BackgroundMode.Transparent);
         _ = Header.Draw(

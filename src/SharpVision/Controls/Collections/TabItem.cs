@@ -52,6 +52,18 @@ public sealed class TabItem: ContentControl
     }
 
     /// <inheritdoc/>
+    internal override bool TryHandleWidthRequest(Length value) =>
+        FindAncestor<TabControl>()?.TryHandleItemWidthRequest(this, value) == true;
+
+    /// <inheritdoc/>
+    internal override bool TryHandleHeightRequest(Length value) =>
+        FindAncestor<TabControl>()?.TryHandleItemHeightRequest(this, value) == true;
+
+    /// <inheritdoc/>
+    internal override bool TryHandleVisibilityRequest(Visibility value) =>
+        FindAncestor<TabControl>()?.TryHandleItemVisibilityRequest(this, value) == true;
+
+    /// <inheritdoc/>
     internal override void OnDirectDisposalRequested()
     {
         FindAncestor<TabControl>()?.RemoveItemForDisposal(this);

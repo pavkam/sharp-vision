@@ -178,6 +178,8 @@ selection.
 Pointer toggling uses a paired primary press and release on the header row. The
 group captures during the hold and cancels on drag-out, capture loss,
 unavailability, detachment, or disposal; an unmatched release is inert.
+Intrinsic border and padding deflate both the rendered header row and its press
+target, and the retained child stack begins on the following content row.
 
 | Member        | Type                           | Default  | Description                                                                                    |
 | ------------- | ------------------------------ | -------- | ---------------------------------------------------------------------------------------------- |
@@ -190,7 +192,8 @@ unavailability, detachment, or disposal; an unmatched release is inert.
 ## NavigationViewSeparator
 
 A non-interactive horizontal divider line. It is not focusable and not
-hit-testable.
+hit-testable. Its rule renders only through the deflated content box, preserving
+intrinsic border and padding cells.
 
 | Member        | Type                            | Default  | Description                                                             |
 | ------------- | ------------------------------- | -------- | ----------------------------------------------------------------------- |

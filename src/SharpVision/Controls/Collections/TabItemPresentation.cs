@@ -30,4 +30,19 @@ internal readonly record struct TabItemPresentation
 
     /// <summary>Gets the authored height.</summary>
     public Length Height { get; }
+
+    /// <summary>Creates a snapshot with the latest caller-authored visibility.</summary>
+    /// <param name="value">The requested visibility.</param>
+    /// <returns>The updated immutable snapshot.</returns>
+    public TabItemPresentation WithVisibility(Visibility value) => new(value, Width, Height);
+
+    /// <summary>Creates a snapshot with the latest caller-authored width.</summary>
+    /// <param name="value">The requested width.</param>
+    /// <returns>The updated immutable snapshot.</returns>
+    public TabItemPresentation WithWidth(Length value) => new(Visibility, value, Height);
+
+    /// <summary>Creates a snapshot with the latest caller-authored height.</summary>
+    /// <param name="value">The requested height.</param>
+    /// <returns>The updated immutable snapshot.</returns>
+    public TabItemPresentation WithHeight(Length value) => new(Visibility, Width, value);
 }

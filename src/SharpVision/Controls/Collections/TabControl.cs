@@ -26,8 +26,12 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     private readonly StyleSlot<TabControlStyle> _style;
     private readonly LayoutStack _headers;
     private readonly LayoutStack _stack;
+    private bool _isWritingItemHeight;
+    private bool _isWritingItemWidth;
     private int _presentationDepth;
     private TabItem? _writingItem;
+    private Length _writingHeight;
+    private Length _writingWidth;
     private Visibility _writingVisibility;
     private int _selectedIndex = -1;
     private long _selectionVersion;
@@ -35,6 +39,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     /// <summary>Initializes an empty tab control with typed managed pages.</summary>
     public TabControl()
     {
+        EnableChromeAuthoring();
         _style = InitializeStyle(TabControlStyle.Definition);
         _headers = new LayoutStack
         {
@@ -177,10 +182,14 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     {
         ApplyPresentation();
         var headerHeight = Math.Min(_headerRowHeight, bounds.Height);
-        ArrangeChild(
-            _headers,
-            new Rect(bounds.X, bounds.Y, bounds.Width, headerHeight),
-            ResolvedAxes.Both);
+        var headerBounds = new Rect(bounds.X, bounds.Y, bounds.Width, headerHeight);
+        ArrangeChild(_headers, headerBounds, ResolvedAxes.Both);
+
+        if (RevealSelectedHeader())
+        {
+            ArrangeChild(_headers, headerBounds, ResolvedAxes.Both);
+        }
+
         var contentOffset = Math.Min(_headerStripHeight, bounds.Height);
         base.ArrangeOverride(new Rect(
             bounds.X,
@@ -219,21 +228,25 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
             if (header.Visibility == Visibility.Visible &&
                 HasVisibleHeaderAfter(index) &&
-                header.Bounds.Right < Bounds.Right)
+                header.Bounds.Right < ContentBounds.Right)
             {
                 canvas.DrawRune(
                     divider,
-                    new Point(header.Bounds.Right, Bounds.Y),
+                    new Point(header.Bounds.Right, ContentBounds.Y),
                     dividerStyle,
                     BackgroundMode.Transparent);
             }
         }
 
-        if (Bounds.Height >= _headerStripHeight)
+        if (ContentBounds.Height >= _headerStripHeight)
         {
-            for (var lx = Bounds.X; lx < Bounds.Right; lx++)
+            for (var lx = ContentBounds.X; lx < ContentBounds.Right; lx++)
             {
-                canvas.DrawRune(underline, new Point(lx, Bounds.Y + _headerRowHeight), indicatorStyle, BackgroundMode.Transparent);
+                canvas.DrawRune(
+                    underline,
+                    new Point(lx, ContentBounds.Y + _headerRowHeight),
+                    indicatorStyle,
+                    BackgroundMode.Transparent);
             }
         }
     }
@@ -311,14 +324,14 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         _headersByItem.Add(item, header);
         _requestedPresentations.Add(item, requestedPresentation);
         item.PropertyChanged += OnItemPropertyChanged;
-        item.Width = Length.Percent(100);
+        WriteItemWidth(item, Length.Percent(100));
 
         if (!IsCommitted(item, header))
         {
             return;
         }
 
-        item.Height = Length.Percent(100);
+        WriteItemHeight(item, Length.Percent(100));
 
         if (!IsCommitted(item, header))
         {
@@ -475,14 +488,14 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         item.PropertyChanged += OnItemPropertyChanged;
         try
         {
-            item.Width = Length.Percent(100);
+            WriteItemWidth(item, Length.Percent(100));
 
             if (!IsCommitted(item, newHeader))
             {
                 return;
             }
 
-            item.Height = Length.Percent(100);
+            WriteItemHeight(item, Length.Percent(100));
 
             if (!IsCommitted(item, newHeader))
             {
@@ -885,6 +898,138 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     private Visibility RequestedVisibility(TabItem item) =>
         _requestedPresentations.TryGetValue(item, out var presentation) ? presentation.Visibility : item.Visibility;
 
+    /// <summary>Captures an owned page's authored width while preserving the fill-page presentation.</summary>
+    /// <param name="item">The page receiving the public request.</param>
+    /// <param name="value">The requested width.</param>
+    /// <returns>True when this owner consumed the request; otherwise, false.</returns>
+    internal bool TryHandleItemWidthRequest(TabItem item, Length value)
+    {
+        if (_isWritingItemWidth && ReferenceEquals(_writingItem, item) && value == _writingWidth)
+        {
+            return false;
+        }
+
+        if (!_requestedPresentations.TryGetValue(item, out var presentation) || IndexOfItemControl(item) < 0)
+        {
+            return false;
+        }
+
+        _requestedPresentations[item] = presentation.WithWidth(value);
+        return true;
+    }
+
+    /// <summary>Captures an owned page's authored height while preserving the fill-page presentation.</summary>
+    /// <param name="item">The page receiving the public request.</param>
+    /// <param name="value">The requested height.</param>
+    /// <returns>True when this owner consumed the request; otherwise, false.</returns>
+    internal bool TryHandleItemHeightRequest(TabItem item, Length value)
+    {
+        if (_isWritingItemHeight && ReferenceEquals(_writingItem, item) && value == _writingHeight)
+        {
+            return false;
+        }
+
+        if (!_requestedPresentations.TryGetValue(item, out var presentation) || IndexOfItemControl(item) < 0)
+        {
+            return false;
+        }
+
+        _requestedPresentations[item] = presentation.WithHeight(value);
+        return true;
+    }
+
+    /// <summary>Captures an owned page's authored visibility even when its private live
+    /// presentation already has the same value.</summary>
+    /// <param name="item">The page receiving the public request.</param>
+    /// <param name="value">The requested visibility.</param>
+    /// <returns>True when this owner consumed the request; otherwise, false.</returns>
+    internal bool TryHandleItemVisibilityRequest(TabItem item, Visibility value)
+    {
+        if (_presentationDepth > 0 &&
+            ReferenceEquals(_writingItem, item) &&
+            value == _writingVisibility)
+        {
+            return false;
+        }
+
+        if (!_requestedPresentations.TryGetValue(item, out var presentation))
+        {
+            return false;
+        }
+
+        var index = IndexOfItemControl(item);
+
+        if (index < 0)
+        {
+            return false;
+        }
+
+        _requestedPresentations[item] = presentation.WithVisibility(value);
+        HeaderAt(index).Visibility = value;
+        RepairSelectionAfterAvailabilityChange(index);
+        ApplyPresentation();
+        return true;
+    }
+
+    private void RepairSelectionAfterAvailabilityChange(int index)
+    {
+        if (index == _selectedIndex && !IsEligible(index))
+        {
+            SelectNearest(index);
+        }
+        else if (_selectedIndex < 0)
+        {
+            var first = SingleSelectionIndex.FindLinear(0, 1, ItemControlCount, IsEligible);
+
+            if (first >= 0)
+            {
+                Select(first);
+            }
+        }
+    }
+
+    private void WriteItemWidth(TabItem item, Length value)
+    {
+        var previousItem = _writingItem;
+        var previousWriting = _isWritingItemWidth;
+        var previousValue = _writingWidth;
+        _writingItem = item;
+        _isWritingItemWidth = true;
+        _writingWidth = value;
+
+        try
+        {
+            item.Width = value;
+        }
+        finally
+        {
+            _writingItem = previousItem;
+            _isWritingItemWidth = previousWriting;
+            _writingWidth = previousValue;
+        }
+    }
+
+    private void WriteItemHeight(TabItem item, Length value)
+    {
+        var previousItem = _writingItem;
+        var previousWriting = _isWritingItemHeight;
+        var previousValue = _writingHeight;
+        _writingItem = item;
+        _isWritingItemHeight = true;
+        _writingHeight = value;
+
+        try
+        {
+            item.Height = value;
+        }
+        finally
+        {
+            _writingItem = previousItem;
+            _isWritingItemHeight = previousWriting;
+            _writingHeight = previousValue;
+        }
+    }
+
     private void SelectNearest(int index)
     {
         var target = SingleSelectionIndex.FindNearest(index, ItemControlCount, IsEligible);
@@ -947,18 +1092,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             return;
         }
 
-        if (index == _selectedIndex && !IsEligible(index))
-        {
-            SelectNearest(index);
-        }
-        else if (_selectedIndex < 0)
-        {
-            var first = SingleSelectionIndex.FindLinear(0, 1, ItemControlCount, IsEligible);
-            if (first >= 0)
-            {
-                Select(first);
-            }
-        }
+        RepairSelectionAfterAvailabilityChange(index);
 
         ApplyPresentation();
     }
@@ -968,6 +1102,21 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         _headers.AutoScroll = HeaderOverflowPolicy == TabHeaderOverflowPolicy.Scroll;
         _headers.ScrollBars = _headers.AutoScroll ? ScrollBars.Horizontal : ScrollBars.None;
         _headers.ShowScrollBars = ShowScrollBars.Never;
+        _ = RevealSelectedHeader();
+    }
+
+    private bool RevealSelectedHeader()
+    {
+        if (HeaderOverflowPolicy != TabHeaderOverflowPolicy.Scroll ||
+            _selectedIndex < 0 ||
+            _selectedIndex >= _headers.Children.Count)
+        {
+            return false;
+        }
+
+        var before = _headers.HorizontalOffset;
+        _ = _headers.BringIntoView(HeaderAt(_selectedIndex));
+        return before != _headers.HorizontalOffset;
     }
 
 }

@@ -83,6 +83,12 @@ it, and selection repairs exactly as for `Items.Remove`.
 - Removal restores caller-authored visibility and geometry only after the page,
   header, and selection snapshot have committed. Restoration callbacks may
   safely begin another collection mutation.
+- While owned, a page's live `Width` and `Height` remain `100%` so selected
+  content fills the body. Runtime size requests are retained as the latest
+  authored values and restored on detach. Runtime `Visibility` requests are
+  likewise retained even when an unselected page is already live-collapsed; the
+  mirrored header, eligibility, repair, and detached value all follow the
+  authored request.
 - `TabItem.IsClosable` opts a page into `RequestClose` and Delete-key closure.
   `CloseRequested` is raised before removal with a cancellable
   [`TabCloseRequestedEventArgs`](#tabcloserequestedeventargs) payload. A nested
@@ -99,8 +105,14 @@ it, and selection repairs exactly as for `Items.Remove`.
 `HeaderWidth` uses the shared `Length` model. `Length.Auto` keeps each header's
 intrinsic width; fixed, percentage, and proportional values resolve against the
 available header-strip width. `HeaderOverflowPolicy.Scroll` uses the existing
-horizontal container offset and reveals the selected header after keyboard or
-programmatic selection; it does not add a second scrollbar row to the tab strip.
+horizontal container offset and reveals the complete selected header after
+selection, first layout, insertion, movement, header-width changes, a
+Clip-to-Scroll transition, and resize. It does not add a second scrollbar row to
+the tab strip.
+
+Intrinsic border and padding deflate the complete strip and page body. Header
+dividers and the selection underline use that same content box, including at
+tiny sizes, so the post-child overlay never overwrites border or padding cells.
 
 | Input                               | Result                                                                                                         |
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
@@ -125,7 +137,9 @@ shortcuts.
 the strip's generated `TabHeader` faces are text-only, so there is no rich
 `Header` slot to retain — a page cannot own a header control it is unable to
 show. `Content` is the single caller-replaceable owned child, arranged below the
-rule only while the page is selected.
+rule only while the page is selected. The owning `TabControl` separates the
+page's authored inherited `Visibility`, `Width`, and `Height` requests from its
+private live presentation while ownership continues.
 
 | Member       | Type     | Default | Description                                                                                                                       |
 | ------------ | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------- |

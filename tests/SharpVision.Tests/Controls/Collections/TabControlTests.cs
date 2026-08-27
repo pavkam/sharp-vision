@@ -541,6 +541,43 @@ public sealed class TabControlTests
         FrameOracle.Get(frame, new Point(0, 1)).ShouldBe(string.Empty);
     }
 
+    /// <summary>Verifies strip overlays share the deflated content box used to arrange headers,
+    /// leaving intrinsic border and padding cells untouched at normal and constrained sizes.</summary>
+    [Theory]
+    [InlineData(14, 8)]
+    [InlineData(8, 5)]
+    public void Render_WhenBorderAndPaddingArePresent_AlignsOverlayToContentBox(int width, int height)
+    {
+        var tabs = Create(Create("A", "One"), Create("B", "Two"));
+        tabs.Border = AppearanceTestValues.Border(BorderSide.All, BorderGlyphStyle.Ascii);
+        tabs.Padding = new Thickness(1);
+        tabs.HeaderWidth = Length.Cells(3);
+        tabs.Style = TabControlStyle.Default with
+        {
+            DividerGlyph = new Rune('|'),
+            UnderlineGlyph = new Rune('=')
+        };
+        var size = new Size(width, height);
+        new LayoutEngine().Layout(tabs, size);
+        using Frame frame = new(size);
+
+        tabs.Render(frame.Canvas);
+
+        var content = tabs.ContentBounds;
+        var dividerX = tabs.HeaderAt(0).Bounds.Right;
+        FrameOracle.Get(frame, new Point(dividerX, tabs.Bounds.Y)).ShouldBe("-");
+        FrameOracle.Get(frame, new Point(tabs.Bounds.X, tabs.Bounds.Y + 1)).ShouldBe("|");
+        FrameOracle.Get(frame, new Point(dividerX, content.Y)).ShouldBe("|");
+        if (content.Height >= 2)
+        {
+            FrameOracle.Get(frame, new Point(content.X, content.Y + 1)).ShouldBe("=");
+        }
+        else
+        {
+            FrameOracle.Get(frame, new Point(content.X, tabs.Bounds.Bottom - 1)).ShouldBe("-");
+        }
+    }
+
     /// <summary>Verifies the style's colors reject transparent values, which the control's own
     /// properties used to guard.</summary>
     [Fact]
@@ -840,6 +877,24 @@ public sealed class TabControlTests
         IsHeaderSelected(tabs, 0).ShouldBeTrue();
     }
 
+    /// <summary>Verifies an unselected page can author the same Collapsed value already imposed by
+    /// the owner's live presentation, and that the request controls its header, eligibility, and
+    /// detached presentation exactly like a selected-page request.</summary>
+    [Fact]
+    public void Visibility_WhenUnselectedPageRequestsCollapsed_UpdatesHeaderEligibilityAndRestoration()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        var tabs = Create(first, second);
+
+        second.Visibility = Visibility.Collapsed;
+
+        tabs.HeaderAt(1).Visibility.ShouldBe(Visibility.Collapsed);
+        _ = Should.Throw<InvalidOperationException>(() => tabs.SelectedItem = second);
+        tabs.Items.Remove(second).ShouldBeTrue();
+        second.Visibility.ShouldBe(Visibility.Collapsed);
+    }
+
     /// <summary>Verifies an authored Hidden page is just as ineligible for selection as an authored
     /// Collapsed one - IsEligible gates on RequestedVisibility == IsVisible exactly, so Hidden (which
     /// otherwise keeps its measured slot everywhere else in the framework) still repairs a selected
@@ -1036,6 +1091,97 @@ public sealed class TabControlTests
         item.Width.ShouldBe(Length.Cells(12));
         item.Height.ShouldBe(Length.Cells(4));
         item.Visibility.ShouldBe(Visibility.Hidden);
+    }
+
+    /// <summary>Verifies runtime page-size requests are retained as authored state while the owner
+    /// keeps its selected page filling the body, then restored when ownership ends.</summary>
+    [Fact]
+    public void Geometry_WhenOwnedPageRequestsRuntimeSize_KeepsFillPolicyAndRestoresLatestRequest()
+    {
+        var item = Create("First", "One");
+        item.Width = Length.Cells(12);
+        item.Height = Length.Cells(4);
+        var tabs = Create(item);
+
+        item.Width = Length.Cells(3);
+        item.Height = Length.Cells(2);
+        new LayoutEngine().Layout(tabs, new Size(20, 6));
+
+        item.Width.ShouldBe(Length.Percent(100));
+        item.Height.ShouldBe(Length.Percent(100));
+        item.Bounds.ShouldBe(new Rect(0, 2, 20, 4));
+
+        tabs.Items.Remove(item).ShouldBeTrue();
+        item.Width.ShouldBe(Length.Cells(3));
+        item.Height.ShouldBe(Length.Cells(2));
+    }
+
+    /// <summary>Verifies every geometry path that can move an unchanged selected header requests a
+    /// fresh reveal after the new scroll viewport and header bounds commit.</summary>
+    [Theory]
+    [InlineData("pre-layout")]
+    [InlineData("insert")]
+    [InlineData("move")]
+    [InlineData("header-width")]
+    [InlineData("enable-scroll")]
+    [InlineData("resize")]
+    public void HeaderOverflow_WhenSelectedHeaderGeometryChanges_RevealsCompleteHeader(string operation)
+    {
+        var items = Enumerable.Range(0, 6).Select(index => Create($"T{index}", $"C{index}")).ToArray();
+        var tabs = Create(items);
+        tabs.HeaderWidth = Length.Cells(operation == "header-width" ? 1 : 3);
+        tabs.HeaderOverflowPolicy = operation == "enable-scroll"
+            ? TabHeaderOverflowPolicy.Clip
+            : TabHeaderOverflowPolicy.Scroll;
+        var selected = operation is "insert" or "move" ? items[0] : items[^1];
+        tabs.SelectedItem = selected;
+        var layout = new LayoutEngine();
+
+        if (operation == "pre-layout")
+        {
+            layout.Layout(tabs, new Size(9, 5));
+        }
+        else if (operation == "insert")
+        {
+            layout.Layout(tabs, new Size(9, 5));
+            for (var index = 0; index < 4; index++)
+            {
+                tabs.Items.Insert(0, Create($"I{index}", "Inserted"));
+            }
+
+            layout.Layout(tabs, new Size(9, 5));
+        }
+        else if (operation == "move")
+        {
+            layout.Layout(tabs, new Size(9, 5));
+            for (var index = 0; index < 4; index++)
+            {
+                tabs.Items.Move(tabs.Items.Count - 1, 0);
+            }
+
+            layout.Layout(tabs, new Size(9, 5));
+        }
+        else if (operation == "header-width")
+        {
+            layout.Layout(tabs, new Size(20, 5));
+            tabs.HeaderWidth = Length.Cells(3);
+            layout.Layout(tabs, new Size(9, 5));
+        }
+        else if (operation == "enable-scroll")
+        {
+            layout.Layout(tabs, new Size(9, 5));
+            tabs.HeaderOverflowPolicy = TabHeaderOverflowPolicy.Scroll;
+            layout.Layout(tabs, new Size(9, 5));
+        }
+        else
+        {
+            layout.Layout(tabs, new Size(30, 5));
+            layout.Layout(tabs, new Size(9, 5));
+        }
+
+        var header = tabs.HeaderAt(tabs.SelectedIndex);
+        header.Bounds.X.ShouldBeGreaterThanOrEqualTo(tabs.ContentBounds.X);
+        header.Bounds.Right.ShouldBeLessThanOrEqualTo(tabs.ContentBounds.Right);
     }
 
     /// <summary>Verifies clearing restores the authored visibility of every detached item.</summary>
