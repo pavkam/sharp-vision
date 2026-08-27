@@ -915,10 +915,25 @@ public sealed class CodeView:
 
     /// <summary>Measures the content extent from the current presentation-row projection.</summary>
     /// <returns>The width-and-height extent in terminal cells.</returns>
+    /// <remarks>
+    /// Before <see cref="ReconcileProjectionWidth"/> has ever rewrapped against a real viewport
+    /// width (<see cref="_rowsWidth"/> is still <see langword="null"/> - fresh construction, or
+    /// right after <see cref="Overflow"/> just reset it), this falls back to the natural
+    /// <see cref="_extentWidth"/> instead of <c>0</c>. <see cref="MeasureAndWrap"/> is probed with
+    /// an unbounded width on every ordinary measure pass (a horizontally scrollable axis is always
+    /// measured unbounded so it can report its natural extent), and reporting a literal <c>0</c>
+    /// there would make this control itself arrange at zero width - since it is not
+    /// <see cref="HorizontalAlignment.Stretch"/> by default, its own arranged width comes straight
+    /// from this desired size - collapsing <see cref="Viewport"/> to zero before
+    /// <see cref="ArrangeOverride"/> even runs <see cref="ReconcileProjectionWidth"/>, whose own
+    /// <c>viewportWidth &lt;= 0</c> guard then bails out immediately and never gets a chance to
+    /// rewrap. Mirrors how <c>JsonView.MeasureProjectedContent</c> always measures its actual
+    /// current lines rather than trusting a last-wrapped-width-or-zero cache.
+    /// </remarks>
     [Pure]
     internal Size MeasureProjection() => Overflow == Overflow.Visible
         ? new Size(_extentWidth, _rows.Count)
-        : new Size(_rowsWidth ?? 0, _rows.Count);
+        : new Size(_rowsWidth ?? _extentWidth, _rows.Count);
 
     /// <summary>Rewraps the presentation-row projection against a measure-time width constraint -
     /// for every <see cref="Overflow"/> value other than <see cref="SharpVision.Text.Overflow.Visible"/>,

@@ -1472,7 +1472,7 @@ public sealed class CodeViewSurfaceTests
     public async Task Overflow_WhenLeftAtDefault_LeavesLongLinesUnwrappedAndHorizontallyScrollableAsync()
     {
         var longLine = new string('x', 40);
-        var view = new CodeView { Code = $"{longLine}\nshort\n" };
+        var view = new CodeView { Code = $"{longLine}\nshort" };
         await using var surface = await ComponentSurface.MountAsync(
             view,
             new Size(10, 5),
@@ -1651,7 +1651,10 @@ public sealed class CodeViewSurfaceTests
 
         await surface.UpdateAsync(() => view.SetFolded(foldStart, false), "expand the fold again");
 
-        view.Extent.Height.ShouldBe(4);
+        // 5, not 4: NormalizedCode.Split('\n') on this trailing-newline source yields a trailing
+        // empty logical line, exactly as IsFoldingEnabled_WhenDisabledWhileCollapsed_ShowsEveryLineAgainAsync
+        // already established for the identical Code string.
+        view.Extent.Height.ShouldBe(5);
     }
 
     private static Theme WithSemanticColor(SemanticColor role, Color value)
