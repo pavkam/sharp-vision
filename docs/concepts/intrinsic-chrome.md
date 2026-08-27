@@ -31,9 +31,9 @@ the owning control calls `EnableChromeAuthoring()`. `Dock`, `Grid`, `Stack`,
 constructors because caller-defined chrome is part of their public purpose;
 every other control leaves it disabled, so accessing `Border` or `Shadow` on,
 say, a `TabItem` or `Expander` throws instead of silently doing nothing.
-Specialized controls such as Button publish a complete Style instead.
-Third-party controls may likewise call `EnableChromeAuthoring()` when their
-layout contract supports raw chrome authoring.
+Specialized controls such as Button and TextInput publish a complete Style
+instead. Third-party controls may likewise call `EnableChromeAuthoring()` when
+their layout contract supports raw chrome authoring.
 
 After a control is attached, these assignments must happen on the owning
 dispatcher. Changing which border sides are enabled affects measure, because

@@ -262,6 +262,124 @@ public sealed class CommandPaletteTests
         palette.FieldBorder.ShouldBe(border);
     }
 
+    /// <summary>Verifies resetting one field facet returns only that facet to the theme-owned
+    /// appearance and leaves a separately assigned facet untouched.</summary>
+    [Fact]
+    public void ResetFieldBorder_WhenFieldShadowIsAlsoSet_RevertsBorderAndPreservesShadow()
+    {
+        // Arrange
+        var border = new Border(
+            BorderSide.None,
+            BorderGlyphStyle.Ascii,
+            Color.Default,
+            Color.Transparent,
+            TerminalAttributes.None);
+        var shadow = new Shadow(
+            isVisible: true,
+            ShadowMode.Composite,
+            new Point(1, 1),
+            new Rune('#'),
+            Color.Rgb(1, 2, 3),
+            Color.Transparent,
+            TerminalAttributes.None);
+        var palette = new CommandPalette
+        {
+            FieldBorder = border,
+            FieldShadow = shadow
+        };
+
+        // Act
+        palette.ResetFieldBorder();
+
+        // Assert
+        palette.FieldBorder.ShouldNotBe(border);
+        palette.FieldShadow.ShouldBe(shadow);
+    }
+
+    /// <summary>Verifies resetting one field facet, mirrored: shadow reverts and a separately
+    /// assigned border survives.</summary>
+    [Fact]
+    public void ResetFieldShadow_WhenFieldBorderIsAlsoSet_RevertsShadowAndPreservesBorder()
+    {
+        // Arrange
+        var border = new Border(
+            BorderSide.None,
+            BorderGlyphStyle.Ascii,
+            Color.Default,
+            Color.Transparent,
+            TerminalAttributes.None);
+        var shadow = new Shadow(
+            isVisible: true,
+            ShadowMode.Composite,
+            new Point(1, 1),
+            new Rune('#'),
+            Color.Rgb(1, 2, 3),
+            Color.Transparent,
+            TerminalAttributes.None);
+        var palette = new CommandPalette
+        {
+            FieldBorder = border,
+            FieldShadow = shadow
+        };
+
+        // Act
+        palette.ResetFieldShadow();
+
+        // Assert
+        palette.FieldShadow.ShouldNotBe(shadow);
+        palette.FieldBorder.ShouldBe(border);
+    }
+
+    /// <summary>Verifies resetting both field facets in turn fully collapses the local style back
+    /// to theme ownership, so it stays live across a subsequent theme swap.</summary>
+    [Fact]
+    public void ResetFieldBorderAndShadow_WhenBothWereSet_CollapsesToTheme()
+    {
+        // Arrange
+        var border = new Border(
+            BorderSide.None,
+            BorderGlyphStyle.Ascii,
+            Color.Default,
+            Color.Transparent,
+            TerminalAttributes.None);
+        var shadow = new Shadow(
+            isVisible: true,
+            ShadowMode.Composite,
+            new Point(1, 1),
+            new Rune('#'),
+            Color.Rgb(1, 2, 3),
+            Color.Transparent,
+            TerminalAttributes.None);
+        var palette = new CommandPalette
+        {
+            FieldBorder = border,
+            FieldShadow = shadow
+        };
+
+        // Act
+        palette.ResetFieldBorder();
+        palette.ResetFieldShadow();
+
+        // Assert
+        palette.FieldBorder.ShouldNotBe(border);
+        palette.FieldShadow.ShouldNotBe(shadow);
+    }
+
+    /// <summary>Verifies resetting a facet that was never assigned is a no-op.</summary>
+    [Fact]
+    public void ResetFieldBorder_WhenNeverAssigned_IsNoOp()
+    {
+        // Arrange
+        var palette = new CommandPalette();
+        var before = palette.FieldBorder;
+
+        // Act
+        palette.ResetFieldBorder();
+
+        // Assert
+        palette.FieldBorder.ShouldBe(before);
+    }
+
     /// <summary>Verifies invalid drop-down sizing is rejected before the prior value changes.</summary>
     [Fact]
     public void DropDownHeight_WhenNonPositive_ThrowsBeforeMutation()

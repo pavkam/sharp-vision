@@ -249,6 +249,11 @@ public sealed class CommandPalette: CompositeControlBase
     }
 
     /// <summary>Gets or sets the complete local editor border.</summary>
+    /// <remarks>Assigning either <see cref="FieldBorder"/> or <see cref="FieldShadow"/> snapshots
+    /// the editor's whole resolved presentation into a local <see cref="TextInputStyle"/>, so a
+    /// theme-authored facet neither property names (its affix gap, for instance) is pinned to the
+    /// value it resolved to at assignment time and stops tracking a later theme swap until both
+    /// <see cref="ResetFieldBorder"/> and <see cref="ResetFieldShadow"/> have been called.</remarks>
     /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public Border FieldBorder
