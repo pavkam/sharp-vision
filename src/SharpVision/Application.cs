@@ -1336,7 +1336,7 @@ public sealed class Application:
                 GraphicsDiagnostic?.Invoke(this, new GraphicsDiagnosticEventArgs(record.GraphicsDiagnostics));
                 break;
             case RecordKind.Closed:
-                BeginStopping(forced: true, exception: null);
+                _ = BeginStopping(forced: true, exception: null);
                 break;
             case RecordKind.Fault:
                 Report(record.Exception!);
@@ -2312,7 +2312,7 @@ public sealed class Application:
 
         if (!eventArgs.IsHandled)
         {
-            BeginStopping(forced: true, exception);
+            _ = BeginStopping(forced: true, exception);
         }
     }
 

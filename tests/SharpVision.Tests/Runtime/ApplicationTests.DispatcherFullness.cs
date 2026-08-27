@@ -586,7 +586,7 @@ public sealed partial class ApplicationTests
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
         var root = new ProbeControl { IsFocusable = true };
         var observedCodes = new List<Code>();
-        _ = root.AddHandler(Events.Key, (_, eventArgs) => observedCodes.Add(((KeyEventArgs) eventArgs).Stroke.Code));
+        _ = root.AddHandler(Events.Key, (_, eventArgs) => observedCodes.Add(eventArgs.Stroke.Code));
         var application = new Application(root, terminal, terminal, TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
         await application.Dispatcher.InvokeAsync(
@@ -632,7 +632,7 @@ public sealed partial class ApplicationTests
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
         var root = new ProbeControl { IsFocusable = true };
         var observedCodes = new List<Code>();
-        _ = root.AddHandler(Events.Key, (_, eventArgs) => observedCodes.Add(((KeyEventArgs) eventArgs).Stroke.Code));
+        _ = root.AddHandler(Events.Key, (_, eventArgs) => observedCodes.Add(eventArgs.Stroke.Code));
         await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
         await application.Dispatcher.InvokeAsync(
@@ -665,7 +665,7 @@ public sealed partial class ApplicationTests
         application.UnhandledException += (_, eventArgs) =>
         {
             eventArgs.IsHandled = true;
-            failureObserved.TrySetResult();
+            _ = failureObserved.TrySetResult();
         };
 
         var outerStroke = PlainStroke(Code.Escape);
@@ -704,7 +704,7 @@ public sealed partial class ApplicationTests
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
         var root = new ProbeControl { IsFocusable = true };
         var observedCodes = new List<Code>();
-        _ = root.AddHandler(Events.Key, (_, eventArgs) => observedCodes.Add(((KeyEventArgs) eventArgs).Stroke.Code));
+        _ = root.AddHandler(Events.Key, (_, eventArgs) => observedCodes.Add(eventArgs.Stroke.Code));
         var application = new Application(root, terminal, terminal, TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
         await application.Dispatcher.InvokeAsync(

@@ -219,7 +219,7 @@ public sealed partial class ApplicationTests
 
             if (frames == 2)
             {
-                secondFrame.TrySetResult();
+                _ = secondFrame.TrySetResult();
             }
         };
         application.Idle += (_, _) =>
