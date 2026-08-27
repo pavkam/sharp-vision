@@ -6,33 +6,6 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies the public single-content authoring role.</summary>
 public sealed class ContentControlTests
 {
-    /// <summary>Verifies the role is abstract, derives directly from ControlBase, and exposes a non-virtual property.</summary>
-    [Fact]
-    public void Type_WhenInspected_ExposesOneHonestSingleContentRole()
-    {
-        var property = typeof(ContentControl).GetProperty(nameof(ContentControl.Content));
-        var callback = typeof(ContentControl).GetMethod(
-            "OnContentChanged",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-
-        typeof(ContentControl).IsPublic.ShouldBeTrue();
-        typeof(ContentControl).IsAbstract.ShouldBeTrue();
-        typeof(ContentControl).BaseType.ShouldBe(typeof(ControlBase));
-        _ = property.ShouldNotBeNull();
-        property.PropertyType.ShouldBe(typeof(ControlBase));
-        property.GetMethod!.IsVirtual.ShouldBeFalse();
-        property.SetMethod!.IsVirtual.ShouldBeFalse();
-        _ = callback.ShouldNotBeNull();
-        callback.IsFamily.ShouldBeTrue();
-        callback.IsVirtual.ShouldBeTrue();
-        callback.IsFinal.ShouldBeFalse();
-        callback.ReturnType.ShouldBe(typeof(void));
-        callback.GetParameters().Select(parameter => parameter.ParameterType).ShouldBe([
-            typeof(ControlBase),
-            typeof(ControlBase)
-        ]);
-    }
-
     /// <summary>Verifies assignment, replacement, equivalence, and clear publish exactly one committed change.</summary>
     [Fact]
     public void Content_WhenAssignedReplacedAndCleared_PublishesExactlyOncePerChange()

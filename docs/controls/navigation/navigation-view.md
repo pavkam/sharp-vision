@@ -8,13 +8,12 @@ separators, an optional header, and a pinned footer section. It extends
 `Dock` layout: the header docks to the top, the footer docks to the bottom, and
 a scrollable items stack fills the remainder.
 
-The view defaults to no border and the active theme's `NavigationView.normal`
-fill. That single continuous plane forms the sidebar boundary, rather than a
-frame around every navigation region. The inherited chrome properties remain
-open to caller overrides. Item rows render with transparent normal and hover
-backgrounds so the view keeps one continuous surface; pointer-over and selected
-rows use their matching theme states. Optional caller chrome follows the shared
-[chrome contract](../../concepts/styling.md#shared-chrome).
+The view defaults to no border and resolves its continuous sidebar plane from
+the active theme's generic `control.normal` role. It intentionally has no
+NavigationView-specific theme section. The inherited chrome properties remain
+open to caller overrides. Item rows preserve that continuous surface while their
+foregrounds respond to pointer-over and selected states. Optional caller chrome
+follows the shared [chrome contract](../../concepts/styling.md#shared-chrome).
 
 Items, groups, and separators are managed through typed collections. Selection
 is flat across all `NavigationViewItem` entries in both the main and footer
@@ -61,7 +60,8 @@ classDiagram
 
 ## Behavior
 
-- `Header` is hidden when null or empty.
+- `Header` is hidden when null or empty. Visible header text is always bold;
+  mnemonic emphasis composes with that weight.
 - `Items` and `FooterItems` accept `NavigationViewItem`, `NavigationViewGroup`,
   and `NavigationViewSeparator` through the same typed overloads. Their
   `ControlBase`-typed replacement indexer enforces that same set before changing

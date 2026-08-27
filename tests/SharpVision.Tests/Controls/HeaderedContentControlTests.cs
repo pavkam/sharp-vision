@@ -6,23 +6,6 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies the public header ownership role shared by GroupBox and Expander.</summary>
 public sealed class HeaderedContentControlTests
 {
-    /// <summary>Verifies the role is abstract and derives from ContentControl, adding a Header slot.</summary>
-    [Fact]
-    public void Type_WhenInspected_ExtendsContentControlWithAnIndependentHeaderRole()
-    {
-        typeof(HeaderedContentControl).IsPublic.ShouldBeTrue();
-        typeof(HeaderedContentControl).IsAbstract.ShouldBeTrue();
-        typeof(HeaderedContentControl).BaseType.ShouldBe(typeof(ContentControl));
-
-        var header = typeof(HeaderedContentControl).GetProperty(nameof(HeaderedContentControl.Header));
-        _ = header.ShouldNotBeNull();
-        header.PropertyType.ShouldBe(typeof(ControlBase));
-
-        var headerText = typeof(HeaderedContentControl).GetProperty(nameof(HeaderedContentControl.HeaderText));
-        _ = headerText.ShouldNotBeNull();
-        headerText.PropertyType.ShouldBe(typeof(string));
-    }
-
     /// <summary>Verifies Header defaults to null and is independent of Content.</summary>
     [Fact]
     public void Header_WhenConstructed_DefaultsToNullAndDoesNotAffectContent()

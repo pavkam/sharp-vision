@@ -184,6 +184,7 @@ public sealed class NavigationView: CompositeControlBase
     /// <summary>Initializes a quiet square navigation background with an empty item collection.</summary>
     public NavigationView()
     {
+        EnableChromeAuthoring();
         _headerText = new DisplayText(string.Empty)
         {
             UseMnemonic = true,
@@ -232,7 +233,7 @@ public sealed class NavigationView: CompositeControlBase
     /// <summary>Raised after the selected item changes.</summary>
     public event EventHandler<NavigationViewSelectionChangedEventArgs>? SelectionChanged;
 
-    /// <summary>Gets or sets an optional header title.</summary>
+    /// <summary>Gets or sets an optional bold header title.</summary>
     /// <exception cref="InvalidOperationException">The attached view is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The view is disposed.</exception>
     public string? Header
@@ -246,7 +247,9 @@ public sealed class NavigationView: CompositeControlBase
                 InvalidationImpact.Measure,
                 () =>
                 {
-                    _headerText.Content = Header ?? string.Empty;
+                    _headerText.Content = string.IsNullOrEmpty(Header)
+                        ? string.Empty
+                        : $"<b>{DisplayText.Escape(Header)}</b>";
                     _headerText.Visibility = string.IsNullOrEmpty(Header) ? Visibility.Collapsed : Visibility.Visible;
                 });
         }
@@ -268,7 +271,10 @@ public sealed class NavigationView: CompositeControlBase
     /// <param name="item">The non-null item owned by this navigation view.</param>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="item"/> is not owned by this navigation view.</exception>
-    /// <exception cref="InvalidOperationException"><paramref name="item"/> is unavailable.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The attached view is mutated off-dispatcher, or <paramref name="item"/> is unavailable.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The view is disposed.</exception>
     public void SelectItem(NavigationViewItem item)
     {
         VerifyMutable();

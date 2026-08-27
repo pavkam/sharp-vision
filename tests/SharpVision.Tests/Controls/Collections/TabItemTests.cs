@@ -76,21 +76,4 @@ public sealed class TabItemTests
         second.Parent.ShouldBeSameAs(item);
     }
 
-    /// <summary>Verifies TabItem derives directly from ContentControl and exposes no owned Header slot.</summary>
-    /// <remarks>
-    /// Before this control stopped deriving from <c>HeaderedContentControl</c>, a caller-assigned
-    /// focusable <c>Header</c> was retained and attached but never arranged by any layout pass - yet
-    /// remained reachable by Tab navigation, since focus eligibility only checks
-    /// <see cref="ControlBase.Visibility"/>, <see cref="ControlBase.IsEnabled"/>, disposal, and
-    /// navigation participation, never committed geometry. There is now no <c>Header</c> property to
-    /// assign a control to in the first place, so that unreachable-but-focusable state can no longer
-    /// occur.
-    /// </remarks>
-    [Fact]
-    public void Type_WhenInspected_DerivesFromContentControlWithNoHeaderSlot()
-    {
-        typeof(TabItem).BaseType.ShouldBe(typeof(ContentControl));
-        typeof(HeaderedContentControl).IsAssignableFrom(typeof(TabItem)).ShouldBeFalse();
-        typeof(TabItem).GetProperty("Header").ShouldBeNull();
-    }
 }

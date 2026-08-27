@@ -41,6 +41,10 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     public int Count => _owner.GetItemCount(_isFooter);
 
     /// <summary>Adds one detached navigation item.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="ArgumentException">The item already belongs to a control tree.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner or item is disposed.</exception>
     public void Add(NavigationViewItem item)
     {
         _owner.VerifyMutation();
@@ -49,6 +53,10 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     }
 
     /// <summary>Adds one detached navigation group.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="group"/> is null.</exception>
+    /// <exception cref="ArgumentException">The group already belongs to a control tree.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner or group is disposed.</exception>
     public void Add(NavigationViewGroup group)
     {
         _owner.VerifyMutation();
@@ -57,6 +65,10 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     }
 
     /// <summary>Adds one detached separator.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="separator"/> is null.</exception>
+    /// <exception cref="ArgumentException">The separator already belongs to a control tree.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner or separator is disposed.</exception>
     public void Add(NavigationViewSeparator separator)
     {
         _owner.VerifyMutation();
@@ -65,7 +77,11 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     }
 
     /// <summary>Inserts one detached navigation item at a position.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
+    /// <exception cref="ArgumentException">The item already belongs to a control tree.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner or item is disposed.</exception>
     public void Insert(int index, NavigationViewItem item)
     {
         _owner.VerifyMutation();
@@ -74,7 +90,11 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     }
 
     /// <summary>Inserts one detached navigation group at a position.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="group"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
+    /// <exception cref="ArgumentException">The group already belongs to a control tree.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner or group is disposed.</exception>
     public void Insert(int index, NavigationViewGroup group)
     {
         _owner.VerifyMutation();
@@ -83,7 +103,11 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     }
 
     /// <summary>Inserts one detached separator at a position.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="separator"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
+    /// <exception cref="ArgumentException">The separator already belongs to a control tree.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner or separator is disposed.</exception>
     public void Insert(int index, NavigationViewSeparator separator)
     {
         _owner.VerifyMutation();
@@ -92,6 +116,9 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     }
 
     /// <summary>Removes one owned item.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
     public bool Remove(NavigationViewItem item)
     {
         _owner.VerifyMutation();
@@ -100,6 +127,9 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     }
 
     /// <summary>Removes one owned group.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="group"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
     public bool Remove(NavigationViewGroup group)
     {
         _owner.VerifyMutation();
@@ -108,6 +138,9 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     }
 
     /// <summary>Removes one owned separator.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="separator"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
     public bool Remove(NavigationViewSeparator separator)
     {
         _owner.VerifyMutation();
@@ -117,6 +150,8 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
 
     /// <summary>Removes the owned entry at a position.</summary>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current entries.</exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
     public void RemoveAt(int index)
     {
         _owner.VerifyMutation();
@@ -127,6 +162,8 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="oldIndex"/> or <paramref name="newIndex"/> is outside the current entries.
     /// </exception>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
     public void Move(int oldIndex, int newIndex)
     {
         _owner.VerifyMutation();
@@ -142,6 +179,8 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     }
 
     /// <summary>Removes every owned item.</summary>
+    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
     public void Clear()
     {
         _owner.VerifyMutation();

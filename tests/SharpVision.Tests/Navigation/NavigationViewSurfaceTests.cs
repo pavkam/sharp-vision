@@ -6,6 +6,68 @@ namespace SharpVision.Tests.Navigation;
 /// <summary>Verifies NavigationView composition, selection, groups, scrolling, mutation, Unicode, and resize through mounted surfaces.</summary>
 public sealed class NavigationViewSurfaceTests
 {
+    /// <summary>Verifies the header's promised emphasis survives every bundled palette and a
+    /// custom theme that contributes no text attributes, while mnemonic emphasis composes with it.</summary>
+    [Fact]
+    public async Task Header_WhenRenderedAcrossThemes_IsBoldAndPreservesMnemonicUnderlineAsync()
+    {
+        Theme[] themes =
+        [
+            ThemeCatalog.Load("default-dark"),
+            ThemeCatalog.Load("default-light"),
+            ThemeCatalog.Parse(ThemeJson.Create())
+        ];
+
+        foreach (var theme in themes)
+        {
+            var view = CreateView("&Home", 8, useDefaultChrome: true);
+            await using var surface = await ComponentSurface.MountAsync(
+                view,
+                new Size(8, 2),
+                theme,
+                TestContext.Current.CancellationToken);
+
+            surface.ShouldRender("Home\n        ");
+            (surface.Cell(default).Style.Attributes & (TerminalAttributes.Bold | TerminalAttributes.Underline))
+                .ShouldBe(TerminalAttributes.Bold | TerminalAttributes.Underline, theme.Slug);
+            (surface.Cell(new Point(1, 0)).Style.Attributes & TerminalAttributes.Bold)
+                .ShouldBe(TerminalAttributes.Bold, theme.Slug);
+        }
+    }
+
+    /// <summary>Verifies NavigationView honestly uses the generic control plane while keeping
+    /// inherited caller chrome operational around its retained content.</summary>
+    [Fact]
+    public async Task Render_WhenThemeAndCallerChromeAreApplied_UsesGenericControlPlaneAndDrawsChromeAsync()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            background: "#102030",
+            controlSides: "\"none\""));
+        var view = CreateView("Title", 10, useDefaultChrome: true);
+        view.Border = new Border(
+            BorderSide.All,
+            BorderGlyphStyle.Rounded,
+            Color.Default,
+            Color.Transparent,
+            TerminalAttributes.None);
+        view.Shadow = theme.Control.Normal.Shadow with { IsVisible = true };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(10, 3),
+            theme,
+            TestContext.Current.CancellationToken);
+
+        view.ActualFace.Foreground.ShouldBe(theme.Resolve(theme.Control.Normal.Face.Foreground));
+        view.ActualFace.Background.ShouldBe(theme.Resolve(theme.Control.Normal.Face.Background));
+        view.ActualFace.Attributes.ShouldBe(theme.Resolve(theme.Control.Normal.Face.Attributes));
+        view.ActualShadow.IsVisible.ShouldBeTrue();
+        surface.Cell(default).Text.ShouldBe("╭");
+        surface.Cell(new Point(1, 1)).Text.ShouldBe("T");
+        surface.Cell(new Point(1, 1)).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Control), ColorDepth.Basic16));
+    }
+
     /// <summary>Verifies an offscreen item mnemonic makes its target current, selected, and visible.</summary>
     [Fact]
     public async Task AccessKey_WhenOffscreenItemMatches_RevealsSelectedTargetAsync()
