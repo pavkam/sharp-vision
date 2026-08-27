@@ -106,13 +106,16 @@ public sealed class FigletRendererTests
     /// checks the limit before <c>TrimLeading</c> ever removes that margin. A naive incremental
     /// check against the raw, untrimmed row length would throw here despite the final trimmed
     /// output ("AB") landing exactly at the configured limit, rejecting legitimate input purely
-    /// because of columns the renderer always discards before returning.
+    /// because of columns the renderer always discards before returning. Horizontal fitting is
+    /// used here specifically because it is a layout under which the margin actually gets
+    /// trimmed during composition - unlike <see cref="FigletLayout.None"/>, which preserves it
+    /// (see <see cref="Render_WhenLayoutIsNone_PreservesAGlyphsLeadingBlankMargin"/>).
     /// </summary>
     [Fact]
     public void Render_WhenGlyphsCarryALeadingBlankMargin_DoesNotCountItAgainstTheLimit()
     {
         var font = CreateFont(
-            (int) FigletLayout.None,
+            (int) FigletLayout.HorizontalFitting,
             new Dictionary<int, string>
             {
                 ['A'] = " A",
@@ -123,6 +126,29 @@ public sealed class FigletRendererTests
         var rendered = FigletRenderer.Render(font, "AB", default);
 
         rendered.ShouldBe("AB");
+    }
+
+    /// <summary>
+    /// Verifies <see cref="FigletLayout.None"/> - documented as rendering "full width... without
+    /// fitting or smushing" - preserves a glyph's designed leading blank margin instead of
+    /// stripping it. <c>TrimLeading</c> previously ran unconditionally regardless of layout,
+    /// silently applying fitting-only trimming behavior even when no fitting or smushing was
+    /// requested.
+    /// </summary>
+    [Fact]
+    public void Render_WhenLayoutIsNone_PreservesAGlyphsLeadingBlankMargin()
+    {
+        var font = CreateFont(
+            (int) FigletLayout.None,
+            new Dictionary<int, string>
+            {
+                ['A'] = " A",
+                ['B'] = "B",
+            });
+
+        var rendered = FigletRenderer.Render(font, "AB", default);
+
+        rendered.ShouldBe(" AB");
     }
 
     private static FigletFont CreateFont(

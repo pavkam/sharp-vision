@@ -39,7 +39,12 @@ internal static class FigletRenderer
             }
 
             var rows = RenderLine(font, runes, layout);
-            TrimLeading(rows);
+
+            if ((layout & (FigletLayout.HorizontalFitting | FigletLayout.HorizontalSmushing)) != 0)
+            {
+                TrimLeading(rows);
+            }
+
             AppendVertical(font, composed, ref composedWidth, ref composedLength, rows, layout, font.HardBlank);
         }
 
@@ -86,19 +91,26 @@ internal static class FigletRenderer
             // equally wide, and the overlap is computed once per rune across all rows), so
             // checking a single row's length here bounds memory during composition of one
             // logical line instead of only after the entire line - and every unbounded logical
-            // line - has already been built. The raw row length overstates what TrimLeading will
-            // keep once the line is complete, since real glyphs routinely carry a leading blank
-            // margin (see standard.flf) - checking it directly would throw on legitimate,
-            // under-the-limit input purely because of margin columns that are always removed
-            // before the output is ever returned. Subtracting the CURRENT common leading-blank
-            // count avoids that: a merge can only turn a leading blank into a printable column
-            // (never the reverse - Merge only replaces ' ' with the other side's character, or
-            // keeps an existing printable column as-is), so each row's own leading-blank count is
-            // monotonically non-increasing as more runes merge in, and so is the cross-row
-            // minimum TrimLeading computes. That makes (raw length - current leading-blank count)
-            // a value that only rises toward the eventual trimmed length as composition proceeds,
-            // never overshoots it early.
-            EnsureLimit(font, rows.Length == 0 ? 0 : rows[0].Length - MeasureLeadingBlank(rows));
+            // line - has already been built. When Render will go on to call TrimLeading (fitting
+            // or smushing layouts), the raw row length overstates what TrimLeading will keep once
+            // the line is complete, since real glyphs routinely carry a leading blank margin (see
+            // standard.flf) - checking it directly would throw on legitimate, under-the-limit
+            // input purely because of margin columns that are always removed before the output is
+            // ever returned. Subtracting the CURRENT common leading-blank count avoids that: a
+            // merge can only turn a leading blank into a printable column (never the reverse -
+            // Merge only replaces ' ' with the other side's character, or keeps an existing
+            // printable column as-is), so each row's own leading-blank count is monotonically
+            // non-increasing as more runes merge in, and so is the cross-row minimum TrimLeading
+            // computes. That makes (raw length - current leading-blank count) a value that only
+            // rises toward the eventual trimmed length as composition proceeds, never overshoots
+            // it early. Under FigletLayout.None, Render never trims the margin at all, so the
+            // check here must use the full raw length instead - subtracting the measured blank
+            // count in that case would let composition run past the configured limit before ever
+            // detecting it, since nothing later removes those columns.
+            var leadingBlank = (layout & (FigletLayout.HorizontalFitting | FigletLayout.HorizontalSmushing)) != 0
+                ? MeasureLeadingBlank(rows)
+                : 0;
+            EnsureLimit(font, rows.Length == 0 ? 0 : rows[0].Length - leadingBlank);
         }
 
         return rows;
