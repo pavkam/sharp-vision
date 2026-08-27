@@ -36,7 +36,7 @@ public sealed class ExpanderSurfaceTests
 
                              """);
         expander.Content.Bounds.ShouldBe(new Rect(2, 1, 10, 3));
-        expander.GetResolvedAppearance(VisualState.Normal).BackgroundMode.ShouldBe(BackgroundMode.Opaque);
+        expander.GetResolvedAppearance(VisualState.Normal).BackgroundMode.ShouldBe(BackgroundMode.Transparent);
         surface.Cell(default).Style.Background.ShouldBe(ReferenceColors.Get(0));
     }
 
@@ -579,18 +579,14 @@ public sealed class ExpanderSurfaceTests
         surface.ShouldRender("▶ Details");
     }
 
-    /// <summary>Verifies a theme swap confined to the FocusedControl role still repaints the
-    /// focused header background. The focused header paints from the same state-cascaded
-    /// <c>ResolvedStyle</c> every other themed control uses, so the generic base
-    /// <c>GetThemeChangeImpact</c> - which re-resolves the active state's Face against both themes
-    /// and diffs the results - already detects a swap confined to one semantic color without any
-    /// Expander-specific override.</summary>
+    /// <summary>Verifies direct focus uses the focused-border accent without painting a focused
+    /// face behind either the header row or the indented content region.</summary>
     [Fact]
-    public async Task Surface_WhenThemeSwapChangesOnlyFocusedControl_RepaintsFocusedHeaderAsync()
+    public async Task Surface_WhenFocused_UsesAccentWithoutPaintingBackgroundAsync()
     {
         // Arrange
-        var themeA = WithColor(SemanticColor.FocusedControl, Color.Rgb(10, 20, 30));
-        var themeB = WithColor(SemanticColor.FocusedControl, Color.Rgb(200, 210, 220));
+        var focusedBorder = Color.Rgb(10, 200, 220);
+        var theme = WithColor(SemanticColor.FocusedBorder, focusedBorder);
         var expander = new Expander
         {
             HeaderText = "Details",
@@ -601,27 +597,26 @@ public sealed class ExpanderSurfaceTests
         await using var surface = await ComponentSurface.MountAsync(
             expander,
             new Size(12, 4),
-            themeA,
+            theme,
             TestContext.Current.CancellationToken);
-        await surface.Keyboard.PressAsync(Code.Tab);
-        surface.Cell(default).Style.Background.ShouldBe(TerminalPalette.Project(Color.Rgb(10, 20, 30), ColorDepth.Basic16));
+        var headerBackground = surface.Cell(default).Style.Background;
+        var contentBackground = surface.Cell(new Point(0, 1)).Style.Background;
 
         // Act
-        await surface.UpdateAsync(() => surface.Application.Theme = themeB, "swap FocusedControl-only theme");
+        await surface.Keyboard.PressAsync(Code.Tab);
 
         // Assert
-        surface.Cell(default).Style.Background.ShouldBe(TerminalPalette.Project(Color.Rgb(200, 210, 220), ColorDepth.Basic16));
+        surface.Cell(default).Style.Foreground.ShouldBe(TerminalPalette.Project(focusedBorder, ColorDepth.Basic16));
+        surface.Cell(new Point(2, 0)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(focusedBorder, ColorDepth.Basic16));
+        surface.Cell(default).Style.Background.ShouldBe(headerBackground);
+        surface.Cell(new Point(0, 1)).Style.Background.ShouldBe(contentBackground);
     }
 
-    /// <summary>Verifies a theme-authored <c>styles.input.focused.face</c> reaches the rendered
-    /// focused header cell rather than being silently discarded. The authored background and
-    /// attributes both depart from the raw <see cref="SemanticColor.FocusedControl"/> value and the
-    /// bold attribute every shipped theme happens to author for that role, so a render path that
-    /// hand-resolves <see cref="SemanticColor.FocusedControl"/> and forces
-    /// <see cref="TerminalAttributes.Bold"/> instead of consuming the state-cascaded resolved style
-    /// would diverge from what is asserted below.</summary>
+    /// <summary>Verifies a theme-authored focused face may still contribute text decorations while
+    /// its background remains transparent and the focused border owns the focus color.</summary>
     [Fact]
-    public async Task Render_WhenThemeAuthorsDistinctFocusedControlFace_UsesTheAuthoredStyleAsync()
+    public async Task Render_WhenThemeAuthorsDistinctFocusedControlFace_PreservesTransparentSurfaceAsync()
     {
         // Arrange
         var authoredBackground = Color.Rgb(220, 90, 30);
@@ -638,15 +633,17 @@ public sealed class ExpanderSurfaceTests
             new Size(12, 4),
             theme,
             TestContext.Current.CancellationToken);
+        var background = surface.Cell(default).Style.Background;
 
         // Act
         await surface.Keyboard.PressAsync(Code.Tab);
 
-        // Assert the rendered header cell reflects the authored face, not the raw semantic color
-        // or a forced bold attribute.
-        surface.Cell(default).Style.Background.ShouldBe(TerminalPalette.Project(authoredBackground, ColorDepth.Basic16));
+        // Assert
+        surface.Cell(default).Style.Background.ShouldBe(background);
         surface.Cell(default).Style.Background.ShouldNotBe(
-            TerminalPalette.Project(theme.ResolveColor(SemanticColor.FocusedControl), ColorDepth.Basic16));
+            TerminalPalette.Project(authoredBackground, ColorDepth.Basic16));
+        surface.Cell(default).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.FocusedBorder), ColorDepth.Basic16));
         surface.Cell(default).Style.Attributes.ShouldBe(TerminalAttributes.None);
     }
 

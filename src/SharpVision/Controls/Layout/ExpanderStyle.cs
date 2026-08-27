@@ -30,7 +30,7 @@ public sealed record ExpanderStyle: ControlStyle
 
     private static ExpanderStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
         new(
-            control.Face,
+            control.Face with { Background = Color.Transparent },
             control.Border,
             control.Shadow,
             ControlGlyphs.Disclosure.Collapsed.Value,

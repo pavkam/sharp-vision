@@ -11,27 +11,27 @@ collapsed disclosure glyph, followed by `Header` arranged into the remaining
 width.
 
 The Expander itself owns focus, hover, and press for the header row, and keeps
-the disclosure glyph and the focus-highlighted row background as its own chrome.
-A plain `Text` header — the `HeaderText` common case — is painted by the
-Expander with its own state-resolved style, so the caption carries the same
-hover, focus, and disabled cues as the glyph; any other header control is an
-ordinary owned control arranged beside the glyph that paints with its own
-resolved style. A `Header` set to `Visibility.Hidden` or `Visibility.Collapsed`
-paints no caption at all, leaving only the disclosure glyph — matching the
-ordinary `Visibility` gate every other owned control's own render pass already
-respects, and the zero header width `MeasureOverride` already reports once
-collapsed. Its pointer rectangle is the first non-empty row of `ContentBounds`,
-after any caller-supplied border and padding are deflated. The caller's content
-remains the one ordinary owned child.
+the disclosure glyph and focus-accented header foreground as its own chrome. A
+plain `Text` header — the `HeaderText` common case — is painted by the Expander
+with its own state-resolved style, so the caption carries the same hover, focus,
+and disabled cues as the glyph; any other header control is an ordinary owned
+control arranged beside the glyph that paints with its own resolved style. A
+`Header` set to `Visibility.Hidden` or `Visibility.Collapsed` paints no caption
+at all, leaving only the disclosure glyph — matching the ordinary `Visibility`
+gate every other owned control's own render pass already respects, and the zero
+header width `MeasureOverride` already reports once collapsed. Its pointer
+rectangle is the first non-empty row of `ContentBounds`, after any
+caller-supplied border and padding are deflated. The caller's content remains
+the one ordinary owned child.
 
 By default the control has no border and a transparent background; the
 disclosure glyph, the header, and the content indentation supply the structural
-signal. Hover and direct focus change only the foreground and border semantics
-of the header — they do not invent a frame or a fill. Caller content composes
-over the surrounding surface unless a descendant supplies an explicit
-background. Callers can opt into inherited frame, face, or shadow properties, in
-which case layout follows the shared
-[chrome contract](../../concepts/styling.md#shared-chrome).
+signal. Hover changes the inherited interactive foreground, while direct focus
+uses the focused-border accent for the disclosure glyph and a plain-text header.
+Neither state invents a frame or a fill. Caller content composes over the
+surrounding surface unless a descendant supplies an explicit background. Callers
+can opt into inherited frame, face, or shadow properties, in which case layout
+follows the shared [chrome contract](../../concepts/styling.md#shared-chrome).
 
 ## Inheritance
 

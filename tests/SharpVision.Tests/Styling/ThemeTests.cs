@@ -349,19 +349,26 @@ public sealed class ThemeTests
     {
         var theme = ThemeCatalog.Dark;
 
-        AssertRebased(ExpanderStyle.Definition.Appearance!(ExpanderStyle.Definition.Resolve(null, theme), theme));
+        AssertRebased(
+            ExpanderStyle.Definition.Appearance!(ExpanderStyle.Definition.Resolve(null, theme), theme),
+            hasTransparentFace: true);
         AssertRebased(SliderStyle.Definition.Appearance!(SliderStyle.Definition.Resolve(null, theme), theme));
         AssertRebased(ScrollBarStyle.Definition.Appearance!(ScrollBarStyle.Definition.Resolve(null, theme), theme));
 
-        void AssertRebased(AppearanceStates states)
+        void AssertRebased(AppearanceStates states, bool hasTransparentFace = false)
         {
             var normal = states.Resolve(VisualState.Normal);
             var focused = states.Resolve(VisualState.Focused);
             var inputFocused = theme.Input.Resolve(VisualState.Focused);
+            var expectedBackground = hasTransparentFace ? (ControlColor) Color.Transparent : inputFocused.Face.Background;
 
-            normal.ShouldBe(theme.Control.Normal);
+            normal.Face.ShouldBe(hasTransparentFace
+                ? theme.Control.Normal.Face with { Background = Color.Transparent }
+                : theme.Control.Normal.Face);
+            normal.Border.ShouldBe(theme.Control.Normal.Border);
+            normal.Shadow.ShouldBe(theme.Control.Normal.Shadow);
             focused.Face.Foreground.ShouldBe(inputFocused.Face.Foreground);
-            focused.Face.Background.ShouldBe(inputFocused.Face.Background);
+            focused.Face.Background.ShouldBe(expectedBackground);
             focused.Face.Underline.ShouldBe(inputFocused.Face.Underline);
             focused.Face.UnderlineColor.ShouldBe(inputFocused.Face.UnderlineColor);
 

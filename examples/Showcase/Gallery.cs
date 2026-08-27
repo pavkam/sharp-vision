@@ -18,7 +18,6 @@ public sealed class Gallery: Screen
         "Display",
         "Charts",
         "Progress",
-        "Notifications",
         "Dialogs",
         "Windows"
     ];
@@ -51,7 +50,7 @@ public sealed class Gallery: Screen
         ("Layout", DockPane.Title, static () => new DockPane()),
         ("Layout", ExpanderPane.Title, static () => new ExpanderPane()),
         ("Dialogs", FilePickerPane.Title, static () => new FilePickerPane()),
-        ("Dialogs", MessageBoxPane.Title, static () => new MessageBoxPane()),
+        ("Windows", MessageBoxPane.Title, static () => new MessageBoxPane()),
         ("Display", FigletTextPane.Title, static () => new FigletTextPane()),
         ("Layout", GridPane.Title, static () => new GridPane()),
         ("Layout", GroupBoxPane.Title, static () => new GroupBoxPane()),
@@ -77,7 +76,7 @@ public sealed class Gallery: Screen
         ("Display", StatusBarPane.Title, static () => new StatusBarPane()),
         ("Input", SliderPane.Title, static () => new SliderPane()),
         ("Progress", SpinnerPane.Title, static () => new SpinnerPane()),
-        ("Notifications", ToastPane.Title, static () => new ToastPane()),
+        ("Windows", ToastPane.Title, static () => new ToastPane()),
         ("Layout", StackPane.Title, static () => new StackPane()),
         ("Collections", TabControlPane.Title, static () => new TabControlPane()),
         ("Collections", TablePane.Title, static () => new TablePane()),

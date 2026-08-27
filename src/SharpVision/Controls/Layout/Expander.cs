@@ -213,18 +213,9 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
         }
 
         var content = ContentBounds;
-        var s = ResolvedStyle;
-        var background = BackgroundMode.Transparent;
-
-        if (IsFocused)
-        {
-            background = BackgroundMode.Opaque;
-        }
-
-        if (IsFocused && content.Width > 0)
-        {
-            canvas.Clear(new Rect(content.X, content.Y, content.Width, _headerHeightCells), s);
-        }
+        var s = IsFocused
+            ? ResolvedStyle.WithForeground(ResolveColor(ActualBorder.Foreground))
+            : ResolvedStyle;
 
         var themed = IsExpanded ? ControlGlyphs.Disclosure.Expanded : ControlGlyphs.Disclosure.Collapsed;
         var style = ActualStyle;
@@ -233,7 +224,7 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
             selected.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth),
             new Point(content.X, content.Y),
             s,
-            background);
+            BackgroundMode.Transparent);
 
         // A Hidden or Collapsed header renders no caption at all, matching the disclosure-glyph-only
         // row a missing Header already draws and the zero width MeasureOverride already reports for
@@ -247,7 +238,7 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
                 caption,
                 new Point(content.X + HeaderChromeWidth, content.Y),
                 s,
-                background,
+                BackgroundMode.Transparent,
                 CellPolicy.AmbiguousWidth,
                 UseMnemonic,
                 EffectiveIsEnabled ? Theme?.Hotkey ?? Color.Default : null);

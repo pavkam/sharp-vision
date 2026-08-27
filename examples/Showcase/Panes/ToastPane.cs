@@ -129,6 +129,7 @@ internal sealed class ToastPane: CompositeControlBase
             Content = new Stack
             {
                 Spacing = 0,
+                Face = style.Face with { Background = Color.Transparent },
                 Children =
                 {
                     new Text("Arbitrary component content"),

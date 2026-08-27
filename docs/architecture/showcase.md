@@ -89,9 +89,8 @@ sidebar organizes its 61 entries by primary use:
 - Charts: HorizontalBarChart, VerticalBarChart, LineChart, AreaChart, and
   Sparkline.
 - Progress: ChaseIndicator, ProgressBar, and Spinner.
-- Notifications: Toast.
-- Dialogs: FilePicker and MessageBox.
-- Windows: Popup, ContextMenu, Tooltip, Flyout, and Window.
+- Dialogs: FilePicker.
+- Windows: MessageBox, Popup, ContextMenu, Tooltip, Flyout, Toast, and Window.
 
 Each purpose group starts expanded and can be collapsed through the standard
 `NavigationViewGroup` interaction. The first Concepts group owns cross-cutting

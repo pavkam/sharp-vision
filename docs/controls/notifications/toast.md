@@ -72,7 +72,9 @@ and spacing fields. `Info`, `Error`, `Warning`, `Success`, and `Trace` are
 complete presets, while `Default` aliases `Info`. Severity remains an appearance
 choice rather than a closed behavior enum; applications may assign any complete
 custom `ToastStyle`. Every preset paints an opaque semantic popup background;
-custom styles control that fill through `Face.Background`.
+custom styles control that fill through `Face.Background`. Caller content keeps
+its own appearance, so layout-only wrappers that should visually belong to the
+Toast use a transparent background and inherit the Toast surface beneath them.
 
 A dismissible focused Toast handles Escape, Enter, and Space. The close glyph
 uses capture-aware pointer press and release semantics. Every route, including

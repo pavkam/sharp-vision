@@ -15,7 +15,7 @@ public sealed class ExpanderTests
 
         // Assert
         expander.ActualBorder.Sides.ShouldBe(BorderSide.None);
-        expander.Face.Background.ShouldBe(SemanticColor.Control);
+        expander.Face.Background.ShouldBe(Color.Transparent);
         expander.ActualStyle.ContentIndent.ShouldBe(2);
     }
 
