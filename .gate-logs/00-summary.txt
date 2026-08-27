@@ -1,7 +1,0 @@
-=== make build (restore + Release build) ===
-build exit: 0
-=== make test-ci ===
-test-ci exit: 2
-=== make lint ===
-lint exit: 2
-ALL DONE: build=0 test=2 lint=2
