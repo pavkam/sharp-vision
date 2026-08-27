@@ -1498,7 +1498,7 @@ public sealed partial class ControlBaseTests
     }
 
     /// <summary>Verifies the sparse cache grows past its small inline capacity and still resolves
-    /// every distinct state exactly once — the cache starts at 4 slots rather than the full
+    /// every distinct state exactly once — the cache starts at 2 slots rather than the full
     /// 512-combination VisualState space.</summary>
     [Fact]
     public void GetActualFace_WhenMoreStatesThanInlineCapacityAreUsed_StillCachesEachExactly()

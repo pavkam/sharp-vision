@@ -12,16 +12,54 @@ public readonly record struct BorderOverlay
     /// <param name="foreground">The optional paintable foreground contribution.</param>
     /// <param name="background">The optional background contribution.</param>
     /// <param name="attributes">The optional attribute contribution.</param>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="sides"/> contains unknown flags, or <paramref name="foreground"/> is not a
-    /// paintable color.
-    /// </exception>
+    /// <exception cref="ArgumentException"><paramref name="foreground"/> is transparent.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="sides"/> contains unknown flags.</exception>
     public BorderOverlay(
         BorderSide? sides = null,
         BorderGlyphStyle? glyphStyle = null,
         ControlColor? foreground = null,
         ControlColor? background = null,
-        ControlDecoration? attributes = null)
+        ControlDecoration? attributes = null) : this(
+            sides,
+            glyphStyle,
+            foreground,
+            background,
+            attributes,
+            null)
+    {
+    }
+
+    /// <summary>Creates a partial border contribution with physical-edge colors.</summary>
+    /// <param name="edgeColors">The physical-edge foreground contribution.</param>
+    /// <param name="sides">The optional side-flag contribution, limited to defined flags.</param>
+    /// <param name="glyphStyle">The optional glyph-style contribution.</param>
+    /// <param name="foreground">The optional paintable foreground contribution.</param>
+    /// <param name="background">The optional background contribution.</param>
+    /// <param name="attributes">The optional attribute contribution.</param>
+    /// <exception cref="ArgumentException"><paramref name="foreground"/> is transparent.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="sides"/> contains unknown flags.</exception>
+    /// <returns>The partial border contribution.</returns>
+    public static BorderOverlay WithEdgeColors(
+        BorderEdgeColors edgeColors,
+        BorderSide? sides = null,
+        BorderGlyphStyle? glyphStyle = null,
+        ControlColor? foreground = null,
+        ControlColor? background = null,
+        ControlDecoration? attributes = null) => new(
+            sides,
+            glyphStyle,
+            foreground,
+            background,
+            attributes,
+            edgeColors);
+
+    private BorderOverlay(
+        BorderSide? sides,
+        BorderGlyphStyle? glyphStyle,
+        ControlColor? foreground,
+        ControlColor? background,
+        ControlDecoration? attributes,
+        BorderEdgeColors? edgeColors)
     {
         // Deliberately NOT ArgumentOutOfRangeException.ThrowIfUndefinedFlags here:
         // AppearanceStates.ApplyStates folds an overlay for every active VisualState bit through
@@ -42,6 +80,7 @@ public readonly record struct BorderOverlay
         Sides = sides;
         GlyphStyle = glyphStyle;
         Foreground = foreground;
+        EdgeColors = edgeColors;
         Background = background;
         Attributes = attributes;
     }
@@ -54,6 +93,9 @@ public readonly record struct BorderOverlay
 
     /// <summary>Gets the optional foreground contribution.</summary>
     public ControlColor? Foreground { get; }
+
+    /// <summary>Gets the optional physical-edge foreground contribution.</summary>
+    public BorderEdgeColors? EdgeColors { get; }
 
     /// <summary>Gets the optional background contribution.</summary>
     public ControlColor? Background { get; }
@@ -69,6 +111,7 @@ public readonly record struct BorderOverlay
         Sides ?? border.Sides,
         GlyphStyle ?? border.GlyphStyle,
         Foreground ?? border.Foreground,
+        EdgeColors ?? border.EdgeColors,
         Background ?? border.Background,
         Attributes ?? border.Attributes);
 
@@ -81,5 +124,6 @@ public readonly record struct BorderOverlay
         later.GlyphStyle ?? GlyphStyle,
         later.Foreground ?? Foreground,
         later.Background ?? Background,
-        later.Attributes ?? Attributes);
+        later.Attributes ?? Attributes,
+        later.EdgeColors ?? EdgeColors);
 }

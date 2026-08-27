@@ -26,4 +26,22 @@ public sealed class BorderOverlayTests
         result.Background.SemanticColor.ShouldBe(SemanticColor.Control);
         result.Attributes.SemanticDecoration.ShouldBe(SemanticDecoration.Border);
     }
+
+    /// <summary>Verifies edge-color contributions replace only the optional per-edge mapping.</summary>
+    [Fact]
+    public void Apply_WhenEdgeColorsAreSet_PreservesUniformBorderMembers()
+    {
+        var border = AppearanceTestValues.Border(BorderSide.All, BorderGlyphStyle.Paired);
+        var colors = BorderEdgeColors.Sunken(Color.Rgb(255, 255, 255), Color.Rgb(0, 0, 0));
+        var overlay = BorderOverlay.WithEdgeColors(colors);
+
+        var result = overlay.Apply(border);
+
+        result.Sides.ShouldBe(border.Sides);
+        result.GlyphStyle.ShouldBe(border.GlyphStyle);
+        result.Foreground.ShouldBe(border.Foreground);
+        result.EdgeColors.ShouldBe(colors);
+        result.Background.ShouldBe(border.Background);
+        result.Attributes.ShouldBe(border.Attributes);
+    }
 }

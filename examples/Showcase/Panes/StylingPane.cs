@@ -29,7 +29,7 @@ internal sealed class StylingPane: CompositeControlBase
 
         var stateVocabulary = CreateVisualStates();
 
-        var catalogEntry = ThemeCatalog.Entries[0];
+        var catalogEntry = ThemeCatalog.Entries.First(static entry => entry.Slug == "turbo-vision");
         var catalog = new Text(
             $"Catalog entry: {Text.Escape(catalogEntry.Name)}\n" +
             $"Slug: {Text.Escape(catalogEntry.Slug)} · Scheme: {catalogEntry.ColorScheme}\n" +
@@ -81,9 +81,9 @@ internal sealed class StylingPane: CompositeControlBase
                 "ThemeCatalog exposes stable metadata before loading one immutable application theme snapshot.",
                 new DocExample(
                     "Attribution and scheme metadata",
-                    "Display name, slug, dark/light scheme, author, and license support discoverable pickers and attribution.",
+                    "The bundled Turbo Vision entry is sourced from the original BIOS palette. Select it from the Showcase theme picker to apply its blue desktop, gray surfaces, cyan selection, green press feedback, black shadows, and relief borders to every pane.",
                     catalog,
-                    "application.Theme = ThemeCatalog.Load(\"default-dark\");")),
+                    "application.Theme = ThemeCatalog.Load(\"turbo-vision\");")),
             new DocSection(
                 "🛠️",
                 "Custom controls",

@@ -6,6 +6,35 @@ namespace SharpVision.Tests.Styling;
 /// <summary>Verifies shared control chrome rasterization and geometry.</summary>
 public sealed class ControlChromeTests
 {
+    /// <summary>Verifies per-edge colors paint leading and trailing edges independently.</summary>
+    [Fact]
+    public void DrawPartialBorder_WhenEdgeColorsAreSet_UsesHorizontalColorsForCorners()
+    {
+        var highlight = Color.Rgb(255, 255, 255);
+        var shade = Color.Rgb(0, 0, 0);
+        var border = new LayoutProbe
+        {
+            Bounds = new Rect(0, 0, 4, 3),
+            Border = new Border(
+                BorderSide.All,
+                BorderGlyphStyle.Ascii,
+                Color.Rgb(170, 170, 170),
+                BorderEdgeColors.Sunken(highlight, shade),
+                Color.Transparent,
+                TerminalAttributes.None),
+        };
+        using Frame frame = new(new Size(4, 3));
+
+        border.Render(frame.Canvas);
+
+        frame.GetCell(new Point(0, 0)).Style.Foreground.ShouldBe(shade);
+        frame.GetCell(new Point(3, 0)).Style.Foreground.ShouldBe(shade);
+        frame.GetCell(new Point(0, 1)).Style.Foreground.ShouldBe(shade);
+        frame.GetCell(new Point(3, 1)).Style.Foreground.ShouldBe(highlight);
+        frame.GetCell(new Point(0, 2)).Style.Foreground.ShouldBe(highlight);
+        frame.GetCell(new Point(3, 2)).Style.Foreground.ShouldBe(highlight);
+    }
+
     /// <summary>Verifies partial border edges draw only enabled sides on tiny bounds.</summary>
     [Fact]
     public void DrawPartialBorder_WhenOnlyTopEdgeIsEnabled_DrawsSingleRow()

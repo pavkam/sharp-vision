@@ -107,14 +107,15 @@ public sealed class GroupBox: HeaderedContentControl
         }
 
         var opaque = this.HasOpaqueFill(GetAppearanceState());
-        var border = this.ResolveBorderStyle(GetAppearanceState());
+        var borderStyles = this.ResolveBorderStyles(GetAppearanceState());
+        var border = borderStyles.Top;
         var bg = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         var actualBorder = ActualBorder;
         canvas.DrawPartialBorder(
             Bounds,
             actualBorder.Sides,
             ResolveBorderGlyphs(actualBorder.GlyphStyle),
-            border,
+            borderStyles,
             bg);
         // A Hidden or Collapsed header renders no caption at all, matching the plain dashed border a
         // missing Header already draws and the zero width MeasureOverride already reports for a

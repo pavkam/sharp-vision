@@ -16,7 +16,7 @@ internal static class AppearanceExtensions
         public bool HasOpaqueFill(VisualState state) =>
             control.GetResolvedAppearance(state).BackgroundMode == BackgroundMode.Opaque;
 
-        public TerminalStyle ResolveBorderStyle(VisualState state) =>
-            control.GetResolvedAppearance(state).BorderStyle;
+        public ResolvedBorderStyles ResolveBorderStyles(VisualState state) =>
+            ResolvedBorderStyles.Create(control.GetResolvedAppearance(state).Border);
     }
 }

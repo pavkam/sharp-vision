@@ -166,7 +166,7 @@ internal static class ControlChrome
                     body,
                     border.Sides,
                     glyphs,
-                    appearance.BorderStyle,
+                    ResolvedBorderStyles.Create(border),
                     appearance.BorderBackgroundMode);
             }
         }
@@ -187,7 +187,7 @@ internal static class ControlChrome
         /// <summary>Draws one complete one-cell-wide border frame.</summary>
         /// <param name="bounds">The frame rectangle.</param>
         /// <param name="glyphs">The validated glyph family.</param>
-        /// <param name="style">The border semantic style.</param>
+        /// <param name="style">The uniform border style.</param>
         /// <param name="background">Whether border backgrounds replace destination cells.</param>
         public void DrawUniformBorder(
             Rect bounds,
@@ -227,13 +227,13 @@ internal static class ControlChrome
         /// <param name="bounds">The frame rectangle.</param>
         /// <param name="border">The enabled border edges.</param>
         /// <param name="glyphs">The validated glyph family.</param>
-        /// <param name="style">The border semantic style.</param>
+        /// <param name="styles">The concrete styles for the four physical edges.</param>
         /// <param name="background">Whether border backgrounds replace destination cells.</param>
         public void DrawPartialBorder(
             Rect bounds,
             BorderSide border,
             BorderGlyphStyle glyphs,
-            TerminalStyle style,
+            ResolvedBorderStyles styles,
             BackgroundMode background)
         {
             if (bounds.Width == 0 || bounds.Height == 0)
@@ -246,16 +246,16 @@ internal static class ControlChrome
             // that edge is disabled. Unconditionally, they skipped the only enabled edge and left
             // the cell blank: BorderSide.Right on a one-column rect painted nothing at all, while
             // BorderInset still reserved the column, so the space was paid for and never drawn.
-            DrawHorizontalEdge(canvas, bounds, border, glyphs, style, background, top: true);
+            DrawHorizontalEdge(canvas, bounds, border, glyphs, styles, background, top: true);
             if (bounds.Height > 1 || (border & BorderSide.Top) == 0)
             {
-                DrawHorizontalEdge(canvas, bounds, border, glyphs, style, background, top: false);
+                DrawHorizontalEdge(canvas, bounds, border, glyphs, styles, background, top: false);
             }
 
-            DrawVerticalEdge(canvas, bounds, border, glyphs, style, background, left: true);
+            DrawVerticalEdge(canvas, bounds, border, glyphs, styles, background, left: true);
             if (bounds.Width > 1 || (border & BorderSide.Left) == 0)
             {
-                DrawVerticalEdge(canvas, bounds, border, glyphs, style, background, left: false);
+                DrawVerticalEdge(canvas, bounds, border, glyphs, styles, background, left: false);
             }
         }
 
@@ -431,7 +431,7 @@ internal static class ControlChrome
         Rect bounds,
         BorderSide border,
         BorderGlyphStyle glyphs,
-        TerminalStyle style,
+        ResolvedBorderStyles styles,
         BackgroundMode background,
         bool top)
     {
@@ -443,6 +443,7 @@ internal static class ControlChrome
         }
 
         var y = top ? bounds.Y : bounds.Bottom - 1;
+        var style = top ? styles.Top : styles.Bottom;
 
         for (var x = bounds.X; x < bounds.Right; x++)
         {
@@ -470,7 +471,7 @@ internal static class ControlChrome
         Rect bounds,
         BorderSide border,
         BorderGlyphStyle glyphs,
-        TerminalStyle style,
+        ResolvedBorderStyles styles,
         BackgroundMode background,
         bool left)
     {
@@ -482,6 +483,7 @@ internal static class ControlChrome
         }
 
         var x = left ? bounds.X : bounds.Right - 1;
+        var style = left ? styles.Left : styles.Right;
         var start = bounds.Y + ((border & BorderSide.Top) != 0 ? 1 : 0);
         var end = bounds.Bottom - ((border & BorderSide.Bottom) != 0 ? 1 : 0);
 

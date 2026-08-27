@@ -49,7 +49,8 @@ member-wise contribution used by themes and states.
 | ------------ | ------------------- | -------------------- | ------------------------------------------------------------------ |
 | `Sides`      | `BorderSide`        | `BorderSide?`        | IsEnabled one-cell physical edges; unknown flag bits are rejected. |
 | `GlyphStyle` | `BorderGlyphStyle`  | `BorderGlyphStyle?`  | Eight validated single-cell runes for corners and edges.           |
-| `Foreground` | `ControlColor`      | `ControlColor?`      | Paint color; transparent is rejected.                              |
+| `Foreground` | `ControlColor`      | `ControlColor?`      | Uniform fallback paint color; transparent is rejected.             |
+| `EdgeColors` | `BorderEdgeColors`  | `BorderEdgeColors?`  | Optional top, right, bottom, and left foreground overrides.        |
 | `Background` | `ControlColor`      | `ControlColor?`      | Independent border-cell background channel.                        |
 | `Attributes` | `ControlDecoration` | `ControlDecoration?` | Terminal attributes or semantic decoration.                        |
 
@@ -57,6 +58,15 @@ member-wise contribution used by themes and states.
 `Solid`, `HalfBlock`, `LightShade`, `MediumShade`, and `DarkShade` families. A
 caller-created family validates every rune as printable and exactly one cell
 wide. Partial edges reserve and draw only the physical sides they select.
+
+`BorderEdgeColors` leaves each physical edge optional. An absent override uses
+`Border.Foreground`, so assigning one edge does not force a caller to repeat the
+other three. `Raised(highlight, shade)` maps the highlight to top and left and
+the shade to right and bottom; `Sunken(highlight, shade)` reverses that mapping.
+Both reject transparent paint. Horizontal edges already own corner glyphs, so
+the top color owns both top corners and the bottom color owns both bottom
+corners when adjacent edges differ. The same precedence applies to a one-row
+frame.
 
 ## Shadow API
 
@@ -110,6 +120,9 @@ var card = new Stack
         BorderSide.All,
         BorderGlyphStyle.Rounded,
         SemanticColor.ControlBorder,
+        BorderEdgeColors.Sunken(
+            Color.Rgb(255, 255, 255),
+            Color.Rgb(0, 0, 0)),
         Color.Transparent,
         SemanticDecoration.Border),
     Shadow = new Shadow(

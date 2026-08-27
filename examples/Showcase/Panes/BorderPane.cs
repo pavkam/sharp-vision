@@ -74,6 +74,13 @@ internal sealed class BorderPane: CompositeControlBase
                 Padding = new Thickness(1, 0),
                 Children = { new Text("Concrete RGB border override") }
             });
+        var relief = new DocColumn(
+            CreateReliefSample(
+                "Raised: light top/left",
+                BorderEdgeColors.Raised(Color.Rgb(0xff, 0xff, 0xff), Color.Rgb(0x00, 0x00, 0x00))),
+            CreateReliefSample(
+                "Sunken: dark top/left",
+                BorderEdgeColors.Sunken(Color.Rgb(0xff, 0xff, 0xff), Color.Rgb(0x00, 0x00, 0x00))));
 
         return new DocPage(
             Title,
@@ -103,7 +110,16 @@ internal sealed class BorderPane: CompositeControlBase
                 new DocExample(
                     "Semantic and concrete overrides",
                     "The first frame follows the active Accent semantic; the second keeps an explicit RGB value across theme changes.",
-                    appearance)));
+                    appearance)),
+            new DocSection(
+                "◩",
+                "Raised and sunken edges",
+                "BorderEdgeColors overrides physical edge foregrounds while the Border foreground remains the fallback for any omitted edge.",
+                new DocExample(
+                    "Turbo Vision relief",
+                    "Raised highlights top and left; Sunken reverses the same exact white and black edge pair. Horizontal edges own corner colors.",
+                    relief,
+                    "var relief = BorderEdgeColors.Sunken(Color.Rgb(255, 255, 255), Color.Rgb(0, 0, 0));\ncontrol.Border = new Border(BorderSide.All, BorderGlyphStyle.Light, Color.Rgb(170, 170, 170), relief, Color.Transparent, TerminalAttributes.None);")));
     }
 
     private static Dock CreateFamilySample(string caption, BorderGlyphStyle glyphs) => new()
@@ -130,6 +146,27 @@ internal sealed class BorderPane: CompositeControlBase
             SemanticColor.ControlBorder,
             Color.Transparent,
             SemanticDecoration.Border),
+        Padding = new Thickness(1, 0),
+        Children = { new Text(caption) }
+    };
+
+    private static Dock CreateReliefSample(string caption, BorderEdgeColors edgeColors) => new()
+    {
+        Width = Length.Cells(38),
+        Height = Length.Cells(4),
+        Face = new Face(
+            Color.Rgb(0x00, 0x00, 0x00),
+            Color.Rgb(0xaa, 0xaa, 0xaa),
+            TerminalAttributes.None,
+            Underline.None,
+            Color.Default),
+        Border = new Border(
+            BorderSide.All,
+            BorderGlyphStyle.Light,
+            Color.Rgb(0xaa, 0xaa, 0xaa),
+            edgeColors,
+            Color.Rgb(0xaa, 0xaa, 0xaa),
+            TerminalAttributes.None),
         Padding = new Thickness(1, 0),
         Children = { new Text(caption) }
     };

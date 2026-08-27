@@ -237,13 +237,30 @@ internal static class AppearanceResolver
     {
         var foreground = Resolve(theme, border.Foreground);
         ValidatePaint(foreground, border.Foreground, "border foreground");
+        var top = ResolveBorderEdge(theme, border.EdgeColors.Top, "top");
+        var right = ResolveBorderEdge(theme, border.EdgeColors.Right, "right");
+        var bottom = ResolveBorderEdge(theme, border.EdgeColors.Bottom, "bottom");
+        var left = ResolveBorderEdge(theme, border.EdgeColors.Left, "left");
 
         return new Border(
             border.Sides,
             border.GlyphStyle,
             foreground,
+            new BorderEdgeColors(top, right, bottom, left),
             Resolve(theme, border.Background),
             Resolve(theme, border.Attributes));
+    }
+
+    private static ControlColor? ResolveBorderEdge(Theme? theme, ControlColor? source, string edge)
+    {
+        if (source is not { } authored)
+        {
+            return null;
+        }
+
+        var resolved = Resolve(theme, authored);
+        ValidatePaint(resolved, authored, $"border {edge} foreground");
+        return resolved;
     }
 
     private static Shadow ResolveShadow(Theme? theme, Shadow shadow)
@@ -317,10 +334,6 @@ internal static class AppearanceResolver
             face.Attributes.Literal,
             underline: face.Underline,
             underlineColor: face.UnderlineColor.Literal);
-        var borderStyle = new TerminalStyle(
-            border.Foreground.Literal,
-            border.Background.Literal,
-            border.Attributes.Literal);
         var shadowStyle = new TerminalStyle(
             shadow.Foreground.Literal,
             shadow.Background.Literal,
@@ -331,7 +344,6 @@ internal static class AppearanceResolver
             shadow,
             style,
             Background(face.Background.Literal),
-            borderStyle,
             Background(border.Background.Literal),
             shadowStyle,
             Background(shadow.Background.Literal));

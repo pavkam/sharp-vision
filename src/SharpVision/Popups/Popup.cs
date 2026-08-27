@@ -527,7 +527,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     {
         if (IsOpen && SurfaceBounds.Width > 0 && SurfaceBounds.Height > 0)
         {
-            DrawFrame(canvas, GetResolvedAppearance(VisualState.Normal).BorderStyle);
+            DrawFrame(canvas, this.ResolveBorderStyles(VisualState.Normal));
         }
     }
 
@@ -1131,7 +1131,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         };
     }
 
-    private void DrawFrame(TerminalCanvas canvas, TerminalStyle style)
+    private void DrawFrame(TerminalCanvas canvas, ResolvedBorderStyles styles)
     {
         var glyphs = ResolveBorderGlyphs(ActualBorder.GlyphStyle);
 
@@ -1162,7 +1162,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                         : indicatorEdge is PopupPlacement.Below && x == anchorMid
                             ? upArrow
                             : glyphs.Top;
-                canvas.DrawRune(glyph, new Point(x, SurfaceBounds.Y), style);
+                canvas.DrawRune(glyph, new Point(x, SurfaceBounds.Y), styles.Top);
             }
         }
 
@@ -1182,7 +1182,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                 canvas.DrawRune(
                     glyph,
                     new Point(x, SurfaceBounds.Bottom - 1),
-                    style);
+                    styles.Bottom);
             }
         }
 
@@ -1193,7 +1193,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                 var glyph = indicatorEdge is PopupPlacement.Right && y == anchorMid
                     ? leftArrow
                     : glyphs.Left;
-                canvas.DrawRune(glyph, new Point(SurfaceBounds.X, y), style);
+                canvas.DrawRune(glyph, new Point(SurfaceBounds.X, y), styles.Left);
             }
 
             if (frame.Right > 0 && (SurfaceBounds.Width > 1 || frame.Left == 0))
@@ -1204,7 +1204,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                 canvas.DrawRune(
                     glyph,
                     new Point(SurfaceBounds.Right - 1, y),
-                    style);
+                    styles.Right);
             }
         }
     }

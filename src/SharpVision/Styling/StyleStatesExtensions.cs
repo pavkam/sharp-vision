@@ -94,12 +94,18 @@ public static class StyleStatesExtensions
         Keep(state.Underline, normal.Underline, authored, "Face.Underline"),
         Keep(state.UnderlineColor, normal.UnderlineColor, authored, "Face.UnderlineColor"));
 
-    private static BorderOverlay DiffBorder(Border normal, Border state, IReadOnlySet<string>? authored) => new(
-        Keep(state.Sides, normal.Sides, authored, "Border.Sides"),
-        Keep(state.GlyphStyle, normal.GlyphStyle, authored, "Border.GlyphStyle"),
-        Keep(state.Foreground, normal.Foreground, authored, "Border.Foreground"),
-        Keep(state.Background, normal.Background, authored, "Border.Background"),
-        Keep(state.Attributes, normal.Attributes, authored, "Border.Attributes"));
+    private static BorderOverlay DiffBorder(Border normal, Border state, IReadOnlySet<string>? authored)
+    {
+        var sides = Keep(state.Sides, normal.Sides, authored, "Border.Sides");
+        var glyphStyle = Keep(state.GlyphStyle, normal.GlyphStyle, authored, "Border.GlyphStyle");
+        var foreground = Keep(state.Foreground, normal.Foreground, authored, "Border.Foreground");
+        var edgeColors = Keep(state.EdgeColors, normal.EdgeColors, authored, "Border.EdgeColors");
+        var background = Keep(state.Background, normal.Background, authored, "Border.Background");
+        var attributes = Keep(state.Attributes, normal.Attributes, authored, "Border.Attributes");
+        return edgeColors is { } edges
+            ? BorderOverlay.WithEdgeColors(edges, sides, glyphStyle, foreground, background, attributes)
+            : new BorderOverlay(sides, glyphStyle, foreground, background, attributes);
+    }
 
     private static ShadowOverlay DiffShadow(Shadow normal, Shadow state, IReadOnlySet<string>? authored) => new(
         Keep(state.IsVisible, normal.IsVisible, authored, "Shadow.IsVisible"),

@@ -3730,11 +3730,23 @@ namespace SharpVision.Styling
     public readonly struct Border : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Styling.Border>
     {
         public Border(SharpVision.Styling.BorderSide sides, SharpVision.Styling.BorderGlyphStyle glyphStyle, SharpVision.Styling.ControlColor foreground, SharpVision.Styling.ControlColor background, SharpVision.Styling.ControlDecoration attributes) { }
+        public Border(SharpVision.Styling.BorderSide sides, SharpVision.Styling.BorderGlyphStyle glyphStyle, SharpVision.Styling.ControlColor foreground, SharpVision.Styling.BorderEdgeColors edgeColors, SharpVision.Styling.ControlColor background, SharpVision.Styling.ControlDecoration attributes) { }
         public SharpVision.Styling.ControlDecoration Attributes { get; init; }
         public SharpVision.Styling.ControlColor Background { get; init; }
+        public SharpVision.Styling.BorderEdgeColors EdgeColors { get; init; }
         public SharpVision.Styling.ControlColor Foreground { get; init; }
         public SharpVision.Styling.BorderGlyphStyle GlyphStyle { get; init; }
         public SharpVision.Styling.BorderSide Sides { get; init; }
+    }
+    public readonly struct BorderEdgeColors : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Styling.BorderEdgeColors>
+    {
+        public BorderEdgeColors(SharpVision.Styling.ControlColor? top = default, SharpVision.Styling.ControlColor? right = default, SharpVision.Styling.ControlColor? bottom = default, SharpVision.Styling.ControlColor? left = default) { }
+        public SharpVision.Styling.ControlColor? Bottom { get; init; }
+        public SharpVision.Styling.ControlColor? Left { get; init; }
+        public SharpVision.Styling.ControlColor? Right { get; init; }
+        public SharpVision.Styling.ControlColor? Top { get; init; }
+        public static SharpVision.Styling.BorderEdgeColors Raised(SharpVision.Styling.ControlColor highlight, SharpVision.Styling.ControlColor shade) { }
+        public static SharpVision.Styling.BorderEdgeColors Sunken(SharpVision.Styling.ControlColor highlight, SharpVision.Styling.ControlColor shade) { }
     }
     public readonly struct BorderGlyphStyle : System.IEquatable<SharpVision.Styling.BorderGlyphStyle>
     {
@@ -3765,11 +3777,13 @@ namespace SharpVision.Styling
         public BorderOverlay(SharpVision.Styling.BorderSide? sides = default, SharpVision.Styling.BorderGlyphStyle? glyphStyle = default, SharpVision.Styling.ControlColor? foreground = default, SharpVision.Styling.ControlColor? background = default, SharpVision.Styling.ControlDecoration? attributes = default) { }
         public SharpVision.Styling.ControlDecoration? Attributes { get; }
         public SharpVision.Styling.ControlColor? Background { get; }
+        public SharpVision.Styling.BorderEdgeColors? EdgeColors { get; }
         public SharpVision.Styling.ControlColor? Foreground { get; }
         public SharpVision.Styling.BorderGlyphStyle? GlyphStyle { get; }
         public SharpVision.Styling.BorderSide? Sides { get; }
         public SharpVision.Styling.Border Apply(SharpVision.Styling.Border border) { }
         public SharpVision.Styling.BorderOverlay Overlay(SharpVision.Styling.BorderOverlay later) { }
+        public static SharpVision.Styling.BorderOverlay WithEdgeColors(SharpVision.Styling.BorderEdgeColors edgeColors, SharpVision.Styling.BorderSide? sides = default, SharpVision.Styling.BorderGlyphStyle? glyphStyle = default, SharpVision.Styling.ControlColor? foreground = default, SharpVision.Styling.ControlColor? background = default, SharpVision.Styling.ControlDecoration? attributes = default) { }
     }
     public enum BorderSide
     {

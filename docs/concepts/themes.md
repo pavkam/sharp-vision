@@ -226,9 +226,9 @@ tier.
 
 `popup` and `tooltip` continue to use the `window`/`windowText` pair, and both
 are framed with an all-side border for visual containment over whatever sits
-beneath them. Popup uses a rounded border; Tooltip uses the light glyph style
-instead, so a passive hint still reads as visually distinct from an interactive
-drop-down or menu even though both are now framed.
+beneath them. Popup uses a non-light square or rounded frame family; Tooltip
+uses the light glyph style instead, so a passive hint still reads as visually
+distinct from an interactive drop-down or menu even though both are now framed.
 
 Every fractional object shares the same precise shape regardless of which style
 type or state it overrides: optional `face`, `border`, and `shadow` sub-objects
@@ -271,12 +271,23 @@ take precedence over everything a theme supplies.
 
 Every bundled theme except the two zero-config defaults (`default-dark`/
 `default-light`, backing `ThemeCatalog.Dark`/`ThemeCatalog.White`) restyles
-`input`'s hover and focus cues and `window`'s frame; none of the fifteen authors
+`input`'s hover and focus cues and `window`'s frame; none of the sixteen authors
 anything beyond the six sections and the root-level `glyphs` field described
 next - there is no other section left to author. A leaf's own appearance,
 wherever it differs from its fallback's, now comes exclusively from its
 code-owned `complete` logic (semantic colors it resolves directly, such as
 `SemanticColor.Accent`) or from a locally assigned `Style`.
+
+The bundled `turbo-vision` theme is sourced from Turbo Vision's published
+`cpAppColor` BIOS palette. Its sixteen palette entries use the canonical CGA/VGA
+RGB values without interpolation. It combines the original blue application
+plane, gray raised surfaces, cyan selection, green press feedback, red access
+keys, black shadows, and line glyphs with per-edge `BorderEdgeColors`: Window,
+Popup, and Tooltip use raised white/black edges, while Input and Container use
+the inverse sunken mapping. Focus, press, disabled, and active-window states
+retain that relief while shifting the edge pair to their corresponding canonical
+palette roles. Load it with `ThemeCatalog.Load("turbo-vision")`; the Showcase
+theme picker discovers it from the same catalog automatically.
 
 ### Glyph families
 

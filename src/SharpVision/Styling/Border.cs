@@ -19,6 +19,31 @@ public readonly record struct Border: IAppearanceFragment
         BorderGlyphStyle glyphStyle,
         ControlColor foreground,
         ControlColor background,
+        ControlDecoration attributes) : this(
+            sides,
+            glyphStyle,
+            foreground,
+            default,
+            background,
+            attributes)
+    {
+    }
+
+    /// <summary>Initializes a complete border appearance with optional per-edge foregrounds.</summary>
+    /// <param name="sides">The enabled one-cell edges.</param>
+    /// <param name="glyphStyle">The complete border glyph family.</param>
+    /// <param name="foreground">The uniform foreground inherited by edges without overrides.</param>
+    /// <param name="edgeColors">The optional physical-edge foreground overrides.</param>
+    /// <param name="background">The border-cell background.</param>
+    /// <param name="attributes">The border attributes.</param>
+    /// <exception cref="ArgumentException">A foreground is transparent.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="sides"/> contains unknown flags.</exception>
+    public Border(
+        BorderSide sides,
+        BorderGlyphStyle glyphStyle,
+        ControlColor foreground,
+        BorderEdgeColors edgeColors,
+        ControlColor background,
         ControlDecoration attributes)
     {
         // Validated by parameter name here as well as in each init accessor. The accessor guards
@@ -40,6 +65,7 @@ public readonly record struct Border: IAppearanceFragment
         Sides = sides;
         GlyphStyle = glyphStyle;
         Foreground = foreground;
+        EdgeColors = edgeColors;
         Background = background;
         Attributes = attributes;
     }
@@ -83,6 +109,9 @@ public readonly record struct Border: IAppearanceFragment
             field = value;
         }
     }
+
+    /// <summary>Gets optional physical-edge foreground overrides.</summary>
+    public BorderEdgeColors EdgeColors { get; init; }
 
     /// <summary>Gets the border-cell background.</summary>
     public ControlColor Background { get; init; }

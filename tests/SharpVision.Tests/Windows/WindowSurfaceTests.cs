@@ -8,6 +8,44 @@ using System.Text.Json;
 /// <summary>Proves window focus and interaction through mounted terminal surfaces.</summary>
 public sealed class WindowSurfaceTests
 {
+    /// <summary>Verifies active Window chrome consumes Turbo Vision's focused raised-edge mapping.</summary>
+    [Fact]
+    public async Task Render_WhenTurboVisionWindowIsMounted_DrawsRaisedFrameAsync()
+    {
+        var action = new Button { Text = "Focus" };
+        var window = new Window
+        {
+            Header = "Turbo",
+            Content = action,
+            Width = Length.Cells(10),
+            Height = Length.Cells(4)
+        };
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(13, 6),
+            options,
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                surface.Application.Theme = ThemeCatalog.Load("turbo-vision");
+                surface.Application.Focus.Focus(action).ShouldBeTrue();
+            },
+            "apply Turbo Vision and activate the window");
+
+        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(Color.FromHex("#55ffff"));
+        surface.Cell(new Point(9, 0)).Style.Foreground.ShouldBe(Color.FromHex("#55ffff"));
+        surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(Color.FromHex("#55ffff"));
+        surface.Cell(new Point(9, 1)).Style.Foreground.ShouldBe(Color.FromHex("#0000aa"));
+        surface.Cell(new Point(0, 3)).Style.Foreground.ShouldBe(Color.FromHex("#0000aa"));
+        surface.Cell(new Point(9, 3)).Style.Foreground.ShouldBe(Color.FromHex("#0000aa"));
+    }
+
     /// <summary>Verifies focus and primary clicks switch Application activation without conflating keyboard focus.</summary>
     [Fact]
     public async Task Activation_WhenFocusAndWindowChromeChangeTargets_SwitchesWithoutStealingFocusAsync()

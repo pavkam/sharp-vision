@@ -11,7 +11,7 @@ public sealed class CuratedThemesTests
         "default-dark", "default-light", "tokyo-night", "tokyo-night-storm",
         "tokyo-night-day", "catppuccin-mocha", "catppuccin-latte", "gruvbox-dark",
         "gruvbox-light", "dracula", "nord", "monokai", "solarized-dark",
-        "solarized-light", "one-dark"
+        "solarized-light", "one-dark", "turbo-vision"
     ];
 
     /// <summary>Verifies the catalog contains exactly the curated slug set plus the two built-in defaults.</summary>
@@ -140,6 +140,7 @@ public sealed class CuratedThemesTests
             ["nord"] = GlyphFamily.Lines,
             ["solarized-dark"] = GlyphFamily.Lines,
             ["solarized-light"] = GlyphFamily.Lines,
+            ["turbo-vision"] = GlyphFamily.Lines,
             ["default-dark"] = GlyphFamily.Default,
             ["default-light"] = GlyphFamily.Default
         };
@@ -149,6 +150,40 @@ public sealed class CuratedThemesTests
             var theme = ThemeCatalog.Load(slug);
             theme.Glyphs.ShouldBeSameAs(expected[slug], slug);
         }
+    }
+
+    /// <summary>Verifies the Turbo Vision theme retains the canonical BIOS palette roles and
+    /// opposite raised and sunken edge mappings shown by its original window chrome.</summary>
+    [Fact]
+    public void TurboVision_WhenLoaded_UsesCanonicalPaletteAndReliefChrome()
+    {
+        var theme = ThemeCatalog.Load("turbo-vision");
+        var raised = theme.Window.Normal.Border;
+        var sunken = theme.Container.Normal.Border;
+        var focused = theme.Input.Resolve(VisualState.Focused).Border;
+        var disabled = theme.Input.Resolve(VisualState.Disabled).Border;
+        var activeWindow = theme.Window.Resolve(VisualState.FocusWithin).Border;
+
+        theme.ResolveColor(SemanticColor.Window).ShouldBe(Color.FromHex("#0000aa"));
+        theme.ResolveColor(SemanticColor.WindowSurface).ShouldBe(Color.FromHex("#aaaaaa"));
+        theme.ResolveColor(SemanticColor.SelectedControl).ShouldBe(Color.FromHex("#00aaaa"));
+        theme.ResolveColor(SemanticColor.PressedControl).ShouldBe(Color.FromHex("#00aa00"));
+        theme.ResolveColor(SemanticColor.Hotkey).ShouldBe(Color.FromHex("#aa0000"));
+        theme.Resolve(raised.EdgeColors.ResolveTop(raised.Foreground)).ShouldBe(Color.FromHex("#ffffff"));
+        theme.Resolve(raised.EdgeColors.ResolveLeft(raised.Foreground)).ShouldBe(Color.FromHex("#ffffff"));
+        theme.Resolve(raised.EdgeColors.ResolveRight(raised.Foreground)).ShouldBe(Color.FromHex("#000000"));
+        theme.Resolve(raised.EdgeColors.ResolveBottom(raised.Foreground)).ShouldBe(Color.FromHex("#000000"));
+        theme.Resolve(sunken.EdgeColors.ResolveTop(sunken.Foreground)).ShouldBe(Color.FromHex("#000000"));
+        theme.Resolve(sunken.EdgeColors.ResolveLeft(sunken.Foreground)).ShouldBe(Color.FromHex("#000000"));
+        theme.Resolve(sunken.EdgeColors.ResolveRight(sunken.Foreground)).ShouldBe(Color.FromHex("#ffffff"));
+        theme.Resolve(sunken.EdgeColors.ResolveBottom(sunken.Foreground)).ShouldBe(Color.FromHex("#ffffff"));
+        theme.Resolve(focused.EdgeColors.ResolveTop(focused.Foreground)).ShouldBe(Color.FromHex("#0000aa"));
+        theme.Resolve(focused.EdgeColors.ResolveRight(focused.Foreground)).ShouldBe(Color.FromHex("#55ffff"));
+        theme.Resolve(disabled.EdgeColors.ResolveTop(disabled.Foreground)).ShouldBe(Color.FromHex("#555555"));
+        theme.Resolve(disabled.EdgeColors.ResolveRight(disabled.Foreground)).ShouldBe(Color.FromHex("#aaaaaa"));
+        theme.Resolve(activeWindow.EdgeColors.ResolveTop(activeWindow.Foreground)).ShouldBe(Color.FromHex("#55ffff"));
+        theme.Resolve(activeWindow.EdgeColors.ResolveRight(activeWindow.Foreground)).ShouldBe(Color.FromHex("#0000aa"));
+        theme.Resolve(theme.Window.Normal.Shadow.Foreground).ShouldBe(Color.FromHex("#000000"));
     }
 
     /// <summary>Verifies every embedded theme publishes RGB colors in control state styles.</summary>
@@ -294,7 +329,7 @@ public sealed class CuratedThemesTests
 
     /// <summary>Verifies every bundled Tooltip profile is framed with a light all-side border
     /// on the same window plane Popup uses, so a passive hint stays visually contained over busy
-    /// content while remaining distinct from Popup's rounded frame by glyph style alone.</summary>
+    /// content while remaining distinct from Popup's interactive frame by glyph style alone.</summary>
     [Fact]
     public void EveryTheme_WhenTooltipIsNormal_IsLightFramedOnTheWindowPlane()
     {
@@ -316,7 +351,7 @@ public sealed class CuratedThemesTests
                 $"{slug} tooltip must use the light glyph style");
             theme.Tooltip.Normal.Border.GlyphStyle.ShouldNotBe(
                 theme.Popup.Normal.Border.GlyphStyle,
-                $"{slug} tooltip's light border must stay distinct from Popup's rounded frame");
+                $"{slug} tooltip's light border must stay distinct from Popup's interactive frame");
         }
     }
 

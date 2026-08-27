@@ -4891,7 +4891,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
         if (cache is null)
         {
-            cache = new ResolvedAppearanceCacheSlot[4];
+            cache = new ResolvedAppearanceCacheSlot[2];
             _resolvedAppearanceCache = cache;
         }
         else if (_resolvedAppearanceCacheCount == cache.Length)

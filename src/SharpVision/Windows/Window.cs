@@ -411,7 +411,8 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             return;
         }
 
-        var border = this.ResolveBorderStyle(GetAppearanceState());
+        var borderStyles = this.ResolveBorderStyles(GetAppearanceState());
+        var border = borderStyles.Top;
         var closeMark = ResolveCloseMarkStyle(border);
         var background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         var actualBorder = ActualBorder;
@@ -420,7 +421,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             Bounds,
             actualBorder.Sides,
             borderGlyphs,
-            border,
+            borderStyles,
             background);
         var closeChrome = ResolveCloseChromeBounds();
         var titleLane = ResolveTitleLane(closeChrome);

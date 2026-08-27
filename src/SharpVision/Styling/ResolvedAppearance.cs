@@ -11,7 +11,6 @@ internal readonly struct ResolvedAppearance
         Shadow shadow,
         TerminalStyle style,
         BackgroundMode backgroundMode,
-        TerminalStyle borderStyle,
         BackgroundMode borderBackgroundMode,
         TerminalStyle shadowStyle,
         BackgroundMode shadowBackgroundMode)
@@ -21,7 +20,6 @@ internal readonly struct ResolvedAppearance
         Shadow = shadow;
         Style = style;
         BackgroundMode = backgroundMode;
-        BorderStyle = borderStyle;
         BorderBackgroundMode = borderBackgroundMode;
         ShadowStyle = shadowStyle;
         ShadowBackgroundMode = shadowBackgroundMode;
@@ -36,8 +34,6 @@ internal readonly struct ResolvedAppearance
     internal TerminalStyle Style { get; }
 
     internal BackgroundMode BackgroundMode { get; }
-
-    internal TerminalStyle BorderStyle { get; }
 
     internal BackgroundMode BorderBackgroundMode { get; }
 
