@@ -27,6 +27,7 @@ public sealed class Renderer: IDisposable
 
     private readonly BoundedBufferWriter _buffer;
     private IGraphicsBackend? _backend;
+    private IGraphicsBackend? _pendingBackend;
     private Interpreter _interpreter;
     private readonly TimeSpan _cleanupTimeout;
     private readonly TimeProvider _timeProvider;
@@ -327,6 +328,8 @@ public sealed class Renderer: IDisposable
         Interpreter? transactionInterpreter = null;
         GraphicsBackendResult backendResult = default;
         var backendPrepared = false;
+        IGraphicsBackend? retiredBackend = null;
+        var retiredCleanupCount = 0;
         var synchronized = profile.Capabilities.SynchronizedOutput.Authoritative;
         var started = _timeProvider.GetTimestamp();
         try
@@ -337,11 +340,13 @@ public sealed class Renderer: IDisposable
             var geometryChanged = _front is { } current &&
                                   (current.Size != back.Size ||
                                    current.AmbiguousWidth != back.AmbiguousWidth);
+            var backendSwapping = _pendingBackend is not null;
             var forceFull = _invalidated ||
                             _front is null ||
                             profileChanged ||
                             cellMetricsChanged ||
-                            geometryChanged;
+                            geometryChanged ||
+                            backendSwapping;
 
             // Prepare every potentially allocating front-frame operation before I/O.
             if (_front is null ||
@@ -357,6 +362,18 @@ public sealed class Renderer: IDisposable
             }
 
             var graphicsChanged = Damage.PlacementsChanged(_front, back, forceFull);
+
+            if (backendSwapping)
+            {
+                // The retiring backend may have live, uncleared placements. Its graceful removal
+                // is prepared before it is replaced so the removal reaches this same transaction
+                // instead of being discarded along with the instance that tracks it.
+                var swappedOutBackend = _backend!;
+                retiredCleanupCount = swappedOutBackend.PrepareCleanup();
+                _backend = _pendingBackend;
+                _pendingBackend = null;
+                retiredBackend = swappedOutBackend;
+            }
 
             if (_backend is not null)
             {
@@ -376,6 +393,11 @@ public sealed class Renderer: IDisposable
                 ? new Interpreter(_limits)
                 : _interpreter;
             transactionInterpreter.BeginTransaction();
+
+            if (retiredCleanupCount != 0)
+            {
+                retiredBackend!.WriteCleanup(_buffer);
+            }
 
             if (backendResult.Changed && backendResult.Uploads != 0)
             {
@@ -402,7 +424,7 @@ public sealed class Renderer: IDisposable
                 _backend!.WriteRemovals(_buffer);
             }
 
-            if (_buffer.WrittenCount == 0)
+            if (_buffer.WrittenCount == 0 && retiredBackend is null)
             {
                 if (backendPrepared)
                 {
@@ -450,6 +472,7 @@ public sealed class Renderer: IDisposable
                 replacement,
                 encoded,
                 backendPrepared,
+                retiredBackend,
                 synchronized,
                 started,
                 cancellationToken);
@@ -466,6 +489,17 @@ public sealed class Renderer: IDisposable
             {
                 _invalidated = true;
                 _backend!.Invalidate();
+            }
+
+            if (retiredBackend is not null)
+            {
+                // The swap never reached a successfully flushed frame. Undo it so the retiring
+                // backend keeps handling frames and the upgrade is retried on the next render,
+                // instead of silently losing the pending backend or leaking the retired one.
+                retiredBackend.Invalidate();
+                _pendingBackend = _backend;
+                _backend = retiredBackend;
+                _invalidated = true;
             }
 
             replacement?.Dispose();
@@ -621,6 +655,7 @@ public sealed class Renderer: IDisposable
         Frame? replacement,
         EncodeResult encoded,
         bool backendPrepared,
+        IGraphicsBackend? retiredBackend,
         bool synchronized,
         long started,
         CancellationToken cancellationToken)
@@ -637,6 +672,11 @@ public sealed class Renderer: IDisposable
                 _backend!.Commit();
             }
 
+            // The retired backend's graceful removal reached the terminal in this same flush;
+            // close its cleanup transaction before this frame is considered fully committed.
+            // CommitCleanup is non-throwing by the same contract as Commit.
+            retiredBackend?.CommitCleanup();
+
             CommitFront(back, ref replacement);
 
             _profile = profile;
@@ -644,19 +684,45 @@ public sealed class Renderer: IDisposable
             transactionInterpreter.CommitTransaction();
             _interpreter = transactionInterpreter;
             _invalidated = false;
-            return new RenderMetrics(
+            var metrics = new RenderMetrics(
                 _buffer.WrittenCount,
                 1,
                 encoded.Spans,
                 encoded.Full,
                 _timeProvider.GetElapsedTime(started),
                 LastGraphicsDiagnostics);
+
+            if (retiredBackend is not null)
+            {
+                // This frame is already fully committed; a disposal failure here is a secondary
+                // diagnostic, not a reason to unwind a swap that already reached the terminal.
+                try
+                {
+                    retiredBackend.Dispose();
+                }
+                catch (Exception disposeException)
+                {
+                    LastCleanupException ??= disposeException;
+                }
+            }
+
+            return metrics;
         }
         catch (Exception exception)
         {
             transactionInterpreter.RollbackTransaction();
             _invalidated = true;
             _backend?.Invalidate();
+
+            if (retiredBackend is not null)
+            {
+                // The write or flush never completed, so the retired backend's removal may not
+                // have reached the terminal. Undo the swap so the next render retries it instead
+                // of losing the pending upgrade or leaking the retired instance.
+                retiredBackend.Invalidate();
+                _pendingBackend = _backend;
+                _backend = retiredBackend;
+            }
 
             if (synchronized)
             {
@@ -689,7 +755,7 @@ public sealed class Renderer: IDisposable
     }
 
     /// <summary>Selects a graphics backend from republished capability evidence when none was
-    /// previously chosen.</summary>
+    /// previously chosen, or stages an upgrade when a strictly better protocol is now proven.</summary>
     /// <remarks>
     /// <para>
     /// A host that reconstructs its renderer through the capability-driven constructor selects a
@@ -699,42 +765,44 @@ public sealed class Renderer: IDisposable
     /// reconsiders that choice later - even after a delayed authoritative confirmation (e.g. a
     /// late DA2/Kitty query response) proves support the constructor could not yet see. This method
     /// closes that gap by re-running <see cref="GraphicsBackendSelector.Create"/> against the new
-    /// evidence, but only when no backend exists yet.
+    /// evidence.
     /// </para>
     /// <para>
-    /// A backend that already exists is intentionally left untouched. Both shipped backends
-    /// (<c>KittyGraphicsBackend</c>, <c>NonRetainedGraphicsBackend</c>) already re-check
-    /// <see cref="GraphicsBackendSelector.Authoritative"/> against the live profile on every
+    /// A backend that already exists is left untouched by this method except for one case: a
+    /// republish that newly proves Kitty support while a lesser, non-retained protocol (sixel or
+    /// iTerm2) is currently active. Both shipped backends already re-check <see
+    /// cref="GraphicsBackendSelector.Authoritative"/> against the live profile on every
     /// <c>Prepare</c> call and gracefully emit removal commands for previously placed content when
-    /// their own protocol is revoked - disposing and replacing that instance here would discard its
-    /// placement-tracking state before it gets a chance to run that self-cleanup, silently dropping
-    /// the removal. Recovering from a downgrade to a *different* still-supported protocol (e.g.
-    /// Kitty revoked while sixel remains) is not handled by this method.
+    /// their own protocol is revoked, so most republishes require no action here - disposing and
+    /// replacing an instance that is still authoritative (or that is simply no longer authoritative,
+    /// which is exactly the self-cleanup case above) would discard its placement-tracking state
+    /// before it gets a chance to run that self-cleanup, silently dropping the removal. A genuine
+    /// upgrade to Kitty is instead staged in a pending slot: <see cref="RenderAsync(Frame,ITransport,TerminalProfile,CellMetrics?,CancellationToken)"/>
+    /// drains the retiring backend's own placements through the same graceful cleanup path before
+    /// swapping it out, so nothing is lost. Recovering from a downgrade to a different still-supported
+    /// protocol (e.g. Kitty revoked while sixel remains) is not handled by this method - the existing
+    /// per-frame self-cleanup already covers a downgrade to nothing.
     /// </para>
     /// <para>
     /// This does not by itself force a redraw. A caller that selects a backend for the first time
     /// this way is responsible for invalidating the renderer (directly, or by deferring to the next
     /// render boundary) so the next frame is encoded against it instead of continuing to emit only
-    /// the ordinary-cell fallback.
+    /// the ordinary-cell fallback. A staged upgrade forces its own full redraw automatically once
+    /// applied.
     /// </para>
     /// </remarks>
     /// <param name="capabilities">The non-null re-negotiated capability evidence.</param>
     /// <param name="route">The same multiplexer route originally supplied to this renderer, if any.</param>
     /// <returns>
-    /// <see langword="true"/> when a backend was newly selected because none existed before;
-    /// <see langword="false"/> when a backend already existed (left untouched - see remarks) or a
-    /// render was currently in progress.
+    /// <see langword="true"/> when a backend was newly selected because none existed before, or an
+    /// upgrade was staged (or was already staged) for the next render; <see langword="false"/> when
+    /// the existing backend is left untouched or a render was currently in progress.
     /// </returns>
     /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> is null.</exception>
     /// <exception cref="ObjectDisposedException">The renderer is disposed.</exception>
     public bool UpdateGraphicsBackend(TerminalCapabilities capabilities, MultiplexerRoute? route)
     {
         ArgumentNullException.ThrowIfNull(capabilities);
-
-        if (_backend is not null)
-        {
-            return false;
-        }
 
         if (Interlocked.CompareExchange(ref _rendering, 1, 0) != 0)
         {
@@ -744,19 +812,49 @@ public sealed class Renderer: IDisposable
         try
         {
             // Disposal is checked only after the claim, mirroring RenderAsync: a Dispose() that
-            // fully completes in the window between the outer null check and this claim would
+            // fully completes in the window between an outer null check and this claim would
             // otherwise leave _backend null but _disposed set, and an unguarded ThrowIfDisposed()
             // here would already have passed - resurrecting a backend onto an already-torn-down
             // renderer that no later Dispose() call would ever release.
             ThrowIfDisposed();
-            _backend ??= GraphicsBackendSelector.Create(capabilities, route);
+
+            if (_backend is null)
+            {
+                _backend = GraphicsBackendSelector.Create(capabilities, route);
+                return _backend is not null;
+            }
+
+            if (_pendingBackend is not null)
+            {
+                // An upgrade is already staged for the next render; nothing to reconsider yet.
+                return true;
+            }
+
+            if (_backend is KittyGraphicsBackend)
+            {
+                // Kitty is the highest-priority protocol GraphicsBackendSelector.Create can ever
+                // select, so no republish can prove a strictly better backend than this one.
+                return false;
+            }
+
+            var candidate = GraphicsBackendSelector.Create(capabilities, route);
+
+            if (candidate is not KittyGraphicsBackend)
+            {
+                // Either nothing is newly authorized, or the current non-retained backend already
+                // covers it (it re-checks Authoritative live on every Prepare). A same-or-lesser
+                // candidate carries no state worth keeping, so it is disposed immediately.
+                candidate?.Dispose();
+                return false;
+            }
+
+            _pendingBackend = candidate;
+            return true;
         }
         finally
         {
             Volatile.Write(ref _rendering, 0);
         }
-
-        return _backend is not null;
     }
 
     private void DisposeOwnedState()
@@ -770,7 +868,16 @@ public sealed class Renderer: IDisposable
         }
         finally
         {
-            _buffer.Dispose();
+            try
+            {
+                // A staged upgrade that never reached a render is otherwise never disposed.
+                _pendingBackend?.Dispose();
+            }
+            finally
+            {
+                _pendingBackend = null;
+                _buffer.Dispose();
+            }
         }
     }
 

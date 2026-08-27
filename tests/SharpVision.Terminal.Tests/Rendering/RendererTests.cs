@@ -816,6 +816,63 @@ public sealed class RendererTests
         Encoding.UTF8.GetString(transport.Writes[^1]).ShouldContain("<place>");
     }
 
+    /// <summary>Verifies a republish that proves Kitty support over an already-active, lesser
+    /// backend gracefully drains the retiring backend's placements and swaps in Kitty output on the
+    /// very render that performs the upgrade, rather than staying frozen on the inferior protocol
+    /// for the rest of the session.</summary>
+    [Fact]
+    public async Task UpdateGraphicsBackend_WhenKittyBecomesAuthoritativeOverExistingBackend_SwapsGracefullyAsync()
+    {
+        var retiringBackend = new FakeGraphicsBackend();
+        using Renderer renderer = new(retiringBackend);
+        await using FakeTransport transport = new();
+        using var before = CreateGraphicsFrame(withImage: true);
+
+        _ = await renderer.RenderAsync(
+            before,
+            transport,
+            TerminalCapabilities.Conservative,
+            TestContext.Current.CancellationToken);
+
+        Encoding.UTF8.GetString(transport.Writes.Single()).ShouldContain("<place>");
+
+        var kittyCapabilities = TerminalCapabilities.Conservative with
+        {
+            KittyGraphics = new Feature(CapabilitySupport.Supported, Origin.Query)
+        };
+
+        var staged = renderer.UpdateGraphicsBackend(kittyCapabilities, route: null);
+
+        // The upgrade is only staged, not applied yet - the retiring backend keeps ownership of
+        // its placement-tracking state until a render can gracefully drain it.
+        staged.ShouldBeTrue();
+        retiringBackend.DisposeCount.ShouldBe(0);
+        retiringBackend.CleanupPrepareCount.ShouldBe(0);
+
+        using var after = CreateGraphicsFrame(withImage: true, "other");
+        _ = await renderer.RenderAsync(
+            after,
+            transport,
+            kittyCapabilities,
+            TestContext.Current.CancellationToken);
+
+        var output = Encoding.UTF8.GetString(transport.Writes[^1]);
+
+        // (a) The retiring backend's own graceful removal reached the terminal in the same render
+        // that performs the swap.
+        output.ShouldContain("<cleanup>");
+        retiringBackend.CleanupPrepareCount.ShouldBe(1);
+        retiringBackend.CleanupCommitCount.ShouldBe(1);
+        retiringBackend.DisposeCount.ShouldBe(1);
+
+        // (b) The newly authorized Kitty backend is active and already producing output on that
+        // same render.
+        output.ShouldContain("_G");
+
+        // A further republish has nothing left to upgrade to.
+        renderer.UpdateGraphicsBackend(kittyCapabilities, route: null).ShouldBeFalse();
+    }
+
     /// <summary>Verifies capability evidence actually reaching Kitty authorization activates the protocol.</summary>
     [Fact]
     public async Task UpdateGraphicsBackend_WhenCapabilitiesGainKittySupport_EmitsKittyGraphicsAsync()
