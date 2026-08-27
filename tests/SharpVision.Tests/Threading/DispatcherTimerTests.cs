@@ -258,6 +258,182 @@ public sealed class DispatcherTimerTests
         timer.Dispose();
     }
 
+    /// <summary>Verifies a new generation's first elapsed signal still produces a tick even when
+    /// the previous generation's own <c>Deliver</c> callback is still queued on the dispatcher
+    /// when the <see cref="DispatcherTimer.Interval"/> setter arms that new generation; the
+    /// pending latch must be reset at the arm point, not only once the stale delivery drains.</summary>
+    [Fact]
+    public async Task Interval_WhenNewGenerationElapsesBeforeStaleDeliveryDrains_DoesNotDropFirstTickAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        await using var dispatcher = Dispatcher.Start(timeProvider: clock);
+        var ticks = 0;
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new();
+        var (timer, gen0) = await dispatcher.InvokeAsync(
+            () =>
+            {
+                var value = new DispatcherTimer(dispatcher, TimeSpan.FromMilliseconds(200));
+                value.Tick += (_, _) => ticks++;
+                value.Start();
+                return (value, value.Generation);
+            },
+            TestContext.Current.CancellationToken);
+        dispatcher.Post(() =>
+        {
+            _ = entered.TrySetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Queue the interval change first so it drains before the stale Deliver queued next.
+        dispatcher.Post(() =>
+        {
+            timer.Interval = TimeSpan.FromMilliseconds(50);
+
+            // Models the new generation's own clock elapsing immediately, before the stale
+            // Deliver(gen0) queued behind this very callback has drained.
+            timer.SimulateElapsedForGeneration(timer.Generation);
+        });
+
+        // Act
+
+        // Models the old generation's clock firing while the dispatcher is still busy: latches
+        // `_pending` and queues Deliver(gen0) behind the interval-change callback above.
+        timer.SimulateElapsedForGeneration(gen0);
+        release.Set();
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        ticks.ShouldBe(1);
+        timer.Dispose();
+    }
+
+    /// <summary>Verifies this is specific to the race, not a general property of interval
+    /// changes: with no racing stale <c>Deliver</c>, a single elapsed signal after an interval
+    /// change produces exactly one tick immediately.</summary>
+    [Fact]
+    public async Task Interval_WhenChangedWithNoRace_OneElapsedSignalProducesOneTickAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        await using var dispatcher = Dispatcher.Start(timeProvider: clock);
+        var ticks = 0;
+        var timer = await dispatcher.InvokeAsync(
+            () =>
+            {
+                var value = new DispatcherTimer(dispatcher, TimeSpan.FromMilliseconds(200));
+                value.Tick += (_, _) => ticks++;
+                value.Start();
+                return value;
+            },
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                timer.Interval = TimeSpan.FromMilliseconds(50);
+                timer.SimulateElapsedForGeneration(timer.Generation);
+            },
+            TestContext.Current.CancellationToken);
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        ticks.ShouldBe(1);
+        timer.Dispose();
+    }
+
+    /// <summary>Verifies the same drop cannot occur across <see cref="DispatcherTimer.Stop"/>
+    /// immediately followed by <see cref="DispatcherTimer.Start"/>: a still-queued stale
+    /// <c>Deliver</c> from the generation that was running before <c>Stop</c> must not survive
+    /// to drop the freshly restarted generation's first elapsed signal.</summary>
+    [Fact]
+    public async Task Start_WhenNewGenerationElapsesAfterStopBeforeStaleDeliveryDrains_DoesNotDropFirstTickAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        await using var dispatcher = Dispatcher.Start(timeProvider: clock);
+        var ticks = 0;
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new();
+        var (timer, gen0) = await dispatcher.InvokeAsync(
+            () =>
+            {
+                var value = new DispatcherTimer(dispatcher, TimeSpan.FromMilliseconds(200));
+                value.Tick += (_, _) => ticks++;
+                value.Start();
+                return (value, value.Generation);
+            },
+            TestContext.Current.CancellationToken);
+        dispatcher.Post(() =>
+        {
+            _ = entered.TrySetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Queue the stop/restart first so it drains before the stale Deliver queued next.
+        dispatcher.Post(() =>
+        {
+            timer.Stop();
+            timer.Start();
+
+            // Models the freshly restarted generation's own clock elapsing immediately, before
+            // the stale Deliver(gen0) queued behind this very callback has drained.
+            timer.SimulateElapsedForGeneration(timer.Generation);
+        });
+
+        // Act
+
+        // Models the original generation's clock firing while the dispatcher is still busy:
+        // latches `_pending` and queues Deliver(gen0) behind the stop/restart callback above.
+        timer.SimulateElapsedForGeneration(gen0);
+        release.Set();
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        ticks.ShouldBe(1);
+        timer.Dispose();
+    }
+
+    /// <summary>Verifies this is specific to the race, not a general property of restarting:
+    /// with no racing stale <c>Deliver</c>, a single elapsed signal after <c>Stop</c> immediately
+    /// followed by <c>Start</c> produces exactly one tick immediately.</summary>
+    [Fact]
+    public async Task StopThenStart_WhenRestartedWithNoRace_OneElapsedSignalProducesOneTickAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        await using var dispatcher = Dispatcher.Start(timeProvider: clock);
+        var ticks = 0;
+        var timer = await dispatcher.InvokeAsync(
+            () =>
+            {
+                var value = new DispatcherTimer(dispatcher, TimeSpan.FromMilliseconds(200));
+                value.Tick += (_, _) => ticks++;
+                value.Start();
+                return value;
+            },
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                timer.Stop();
+                timer.Start();
+                timer.SimulateElapsedForGeneration(timer.Generation);
+            },
+            TestContext.Current.CancellationToken);
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        ticks.ShouldBe(1);
+        timer.Dispose();
+    }
+
     /// <summary>Verifies tick handler failures use ordinary dispatcher reporting.</summary>
     [Fact]
     public async Task Tick_WhenHandlerThrows_UsesDispatcherUnhandledPolicyAsync()

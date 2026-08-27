@@ -97,6 +97,7 @@ public sealed class DispatcherTimer: IDisposable
 
                 _interval = value;
                 _generation = checked(_generation + 1);
+                _ = Interlocked.Exchange(ref _pending, 0);
 
                 if (_isRunning)
                 {
@@ -137,6 +138,7 @@ public sealed class DispatcherTimer: IDisposable
             }
 
             _generation = checked(_generation + 1);
+            _ = Interlocked.Exchange(ref _pending, 0);
 
             var previous = _timer;
             _timer = CreateArmedTimer(_generation, _interval, _interval);
@@ -163,6 +165,7 @@ public sealed class DispatcherTimer: IDisposable
             }
 
             _generation = checked(_generation + 1);
+            _ = Interlocked.Exchange(ref _pending, 0);
 
             var previous = _timer;
             _timer = CreateArmedTimer(_generation, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
