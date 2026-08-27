@@ -89,6 +89,38 @@ public sealed class ThemeTests
         theme.Tooltip.ShouldBeSameAs(theme.Tooltip);
         theme.GetWindowStyleSet().ShouldBeSameAs(theme.GetWindowStyleSet());
     }
+
+    /// <summary>Verifies a derived style-set cache entry's first concurrent access is single-flight:
+    /// every racing task observes the exact same published instance rather than a value-equal but
+    /// separately built one. <c>ConcurrentDictionary.GetOrAdd</c> does not guarantee its factory
+    /// runs only once under contention, so without the <c>Lazy&lt;T&gt;</c> wrapper this could
+    /// publish distinct instances built by different racers.</summary>
+    [Fact]
+    public async Task GetInteractiveControlStyleSet_WhenFirstAccessedConcurrently_PublishesOneInstanceAsync()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create());
+        const int racerCount = 16;
+        using var start = new Barrier(racerCount + 1);
+
+        var racers = Enumerable.Range(0, racerCount)
+            .Select(_1 => Task.Run(
+                () =>
+                {
+                    _ = start.SignalAndWait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+                    return theme.GetInteractiveControlStyleSet();
+                },
+                TestContext.Current.CancellationToken))
+            .ToArray();
+        _ = start.SignalAndWait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        var results = await Task.WhenAll(racers);
+
+        foreach (var result in results)
+        {
+            result.ShouldBeSameAs(results[0]);
+        }
+    }
+
     /// <summary>Verifies an undefined color-scheme value is rejected before publication.</summary>
     [Fact]
     public void Constructor_WhenColorSchemeIsUndefined_ThrowsArgumentOutOfRangeException()

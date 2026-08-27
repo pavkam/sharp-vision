@@ -736,8 +736,8 @@ public sealed class Theme
     ];
 
     private readonly ConcurrentDictionary<string, Dictionary<string, Dictionary<string, JsonElement>>?> _rawStyleSections = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<(Type, string, ControlStyle), object> _styleSets = new();
-    private readonly ConcurrentDictionary<string, AppearanceStates> _appearanceSets = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<(Type, string, ControlStyle), Lazy<object>> _styleSets = new();
+    private readonly ConcurrentDictionary<string, Lazy<AppearanceStates>> _appearanceSets = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<Type, object> _programmaticStyleSets = new();
 
     // Raw per-state JSON override dictionaries for one styles.* key, with no code-owned default
@@ -824,8 +824,10 @@ public sealed class Theme
 
         return (StyleStates<TStyle>) _styleSets.GetOrAdd(
             (typeof(TStyle), key, codeOwnedDefault),
-            static (_, state) => state.theme.BuildRootStyleSet(state.key, state.codeOwnedDefault),
-            (theme: this, key, codeOwnedDefault));
+            static (_, state) => new Lazy<object>(
+                () => state.theme.BuildRootStyleSet(state.key, state.codeOwnedDefault),
+                LazyThreadSafetyMode.ExecutionAndPublication),
+            (theme: this, key, codeOwnedDefault)).Value;
     }
 
     /// <summary>Compiles every closed root style section before a loader publishes this Theme.</summary>
@@ -864,8 +866,10 @@ public sealed class Theme
     public StyleStates<ControlStyle> GetInteractiveControlStyleSet() =>
         (StyleStates<ControlStyle>) _styleSets.GetOrAdd(
             (typeof(ControlStyle), "$interactiveControl", ControlStyle.Default),
-            static (_, theme) => theme.BuildInteractiveStyleSet(theme.GetStyleSet(ControlStyle.Default), preservePointerBackground: false),
-            this);
+            static (_, theme) => new Lazy<object>(
+                () => theme.BuildInteractiveStyleSet(theme.GetStyleSet(ControlStyle.Default), preservePointerBackground: false),
+                LazyThreadSafetyMode.ExecutionAndPublication),
+            this).Value;
 
     /// <summary>Gets Input's interaction state deltas rebased onto the passive control's own
     /// borderless Normal geometry, the same as <see cref="GetInteractiveControlStyleSet"/> except
@@ -883,8 +887,10 @@ public sealed class Theme
     public StyleStates<ControlStyle> GetInteractiveRowStyleSet() =>
         (StyleStates<ControlStyle>) _styleSets.GetOrAdd(
             (typeof(ControlStyle), "$interactiveRow", ControlStyle.Default),
-            static (_, theme) => theme.BuildInteractiveStyleSet(theme.GetStyleSet(ControlStyle.Default), preservePointerBackground: true),
-            this);
+            static (_, theme) => new Lazy<object>(
+                () => theme.BuildInteractiveStyleSet(theme.GetStyleSet(ControlStyle.Default), preservePointerBackground: true),
+                LazyThreadSafetyMode.ExecutionAndPublication),
+            this).Value;
 
     private StyleStates<TGeometry> BuildInteractiveStyleSet<TGeometry>(
         StyleStates<TGeometry> geometry,
@@ -999,8 +1005,10 @@ public sealed class Theme
     public StyleStates<ContainerStyle> GetFocusableContainerStyleSet() =>
         (StyleStates<ContainerStyle>) _styleSets.GetOrAdd(
             (typeof(ContainerStyle), "$focusableContainer", ContainerStyle.Default),
-            static (_, theme) => theme.BuildFocusableStyleSet(theme.GetStyleSet(ContainerStyle.Default)),
-            this);
+            static (_, theme) => new Lazy<object>(
+                () => theme.BuildFocusableStyleSet(theme.GetStyleSet(ContainerStyle.Default)),
+                LazyThreadSafetyMode.ExecutionAndPublication),
+            this).Value;
 
     /// <summary>Gets only the Focused/FocusWithin state deltas rebased onto the passive control's
     /// own borderless Normal geometry, leaving every other state exactly as the passive "control"
@@ -1023,8 +1031,10 @@ public sealed class Theme
     public StyleStates<ControlStyle> GetFocusableControlStyleSet() =>
         (StyleStates<ControlStyle>) _styleSets.GetOrAdd(
             (typeof(ControlStyle), "$focusableControl", ControlStyle.Default),
-            static (_, theme) => theme.BuildFocusableStyleSet(theme.GetStyleSet(ControlStyle.Default)),
-            this);
+            static (_, theme) => new Lazy<object>(
+                () => theme.BuildFocusableStyleSet(theme.GetStyleSet(ControlStyle.Default)),
+                LazyThreadSafetyMode.ExecutionAndPublication),
+            this).Value;
 
     private StyleStates<TGeometry> BuildFocusableStyleSet<TGeometry>(StyleStates<TGeometry> geometry)
         where TGeometry : ControlStyle
@@ -1385,8 +1395,10 @@ public sealed class Theme
     internal StyleStates<WindowStyle> GetWindowStyleSet() =>
         (StyleStates<WindowStyle>) _styleSets.GetOrAdd(
             (typeof(WindowStyle), "$windowWithFocusWithin", WindowStyle.Default),
-            static (_, theme) => theme.BuildWindowStyleSet(),
-            this);
+            static (_, theme) => new Lazy<object>(
+                () => theme.BuildWindowStyleSet(),
+                LazyThreadSafetyMode.ExecutionAndPublication),
+            this).Value;
 
     private StyleStates<WindowStyle> BuildWindowStyleSet()
     {
@@ -1418,8 +1430,10 @@ public sealed class Theme
         where TStyle : ControlStyle =>
         _appearanceSets.GetOrAdd(
             key,
-            static (_, state) => state.resolve(state.theme).ToAppearanceStates(),
-            (theme: this, resolve));
+            static (_, state) => new Lazy<AppearanceStates>(
+                () => state.resolve(state.theme).ToAppearanceStates(),
+                LazyThreadSafetyMode.ExecutionAndPublication),
+            (theme: this, resolve)).Value;
 
     internal Color Resolve(ControlColor value) => value.IsLiteral
         ? value.Literal
