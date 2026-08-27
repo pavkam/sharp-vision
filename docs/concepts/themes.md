@@ -95,6 +95,23 @@ visible composite shadow. A control with nothing to add beyond one of these six
 uses that type directly - there is no requirement to declare a new type per
 control.
 
+```mermaid
+classDiagram
+    ControlStyle <|-- InputStyle
+    ControlStyle <|-- ContainerStyle
+    ControlStyle <|-- WindowStyle
+    ControlStyle <|-- PopupStyle
+    ControlStyle <|-- TooltipStyle
+    ButtonStyle ..> InputStyle : falls back to
+    CheckBoxStyle ..> InputStyle : falls back to
+    ChartStyle ..> ControlStyle : falls back to
+    JsonViewStyle ..> ContainerStyle : falls back to
+    ToastStyle ..> PopupStyle : falls back to
+    MessageBoxStyle ..> WindowStyle : falls back to
+    SaveFileDialogStyle ..> WindowStyle : falls back to
+    FilePickerDialogStyle ..> WindowStyle : falls back to
+```
+
 `styles` is a flat JSON object closed to exactly six top-level keys - one per
 well-known style type: `control`, `input`, `container`, `window`, `popup`,
 `tooltip`. Nothing else is accepted: not a leaf control's own key, not a
