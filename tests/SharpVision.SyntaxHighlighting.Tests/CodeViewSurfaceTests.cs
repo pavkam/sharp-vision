@@ -1512,6 +1512,55 @@ public sealed class CodeViewSurfaceTests
         view.HorizontalOffset.ShouldBe(0);
     }
 
+    /// <summary>Verifies <see cref="Overflow.Clip"/> keeps a long line to exactly one presentation
+    /// row - unlike <see cref="Overflow.Wrap"/>/<see cref="Overflow.WrapAnywhere"/>, which add rows
+    /// - disables the horizontal extent the same as every other non-<see cref="Overflow.Visible"/>
+    /// value, and renders the hard-clipped prefix of the line with no ellipsis glyph anywhere in the
+    /// row.</summary>
+    [Fact]
+    public async Task Overflow_WhenSetToClip_KeepsOnePresentationRowAndRendersClippedPrefixWithNoEllipsisAsync()
+    {
+        var view = new CodeView { Code = new string('a', 40), Overflow = Overflow.Clip, IsFoldingEnabled = false };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(10, 5),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        view.Extent.Height.ShouldBe(1);
+        view.Extent.Width.ShouldBe(view.Viewport.Width);
+
+        for (var x = 0; x < view.Viewport.Width; x++)
+        {
+            surface.Cell(new Point(x, 0)).Text.ShouldBe("a");
+        }
+    }
+
+    /// <summary>Verifies <see cref="Overflow.Ellipsis"/> keeps a long line to exactly one
+    /// presentation row, disables the horizontal extent the same as <see cref="Overflow.Clip"/>, and
+    /// truncates the rendered row with the shared <see cref="ControlGlyphs.Text"/> ellipsis glyph in
+    /// its final visible cell rather than a literal source character.</summary>
+    [Fact]
+    public async Task Overflow_WhenSetToEllipsis_KeepsOnePresentationRowAndRendersTrailingEllipsisAsync()
+    {
+        var view = new CodeView { Code = new string('a', 40), Overflow = Overflow.Ellipsis, IsFoldingEnabled = false };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(10, 5),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        view.Extent.Height.ShouldBe(1);
+        view.Extent.Width.ShouldBe(view.Viewport.Width);
+
+        for (var x = 0; x < view.Viewport.Width - 1; x++)
+        {
+            surface.Cell(new Point(x, 0)).Text.ShouldBe("a");
+        }
+
+        surface.Cell(new Point(view.Viewport.Width - 1, 0)).Text.ShouldBe("…");
+    }
+
     /// <summary>Verifies clicking a wrapped line's continuation row (its second or later
     /// presentation row) lands the caret on the correct logical offset - the same offset the
     /// clicked cell's own rendered character came from - rather than clamping to the first row.</summary>
