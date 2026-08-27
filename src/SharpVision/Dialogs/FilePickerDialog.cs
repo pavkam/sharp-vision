@@ -79,6 +79,26 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
         ShowHiddenText = options.ShowHiddenText;
         CancelText = options.CancelText;
         OpenText = options.OpenText;
+
+        if (options.ReadyText is { } readyText)
+        {
+            ReadyText = readyText;
+        }
+
+        if (options.LoadingText is { } loadingText)
+        {
+            LoadingText = loadingText;
+        }
+
+        if (options.CountFormat is { } countFormat)
+        {
+            CountFormat = countFormat;
+        }
+
+        if (options.SelectionFormat is { } selectionFormat)
+        {
+            SelectionFormat = selectionFormat;
+        }
     }
 
     /// <summary>Gets the selected canonical file paths in stable display order.</summary>

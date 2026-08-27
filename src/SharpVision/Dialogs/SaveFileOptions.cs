@@ -201,6 +201,18 @@ public sealed class SaveFileOptions
         }
     } = "&Cancel";
 
+    /// <summary>Gets or sets the status text used while no request is outstanding, or null to let
+    /// the dialog use its own default.</summary>
+    public string? ReadyText { get; set; }
+
+    /// <summary>Gets or sets the status text shown while a directory request is outstanding, or
+    /// null to let the dialog use its own default.</summary>
+    public string? LoadingText { get; set; }
+
+    /// <summary>Gets or sets the folder/file count formatter used to build the status text after a
+    /// successful directory load, or null to let the dialog use its own default.</summary>
+    public Func<int, int, string>? CountFormat { get; set; }
+
     /// <summary>Gets or sets the non-null caption for the Save action.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
     public string SaveText
@@ -248,6 +260,11 @@ public sealed class SaveFileOptions
             field = value;
         }
     } = "Confirm Save As";
+
+    /// <summary>Gets or sets the formatter that builds the overwrite-confirmation message from the
+    /// existing file's display name, or null to let the dialog use its own default. Supplied
+    /// structurally rather than through unchecked caller <c>string.Format</c> composition.</summary>
+    public Func<string, string>? OverwriteMessageFormat { get; set; }
 
     /// <summary>Gets or sets the non-null caption for the overwrite-confirmation Yes action.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
@@ -300,10 +317,14 @@ public sealed class SaveFileOptions
         DirectoryPlaceholder = DirectoryPlaceholder,
         ShowHiddenText = ShowHiddenText,
         CancelText = CancelText,
+        ReadyText = ReadyText,
+        LoadingText = LoadingText,
+        CountFormat = CountFormat,
         SaveText = SaveText,
         FileNameLabel = FileNameLabel,
         FileNamePlaceholder = FileNamePlaceholder,
         OverwriteTitle = OverwriteTitle,
+        OverwriteMessageFormat = OverwriteMessageFormat,
         OverwriteYesText = OverwriteYesText,
         OverwriteNoText = OverwriteNoText,
         OverwriteStyle = OverwriteStyle

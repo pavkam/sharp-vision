@@ -255,17 +255,13 @@ affect the save dialog's own frame.
 caption, label, or placeholder in place — no control is ever recreated.
 `OverwriteTitle`, `OverwriteMessageFormat`, `OverwriteYesText`, and
 `OverwriteNoText` configure the nested confirmation MessageBox through
-[`MessageBoxOptions`](message-box.md#api) each time it is shown; `ReadyText` and
-`LoadingText` (inherited) set the idle and in-flight status wording. Every
-setter validates non-null before mutating. `SaveFileOptions` carries the caption
-texts and the overwrite title, captions, and style to `ShowAsync`.
-
-> [!IMPORTANT]
->
-> **Implementation gap:** `SaveFileOptions` does not carry
-> `OverwriteMessageFormat`, `ReadyText`, or `LoadingText`, so a `ShowAsync`
-> caller cannot localize the overwrite question or the status wording — only a
-> directly constructed dialog can set them today.
+[`MessageBoxOptions`](message-box.md#api) each time it is shown; `ReadyText`,
+`LoadingText`, and `CountFormat` (inherited) set the idle, in-flight, and
+entry-count status wording. Every setter validates non-null before mutating.
+`SaveFileOptions` carries the caption texts, `CountFormat`, `ReadyText`,
+`LoadingText`, and the overwrite title, message formatter, captions, and style
+to `ShowAsync` — a null option value leaves the constructed dialog's own
+default in place.
 
 ## Example
 

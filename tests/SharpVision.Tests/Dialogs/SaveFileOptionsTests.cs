@@ -56,6 +56,10 @@ public sealed class SaveFileOptionsTests
         options.OverwriteTitle.ShouldBe("Confirm Save As");
         options.OverwriteYesText.ShouldBe("&Yes");
         options.OverwriteNoText.ShouldBe("&No");
+        options.ReadyText.ShouldBeNull();
+        options.LoadingText.ShouldBeNull();
+        options.CountFormat.ShouldBeNull();
+        options.OverwriteMessageFormat.ShouldBeNull();
     }
 
     /// <summary>Verifies invalid option assignments leave the previously committed values intact.</summary>
@@ -140,5 +144,34 @@ public sealed class SaveFileOptionsTests
         options.ShowHidden.ShouldBeTrue();
         options.Style.ShouldBe(style);
         options.OverwriteStyle.ShouldBe(overwriteStyle);
+    }
+
+    /// <summary>Verifies the status texts and formatters round-trip through their own getters and
+    /// survive Copy(), matching how ShowAsync's copied snapshot must carry them to the constructed
+    /// dialog.</summary>
+    [Fact]
+    public void Properties_WhenStatusTextsAndFormattersAreSet_RoundTripAndSurviveCopy()
+    {
+        string CountFormat(int folders, int files) => $"{folders}f/{files}d";
+        string OverwriteMessageFormat(string fileName) => $"Replace {fileName}?";
+
+        var options = new SaveFileOptions
+        {
+            ReadyText = "Listo",
+            LoadingText = "Cargando…",
+            CountFormat = CountFormat,
+            OverwriteMessageFormat = OverwriteMessageFormat
+        };
+
+        var copy = options.Copy();
+
+        options.ReadyText.ShouldBe("Listo");
+        options.LoadingText.ShouldBe("Cargando…");
+        options.CountFormat.ShouldBe((Func<int, int, string>) CountFormat);
+        options.OverwriteMessageFormat.ShouldBe((Func<string, string>) OverwriteMessageFormat);
+        copy.ReadyText.ShouldBe("Listo");
+        copy.LoadingText.ShouldBe("Cargando…");
+        copy.CountFormat.ShouldBe((Func<int, int, string>) CountFormat);
+        copy.OverwriteMessageFormat.ShouldBe((Func<string, string>) OverwriteMessageFormat);
     }
 }

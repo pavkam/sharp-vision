@@ -143,15 +143,10 @@ count) builds the entry-count status text after a successful load;
 `SelectionFormat` (`Func<int, string>`) builds the status text while at least
 one file is selected. `ReadyText` and `LoadingText` (inherited) set the idle and
 in-flight status wording. Every setter validates non-null before mutating.
-`FilePickerOptions` carries the caption and placeholder texts to `ShowAsync`;
-the formatters and status wording are instance properties only.
-
-> [!IMPORTANT]
->
-> **Implementation gap:** `FilePickerOptions` does not carry `CountFormat`,
-> `SelectionFormat`, `ReadyText`, or `LoadingText`, so a `ShowAsync` caller
-> cannot localize the status texts — only a directly constructed dialog can set
-> them today.
+`FilePickerOptions` carries the caption and placeholder texts, plus
+`CountFormat`, `SelectionFormat`, `ReadyText`, and `LoadingText`, to
+`ShowAsync` — a null option value leaves the constructed dialog's own default
+in place.
 
 ## Presentation and ownership
 

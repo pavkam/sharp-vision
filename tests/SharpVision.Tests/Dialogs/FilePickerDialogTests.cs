@@ -1252,6 +1252,51 @@ public sealed class FilePickerDialogTests
         dialog.OpenText.ShouldBe("&Elegir");
     }
 
+    /// <summary>Verifies FilePickerOptions carries the status texts and formatters through
+    /// construction and through Copy(), matching how ShowAsync's copied snapshot reaches the
+    /// constructed dialog - previously these members were silently dropped by the ctor apply
+    /// path even though FileDialogBase and FilePickerDialog both exposed writable properties for
+    /// them.</summary>
+    [Fact]
+    public void Constructor_WhenOptionsCarryStatusTextsAndFormatters_AppliesThemToTheConstructedDialog()
+    {
+        string CountFormat(int folders, int files) => $"{folders}f/{files}d";
+        string SelectionFormat(int count) => $"chosen: {count}";
+
+        var options = new FilePickerOptions
+        {
+            ReadyText = "Listo",
+            LoadingText = "Cargando…",
+            CountFormat = CountFormat,
+            SelectionFormat = SelectionFormat
+        };
+        var copy = options.Copy();
+
+        using var dialog = new FilePickerDialog(options, new FakeFilePickerFileSystem());
+
+        copy.ReadyText.ShouldBe("Listo");
+        copy.LoadingText.ShouldBe("Cargando…");
+        copy.CountFormat.ShouldBe((Func<int, int, string>) CountFormat);
+        copy.SelectionFormat.ShouldBe((Func<int, string>) SelectionFormat);
+        dialog.ReadyText.ShouldBe("Listo");
+        dialog.LoadingText.ShouldBe("Cargando…");
+        dialog.CountFormat(3, 5).ShouldBe("3f/5d");
+        dialog.SelectionFormat(2).ShouldBe("chosen: 2");
+    }
+
+    /// <summary>Verifies a null FilePickerOptions status text or formatter leaves the constructed
+    /// dialog's own defaults intact instead of forwarding a null value.</summary>
+    [Fact]
+    public void Constructor_WhenOptionsOmitStatusTextsAndFormatters_KeepsDialogDefaults()
+    {
+        using var dialog = new FilePickerDialog(new FilePickerOptions(), new FakeFilePickerFileSystem());
+
+        dialog.ReadyText.ShouldBe("Ready");
+        dialog.LoadingText.ShouldBe("Loading…");
+        dialog.CountFormat(1, 1).ShouldBe("1 folder · 1 file");
+        dialog.SelectionFormat(1).ShouldBe("1 file selected");
+    }
+
     /// <summary>Verifies ShowAsync forwards an explicit Open Button style to the presented dialog
     /// without exposing the underlying Button instance.</summary>
     [Fact]

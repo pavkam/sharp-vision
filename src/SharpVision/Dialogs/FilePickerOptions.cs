@@ -200,6 +200,22 @@ public sealed class FilePickerOptions
         }
     } = "&Open";
 
+    /// <summary>Gets or sets the status text used while no request is outstanding, or null to let
+    /// the dialog use its own default.</summary>
+    public string? ReadyText { get; set; }
+
+    /// <summary>Gets or sets the status text shown while a directory request is outstanding, or
+    /// null to let the dialog use its own default.</summary>
+    public string? LoadingText { get; set; }
+
+    /// <summary>Gets or sets the folder/file count formatter used to build the status text after a
+    /// successful directory load, or null to let the dialog use its own default.</summary>
+    public Func<int, int, string>? CountFormat { get; set; }
+
+    /// <summary>Gets or sets the selected-file-count formatter used to build the status text while
+    /// at least one file is selected, or null to let the dialog use its own default.</summary>
+    public Func<int, string>? SelectionFormat { get; set; }
+
     /// <summary>Creates an independent configuration snapshot for one dialog.</summary>
     /// <returns>A new options object with equivalent owned values.</returns>
     internal FilePickerOptions Copy() => new()
@@ -221,6 +237,10 @@ public sealed class FilePickerOptions
         DirectoryPlaceholder = DirectoryPlaceholder,
         ShowHiddenText = ShowHiddenText,
         CancelText = CancelText,
-        OpenText = OpenText
+        OpenText = OpenText,
+        ReadyText = ReadyText,
+        LoadingText = LoadingText,
+        CountFormat = CountFormat,
+        SelectionFormat = SelectionFormat
     };
 }

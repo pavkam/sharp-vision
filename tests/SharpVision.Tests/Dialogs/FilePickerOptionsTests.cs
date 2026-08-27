@@ -31,6 +31,10 @@ public sealed class FilePickerOptionsTests
         options.MaxVisibleRows.ShouldBe(20);
         options.FilterIndex.ShouldBe(0);
         options.Filters[0].Name.ShouldBe("Sources");
+        options.ReadyText.ShouldBeNull();
+        options.LoadingText.ShouldBeNull();
+        options.CountFormat.ShouldBeNull();
+        options.SelectionFormat.ShouldBeNull();
     }
 
     /// <summary>Verifies invalid option assignments leave the previously committed values intact.</summary>
@@ -96,5 +100,34 @@ public sealed class FilePickerOptionsTests
         options.AllowMultiple.ShouldBeTrue();
         options.ShowHidden.ShouldBeTrue();
         options.Style.ShouldBe(style);
+    }
+
+    /// <summary>Verifies the status texts and formatters round-trip through their own getters and
+    /// survive Copy(), matching how ShowAsync's copied snapshot must carry them to the constructed
+    /// dialog.</summary>
+    [Fact]
+    public void Properties_WhenStatusTextsAndFormattersAreSet_RoundTripAndSurviveCopy()
+    {
+        string CountFormat(int folders, int files) => $"{folders}f/{files}d";
+        string SelectionFormat(int count) => $"chosen: {count}";
+
+        var options = new FilePickerOptions
+        {
+            ReadyText = "Listo",
+            LoadingText = "Cargando…",
+            CountFormat = CountFormat,
+            SelectionFormat = SelectionFormat
+        };
+
+        var copy = options.Copy();
+
+        options.ReadyText.ShouldBe("Listo");
+        options.LoadingText.ShouldBe("Cargando…");
+        options.CountFormat.ShouldBe((Func<int, int, string>) CountFormat);
+        options.SelectionFormat.ShouldBe((Func<int, string>) SelectionFormat);
+        copy.ReadyText.ShouldBe("Listo");
+        copy.LoadingText.ShouldBe("Cargando…");
+        copy.CountFormat.ShouldBe((Func<int, int, string>) CountFormat);
+        copy.SelectionFormat.ShouldBe((Func<int, string>) SelectionFormat);
     }
 }

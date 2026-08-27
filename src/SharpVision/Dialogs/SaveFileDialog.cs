@@ -113,6 +113,26 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
         OverwriteYesText = options.OverwriteYesText;
         OverwriteNoText = options.OverwriteNoText;
         OverwriteStyle = options.OverwriteStyle;
+
+        if (options.ReadyText is { } readyText)
+        {
+            ReadyText = readyText;
+        }
+
+        if (options.LoadingText is { } loadingText)
+        {
+            LoadingText = loadingText;
+        }
+
+        if (options.CountFormat is { } countFormat)
+        {
+            CountFormat = countFormat;
+        }
+
+        if (options.OverwriteMessageFormat is { } overwriteMessageFormat)
+        {
+            OverwriteMessageFormat = overwriteMessageFormat;
+        }
     }
 
     /// <summary>Gets the current filename typed or selected by the user.</summary>

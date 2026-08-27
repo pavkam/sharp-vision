@@ -1373,6 +1373,51 @@ public sealed class SaveFileDialogTests
         dialog.OverwriteNoText.ShouldBe("&No, gracias");
     }
 
+    /// <summary>Verifies SaveFileOptions carries the status texts and the overwrite-message
+    /// formatter through construction and through Copy(), matching how ShowAsync's copied snapshot
+    /// reaches the constructed dialog - previously these members were silently dropped by the ctor
+    /// apply path even though FileDialogBase and SaveFileDialog both exposed writable properties
+    /// for them.</summary>
+    [Fact]
+    public void Constructor_WhenOptionsCarryStatusTextsAndFormatters_AppliesThemToTheConstructedDialog()
+    {
+        string CountFormat(int folders, int files) => $"{folders}f/{files}d";
+        string OverwriteMessageFormat(string fileName) => $"Replace {fileName}?";
+
+        var options = new SaveFileOptions
+        {
+            ReadyText = "Listo",
+            LoadingText = "Cargando…",
+            CountFormat = CountFormat,
+            OverwriteMessageFormat = OverwriteMessageFormat
+        };
+        var copy = options.Copy();
+
+        using var dialog = new SaveFileDialog(options, new FakeFilePickerFileSystem());
+
+        copy.ReadyText.ShouldBe("Listo");
+        copy.LoadingText.ShouldBe("Cargando…");
+        copy.CountFormat.ShouldBe((Func<int, int, string>) CountFormat);
+        copy.OverwriteMessageFormat.ShouldBe((Func<string, string>) OverwriteMessageFormat);
+        dialog.ReadyText.ShouldBe("Listo");
+        dialog.LoadingText.ShouldBe("Cargando…");
+        dialog.CountFormat(3, 5).ShouldBe("3f/5d");
+        dialog.OverwriteMessageFormat("a.txt").ShouldBe("Replace a.txt?");
+    }
+
+    /// <summary>Verifies a null SaveFileOptions status text or formatter leaves the constructed
+    /// dialog's own defaults intact instead of forwarding a null value.</summary>
+    [Fact]
+    public void Constructor_WhenOptionsOmitStatusTextsAndFormatters_KeepsDialogDefaults()
+    {
+        using var dialog = new SaveFileDialog(new SaveFileOptions(), new FakeFilePickerFileSystem());
+
+        dialog.ReadyText.ShouldBe("Ready");
+        dialog.LoadingText.ShouldBe("Loading…");
+        dialog.CountFormat(1, 1).ShouldBe("1 folder · 1 file");
+        dialog.OverwriteMessageFormat("a.txt").ShouldBe("'a.txt' already exists.\nDo you want to replace it?");
+    }
+
     /// <summary>Verifies OverwriteStyle round-trips through its own getter, since the dialog's
     /// existing confirmation-flow coverage only ever proves its downstream effect on the generated
     /// MessageBox's ActualStyle, not that the property itself returns the assigned value.</summary>
