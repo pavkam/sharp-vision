@@ -1665,18 +1665,78 @@ public sealed class NavigationViewTests
         }
 
         new LayoutEngine().Layout(nav, new Size(10, 4));
-        List<ScrollChangedEventArgs> changes = [];
-        nav.ScrollChanged += (_, eventArgs) => changes.Add(eventArgs);
+        List<(object? Sender, ScrollChangedEventArgs Args)> changes = [];
+        nav.ScrollChanged += (sender, eventArgs) => changes.Add((sender, eventArgs));
 
         nav.Extent.Height.ShouldBeGreaterThan(nav.Viewport.Height);
         var moved = nav.ScrollBy(0, 3);
 
         moved.ShouldBeTrue();
         nav.VerticalOffset.ShouldBe(3);
-        var change = changes.ShouldHaveSingleItem();
+        var (sender, change) = changes.ShouldHaveSingleItem();
+        sender.ShouldBeSameAs(nav);
         change.PreviousOffset.ShouldBe(new Point(0, 0));
         change.Offset.ShouldBe(new Point(0, 3));
         change.Cause.ShouldBe(ScrollCause.Programmatic);
+    }
+
+    /// <summary>Verifies every public scroll-state proxy republishes private host changes exactly
+    /// under the NavigationView property name, including direct, content, and layout paths.</summary>
+    [Fact]
+    public void ScrollProperties_WhenHostStateChanges_RaiseOwnerPropertyChanges()
+    {
+        var nav = new NavigationView();
+        nav.Items.Add(new NavigationViewItem { Text = new string('W', 30) });
+
+        for (var index = 0; index < 12; index++)
+        {
+            nav.Items.Add(new NavigationViewItem { Text = $"Item {index}" });
+        }
+
+        new LayoutEngine().Layout(nav, new Size(10, 4));
+        var names = new List<string?>();
+        nav.PropertyChanged += (_, eventArgs) => names.Add(eventArgs.PropertyName);
+
+        _ = nav.ScrollBy(2, 1);
+        new LayoutEngine().Layout(nav, new Size(10, 5));
+        nav.Items.Add(new NavigationViewItem { Text = "Added" });
+        new LayoutEngine().Layout(nav, new Size(10, 5));
+
+        names.ShouldContain(nameof(NavigationView.VerticalOffset));
+        names.ShouldContain(nameof(NavigationView.Viewport));
+        names.ShouldContain(nameof(NavigationView.Extent));
+        names.ShouldNotContain(nameof(NavigationView.HorizontalOffset));
+    }
+
+    /// <summary>Verifies directly rendered labels are authoritative semantic text while marker,
+    /// disclosure, glyph, and affix decoration remain excluded.</summary>
+    [Fact]
+    public void SelectableText_WhenNavigationLabelsAreLaidOut_ProjectsVisibleSemanticCaptions()
+    {
+        var direct = new NavigationViewItem { Text = "&界Main", Glyph = "◆" };
+        var child = new NavigationViewItem { Text = "Child" };
+        var hidden = new NavigationViewItem { Text = "Hidden", Visibility = Visibility.Hidden };
+        var group = new NavigationViewGroup { Header = "&Settings" };
+        group.Items.Add(child);
+        group.Items.Add(hidden);
+        var footer = new NavigationViewItem { Text = "Quit" };
+        var view = new NavigationView { Header = "Application" };
+        view.Items.Add(direct);
+        view.Items.Add(group);
+        view.FooterItems.Add(footer);
+        new LayoutEngine().Layout(view, new Size(20, 8));
+
+        direct.GetSelectableTextSnapshot().Text.ShouldBe("界Main");
+        group.GetSelectableTextSnapshot().Text.ShouldBe("SettingsChild");
+        var snapshot = view.GetSelectableTextSnapshot();
+
+        snapshot.Text.ShouldBe("Application界MainSettingsChildQuit");
+        snapshot.Glyphs.ShouldNotBeEmpty();
+
+        group.IsExpanded = false;
+        new LayoutEngine().Layout(view, new Size(20, 8));
+
+        view.GetSelectableTextSnapshot().Text.ShouldBe("Application界MainSettingsQuit");
     }
 
     /// <summary>Verifies ScrollBy reports no movement, and raises no ScrollChanged, once the

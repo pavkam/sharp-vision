@@ -61,15 +61,10 @@ public sealed class NavigationView: CompositeControlBase
 
     /// <summary>Raised after the generated scroll container's offset commits.</summary>
     /// <remarks>
-    /// The scrolling items container is a private retained part; this forwards its
-    /// <see cref="Container.ScrollChanged"/> so a consumer can observe scroll position without
-    /// reaching into private presentation trees.
+    /// The view republishes the generated container's transition with itself as sender, so a
+    /// consumer can observe scroll position without reaching into private presentation trees.
     /// </remarks>
-    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
-    {
-        add => _itemsStack.ScrollChanged += value;
-        remove => _itemsStack.ScrollChanged -= value;
-    }
+    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged;
 
     /// <summary>Gets the committed non-negative content extent of the generated scroll container.</summary>
     public Size Extent => _itemsStack.Extent;
@@ -216,6 +211,8 @@ public sealed class NavigationView: CompositeControlBase
         _footerStack.Children.Changed += OnEntryHostChanged;
         _itemsStack.BoundsChanged += OnNavigationHostBoundsChanged;
         _footerStack.BoundsChanged += OnNavigationHostBoundsChanged;
+        _itemsStack.PropertyChanged += OnItemsStackPropertyChanged;
+        _itemsStack.ScrollChanged += OnItemsStackScrollChanged;
 
         InitializeContent(root);
         _scrollBarStyle = InitializePartStyle(
@@ -228,6 +225,7 @@ public sealed class NavigationView: CompositeControlBase
         IsTabStop = true;
         TabNavigation = TabNavigation.None;
         _ = AddHandler(Events.Key, OnKeyRouted);
+        _ = AddHandler(Events.Pointer, OnPointerRouted);
     }
 
     /// <summary>Raised after the selected item changes.</summary>
@@ -257,6 +255,16 @@ public sealed class NavigationView: CompositeControlBase
 
     /// <inheritdoc/>
     protected override string? AccessKeyText => Header;
+
+    /// <inheritdoc/>
+    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    {
+        ArgumentNullException.ThrowIfNull(children);
+        children.Add(_headerText);
+        children.Add(_itemsStack);
+        children.Add(_footerStack);
+        return true;
+    }
 
     /// <summary>Gets the typed main item collection.</summary>
     public NavigationViewEntryCollection Items { get; }
@@ -525,6 +533,16 @@ public sealed class NavigationView: CompositeControlBase
                               (ReferenceEquals(selected, root) || IsDescendantOf(selected, root));
         var selectedIndex = selectedRemoved ? CollectSemanticItems().IndexOf(SelectedItem!) : -1;
 
+        return new NavigationViewRemovalRepair(currentRemoved, selectedRemoved, selectedIndex);
+    }
+
+    /// <summary>Captures repair state for descendants leaving a root that remains owned.</summary>
+    [Pure]
+    internal NavigationViewRemovalRepair PrepareDescendantRemoval(ControlBase root)
+    {
+        var currentRemoved = _navigator.Current is { } current && IsDescendantOf(current, root);
+        var selectedRemoved = SelectedItem is { } selected && IsDescendantOf(selected, root);
+        var selectedIndex = selectedRemoved ? CollectSemanticItems().IndexOf(SelectedItem!) : -1;
         return new NavigationViewRemovalRepair(currentRemoved, selectedRemoved, selectedIndex);
     }
 
@@ -910,6 +928,41 @@ public sealed class NavigationView: CompositeControlBase
         }
     }
 
+    private void OnPointerRouted(object? sender, PointerEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.Phase != RoutingPhase.Preview ||
+            eventArgs.IsHandled ||
+            eventArgs.Pointer.Action != PointerAction.Wheel)
+        {
+            return;
+        }
+
+        var x = (int) Math.Clamp((long) eventArgs.Pointer.WheelX * LineSize, int.MinValue, int.MaxValue);
+        var y = (int) Math.Clamp(-(long) eventArgs.Pointer.WheelY * LineSize, int.MinValue, int.MaxValue);
+        eventArgs.IsHandled = _itemsStack.ScrollBy(x, y, ScrollCause.Wheel);
+    }
+
+    private void OnItemsStackPropertyChanged(
+        object? sender,
+        System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.PropertyName is nameof(Extent) or nameof(Viewport) or
+            nameof(HorizontalOffset) or nameof(VerticalOffset))
+        {
+            NotifyPropertyChanged(eventArgs.PropertyName, InvalidationImpact.None);
+        }
+    }
+
+    private void OnItemsStackScrollChanged(object? sender, ScrollChangedEventArgs eventArgs)
+    {
+        _ = sender;
+        ScrollChanged?.Invoke(this, eventArgs);
+    }
+
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
@@ -917,6 +970,8 @@ public sealed class NavigationView: CompositeControlBase
 
         if (reason == ReleaseReason.Disposed)
         {
+            _itemsStack.PropertyChanged -= OnItemsStackPropertyChanged;
+            _itemsStack.ScrollChanged -= OnItemsStackScrollChanged;
             foreach (var group in _requestedPresentations.Keys.OfType<NavigationViewGroup>())
             {
                 group.RetirePresentationMetadataForOwnerDisposal();
@@ -924,6 +979,7 @@ public sealed class NavigationView: CompositeControlBase
 
             _requestedPresentations.Clear();
             SelectionChanged = null;
+            ScrollChanged = null;
             _ = SetCurrent(null);
             Select(null);
         }

@@ -132,6 +132,12 @@ public abstract partial class ControlBase: ISelectableTextSource
     public virtual SelectableTextSnapshot GetSelectableTextSnapshot()
     {
         VerifyMutable();
+        return CreateSelectableTextSnapshot();
+    }
+
+    /// <summary>Creates the concrete snapshot behind the inherited public selection source.</summary>
+    internal virtual SelectableTextSnapshot CreateSelectableTextSnapshot()
+    {
         var children = new List<ControlBase>();
         return AddSelectableTextChildren(children)
             ? SelectableTextAggregation.Create(this)

@@ -6,6 +6,89 @@ namespace SharpVision.Tests.Navigation;
 /// <summary>Verifies NavigationView composition, selection, groups, scrolling, mutation, Unicode, and resize through mounted surfaces.</summary>
 public sealed class NavigationViewSurfaceTests
 {
+    /// <summary>Verifies fixed header and footer regions proxy wheel input to the main scroller,
+    /// while an exhausted view leaves the record available to an enclosing scroll container.</summary>
+    [Fact]
+    public async Task Wheel_WhenPointerCrossesFixedRegions_ScrollsMainAndLatchesToOuterAtEndpointAsync()
+    {
+        var view = new NavigationView
+        {
+            Header = "Header",
+            Height = Length.Cells(4),
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+
+        for (var index = 0; index < 10; index++)
+        {
+            view.Items.Add(new NavigationViewItem { Text = $"Item {index}" });
+        }
+
+        var footer = new NavigationViewItem { Text = "Footer" };
+        view.FooterItems.Add(footer);
+        var outer = new Stack
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            Children =
+            {
+                view,
+                new ControlText("Below") { Height = Length.Cells(8) }
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            outer,
+            new Size(16, 5),
+            TestContext.Current.CancellationToken);
+
+        await surface.Pointer.WheelAsync(view, default, wheelY: -1);
+        view.VerticalOffset.ShouldBeGreaterThan(0);
+        await surface.UpdateAsync(() => view.VerticalOffset = 0, "reset main offset");
+
+        await surface.Pointer.WheelAsync(footer, default, wheelY: -1);
+        view.VerticalOffset.ShouldBeGreaterThan(0);
+        outer.VerticalOffset.ShouldBe(0);
+
+        await surface.UpdateAsync(
+            () => view.VerticalOffset = view.Extent.Height - view.Viewport.Height,
+            "saturate main offset");
+        await surface.Pointer.WheelAsync(footer, default, wheelY: -1);
+
+        outer.VerticalOffset.ShouldBeGreaterThan(0);
+    }
+
+    /// <summary>Verifies clearing descendants preserves a still-owned current group and the next
+    /// navigation command advances from that group rather than restarting at it.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GroupItems_WhenClearedWhileGroupIsCurrent_PreservesCurrentGroupPositionAsync(bool hasChild)
+    {
+        var group = new NavigationViewGroup { Header = "Group" };
+
+        if (hasChild)
+        {
+            group.Items.Add(new NavigationViewItem { Text = "Child" });
+        }
+
+        var after = new NavigationViewItem { Text = "After" };
+        var view = CreateView(header: null, 14);
+        view.Items.Add(group);
+        view.Items.Add(after);
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(14, 4),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down);
+        (group.GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Current);
+
+        await surface.UpdateAsync(group.Items.Clear, "clear current group's children");
+
+        (group.GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Current);
+        await surface.Keyboard.PressAsync(Code.Down);
+        view.SelectedItem.ShouldBeSameAs(after);
+    }
+
     /// <summary>Verifies the header's promised emphasis survives every bundled palette and a
     /// custom theme that contributes no text attributes, while mnemonic emphasis composes with it.</summary>
     [Fact]

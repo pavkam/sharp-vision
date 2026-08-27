@@ -56,7 +56,7 @@ classDiagram
 | `ScrollBy(int x, int y, ScrollCause cause = Programmatic)` | `bool`                                                  | —              | Scrolls the generated scroll container by signed cell deltas.                 |
 | `BringItemIntoView(NavigationViewItem item)`               | `bool`                                                  | —              | Scrolls minimally to expose one owned entry.                                  |
 | `SelectionChanged`                                         | `EventHandler<NavigationViewSelectionChangedEventArgs>` | No subscribers | Reports a committed selection change.                                         |
-| `ScrollChanged`                                            | `EventHandler<ScrollChangedEventArgs>`                  | No subscribers | Raised after the generated scroll container's offset commits.                 |
+| `ScrollChanged`                                            | `EventHandler<ScrollChangedEventArgs>`                  | No subscribers | Raised by the view after the generated scroll container's offset commits.     |
 
 ## Behavior
 
@@ -89,6 +89,10 @@ classDiagram
   `IsSelected` or `SelectedItem` observer synchronously selects another item,
   the newer selection owns the visual markers, public property, and typed event;
   the superseded transition publishes nothing further.
+- `Extent`, `Viewport`, `HorizontalOffset`, and `VerticalOffset` republish
+  changes from the private scrolling host through the view's own
+  `PropertyChanged` event. `ScrollChanged` likewise uses the view as sender;
+  retained presentation controls never escape through public notifications.
 
 The view is the single sidebar tab stop (`TabNavigation.None`); item and group
 faces never receive keyboard focus themselves. Up and Down arrows move the
@@ -124,8 +128,17 @@ snapshots with their ownership. A disposed view or retained disposed group does
 not keep former entries alive through presentation metadata.
 
 `LineSize` forwards the mouse wheel's cell step to the generated scroll
-container; keyboard Up and Down always move by exactly one entry regardless of
-this value.
+container from every point in the view, including its fixed header and footer.
+At a main-section endpoint, an unconsumed wheel record remains available to an
+enclosing scrollable container. Keyboard Up and Down always move by exactly one
+entry regardless of this value.
+
+Semantic text selection follows visible sidebar order: header, main entries and
+expanded group descendants, then footer entries. Navigation markers, disclosure
+glyphs, caller glyph prefixes, and affixes are presentation only and do not
+enter copied text. Hidden entries and descendants of collapsed groups do not
+contribute; clipping and scrolling retain complete-grapheme geometry only for
+currently visible labels.
 
 ## NavigationViewItem
 
@@ -267,4 +280,6 @@ frame.
   collection is cleared.
 - Removing or directly disposing a selected top-level or grouped item repairs
   selection to the adjacent available item, or clears it when none remains.
+- Clearing a group's descendants repairs a removed current child but preserves
+  current on the still-owned group itself, including when the group was empty.
 - Final rendering resolves deterministically to the exact cells.

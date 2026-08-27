@@ -52,6 +52,23 @@ internal static class AccessKeyText
 
     extension(string text)
     {
+        /// <summary>Returns visible caption text after collapsing mnemonic marker escaping.</summary>
+        /// <param name="useMnemonic">Whether ampersands have access-text semantics.</param>
+        [Pure]
+        public string ToVisibleText(bool useMnemonic)
+        {
+            ArgumentNullException.ThrowIfNull(text);
+
+            if (!useMnemonic || text.IndexOf('&', StringComparison.Ordinal) < 0)
+            {
+                return text;
+            }
+
+            var buffer = new char[text.Length];
+            var length = Collapse(text, buffer, out _);
+            return new string(buffer, 0, length);
+        }
+
         /// <summary>Measures visible caption cells after applying mnemonic marker escaping.</summary>
         /// <param name="ambiguous">The validated ambiguous-width policy.</param>
         /// <param name="useMnemonic">Whether ampersands have access-text semantics.</param>

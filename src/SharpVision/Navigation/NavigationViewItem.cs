@@ -4,6 +4,7 @@
 namespace SharpVision.Navigation;
 
 using SharpVision.Controls;
+using SharpVision.Text;
 
 /// <summary>Defines one focusable, selectable entry in a <see cref="NavigationView"/>.</summary>
 [PublicAPI]
@@ -102,6 +103,32 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
 
     /// <inheritdoc/>
     protected override bool IsSelectedState => _isSelected;
+
+    /// <inheritdoc/>
+    internal override SelectableTextSnapshot CreateSelectableTextSnapshot()
+    {
+        var prefix = 3 + (Glyph is null ? 0 : MeasureCells(Glyph) + 1);
+        var textRegion = new Rect(
+            ContentBounds.X.Add(prefix),
+            ContentBounds.Y,
+            Math.Max(0, ContentBounds.Width - prefix),
+            Math.Min(1, ContentBounds.Height));
+        var affixes = MeasureAffixes(StartAffix, EndAffix, ActualStyle.AffixGap);
+        var label = DeflateForAffixes(textRegion, affixes);
+        return SingleLineSelectableTextProjection.Create(
+            this,
+            Text,
+            new Point(label.X, label.Y),
+            label,
+            UseMnemonic);
+    }
+
+    /// <inheritdoc/>
+    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    {
+        ArgumentNullException.ThrowIfNull(children);
+        return false;
+    }
 
     /// <inheritdoc/>
     protected override void Activate(ActivationCause cause)

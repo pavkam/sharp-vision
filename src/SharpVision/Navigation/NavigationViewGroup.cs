@@ -5,6 +5,7 @@ namespace SharpVision.Navigation;
 
 using SharpVision.Controls;
 using SharpVision.Terminal.Input;
+using SharpVision.Text;
 
 using LayoutStack = Controls.Layout.Stack;
 
@@ -192,7 +193,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     {
         VerifyMutable();
         var owner = FindNavigationView();
-        var repair = owner?.PrepareRemoval(this);
+        var repair = owner?.PrepareDescendantRemoval(this);
         var items = _stack.Children.OfType<NavigationViewItem>().ToArray();
         var presentations = new List<(NavigationViewItem Item, NavigationItemPresentation Presentation)>();
 
@@ -352,6 +353,49 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
             ? new Rect(bounds.X + indent, bounds.Y + 1, bounds.Width - indent, bounds.Height - 1)
             : default;
         ArrangeChild(_stack, slot, ResolvedAxes.Both);
+    }
+
+    /// <inheritdoc/>
+    internal override SelectableTextSnapshot CreateSelectableTextSnapshot()
+    {
+        var label = new Rect(
+            ContentBounds.X.Add(3),
+            ContentBounds.Y,
+            Math.Max(0, ContentBounds.Width - 3),
+            Math.Min(1, ContentBounds.Height));
+        var header = SingleLineSelectableTextProjection.Create(
+            this,
+            Header,
+            new Point(label.X, label.Y),
+            label,
+            UseMnemonic);
+        var text = new StringBuilder(header.Text);
+        var glyphs = new List<SelectableTextGlyph>(header.Glyphs);
+
+        foreach (var item in _stack.Children.OfType<NavigationViewItem>())
+        {
+            if (!item.EffectiveIsVisible)
+            {
+                continue;
+            }
+
+            var snapshot = item.GetSelectableTextSnapshot();
+            var offset = text.Length;
+            _ = text.Append(snapshot.Text);
+
+            foreach (var glyph in snapshot.Glyphs)
+            {
+                glyphs.Add(new SelectableTextGlyph(
+                    new Selection(glyph.Range.Start.Add(offset), glyph.Range.End.Add(offset)),
+                    new Rect(
+                        item.Bounds.X.Add(glyph.Bounds.X) - Bounds.X,
+                        item.Bounds.Y.Add(glyph.Bounds.Y) - Bounds.Y,
+                        glyph.Bounds.Width,
+                        glyph.Bounds.Height)));
+            }
+        }
+
+        return new SelectableTextSnapshot(text.ToString(), glyphs, isAuthoritative: true);
     }
 
     /// <inheritdoc/>

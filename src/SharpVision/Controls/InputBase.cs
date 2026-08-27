@@ -167,7 +167,7 @@ public abstract class InputBase: ControlBase
     public override SelectableTextSnapshot GetSelectableTextSnapshot()
     {
         VerifyMutable();
-        return SelectableTextAggregation.Create(this);
+        return CreateSelectableTextSnapshot();
     }
 
     /// <inheritdoc/>
