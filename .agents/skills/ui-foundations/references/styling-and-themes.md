@@ -116,8 +116,8 @@ explicit-key overload for a leaf or third-party section.
   `EnableChromeAuthoring()`.
 - Dock, Grid, Stack, Overlay, GroupBox, Window, Popup, TabControl,
   NavigationView, NavigationViewGroup, and NavigationViewSeparator call it from
-  their own constructors. Do not add a `public new` hiding shim over `Border`
-  or `Shadow` on individual controls - call `EnableChromeAuthoring()` instead.
+  their own constructors. Do not add a `public new` hiding shim over `Border` or
+  `Shadow` on individual controls - call `EnableChromeAuthoring()` instead.
 - Use `BorderGlyphStyle` and `SemanticColor` tokens such as `ControlBorder` and
   `ControlShadow`; retired `Glyphs` and `ButtonKind` APIs do not exist.
 - `ActualFace`/`ActualBorder`/`ActualShadow` are the **resolved** render-ready
@@ -149,11 +149,11 @@ explicit-key overload for a leaf or third-party section.
 - **`Theme.Unthemed` is internal.** `SharpVision.Document` and
   `SharpVision.SyntaxHighlighting` do hold an `InternalsVisibleTo` grant onto
   `SharpVision`, but their style types stay independent of that assembly-
-  boundary detail: `DocumentStyle.Default` and `CodeViewStyle.Default`
-  complete their static presets against a bare `new Theme()` rather than
+  boundary detail: `DocumentStyle.Default` and `CodeViewStyle.Default` complete
+  their static presets against a bare `new Theme()` rather than
   `Theme.Unthemed`. `Complete` never actually reads the theme it is given for
-  these styles, so any valid instance resolves identically; do not "fix" this
-  by switching either style to `Theme.Unthemed`.
+  these styles, so any valid instance resolves identically; do not "fix" this by
+  switching either style to `Theme.Unthemed`.
 - **Passive styles ignore interactive states.** Only `"input"` inherits
   `"control"`'s per-state deltas. Containers, windows, popups, and tooltips
   deliberately do not answer hover or focus — cascading into them tints every
