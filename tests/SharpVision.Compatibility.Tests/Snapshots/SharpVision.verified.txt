@@ -2530,7 +2530,7 @@ namespace SharpVision.Dialogs
         public string? LoadingText { get; set; }
         public int MaxVisibleRows { get; set; }
         public SharpVision.Controls.Input.ButtonStyle? OpenButtonStyle { get; set; }
-        public string OpenText { get; set; }
+        public string? OpenText { get; set; }
         public string ParentDirectoryText { get; set; }
         public string? ReadyText { get; set; }
         public System.Func<int, string>? SelectionFormat { get; set; }

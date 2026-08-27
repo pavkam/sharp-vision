@@ -69,7 +69,6 @@ public sealed class FilePickerOptionsTests
         _ = Should.Throw<ArgumentNullException>(() => options.DirectoryPlaceholder = null!);
         _ = Should.Throw<ArgumentNullException>(() => options.ShowHiddenText = null!);
         _ = Should.Throw<ArgumentNullException>(() => options.CancelText = null!);
-        _ = Should.Throw<ArgumentNullException>(() => options.OpenText = null!);
 
         options.Title.ShouldBe("Open File");
         options.InitialDirectory.ShouldBe(Environment.CurrentDirectory);
