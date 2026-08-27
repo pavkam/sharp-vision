@@ -3,7 +3,6 @@
 
 namespace SharpVision.Fonts;
 
-using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -25,7 +24,8 @@ public sealed class FigletCatalog
 
     private readonly Dictionary<string, FigletFontInfo> _entries;
     private readonly Dictionary<string, Func<FigletCatalog, FigletLimits, FigletFont>> _loaders;
-    private readonly ConcurrentDictionary<(string Name, FigletLimits Limits), FigletFont> _cache = new();
+    private readonly Dictionary<(string Name, FigletLimits Limits), Lazy<FigletFont>> _cache = new();
+    private readonly Lock _cacheGate = new();
     private int _embeddedResourceReadCount;
 
     private FigletCatalog(
@@ -228,12 +228,41 @@ public sealed class FigletCatalog
     {
         ArgumentNullException.ThrowIfNull(name);
 
-        return _loaders.TryGetValue(name, out var loader)
-            ? _cache.GetOrAdd(
-                (name, limits),
-                static (key, state) => state.Loader(state.Catalog, key.Limits),
-                (Catalog: this, Loader: loader))
-            : throw new KeyNotFoundException($"The FIGlet catalog does not contain '{name}'.");
+        if (!_loaders.TryGetValue(name, out var loader))
+        {
+            throw new KeyNotFoundException($"The FIGlet catalog does not contain '{name}'.");
+        }
+
+        var key = (Name: name, Limits: limits);
+        Lazy<FigletFont> lazy;
+
+        lock (_cacheGate)
+        {
+            if (!_cache.TryGetValue(key, out lazy!))
+            {
+                lazy = new Lazy<FigletFont>(
+                    () => loader(this, limits),
+                    LazyThreadSafetyMode.ExecutionAndPublication);
+                _cache.Add(key, lazy);
+            }
+        }
+
+        try
+        {
+            return lazy.Value;
+        }
+        catch
+        {
+            lock (_cacheGate)
+            {
+                if (_cache.TryGetValue(key, out var current) && ReferenceEquals(current, lazy))
+                {
+                    _ = _cache.Remove(key);
+                }
+            }
+
+            throw;
+        }
     }
 
     /// <summary>Creates a fresh catalog over the package's embedded manifest and font resources.</summary>

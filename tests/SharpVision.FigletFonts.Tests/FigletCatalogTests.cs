@@ -112,6 +112,28 @@ public sealed class FigletCatalogTests
     public void Load_WhenNameIsNotExact_ThrowsKeyNotFoundException(string name) =>
         _ = Should.Throw<KeyNotFoundException>(() => FigletCatalog.Default.Load(name));
 
+    /// <summary>Verifies concurrent first-time callers for the same name and limits share a single
+    /// underlying load instead of each racing the embedded resource read, hash, and parse - the
+    /// race that could inflate <see cref="FigletCatalog.EmbeddedResourceReadCount"/> and hand out
+    /// distinct <see cref="FigletFont"/> instances for what should be one cached result.</summary>
+    [Fact]
+    public async Task Load_WhenFirstLookupIsConcurrent_ReadsTheEmbeddedResourceExactlyOnceAsync()
+    {
+        var catalog = FigletCatalog.CreateEmbedded();
+        using var start = new ManualResetEventSlim(initialState: false);
+        var tasks = Enumerable.Range(0, 64).Select(_ => Task.Run(() =>
+        {
+            start.Wait();
+            return catalog.Load("standard");
+        })).ToArray();
+
+        start.Set();
+        var fonts = await Task.WhenAll(tasks);
+
+        fonts.ShouldAllBe(font => ReferenceEquals(font, fonts[0]));
+        catalog.EmbeddedResourceReadCount.ShouldBe(1);
+    }
+
     #endregion
 
     #region Parsing
