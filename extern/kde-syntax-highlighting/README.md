@@ -7,7 +7,10 @@ from [`KDE/syntax-highlighting`](https://github.com/KDE/syntax-highlighting) at
 commit `60cfa684b64cccde19bf12c74db52129709ed863` whose own
 `<language license="…">` attribute, or an in-file `SPDX-License-Identifier`
 header, states an unambiguous permissive license: `MIT`, `BSD-3-Clause`,
-`CC0-1.0`, `Zlib`, or an explicit `Public Domain` dedication.
+`CC0-1.0`, `Zlib`, or an explicit `Public Domain` dedication. Compound SPDX
+expressions are rejected rather than reduced to one branch. When both an SPDX
+header and the document element's `license` attribute exist, their canonical
+classifications must agree; commented example elements do not count as metadata.
 
 At that commit, `data/syntax/` contains 409 definitions. 159 meet that bar and
 are embedded; the remaining 250 are excluded because they carry no `license`
@@ -50,9 +53,10 @@ node scripts/audit-syntax-definitions.mjs \
 ```
 
 The packaging script rejects a source checkout whose `HEAD` is not the pinned
-commit and copies only files whose stated license passes the classification
-above. The audit script re-derives the manifest from the staged files and fails
-on drift.
+commit or whose tracked or untracked working tree is not clean, and copies only
+files whose stated license passes the classification above. The audit script
+rejects duplicate language names, re-derives the manifest from the staged files,
+and fails on drift.
 
 ## Verification
 

@@ -151,13 +151,16 @@ through a dynamic rule, including a rule spliced through `IncludeRules`.
 `SyntaxDefinitionCatalog.Default` embeds 160 syntax definitions. 159 come from
 [`KDE/syntax-highlighting`](https://github.com/KDE/syntax-highlighting), audited
 to include only files whose own declared license is unambiguously permissive
-(MIT, BSD-3-Clause, CC0-1.0, Zlib, or an explicit Public Domain dedication).
-Roughly 250 upstream definitions - including C, C#, Python, PHP, Lua, MATLAB,
-Objective-C, Pascal, and JSON - carry no stated license, an empty one, an
-ambiguous bare `"BSD"` value, or a copyleft license, and are not redistributed
-by this package. See the `SharpVision.SyntaxHighlighting` package's own
-`THIRD-PARTY-NOTICES.md` for the complete per-file list and
-`extern/kde-syntax-highlighting/README.md` for the full audit methodology.
+(MIT, BSD-3-Clause, CC0-1.0, Zlib, or an explicit Public Domain dedication). The
+audit rejects compound SPDX expressions, conflicting SPDX and XML-attribute
+classifications, commented-out metadata, duplicate language names, and source
+checkouts with any tracked or untracked working-tree changes. Roughly 250
+upstream definitions - including C, C#, Python, PHP, Lua, MATLAB, Objective-C,
+Pascal, and JSON - carry no stated license, an empty one, an ambiguous bare
+`"BSD"` value, or a copyleft license, and are not redistributed by this package.
+See the `SharpVision.SyntaxHighlighting` package's own `THIRD-PARTY-NOTICES.md`
+for the complete per-file list and `extern/kde-syntax-highlighting/README.md`
+for the full audit methodology.
 
 Licensing excludes dependencies used by 34 otherwise-redistributable roots, so
 those embedded grammars are explicitly partial: Cabal, COBOL, CoffeeScript, D2,

@@ -1,7 +1,5 @@
-import { execFile } from "node:child_process";
 import { copyFile, mkdir, rm } from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
 
 import {
@@ -9,20 +7,17 @@ import {
   officialFontFiles,
   officialSource,
 } from "./audit-figlet-fonts.mjs";
+import { verifyPinnedCheckout } from "./verify-pinned-checkout.mjs";
 
-const execFileAsync = promisify(execFile);
-
-const verifyCommit = async (root, expected) => {
-  const { stdout } = await execFileAsync("git", ["-C", root, "rev-parse", "HEAD"]);
-
-  if (stdout.trim() !== expected) {
-    throw new Error(`Source checkout ${root} is not pinned to ${expected}.`);
-  }
-};
-
-export const stageCuratedFonts = async (officialRoot, classyRoot, outputRoot) => {
-  await verifyCommit(officialRoot, officialSource.commit);
-  await verifyCommit(classyRoot, classySource.commit);
+export const stageCuratedFonts = async (
+  officialRoot,
+  classyRoot,
+  outputRoot,
+  expectedOfficialCommit = officialSource.commit,
+  expectedClassyCommit = classySource.commit,
+) => {
+  await verifyPinnedCheckout(officialRoot, expectedOfficialCommit);
+  await verifyPinnedCheckout(classyRoot, expectedClassyCommit);
   await rm(outputRoot, { recursive: true, force: true });
   await mkdir(outputRoot, { recursive: true });
 

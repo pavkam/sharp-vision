@@ -41,12 +41,16 @@ const permissiveLicenseByAttribute = Object.freeze({
 const permissiveLicenseBySpdxId = Object.freeze({
   MIT: "MIT",
   "BSD-3-Clause": "BSD-3-Clause",
+  "CC0-1.0": "CC0-1.0",
+  Zlib: "Zlib",
 });
 
 const compareOrdinal = (left, right) => (left < right ? -1 : left > right ? 1 : 0);
 
 const languageAttribute = (text, name) => {
-  const tagMatch = text.match(/<language\b[^>]*>/su);
+  // A commented example is not the document element and must never supply audit metadata.
+  const xmlWithoutComments = text.replace(/<!--[\s\S]*?-->/gu, "");
+  const tagMatch = xmlWithoutComments.match(/<language\b[^>]*>/su);
 
   if (!tagMatch) {
     return null;
@@ -61,10 +65,18 @@ const languageBooleanAttribute = (text, name) => {
   return value === "true" || value === "1";
 };
 
-const spdxLicenseId = (text) => {
-  const header = text.slice(0, 2000);
-  const match = header.match(/SPDX-License-Identifier:\s*([A-Za-z0-9.+-]+)/u);
-  return match ? match[1].replace(/[^A-Za-z0-9.+-].*$/u, "") : null;
+const spdxLicenseExpression = (text) => {
+  // Preserve comment offsets while masking their fake elements, then search only the prolog
+  // before the real document element. Syntax definitions may legitimately highlight the literal
+  // text "SPDX-License-Identifier:" inside their body; that is content, not provenance.
+  const elementView = text.replace(/<!--[\s\S]*?-->/gu, (comment) => " ".repeat(comment.length));
+  const documentElementIndex = elementView.search(/<language\b/u);
+  const header = text.slice(
+    0,
+    Math.min(documentElementIndex < 0 ? text.length : documentElementIndex, 2000),
+  );
+  const match = header.match(/SPDX-License-Identifier:\s*([^\r\n]+)/u);
+  return match ? match[1].replace(/\s*(?:-->|\*\/).*$/u, "").trim() : null;
 };
 
 /**
@@ -75,16 +87,24 @@ const spdxLicenseId = (text) => {
  *   license is missing, empty, ambiguous, or copyleft and must not be redistributed.
  */
 export const classifyLicense = (text) => {
-  const spdxId = spdxLicenseId(text);
-
-  if (spdxId && spdxId in permissiveLicenseBySpdxId) {
-    return permissiveLicenseBySpdxId[spdxId];
-  }
-
   const attribute = languageAttribute(text, "license");
-  return attribute && attribute in permissiveLicenseByAttribute
+  const attributeLicense =
+    attribute && attribute in permissiveLicenseByAttribute
     ? permissiveLicenseByAttribute[attribute]
     : null;
+  const spdxExpression = spdxLicenseExpression(text);
+
+  if (spdxExpression === null) {
+    return attributeLicense;
+  }
+
+  const spdxLicense = permissiveLicenseBySpdxId[spdxExpression] ?? null;
+
+  if (!spdxLicense || (attribute !== null && attributeLicense !== spdxLicense)) {
+    return null;
+  }
+
+  return spdxLicense;
 };
 
 const syntaxFiles = async (root) =>
@@ -103,6 +123,7 @@ const syntaxFiles = async (root) =>
 export const createManifest = async (root) => {
   const files = await syntaxFiles(root);
   const definitions = [];
+  const filesByLanguageName = new Map();
 
   for (const file of files) {
     const bytes = await readFile(path.join(root, file));
@@ -118,6 +139,15 @@ export const createManifest = async (root) => {
     if (!name) {
       throw new Error(`'${file}' is missing a required 'name' attribute.`);
     }
+
+    if (filesByLanguageName.has(name)) {
+      throw new Error(
+        `More than one file declares the language name '${name}': ` +
+          `'${filesByLanguageName.get(name)}' and '${file}'.`,
+      );
+    }
+
+    filesByLanguageName.set(name, file);
 
     const isFirstParty = firstPartyDefinitions.has(file);
 

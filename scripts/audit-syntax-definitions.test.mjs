@@ -62,6 +62,39 @@ test("classifyLicense_WhenSpdxHeaderIsGpl_ReturnsNull", () => {
   assert.equal(classifyLicense(text), null);
 });
 
+test("classifyLicense_WhenSpdxExpressionUsesAnd_ReturnsNull", () => {
+  const text =
+    spdxHeader("BSD-3-Clause AND GPL-2.0-only") +
+    definition("Demo", "*.demo", "BSD-3-Clause");
+  assert.equal(classifyLicense(text), null);
+});
+
+test("classifyLicense_WhenSpdxExpressionUsesOr_ReturnsNull", () => {
+  const text = spdxHeader("GPL-3.0-or-later OR MIT") + definition("Demo", "*.demo", "MIT");
+  assert.equal(classifyLicense(text), null);
+});
+
+test("classifyLicense_WhenSpdxAndAttributeConflict_ReturnsNull", () => {
+  const text = spdxHeader("GPL-3.0-or-later") + definition("Demo", "*.demo", "MIT");
+  assert.equal(classifyLicense(text), null);
+});
+
+test("classifyLicense_WhenCommentContainsLanguageTag_UsesDocumentElement", () => {
+  const text =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<!-- Example: <language name="Fake" license="MIT"> -->\n' +
+    definition("Real", "*.real", "GPL-3.0-or-later");
+  assert.equal(classifyLicense(text), null);
+});
+
+test("classifyLicense_WhenDocumentContentNamesSpdxTag_DoesNotTreatItAsHeader", () => {
+  const text = definition("SPDX", "*.spdx", "MIT").replace(
+    "  <highlighting>",
+    "  <list><item>SPDX-License-Identifier:</item></list>\n  <highlighting>",
+  );
+  assert.equal(classifyLicense(text), "MIT");
+});
+
 const createCuratedFolder = async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "sharpvision-syntax-audit-"));
   await mkdir(root, { recursive: true });
@@ -104,6 +137,13 @@ test("createManifest_WhenAFileIsNotCurated_Rejects", async () => {
   await writeFile(path.join(root, "copyleft.xml"), definition("Copyleft", "*.cl", "GPL"));
 
   await assert.rejects(createManifest(root), /curated permissive license/iu);
+});
+
+test("createManifest_WhenLanguageNamesRepeat_Rejects", async () => {
+  const root = await createCuratedFolder();
+  await writeFile(path.join(root, "duplicate.xml"), definition("Demo", "*.duplicate", "MIT"));
+
+  await assert.rejects(createManifest(root), /more than one file declares.*Demo/iu);
 });
 
 test("validateManifest_WhenContentDrifts_Rejects", async () => {

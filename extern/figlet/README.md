@@ -33,12 +33,13 @@ node scripts/audit-figlet-fonts.mjs \
 ```
 
 The packaging script rejects source checkouts whose `HEAD` is not the pinned
-commit. The audit rejects extra or missing fonts and any manifest drift.
+commit or whose tracked or untracked working tree is not clean. The audit
+rejects extra or missing fonts and any manifest drift.
 
 ## Verification
 
 ```bash
-node --test scripts/audit-figlet-fonts.test.mjs
+node --test scripts/audit-figlet-fonts.test.mjs scripts/package-figlet-fonts.test.mjs
 
 node scripts/audit-figlet-fonts.mjs \
   --source src/SharpVision.FigletFonts/Resources/Fonts \

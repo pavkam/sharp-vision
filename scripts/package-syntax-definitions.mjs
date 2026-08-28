@@ -1,20 +1,9 @@
-import { execFile } from "node:child_process";
 import { copyFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
 
 import { classifyLicense, firstPartyDefinitions, upstreamSource } from "./audit-syntax-definitions.mjs";
-
-const execFileAsync = promisify(execFile);
-
-const verifyCommit = async (root, expected) => {
-  const { stdout } = await execFileAsync("git", ["-C", root, "rev-parse", "HEAD"]);
-
-  if (stdout.trim() !== expected) {
-    throw new Error(`Source checkout ${root} is not pinned to ${expected}.`);
-  }
-};
+import { verifyPinnedCheckout } from "./verify-pinned-checkout.mjs";
 
 /**
  * Copies every permissively licensed syntax definition from a pinned upstream checkout's
@@ -35,7 +24,7 @@ export const stageCuratedSyntaxDefinitions = async (
   outputRoot,
   expectedCommit = upstreamSource.commit,
 ) => {
-  await verifyCommit(checkoutRoot, expectedCommit);
+  await verifyPinnedCheckout(checkoutRoot, expectedCommit);
 
   const preservedFiles = new Map();
 

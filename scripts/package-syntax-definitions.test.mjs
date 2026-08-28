@@ -64,6 +64,34 @@ test("stageCuratedSyntaxDefinitions_WhenPinned_StagesOnlyPermissiveFiles", async
   assert.deepEqual(staged, ["permissive.xml"]);
 });
 
+test("stageCuratedSyntaxDefinitions_WhenPinnedCheckoutIsDirty_Rejects", async () => {
+  const { root: checkout, commit } = await createPinnedCheckout();
+  const output = await mkdtemp(path.join(os.tmpdir(), "sharpvision-syntax-output-"));
+  await writeFile(
+    path.join(checkout, "data", "syntax", "permissive.xml"),
+    definition("Tampered", "MIT"),
+  );
+
+  await assert.rejects(
+    stageCuratedSyntaxDefinitions(checkout, output, commit),
+    /working tree is not clean/iu,
+  );
+});
+
+test("stageCuratedSyntaxDefinitions_WhenPinnedCheckoutHasUntrackedDefinition_Rejects", async () => {
+  const { root: checkout, commit } = await createPinnedCheckout();
+  const output = await mkdtemp(path.join(os.tmpdir(), "sharpvision-syntax-output-"));
+  await writeFile(
+    path.join(checkout, "data", "syntax", "untracked.xml"),
+    definition("Untracked", "MIT"),
+  );
+
+  await assert.rejects(
+    stageCuratedSyntaxDefinitions(checkout, output, commit),
+    /working tree is not clean/iu,
+  );
+});
+
 test("stageCuratedSyntaxDefinitions_WhenAFirstPartyFileAlreadyExists_PreservesItUnchanged", async () => {
   const { root: checkout, commit } = await createPinnedCheckout();
   const output = await mkdtemp(path.join(os.tmpdir(), "sharpvision-syntax-output-"));
