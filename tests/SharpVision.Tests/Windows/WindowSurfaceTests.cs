@@ -8,6 +8,110 @@ using System.Text.Json;
 /// <summary>Proves window focus and interaction through mounted terminal surfaces.</summary>
 public sealed class WindowSurfaceTests
 {
+    /// <summary>Verifies ancestor availability and reparenting transitions clear retained close
+    /// hover when the framework pointer path is retired without routing a raw Leave event.</summary>
+    [Theory]
+    [InlineData("hide")]
+    [InlineData("disable")]
+    [InlineData("detach")]
+    [InlineData("reparent")]
+    public async Task Hover_WhenAncestorTransitionClearsPointerPath_ClearsCloseHoverAsync(string transition)
+    {
+        var window = new Window
+        {
+            CanClose = true,
+            Width = Length.Cells(12),
+            Height = Length.Cells(4)
+        };
+        var source = new Overlay
+        {
+            Width = Length.Cells(14),
+            Height = Length.Cells(6),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Children = { window }
+        };
+        var destination = new Overlay
+        {
+            Width = Length.Cells(14),
+            Height = Length.Cells(6),
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        var root = new Overlay { Children = { source, destination } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(34, 6),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(window, new Point(4, 0));
+        window.HasClosePointerOver().ShouldBeTrue();
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                switch (transition)
+                {
+                    case "hide":
+                        source.Visibility = Visibility.Hidden;
+                        break;
+                    case "disable":
+                        source.IsEnabled = false;
+                        break;
+                    case "detach":
+                        root.Children.Remove(source).ShouldBeTrue();
+                        break;
+                    case "reparent":
+                        source.Children.Remove(window).ShouldBeTrue();
+                        destination.Children.Add(window);
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Unknown transition '{transition}'.");
+                }
+            },
+            $"clear Window hover through ancestor {transition}");
+
+        window.IsPointerOver.ShouldBeFalse();
+        window.HasClosePointerOver().ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a sibling modal plane clears close-chrome hover and repaints the
+    /// still-visible background Window without requiring pointer movement.</summary>
+    [Fact]
+    public async Task Hover_WhenSiblingModalPlaneExcludesWindow_ClearsRenderedCloseHoverAsync()
+    {
+        var window = new Window
+        {
+            CanClose = true,
+            Width = Length.Cells(12),
+            Height = Length.Cells(4),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var modal = new Window
+        {
+            Visibility = Visibility.Collapsed,
+            Width = Length.Cells(8),
+            Height = Length.Cells(3),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom
+        };
+        var root = new Overlay { Children = { window, modal } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 8),
+            TestContext.Current.CancellationToken);
+        var closeCell = new Point(4, 0);
+        var normalForeground = surface.Cell(closeCell).Style.Foreground;
+        await surface.Pointer.MoveToAsync(window, closeCell);
+        surface.Cell(closeCell).Style.Foreground.ShouldNotBe(normalForeground);
+        ModalScope? scope = null;
+
+        await surface.UpdateAsync(() => scope = modal.ShowModal(), "exclude Window with sibling modal Window");
+
+        window.IsPointerOver.ShouldBeFalse();
+        window.HasClosePointerOver().ShouldBeFalse();
+        surface.Cell(closeCell).Style.Foreground.ShouldBe(normalForeground);
+        await surface.UpdateAsync(scope.ShouldNotBeNull().Dispose, "end sibling modal Window");
+    }
+
     /// <summary>Verifies active Window chrome consumes Turbo Vision's focused raised-edge mapping.</summary>
     [Fact]
     public async Task Render_WhenTurboVisionWindowIsMounted_DrawsRaisedFrameAsync()

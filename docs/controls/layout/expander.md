@@ -32,6 +32,9 @@ Neither state invents a frame or a fill. Caller content composes over the
 surrounding surface unless a descendant supplies an explicit background. Callers
 can opt into inherited frame, face, or shadow properties, in which case layout
 follows the shared [chrome contract](../../concepts/styling.md#shared-chrome).
+Header-specific hover follows the committed framework pointer-over path: losing
+that path through ancestor availability, removal, reparenting, retargeting, or
+modality clears the header cue even when no raw `Leave` routes through Expander.
 
 ## Inheritance
 
@@ -140,7 +143,8 @@ focuses the Expander and toggles expansion.
   event aligned with the newest committed state.
 - The header responds to keyboard and pointer activation with hit geometry that
   accounts for any optional border and padding, hovering a descendant does not
-  light the header, and a disabled Expander refuses to toggle.
+  light the header, committed pointer-over loss clears local header hover, and a
+  disabled Expander refuses to toggle.
 - Focus, content replacement, Unicode cell geometry, resize and reflow, clearing
   of stale cells, and the final committed cells are all observable guarantees.
   The showcase includes expanded, collapsed, nested, disabled, wide-header, and

@@ -450,11 +450,22 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        _hoveredDate = null;
 
         if (reason == ReleaseReason.Disposed)
         {
             SelectionChanged = null;
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver)
+    {
+        base.OnPointerOverChanged(isPointerOver, isPointerDirectlyOver);
+        _ = isPointerDirectlyOver;
+
+        if (!isPointerOver)
+        {
+            SetHoveredDate(null);
         }
     }
 

@@ -40,6 +40,10 @@ directional navigation, access keys, modal planes, dismissal, or restoration.
   `OnFocusChanged`, `OnLostPointerCapture`, and `OnUnavailable` hooks run only
   after selection, focus, capture, and modality invariants have settled; a base
   call is never the mechanism that protects those invariants.
+- Reconcile component-specific hover from `OnPointerOverChanged`, not only raw
+  routed `Leave` or unavailability. The hook observes committed framework state;
+  a transition generation prevents reentrant away-and-back work from publishing
+  a stale entry or exit afterward.
 - A Window or Popup owns presentation; `ModalityManager` and `FocusManager` own
   cross-surface isolation and restoration policy.
 

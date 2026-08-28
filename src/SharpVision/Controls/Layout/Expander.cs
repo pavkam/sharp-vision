@@ -42,6 +42,11 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
         IsTabStop = true;
     }
 
+    /// <summary>Gets the retained header-hover detail used to prove reconciliation with the
+    /// framework pointer-over transition.</summary>
+    /// <returns>Whether header-specific hover is retained.</returns>
+    internal bool HasHeaderPointerOver() => _isHeaderPointerOver;
+
     /// <summary>Raised after the expanded state and content visibility commit.</summary>
     public event EventHandler<ExpandedChangedEventArgs>? ExpandedChanged;
 
@@ -291,6 +296,11 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
                     eventArgs.Pointer.Cells is { } cells &&
                     HeaderBounds.Contains(cells);
 
+        SetHeaderPointerOver(value);
+    }
+
+    private void SetHeaderPointerOver(bool value)
+    {
         if (_isHeaderPointerOver == value)
         {
             return;
@@ -326,6 +336,18 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
     {
         base.OnFocusChanged(focused);
         _interaction.FocusChanged(focused);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver)
+    {
+        base.OnPointerOverChanged(isPointerOver, isPointerDirectlyOver);
+        _ = isPointerDirectlyOver;
+
+        if (!isPointerOver)
+        {
+            SetHeaderPointerOver(false);
+        }
     }
 
     /// <inheritdoc/>

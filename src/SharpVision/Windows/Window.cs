@@ -68,6 +68,11 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         EnableChromeAuthoring();
     }
 
+    /// <summary>Gets the retained close-chrome hover detail used to prove reconciliation with the
+    /// framework pointer-over transition.</summary>
+    /// <returns>Whether close-chrome hover is retained.</returns>
+    internal bool HasClosePointerOver() => _closePointerOver;
+
     /// <summary>Raised after this Window becomes visible.</summary>
     public event EventHandler? Shown;
 
@@ -698,13 +703,24 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     }
 
     /// <inheritdoc/>
+    protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver)
+    {
+        base.OnPointerOverChanged(isPointerOver, isPointerDirectlyOver);
+        _ = isPointerDirectlyOver;
+
+        if (!isPointerOver)
+        {
+            SetClosePointerOver(false);
+        }
+    }
+
+    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         ExceptionDispatchInfo? failure = null;
 
         ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
         ExceptionAggregation.Capture(_closeInteraction.Unavailable, ref failure);
-        ExceptionAggregation.Capture(() => SetClosePointerOver(false), ref failure);
 
         if (reason == ReleaseReason.Disposed)
         {

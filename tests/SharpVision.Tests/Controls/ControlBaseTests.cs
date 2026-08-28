@@ -6,6 +6,64 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies validated mutable control properties and invalidation.</summary>
 public sealed partial class ControlBaseTests
 {
+    /// <summary>Verifies a failing component pointer-over hook observes committed state and cannot
+    /// prevent the public exit event from observing the same transition.</summary>
+    [Fact]
+    public void SetPointerOver_WhenComponentHookThrows_CompletesCurrentPublicExitBeforeRethrow()
+    {
+        var probe = new ProbeControl();
+        probe.SetPointerOver(value: true, directlyOver: true);
+        probe.ThrowOnPointerOverChanged = true;
+        var exits = 0;
+        probe.PointerExited += (_, _) =>
+        {
+            exits++;
+            probe.IsPointerOver.ShouldBeFalse();
+            probe.IsPointerDirectlyOver.ShouldBeFalse();
+            probe.PointerOverStateWasCommitted.ShouldBeTrue();
+        };
+
+        var exception = Should.Throw<InvalidOperationException>(() =>
+            probe.SetPointerOver(value: false, directlyOver: false));
+
+        exception.Message.ShouldBe("The probe pointer-over callback failed.");
+        probe.PointerOverChangedCalls.ShouldBe(2);
+        exits.ShouldBe(1);
+        probe.IsPointerOver.ShouldBeFalse();
+        probe.IsPointerDirectlyOver.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a hook that commits a newer away-and-back transition suppresses the
+    /// superseded outer exit even though the final pointer values equal the original entry.</summary>
+    [Fact]
+    public void SetPointerOver_WhenComponentHookReentersAwayAndBack_SuppressesOuterExit()
+    {
+        var probe = new ProbeControl();
+        var entries = 0;
+        var exits = 0;
+        probe.PointerEntered += (_, _) => entries++;
+        probe.PointerExited += (_, _) => exits++;
+        probe.SetPointerOver(value: true, directlyOver: true);
+        probe.PointerOverChanging = (control, isPointerOver, _) =>
+        {
+            if (isPointerOver)
+            {
+                return;
+            }
+
+            control.PointerOverChanging = null;
+            control.SetPointerOver(value: true, directlyOver: true);
+        };
+
+        probe.SetPointerOver(value: false, directlyOver: false);
+
+        probe.IsPointerOver.ShouldBeTrue();
+        probe.IsPointerDirectlyOver.ShouldBeTrue();
+        probe.PointerOverChangedCalls.ShouldBe(3);
+        entries.ShouldBe(2);
+        exits.ShouldBe(0);
+    }
+
     /// <summary>Verifies a newer value committed from owner publication leaves the retained
     /// projection aligned instead of letting the outer setter forward its captured candidate.</summary>
     [Fact]

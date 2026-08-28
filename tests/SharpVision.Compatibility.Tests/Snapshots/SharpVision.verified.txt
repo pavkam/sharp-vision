@@ -447,6 +447,7 @@ namespace SharpVision.Controls
         protected virtual void OnFocusChanged(bool focused) { }
         protected virtual void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected virtual void OnParentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
+        protected virtual void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver) { }
         protected virtual void OnPressedChanged(bool pressed) { }
         protected virtual void OnRenderAdornment(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected virtual void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
@@ -1409,6 +1410,7 @@ namespace SharpVision.Controls.Input
         public bool GoToToday() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool RemoveMarkup(System.DateOnly date) { }
@@ -1981,6 +1983,7 @@ namespace SharpVision.Controls.Layout
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
+        protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
@@ -4356,6 +4359,7 @@ namespace SharpVision.Windows
         protected override void OnAttached() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
+        protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public SharpVision.Input.ModalScope ShowModal(SharpVision.Input.OutsideInteraction outsideInteraction = 0, SharpVision.Controls.ControlBase? initialFocus = null) { }

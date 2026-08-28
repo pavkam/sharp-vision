@@ -9,6 +9,112 @@ using System.Text.Json.Nodes;
 /// <summary>Verifies Expander appearance, activation, focus, content exclusion, replacement, and resize through mounted surfaces.</summary>
 public sealed class ExpanderSurfaceTests
 {
+    /// <summary>Verifies ancestor availability and reparenting transitions clear retained header
+    /// hover when the framework pointer path is retired without routing a raw Leave event.</summary>
+    [Theory]
+    [InlineData("hide")]
+    [InlineData("disable")]
+    [InlineData("detach")]
+    [InlineData("reparent")]
+    public async Task Hover_WhenAncestorTransitionClearsPointerPath_ClearsHeaderHoverAsync(string transition)
+    {
+        var expander = new Expander
+        {
+            HeaderText = "Details",
+            Content = new ControlText("Body"),
+            Width = Length.Cells(12),
+            Height = Length.Cells(2)
+        };
+        var source = new Overlay
+        {
+            Width = Length.Cells(12),
+            Height = Length.Cells(2),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Children = { expander }
+        };
+        var destination = new Overlay
+        {
+            Width = Length.Cells(12),
+            Height = Length.Cells(2),
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        var root = new Overlay { Children = { source, destination } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 4),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(expander, new Point(1, 0));
+        expander.HasHeaderPointerOver().ShouldBeTrue();
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                switch (transition)
+                {
+                    case "hide":
+                        source.Visibility = Visibility.Hidden;
+                        break;
+                    case "disable":
+                        source.IsEnabled = false;
+                        break;
+                    case "detach":
+                        root.Children.Remove(source).ShouldBeTrue();
+                        break;
+                    case "reparent":
+                        source.Children.Remove(expander).ShouldBeTrue();
+                        destination.Children.Add(expander);
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Unknown transition '{transition}'.");
+                }
+            },
+            $"clear Expander hover through ancestor {transition}");
+
+        expander.IsPointerOver.ShouldBeFalse();
+        expander.HasHeaderPointerOver().ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a sibling modal plane clears header hover and repaints the still-visible
+    /// Expander without requiring pointer movement.</summary>
+    [Fact]
+    public async Task Hover_WhenSiblingModalPlaneExcludesExpander_ClearsRenderedHeaderHoverAsync()
+    {
+        var expander = new Expander
+        {
+            HeaderText = "Details",
+            Content = new ControlText("Body"),
+            Width = Length.Cells(12),
+            Height = Length.Cells(2),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var modal = new Window
+        {
+            Visibility = Visibility.Collapsed,
+            Width = Length.Cells(8),
+            Height = Length.Cells(3),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom
+        };
+        var root = new Overlay { Children = { expander, modal } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 6),
+            TestContext.Current.CancellationToken);
+        var headerCell = new Point(3, 0);
+        var normalForeground = surface.Cell(headerCell).Style.Foreground;
+        await surface.Pointer.MoveToAsync(expander, new Point(1, 0));
+        surface.Cell(headerCell).Style.Foreground.ShouldNotBe(normalForeground);
+        ModalScope? scope = null;
+
+        await surface.UpdateAsync(() => scope = modal.ShowModal(), "exclude Expander with sibling modal Window");
+
+        expander.IsPointerOver.ShouldBeFalse();
+        expander.HasHeaderPointerOver().ShouldBeFalse();
+        surface.Cell(headerCell).Style.Foreground.ShouldBe(normalForeground);
+        await surface.UpdateAsync(scope.ShouldNotBeNull().Dispose, "end sibling modal Window");
+    }
+
     /// <summary>Verifies the default disclosure header and indentation need no surrounding frame.</summary>
     [Fact]
     public async Task Render_WhenDefaultChromeIsUsed_DrawsBorderlessTransparentSectionAsync()

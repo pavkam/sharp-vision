@@ -67,6 +67,7 @@ authoring-role diagram.
 | `SelectAllText()`                                                           | `void`                                        | —              | Selects the complete current semantic projection.                                                                                                                                                                                                                                         |
 | `ClearTextSelection()`                                                      | `void`                                        | —              | Collapses the enabled range at its directional caret.                                                                                                                                                                                                                                     |
 | `CopySelectedText()`                                                        | `string`                                      | —              | Purely returns an owned selected string and never emits terminal or clipboard state.                                                                                                                                                                                                      |
+| `OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver)`      | `void`                                        | —              | Protected; runs after both pointer-over facts commit and before `PointerEntered` or `PointerExited`.                                                                                                                                                                                      |
 | `TextSelectionChanged`                                                      | `EventHandler<TextSelectionChangedEventArgs>` | —              | Raised synchronously after a different directional text range commits.                                                                                                                                                                                                                    |
 
 `Style` and `ActualStyle` are not inherited members: a control that needs a
@@ -507,6 +508,14 @@ themes keep the passive `ControlStyle` visually stable for pointer, focus,
 press, and selection states; an interactive control opts into `InputStyle` or a
 specialized style, while an explicit custom `control` state remains available to
 theme authors who intentionally want a shared cue.
+
+`OnPointerOverChanged` lets a derived control reconcile finer local hover state
+with the manager-owned transition. It runs after `IsPointerOver` and
+`IsPointerDirectlyOver` commit and their property notifications publish, but
+before `PointerEntered` or `PointerExited`. Callback failures do not skip the
+current public event. Reentrant pointer reconciliation owns all later work, even
+when it changes the values away and back; the superseded transition publishes no
+stale hook continuation or entry/exit event.
 
 `GetAppearanceState` derives the local flags from physical pointer membership,
 focus, availability, and the control's explicit pressed, current, selection,

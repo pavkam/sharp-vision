@@ -76,7 +76,9 @@ keyboard date or the directly hovered selectable date. This preview does not
 change `Selection` and does not raise `SelectionChanged`. A second endpoint
 whose inclusive span contains a blocked date is ignored, and the anchor is
 preserved. After an interval completes, the next activation clears it and starts
-a fresh anchor.
+a fresh anchor. Date hover is cleared whenever the framework retires Calendar's
+pointer-over path, including ancestor hide, disable, removal, reparenting, and
+modal-plane exclusion; it does not depend on receiving a routed `Leave`.
 
 ## Dates, bounds, and culture
 
@@ -225,7 +227,7 @@ The Calendar is one focus stop with `TabNavigation.None`.
 | Header arrow press   | Change only `DisplayMonth`, unless a focus callback invalidated the control.                              |
 | Selectable day press | Focus, then make active and activate the mapped date while the control stays valid after focus callbacks. |
 | Blocked day press    | Consume the press without changing selection.                                                             |
-| Pointer move / leave | Update or clear direct date hover and interval preview.                                                   |
+| Pointer move / leave | Update direct date hover and interval preview; committed pointer-over loss also clears both.              |
 | Wheel up / down      | Display the previous / next month.                                                                        |
 
 Initial key presses and navigation repeats are accepted; release is ignored.
@@ -272,8 +274,9 @@ booking.SelectionChanged += (_, change) => SaveBooking(change.Selection);
 - Authored markup follows the documented precedence and clips Unicode safely,
   and zero or tiny bounds stay contained.
 - Keyboard and pointer input behave identically; hover, focus, Tab, header, and
-  wheel navigation work as documented; and disabling the control cleans up its
-  transient state.
+  wheel navigation work as documented; ancestor availability, reparenting, and
+  modality clear date hover; and disabling the control cleans up transient
+  state.
 - Mounted output is semantically correct, the control passes the shared
   exported-control and common box-model checks, and the interactive showcase
   page exercises it.

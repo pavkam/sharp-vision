@@ -134,7 +134,10 @@ regardless of `CanClose`, matching Escape and modal outside-dismissal. A failing
 reentrancy guard, so a later close request can retry normally.
 
 Pointer ancestry does not restyle the Window face, frame, or shadow. The close
-mark can still react independently while its target is hovered or pressed.
+mark can still react independently while its target is hovered or pressed. Its
+local hover bit is reconciled from the committed framework pointer-over path, so
+ancestor availability, removal, reparenting, retargeting, and modal exclusion
+clear the mark even when no raw `Leave` reaches Window.
 
 Unhandled Enter and Escape search the owned descendants in deterministic
 ownership order for the first enabled, visible `Button` marked `IsDefault` or

@@ -91,6 +91,18 @@ internal sealed class ProbeControl: ChromeProbe
     /// <summary>Gets the result of the latest capture request made while pressed state cleared.</summary>
     internal bool? PressedClearRecaptureResult { get; private set; }
 
+    /// <summary>Gets the number of committed pointer-over transition callbacks.</summary>
+    internal int PointerOverChangedCalls { get; private set; }
+
+    /// <summary>Gets whether framework pointer-over state was committed before the latest callback.</summary>
+    internal bool PointerOverStateWasCommitted { get; private set; }
+
+    /// <summary>Gets or sets whether the pointer-over callback throws a deterministic failure.</summary>
+    internal bool ThrowOnPointerOverChanged { get; set; }
+
+    /// <summary>Gets or sets work invoked from the pointer-over callback.</summary>
+    internal Action<ProbeControl, bool, bool>? PointerOverChanging { get; set; }
+
     /// <summary>Requests keyboard focus through the protected consumer seam.</summary>
     /// <returns>Whether focus was acquired or already owned.</returns>
     internal bool RequestProbeFocus() => RequestFocus();
@@ -233,6 +245,20 @@ internal sealed class ProbeControl: ChromeProbe
         if (!pressed && RecaptureWhenPressedClears)
         {
             PressedClearRecaptureResult = CapturePointer();
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver)
+    {
+        PointerOverChangedCalls++;
+        PointerOverStateWasCommitted =
+            IsPointerOver == isPointerOver && IsPointerDirectlyOver == isPointerDirectlyOver;
+        PointerOverChanging?.Invoke(this, isPointerOver, isPointerDirectlyOver);
+
+        if (ThrowOnPointerOverChanged)
+        {
+            throw new InvalidOperationException("The probe pointer-over callback failed.");
         }
     }
 

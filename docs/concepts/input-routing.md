@@ -345,6 +345,15 @@ protected `OnLostPointerCapture` component hook runs next, and the instance
 `ReleaseReason.Detached`/`Disabled`/`Hidden`/`Disposed` values down to the
 single `PointerCaptureLossReason.Unavailable`.
 
+Each changed path member commits both pointer-over facts, publishes their
+property notifications, invokes the protected `OnPointerOverChanged` component
+hook, and finally raises `PointerEntered` or `PointerExited`. The hook is the
+authoritative place to clear subregion hover when an ancestor transition,
+reparenting, retargeting, or a modal boundary retires the path without routing a
+raw `Leave`. A throwing hook cannot skip the current public event. Reentrant
+pointer reconciliation supersedes the older hook/event continuation, including
+an away-and-back transition that finishes on the same values.
+
 ```mermaid
 stateDiagram-v2
     [*] --> Uncaptured

@@ -35,6 +35,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     private bool? _effectiveIsEnabled;
     private long _visibilityVersion;
     private long _isEnabledVersion;
+    private long _pointerOverVersion;
 
     /// <summary>Gets how many times this control has actually recomputed <see cref="EffectiveIsVisible"/>
     /// or <see cref="EffectiveIsEnabled"/> from ancestor state rather than returning a cached value.
@@ -2222,19 +2223,43 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             return;
         }
 
+        var version = unchecked(++_pointerOverVersion);
         InvalidateVisualStateCore();
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPointerOver)));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPointerDirectlyOver)));
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(
+            () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPointerOver))),
+            ref failure);
 
-        if (value && !wasOver)
+        if (IsCurrentPointerOverTransition(version, value, directlyOver))
         {
-            PointerEntered?.Invoke(this, EventArgs.Empty);
+            ExceptionAggregation.Capture(
+                () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPointerDirectlyOver))),
+                ref failure);
         }
-        else if (!value && wasOver)
+
+        if (IsCurrentPointerOverTransition(version, value, directlyOver))
         {
-            PointerExited?.Invoke(this, EventArgs.Empty);
+            ExceptionAggregation.Capture(() => OnPointerOverChanged(value, directlyOver), ref failure);
         }
+
+        if (IsCurrentPointerOverTransition(version, value, directlyOver) && value && !wasOver)
+        {
+            ExceptionAggregation.Capture(() => PointerEntered?.Invoke(this, EventArgs.Empty), ref failure);
+        }
+        else if (IsCurrentPointerOverTransition(version, value, directlyOver) && !value && wasOver)
+        {
+            ExceptionAggregation.Capture(() => PointerExited?.Invoke(this, EventArgs.Empty), ref failure);
+        }
+
+        failure?.Throw();
     }
+
+    /// <summary>Gets whether a pointer-over transition still owns its dependent publication.</summary>
+    private bool IsCurrentPointerOverTransition(long version, bool value, bool directlyOver) =>
+        !IsDisposed &&
+        _pointerOverVersion == version &&
+        IsPointerOver == value &&
+        IsPointerDirectlyOver == directlyOver;
 
     /// <summary>Updates pressed visual state on the owning dispatcher.</summary>
     internal void SetPressed(bool value)
@@ -2416,6 +2441,18 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     {
         _ = focused;
         Debug.Assert(!IsDisposed, "A disposed control cannot change focus state.");
+    }
+
+    /// <summary>Responds after this control's physical pointer-over state commits.</summary>
+    /// <param name="isPointerOver">Whether the physical pointer is over this control or one of its descendants.</param>
+    /// <param name="isPointerDirectlyOver">Whether the physical pointer directly targets this control.</param>
+    /// <remarks>The callback precedes <see cref="PointerEntered"/> and <see cref="PointerExited"/>.
+    /// Reentrant pointer reconciliation supersedes the outer callback's remaining publication.</remarks>
+    protected virtual void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver)
+    {
+        _ = isPointerOver;
+        _ = isPointerDirectlyOver;
+        Debug.Assert(!IsDisposed, "A disposed control cannot change pointer-over state.");
     }
 
     /// <summary>Responds after this control's pressed visual state commits.</summary>

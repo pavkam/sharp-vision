@@ -355,7 +355,14 @@ proves its complete border box is pushed back inside the latest client bounds.
 Window chrome proof compares exact semantic cells for light, rounded, heavy,
 paired, and ASCII bracketed close chrome; it also drives hover, press, captured
 movement, release, capture loss, both close edges, title-lane collision
-avoidance, and dialog Escape fallback through mounted controls.
+avoidance, and dialog Escape fallback through mounted controls. Calendar,
+Expander, and Window mounted fixtures also retain their finer date, header, and
+close-chrome hover, then hide, disable, detach, reparent, or exclude the owner
+through a sibling modal plane. The committed framework pointer path, internal
+local state, and final visible cells must clear together without a raw `Leave`.
+Direct hook tests require committed callback state, exception-safe public exit
+delivery, and suppression of an outer exit after reentrant away-and-back
+reconciliation.
 
 Floating-surface architecture proof treats public identity as observable
 behavior. The compatibility snapshot pins `Window` and `Popup` deriving from

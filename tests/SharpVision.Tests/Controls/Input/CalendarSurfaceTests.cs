@@ -8,6 +8,111 @@ using System.Text.Json;
 /// <summary>Proves Calendar behavior through mounted terminal input and semantic output.</summary>
 public sealed class CalendarSurfaceTests
 {
+    /// <summary>Verifies ancestor availability and reparenting transitions clear retained date
+    /// hover when the framework pointer path is retired without routing a raw Leave event.</summary>
+    [Theory]
+    [InlineData("hide")]
+    [InlineData("disable")]
+    [InlineData("detach")]
+    [InlineData("reparent")]
+    public async Task Hover_WhenAncestorTransitionClearsPointerPath_ClearsHoveredDateAsync(string transition)
+    {
+        var calendar = new UiCalendar
+        {
+            Culture = CultureInfo.InvariantCulture,
+            DisplayMonth = new DateOnly(2026, 7, 1)
+        };
+        var source = new Overlay
+        {
+            Width = Length.Cells(32),
+            Height = Length.Cells(10),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Children = { calendar }
+        };
+        var destination = new Overlay
+        {
+            Width = Length.Cells(32),
+            Height = Length.Cells(10),
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        var root = new Overlay { Children = { source, destination } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(70, 10),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(calendar, new Point(6, 5));
+        calendar.HoveredDate.ShouldBe(new DateOnly(2026, 7, 13));
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                switch (transition)
+                {
+                    case "hide":
+                        source.Visibility = Visibility.Hidden;
+                        break;
+                    case "disable":
+                        source.IsEnabled = false;
+                        break;
+                    case "detach":
+                        root.Children.Remove(source).ShouldBeTrue();
+                        break;
+                    case "reparent":
+                        source.Children.Remove(calendar).ShouldBeTrue();
+                        destination.Children.Add(calendar);
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Unknown transition '{transition}'.");
+                }
+            },
+            $"clear Calendar hover through ancestor {transition}");
+
+        calendar.IsPointerOver.ShouldBeFalse();
+        calendar.HoveredDate.ShouldBeNull();
+    }
+
+    /// <summary>Verifies a sibling modal plane clears retained date hover and repaints the still
+    /// visible Calendar without requiring pointer movement.</summary>
+    [Fact]
+    public async Task Hover_WhenSiblingModalPlaneExcludesCalendar_ClearsRenderedDateHoverAsync()
+    {
+        var calendar = new UiCalendar
+        {
+            Culture = CultureInfo.InvariantCulture,
+            DisplayMonth = new DateOnly(2026, 7, 1),
+            Width = Length.Cells(32),
+            Height = Length.Cells(10),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var modal = new Window
+        {
+            Visibility = Visibility.Collapsed,
+            Width = Length.Cells(8),
+            Height = Length.Cells(3),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom
+        };
+        var root = new Overlay { Children = { calendar, modal } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(44, 12),
+            TestContext.Current.CancellationToken);
+        var dateCell = new Point(6, 5);
+        var normalForeground = surface.Cell(dateCell).Style.Foreground;
+        await surface.Pointer.MoveToAsync(calendar, dateCell);
+        calendar.HoveredDate.ShouldBe(new DateOnly(2026, 7, 13));
+        surface.Cell(dateCell).Style.Foreground.ShouldNotBe(normalForeground);
+        ModalScope? scope = null;
+
+        await surface.UpdateAsync(() => scope = modal.ShowModal(), "exclude Calendar with sibling modal Window");
+
+        calendar.IsPointerOver.ShouldBeFalse();
+        calendar.HoveredDate.ShouldBeNull();
+        surface.Cell(dateCell).Style.Foreground.ShouldBe(normalForeground);
+        await surface.UpdateAsync(scope.ShouldNotBeNull().Dispose, "end sibling modal Window");
+    }
+
     /// <summary>Verifies mounted paging preserves month geometry and Space activates the focused date.</summary>
     [Fact]
     public async Task Surface_WhenPagedAndSpacePressed_SelectsFocusedDateAsync()
