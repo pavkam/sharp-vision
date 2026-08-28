@@ -746,6 +746,31 @@ public sealed class ListViewTests
         secondSubscriberObservations.ShouldBe(["2"]);
     }
 
+    /// <summary>Verifies a first subscriber that reenters through item removal - rather than through
+    /// another selection assignment - still stops a later subscriber from observing the now-obsolete
+    /// outer proposal, proving the version-checked delivery in <c>SelectionCommit&lt;TKey&gt;</c>
+    /// generalizes to any reentrant selection-version bump, not only a reentrant selection call.</summary>
+    [Fact]
+    public void SelectedIndex_WhenChangingSubscriberReentrantlyRemovesAnItem_LaterSubscriberNeverSeesSupersededProposal()
+    {
+        var control = Create("A", "B", "C");
+        List<string> secondSubscriberObservations = [];
+
+        control.SelectionChanging += (_, eventArgs) =>
+        {
+            if (eventArgs.AddedIndexes.Span.Contains(1))
+            {
+                control.Items = ["A", "C"];
+            }
+        };
+        control.SelectionChanging += (_, eventArgs) =>
+            secondSubscriberObservations.Add(Join(eventArgs.AddedIndexes));
+
+        control.SelectedIndex = 1;
+
+        secondSubscriberObservations.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies arrows skip unavailable items, Space selects, Enter invokes, and Home/End navigate.</summary>
     [Fact]
     public async Task Dispatch_WhenKeyboardNavigates_UsesStableRealizedOrderAsync()

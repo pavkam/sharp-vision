@@ -1218,6 +1218,28 @@ public sealed class DateTimeInputTests
         value.Millisecond.ShouldBe(450);
     }
 
+    /// <summary>Verifies typing a Month digit that forces <c>ReplaceMonth</c>'s own day-clamp (the
+    /// destination month has fewer days than the source day) still preserves the pre-existing
+    /// sub-second remainder even though the bound intentionally overrides the day component - the
+    /// clamp and the tick-preservation fix must compose rather than the clamp path bypassing
+    /// <c>WithSubSecondTicksOf</c>.</summary>
+    [Fact]
+    public void TypeDigit_WhenMonthChangeClampsDayToShorterMonth_PreservesSubSecondPrecision()
+    {
+        // Arrange
+        using var control = new DateTimeInput { Value = new DateTime(2026, 1, 31, 10, 15, 30).AddMilliseconds(450) };
+
+        // Act: Month is the first segment, already active. February 2026 (non-leap) has 28 days.
+        _ = Router.Route(control, Events.Key, CharacterKey('0'));
+        _ = Router.Route(control, Events.Key, CharacterKey('2'));
+
+        // Assert
+        var value = control.Value.ShouldNotBeNull();
+        value.Month.ShouldBe(2);
+        value.Day.ShouldBe(28);
+        value.Millisecond.ShouldBe(450);
+    }
+
     /// <summary>Verifies typing a digit on the Day segment preserves the pre-existing sub-second
     /// remainder.</summary>
     [Fact]

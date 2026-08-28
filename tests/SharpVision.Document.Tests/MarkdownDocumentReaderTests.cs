@@ -2173,6 +2173,8 @@ public sealed class MarkdownDocumentReaderTests
                 Extensions: MarkdownExtension.None),
             (Source: "https://example.com/" + new string(')', 10_000), Extensions: MarkdownExtension.Autolinks),
             (Source: new string('(', 10_000), Extensions: MarkdownExtension.Autolinks),
+            (Source: new string('_', 10_000), Extensions: MarkdownExtension.Autolinks),
+            (Source: new string('*', 10_000), Extensions: MarkdownExtension.Autolinks),
             (Source: new string('<', 10_000), Extensions: MarkdownExtension.None),
             (Source: string.Concat(Enumerable.Repeat("~a ", 4_000)), Extensions: MarkdownExtension.Strikethrough),
             (Source: string.Concat(Enumerable.Repeat(" *a", 4_000)), Extensions: MarkdownExtension.None)

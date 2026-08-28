@@ -2650,6 +2650,31 @@ public sealed partial class TreeViewTests
         secondSubscriberObservations.ShouldBe(["first"]);
     }
 
+    /// <summary>Verifies a first subscriber that reenters through item removal - rather than through
+    /// another selection assignment - still stops a later subscriber from observing the now-obsolete
+    /// outer proposal, proving the version-checked delivery in <c>SelectionCommit&lt;TKey&gt;</c>
+    /// generalizes to any reentrant selection-version bump, not only a reentrant selection call.</summary>
+    [Fact]
+    public void SetSelected_WhenChangingSubscriberReentrantlyRemovesAnItem_LaterSubscriberNeverSeesSupersededProposal()
+    {
+        var tree = Build(out var first, out var second, out _);
+        List<string> secondSubscriberObservations = [];
+
+        tree.SelectionChanging += (_, eventArgs) =>
+        {
+            if (eventArgs.AddedItems.Any(item => ReferenceEquals(item, second)))
+            {
+                _ = tree.Items.Remove(second);
+            }
+        };
+        tree.SelectionChanging += (_, eventArgs) =>
+            secondSubscriberObservations.Add(Names(eventArgs.AddedItems));
+
+        _ = tree.SetSelected(second, true);
+
+        secondSubscriberObservations.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies normalization the control performs on its own behalf is not cancellable.</summary>
     [Fact]
     public void SelectionMode_WhenNarrowed_IgnoresCancellation()

@@ -676,6 +676,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         var labelCloses = BuildLabelCloses(source, codeSpanEnds, nextAngleClose);
         var emphasisCloses = BuildEmphasisCloses(source);
         var strikethroughCloses = BuildStrikethroughCloses(source);
+        var tokenHasAtSign = BuildTokenHasAtSign(source);
 
         void Flush()
         {
@@ -739,7 +740,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             }
 
             if (!insideLink && Has(MarkdownExtension.Autolinks) &&
-                TryExtendedAutolink(source, index, out var urlEnd, out var urlText, out var urlTarget))
+                TryExtendedAutolink(source, index, tokenHasAtSign, out var urlEnd, out var urlText, out var urlTarget))
             {
                 Flush();
                 destination.Add(new DocumentLink(urlText, urlTarget));
@@ -1781,9 +1782,53 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         value is '.' or '!' or '#' or '$' or '%' or '&' or '\'' or '*' or '+' or
             '/' or '=' or '?' or '^' or '_' or '`' or '{' or '|' or '}' or '~' or '-';
 
+    /// <summary>Precomputes, for every source position, whether the maximal run of non-whitespace,
+    /// non-control, non-angle-bracket characters containing that position (the same token boundary
+    /// <see cref="TryExtendedAutolink"/>'s own scan stops at) contains an <c>@</c> anywhere. A run of
+    /// characters that are individually email-local-part-shaped (for example many consecutive
+    /// <c>_</c>) but never form a valid email autolink would otherwise still make
+    /// <see cref="TryExtendedAutolink"/> restart its own expensive token scan from every position in
+    /// the run: each character both satisfies <see cref="IsEmailAutolinkLocalPartCharacter"/> and is
+    /// itself accepted as a valid preceding character for the next position's candidate check,
+    /// reproducing the same quadratic behavior <see cref="BuildStrikethroughCloses"/> and
+    /// <see cref="BuildNextAngleClose"/> already guard against for their own delimiters. Since a valid
+    /// email autolink always requires an <c>@</c> in this same token, rejecting a candidate outright
+    /// when its token has none bounds the expensive scan to once per token instead of once per
+    /// character.</summary>
+    private bool[] BuildTokenHasAtSign(string source)
+    {
+        var hasAt = new bool[source.Length];
+        var tokenStart = 0;
+        var containsAt = false;
+
+        for (var index = 0; index <= source.Length; index++)
+        {
+            InlineCandidateScanCount++;
+            var isTokenCharacter = index < source.Length &&
+                source[index] is > ' ' and not ('\u007f' or '<' or '>');
+
+            if (isTokenCharacter)
+            {
+                containsAt |= source[index] == '@';
+                continue;
+            }
+
+            if (containsAt)
+            {
+                Array.Fill(hasAt, true, tokenStart, index - tokenStart);
+            }
+
+            tokenStart = index + 1;
+            containsAt = false;
+        }
+
+        return hasAt;
+    }
+
     private bool TryExtendedAutolink(
         string source,
         int index,
+        bool[] tokenHasAtSign,
         out int end,
         out string text,
         out string target)
@@ -1807,6 +1852,20 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         // is what keeps a long run of unmatched punctuation (for example many consecutive '(') from
         // costing an O(remaining length) scan at every single position.
         if (!isUrl && !isWww && !IsEmailAutolinkLocalPartCharacter(source[index]))
+        {
+            end = -1;
+            text = string.Empty;
+            target = string.Empty;
+            return false;
+        }
+
+        // A non-URL, non-www candidate can only ever succeed as an email autolink, which requires an
+        // '@' somewhere in this same token. Without this, a long run of characters that are each
+        // individually email-local-part-shaped (for example many consecutive '_') would still pay for
+        // the full token scan below from every position in the run, since each character also
+        // satisfies the preceding-character check above for the next position - reproducing the same
+        // quadratic cost the shape check just above was meant to remove.
+        if (!isUrl && !isWww && !tokenHasAtSign[index])
         {
             end = -1;
             text = string.Empty;
