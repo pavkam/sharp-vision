@@ -26,6 +26,11 @@ public abstract partial class ControlBase: ISelectableTextSource
     /// <summary>Gets the base-owned range for editor mutation transactions.</summary>
     protected TextSelection CommittedTextSelection { get; private set; }
 
+    /// <summary>Gets the current commit's transition version, for reentrancy detection by an
+    /// <see cref="OnTextSelectionStateChanged(TextSelectionChangedEventArgs)"/> override that
+    /// publishes more than one dependent notification for a single commit.</summary>
+    protected ulong TextSelectionTransitionVersion => _textSelectionTransitionVersion;
+
     /// <summary>Raised synchronously after the directional semantic-text selection changes.</summary>
     /// <remarks>
     /// If an earlier notification reenters selection mutation, remaining observers receive only the

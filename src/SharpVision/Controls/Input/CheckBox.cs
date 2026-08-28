@@ -92,9 +92,13 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
                 ExceptionAggregation.Capture(
                     () => NotifyPropertyChanged(nameof(ThreeState), InvalidationImpact.None),
                     ref failure);
-                ExceptionAggregation.Capture(
-                    () => NotifyPropertyChanged(nameof(IsChecked), InvalidationImpact.None),
-                    ref failure);
+                ExceptionAggregation.Capture(() =>
+                {
+                    if (IsStateCommitCurrent(version, false))
+                    {
+                        NotifyPropertyChanged(nameof(IsChecked), InvalidationImpact.None);
+                    }
+                }, ref failure);
                 ExceptionAggregation.Capture(() =>
                 {
                     if (IsStateCommitCurrent(version, false))

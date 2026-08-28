@@ -686,6 +686,41 @@ public sealed class TextInputTests
         observed.ShouldBe([(new Selection(0, 2), new Selection(0, 2))]);
     }
 
+    /// <summary>Verifies a PropertyChanged callback that reenters during the CaretIndex
+    /// notification and commits a newer selection does not receive superseded SelectionStart or
+    /// SelectionLength notifications from the original transition afterward.</summary>
+    [Fact]
+    public void CaretIndex_WhenPropertyChangedCallbackReentersDuringCaretIndexNotification_SkipsSupersededSelectionNotifications()
+    {
+        // Arrange
+        var control = new TextInput { Text = "abcdef" };
+        List<string?> properties = [];
+        var reentered = false;
+
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            properties.Add(eventArgs.PropertyName);
+
+            if (eventArgs.PropertyName == nameof(TextInput.CaretIndex) && !reentered)
+            {
+                reentered = true;
+                control.CaretIndex = 4;
+            }
+        };
+
+        // Act
+        control.CaretIndex = 2;
+
+        // Assert
+        control.CaretIndex.ShouldBe(4);
+        properties.ShouldBe([
+            nameof(TextInput.CaretIndex),
+            nameof(TextInput.CaretIndex),
+            nameof(TextInput.SelectionStart),
+            nameof(TextInput.SelectionLength)
+        ]);
+    }
+
     /// <summary>Verifies typed text and owned paste share policy and grapheme maximum handling.</summary>
     [Fact]
     public void Dispatch_WhenTextAndPasteArrive_AppliesPolicyAndMaximum()

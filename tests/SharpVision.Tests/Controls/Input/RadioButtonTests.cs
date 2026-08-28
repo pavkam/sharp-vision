@@ -207,6 +207,37 @@ public sealed class RadioButtonTests
         published.ShouldBe(0);
     }
 
+    /// <summary>Verifies a PropertyChanged callback that reenters during the IsChecked
+    /// notification and clears selection again does not receive a superseded CanTabStop
+    /// notification from the original commit afterward.</summary>
+    [Fact]
+    public void IsChecked_WhenPropertyChangedCallbackReentersDuringIsCheckedNotification_SkipsSupersededCanTabStopNotification()
+    {
+        // Arrange
+        var radio = new RadioButton();
+        List<string?> properties = [];
+        var reentered = false;
+
+        radio.PropertyChanged += (_, eventArgs) =>
+        {
+            properties.Add(eventArgs.PropertyName);
+
+            if (eventArgs.PropertyName == nameof(RadioButton.IsChecked) && !reentered)
+            {
+                reentered = true;
+                radio.IsChecked = false;
+            }
+        };
+
+        // Act
+        radio.IsChecked = true;
+
+        // Assert
+        radio.IsChecked.ShouldBeFalse();
+        properties.ShouldBe(
+            [nameof(RadioButton.IsChecked), nameof(RadioButton.IsChecked), nameof(RadioButton.CanTabStop)]);
+    }
+
     /// <summary>Verifies named groups span containers but remain scoped to one root.</summary>
     [Fact]
     public void IsChecked_WhenNamedMembersAreInDifferentContainers_UsesRootScope()

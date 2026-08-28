@@ -1162,8 +1162,22 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
         {
             _coalescing = false;
         }
+
+        var transitionVersion = TextSelectionTransitionVersion;
         NotifyPropertyChanged(nameof(CaretIndex), InvalidationImpact.Render);
+
+        if (TextSelectionTransitionVersion != transitionVersion)
+        {
+            return;
+        }
+
         NotifyPropertyChanged(nameof(SelectionStart), InvalidationImpact.Render);
+
+        if (TextSelectionTransitionVersion != transitionVersion)
+        {
+            return;
+        }
+
         NotifyPropertyChanged(nameof(SelectionLength), InvalidationImpact.Render);
     }
 

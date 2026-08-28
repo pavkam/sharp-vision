@@ -361,6 +361,7 @@ namespace SharpVision.Controls
         public SharpVision.Input.TabNavigation TabNavigation { get; set; }
         public object? Tag { get; set; }
         public virtual SharpVision.Text.Selection TextSelection { get; }
+        protected ulong TextSelectionTransitionVersion { get; }
         public SharpVision.Styling.Theme? Theme { get; }
         public bool UseMnemonic { get; set; }
         public SharpVision.Layout.VerticalAlignment VerticalAlignment { get; set; }

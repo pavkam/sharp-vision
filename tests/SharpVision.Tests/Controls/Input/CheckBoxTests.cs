@@ -66,6 +66,37 @@ public sealed class CheckBoxTests
         observations.ShouldBe([(true, true)]);
     }
 
+    /// <summary>Verifies a PropertyChanged callback that reenters during the ThreeState notification
+    /// of a disabling transition does not receive a superseded IsChecked notification from the
+    /// original batch afterward.</summary>
+    [Fact]
+    public void ThreeState_WhenPropertyChangedCallbackReentersDuringThreeStateNotification_SkipsSupersededIsCheckedNotification()
+    {
+        // Arrange
+        var checkBox = new CheckBox { ThreeState = true, IsChecked = null };
+        List<string?> properties = [];
+        var reentered = false;
+
+        checkBox.PropertyChanged += (_, eventArgs) =>
+        {
+            properties.Add(eventArgs.PropertyName);
+
+            if (eventArgs.PropertyName == nameof(CheckBox.ThreeState) && !reentered)
+            {
+                reentered = true;
+                checkBox.IsChecked = true;
+            }
+        };
+
+        // Act
+        checkBox.ThreeState = false;
+
+        // Assert
+        checkBox.ThreeState.ShouldBeFalse();
+        checkBox.IsChecked.ShouldBe(true);
+        properties.ShouldBe([nameof(CheckBox.ThreeState), nameof(CheckBox.IsChecked)]);
+    }
+
     /// <summary>Verifies local style ownership overrides Theme fallback and clearing restores it.</summary>
     [Fact]
     public void Style_WhenThemeAndLocalValuesChange_UsesDocumentedPrecedence()

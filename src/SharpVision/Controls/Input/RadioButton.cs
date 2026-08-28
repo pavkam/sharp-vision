@@ -299,8 +299,14 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
     /// <exception cref="ObjectDisposedException">The member is disposed.</exception>
     internal void PublishChecked()
     {
+        var version = _checkedVersion;
+        var value = _isChecked;
         NotifyPropertyChanged(nameof(IsChecked), InvalidationImpact.None);
-        NotifyPropertyChanged(nameof(CanTabStop), InvalidationImpact.None);
+
+        if (IsCheckedCommitCurrent(version, value))
+        {
+            NotifyPropertyChanged(nameof(CanTabStop), InvalidationImpact.None);
+        }
     }
 
     /// <summary>Requests focus through this member's protected manager boundary.</summary>
