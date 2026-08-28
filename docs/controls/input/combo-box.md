@@ -217,8 +217,8 @@ var density = new ComboBox
 
 - Assigned items are copied, indices are validated, and the connected popup
   renders its exact cells in both below and above placement.
-- Initial and repeated list navigation is delivered exactly once from either
-  focus route, remains provisional until Enter or pointer acceptance, and
+- Initial and repeated list navigation is delivered exactly once regardless of
+  focus placement, remains provisional until Enter or pointer acceptance, and
   restores the opening row on every cancelling close path.
 - The popup renders opaquely and hit tests only what is visible. Popup
   arrangement, Escape, and mouse selection through the Popup behave as

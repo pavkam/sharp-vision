@@ -136,12 +136,12 @@ focus into the mounted component without calling `FocusManager` directly.
 
 Tests drive `surface.Pointer` with `MoveToAsync`, `PressAsync`, `ReleaseAsync`,
 `ClickAsync`, `LeaveAsync`, or captured drag operations, and drive
-`surface.Keyboard` with supported typed key codes, Shift+Tab, and distinct Kitty
-character press and release actions. These helpers emit terminal bytes; they
-never call `Router.Route`, mutate hover directly, call `SetPressed`, or call
-`FocusManager.Focus` on the component. Each action waits until the transport has
-consumed its bytes and the application has reached idle after routed work,
-layout, rendering, and output.
+`surface.Keyboard` with supported typed key codes, key-repeat actions,
+Shift+Tab, and distinct Kitty character press and release actions. These helpers
+emit terminal bytes; they never call `Router.Route`, mutate hover directly, call
+`SetPressed`, or call `FocusManager.Focus` on the component. Each action waits
+until the transport has consumed its bytes and the application has reached idle
+after routed work, layout, rendering, and output.
 
 ```csharp
 await using var surface = await ComponentSurface.MountAsync(
@@ -184,19 +184,23 @@ Action timeouts report the action and the latest screen. Snapshot mismatches
 retain row boundaries and cell differences. Tests isolate held-pointer scenarios
 or release capture before reuse, so state cannot leak between surfaces.
 
-Popup-backed input conformance mounts the owner and its private target under one
-real `Application`, opens one
-[provisional navigation session](../concepts/floating-surfaces.md#popup-navigation-sessions),
-and repeats the same stroke with focus on both sides of the ownership boundary.
-For each owner/editor-focused and popup-content-focused route, initial and
-repeat navigation must move the target exactly once and leave accepted owner
-state unchanged. The mounted fixture then proves accepted Enter, Space where the
-target supports it, and primary-pointer activation commit before close, while
-Escape, owner-driven or direct close, light dismissal, and unavailability
-restore the opening target state. A close callback that reopens the popup must
-leave the replacement session active and immune to stale acceptance or rollback.
-These cross-focus checks supplement, rather than replace, the target control's
-own detached navigation tests.
+Popup-backed input conformance mounts each owner and private target under one
+real `Application`, then drives a
+[provisional navigation session](../concepts/floating-surfaces.md#popup-navigation-sessions)
+through terminal keyboard and pointer reports. `ComboBoxSurfaceTests` proves
+initial and repeat movement exactly once while focus remains on the owner,
+Escape and light-dismiss rollback, unavailability rollback, Enter and pointer
+acceptance, and replacement-session survival. `CommandPaletteSurfaceTests`
+proves every initial and repeated list-navigation key exactly once while focus
+remains in the editor, plus Escape, `Close()`, `IsOpen = false`, light-dismiss,
+and unavailability rollback. `DateInputSurfaceTests` proves Calendar-focused
+initial and repeat movement, Enter, Space, and pointer acceptance, and Escape,
+direct-close, light-dismiss, and owner-unavailability rollback.
+`DateTimeInputSurfaceTests` proves the same Calendar-focused movement and
+acceptance while preserving time ticks and kind, plus Escape, direct-close,
+light-dismiss, and owner-unavailability rollback. Both date fixtures also prove
+replacement-session survival. The detached target fixtures supplement this
+mounted matrix with exhaustive key semantics and focus-independent delegation.
 
 `ComponentCompositionSurfaceTests` places heterogeneous controls on one root and
 drives forward and reverse Tab, local arrow behavior, hover transfer, and press

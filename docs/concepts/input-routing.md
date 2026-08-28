@@ -137,9 +137,11 @@ or repeated stroke at most once. When the target recognizes the stroke, the
 owner marks it handled; the route still completes, but the focused popup
 content's ordinary default is suppressed and cannot apply the same movement a
 second time. An unrecognized stroke keeps its existing handled state and remains
-available to normal routing. Closing, superseding, detaching, or disposing the
-session removes its authority immediately, so a stale route continuation cannot
-navigate or activate a later opening.
+available to normal routing only while it remains unhandled; input already
+handled before delegation still suppresses ordinary handlers and defaults.
+Closing, superseding, detaching, or disposing the session removes its authority
+immediately, so a stale route continuation cannot navigate or activate a later
+opening.
 
 `Router.Route` snapshots both the ancestry and the registration-order cutoff
 before preview begins. Reparenting a control or adding new handlers therefore

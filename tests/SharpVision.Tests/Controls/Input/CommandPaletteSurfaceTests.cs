@@ -37,18 +37,7 @@ public sealed class CommandPaletteSurfaceTests
         queries.Clear();
 
         // Act
-        await surface.Application.Dispatcher.InvokeAsync(
-            () =>
-            {
-                foreach (var rune in "café 🔎".EnumerateRunes())
-                {
-                    _ = Router.Route(
-                        editor,
-                        Events.Text,
-                        new TextEventArgs(new TerminalText(rune)));
-                }
-            },
-            TestContext.Current.CancellationToken);
+        await surface.Keyboard.TypeAsync("café 🔎");
         await surface.UpdateAsync(static () => { }, "settle Unicode filtering");
 
         // Assert
@@ -197,15 +186,15 @@ public sealed class CommandPaletteSurfaceTests
         var list = OwnedTree.Find<UiListView>(palette).ShouldNotBeNull();
 
         // Act
-        await surface.SendAsync("\u001b[1;1:2B"u8.ToArray(), "repeat Down");
+        await surface.Keyboard.RepeatAsync(Code.Down);
 
         // Assert
         list.SelectedIndex.ShouldBe(1);
         list.ActiveIndex.ShouldBe(1);
     }
 
-    /// <summary>Verifies every initial and repeated ListView navigation key is intercepted by the
-    /// owner once when the popup list has focus, so its bubble handler cannot apply it again.</summary>
+    /// <summary>Verifies every initial and repeated ListView navigation key sent to the retained
+    /// editor is delegated exactly once without moving focus into the popup.</summary>
     [Theory]
     [InlineData(Code.Up, KeyAction.Press, 2, 1)]
     [InlineData(Code.Up, KeyAction.Repeat, 2, 1)]
@@ -223,7 +212,7 @@ public sealed class CommandPaletteSurfaceTests
     [InlineData(Code.PageUp, KeyAction.Repeat, 5, 2)]
     [InlineData(Code.PageDown, KeyAction.Press, 5, 8)]
     [InlineData(Code.PageDown, KeyAction.Repeat, 5, 8)]
-    public async Task Navigation_WhenPopupListHasFocus_MovesSelectionExactlyOnceAsync(
+    public async Task Navigation_WhenEditorHasFocus_MovesSelectionExactlyOnceAsync(
         Code code,
         KeyAction action,
         int startingIndex,
@@ -242,26 +231,27 @@ public sealed class CommandPaletteSurfaceTests
             new Size(24, 8),
             TestContext.Current.CancellationToken);
         await surface.UpdateAsync(() => palette.Open(), "open command palette results");
+        var editor = OwnedTree.Find<TextInput>(palette).ShouldNotBeNull();
         var list = OwnedTree.Find<UiListView>(palette).ShouldNotBeNull();
-        await surface.UpdateAsync(
-            () =>
-            {
-                list.SelectedIndex = startingIndex;
-                surface.Application.Focus.Focus(list).ShouldBeTrue();
-            },
-            "focus command palette result list");
-        RouteResult? routed = null;
+        surface.ShouldHaveFocus(editor);
+
+        for (var press = 0; press < startingIndex; press++)
+        {
+            await surface.Keyboard.PressAsync(Code.Down);
+        }
 
         // Act
-        await surface.Application.Dispatcher.InvokeAsync(
-            () =>
-            {
-                routed = Router.Route(list, Events.Key, Key(code, action));
-            },
-            TestContext.Current.CancellationToken);
+        if (action == KeyAction.Repeat)
+        {
+            await surface.Keyboard.RepeatAsync(code);
+        }
+        else
+        {
+            await surface.Keyboard.PressAsync(code);
+        }
 
         // Assert
-        routed.ShouldNotBeNull().IsHandled.ShouldBeTrue();
+        surface.ShouldHaveFocus(editor);
         list.SelectedIndex.ShouldBe(expectedIndex);
         list.ActiveIndex.ShouldBe(expectedIndex);
     }
@@ -316,6 +306,33 @@ public sealed class CommandPaletteSurfaceTests
         palette.IsOpen.ShouldBeFalse();
         list.SelectedIndex.ShouldBe(-1);
         list.ActiveIndex.ShouldBe(-1);
+    }
+
+    /// <summary>Verifies owner unavailability cancels an open result-navigation session and
+    /// restores the selection and current row captured before opening.</summary>
+    [Fact]
+    public async Task Availability_WhenOwnerBecomesUnavailable_RestoresOpeningListStateAsync()
+    {
+        var palette = new CommandPalette
+        {
+            Width = Length.Cells(18),
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["One", "Two", "Three"])
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            palette,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => palette.Open(), "open command palette results");
+        var list = OwnedTree.Find<UiListView>(palette).ShouldNotBeNull();
+        await surface.Keyboard.PressAsync(Code.Down);
+        list.SelectedIndex.ShouldBe(1);
+
+        await surface.UpdateAsync(() => palette.IsEnabled = false, "make command palette unavailable");
+
+        palette.IsOpen.ShouldBeFalse();
+        list.SelectedIndex.ShouldBe(-1);
+        list.ActiveIndex.ShouldBe(-1);
+        surface.Application.Modality.Active.ShouldBeNull();
     }
 
     /// <summary>Verifies cancellation restores a nonzero selection accepted by the prior session,
@@ -587,11 +604,4 @@ public sealed class CommandPaletteSurfaceTests
         palette.IsOpen.ShouldBeFalse();
         surface.Application.Modality.Active.ShouldBeNull();
     }
-
-    private static KeyEventArgs Key(Code code, KeyAction action) => new(new Stroke(
-        code,
-        default,
-        nativeCode: 0,
-        Modifiers.None,
-        action));
 }

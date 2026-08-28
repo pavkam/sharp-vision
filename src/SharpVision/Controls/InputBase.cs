@@ -615,13 +615,16 @@ public abstract class InputBase: ControlBase
 
     /// <summary>Commits the active popup session's provisional state and closes the owned popup.</summary>
     /// <remarks>Concrete drop-down owners call this only after target-owned keyboard or pointer
-    /// activation has accepted the provisional item.</remarks>
-    /// <exception cref="InvalidOperationException">The popup capability is not enabled, the
-    /// control is mutated off-dispatcher, or the coordinator is detached.</exception>
+    /// activation has accepted the provisional item. The operation is a no-op when the popup has
+    /// no active open session.</remarks>
+    /// <exception cref="InvalidOperationException">The popup capability is not enabled or the
+    /// control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     /// <exception cref="Exception">An acceptance or close callback fails after close cleanup completes.</exception>
     protected void AcceptPopupAndClose()
     {
+        VerifyMutable();
+
         if (_popupCoordinator is not { } coordinator)
         {
             throw new InvalidOperationException("The popup capability is not enabled.");

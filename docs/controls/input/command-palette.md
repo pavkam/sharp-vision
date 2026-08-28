@@ -156,6 +156,6 @@ _ = palette.Open();
   while invoking a result closes the popup and preserves the query.
 - Result selection and current-item state identify the same row; holding Up or
   Down continues navigation and keeps the popup scrollbar synchronized.
-- Initial and repeated navigation is delivered once from either focus route;
-  accepting invokes the current result, while cancellation restores the opening
-  list state.
+- Initial and repeated navigation is delivered once regardless of focus
+  placement; accepting invokes the current result, while cancellation restores
+  the opening list state.

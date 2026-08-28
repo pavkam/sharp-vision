@@ -676,48 +676,51 @@ public sealed class DateTimeInputSurfaceTests
         input.Value.ShouldNotBeNull().Hour.ShouldBe(15);
     }
 
-    /// <summary>Verifies owner- and Calendar-focused routes deliver each initial and repeated
-    /// navigation stroke exactly once while cancellation restores the opening active date and
-    /// leaves the complete date-time value untouched.</summary>
+    /// <summary>Verifies real terminal input delegates initial and repeated Calendar navigation
+    /// exactly once while Escape, direct close, and light dismissal restore the opening value.</summary>
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Keyboard_WhenPopupNavigationUsesEitherFocusRoute_MovesOnceAndProgrammaticCloseRollsBackAsync(
-        bool focusCalendar)
+    [InlineData("escape")]
+    [InlineData("direct")]
+    [InlineData("light-dismiss")]
+    public async Task Keyboard_WhenPopupNavigationUsesMountedCalendarRoute_MovesOnceAndRollsBackAsync(
+        string closePath)
     {
         // Arrange
         var openingValue = new DateTime(2026, 3, 15, 14, 30, 45, DateTimeKind.Utc).AddTicks(6789);
         var input = new DateTimeInput { Value = openingValue };
-        var root = new Overlay { Children = { input } };
+        var background = new ControlText("outside");
+        Overlay.SetTop(background, Length.Cells(14));
+        Overlay.SetLeft(background, Length.Cells(29));
+        var root = new Overlay { Children = { input, background } };
         await using var surface = await ComponentSurface.MountAsync(
             root,
-            new Size(30, 15),
+            new Size(32, 16),
             TestContext.Current.CancellationToken);
         var calendar = OwnedTree.Find<UiCalendar>(input).ShouldNotBeNull();
-        await surface.UpdateAsync(() => input.IsOpen = true, "open DateTimeInput popup");
-        var target = focusCalendar ? (ControlBase) calendar : input;
-        await surface.UpdateAsync(
-            () => surface.Application.Focus.Focus(target).ShouldBeTrue(),
-            "choose popup navigation focus route");
-        await surface.UpdateAsync(
-            () => _ = Router.Route(
-                target,
-                Events.Key,
-                new KeyEventArgs(new Stroke(Code.Right, default, 0, Modifiers.None, KeyAction.Press))),
-            "route initial popup navigation");
-        await surface.UpdateAsync(
-            () => _ = Router.Route(
-                target,
-                Events.Key,
-                new KeyEventArgs(new Stroke(Code.Right, default, 0, Modifiers.None, KeyAction.Repeat))),
-            "route repeated popup navigation");
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down, Modifiers.Alt);
+        surface.ShouldHaveFocus(calendar);
+        await surface.Keyboard.PressAsync(Code.Right);
+        await surface.Keyboard.RepeatAsync(Code.Right);
         calendar.ActiveDate.ShouldBe(DateOnly.FromDateTime(openingValue).AddDays(2));
         input.Value.ShouldBe(openingValue);
 
         // Act
-        await surface.UpdateAsync(() => input.IsOpen = false, "programmatically close DateTimeInput popup");
+        if (closePath == "escape")
+        {
+            await surface.Keyboard.PressAsync(Code.Escape);
+        }
+        else if (closePath == "light-dismiss")
+        {
+            await surface.Pointer.ClickAsync(background);
+        }
+        else
+        {
+            await surface.UpdateAsync(() => input.IsOpen = false, "close DateTimeInput directly");
+        }
 
         // Assert
+        input.IsOpen.ShouldBeFalse();
         input.Value.ShouldBe(openingValue);
         calendar.ActiveDate.ShouldBe(DateOnly.FromDateTime(openingValue));
     }
@@ -725,13 +728,9 @@ public sealed class DateTimeInputSurfaceTests
     /// <summary>Verifies accepting a changed Calendar date preserves every time tick and the
     /// original <see cref="DateTimeKind"/>.</summary>
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public async Task Keyboard_WhenPopupDateIsAccepted_PreservesTimeTicksAndKindAsync(
-        bool focusCalendar,
-        bool useSpace)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Keyboard_WhenPopupDateIsAccepted_PreservesTimeTicksAndKindAsync(bool useSpace)
     {
         // Arrange
         var openingValue = new DateTime(2026, 3, 15, 14, 30, 45, DateTimeKind.Utc).AddTicks(6789);
@@ -742,11 +741,9 @@ public sealed class DateTimeInputSurfaceTests
             new Size(30, 15),
             TestContext.Current.CancellationToken);
         var calendar = OwnedTree.Find<UiCalendar>(input).ShouldNotBeNull();
-        await surface.UpdateAsync(() => input.IsOpen = true, "open DateTimeInput popup");
-        var target = focusCalendar ? (ControlBase) calendar : input;
-        await surface.UpdateAsync(
-            () => surface.Application.Focus.Focus(target).ShouldBeTrue(),
-            "choose popup acceptance focus route");
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down, Modifiers.Alt);
+        surface.ShouldHaveFocus(calendar);
         await surface.Keyboard.PressAsync(Code.Right);
 
         // Act

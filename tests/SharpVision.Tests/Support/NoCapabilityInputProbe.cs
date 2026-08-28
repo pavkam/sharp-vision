@@ -10,6 +10,10 @@ internal sealed class NoCapabilityInputProbe: InputBase
     /// <summary>Calls the protected off-dispatcher/disposed guard through a public seam.</summary>
     internal void ProbeVerifyMutable() => VerifyMutable();
 
+    /// <summary>Attempts to accept popup state through the protected seam without enabling the
+    /// popup capability.</summary>
+    internal void ProbeAcceptPopupAndClose() => AcceptPopupAndClose();
+
     /// <summary>Reads IsOpen through the protected seam without ever enabling the popup capability.</summary>
     internal bool ProbeGetOpened() => IsOpen;
 

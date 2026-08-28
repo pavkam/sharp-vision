@@ -988,6 +988,63 @@ public sealed class InputBaseTests
         _ = Should.Throw<InvalidOperationException>(() => probe.ProbeSetOpened(true));
     }
 
+    /// <summary>Verifies accepting without an open session is an inert authoring operation.</summary>
+    [Fact]
+    public void AcceptPopupAndClose_WhenNoSessionIsOpen_DoesNotInvokeAcceptanceOrThrow()
+    {
+        var probe = new PopupListInputProbe();
+
+        Should.NotThrow(probe.ProbeAcceptPopupAndClose);
+
+        probe.IsOpen.ShouldBeFalse();
+        probe.AcceptSessionCount.ShouldBe(0);
+    }
+
+    /// <summary>Verifies the protected acceptance seam commits the active session before closing
+    /// its popup.</summary>
+    [Fact]
+    public void AcceptPopupAndClose_WhenSessionIsOpen_AcceptsOnceAndCloses()
+    {
+        var probe = new PopupListInputProbe { IsOpen = true };
+
+        probe.ProbeAcceptPopupAndClose();
+
+        probe.IsOpen.ShouldBeFalse();
+        probe.AcceptSessionCount.ShouldBe(1);
+    }
+
+    /// <summary>Verifies the owner lifecycle guard wins over the missing-capability guard after
+    /// disposal.</summary>
+    [Fact]
+    public void AcceptPopupAndClose_WhenDisposed_ThrowsObjectDisposedException()
+    {
+        var probe = new NoCapabilityInputProbe();
+        probe.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(probe.ProbeAcceptPopupAndClose);
+    }
+
+    /// <summary>Verifies accepting an attached popup session remains dispatcher-affine.</summary>
+    [Fact]
+    public async Task AcceptPopupAndClose_WhenAttachedAndCalledOffDispatcher_ThrowsInvalidOperationExceptionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var root = new ProbeContainer();
+        var probe = new PopupListInputProbe();
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                root.Children.Add(probe);
+                root.Attach(dispatcher);
+                probe.IsOpen = true;
+            },
+            TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(probe.ProbeAcceptPopupAndClose);
+
+        await dispatcher.InvokeAsync(root.Dispose, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies press activation toggles the owned popup and DropDownOpened/DropDownClosed
     /// fire through the virtual override seam, composing the two capabilities together the same
     /// way ComboBox does.</summary>

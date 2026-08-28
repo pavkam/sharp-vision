@@ -124,8 +124,8 @@ var dateInput = new DateInput();
 - Direct digit entry follows the shared
   [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy),
   leaving command-modified characters unhandled without changing a segment.
-- Initial and repeated Calendar navigation is delivered once from either focus
-  route, remains provisional until Enter, Space, or pointer acceptance, and
+- Initial and repeated Calendar navigation is delivered once regardless of focus
+  placement, remains provisional until Enter, Space, or pointer acceptance, and
   restores the opening active date on cancellation.
 - Reading `Value` after disposal always throws, including every read after a
   failed attempt to seed the lazy default.

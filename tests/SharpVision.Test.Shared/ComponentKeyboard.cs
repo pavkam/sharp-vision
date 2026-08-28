@@ -63,6 +63,10 @@ public sealed class ComponentKeyboard
                 (Code.Left, Modifiers.None) => _surface.SendAsync("\u001b[D"u8.ToArray(), "press Left"),
                 (Code.Right, Modifiers.None) => _surface.SendAsync("\u001b[C"u8.ToArray(), "press Right"),
                 (Code.Left, Modifiers.Shift) => _surface.SendAsync("\u001b[1;2D"u8.ToArray(), "press Shift+Left"),
+                (Code.Up, _) => ModifiedCursorAsync(code, modifiers, 'A', "press"),
+                (Code.Down, _) => ModifiedCursorAsync(code, modifiers, 'B', "press"),
+                (Code.Left, _) => ModifiedCursorAsync(code, modifiers, 'D', "press"),
+                (Code.Right, _) => ModifiedCursorAsync(code, modifiers, 'C', "press"),
                 (Code.Home, Modifiers.None) => _surface.SendAsync("\u001b[H"u8.ToArray(), "press Home"),
                 (Code.Home, _) => _surface.SendAsync(
                     Encoding.ASCII.GetBytes($"\u001b[1;{KittyModifiers(modifiers)}H"),
@@ -83,6 +87,43 @@ public sealed class ComponentKeyboard
                     $"Component keyboard encoding for {modifiers}+{code} is not supported.")
             };
     }
+
+    /// <summary>Repeats one supported key through its real Kitty or CSI terminal encoding.</summary>
+    /// <param name="code">The defined key code to repeat.</param>
+    /// <returns>A task completed after routed repeat behavior and rendering settle.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="code"/> is undefined.</exception>
+    /// <exception cref="NotSupportedException"><paramref name="code"/> has no component-driver repeat encoding yet.</exception>
+    public Task RepeatAsync(Code code) =>
+        !Enum.IsDefined(code)
+        ? throw new ArgumentOutOfRangeException(nameof(code), code, "The keyboard code is undefined.")
+        : (int) code switch
+        {
+            (int) Code.Up => RepeatCursorAsync(code, 'A'),
+            (int) Code.Down => RepeatCursorAsync(code, 'B'),
+            (int) Code.Left => RepeatCursorAsync(code, 'D'),
+            (int) Code.Right => RepeatCursorAsync(code, 'C'),
+            (int) Code.Home => RepeatCursorAsync(code, 'H'),
+            (int) Code.End => RepeatCursorAsync(code, 'F'),
+            (int) Code.PageUp => RepeatFunctionalAsync(code, 57354),
+            (int) Code.PageDown => RepeatFunctionalAsync(code, 57355),
+            _ => throw new NotSupportedException(
+                $"Component keyboard repeat encoding for {code} is not supported.")
+        };
+
+    private Task ModifiedCursorAsync(Code code, Modifiers modifiers, char final, string action) =>
+        _surface.SendAsync(
+            Encoding.ASCII.GetBytes($"\u001b[1;{KittyModifiers(modifiers)}{final}"),
+            $"{action} {modifiers}+{code}");
+
+    private Task RepeatCursorAsync(Code code, char final) =>
+        _surface.SendAsync(
+            Encoding.ASCII.GetBytes($"\u001b[1;1:2{final}"),
+            $"repeat {code}");
+
+    private Task RepeatFunctionalAsync(Code code, int functionalCode) =>
+        _surface.SendAsync(
+            Encoding.ASCII.GetBytes($"\u001b[{functionalCode};1:2u"),
+            $"repeat {code}");
 
     private static int KittyModifiers(Modifiers modifiers) => 1 + (int) modifiers;
 

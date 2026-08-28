@@ -14,7 +14,7 @@ internal sealed class PopupListInputProbe: InputBase
         Content = new ProbeContainer();
         Item = new ProbeControl { IsFocusable = true };
         Content.Children.Add(Item);
-        Popup = EnablePopup(Content, focusOnOpen: false);
+        Popup = EnablePopup(Content, focusOnOpen: false, acceptSession: () => AcceptSessionCount++);
         EnablePressActivation();
     }
 
@@ -36,6 +36,9 @@ internal sealed class PopupListInputProbe: InputBase
     /// <summary>Gets the number of times the popup closed.</summary>
     internal int DropDownClosedCount { get; private set; }
 
+    /// <summary>Gets the number of popup sessions accepted through the protected seam.</summary>
+    internal int AcceptSessionCount { get; private set; }
+
     /// <summary>Gets or sets whether the owned popup is open.</summary>
     internal new bool IsOpen
     {
@@ -45,6 +48,9 @@ internal sealed class PopupListInputProbe: InputBase
 
     /// <summary>Attempts to enable the popup capability a second time.</summary>
     internal void EnablePopupAgain() => _ = EnablePopup(Content);
+
+    /// <summary>Accepts and closes the active popup session through the protected seam.</summary>
+    internal void ProbeAcceptPopupAndClose() => AcceptPopupAndClose();
 
     /// <summary>Resolves the shared drop-down disclosure glyph through the protected seam.</summary>
     internal Rune ProbeResolveDropDownGlyph(Rune fallback) => ResolveDropDownGlyph(fallback);
