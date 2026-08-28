@@ -53,6 +53,7 @@ internal sealed class PopupDropDownCoordinator
     private readonly IDisposable _ownerKeyRegistration;
     private bool _hasActiveSession;
     private bool _sessionAccepted;
+    private bool _isDetached;
 
     /// <summary>Initializes a coordinator for one owner's private popup.</summary>
     /// <param name="owner">The composite control that owns <paramref name="popup"/> and serves as the modal root.</param>
@@ -135,11 +136,12 @@ internal sealed class PopupDropDownCoordinator
 
     /// <summary>Opens or closes the owned popup, no-op when already at the requested state.</summary>
     /// <param name="value">True to open the popup; false to close it.</param>
-    /// <exception cref="InvalidOperationException">The owner is mutated off-dispatcher.</exception>
+    /// <exception cref="InvalidOperationException">The owner is mutated off-dispatcher or this coordinator is detached.</exception>
     /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
     /// <exception cref="Exception">A focus, scope, pointer-cleanup, or user callback fails after committed cleanup.</exception>
     public void SetOpen(bool value)
     {
+        VerifyAvailable();
         _owner.VerifyMutable();
         TransitionVersion++;
 
@@ -159,11 +161,12 @@ internal sealed class PopupDropDownCoordinator
     /// <summary>Commits the active session's provisional state and closes its owned popup.</summary>
     /// <remarks>Acceptance is committed before close begins, so the closing transaction cannot
     /// treat this session as cancelled even when it reenters through modal cleanup.</remarks>
-    /// <exception cref="InvalidOperationException">The owner is mutated off-dispatcher.</exception>
+    /// <exception cref="InvalidOperationException">The owner is mutated off-dispatcher or this coordinator is detached.</exception>
     /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
     /// <exception cref="Exception">An acceptance or close callback fails after close cleanup completes.</exception>
     public void AcceptAndClose()
     {
+        VerifyAvailable();
         _owner.VerifyMutable();
 
         if (!_popup.IsOpen || !_hasActiveSession)
@@ -189,7 +192,7 @@ internal sealed class PopupDropDownCoordinator
     /// dispatcher and modality manager actually exist to enter.</remarks>
     public void OnOwnerAttached()
     {
-        if (_popup.IsOpen)
+        if (!_isDetached && _popup.IsOpen)
         {
             _modalTracker.Enter(_owner, _ownerInitialFocus);
         }
@@ -197,14 +200,22 @@ internal sealed class PopupDropDownCoordinator
 
     /// <summary>Unsubscribes from the owned popup lifecycle and owner preview route. Called from
     /// the owner's disposal path.</summary>
+    /// <exception cref="Exception">A cancellation or modal-scope cleanup callback fails after every release step runs.</exception>
     public void Detach()
     {
+        if (_isDetached)
+        {
+            return;
+        }
+
+        _isDetached = true;
         _popup.Opened -= OnPopupOpened;
         _popup.Closing -= OnPopupClosing;
         _popup.Closed -= OnPopupClosed;
         System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(_ownerKeyRegistration.Dispose, ref failure);
         ExceptionAggregation.Capture(() => EndSession(restoreOpeningState: true), ref failure);
+        ExceptionAggregation.Capture(_modalTracker.Exit, ref failure);
         failure?.Throw();
     }
 
@@ -247,6 +258,7 @@ internal sealed class PopupDropDownCoordinator
         var hadActiveSession = _hasActiveSession;
         System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(() => EndSession(restoreOpeningState: true), ref failure);
+        ExceptionAggregation.Capture(_modalTracker.Exit, ref failure);
 
         // A cancellation callback can synchronously start another session from an outer lifecycle
         // callback. That newer session owns its focus; an old close must not pull it back to owner.
@@ -275,7 +287,14 @@ internal sealed class PopupDropDownCoordinator
         SessionGeneration++;
         _hasActiveSession = true;
         _sessionAccepted = false;
-        _beginSession?.Invoke();
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(() => _beginSession?.Invoke(), ref failure);
+
+        if (failure is not null)
+        {
+            ExceptionAggregation.Capture(() => EndSession(restoreOpeningState: true), ref failure);
+            failure!.Throw();
+        }
     }
 
     private void EndSession(bool restoreOpeningState)
@@ -299,7 +318,16 @@ internal sealed class PopupDropDownCoordinator
     private bool IsCurrentSession(ulong generation) =>
         _hasActiveSession &&
         SessionGeneration == generation &&
-        _popup.IsOpen;
+        _popup.IsOpen &&
+        !_isDetached;
+
+    private void VerifyAvailable()
+    {
+        if (_isDetached)
+        {
+            throw new InvalidOperationException("The popup drop-down coordinator is detached.");
+        }
+    }
 
     private void OnOwnerPreviewKey(object? sender, KeyEventArgs eventArgs)
     {

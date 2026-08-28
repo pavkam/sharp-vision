@@ -502,7 +502,7 @@ public sealed class PopupDropDownCoordinatorTests
             var root = new ProbeContainer();
             var owner = new ProbeContainer { IsFocusable = true };
             var content = new ProbeControl { IsFocusable = true };
-            using var popup = new Popup { Content = content };
+            using var popup = new Popup { Content = content, ModalBehavior = PopupModalBehavior.None };
             owner.Children.Add(popup);
             root.Children.Add(owner);
             root.Attach(dispatcher);
@@ -523,11 +523,13 @@ public sealed class PopupDropDownCoordinatorTests
                 });
 
             coordinator.SetOpen(true);
+            _ = focus.Focus(owner);
             var ownerKey = Key(Code.Down, KeyAction.Press);
-            var contentRepeat = Key(Code.Down, KeyAction.Repeat);
+            _ = Router.Route(focus.Focused.ShouldNotBeNull(), Events.Key, ownerKey);
 
-            _ = Router.Route(owner, Events.Key, ownerKey);
-            _ = Router.Route(content, Events.Key, contentRepeat);
+            _ = focus.Focus(content);
+            var contentRepeat = Key(Code.Down, KeyAction.Repeat);
+            _ = Router.Route(focus.Focused.ShouldNotBeNull(), Events.Key, contentRepeat);
 
             begins.ShouldBe(1);
             routed.Count.ShouldBe(2);
@@ -550,7 +552,7 @@ public sealed class PopupDropDownCoordinatorTests
             var root = new Overlay();
             var owner = new ProbeContainer { IsFocusable = true };
             var content = new ProbeControl { IsFocusable = true };
-            using var popup = new Popup { Content = content };
+            using var popup = new Popup { Content = content, ModalBehavior = PopupModalBehavior.None };
             owner.Children.Add(popup);
             root.Children.Add(owner);
             root.Attach(dispatcher);
@@ -569,10 +571,14 @@ public sealed class PopupDropDownCoordinatorTests
             cancellations.ShouldBe(2);
 
             coordinator.SetOpen(true);
+            var directCloseScope = modality.Active.ShouldNotBeNull();
             popup.IsOpen = false;
             cancellations.ShouldBe(3);
+            modality.Active.ShouldBeNull();
 
             coordinator.SetOpen(true);
+            var lightDismissScope = modality.Active.ShouldNotBeNull();
+            lightDismissScope.ShouldNotBeSameAs(directCloseScope);
             _ = pointer.Dispatch(new Pointer(
                 new Point(100, 100),
                 pixels: null,
@@ -584,7 +590,48 @@ public sealed class PopupDropDownCoordinatorTests
                 isMotion: false,
                 isCellPositionInferred: false));
             cancellations.ShouldBe(4);
+            modality.Active.ShouldBeNull();
         }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a begin callback failure rolls back the newly activated session before
+    /// the exception leaves the opening call, leaving a later opening request independent.</summary>
+    [Fact]
+    public void SetOpen_WhenBeginSessionFails_CancelsFailedSessionAndRemainsReusable()
+    {
+        var owner = new ProbeControl();
+        var content = new ProbeControl();
+        using var popup = new Popup();
+        var expected = new InvalidOperationException("begin failed");
+        var fail = true;
+        var begins = 0;
+        var cancellations = 0;
+        var coordinator = Create(
+            owner,
+            popup,
+            content,
+            beginSession: () =>
+            {
+                begins++;
+
+                if (fail)
+                {
+                    throw expected;
+                }
+            },
+            cancelSession: () => cancellations++);
+
+        var thrown = Should.Throw<InvalidOperationException>(() => coordinator.SetOpen(true));
+
+        thrown.ShouldBeSameAs(expected);
+        popup.IsOpen.ShouldBeFalse();
+        cancellations.ShouldBe(1);
+
+        fail = false;
+        coordinator.SetOpen(true);
+
+        begins.ShouldBe(2);
+        popup.IsOpen.ShouldBeTrue();
     }
 
     /// <summary>Verifies accepting a session runs its acceptance callback before closing and
@@ -733,6 +780,24 @@ public sealed class PopupDropDownCoordinatorTests
 
         navigations.ShouldBe(0);
         eventArgs.IsHandled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies detaching makes the coordinator unavailable, so a retained reference
+    /// cannot create a session after the preview and popup lifecycle registrations are released.</summary>
+    [Fact]
+    public void SetOpen_AfterDetach_RejectsFurtherSessions()
+    {
+        var owner = new ProbeControl();
+        var content = new ProbeControl();
+        using var popup = new Popup();
+        var begins = 0;
+        var coordinator = Create(owner, popup, content, beginSession: () => begins++);
+
+        coordinator.Detach();
+
+        _ = Should.Throw<InvalidOperationException>(() => coordinator.SetOpen(true));
+        begins.ShouldBe(0);
+        popup.IsOpen.ShouldBeFalse();
     }
 
     private static KeyEventArgs Key(Code code, KeyAction action) => new(new Stroke(
