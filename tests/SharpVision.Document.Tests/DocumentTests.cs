@@ -277,6 +277,58 @@ public sealed class DocumentTests
         _ = observed.ShouldNotBeNull();
     }
 
+    /// <summary>Verifies reentry from an earlier ScrollChanged subscriber, triggered through the
+    /// stack-forwarding path (<c>OnStackScrollChanged</c>), prevents later subscribers from receiving
+    /// the obsolete outer transition.</summary>
+    [Fact]
+    public void ScrollChanged_WhenStackForwardingSubscriberReenters_PublishesOnlyCurrentTransition()
+    {
+        // Arrange
+        var document = Filled(20);
+        new LayoutEngine().Layout(document, new Size(40, 5));
+        var observed = new List<Point>();
+        document.ScrollChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.Offset == new Point(0, 2))
+            {
+                _ = document.ScrollBy(1);
+            }
+        };
+        document.ScrollChanged += (_, eventArgs) => observed.Add(eventArgs.Offset);
+
+        // Act
+        _ = document.ScrollBy(2);
+
+        // Assert
+        observed.ShouldBe([new Point(0, 3)]);
+    }
+
+    /// <summary>Verifies reentry from an earlier ScrollChanged subscriber, triggered through the
+    /// document's own horizontal-scroll path (<c>ApplyHorizontal</c>), prevents later subscribers
+    /// from receiving the obsolete outer transition.</summary>
+    [Fact]
+    public void ScrollChanged_WhenHorizontalSubscriberReenters_PublishesOnlyCurrentTransition()
+    {
+        // Arrange
+        var document = new Document { Blocks = { new DocumentCodeBlock(new string('x', 40)) } };
+        new LayoutEngine().Layout(document, new Size(10, 5));
+        var observed = new List<Point>();
+        document.ScrollChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.Offset == new Point(2, 0))
+            {
+                _ = document.ScrollSelectableTextViewport(1, 0);
+            }
+        };
+        document.ScrollChanged += (_, eventArgs) => observed.Add(eventArgs.Offset);
+
+        // Act
+        _ = document.ScrollSelectableTextViewport(2, 0);
+
+        // Assert
+        observed.ShouldBe([new Point(3, 0)]);
+    }
+
     /// <summary>Verifies assigning an enabled link that belongs to the laid-out document selects it,
     /// and that clearing the selection reports no active link.</summary>
     [Fact]

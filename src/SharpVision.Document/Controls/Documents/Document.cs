@@ -65,6 +65,8 @@ public sealed class Document:
     private int _layoutWidth = -1;
     private int _horizontalOffset;
     private TextSelectionMap _selectionSemanticMap = TextSelectionMap.Empty;
+    private ulong _scrollTransitionVersion;
+    private ulong _linkTransitionVersion;
 
     /// <summary>Initializes an empty scrollable document.</summary>
     public Document()
@@ -964,28 +966,69 @@ public sealed class Document:
         var previous = new Point(_horizontalOffset, VerticalOffset);
         _horizontalOffset = target;
         InvalidateRetainedDescendant(_presenter, InvalidationImpact.Arrange);
-        ScrollChanged?.Invoke(
-            this,
+
+        unchecked
+        {
+            _scrollTransitionVersion++;
+        }
+
+        RaiseScrollChanged(
             new ScrollChangedEventArgs(
                 previous,
                 new Point(_horizontalOffset, VerticalOffset),
                 Extent,
                 Viewport,
-                cause));
+                cause),
+            _scrollTransitionVersion);
         return true;
     }
 
     private void OnStackScrollChanged(object? sender, ScrollChangedEventArgs eventArgs)
     {
         _ = sender;
-        ScrollChanged?.Invoke(
-            this,
+
+        unchecked
+        {
+            _scrollTransitionVersion++;
+        }
+
+        RaiseScrollChanged(
             new ScrollChangedEventArgs(
                 new Point(_horizontalOffset, eventArgs.PreviousOffset.Y),
                 new Point(_horizontalOffset, eventArgs.Offset.Y),
                 Extent,
                 Viewport,
-                eventArgs.Cause));
+                eventArgs.Cause),
+            _scrollTransitionVersion);
+    }
+
+    /// <summary>Delivers <see cref="ScrollChanged"/> to each subscriber only while this transition is
+    /// still the newest one. <see cref="ApplyHorizontal"/> and <see cref="OnStackScrollChanged"/> are two
+    /// independent paths that both forward into this single event, and both share the same version
+    /// field, so a subscriber that reentrantly triggers another scroll change through either path
+    /// supersedes delivery to later subscribers rather than letting a stale transition reach
+    /// them.</summary>
+    /// <param name="eventArgs">The immutable transition being delivered.</param>
+    /// <param name="transitionVersion">The version captured when this transition was raised.</param>
+    private void RaiseScrollChanged(ScrollChangedEventArgs eventArgs, ulong transitionVersion)
+    {
+        var handlers = ScrollChanged;
+
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var subscriber in handlers.GetInvocationList())
+        {
+            if (_scrollTransitionVersion != transitionVersion)
+            {
+                break;
+            }
+
+            var handler = (EventHandler<ScrollChangedEventArgs>) subscriber;
+            handler(this, eventArgs);
+        }
     }
 
     #endregion
@@ -1168,8 +1211,40 @@ public sealed class Document:
         }
 
         link.Activate();
-        LinkClicked?.Invoke(this, new DocumentLinkEventArgs(link));
+
+        unchecked
+        {
+            _linkTransitionVersion++;
+        }
+
+        RaiseLinkClicked(new DocumentLinkEventArgs(link), _linkTransitionVersion);
         return true;
+    }
+
+    /// <summary>Delivers <see cref="LinkClicked"/> to each subscriber only while this transition is still
+    /// the newest one, so a subscriber that reentrantly triggers another link activation supersedes
+    /// delivery to later subscribers rather than letting a stale transition reach them.</summary>
+    /// <param name="eventArgs">The immutable transition being delivered.</param>
+    /// <param name="transitionVersion">The version captured when this transition was raised.</param>
+    private void RaiseLinkClicked(DocumentLinkEventArgs eventArgs, ulong transitionVersion)
+    {
+        var handlers = LinkClicked;
+
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var subscriber in handlers.GetInvocationList())
+        {
+            if (_linkTransitionVersion != transitionVersion)
+            {
+                break;
+            }
+
+            var handler = (EventHandler<DocumentLinkEventArgs>) subscriber;
+            handler(this, eventArgs);
+        }
     }
 
     private void RestoreActiveLink(DocumentLink? activeLink)

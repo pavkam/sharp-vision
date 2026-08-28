@@ -697,6 +697,33 @@ public sealed class ContainerTests
         raised.ShouldBeFalse();
     }
 
+    /// <summary>Verifies reentry from an earlier ScrollChanged subscriber prevents later subscribers
+    /// from receiving the obsolete outer transition.</summary>
+    [Fact]
+    public void ScrollChanged_WhenSubscriberReenters_PublishesOnlyCurrentTransition()
+    {
+        // Arrange
+        var container = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+        var observed = new List<(Point EventOffset, Point LiveOffset)>();
+        container.ScrollChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.Offset == new Point(0, 3))
+            {
+                _ = container.ScrollBy(0, 1, ScrollCause.Keyboard);
+            }
+        };
+        container.ScrollChanged += (_, eventArgs) =>
+            observed.Add((eventArgs.Offset, new Point(container.HorizontalOffset, container.VerticalOffset)));
+
+        // Act
+        _ = container.ScrollBy(0, 3, ScrollCause.Keyboard);
+
+        // Assert
+        observed.ShouldBe([(new Point(0, 4), new Point(0, 4))]);
+    }
+
     /// <summary>Verifies BringIntoView scrolls minimally to expose a descendant below the viewport.</summary>
     [Fact]
     public void BringIntoView_WhenDescendantBelowViewport_ScrollsToReveal()

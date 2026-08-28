@@ -358,6 +358,7 @@ public abstract class Container: ControlBase
     #region Scrolling
 
     private readonly ContainerScrollController _scroll = new();
+    private ulong _scrollTransitionVersion;
 
     /// <summary>Gets the private generated scrollbar parts for specialized container layout.</summary>
     private protected ControlCollection? Bars => _scroll.Bars;
@@ -1084,8 +1085,42 @@ public abstract class Container: ControlBase
         // Maximum inconsistent with the VerticalOffset just committed against maximumYOverride -
         // Configure asserts those two stay consistent, so the same override has to carry through.
         Synchronize(maximumYOverride);
-        ScrollChanged?.Invoke(this, new ScrollChangedEventArgs(previous, new Point(x, y), Extent, Viewport, cause));
+
+        unchecked
+        {
+            _scrollTransitionVersion++;
+        }
+
+        RaiseScrollChanged(
+            new ScrollChangedEventArgs(previous, new Point(x, y), Extent, Viewport, cause),
+            _scrollTransitionVersion);
         return true;
+    }
+
+    /// <summary>Delivers <see cref="ScrollChanged"/> to each subscriber only while this transition is
+    /// still the newest one, so a subscriber that reentrantly triggers another scroll change supersedes
+    /// delivery to later subscribers rather than letting a stale transition reach them.</summary>
+    /// <param name="eventArgs">The immutable transition being delivered.</param>
+    /// <param name="transitionVersion">The version captured when this transition was raised.</param>
+    private void RaiseScrollChanged(ScrollChangedEventArgs eventArgs, ulong transitionVersion)
+    {
+        var handlers = ScrollChanged;
+
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var subscriber in handlers.GetInvocationList())
+        {
+            if (_scrollTransitionVersion != transitionVersion)
+            {
+                break;
+            }
+
+            var handler = (EventHandler<ScrollChangedEventArgs>) subscriber;
+            handler(this, eventArgs);
+        }
     }
 
     [Pure]

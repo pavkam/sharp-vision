@@ -234,6 +234,45 @@ public sealed class DocumentLinkSurfaceTests
         order.ShouldBe(["link", "document", "link", "document"]);
     }
 
+    /// <summary>Verifies reentry from an earlier LinkClicked subscriber that activates a different
+    /// link prevents later subscribers from receiving the obsolete outer transition.</summary>
+    [Fact]
+    public async Task LinkClicked_WhenSubscriberReentersActivatingAnotherLink_PublishesOnlyCurrentTransitionAsync()
+    {
+        // Arrange
+        var first = new DocumentLink("first");
+        var second = new DocumentLink("second");
+        var document = LinkDocument(first, second);
+        var observed = new List<string>();
+        document.LinkClicked += (_, eventArgs) =>
+        {
+            if (ReferenceEquals(eventArgs.Link, first))
+            {
+                document.ActiveLink = second;
+                _ = Router.Route(document, Events.Key, new KeyEventArgs(new Stroke(
+                    Code.Enter,
+                    character: null,
+                    nativeCode: 0,
+                    Modifiers.None,
+                    KeyAction.Press)));
+            }
+        };
+        document.LinkClicked += (_, eventArgs) => observed.Add(eventArgs.Link.Text);
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => document.Focus().ShouldBeTrue(), "focus document");
+        await surface.Keyboard.PressAsync(Code.Tab);
+        document.ActiveLink.ShouldBeSameAs(first);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        observed.ShouldBe(["second"]);
+    }
+
     /// <summary>Verifies Enter and Space repeats are consumed without invoking an active link more
     /// than once for each physical key hold.</summary>
     [Fact]
