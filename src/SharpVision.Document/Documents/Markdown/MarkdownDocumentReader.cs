@@ -53,10 +53,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 "The document exceeds the configured maximum character count.");
         }
 
-        var normalized = source.Replace('\0', '\ufffd')
-            .Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Replace('\r', '\n');
-        var lines = normalized.Split('\n');
+        var lines = CreateSourceLines(source);
         var radioGroupOrdinal = 0;
         var diagnostics = new List<DocumentDiagnostic>();
         var blocks = ParseBlocks(lines, ref radioGroupOrdinal, blockDepth: 0, diagnostics);
@@ -67,8 +64,37 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     /// the most recent read, exposing the bounded-scan invariant for hostile inputs.</summary>
     internal int InlineCandidateScanCount { get; private set; }
 
+    private static MarkdownSourceLine[] CreateSourceLines(string source)
+    {
+        var lines = new List<MarkdownSourceLine>();
+        var lineStart = 0;
+        var index = 0;
+
+        while (index < source.Length)
+        {
+            if (source[index] is not ('\r' or '\n'))
+            {
+                index++;
+                continue;
+            }
+
+            lines.Add(new MarkdownSourceLine(source[lineStart..index].Replace('\0', '\ufffd'), lineStart));
+
+            if (source[index] == '\r' && index + 1 < source.Length && source[index + 1] == '\n')
+            {
+                index++;
+            }
+
+            index++;
+            lineStart = index;
+        }
+
+        lines.Add(new MarkdownSourceLine(source[lineStart..].Replace('\0', '\ufffd'), lineStart));
+        return [.. lines];
+    }
+
     private List<DocumentBlock> ParseBlocks(
-        string[] lines,
+        MarkdownSourceLine[] lines,
         ref int radioGroupOrdinal,
         int blockDepth,
         List<DocumentDiagnostic> diagnostics)
@@ -79,8 +105,9 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         while (index < lines.Length)
         {
             var line = lines[index];
+            var text = line.Text;
 
-            if (IsBlankLine(line))
+            if (IsBlankLine(text))
             {
                 index++;
                 continue;
@@ -92,41 +119,41 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continue;
             }
 
-            if (TryHeading(line, out var heading))
+            if (TryHeading(text, out var heading))
             {
                 blocks.Add(heading);
                 index++;
                 continue;
             }
 
-            if (IsRule(line))
+            if (IsRule(text))
             {
                 blocks.Add(new DocumentSeparator());
                 index++;
                 continue;
             }
 
-            if (TryBlockQuoteMarker(line, out _))
+            if (TryBlockQuoteMarker(text, out _))
             {
                 blocks.Add(ParseQuote(lines, ref index, ref radioGroupOrdinal, blockDepth, diagnostics));
                 continue;
             }
 
             if (Has(MarkdownExtension.Tables) && index + 1 < lines.Length &&
-                lines[index].Contains('|') && lines[index + 1].Contains('|') &&
-                TryTableAlignments(lines[index + 1], out var alignments) &&
-                SplitTableRow(lines[index]).Count == alignments.Count)
+                lines[index].Text.Contains('|') && lines[index + 1].Text.Contains('|') &&
+                TryTableAlignments(lines[index + 1].Text, out var alignments) &&
+                SplitTableRow(lines[index].Text).Count == alignments.Count)
             {
                 blocks.Add(ParseTable(lines, ref index, alignments));
                 continue;
             }
 
-            if (TryListMarker(line, out _))
+            if (TryListMarker(text, out _))
             {
                 if (blockDepth >= _maximumRecursiveBlockDepth)
                 {
-                    AddNestingLimitDiagnostic(diagnostics);
-                    blocks.Add(CreateParagraph([line]));
+                    AddNestingLimitDiagnostic(diagnostics, line);
+                    blocks.Add(CreateParagraph([text]));
                     index++;
                     continue;
                 }
@@ -138,20 +165,20 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             var paragraphLines = new List<string>();
             var setextLevel = 0;
 
-            while (index < lines.Length && !IsBlankLine(lines[index]))
+            while (index < lines.Length && !IsBlankLine(lines[index].Text))
             {
-                if (paragraphLines.Count > 0 && TrySetextUnderline(lines[index], out setextLevel))
+                if (paragraphLines.Count > 0 && TrySetextUnderline(lines[index].Text, out setextLevel))
                 {
                     index++;
                     break;
                 }
 
-                if (paragraphLines.Count > 0 && IsParagraphInterruptingBlockStart(lines[index]))
+                if (paragraphLines.Count > 0 && IsParagraphInterruptingBlockStart(lines[index].Text))
                 {
                     break;
                 }
 
-                paragraphLines.Add(lines[index]);
+                paragraphLines.Add(lines[index].Text);
                 index++;
             }
 
@@ -170,9 +197,12 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         return blocks;
     }
 
-    private static bool TryFence(string[] lines, ref int index, [NotNullWhen(true)] out DocumentCodeBlock? code)
+    private static bool TryFence(
+        MarkdownSourceLine[] lines,
+        ref int index,
+        [NotNullWhen(true)] out DocumentCodeBlock? code)
     {
-        if (!TryFenceOpener(lines[index], out var fence))
+        if (!TryFenceOpener(lines[index].Text, out var fence))
         {
             code = null;
             return false;
@@ -182,14 +212,14 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         var body = new StringBuilder();
         var hasBodyLine = false;
 
-        while (index < lines.Length && !IsFenceCloser(lines[index], fence))
+        while (index < lines.Length && !IsFenceCloser(lines[index].Text, fence))
         {
             if (hasBodyLine)
             {
                 _ = body.Append('\n');
             }
 
-            var line = lines[index];
+            var line = lines[index].Text;
 
             // fence.Indent is a column budget from a marker whose own opening indentation is
             // guaranteed tab-free (see TryFenceOpener), so it doubles as a character count there.
@@ -319,22 +349,23 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     }
 
     private DocumentBlock ParseQuote(
-        string[] lines,
+        MarkdownSourceLine[] lines,
         ref int index,
         ref int radioGroupOrdinal,
         int blockDepth,
         List<DocumentDiagnostic> diagnostics)
     {
-        var quoted = new List<string>();
+        var quoted = new List<MarkdownSourceLine>();
+        var firstMarkerLine = lines[index];
         var paragraphOpen = false;
 
         while (index < lines.Length)
         {
-            if (TryBlockQuoteMarker(lines[index], out var contentStart))
+            if (TryBlockQuoteMarker(lines[index].Text, out var contentStart))
             {
-                var content = lines[index][contentStart..];
+                var content = lines[index].Slice(contentStart);
                 quoted.Add(content);
-                paragraphOpen = !IsBlankLine(content) && !IsParagraphInterruptingBlockStart(content);
+                paragraphOpen = !IsBlankLine(content.Text) && !IsParagraphInterruptingBlockStart(content.Text);
                 index++;
                 continue;
             }
@@ -343,7 +374,8 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             // the quote when it continues an already-open paragraph and does not itself look like
             // the start of another block. A blank line (handled by the loop condition failing on
             // IsBlankLine below) always closes that eligibility.
-            if (!paragraphOpen || IsBlankLine(lines[index]) || IsParagraphInterruptingBlockStart(lines[index]))
+            if (!paragraphOpen || IsBlankLine(lines[index].Text) ||
+                IsParagraphInterruptingBlockStart(lines[index].Text))
             {
                 break;
             }
@@ -353,7 +385,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         }
 
         if (blockDepth < _maximumRecursiveBlockDepth && Has(MarkdownExtension.Callouts) &&
-            TryCalloutHeader(quoted[0], out var kind, out var title))
+            TryCalloutHeader(quoted[0].Text, out var kind, out var title))
         {
             quoted.RemoveAt(0);
             var callout = new DocumentCallout { Kind = kind, Title = title };
@@ -370,8 +402,8 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
         if (blockDepth >= _maximumRecursiveBlockDepth)
         {
-            AddNestingLimitDiagnostic(diagnostics);
-            quote.Blocks.Add(CreateParagraph(quoted));
+            AddNestingLimitDiagnostic(diagnostics, firstMarkerLine);
+            quote.Blocks.Add(CreateParagraph([.. quoted.Select(static line => line.Text)]));
         }
         else
         {
@@ -385,13 +417,13 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     }
 
     private DocumentList ParseList(
-        string[] lines,
+        MarkdownSourceLine[] lines,
         ref int index,
         ref int radioGroupOrdinal,
         int blockDepth,
         List<DocumentDiagnostic> diagnostics)
     {
-        _ = TryListMarker(lines[index], out var firstMarker);
+        _ = TryListMarker(lines[index].Text, out var firstMarker);
         var list = new DocumentList(firstMarker.IsOrdered ? DocumentListKind.Numbered : DocumentListKind.Bulleted)
         {
             Start = firstMarker.Start
@@ -401,18 +433,19 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             : null;
         RadioButton? selectedRadio = null;
 
-        while (index < lines.Length && TryListMarker(lines[index], out var marker) &&
+        while (index < lines.Length && TryListMarker(lines[index].Text, out var marker) &&
                marker.Indent == firstMarker.Indent && marker.Delimiter == firstMarker.Delimiter)
         {
             var item = new DocumentListItem();
-            var continuation = new List<string>();
+            var markerLine = lines[index];
+            var continuation = new List<MarkdownSourceLine>();
             var endListAfterItem = false;
             var paragraphOpen = marker.Content.Length > 0 && !IsParagraphInterruptingBlockStart(marker.Content);
             index++;
 
             while (index < lines.Length)
             {
-                if (TryListMarker(lines[index], out var next) && next.Indent == firstMarker.Indent)
+                if (TryListMarker(lines[index].Text, out var next) && next.Indent == firstMarker.Indent)
                 {
                     break;
                 }
@@ -433,19 +466,19 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 // The indentation check compares columns - a tab counts toward the threshold even
                 // though CountLeadingIndentation only expands it to its next 4-column stop rather
                 // than splitting it (the "atomic tab" simplification).
-                if (!IsBlankLine(lines[index]) &&
-                    CountLeadingIndentation(lines[index]).Column < marker.Indent + marker.MarkerWidth &&
-                    (!paragraphOpen || IsParagraphInterruptingBlockStart(lines[index])))
+                if (!IsBlankLine(lines[index].Text) &&
+                    CountLeadingIndentation(lines[index].Text).Column < marker.Indent + marker.MarkerWidth &&
+                    (!paragraphOpen || IsParagraphInterruptingBlockStart(lines[index].Text)))
                 {
                     break;
                 }
 
-                if (IsBlankLine(lines[index]))
+                if (IsBlankLine(lines[index].Text))
                 {
                     paragraphOpen = false;
                     var afterBlankIndex = index + 1;
 
-                    while (afterBlankIndex < lines.Length && IsBlankLine(lines[afterBlankIndex]))
+                    while (afterBlankIndex < lines.Length && IsBlankLine(lines[afterBlankIndex].Text))
                     {
                         afterBlankIndex++;
                     }
@@ -456,7 +489,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                         break;
                     }
 
-                    if (TryListMarker(lines[afterBlankIndex], out var afterBlank) &&
+                    if (TryListMarker(lines[afterBlankIndex].Text, out var afterBlank) &&
                         afterBlank.Indent == firstMarker.Indent)
                     {
                         index = afterBlankIndex;
@@ -479,14 +512,15 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                     // continuation. It therefore needs the same content-column threshold, and the
                     // same strict "<" as the check above: reaching the content column exactly is
                     // sufficient indentation and must not end the item.
-                    if (CountLeadingIndentation(lines[afterBlankIndex]).Column < marker.Indent + marker.MarkerWidth)
+                    if (CountLeadingIndentation(lines[afterBlankIndex].Text).Column <
+                        marker.Indent + marker.MarkerWidth)
                     {
                         index = afterBlankIndex;
                         break;
                     }
 
                     list.IsLoose = true;
-                    continuation.Add(string.Empty);
+                    continuation.Add(lines[index]);
                 }
                 else
                 {
@@ -498,10 +532,10 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                     // code body strip above.
                     var remove = Math.Min(
                         marker.Indent + marker.MarkerWidth,
-                        CountLeadingIndentation(lines[index]).Length);
-                    var content = lines[index][remove..];
+                        CountLeadingIndentation(lines[index].Text).Length);
+                    var content = lines[index].Slice(remove);
                     continuation.Add(content);
-                    paragraphOpen = !IsBlankLine(content) && !IsParagraphInterruptingBlockStart(content);
+                    paragraphOpen = !IsBlankLine(content.Text) && !IsParagraphInterruptingBlockStart(content.Text);
                 }
 
                 index++;
@@ -509,16 +543,18 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
             if (Has(MarkdownExtension.TaskLists) && TryTask(marker.Content, out var isChecked, out var taskText))
             {
-                var paragraph = new DocumentParagraph();
-                paragraph.Inlines.Add(new DocumentInlineControl(new CheckBox { IsChecked = isChecked }));
-
-                if (taskText.Length > 0)
-                {
-                    paragraph.Inlines.Add(new DocumentTextRun(" "));
-                    ParseInlines(taskText, paragraph.Inlines);
-                }
-
+                var paragraph = CreateInteractiveParagraph(
+                    new CheckBox { IsChecked = isChecked },
+                    taskText,
+                    continuation,
+                    out var consumedLineCount);
                 item.Blocks.Add(paragraph);
+                AddParsedBlocks(
+                    item,
+                    [.. continuation.Skip(consumedLineCount)],
+                    ref radioGroupOrdinal,
+                    blockDepth,
+                    diagnostics);
             }
             else if (radioGroup is not null && TryRadio(marker.Content, out isChecked, out var radioText))
             {
@@ -527,13 +563,24 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                     selectedRadio.IsChecked = false;
                 }
 
-                var radio = new RadioButton(radioText)
+                var radio = new RadioButton
                 {
                     GroupName = radioGroup,
                     IsChecked = isChecked
                 };
                 MarkdownRadioRegistry.Register(radio);
-                item.Blocks.Add(new DocumentBlockControl(radio));
+                var paragraph = CreateInteractiveParagraph(
+                    radio,
+                    radioText,
+                    continuation,
+                    out var consumedLineCount);
+                item.Blocks.Add(paragraph);
+                AddParsedBlocks(
+                    item,
+                    [.. continuation.Skip(consumedLineCount)],
+                    ref radioGroupOrdinal,
+                    blockDepth,
+                    diagnostics);
 
                 if (isChecked)
                 {
@@ -542,16 +589,8 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             }
             else
             {
-                continuation.Insert(0, marker.Content);
-            }
-
-            foreach (var block in ParseBlocks(
-                         [.. continuation],
-                         ref radioGroupOrdinal,
-                         blockDepth + 1,
-                         diagnostics))
-            {
-                item.Blocks.Add(block);
+                continuation.Insert(0, markerLine.Slice(markerLine.Text.Length - marker.Content.Length));
+                AddParsedBlocks(item, [.. continuation], ref radioGroupOrdinal, blockDepth, diagnostics);
             }
 
             list.Items.Add(item);
@@ -566,31 +605,84 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         return list;
     }
 
-    private static void AddNestingLimitDiagnostic(List<DocumentDiagnostic> diagnostics)
+    private DocumentParagraph CreateInteractiveParagraph(
+        ControlBase control,
+        string label,
+        List<MarkdownSourceLine> continuation,
+        out int consumedLineCount)
+    {
+        var paragraphLines = new List<string>();
+
+        if (label.Length > 0)
+        {
+            paragraphLines.Add(label);
+        }
+
+        consumedLineCount = 0;
+
+        while (consumedLineCount < continuation.Count &&
+               !IsBlankLine(continuation[consumedLineCount].Text) &&
+               !IsParagraphInterruptingBlockStart(continuation[consumedLineCount].Text))
+        {
+            paragraphLines.Add(continuation[consumedLineCount].Text);
+            consumedLineCount++;
+        }
+
+        var paragraph = CreateParagraph(paragraphLines);
+        var hasLabel = paragraph.Inlines.Count > 0;
+        paragraph.Inlines.Insert(0, new DocumentInlineControl(control));
+
+        if (hasLabel)
+        {
+            paragraph.Inlines.Insert(1, new DocumentTextRun(" "));
+        }
+
+        return paragraph;
+    }
+
+    private void AddParsedBlocks(
+        DocumentListItem item,
+        MarkdownSourceLine[] lines,
+        ref int radioGroupOrdinal,
+        int blockDepth,
+        List<DocumentDiagnostic> diagnostics)
+    {
+        foreach (var block in ParseBlocks(lines, ref radioGroupOrdinal, blockDepth + 1, diagnostics))
+        {
+            item.Blocks.Add(block);
+        }
+    }
+
+    private static void AddNestingLimitDiagnostic(
+        List<DocumentDiagnostic> diagnostics,
+        MarkdownSourceLine implicatedLine)
     {
         if (diagnostics.Any(static diagnostic => diagnostic.Message == _nestingLimitDiagnostic))
         {
             return;
         }
 
-        diagnostics.Add(new DocumentDiagnostic(_nestingLimitDiagnostic, new DocumentSourceSpan(0, 0)));
+        diagnostics.Add(
+            new DocumentDiagnostic(
+                _nestingLimitDiagnostic,
+                new DocumentSourceSpan(implicatedLine.Offset, implicatedLine.Text.Length)));
     }
 
     private DocumentTable ParseTable(
-        string[] lines,
+        MarkdownSourceLine[] lines,
         ref int index,
         IReadOnlyList<DocumentTableCellAlignment> alignments)
     {
         var table = new DocumentTable();
-        var header = CreateTableRow(SplitTableRow(lines[index]), alignments, isHeader: true);
+        var header = CreateTableRow(SplitTableRow(lines[index].Text), alignments, isHeader: true);
         table.Rows.Add(header);
         index += 2;
 
         while (index < lines.Length &&
-               !IsBlankLine(lines[index]) &&
-               !IsBlockStart(lines[index]))
+               !IsBlankLine(lines[index].Text) &&
+               !IsBlockStart(lines[index].Text))
         {
-            table.Rows.Add(CreateTableRow(SplitTableRow(lines[index]), alignments, isHeader: false));
+            table.Rows.Add(CreateTableRow(SplitTableRow(lines[index].Text), alignments, isHeader: false));
             index++;
         }
 

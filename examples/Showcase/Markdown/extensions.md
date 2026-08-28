@@ -15,10 +15,10 @@ Table bodies may omit pipes and missing trailing cells remain empty.
 
 ## Genuine form controls
 
-- [x] Parse the **document**
+- [x] Parse the **document** with its continuation in the same item paragraph
 - [ ] Ship the [application](https://example.com/release)
 
-- (x) Stable channel
+- (x) Stable **channel across continued label text**
 - ( ) Preview channel
 
 ## Callouts

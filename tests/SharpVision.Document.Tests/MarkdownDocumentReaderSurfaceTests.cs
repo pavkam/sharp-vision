@@ -26,11 +26,8 @@ public sealed class MarkdownDocumentReaderSurfaceTests
             {
                 Extensions = MarkdownExtension.RadioLists
             }));
-        var list = document.Blocks[0].ShouldBeOfType<DocumentList>();
-        var first = list.Items[0].Blocks[0].ShouldBeOfType<DocumentBlockControl>().Control
-            .ShouldBeOfType<RadioButton>();
-        var second = list.Items[1].Blocks[0].ShouldBeOfType<DocumentBlockControl>().Control
-            .ShouldBeOfType<RadioButton>();
+        var first = RadioAt(document, 0);
+        var second = RadioAt(document, 1);
         using var render = new DocumentRenderProbe(document, new Size(24, 2));
 
         // Act
@@ -133,5 +130,6 @@ public sealed class MarkdownDocumentReaderSurfaceTests
 
     private static RadioButton RadioAt(Document document, int item) =>
         document.Blocks[0].ShouldBeOfType<DocumentList>().Items[item].Blocks[0]
-            .ShouldBeOfType<DocumentBlockControl>().Control.ShouldBeOfType<RadioButton>();
+            .ShouldBeOfType<DocumentParagraph>().Inlines[0].ShouldBeOfType<DocumentInlineControl>()
+            .Control.ShouldBeOfType<RadioButton>();
 }

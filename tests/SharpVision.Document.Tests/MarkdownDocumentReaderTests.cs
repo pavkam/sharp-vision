@@ -404,10 +404,10 @@ public sealed class MarkdownDocumentReaderTests
             .ShouldBeOfType<DocumentInlineControl>().Control
             .ShouldBeOfType<CheckBox>().IsChecked.ShouldBe(true);
 
-        var first = tasks.Items[2].Blocks[0].ShouldBeOfType<DocumentBlockControl>().Control
-            .ShouldBeOfType<RadioButton>();
-        var second = tasks.Items[3].Blocks[0].ShouldBeOfType<DocumentBlockControl>().Control
-            .ShouldBeOfType<RadioButton>();
+        var first = tasks.Items[2].Blocks[0].ShouldBeOfType<DocumentParagraph>().Inlines[0]
+            .ShouldBeOfType<DocumentInlineControl>().Control.ShouldBeOfType<RadioButton>();
+        var second = tasks.Items[3].Blocks[0].ShouldBeOfType<DocumentParagraph>().Inlines[0]
+            .ShouldBeOfType<DocumentInlineControl>().Control.ShouldBeOfType<RadioButton>();
         first.GroupName.ShouldBe(second.GroupName);
         second.IsChecked.ShouldBeTrue();
 
@@ -468,6 +468,43 @@ public sealed class MarkdownDocumentReaderTests
             .Text.ShouldBeEmpty();
         paragraph.Inlines.ShouldContain(static inline => inline is DocumentStrong);
         paragraph.Inlines.OfType<DocumentLink>().ShouldContain(static link => link.Target == "target");
+    }
+
+    /// <summary>Verifies interactive markers decorate the item's existing first paragraph without
+    /// splitting an ordinary continuation into a second semantic block.</summary>
+    [Theory]
+    [InlineData(MarkdownExtension.TaskLists, "- [ ] first\n  continuation", typeof(CheckBox))]
+    [InlineData(MarkdownExtension.TaskLists, "- [ ] first\ncontinuation", typeof(CheckBox))]
+    [InlineData(MarkdownExtension.RadioLists, "- ( ) first\n  continuation", typeof(RadioButton))]
+    [InlineData(MarkdownExtension.RadioLists, "- ( ) first\ncontinuation", typeof(RadioButton))]
+    public void Read_WhenInteractiveItemHasContinuation_PreservesOneParagraph(
+        MarkdownExtension extension,
+        string source,
+        Type expectedControlType)
+    {
+        var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = extension });
+
+        var paragraph = reader.Read(source).Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentList>()
+            .Items.ShouldHaveSingleItem().Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        paragraph.Inlines[0].ShouldBeOfType<DocumentInlineControl>().Control.GetType().ShouldBe(expectedControlType);
+        paragraph.Inlines.ShouldContain(static inline => inline is DocumentSoftBreak);
+        paragraph.Inlines.OfType<DocumentTextRun>().Select(static run => run.Text).ShouldContain("first");
+        paragraph.Inlines.OfType<DocumentTextRun>().Select(static run => run.Text).ShouldContain("continuation");
+    }
+
+    /// <summary>Verifies interactive decoration does not prevent inline delimiters from spanning
+    /// the marker line and its continuation.</summary>
+    [Fact]
+    public void Read_WhenTaskInlineMarkupSpansContinuation_PreservesOneSemanticInline()
+    {
+        var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = MarkdownExtension.TaskLists });
+
+        var paragraph = reader.Read("- [ ] **first\n  continuation**").Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem().Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>();
+
+        _ = paragraph.Inlines.OfType<DocumentStrong>().ShouldHaveSingleItem();
     }
 
     /// <summary>Verifies only ASCII spaces and tabs make a CommonMark blank line; broader Unicode
@@ -542,10 +579,10 @@ public sealed class MarkdownDocumentReaderTests
 
         // Act
         var list = reader.Read("- (x) First\n- (x) Second").Blocks[0].ShouldBeOfType<DocumentList>();
-        var first = list.Items[0].Blocks[0].ShouldBeOfType<DocumentBlockControl>().Control
-            .ShouldBeOfType<RadioButton>();
-        var second = list.Items[1].Blocks[0].ShouldBeOfType<DocumentBlockControl>().Control
-            .ShouldBeOfType<RadioButton>();
+        var first = list.Items[0].Blocks[0].ShouldBeOfType<DocumentParagraph>().Inlines[0]
+            .ShouldBeOfType<DocumentInlineControl>().Control.ShouldBeOfType<RadioButton>();
+        var second = list.Items[1].Blocks[0].ShouldBeOfType<DocumentParagraph>().Inlines[0]
+            .ShouldBeOfType<DocumentInlineControl>().Control.ShouldBeOfType<RadioButton>();
 
         // Assert
         first.IsChecked.ShouldBeFalse();
@@ -2120,6 +2157,27 @@ public sealed class MarkdownDocumentReaderTests
         }
     }
 
+    /// <summary>Verifies a list-overflow diagnostic identifies the rejected marker in original
+    /// UTF-16 source coordinates, including when preceding newlines use more than one code unit.</summary>
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r")]
+    [InlineData("\r\n")]
+    public void Read_WhenListNestingExceedsLimit_ReportsImplicatedSourceRange(string newline)
+    {
+        var prefix = $"prefix{newline}{newline}";
+        var nested = string.Join(
+            newline,
+            Enumerable.Range(0, 65).Select(level => $"{new string(' ', level * 2)}- level {level}"));
+        var source = prefix + nested;
+
+        var diagnostic = new MarkdownDocumentReader().Read(source).Diagnostics.ShouldHaveSingleItem();
+
+        diagnostic.Span.Offset.ShouldBeGreaterThanOrEqualTo(prefix.Length);
+        diagnostic.Span.Length.ShouldBeGreaterThan(0);
+        source.Substring(diagnostic.Span.Offset, diagnostic.Span.Length).ShouldBe("- level 64");
+    }
+
     /// <summary>Verifies recursive block-quote nesting shares the exact same 64-level boundary as
     /// list nesting, with content at the boundary parsed as real blocks rather than degraded text.</summary>
     [Theory]
@@ -2153,6 +2211,20 @@ public sealed class MarkdownDocumentReaderTests
 
             _ = block.ShouldBeOfType<DocumentHeading>();
         }
+    }
+
+    /// <summary>Verifies quote-overflow diagnostics retain the original source offset after a prefix.</summary>
+    [Fact]
+    public void Read_WhenBlockQuoteNestingExceedsLimit_ReportsImplicatedSourceRange()
+    {
+        const string prefix = "prefix\r\n\r\n";
+        var source = prefix + string.Concat(Enumerable.Repeat("> ", 65)) + "body";
+
+        var diagnostic = new MarkdownDocumentReader().Read(source).Diagnostics.ShouldHaveSingleItem();
+
+        diagnostic.Span.Offset.ShouldBeGreaterThanOrEqualTo(prefix.Length);
+        diagnostic.Span.Length.ShouldBeGreaterThan(0);
+        source.Substring(diagnostic.Span.Offset, diagnostic.Span.Length).ShouldBe("> body");
     }
 
     /// <summary>Verifies the callout-header branch of block-quote parsing uses the same 64-level
@@ -2506,11 +2578,11 @@ public sealed class MarkdownDocumentReaderTests
         // Assert
         result.Blocks.Count.ShouldBe(2);
         var first = result.Blocks[0].ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem()
-            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentBlockControl>().Control
-            .ShouldBeOfType<RadioButton>();
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
+            .ShouldBeOfType<DocumentInlineControl>().Control.ShouldBeOfType<RadioButton>();
         var second = result.Blocks[1].ShouldBeOfType<DocumentList>().Items.ShouldHaveSingleItem()
-            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentBlockControl>().Control
-            .ShouldBeOfType<RadioButton>();
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>().Inlines[0]
+            .ShouldBeOfType<DocumentInlineControl>().Control.ShouldBeOfType<RadioButton>();
         first.GroupName.ShouldNotBe(second.GroupName);
         first.IsChecked.ShouldBeTrue();
         second.IsChecked.ShouldBeTrue();
@@ -2562,7 +2634,8 @@ public sealed class MarkdownDocumentReaderTests
         }
         else
         {
-            _ = interactive.ShouldBeOfType<DocumentBlockControl>().Control.ShouldBeOfType<RadioButton>();
+            _ = interactive.ShouldBeOfType<DocumentParagraph>().Inlines[0]
+                .ShouldBeOfType<DocumentInlineControl>().Control.ShouldBeOfType<RadioButton>();
         }
 
         plain.Inlines.OfType<DocumentInlineControl>().ShouldBeEmpty();

@@ -178,7 +178,9 @@ Recursive block parsing is interpreted to a shared maximum of 64 semantic levels
 across block quotes and nested lists. Markers beyond that boundary remain
 literal paragraph content and the result contains one deterministic diagnostic,
 keeping hostile input bounded without discarding source text or leaking the
-semantic tree's insertion exception.
+semantic tree's insertion exception. Its non-empty `DocumentSourceSpan`
+identifies the first rejected marker line in the original UTF-16 source;
+preceding CR, LF, and CRLF terminators retain their authored code-unit widths.
 
 Leading indentation for headings, block quotes, lists, and fenced code openers
 expands a tab to the next 4-column stop, following
@@ -281,11 +283,13 @@ Task markers follow GFM's ASCII-whitespace rule: an unchecked marker may contain
 an ASCII whitespace character between its brackets, and at least one ASCII
 whitespace character must separate the closing bracket from the label. All such
 separator whitespace is structural and omitted from the generated `CheckBox`
-text. The empty-caption checkbox is the first inline in the item paragraph,
-followed by a visual gap and the label parsed through the ordinary Markdown
-inline grammar. Emphasis, code spans, links, and escapes therefore keep the same
-semantics as a non-task list item; Unicode whitespace such as a non-breaking
-space remains literal.
+text. The empty-caption checkbox or radio is the first inline in the item's
+existing first paragraph, followed by a visual gap and the label parsed through
+the ordinary Markdown inline grammar. Indented and lazy continuation lines stay
+in that paragraph, so emphasis, code spans, links, escapes, and soft or hard
+breaks can span the marker line and its continuation exactly as they do in a
+plain list item. A real blank line still starts a separate child block. Unicode
+whitespace such as a non-breaking space remains literal.
 
 Those generated labels participate in the owning `Document`'s continuous
 semantic selection like directly embedded controls. Copy output preserves their
