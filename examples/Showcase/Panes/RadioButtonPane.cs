@@ -84,7 +84,7 @@ internal sealed class RadioButtonPane: CompositeControlBase
         var regroupStatus = new Text("Regrouped: waiting");
         var movable = new RadioButton { Text = "&Movable option", GroupName = "left", IsChecked = true };
         var leftPeer = new RadioButton { Text = "&Left peer", GroupName = "left" };
-        var rightPeer = new RadioButton { Text = "&Right peer", GroupName = "right", IsChecked = true };
+        var rightPeer = new RadioButton { Text = "Ri&ght peer", GroupName = "right", IsChecked = true };
         var regroup = new Button { Text = "Mo&ve selected option to right group" };
         regroup.Click += (_, _) =>
         {

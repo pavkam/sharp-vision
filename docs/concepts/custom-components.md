@@ -171,6 +171,13 @@ composes it identically for current rendering and prospective Theme comparison.
 This seam is for fixed control-owned appearance, not a substitute for a mutable
 public Style property.
 
+The framework's retained text-caption owners use one internal access-key
+ownership contract. Both mnemonic rendering and access-key discovery consume
+that contract, keeping the semantic owner authoritative while suppressing the
+owned `Text` child as a duplicate dispatch candidate. External controls use the
+public `InputBase` caption capability or `HeaderedContentControl` header role
+rather than reproducing that infrastructure.
+
 ## Affix support
 
 `ControlBase` declares four protected members that let a derived control host

@@ -71,7 +71,9 @@ convention on the unrelated caption capability.
 implements it — which a `Text` header does — and is `null` for any other header
 or when none is assigned. An ampersand in `HeaderText` therefore declares an
 [access key](../concepts/access-keys.md#focus-and-semantic-actions) exactly as
-it did when these controls exposed a plain string `Header`.
+it did when these controls exposed a plain string `Header`. The same internal
+caption-owner contract drives retained `Text` parsing and duplicate suppression,
+so header rendering and semantic dispatch share one ownership decision.
 
 ## Layout and rendering
 

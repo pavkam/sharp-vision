@@ -16,7 +16,7 @@ using DisplayText = Display.Text;
 /// lifecycle and the string convenience over it.
 /// </remarks>
 [PublicAPI]
-public abstract class HeaderedContentControl: ContentControl
+public abstract class HeaderedContentControl: ContentControl, IAccessKeyCaptionOwner
 {
     private readonly OwnedControlSlot _headerSlot;
     private ControlBase? _publishedHeader;
@@ -127,7 +127,8 @@ public abstract class HeaderedContentControl: ContentControl
     /// <summary>Gets whether <paramref name="candidate"/> is this control's own header control.</summary>
     /// <param name="candidate">The control to test.</param>
     [Pure]
-    internal bool OwnsCaption(ControlBase candidate) => ReferenceEquals(Header, candidate);
+    bool IAccessKeyCaptionOwner.OwnsAccessKeyCaption(ControlBase candidate) =>
+        ReferenceEquals(Header, candidate);
 
     /// <inheritdoc/>
     internal override bool AddSelectableTextChildren(List<ControlBase> children)

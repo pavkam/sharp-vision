@@ -3,7 +3,9 @@
 
 namespace SharpVision.Input;
 
-/// <summary>Marks a display control whose access key is represented by its retained text content.</summary>
+/// <summary>Marks a display control whose access key is represented by retained text content.</summary>
+/// <remarks>A semantic parent may implement <see cref="IAccessKeyCaptionOwner"/> to own this
+/// caption's mnemonic policy and suppress duplicate dispatch to the retained display control.</remarks>
 internal interface IAccessKeyCaption
 {
     /// <summary>Gets the caption text whose mnemonic participates in access-key routing.</summary>

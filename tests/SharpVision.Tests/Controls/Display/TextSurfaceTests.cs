@@ -170,6 +170,30 @@ public sealed class TextSurfaceTests
             TerminalPalette.Project(replacement.Hotkey, ColorDepth.Basic16));
     }
 
+    /// <summary>Verifies a non-built-in semantic owner controls mnemonic parsing for its retained
+    /// caption through the internal ownership contract.</summary>
+    [Fact]
+    public async Task Render_WhenCustomCaptionOwnerDisablesMnemonic_PreservesLiteralMarkerAsync()
+    {
+        var caption = new ControlText("&Run") { UseMnemonic = true };
+        var owner = new ProbeAccessKeyCaptionOwner
+        {
+            Content = caption,
+            UseMnemonic = false,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            owner,
+            new Size(4, 1),
+            TestContext.Current.CancellationToken);
+
+        surface.ShouldRender("&Run");
+        (surface.Cell(default).Style.Attributes & TerminalAttributes.Underline)
+            .ShouldBe(TerminalAttributes.None);
+    }
+
     /// <summary>Verifies passive text observes physical hover without entering focus or press state.</summary>
     [Fact]
     public async Task Pointer_WhenTextIsMounted_TracksHoverWithoutFocusOrPressAsync()

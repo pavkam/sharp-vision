@@ -31,7 +31,7 @@ using DisplayText = Display.Text;
 /// capability is meant to be wired once, from the constructor.
 /// </remarks>
 [PublicAPI]
-public abstract class InputBase: ControlBase
+public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
 {
     private static readonly ThemeValueDependency<Rune> _dropDownGlyphThemeDependency = new(
         static theme => theme.GetStyleSet(InputStyle.Default).Normal.DropDownGlyph,
@@ -197,7 +197,8 @@ public abstract class InputBase: ControlBase
 
     /// <summary>Gets whether <paramref name="candidate"/> is this control's own owned caption child.</summary>
     /// <param name="candidate">The control to test.</param>
-    internal bool OwnsCaption(ControlBase candidate) => ReferenceEquals(TextControl, candidate);
+    bool IAccessKeyCaptionOwner.OwnsAccessKeyCaption(ControlBase candidate) =>
+        ReferenceEquals(TextControl, candidate);
 
     /// <inheritdoc/>
     protected override string? AccessKeyText => _textSlot is not null ? TextControl?.Content : base.AccessKeyText;

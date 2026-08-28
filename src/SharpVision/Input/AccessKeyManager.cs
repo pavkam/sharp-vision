@@ -12,8 +12,7 @@ internal sealed class AccessKeyManager
         Modifiers.Alt | Modifiers.Shift | Modifiers.CapsLock | Modifiers.NumLock;
 
     private readonly ControlBase _root;
-    private readonly FocusManager _focus;
-    private readonly ModalityManager _modality;
+    private readonly InteractionPlaneCandidateWalker _walker;
 
     /// <summary>Initializes live-tree access-key discovery over one application ownership root.</summary>
     /// <param name="root">The non-null attached application root.</param>
@@ -33,8 +32,7 @@ internal sealed class AccessKeyManager
         }
 
         _root = root;
-        _focus = focus;
-        _modality = modality;
+        _walker = new InteractionPlaneCandidateWalker(root, focus, modality);
     }
 
     /// <summary>Attempts one pressed Alt character against the current eligible caption snapshot.</summary>
@@ -56,63 +54,21 @@ internal sealed class AccessKeyManager
         }
 
         _root.VerifyMutable();
-        var matches = new List<ControlBase>();
-
-        if (_modality.Active is null)
+        var matches = _walker.Collect((control, boundary) =>
         {
-            Collect(_root, _root, key, matches);
-        }
-        else
-        {
-            for (var index = 0; index < _modality.ActiveRootCount; index++)
-            {
-                var boundary = _modality.ActiveRootAt(index);
-                Collect(boundary, boundary, key, matches);
-            }
-        }
+            var matched = control.MatchesAccessKey(key);
 
-        if (matches.Count == 0)
-        {
-            return false;
-        }
+            return matched &&
+                   (control is not IAccessKeyCaption ||
+                    (!IsOwnedCaption(control) && !HasMatchingAncestor(control.Parent, boundary, key)))
+                ? control
+                : null;
+        });
 
-        var anchor = FindAnchor(matches, _focus.Focused);
-
-        for (var offset = 1; offset <= matches.Count; offset++)
-        {
-            var index = (anchor + offset) % matches.Count;
-            var candidate = matches[index];
-
-            if (candidate.InvokeAccessKey(key))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static void Collect(
-        ControlBase control,
-        ControlBase boundary,
-        Rune key,
-        List<ControlBase> matches)
-    {
-        var matched = control.MatchesAccessKey(key);
-
-        if (matched &&
-            (control is not IAccessKeyCaption ||
-             (!IsPressableCaption(control) && !HasMatchingAncestor(control.Parent, boundary, key))))
-        {
-            matches.Add(control);
-        }
-
-        for (var index = 0; index < control.OwnedControlCount; index++)
-        {
-            var child = control.OwnedControlAt(index);
-
-            Collect(child, boundary, key, matches);
-        }
+        return _walker.VisitAfterFocus(
+            matches,
+            candidate => candidate.MatchesAccessKey(key),
+            candidate => candidate.InvokeAccessKey(key));
     }
 
     private static bool HasMatchingAncestor(ControlBase? control, ControlBase boundary, Rune key)
@@ -133,28 +89,6 @@ internal sealed class AccessKeyManager
         return false;
     }
 
-    private static bool IsPressableCaption(ControlBase caption) => caption.Parent switch
-    {
-        InputBase input => input.OwnsCaption(caption),
-        HeaderedContentControl headered => headered.OwnsCaption(caption),
-        _ => false
-    };
-
-    private static int FindAnchor(List<ControlBase> matches, ControlBase? focused)
-    {
-        if (focused is null)
-        {
-            return matches.Count - 1;
-        }
-
-        for (var index = 0; index < matches.Count; index++)
-        {
-            if (ModalityManager.IsWithin(focused, matches[index]))
-            {
-                return index;
-            }
-        }
-
-        return matches.Count - 1;
-    }
+    private static bool IsOwnedCaption(ControlBase caption) =>
+        caption.Parent is IAccessKeyCaptionOwner owner && owner.OwnsAccessKeyCaption(caption);
 }

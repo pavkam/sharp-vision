@@ -324,6 +324,42 @@ public sealed class AccessKeyManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies semantic caption ownership is contract-based rather than restricted to
+    /// the framework's two built-in caption-owner base classes.</summary>
+    [Fact]
+    public async Task Process_WhenCustomOwnerDisablesMnemonic_SuppressesOwnedCaptionDispatchAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            using var root = new Stack();
+            var fallback = new TextInput();
+            var caption = new ControlText("&Run")
+            {
+                UseMnemonic = true,
+                AccessKeyTarget = fallback
+            };
+            var owner = new ProbeAccessKeyCaptionOwner
+            {
+                Content = caption,
+                UseMnemonic = false
+            };
+            root.Children.Add(owner);
+            root.Children.Add(fallback);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            var manager = new AccessKeyManager(root, focus, modality);
+
+            manager.Process(Alt('r')).ShouldBeFalse();
+
+            owner.AccessKeyInvocations.ShouldBe(0);
+            focus.Focused.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
     private static Stroke Alt(char value, Modifiers modifiers = Modifiers.Alt) =>
         new(Code.Character, new Rune(value), nativeCode: 0, modifiers, KeyAction.Press);
 }

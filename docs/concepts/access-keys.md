@@ -36,9 +36,11 @@ underlined.
 to `false` removes the control from access-key discovery and renders its caption
 ampersands literally. `Text` is a rich, body-text control and therefore defaults
 `UseMnemonic` to `false`; set it to `true` explicitly when a standalone `Text`
-acts as a label. A `Text` used as an `InputBase` caption (via `EnableCaption`)
-inherits the owner's effective setting, so the visible syntax and the dispatch
-behavior can never disagree.
+acts as a label. A retained `Text` used as a semantic caption by `InputBase` or
+`HeaderedContentControl` inherits the owner's effective setting through one
+internal caption-owner contract. Rendering and discovery consume that same
+ownership fact, so the visible syntax and dispatch behavior cannot disagree or
+register the retained display child as a second candidate.
 
 ## Dispatch precedence
 
@@ -75,9 +77,10 @@ for its discovery rules, which mirror this section's precisely.
 
 ## Discovery eligibility and duplicates
 
-Discovery takes a snapshot of the current ownership tree for each qualifying
-stroke. There is no mutable registration table that has to be kept in sync with
-caption, enabled, visibility, ownership, popup, or modal changes. Traversal is a
+Discovery and `MenuItem.Shortcut` dispatch share one interaction-plane walker.
+It takes a snapshot of the current ownership tree for each qualifying stroke;
+there is no mutable registration table that has to be kept in sync with caption,
+enabled, visibility, ownership, popup, or modal changes. Traversal is a
 deterministic preorder walk over the registered ownership slots. When a modal
 plane is active, its insertion-ordered plane roots replace the application root.
 Each plane root is also the boundary for caption-ancestor deduplication: a
@@ -92,9 +95,10 @@ Duplicate keys are valid. If focus is inside one matching candidate, that
 candidate becomes the cycle anchor and the next match is tried, wrapping around
 at the end. Otherwise traversal starts at the first match. A candidate that
 declines its action does not prevent a later match from accepting it. Because a
-declining action may synchronously remove, dispose, hide, or disable later
-snapshot entries, every candidate is revalidated against the live tree before
-invocation and stale entries are skipped.
+declining action may synchronously remove, dispose, reparent, hide, disable, or
+change the active modal plane before a later snapshot entry is reached, every
+candidate is revalidated against the current interaction plane and caller-owned
+matching policy before invocation. Stale or foreign entries are skipped.
 
 ## Focus and semantic actions
 

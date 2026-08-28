@@ -14,9 +14,14 @@ border preserves both planes. Captioned controls additionally prove
 exact marker-free cells, grapheme underline style, routed precedence, the
 semantic access-key foreground, disabled-state preservation, keyboard action,
 unavailable filtering, duplicate order, modal confinement, and legacy Alt stroke
-and text suppression. Duplicate reachable keys are rejected within a mounted
-tree and along an open submenu path. Generated list data, repeated documentation
-chrome, and arrow-navigated catalog entries do not count as access-key captions.
+and text suppression. Shared interaction-plane tests cover unrestricted and
+multi-root modal ordering, focus-relative wrapping, stale-candidate rejection,
+and the shortcut no-live-candidates zero-allocation path. A test-only semantic
+caption owner proves rendering and duplicate suppression do not depend on a
+concrete built-in base class. Duplicate reachable keys are rejected within a
+mounted tree and along an open submenu path. Generated list data, repeated
+documentation chrome, and arrow-navigated catalog entries do not count as
+access-key captions.
 
 Default-appearance tests require inactive and disabled semantic
 foreground/border pairs for transparent interactive controls, complete triplets

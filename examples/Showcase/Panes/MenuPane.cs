@@ -173,7 +173,7 @@ internal sealed class MenuPane: CompositeControlBase
             .Item("&Refresh", shortcut: "F5", onInvoke: () => builderStatus.Content = "Invoked: Refresh")
             .Item("Re&name", onInvoke: () => builderStatus.Content = "Invoked: Rename")
             .Check(
-                "Show &hidden files",
+                "Show hidden fi&les",
                 onInvoke: () => builderStatus.Content = "Invoked: Show hidden files")
             .Separator()
             .Submenu(
@@ -185,7 +185,7 @@ internal sealed class MenuPane: CompositeControlBase
                         isChecked: true,
                         onInvoke: () => builderStatus.Content = "Invoked: Sort by Name")
                     .Radio(
-                        "&Date",
+                        "Da&te",
                         groupName: "sort",
                         onInvoke: () => builderStatus.Content = "Invoked: Sort by Date")
                     .Radio(
@@ -201,7 +201,7 @@ internal sealed class MenuPane: CompositeControlBase
 
         var contextMenu = new Menu { Orientation = Orientation.Vertical };
         contextMenu.Items.Add(new MenuItem { Text = "&Inspect" });
-        contextMenu.Items.Add(new MenuItem { Text = "&Run", ShortcutText = "F5" });
+        contextMenu.Items.Add(new MenuItem { Text = "R&un", ShortcutText = "F5" });
         contextMenu.Items.Add(new MenuItem { Text = "&Debug", ShortcutText = "F9" });
         contextMenu.Items.Add(new MenuSeparator());
         contextMenu.Items.Add(new MenuItem { Text = "De&ploy", IsEnabled = false });
@@ -213,10 +213,10 @@ internal sealed class MenuPane: CompositeControlBase
         // StartAffix reserves a fixed cell for an application-owned warning marker.
         var affixStatus = new Text("Use arrow keys to navigate. Enter or Space activates.");
         var affixMenu = new Menu { Orientation = Orientation.Vertical };
-        affixMenu.Items.Add(new MenuItem { Text = "&Rename" });
+        affixMenu.Items.Add(new MenuItem { Text = "Rena&me" });
         affixMenu.Items.Add(new MenuItem
         {
-            Text = "&Delete project",
+            Text = "Delete pro&ject",
             StartAffix = new Affix("⚠", "!", SemanticColor.Error)
         });
         affixMenu.ItemInvoked += (_, e) => affixStatus.Content = $"Invoked: {Label(e.Item)}";
@@ -243,7 +243,7 @@ internal sealed class MenuPane: CompositeControlBase
                     "Fluent builder chain",
                     "Navigate with <reverse>Up</reverse>/<reverse>Down</reverse> arrows and <reverse>Enter</reverse> to invoke. <reverse>Right</reverse> opens Sort by; the three entries share one radio group.",
                     new DocColumn(builderFrame, builderStatus),
-                    "var menu = MenuBuilder.Vertical()\n    .Item(\"&Refresh\", shortcut: \"F5\", onInvoke: Refresh)\n    .Item(\"Re&name\", onInvoke: Rename)\n    .Check(\"Show &hidden files\", onInvoke: ToggleHidden)\n    .Separator()\n    .Submenu(\"&Sort by\", sortBy => sortBy\n        .Radio(\"N&ame\", groupName: \"sort\", isChecked: true, onInvoke: SortByName)\n        .Radio(\"&Date\", groupName: \"sort\", onInvoke: SortByDate)\n        .Radio(\"Si&ze\", groupName: \"sort\", onInvoke: SortBySize))\n    .Build();")),
+                    "var menu = MenuBuilder.Vertical()\n    .Item(\"&Refresh\", shortcut: \"F5\", onInvoke: Refresh)\n    .Item(\"Re&name\", onInvoke: Rename)\n    .Check(\"Show hidden fi&les\", onInvoke: ToggleHidden)\n    .Separator()\n    .Submenu(\"&Sort by\", sortBy => sortBy\n        .Radio(\"N&ame\", groupName: \"sort\", isChecked: true, onInvoke: SortByName)\n        .Radio(\"Da&te\", groupName: \"sort\", onInvoke: SortByDate)\n        .Radio(\"Si&ze\", groupName: \"sort\", onInvoke: SortBySize))\n    .Build();")),
             new DocSection(
                 "📑",
                 "Context menu",
@@ -260,7 +260,7 @@ internal sealed class MenuPane: CompositeControlBase
                     "Warning glyph before a destructive entry",
                     "The glyph marks a destructive action; it sits in its own reserved cell before the caption and never shares space with the shortcut column.",
                     new DocColumn(affixFrame, affixStatus),
-                    "menu.Items.Add(new MenuItem\n{\n    Text = \"&Delete project\",\n    StartAffix = new Affix(\"⚠\", \"!\", SemanticColor.Error)\n});")));
+                    "menu.Items.Add(new MenuItem\n{\n    Text = \"Delete pro&ject\",\n    StartAffix = new Affix(\"⚠\", \"!\", SemanticColor.Error)\n});")));
     }
 
     private static string Label(MenuItem item) => DocCaption.PlainCaption(item.Text);

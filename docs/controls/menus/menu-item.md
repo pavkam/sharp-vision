@@ -169,11 +169,13 @@ underflowing, or leaking the previous dispatcher contribution.
 
 Unlike `ShortcutText`, `Shortcut` is bound: a matching keyboard transition
 invokes the item directly, application-wide, independent of which control
-currently has focus. Dispatch is a stateless tree walk over every attached
-`MenuItem`, modeled on
-[access-key discovery](../../concepts/access-keys.md#overview) rather than a
-registration table, so there is nothing to keep in sync as items are added,
-removed, disposed, reparented, or as a submenu opens and closes.
+currently has focus. Dispatch shares the stateless interaction-plane walker with
+[access-key discovery](../../concepts/access-keys.md#overview) rather than using
+a registration table, so there is nothing to keep in sync as items are added,
+removed, disposed, reparented, or as a submenu opens and closes. Matching and
+one-target invocation remain shortcut-owned policy, and the selected snapshot
+entry is revalidated against its current gesture and interaction plane before
+activation.
 
 - **Reachability does not require visibility.** An item inside a currently
   closed submenu still matches its shortcut and invokes without opening the

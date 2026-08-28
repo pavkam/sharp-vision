@@ -18,8 +18,7 @@ using SharpVision.Terminal.Input;
 internal sealed class ShortcutManager
 {
     private readonly ControlBase _root;
-    private readonly FocusManager _focus;
-    private readonly ModalityManager _modality;
+    private readonly InteractionPlaneCandidateWalker _walker;
 
     /// <summary>Initializes live-tree shortcut discovery over one application ownership root.</summary>
     /// <param name="root">The non-null attached application root.</param>
@@ -39,8 +38,7 @@ internal sealed class ShortcutManager
         }
 
         _root = root;
-        _focus = focus;
-        _modality = modality;
+        _walker = new InteractionPlaneCandidateWalker(root, focus, modality);
     }
 
     /// <summary>Attempts one pressed keyboard transition against every reachable MenuItem shortcut.</summary>
@@ -62,65 +60,26 @@ internal sealed class ShortcutManager
 
         _root.VerifyMutable();
 
-        if (_root.Dispatcher is not { HasLiveShortcuts: true })
-        {
-            return false;
-        }
-
-        var matches = new List<MenuItem>();
-
-        if (_modality.Active is null)
-        {
-            Collect(_root, stroke, matches);
-        }
-        else
-        {
-            for (var index = 0; index < _modality.ActiveRootCount; index++)
-            {
-                Collect(_modality.ActiveRootAt(index), stroke, matches);
-            }
-        }
-
-        if (matches.Count == 0)
-        {
-            return false;
-        }
-
-        var anchor = FindAnchor(matches, _focus.Focused);
-        var target = matches[(anchor + 1) % matches.Count];
-
-        target.ActivateFromMenu(ActivationCause.Keyboard);
-        return true;
+        return _root.Dispatcher is { HasLiveShortcuts: true } && ProcessLive(stroke);
     }
 
-    private static void Collect(ControlBase control, Stroke stroke, List<MenuItem> matches)
+    /// <summary>Walks the interaction plane after the zero-allocation no-shortcut fast path.</summary>
+    /// <param name="stroke">The pressed keyboard transition.</param>
+    /// <returns>True when one current matching item was invoked.</returns>
+    private bool ProcessLive(Stroke stroke)
     {
-        if (control is MenuItem item && item.MatchesShortcut(stroke))
-        {
-            matches.Add(item);
-        }
+        var matches = _walker.Collect(
+            (control, _) => control is MenuItem item && item.MatchesShortcut(stroke)
+                ? item
+                : null);
 
-        for (var index = 0; index < control.OwnedControlCount; index++)
-        {
-            Collect(control.OwnedControlAt(index), stroke, matches);
-        }
-    }
-
-    private static int FindAnchor(List<MenuItem> matches, ControlBase? focused)
-    {
-        if (focused is null)
-        {
-            return matches.Count - 1;
-        }
-
-        for (var index = 0; index < matches.Count; index++)
-        {
-            if (ModalityManager.IsWithin(focused, matches[index]))
+        return _walker.VisitAfterFocus(
+            matches,
+            candidate => candidate.MatchesShortcut(stroke),
+            candidate =>
             {
-                return index;
-            }
-        }
-
-        return matches.Count - 1;
+                candidate.ActivateFromMenu(ActivationCause.Keyboard);
+                return true;
+            });
     }
 }

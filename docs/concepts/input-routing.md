@@ -34,6 +34,12 @@ down. A legacy terminal that reports a held key as repeated presses and an
 enhanced terminal that distinguishes repeat actions therefore drive the same
 control commands without exposing protocol identity to the control layer.
 
+Access-key and `MenuItem.Shortcut` discovery share the same interaction-plane
+walk: unrestricted ownership or the current insertion-ordered modal roots,
+deterministic depth-first candidates, and one focus-relative wrap. Each manager
+keeps its own match and invocation policy and revalidates a snapshot candidate
+against the live plane before acting.
+
 The decoder retains at most three incomplete UTF-8 bytes and replaces malformed
 subsequences minimally with U+FFFD. It maps Enter, Tab, Backspace, cursor keys,
 Home/End, Insert/Delete, Page Up/Down, Begin, F1-F63, Shift-Tab, described CSI

@@ -263,12 +263,7 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
 
     private void EnsureParsed()
     {
-        var isCaption = Parent switch
-        {
-            InputBase input => input.OwnsCaption(this),
-            HeaderedContentControl headered => headered.OwnsCaption(this),
-            _ => false
-        };
+        var isCaption = Parent is IAccessKeyCaptionOwner owner && owner.OwnsAccessKeyCaption(this);
         var captionOwner = isCaption ? Parent : null;
         var useMnemonic = captionOwner?.UseMnemonic ?? UseMnemonic;
         var highlightMnemonic = captionOwner?.EffectiveIsEnabled ?? EffectiveIsEnabled;
