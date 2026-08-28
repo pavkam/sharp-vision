@@ -364,9 +364,12 @@ public sealed class ComboBoxTests
     /// <summary>Verifies an old pointer invocation cannot accept or close a newer decision made
     /// reentrantly from selection publication.</summary>
     [Theory]
-    [InlineData("replace-selection")]
-    [InlineData("reopen")]
-    public async Task Dispatch_WhenPointerSelectionReenters_DoesNotAcceptNewerSessionAsync(string mutation)
+    [InlineData("replace-selection", 2)]
+    [InlineData("reopen", 2)]
+    [InlineData("reopen-same-index", 0)]
+    public async Task Dispatch_WhenPointerSelectionReenters_DoesNotAcceptNewerSessionAsync(
+        string mutation,
+        int replacementIndex)
     {
         await using var dispatcher = Dispatcher.Start();
 
@@ -398,15 +401,15 @@ public sealed class ComboBoxTests
 
                 reentered = true;
 
-                if (mutation == "reopen")
+                if (mutation.StartsWith("reopen", StringComparison.Ordinal))
                 {
                     box.IsOpen = false;
-                    box.SelectedIndex = 2;
+                    box.SelectedIndex = replacementIndex;
                     box.IsOpen = true;
                 }
                 else
                 {
-                    box.SelectedIndex = 2;
+                    box.SelectedIndex = replacementIndex;
                 }
             };
 
@@ -414,9 +417,9 @@ public sealed class ComboBoxTests
             _ = pointer.Dispatch(Pointer(new Point(list.Bounds.X + 1, list.Bounds.Y), PointerAction.Release));
 
             reentered.ShouldBeTrue();
-            box.SelectedIndex.ShouldBe(2);
-            list.SelectedIndex.ShouldBe(2);
-            list.ActiveIndex.ShouldBe(2);
+            box.SelectedIndex.ShouldBe(replacementIndex);
+            list.SelectedIndex.ShouldBe(replacementIndex);
+            list.ActiveIndex.ShouldBe(replacementIndex);
             box.IsOpen.ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
     }

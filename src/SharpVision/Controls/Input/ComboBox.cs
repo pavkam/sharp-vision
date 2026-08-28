@@ -35,9 +35,7 @@ public sealed class ComboBox: InputBase
     private bool _listSelectionChangedFired;
     private int _openingSelectedIndex = -1;
     private int _openingCurrentIndex = -1;
-    private int _pendingPointerInvocationIndex = -1;
-    private ulong _pendingPointerTransitionVersion;
-    private ulong _pendingPointerSessionGeneration;
+    private PopupItemActivationIdentity? _pointerActivation;
 
     #region Construction and properties
 
@@ -49,6 +47,7 @@ public sealed class ComboBox: InputBase
             SelectionMode = ListSelectionMode.Single,
             IsTabStop = false
         };
+        _list.ItemActivationStarting += OnItemActivationStarting;
         _list.ItemInvoked += OnItemInvoked;
         _list.SelectionChanged += OnSelectionChanged;
         _list.PropertyChanged += OnListPropertyChanged;
@@ -457,6 +456,7 @@ public sealed class ComboBox: InputBase
 
         if (reason == ReleaseReason.Disposed)
         {
+            _list.ItemActivationStarting -= OnItemActivationStarting;
             _list.ItemInvoked -= OnItemInvoked;
             _list.SelectionChanged -= OnSelectionChanged;
             _list.PropertyChanged -= OnListPropertyChanged;
@@ -492,7 +492,6 @@ public sealed class ComboBox: InputBase
     {
         _openingSelectedIndex = _selectedIndex;
         _openingCurrentIndex = _selectedIndex >= 0 ? _selectedIndex : _list.ActiveIndex;
-        CapturePointerDecision(_selectedIndex);
         _list.SetProvisionalCurrentIndex(_selectedIndex);
     }
 
@@ -533,7 +532,6 @@ public sealed class ComboBox: InputBase
         }
 
         _list.SetProvisionalCurrentIndex(_openingCurrentIndex);
-        _pendingPointerInvocationIndex = -1;
     }
 
     private void AcceptNavigationSession()
@@ -574,15 +572,18 @@ public sealed class ComboBox: InputBase
 
         if (eventArgs.Cause == ActivationCause.Pointer)
         {
+            var activation = _pointerActivation;
+            _pointerActivation = null;
             var isCurrentInvocation =
+                activation is { } identity &&
                 !IsDisposed &&
                 IsOpen &&
-                eventArgs.Index == _pendingPointerInvocationIndex &&
+                eventArgs.ActivationGeneration == identity.ItemGeneration &&
+                eventArgs.Index == identity.ItemIndex &&
                 eventArgs.Index == _selectedIndex &&
                 eventArgs.Index == _list.SelectedIndex &&
-                PopupTransitionVersion == _pendingPointerTransitionVersion &&
-                PopupSessionGeneration == _pendingPointerSessionGeneration;
-            _pendingPointerInvocationIndex = -1;
+                PopupTransitionVersion == identity.PopupTransitionVersion &&
+                PopupSessionGeneration == identity.PopupSessionGeneration;
 
             if (!isCurrentInvocation)
             {
@@ -591,6 +592,18 @@ public sealed class ComboBox: InputBase
         }
 
         AcceptPopupAndClose();
+    }
+
+    private void OnItemActivationStarting(object? sender, ItemInvokedEventArgs eventArgs)
+    {
+        _ = sender;
+        _pointerActivation = eventArgs.Cause == ActivationCause.Pointer && !IsDisposed && IsOpen
+            ? new PopupItemActivationIdentity(
+                eventArgs.ActivationGeneration,
+                eventArgs.Index,
+                PopupTransitionVersion,
+                PopupSessionGeneration)
+            : null;
     }
 
     private void OnSelectionChanged(object? sender, ListSelectionChangedEventArgs eventArgs)
@@ -640,13 +653,6 @@ public sealed class ComboBox: InputBase
             _list.SelectedIndex == _selectedIndex)
         {
             return;
-        }
-
-        if (IsOpen && _list.SelectedIndex >= 0)
-        {
-            // ListView publishes selection before ItemInvoked. Capture the owning popup session
-            // before ComboBox callbacks can replace that decision or close and reopen the popup.
-            CapturePointerDecision(_list.SelectedIndex);
         }
 
         _selectedIndex = _list.SelectedIndex;
@@ -703,11 +709,6 @@ public sealed class ComboBox: InputBase
         _selectionVersion++;
         _listSelectionChangedFired = false;
 
-        if (IsOpen)
-        {
-            CapturePointerDecision(value);
-        }
-
         try
         {
             _list.SelectedIndex = value;
@@ -716,11 +717,6 @@ public sealed class ComboBox: InputBase
         {
             _selectedIndex = previous;
             _selectionVersion++;
-
-            if (IsOpen)
-            {
-                CapturePointerDecision(previous);
-            }
 
             throw;
         }
@@ -741,7 +737,6 @@ public sealed class ComboBox: InputBase
             // never adopted.
             _selectedIndex = previous;
             _selectionVersion++;
-            CapturePointerDecision(previous);
             return;
         }
 
@@ -752,15 +747,6 @@ public sealed class ComboBox: InputBase
         // fires SelectionChanged at all. Either way this combo box's own value still changed
         // and nothing else will publish it, so publish explicitly here.
         PublishSelectionChanged(value, previous);
-    }
-
-    /// <summary>Captures the pointer-acceptable decision and popup identity before public
-    /// selection callbacks can replace either one.</summary>
-    private void CapturePointerDecision(int index)
-    {
-        _pendingPointerInvocationIndex = index;
-        _pendingPointerTransitionVersion = PopupTransitionVersion;
-        _pendingPointerSessionGeneration = PopupSessionGeneration;
     }
 
     private void PublishSelectionChanged(int selectedIndex, int previousIndex)

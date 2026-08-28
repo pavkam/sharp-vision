@@ -910,6 +910,34 @@ public sealed class ListViewTests
         invoked.ShouldBe([2]);
     }
 
+    /// <summary>Verifies a pointer activation's immutable identity is captured before selection
+    /// publication and the same identity reaches the eventual invocation.</summary>
+    [Fact]
+    public async Task Dispatch_WhenPointerInvokes_CarriesStartingIdentityAcrossSelectionCallbacksAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = new UiListView { Items = ["A", "B"] };
+        ItemInvokedEventArgs? starting = null;
+        ItemInvokedEventArgs? invoked = null;
+        var selectionSawStartingIdentity = false;
+        control.ItemActivationStarting += (_, eventArgs) => starting = eventArgs;
+        control.SelectionChanged += (_, _) => selectionSawStartingIdentity = starting is not null;
+        control.ItemInvoked += (_, eventArgs) => invoked = eventArgs;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            control.Attach(dispatcher);
+            new LayoutEngine().Layout(control, new Size(10, 4));
+            using PointerManager pointer = new(control);
+            Click(pointer, new Point(0, 1), Modifiers.None);
+        }, TestContext.Current.CancellationToken);
+
+        selectionSawStartingIdentity.ShouldBeTrue();
+        _ = starting.ShouldNotBeNull();
+        starting.ActivationGeneration.ShouldBeGreaterThan(0UL);
+        invoked.ShouldBeSameAs(starting);
+    }
+
     /// <summary>Verifies pointer invocation stops when selection callbacks replace the exact
     /// realized row, even if another item occupies its former index.</summary>
     [Theory]

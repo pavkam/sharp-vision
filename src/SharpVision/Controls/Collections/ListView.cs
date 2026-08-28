@@ -40,6 +40,7 @@ public sealed class ListView: ItemsControl
     private int _pendingSelectionReveal = -1;
     private int _selectionVersion;
     private int _selectionAnchor = -1;
+    private ulong _activationGeneration;
 
     /// <summary>Initializes an empty single-selection ListView with a text template and continuous background.</summary>
     public ListView()
@@ -72,6 +73,10 @@ public sealed class ListView: ItemsControl
 
     /// <summary>Raised after semantic Enter or primary pointer invocation.</summary>
     public event EventHandler<ItemInvokedEventArgs>? ItemInvoked;
+
+    /// <summary>Raised with a ListView-owned immutable activation identity before any active-row
+    /// or selection publication can invoke external callbacks.</summary>
+    internal event EventHandler<ItemInvokedEventArgs>? ItemActivationStarting;
 
     /// <summary>Gets or atomically sets an owned snapshot of borrowed item values.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
@@ -574,6 +579,7 @@ public sealed class ListView: ItemsControl
         {
             SelectionChanging = null;
             SelectionChanged = null;
+            ItemActivationStarting = null;
             ItemInvoked = null;
         }
     }
@@ -1573,12 +1579,25 @@ public sealed class ListView: ItemsControl
     {
         var item = (ListItem) sender!;
         var dispatcher = Dispatcher;
-        SetActiveIndex(item.Index);
 
         if (!IsActivatedItemCurrent(item, dispatcher))
         {
             return;
         }
+
+        var activation = new ItemInvokedEventArgs(
+            item.Index,
+            Items[item.Index],
+            eventArgs.Cause,
+            ++_activationGeneration);
+        ItemActivationStarting?.Invoke(this, activation);
+
+        if (!IsActivatedItemCurrent(item, dispatcher))
+        {
+            return;
+        }
+
+        SetActiveIndex(item.Index);
 
         if (item.LastKey == Code.Enter)
         {
@@ -1586,7 +1605,7 @@ public sealed class ListView: ItemsControl
             // commit an invocation the user did not intend.
             if (item.LastModifiers.IsActivationEligible())
             {
-                ItemInvoked?.Invoke(this, new ItemInvokedEventArgs(item.Index, Items[item.Index], eventArgs.Cause));
+                ItemInvoked?.Invoke(this, activation);
             }
 
             return;
@@ -1613,7 +1632,7 @@ public sealed class ListView: ItemsControl
             (ItemInvocation == ListItemInvocation.SingleClick ||
                 (item.LastClickCount >= 2 && isPlainPointerGesture)))
         {
-            ItemInvoked?.Invoke(this, new ItemInvokedEventArgs(item.Index, Items[item.Index], eventArgs.Cause));
+            ItemInvoked?.Invoke(this, activation);
         }
     }
 

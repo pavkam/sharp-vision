@@ -13,6 +13,21 @@ public sealed class ItemInvokedEventArgs: EventArgs
     /// <param name="cause">The defined activation path.</param>
     /// <exception cref="ArgumentOutOfRangeException">The index is negative or cause is unknown.</exception>
     public ItemInvokedEventArgs(int index, object? item, ActivationCause cause)
+        : this(index, item, cause, activationGeneration: 0)
+    {
+    }
+
+    /// <summary>Initializes one framework-owned activation identity.</summary>
+    /// <param name="index">The non-negative item index.</param>
+    /// <param name="item">The borrowed item value, which may be null.</param>
+    /// <param name="cause">The defined activation path.</param>
+    /// <param name="activationGeneration">The ListView-owned activation generation.</param>
+    /// <exception cref="ArgumentOutOfRangeException">The index is negative or cause is unknown.</exception>
+    internal ItemInvokedEventArgs(
+        int index,
+        object? item,
+        ActivationCause cause,
+        ulong activationGeneration)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
 
@@ -21,6 +36,7 @@ public sealed class ItemInvokedEventArgs: EventArgs
         Index = index;
         Item = item;
         Cause = cause;
+        ActivationGeneration = activationGeneration;
     }
 
     /// <summary>Gets the invoked item index.</summary>
@@ -31,4 +47,7 @@ public sealed class ItemInvokedEventArgs: EventArgs
 
     /// <summary>Gets the semantic activation path.</summary>
     public ActivationCause Cause { get; }
+
+    /// <summary>Gets the ListView-owned activation identity, or zero for a caller-constructed event.</summary>
+    internal ulong ActivationGeneration { get; }
 }
