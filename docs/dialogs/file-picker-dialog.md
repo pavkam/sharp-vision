@@ -331,6 +331,10 @@ completion are all dispatcher-affine. Filesystem work never calls into controls,
 dispatcher callbacks run outside filesystem locks, and no picker callback emits
 ANSI, CSI, OSC, or any other terminal string.
 
+Directory enumeration completion uses the dispatcher's shared bounded bridge. A
+full queue gets one attempt to report the original rejection through dispatcher
+failure handling; disposal and a second full queue drop the stale completion.
+
 ## Example
 
 ```csharp

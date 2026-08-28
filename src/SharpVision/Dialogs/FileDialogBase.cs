@@ -781,12 +781,8 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     /// </summary>
     internal Task? LastLoadObservation { get; private set; }
 
-    /// <summary>Posts <paramref name="action"/>; a full bounded queue
-    /// (<see cref="InvalidOperationException"/>) is bridged into the dispatcher's own
-    /// callback-failure path by re-posting a callback that rethrows the caught exception, so a
-    /// failure originating off the dispatcher thread is reported exactly like one thrown by a
-    /// callback already running on it. A second full queue on that retry, or a disposed dispatcher
-    /// at either attempt, is dropped silently.</summary>
+    /// <summary>Posts attachment- and lease-guarded load work through the dispatcher's shared
+    /// background-completion bridge.</summary>
     /// <param name="attachment">The exact attachment allowed to receive the callback.</param>
     /// <param name="lease">The latest-load authority required by the callback.</param>
     /// <param name="action">The callback to post.</param>
@@ -795,40 +791,14 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         LatestControlOperationLease lease,
         Action action)
     {
-        try
+        attachment.Dispatcher.PostBackgroundCompletion(() =>
         {
-            PostForCurrentAttachment(attachment, action, () => IsCurrentLoad(lease, attachment));
-        }
-        catch (ObjectDisposedException)
-        {
-        }
-        catch (InvalidOperationException exception)
-        {
-            PostRetryHookForTests?.Invoke();
-
-            try
+            if (IsCurrentLoad(lease, attachment))
             {
-                attachment.Dispatcher.Post(() => throw exception);
+                action();
             }
-            catch (ObjectDisposedException)
-            {
-            }
-            catch (InvalidOperationException)
-            {
-            }
-        }
+        });
     }
-
-    /// <summary>
-    /// Test-only synchronization seam. When set, invoked once by <see cref="PostOrReportFault"/>
-    /// immediately after a first <see cref="Dispatcher.Post(Action)"/> attempt is rejected for a
-    /// full queue, but before the bridging retry attempt - letting a test deterministically free
-    /// the queue slot the retry needs in the otherwise nanosecond-wide window between the two
-    /// attempts, rather than racing a genuine drain. Instance-scoped, like the analogous
-    /// <c>TreeViewItem.PostRetryHookForTests</c> seam, so parallel tests on different dialogs
-    /// cannot interfere with each other.
-    /// </summary>
-    internal Action? PostRetryHookForTests { get; set; }
 
     private async Task ObserveLoadAsync(
         Task<IReadOnlyList<FilePickerEntry>> task,

@@ -183,6 +183,13 @@ dispatcher hold, byte ordering between UI frames and protocol bytes is
 deterministic, and a bell or title change requested mid-frame is guaranteed to
 land only after that frame's bytes are on the wire.
 
+Render and out-of-band completions use the dispatcher's shared background
+completion bridge. If shutdown cancels accepted work, or posting cannot succeed,
+the abandonment callback retires the frame, hold, and completion source exactly
+once so the shutdown drain cannot wedge. A transient full queue reports its
+original rejection through normal dispatcher failure handling with one bounded
+attempt.
+
 BEL, OSC 2, described `TS`/`fsl` title writes, and clipboard OSC requests do not
 mutate the terminal cell grid, cursor, or rendition state, so a successful
 service write does not invalidate the renderer front frame. The described title

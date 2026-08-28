@@ -4,6 +4,7 @@
 namespace SharpVision.DataBinding;
 
 using System.Collections.Specialized;
+using System.Runtime.ExceptionServices;
 
 /// <summary>Tracks membership notifications from one replaceable collection.</summary>
 internal sealed class CollectionObserver: IDisposable
@@ -185,24 +186,16 @@ internal sealed class CollectionObserver: IDisposable
             _coalesced = false;
         }
 
-        Exception? failure = null;
+        ExceptionDispatchInfo? failure = null;
 
         foreach (var source in current is null ? retired : [current, .. retired])
         {
-            try
-            {
-                source.CollectionChanged -= OnCollectionChanged;
-            }
-            catch (Exception exception)
-            {
-                failure ??= exception;
-            }
+            ExceptionAggregation.Capture(
+                () => source.CollectionChanged -= OnCollectionChanged,
+                ref failure);
         }
 
-        if (failure is not null)
-        {
-            throw failure;
-        }
+        failure?.Throw();
     }
 
     private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs eventArgs)

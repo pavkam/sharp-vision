@@ -3,6 +3,8 @@
 
 namespace SharpVision.DataBinding;
 
+using System.Runtime.ExceptionServices;
+
 /// <summary>Owns the live bindings registered against one retained control.</summary>
 internal sealed class ControlBindingRegistry
 {
@@ -59,26 +61,16 @@ internal sealed class ControlBindingRegistry
     /// <summary>Releases every binding while retaining the first cleanup failure.</summary>
     public void DisposeAll()
     {
-        Exception? failure = null;
+        ExceptionDispatchInfo? failure = null;
 
         for (var index = _bindings.Count - 1; index >= 0; index--)
         {
-            try
-            {
-                _bindings[index].DisposeFromOwner();
-            }
-            catch (Exception exception)
-            {
-                failure ??= exception;
-            }
+            ExceptionAggregation.Capture(_bindings[index].DisposeFromOwner, ref failure);
         }
 
         _bindings.Clear();
 
-        if (failure is not null)
-        {
-            throw failure;
-        }
+        failure?.Throw();
     }
 
     /// <summary>Begins one coordinated target update.</summary>

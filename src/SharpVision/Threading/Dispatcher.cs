@@ -214,6 +214,66 @@ public sealed class Dispatcher: IAsyncDisposable
         Enqueue(new PostWork(action, onCancelled));
     }
 
+    /// <summary>Posts a fire-and-observe completion originating off-dispatcher, reports one full
+    /// queue through the normal callback-failure path, and retires work that cannot run.</summary>
+    /// <param name="completion">The non-null dispatcher-affine completion.</param>
+    /// <param name="onAbandoned">Optional cleanup invoked exactly once when completion cannot run.</param>
+    /// <remarks>
+    /// A disposed dispatcher is silent. A full queue gets one bounded attempt to post a callback
+    /// that throws the original rejection; the real completion is already abandoned either way.
+    /// Accepted work uses the queue's cancellation callback so shutdown cannot strand resources.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="completion"/> is null.</exception>
+    internal void PostBackgroundCompletion(Action completion, Action? onAbandoned = null)
+    {
+        ArgumentNullException.ThrowIfNull(completion);
+
+        try
+        {
+            if (onAbandoned is null)
+            {
+                Post(completion);
+            }
+            else
+            {
+                Post(completion, onAbandoned);
+            }
+
+            return;
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        catch (InvalidOperationException exception)
+        {
+            ReportRejectedBackgroundCompletion(exception);
+        }
+
+        onAbandoned?.Invoke();
+    }
+
+    /// <summary>Attempts once to report an already-rejected background completion through the
+    /// dispatcher's callback-failure path.</summary>
+    /// <param name="exception">The original non-null queue rejection.</param>
+    internal void ReportRejectedBackgroundCompletion(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        BackgroundCompletionRetryHookForTests?.Invoke();
+
+        try
+        {
+            Post(() => throw exception);
+        }
+        catch (Exception reportFailure) when (
+            reportFailure is ObjectDisposedException or InvalidOperationException)
+        {
+        }
+    }
+
+    /// <summary>Gets or sets a test-only synchronization hook invoked between a rejected
+    /// background-completion post and its single fault-reporting attempt.</summary>
+    internal Action? BackgroundCompletionRetryHookForTests { get; set; }
+
     /// <summary>Invokes an action on the dispatcher and observes completion.</summary>
     /// <remarks>
     /// Called from the dispatcher thread the action runs inline and nothing is queued, so neither

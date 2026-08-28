@@ -12,6 +12,22 @@ using Support;
 /// <summary>Verifies PropertyPathObserver handles concurrent PropertyChanged notifications safely.</summary>
 public sealed class PropertyPathObserverTests
 {
+    /// <summary>Verifies failure removing one path segment does not skip later segments.</summary>
+    [Fact]
+    public void Dispose_WhenOneSegmentRemovalThrows_AttemptsEverySegment()
+    {
+        var child = new ThrowingBindingNode { Value = "value" };
+        var root = new ThrowingBindingNode { Child = child, ThrowOnRemove = true };
+        Expression<Func<ThrowingBindingNode, string?>> expression = source => source.Child!.Value;
+        var path = PropertyPath.Create(expression, requireWritable: false);
+        var observer = new PropertyPathObserver(root, path, () => { });
+
+        _ = Should.Throw<InvalidOperationException>(observer.Dispose);
+
+        root.RemovalAttempts.ShouldBe(1);
+        child.RemovalAttempts.ShouldBe(1);
+    }
+
     /// <summary>Verifies concurrent PropertyChanged events from multiple threads do not corrupt the observer.</summary>
     [Fact]
     public void OnPropertyChanged_FromMultipleThreads_DoesNotCorrupt()

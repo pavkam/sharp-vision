@@ -1162,7 +1162,7 @@ public sealed class Application:
             failure = exception;
         }
 
-        PostCompletionOrReportFault(
+        Dispatcher.PostBackgroundCompletion(
             () =>
             {
                 Dispatcher.VerifyAccess();
@@ -2151,7 +2151,7 @@ public sealed class Application:
             failure = exception;
         }
 
-        PostCompletionOrReportFault(
+        Dispatcher.PostBackgroundCompletion(
             () => CompleteRender(frame, hold, completion, metrics, failure),
             () =>
             {
@@ -2166,62 +2166,6 @@ public sealed class Application:
             });
     }
 
-    /// <summary>
-    /// Posts <paramref name="action"/> as the completion for one background render or
-    /// out-of-band write; a full bounded queue (<see cref="InvalidOperationException"/>) is
-    /// bridged into the dispatcher's own callback-failure path by re-posting a callback that
-    /// rethrows the caught exception, so a failure originating off the dispatcher thread is
-    /// reported through <see cref="Dispatcher.UnhandledException"/> exactly like one thrown by a
-    /// callback already running on it - the same bridge <c>TreeViewItem.RunLoadAsync</c> and
-    /// <c>FileDialogBase.ObserveLoadAsync</c> use for their own fire-and-forget completion posts.
-    /// Unlike those callers, <paramref name="action"/> here always retires resources the pending
-    /// <c>_renderTask</c> shutdown drain (<see cref="ObserveSessionAsync"/>) is waiting on, so a
-    /// second full queue on the bridging retry - or a disposed dispatcher at either attempt -
-    /// still runs <paramref name="retire"/> on this (background) thread instead of leaving the
-    /// retirement itself dropped along with the fault.
-    /// </summary>
-    /// <param name="action">The completion callback to post.</param>
-    /// <param name="retire">Runs synchronously, on this thread, when <paramref name="action"/>
-    /// never gets to run because both post attempts failed.</param>
-    private void PostCompletionOrReportFault(Action action, Action retire)
-    {
-        try
-        {
-            Dispatcher.Post(action);
-            return;
-        }
-        catch (ObjectDisposedException)
-        {
-        }
-        catch (InvalidOperationException exception)
-        {
-            PostRetryHookForTests?.Invoke();
-
-            try
-            {
-                Dispatcher.Post(() => throw exception);
-            }
-            catch (ObjectDisposedException)
-            {
-            }
-            catch (InvalidOperationException)
-            {
-            }
-        }
-
-        retire();
-    }
-
-    /// <summary>
-    /// Test-only synchronization seam. When set, invoked once by
-    /// <see cref="PostCompletionOrReportFault"/> immediately after a first
-    /// <see cref="Dispatcher.Post(Action)"/> attempt is rejected for a full queue, but before the
-    /// bridging retry attempt - letting a test deterministically free the queue slot the retry
-    /// needs in the otherwise nanosecond-wide window between the two attempts, rather than racing
-    /// a genuine drain. Instance-scoped, like the analogous seams on <c>TreeViewItem</c> and
-    /// <c>FileDialogBase</c>.
-    /// </summary>
-    internal Action? PostRetryHookForTests { get; set; }
 
     private async Task ObserveSessionAsync()
     {
@@ -2458,7 +2402,7 @@ public sealed class Application:
             failure = exception;
         }
 
-        PostCompletionOrReportFault(
+        Dispatcher.PostBackgroundCompletion(
             () => CompleteOutOfBand(hold, completion, failure),
             () =>
             {

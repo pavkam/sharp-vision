@@ -4,6 +4,7 @@
 namespace SharpVision.DataBinding;
 
 using System.ComponentModel;
+using System.Runtime.ExceptionServices;
 
 /// <summary>Tracks notifying owners along one nested property path.</summary>
 internal sealed class PropertyPathObserver: IDisposable
@@ -98,16 +99,22 @@ internal sealed class PropertyPathObserver: IDisposable
 
     private void UnsubscribeAll()
     {
+        ExceptionDispatchInfo? failure = null;
+
         for (var index = 0; index < _owners.Length; index++)
         {
             if (_owners[index] is INotifyPropertyChanged notifying &&
                 _handlers[index] is { } handler)
             {
-                notifying.PropertyChanged -= handler;
+                ExceptionAggregation.Capture(
+                    () => notifying.PropertyChanged -= handler,
+                    ref failure);
             }
 
             _owners[index] = null;
             _handlers[index] = null;
         }
+
+        failure?.Throw();
     }
 }

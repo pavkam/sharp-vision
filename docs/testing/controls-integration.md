@@ -463,6 +463,12 @@ reentrant cancellation callbacks. Binding, table, tree, command-palette, window,
 and dialog fixtures preserve their domain behavior while using those shared
 identities.
 
+Dispatcher-completion tests cover successful affinity, disposed dispatchers,
+shutdown cancellation after acceptance, one full-queue fault-report attempt, and
+exactly-once abandonment. Adversarial binding teardown tests use throwing event
+remove accessors to prove every path segment and registry cleanup is still
+attempted while the initiating or first teardown failure keeps its throw site.
+
 ## Required evidence
 
 | Layer           | Observation                                                                   |

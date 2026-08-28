@@ -80,7 +80,7 @@ public sealed partial class TreeViewTests
         // between the first (failed) attempt and the bridging retry, instead of racing a genuine
         // drain: releasing the hostage lets the dispatcher thread dequeue and run the filler above,
         // which signals fillerDrained the moment it does, before the retry ever attempts to post.
-        item.PostRetryHookForTests = () =>
+        dispatcher.BackgroundCompletionRetryHookForTests = () =>
         {
             hostageRelease.Set();
             _ = fillerDrained.Task.Wait(TimeSpan.FromSeconds(5));
@@ -205,7 +205,7 @@ public sealed partial class TreeViewTests
             TestContext.Current.CancellationToken,
             filler: () => fillerDrained.SetResult());
 
-        item.PostRetryHookForTests = () =>
+        dispatcher.BackgroundCompletionRetryHookForTests = () =>
         {
             hostageRelease.Set();
             _ = fillerDrained.Task.Wait(TimeSpan.FromSeconds(5));

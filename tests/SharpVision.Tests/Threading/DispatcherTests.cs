@@ -6,7 +6,7 @@ namespace SharpVision.Tests.Threading;
 using System.Reflection;
 
 /// <summary>Verifies dispatcher affinity, bounded work, idle, and shutdown.</summary>
-public sealed class DispatcherTests
+public sealed partial class DispatcherTests
 {
     /// <summary>Verifies the dispatcher owns one distinct named background thread.</summary>
     [Fact]

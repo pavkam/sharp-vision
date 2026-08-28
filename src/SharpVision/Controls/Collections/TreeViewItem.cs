@@ -1250,12 +1250,8 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
     /// regardless.</summary>
     internal Task? LastChildLoadObservation { get; private set; }
 
-    /// <summary>Posts <paramref name="action"/>; a full bounded queue
-    /// (<see cref="InvalidOperationException"/>) is bridged into the dispatcher's own
-    /// callback-failure path by re-posting a callback that rethrows the caught exception, so a
-    /// failure originating off the dispatcher thread is reported exactly like one thrown by a
-    /// callback already running on it. A second full queue on that retry, or a disposed dispatcher
-    /// at either attempt, is dropped silently.</summary>
+    /// <summary>Posts attachment- and operation-guarded load work through the dispatcher's shared
+    /// background-completion bridge.</summary>
     /// <param name="attachment">The exact attachment allowed to receive the callback.</param>
     /// <param name="action">The callback to post.</param>
     /// <param name="isOperationCurrent">An optional additional load-current predicate.</param>
@@ -1264,40 +1260,14 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         Action action,
         Func<bool>? isOperationCurrent = null)
     {
-        try
+        attachment.Dispatcher.PostBackgroundCompletion(() =>
         {
-            PostForCurrentAttachment(attachment, action, isOperationCurrent);
-        }
-        catch (ObjectDisposedException)
-        {
-        }
-        catch (InvalidOperationException exception)
-        {
-            PostRetryHookForTests?.Invoke();
-
-            try
+            if (IsCurrent(attachment) && (isOperationCurrent?.Invoke() ?? true))
             {
-                attachment.Dispatcher.Post(() => throw exception);
+                action();
             }
-            catch (ObjectDisposedException)
-            {
-            }
-            catch (InvalidOperationException)
-            {
-            }
-        }
+        });
     }
-
-    /// <summary>
-    /// Test-only synchronization seam. When set, invoked once by <see cref="PostOrReportFault"/>
-    /// immediately after a first <see cref="Dispatcher.Post(Action)"/> attempt is rejected for a
-    /// full queue, but before the bridging retry attempt - letting a test deterministically free
-    /// the queue slot the retry needs in the otherwise nanosecond-wide window between the two
-    /// attempts, rather than racing a genuine drain. Instance-scoped, like the analogous
-    /// <c>Application.DrainInputRaceHookForTests</c> seam, so parallel tests on different items
-    /// cannot interfere with each other.
-    /// </summary>
-    internal Action? PostRetryHookForTests { get; set; }
 
     /// <summary>Gets whether this item currently holds a queued admission-slot wait.</summary>
     internal bool IsAwaitingLoadSlot => _slotWait is not null;

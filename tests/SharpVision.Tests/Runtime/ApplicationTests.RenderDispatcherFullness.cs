@@ -96,7 +96,7 @@ public sealed partial class ApplicationTests
         // drain: releasing the hostage lets the dispatcher thread dequeue and run fillers until it
         // reaches the one this test is tracking, which signals fillerDrained the moment it does,
         // before the retry ever attempts to post.
-        application.PostRetryHookForTests = () =>
+        application.Dispatcher.BackgroundCompletionRetryHookForTests = () =>
         {
             hostageRelease.Set();
             _ = fillerDrained.Task.Wait(TimeSpan.FromSeconds(5));
@@ -194,7 +194,7 @@ public sealed partial class ApplicationTests
             application.Dispatcher,
             TestContext.Current.CancellationToken);
 
-        application.PostRetryHookForTests = () =>
+        application.Dispatcher.BackgroundCompletionRetryHookForTests = () =>
         {
             hostageRelease.Set();
             _ = fillerDrained.Task.Wait(TimeSpan.FromSeconds(5));

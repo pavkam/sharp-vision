@@ -72,6 +72,13 @@ the promise that the active callback runs to completion rather than enforce it.
 `SynchronizationContext.Post` is the one exception to the throw: it drops the
 callback silently, because `SynchronizationContext.Post` must not throw.
 
+Framework background completions use one bounded dispatcher bridge. Accepted
+work runs only on the dispatcher; shutdown cancellation invokes its optional
+abandonment cleanup exactly once. A full queue abandons the real completion and
+gets one attempt to report the original rejection through the ordinary callback
+failure path. A disposed dispatcher or a second full queue drops that report
+without retrying indefinitely.
+
 A callback failure that stops the dispatcher is recorded on `FatalException`,
 whether it went unhandled because no `UnhandledException` subscriber exists,
 because a subscriber left `IsHandled` false, or because a subscriber itself

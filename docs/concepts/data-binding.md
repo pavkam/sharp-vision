@@ -172,9 +172,9 @@ bridged into the dispatcher's own callback-failure path
 (`Dispatcher.UnhandledException`), the same way a synchronous callback failure
 already running on the dispatcher would surface, instead of vanishing with no
 signal anywhere. Only a queue that is still saturated on that bridging retry -
-or a target dispatcher that is genuinely disposed - drops the pending update and
-clears the scheduled state, so a later, unsaturated notification can still
-schedule. Binding retains no unbounded event history.
+or a target dispatcher that is genuinely disposed - abandons the pending update
+and clears the scheduled state exactly once, so a later, unsaturated
+notification can still schedule. Binding retains no unbounded event history.
 
 Never-attached targets update synchronously; concurrent mutation of a single
 detached control remains unsupported. Explicitly disposing an attached binding
@@ -242,8 +242,10 @@ collection-diff and cancellation semantics.
 The target owns each binding, and a binding owns its model subscriptions.
 `Binding.Dispose` removes the source, target, nested-path, and collection
 subscriptions. Target disposal releases bindings before `OnDisposing` while
-preserving first-failure cleanup. Detach, hide, and disable do not end the data
-lifetime.
+preserving the original first failure and still attempting every later
+unsubscription and registry removal. Startup rollback keeps the initiating
+failure authoritative even if cleanup also fails. Detach, hide, and disable do
+not end the data lifetime.
 
 These guarantees hold across every mode and adapter; nested replacement and null
 recovery; equality, ordering, conversion, exceptions, and disposal; dispatcher

@@ -5,6 +5,7 @@ namespace SharpVision.DataBinding;
 
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Runtime.ExceptionServices;
 
 /// <summary>Owns one live relationship between a retained control property and a model property.</summary>
 [PublicAPI]
@@ -117,10 +118,22 @@ public sealed class Binding: IDisposable
                 ApplySourceToTarget();
             }
         }
-        catch
+        catch (Exception exception)
         {
-            DisposeCore(removeFromRegistry: true);
-            throw;
+            var startupFailure = ExceptionDispatchInfo.Capture(exception);
+
+            try
+            {
+                DisposeCore(removeFromRegistry: true);
+            }
+            catch
+            {
+                // The failure that made startup roll back remains authoritative. Teardown still
+                // exhausts every cleanup arm before returning here.
+            }
+
+            startupFailure.Throw();
+            throw new UnreachableException();
         }
     }
 
@@ -397,21 +410,30 @@ public sealed class Binding: IDisposable
             _sourceDirty = false;
         }
 
-        _sourceObserver?.Dispose();
+        ExceptionDispatchInfo? failure = null;
+        var sourceObserver = _sourceObserver;
         _sourceObserver = null;
-        _collectionObserver?.Dispose();
+        ExceptionAggregation.Capture(() => sourceObserver?.Dispose(), ref failure);
+        var collectionObserver = _collectionObserver;
         _collectionObserver = null;
+        ExceptionAggregation.Capture(() => collectionObserver?.Dispose(), ref failure);
 
-        if (_targetHandler is not null)
+        var targetHandler = _targetHandler;
+        _targetHandler = null;
+
+        if (targetHandler is not null)
         {
-            Target.PropertyChanged -= _targetHandler;
-            _targetHandler = null;
+            ExceptionAggregation.Capture(
+                () => Target.PropertyChanged -= targetHandler,
+                ref failure);
         }
 
         if (removeFromRegistry)
         {
-            _registry.Remove(this);
+            ExceptionAggregation.Capture(() => _registry.Remove(this), ref failure);
         }
+
+        failure?.Throw();
     }
 
     private void DrainSourceUpdates(ControlAttachmentToken attachment)
@@ -567,13 +589,22 @@ public sealed class Binding: IDisposable
         // A saturated (but otherwise healthy) queue here previously vanished with no signal
         // anywhere - not a target update, not Dispatcher.UnhandledException - leaving the target
         // silently stale until some unrelated later change happened to find the queue clear.
-        // PostOrReportFault bridges that full-queue case into the dispatcher's own
+        // PostBackgroundCompletion bridges that full-queue case into the dispatcher's own
         // callback-failure path instead, the same fire-and-forget shape
         // TreeViewItem.RunLoadAsync, FileDialogBase.ObserveLoadAsync, and
         // Application.ObserveRenderAsync/ObserveOutOfBandAsync already bridge.
-        PostOrReportFault(
-            attachment,
-            () => DrainSourceUpdates(attachment),
+        dispatcher.PostBackgroundCompletion(
+            () =>
+            {
+                if (Target.IsCurrent(attachment))
+                {
+                    DrainSourceUpdates(attachment);
+                }
+                else
+                {
+                    ClearScheduled(attachment);
+                }
+            },
             () => ClearScheduled(attachment));
     }
 
@@ -594,68 +625,6 @@ public sealed class Binding: IDisposable
         _scheduledAttachment = null;
     }
 
-    /// <summary>Posts <paramref name="action"/> as the source-to-target drain reached from a
-    /// background source-notification thread; a full bounded queue
-    /// (<see cref="InvalidOperationException"/>) is bridged into the dispatcher's own
-    /// callback-failure path by re-posting a callback that rethrows the caught exception, so a
-    /// failure originating off the dispatcher thread is reported through
-    /// <see cref="Dispatcher.UnhandledException"/> exactly like one thrown by a callback already
-    /// running on it - the same bridge <c>TreeViewItem.RunLoadAsync</c>,
-    /// <c>FileDialogBase.ObserveLoadAsync</c>, and
-    /// <c>Application.ObserveRenderAsync</c>/<c>ObserveOutOfBandAsync</c> use for their own
-    /// fire-and-forget completion posts. <paramref name="onNotScheduled"/> runs whenever
-    /// <paramref name="action"/> itself will never run - a disposed dispatcher, a full queue on
-    /// both this attempt and the bridging retry, or a full queue on this attempt whose retry only
-    /// ever queues the rethrow rather than the real drain - so a caller can release bookkeeping
-    /// (such as <see cref="_sourceScheduled"/>) that would otherwise wrongly believe a drain is
-    /// still pending forever.</summary>
-    /// <param name="attachment">The exact target attachment.</param>
-    /// <param name="action">The drain callback to post.</param>
-    /// <param name="onNotScheduled">Runs when <paramref name="action"/> will never run.</param>
-    private void PostOrReportFault(
-        ControlAttachmentToken attachment,
-        Action action,
-        Action onNotScheduled)
-    {
-        try
-        {
-            Target.PostForCurrentAttachment(
-                attachment,
-                action,
-                onDiscarded: onNotScheduled);
-            return;
-        }
-        catch (ObjectDisposedException)
-        {
-        }
-        catch (InvalidOperationException exception)
-        {
-            PostRetryHookForTests?.Invoke();
-
-            try
-            {
-                attachment.Dispatcher.Post(() => throw exception);
-            }
-            catch (ObjectDisposedException)
-            {
-            }
-            catch (InvalidOperationException)
-            {
-            }
-        }
-
-        onNotScheduled();
-    }
-
-    /// <summary>
-    /// Test-only synchronization seam. When set, invoked once by <see cref="PostOrReportFault"/>
-    /// immediately after a first <see cref="Dispatcher.Post(Action)"/> attempt is rejected for a
-    /// full queue, but before the bridging retry attempt - letting a test deterministically free
-    /// the queue slot the retry needs in the otherwise nanosecond-wide window between the two
-    /// attempts, rather than racing a genuine drain. Instance-scoped, like the analogous seams on
-    /// <c>TreeViewItem</c>, <c>FileDialogBase</c>, and <c>Application</c>.
-    /// </summary>
-    internal Action? PostRetryHookForTests { get; set; }
 
     private void OnTargetPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {

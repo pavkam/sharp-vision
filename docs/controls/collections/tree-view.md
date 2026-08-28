@@ -373,5 +373,8 @@ tree.Items.Add(source);
   commit.
 - A stale completion - from a cancelled, superseded, or reassigned request - is
   always dropped; only the newest request's outcome is ever committed.
+- Background load completion and admission-slot cleanup use the dispatcher's
+  bounded fault bridge; a full queue gets one report attempt and never retries
+  indefinitely.
 - Reentrant expansion and loading callbacks leave structural realization and
   request ownership aligned with the newest committed state.

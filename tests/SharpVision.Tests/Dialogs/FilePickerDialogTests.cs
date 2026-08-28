@@ -1226,7 +1226,7 @@ public sealed class FilePickerDialogTests
 
             // Saturate the queue while the load is still deferred - same shape as the sibling
             // "drops the fault" test above - except this time the hostage is released
-            // deterministically via PostRetryHookForTests, right when the first commit-post
+            // deterministically via the dispatcher retry hook, right when the first commit-post
             // attempt fails, so the bridging retry gets a genuine chance to succeed instead of
             // finding the queue full a second time.
             var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -1255,7 +1255,7 @@ public sealed class FilePickerDialogTests
             {
             }
 
-            dialog.PostRetryHookForTests = () =>
+            dispatcher.BackgroundCompletionRetryHookForTests = () =>
             {
                 hostageRelease.Set();
                 _ = fillerDrained.Task.Wait(TimeSpan.FromSeconds(5));
@@ -1339,7 +1339,7 @@ public sealed class FilePickerDialogTests
             {
             }
 
-            dialog.PostRetryHookForTests = () =>
+            dispatcher.BackgroundCompletionRetryHookForTests = () =>
             {
                 hostageRelease.Set();
                 _ = fillerDrained.Task.Wait(TimeSpan.FromSeconds(5));

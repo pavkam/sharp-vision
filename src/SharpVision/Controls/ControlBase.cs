@@ -190,15 +190,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                     onDiscarded!();
                     return;
                 case ControlAttachmentQueueRejectionPolicy.Report:
-                    try
-                    {
-                        token.Dispatcher.Post(() => throw exception);
-                    }
-                    catch (Exception reportFailure) when (
-                        reportFailure is ObjectDisposedException or InvalidOperationException)
-                    {
-                    }
-
+                    token.Dispatcher.ReportRejectedBackgroundCompletion(exception);
                     return;
                 default:
                     throw new UnreachableException();
