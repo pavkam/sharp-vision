@@ -24,12 +24,22 @@ internal sealed class LightDismiss: IDisposable
     private readonly ControlBase? _routeBoundary;
     private IDisposable? _registration;
 
+    /// <summary>Registers one outside-press dismissal handler for an already committed surface.</summary>
+    /// <param name="surface">The attached surface that owns the registration.</param>
+    /// <param name="anchor">The optional control treated as inside the surface.</param>
+    /// <param name="isOpen">Reports whether dismissal remains eligible.</param>
+    /// <param name="surfaceBounds">Returns the current surface bounds.</param>
+    /// <param name="dismiss">Requests family-specific closure.</param>
+    /// <param name="focusBeforeOpen">The focus identity captured before the surface opened.</param>
+    /// <param name="buttons">The non-empty set of dismissing pointer buttons.</param>
+    /// <param name="interceptAtModalBoundary">Whether dismissal participates at a modal boundary.</param>
     public LightDismiss(
         ControlBase surface,
         ControlBase? anchor,
         Func<bool> isOpen,
         Func<Rect> surfaceBounds,
         Action dismiss,
+        ControlBase? focusBeforeOpen,
         Terminal.Input.Buttons buttons = Terminal.Input.Buttons.Primary,
         bool interceptAtModalBoundary = false)
     {
@@ -44,7 +54,7 @@ internal sealed class LightDismiss: IDisposable
         _dismiss = dismiss;
         _buttons = buttons;
         _focusOwner = surface.FocusOwner;
-        _focusBeforeOpen = _focusOwner?.Focused;
+        _focusBeforeOpen = focusBeforeOpen;
 
         var root = surface;
         while (root.Parent is { } parent)

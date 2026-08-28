@@ -256,15 +256,20 @@ public sealed class Tooltip: Popup
     }
 
     /// <inheritdoc/>
-    internal override void OnContentAvailable()
+    internal override bool OnContentAvailable()
     {
-        base.OnContentAvailable();
+        if (!base.OnContentAvailable())
+        {
+            return false;
+        }
 
         if (_attachedAnchor is not null)
         {
             LayoutPopup();
             SubscribeSurfaceRelayout();
         }
+
+        return true;
     }
 
     #endregion

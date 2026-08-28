@@ -47,6 +47,7 @@ public sealed class PopupTests
 
             thrown.ShouldBeSameAs(expected);
             popup.IsOpen.ShouldBeFalse();
+            popup.HasLightDismissRegistration.ShouldBeFalse();
             popup.SurfaceBounds.ShouldBe(default);
             popup.Content.ShouldNotBeNull().Visibility.ShouldBe(Visibility.Collapsed);
             popup.Opened -= Failing;
@@ -94,6 +95,47 @@ public sealed class PopupTests
         root.Children.ShouldNotContain(first);
     }
 
+    /// <summary>Verifies one peer disposing another during closure cannot invalidate the remaining
+    /// stable snapshot or prevent the initiating Popup from opening.</summary>
+    [Fact]
+    public async Task IsOpen_WhenClosingPeerDisposesAnotherPeer_CompletesStableTraversalAsync()
+    {
+        var first = new Popup
+        {
+            Content = new ControlText("First"),
+            SuppressCloseOtherPopups = true,
+            ModalBehavior = PopupModalBehavior.None
+        };
+        var disposed = new Popup
+        {
+            Content = new ControlText("Disposed"),
+            SuppressCloseOtherPopups = true,
+            ModalBehavior = PopupModalBehavior.None
+        };
+        var opening = new Popup
+        {
+            Content = new ControlText("Opening"),
+            ModalBehavior = PopupModalBehavior.None
+        };
+        var root = new Overlay { Children = { first, disposed, opening } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() =>
+        {
+            first.IsOpen = true;
+            disposed.IsOpen = true;
+        }, "open existing Popup peers");
+        first.Closing += (_, _) => disposed.Dispose();
+
+        await surface.UpdateAsync(() => opening.IsOpen = true, "open Popup while one peer disposes another");
+
+        first.IsOpen.ShouldBeFalse();
+        disposed.IsDisposed.ShouldBeTrue();
+        opening.IsOpen.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a sibling callback may open a third popup without reentering the popup
     /// currently being established; the outermost opening transaction remains the survivor.</summary>
     [Fact]
@@ -119,6 +161,54 @@ public sealed class PopupTests
         first.IsOpen.ShouldBeFalse();
         opening.IsOpen.ShouldBeTrue();
         third.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies disposal superseding the initiating open stops its stale traversal before
+    /// a callback-opened newer peer can be closed.</summary>
+    [Fact]
+    public async Task IsOpen_WhenSiblingCallbackDisposesOpeningPopup_DoesNotCloseNewerPeerAsync()
+    {
+        var first = new Popup
+        {
+            Content = new ControlText("First"),
+            SuppressCloseOtherPopups = true,
+            ModalBehavior = PopupModalBehavior.None
+        };
+        var opening = new Popup
+        {
+            Content = new ControlText("Opening"),
+            ModalBehavior = PopupModalBehavior.None
+        };
+        var newer = new Popup
+        {
+            Content = new ControlText("Newer"),
+            SuppressCloseOtherPopups = true,
+            ModalBehavior = PopupModalBehavior.None
+        };
+        var root = new Overlay { Children = { first, opening, newer } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() =>
+        {
+            first.IsOpen = true;
+            newer.IsOpen = true;
+        }, "open existing Popup peers");
+        newer.IsOpen.ShouldBeTrue();
+        var newerOpenAfterSupersession = false;
+        first.Closing += (_, _) =>
+        {
+            opening.Dispose();
+            newerOpenAfterSupersession = newer.IsOpen;
+        };
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() =>
+            surface.UpdateAsync(() => opening.IsOpen = true, "supersede Popup opening during peer closure"));
+
+        opening.IsDisposed.ShouldBeTrue();
+        newerOpenAfterSupersession.ShouldBeTrue();
+        newer.IsOpen.ShouldBeTrue();
     }
     /// <summary>Verifies attached presentation rejects every anchor relation that cannot remain
     /// coherent in the popup's owning tree.</summary>

@@ -7,8 +7,6 @@ namespace SharpVision.Popups;
 [PublicAPI]
 public sealed class Flyout: Popup
 {
-    private LightDismiss? _lightDismiss;
-
     /// <summary>Initializes a closed flyout with direct popup presentation and light-dismiss behavior.</summary>
     public Flyout()
     {
@@ -16,7 +14,11 @@ public sealed class Flyout: Popup
         SuppressCloseOtherPopups = true;
         CloseOnEscape = true;
         FocusOnOpen = true;
-        PropertyChanged += OnFlyoutPropertyChanged;
+        ConfigureLightDismiss(new PopupLightDismissPolicy(
+            includeAnchor: true,
+            buttons: Terminal.Input.Buttons.Primary,
+            interceptAtModalBoundary: false,
+            dismiss: () => IsOpen = false));
     }
 
     /// <summary>Sets the anchor and opens the flyout in one call.</summary>
@@ -31,39 +33,6 @@ public sealed class Flyout: Popup
         IsOpen = true;
     }
 
-    /// <inheritdoc/>
-    protected override void OnUnavailable(ReleaseReason reason)
-    {
-        if (reason == ReleaseReason.Disposed)
-        {
-            PropertyChanged -= OnFlyoutPropertyChanged;
-            StopLightDismiss();
-        }
-
-        base.OnUnavailable(reason);
-    }
-
-    private void OnFlyoutPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)
-    {
-        _ = sender;
-
-        if (eventArgs.PropertyName == nameof(IsOpen))
-        {
-            if (IsOpen)
-            {
-                StartLightDismiss();
-            }
-            else
-            {
-                StopLightDismiss();
-            }
-        }
-        else if (eventArgs.PropertyName == nameof(Anchor) && IsOpen)
-        {
-            StartLightDismiss();
-        }
-    }
-
     /// <summary>Follows the anchor reflowing (a sibling growing above it, its own container
     /// resizing it, and so on) by dismissing rather than repositioning — a Flyout's outside-press
     /// light dismiss already assumes its bounds are fixed for the pointer geometry captured when
@@ -72,74 +41,8 @@ public sealed class Flyout: Popup
     internal override void OnAnchorReflow() => IsOpen = false;
 
     /// <inheritdoc/>
-    internal override void OnContentAvailable()
-    {
-        base.OnContentAvailable();
-        CloseOtherFlyouts();
-    }
-
-    private void StartLightDismiss()
-    {
-        CloseOtherFlyouts();
-        StopLightDismiss();
-        _lightDismiss = new LightDismiss(
-            this,
-            Anchor,
-            () => IsOpen,
-            () => SurfaceBounds,
-            () => IsOpen = false);
-    }
-
-    private void StopLightDismiss()
-    {
-        _lightDismiss?.Dispose();
-        _lightDismiss = null;
-    }
-
-    private void CloseOtherFlyouts()
-    {
-        ControlBase root = this;
-
-        while (root.Parent is { } parent)
-        {
-            root = parent;
-        }
-
-        CloseDescendantFlyouts(root, this);
-    }
-
-    private static void CloseDescendantFlyouts(ControlBase control, Flyout except)
-    {
-        var candidates = new List<Flyout>();
-        CollectDescendantFlyouts(control, candidates);
-
-        foreach (var flyout in candidates)
-        {
-            if (flyout.IsOpen &&
-                !ReferenceEquals(flyout, except) &&
-                !flyout.IsOpenTransitioning &&
-                !IsAncestorOf(flyout, except) &&
-                ModalityManager.IsWithin(flyout, control))
-            {
-                flyout.IsOpen = false;
-            }
-        }
-    }
-
-    private static void CollectDescendantFlyouts(ControlBase control, List<Flyout> candidates)
-    {
-        var count = control.OwnedControlCount;
-
-        for (var index = 0; index < count; index++)
-        {
-            var child = control.OwnedControlAt(index);
-
-            if (child is Flyout { IsOpen: true } flyout)
-            {
-                candidates.Add(flyout);
-            }
-
-            CollectDescendantFlyouts(child, candidates);
-        }
-    }
+    internal override bool OnContentAvailable() => ExcludePopupPeers(
+        static candidate => candidate is Flyout,
+        candidate => IsAncestorOf(candidate, this),
+        base.OnContentAvailable);
 }

@@ -14,14 +14,19 @@ internal sealed class PopupAnchorReflowReentrancyProbe: Popup
     internal Rect? ReflowAnchorDuringOpenTo { get; set; }
 
     /// <inheritdoc/>
-    internal override void OnContentAvailable()
+    internal override bool OnContentAvailable()
     {
-        base.OnContentAvailable();
+        if (!base.OnContentAvailable())
+        {
+            return false;
+        }
 
         if (ReflowAnchorDuringOpenTo is { } bounds && Anchor is { } anchor)
         {
             anchor.Arrange(bounds, widthResolved: true, heightResolved: true);
         }
+
+        return true;
     }
 
     /// <inheritdoc/>

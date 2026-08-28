@@ -17,6 +17,9 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     private static readonly ThemeValueDependency<PopupAnchorGlyphs> _anchorGlyphsThemeDependency = new(
         static theme => theme.GetStyleSet(PopupStyle.Default).Normal.AnchorGlyphs,
         InvalidationImpact.Render);
+    private PopupLightDismissPolicy? _lightDismissPolicy;
+    private LightDismiss? _lightDismiss;
+    private ControlBase? _lightDismissFocusBeforeOpen;
 
     /// <summary>Raised before directly disposed content leaves this popup's owned slot.</summary>
     internal event EventHandler<OwnedContentDisposalEventArgs>? ContentDisposalRequested;
@@ -26,6 +29,10 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     /// <remarks>Private composite owners use this exact-once boundary to finish their own lifecycle
     /// even when unavailability bypasses the public closing and closed callbacks.</remarks>
     internal event EventHandler? CloseTransitionCompleted;
+
+    /// <summary>Gets whether this Popup currently owns a live light-dismiss registration.</summary>
+    /// <remarks>This observation exists to prove that indirect closure cannot retain a root handler.</remarks>
+    internal bool HasLightDismissRegistration => _lightDismiss is not null;
 
     /// <inheritdoc/>
     void IOwnedChildDisposalObserver.OnOwnedChildDisposalRequested(ControlBase child) =>
@@ -78,6 +85,30 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         IsFocusable = false;
         PropertyChanged += OnPopupPropertyChanged;
         EnableChromeAuthoring();
+    }
+
+    /// <summary>Configures the one Popup-owned light-dismiss policy before attachment.</summary>
+    /// <param name="policy">The non-null family policy.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="policy"/> is null.</exception>
+    /// <exception cref="ArgumentException">A policy is already configured.</exception>
+    /// <exception cref="InvalidOperationException">The Popup is already attached or open.</exception>
+    /// <exception cref="ObjectDisposedException">The Popup is disposed.</exception>
+    internal void ConfigureLightDismiss(PopupLightDismissPolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+        ObjectDisposedException.ThrowIf(IsDisposed, this);
+
+        if (_lightDismissPolicy is not null)
+        {
+            throw new ArgumentException("A light-dismiss policy is already configured.", nameof(policy));
+        }
+
+        if (Dispatcher is not null || IsOpen)
+        {
+            throw new InvalidOperationException("Light dismiss must be configured before the Popup is attached or opened.");
+        }
+
+        _lightDismissPolicy = policy;
     }
 
     /// <inheritdoc/>
@@ -615,6 +646,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         ulong? committedCloseVersion = null;
         ClearAvailabilityAncestor();
         ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(ReleaseLightDismiss, ref failure);
         ExceptionAggregation.Capture(base.OnDetached, ref failure);
 
         if (IsOpen)
@@ -672,6 +704,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         }
 
         ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(ReleaseLightDismiss, ref failure);
         ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
 
         // Disposal joins Hidden/Detached here rather than only clearing the backing
@@ -718,7 +751,44 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         else if (eventArgs.PropertyName == nameof(Anchor) && IsOpen)
         {
             SubscribeAnchorReflow();
+            ReconcileLightDismiss();
         }
+    }
+
+    private void ReconcileLightDismiss()
+    {
+        StopLightDismiss();
+
+        if (_lightDismissPolicy is not { } policy ||
+            !IsOpen ||
+            Dispatcher is null ||
+            !IsSurfacePresented)
+        {
+            return;
+        }
+
+        _lightDismiss = new LightDismiss(
+            this,
+            policy.IncludeAnchor ? Anchor : null,
+            () => IsOpen,
+            () => SurfaceBounds,
+            policy.Dismiss,
+            _lightDismissFocusBeforeOpen,
+            policy.Buttons,
+            policy.InterceptAtModalBoundary);
+    }
+
+    private void StopLightDismiss()
+    {
+        var lightDismiss = _lightDismiss;
+        _lightDismiss = null;
+        lightDismiss?.Dispose();
+    }
+
+    private void ReleaseLightDismiss()
+    {
+        StopLightDismiss();
+        _lightDismissFocusBeforeOpen = null;
     }
 
     private void ReconcilePresentationAvailability()
@@ -872,10 +942,13 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
     private void PresentOpen(bool suppressFocusOnOpen, bool notifyOpenState)
     {
+        _lightDismissFocusBeforeOpen = FocusOwner?.Focused;
+
         try
         {
             ValidateAnchorForPresentation(Anchor);
             OpenSurface(() => CommitOpenState(suppressFocusOnOpen, notifyOpenState));
+            ReconcileLightDismiss();
         }
         catch (Exception exception)
         {
@@ -886,6 +959,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
             {
                 _isOpen = false;
                 _openStateVersion++;
+                ExceptionAggregation.Capture(ReleaseLightDismiss, ref failure);
                 ExceptionAggregation.Capture(
                     () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.Measure),
                     ref failure);
@@ -954,17 +1028,29 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                 ref failure);
         }
 
-        if (!SuppressCloseOtherPopups)
+        var committedOpenStateVersion = _openStateVersion;
+        var committedOwnershipRoot = OwnershipRoot(this);
+        var ownsContinuation = true;
+
+        if (SuppressCloseOtherPopups)
         {
-            ExceptionAggregation.Capture(() => CloseOtherPopups(this), ref failure);
+            ExceptionAggregation.Capture(
+                () => ownsContinuation = CompleteOpenContent(suppressFocusOnOpen),
+                ref failure);
+        }
+        else
+        {
+            ExceptionAggregation.Capture(
+                () => ownsContinuation = ExcludePopupPeers(
+                    static _ => true,
+                    candidate => IsAncestorOf(candidate, this),
+                    () => CompleteOpenContent(suppressFocusOnOpen)),
+                ref failure);
         }
 
-        ExceptionAggregation.Capture(() => MakeContentAvailable(suppressFocusOnOpen), ref failure);
-        ExceptionAggregation.Capture(OnContentAvailable, ref failure);
-
-        if (!SuppressCloseOtherPopups)
+        if (!ownsContinuation && failure is null)
         {
-            ExceptionAggregation.Capture(() => CloseOtherPopups(this), ref failure);
+            return;
         }
 
         if (failure is null)
@@ -972,17 +1058,39 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
             return;
         }
 
-        if (notifyOpenState)
+        var ownsFailedOpen =
+            !IsDisposed &&
+            _isOpen &&
+            _openStateVersion == committedOpenStateVersion &&
+            ReferenceEquals(OwnershipRoot(this), committedOwnershipRoot);
+
+        if (notifyOpenState && ownsFailedOpen)
         {
             _isOpen = false;
             _openStateVersion++;
+            ExceptionAggregation.Capture(ReleaseLightDismiss, ref failure);
             ExceptionAggregation.Capture(
                 () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.Measure),
                 ref failure);
         }
 
-        ExceptionAggregation.Capture(CollapseContent, ref failure);
+        if (ownsFailedOpen)
+        {
+            ExceptionAggregation.Capture(CollapseContent, ref failure);
+        }
+
         failure!.Throw();
+    }
+
+    private bool CompleteOpenContent(bool suppressFocusOnOpen)
+    {
+        ExceptionDispatchInfo? failure = null;
+        var ownsContinuation = true;
+        ExceptionAggregation.Capture(() => MakeContentAvailable(suppressFocusOnOpen), ref failure);
+        ExceptionAggregation.Capture(() => ownsContinuation = OnContentAvailable(), ref failure);
+
+        failure?.Throw();
+        return ownsContinuation;
     }
 
     private void MakeContentAvailable(bool suppressFocusOnOpen)
@@ -1010,8 +1118,13 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     /// Failures participate in the Popup opening transaction: all opening stages complete, family state
     /// rolls back, and the earliest failure is rethrown.
     /// </remarks>
+    /// <returns>True while the family-specific opening still owns continuation.</returns>
     /// <exception cref="Exception">Family-specific post-content setup fails.</exception>
-    internal virtual void OnContentAvailable() => SubscribeAnchorReflow();
+    internal virtual bool OnContentAvailable()
+    {
+        SubscribeAnchorReflow();
+        return true;
+    }
 
     /// <summary>Responds to the foreign anchor reflowing while this popup is open. The default
     /// re-resolves placement against the anchor's new position, line-for-line what a Tooltip's
@@ -1096,7 +1209,12 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         _openStateVersion++;
         _closeCommitVersion++;
         captureCommit?.Invoke(_openStateVersion, _closeCommitVersion);
-        NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.Measure);
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(ReleaseLightDismiss, ref failure);
+        ExceptionAggregation.Capture(
+            () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.Measure),
+            ref failure);
+        failure?.Throw();
     }
 
     private bool IsCurrentClosedState(ulong openStateVersion) =>
@@ -1357,34 +1475,107 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         return false;
     }
 
-    private static void CloseOtherPopups(Popup opening)
+    /// <summary>Closes eligible Popup-family peers around one callback-bearing opening stage.</summary>
+    /// <param name="isFamily">Selects the exact Popup family eligible for exclusion.</param>
+    /// <param name="isExcluded">Excludes ancestors or other family-specific identities.</param>
+    /// <param name="continuation">Runs the opening stage between the two stable peer snapshots.</param>
+    /// <returns>True only while this exact opening still owns continuation.</returns>
+    /// <exception cref="ArgumentNullException">Any callback is null.</exception>
+    /// <exception cref="Exception">Peer closure or the opening continuation fails.</exception>
+    internal bool ExcludePopupPeers(
+        Func<Popup, bool> isFamily,
+        Func<Popup, bool> isExcluded,
+        Func<bool> continuation)
     {
-        ControlBase root = opening;
+        ArgumentNullException.ThrowIfNull(isFamily);
+        ArgumentNullException.ThrowIfNull(isExcluded);
+        ArgumentNullException.ThrowIfNull(continuation);
+
+        var root = OwnershipRoot(this);
+        var openStateVersion = _openStateVersion;
+        ExceptionDispatchInfo? failure = null;
+
+        var ownsContinuation = ClosePopupPeerSnapshot(
+            root,
+            openStateVersion,
+            isFamily,
+            isExcluded,
+            ref failure);
+        var continuationOwns = true;
+
+        if (ownsContinuation)
+        {
+            ExceptionAggregation.Capture(
+                () => continuationOwns = continuation(),
+                ref failure);
+            ownsContinuation = continuationOwns && IsCurrentPeerExclusion(root, openStateVersion);
+        }
+
+        if (ownsContinuation)
+        {
+            ownsContinuation = ClosePopupPeerSnapshot(
+                root,
+                openStateVersion,
+                isFamily,
+                isExcluded,
+                ref failure);
+        }
+
+        failure?.Throw();
+        return ownsContinuation;
+    }
+
+    private bool ClosePopupPeerSnapshot(
+        ControlBase root,
+        ulong openStateVersion,
+        Func<Popup, bool> isFamily,
+        Func<Popup, bool> isExcluded,
+        ref ExceptionDispatchInfo? failure)
+    {
+        var candidates = new List<Popup>();
+        CollectDescendantPopups(root, candidates);
+
+        foreach (var popup in candidates)
+        {
+            if (!IsCurrentPeerExclusion(root, openStateVersion))
+            {
+                return false;
+            }
+
+            if (popup.IsDisposed ||
+                !popup.IsOpen ||
+                ReferenceEquals(popup, this) ||
+                popup.IsOpenTransitioning ||
+                !ReferenceEquals(OwnershipRoot(popup), root) ||
+                !isFamily(popup) ||
+                isExcluded(popup) ||
+                !ModalityManager.IsWithin(popup, root))
+            {
+                continue;
+            }
+
+            ExceptionAggregation.Capture(() => popup.IsOpen = false, ref failure);
+        }
+
+        return IsCurrentPeerExclusion(root, openStateVersion);
+    }
+
+    private bool IsCurrentPeerExclusion(ControlBase root, ulong openStateVersion) =>
+        !IsDisposed &&
+        IsOpen &&
+        _openStateVersion == openStateVersion &&
+        ReferenceEquals(OwnershipRoot(this), root);
+
+    private static ControlBase OwnershipRoot(ControlBase control)
+    {
+        var root = control;
 
         while (root.Parent is { } parent)
         {
             root = parent;
         }
 
-        CloseDescendantPopups(root, opening);
-    }
-
-    private static void CloseDescendantPopups(ControlBase control, Popup except)
-    {
-        var candidates = new List<Popup>();
-        CollectDescendantPopups(control, candidates);
-
-        foreach (var popup in candidates)
-        {
-            if (popup.IsOpen &&
-                !ReferenceEquals(popup, except) &&
-                !popup.IsOpenTransitioning &&
-                !IsAncestorOf(popup, except) &&
-                ModalityManager.IsWithin(popup, control))
-            {
-                popup.IsOpen = false;
-            }
-        }
+        return root;
     }
 
     private static void CollectDescendantPopups(ControlBase control, List<Popup> candidates)

@@ -51,6 +51,14 @@ concrete family owns its public open state and chrome:
 - `Tooltip` fixes passive, delayed, non-modal behavior.
 - `Toast` uses `Show(owner)` and `Dismiss()` with a timed, non-modal lifetime.
 
+Popup-family infrastructure owns two callback-sensitive lifetimes centrally. An
+optional light-dismiss policy becomes one root registration only after the
+surface presentation commits, and close, hide, detach, or disposal releases it
+before wrapper policy continues. Exclusive family opening snapshots peers around
+family-specific setup and revalidates root, family, ancestry, modality, and the
+initiating open identity before each close. A callback may mutate the tree or
+open another peer without letting stale traversal close the newer presentation.
+
 Disposal releases every shared lifecycle subscription, including `Opened`,
 `CloseRequested`, `Closing`, and `Closed`, so retaining a disposed surface does
 not retain subscriber graphs.

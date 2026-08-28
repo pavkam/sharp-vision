@@ -12,7 +12,6 @@ using Popups;
 public class ContextMenu: IDisposable
 {
     private readonly Popup _popup;
-    private LightDismiss? _lightDismiss;
     private bool _isDisposed;
     private long _presentationVersion;
 
@@ -42,6 +41,15 @@ public class ContextMenu: IDisposable
             SuppressCloseOtherPopups = true,
             HorizontalAlignment = HorizontalAlignment.Left
         };
+        _popup.ConfigureLightDismiss(new PopupLightDismissPolicy(
+            includeAnchor: false,
+            buttons: Terminal.Input.Buttons.Primary |
+                     Terminal.Input.Buttons.Middle |
+                     Terminal.Input.Buttons.Secondary |
+                     Terminal.Input.Buttons.Back |
+                     Terminal.Input.Buttons.Forward,
+            interceptAtModalBoundary: true,
+            dismiss: Close));
         Menu.UsesExternalModalSession = true;
         _popup.Closing += OnPopupClosing;
         _popup.Closed += OnPopupClosed;
@@ -167,8 +175,6 @@ public class ContextMenu: IDisposable
         _isDisposed = true;
         _presentationVersion++;
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(() => _lightDismiss?.Dispose(), ref failure);
-        _lightDismiss = null;
         _popup.Closing -= OnPopupClosing;
         _popup.Closed -= OnPopupClosed;
         _popup.ContentDisposalRequested -= OnContentDisposalRequested;
@@ -209,41 +215,12 @@ public class ContextMenu: IDisposable
         _presentationVersion++;
     }
 
-    // IsOpen changes on every closure path, including indirect ones the popup
-    // reaches on its own — detachment (a caller replaces or clears
-    // ControlBase.ContextMenu while open) and disposal never raise Closing/Closed,
-    // but they do flip IsOpen through CommitClosedState. Reacting here instead
-    // of only inside Close() is what stops the root light-dismiss handler from
-    // outliving a popup that closed itself.
     private void OnPopupPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         _ = sender;
 
-        if (e.PropertyName != nameof(Popup.IsOpen))
+        if (e.PropertyName == nameof(Popup.IsOpen) && !_popup.IsOpen)
         {
-            return;
-        }
-
-        if (_popup.IsOpen)
-        {
-            _lightDismiss?.Dispose();
-            _lightDismiss = new LightDismiss(
-                _popup,
-                anchor: null,
-                () => _popup.IsOpen,
-                () => _popup.SurfaceBounds,
-                Close,
-                Terminal.Input.Buttons.Primary |
-                Terminal.Input.Buttons.Middle |
-                Terminal.Input.Buttons.Secondary |
-                Terminal.Input.Buttons.Back |
-                Terminal.Input.Buttons.Forward,
-                interceptAtModalBoundary: true);
-        }
-        else
-        {
-            _lightDismiss?.Dispose();
-            _lightDismiss = null;
             _popup.FixedOrigin = null;
         }
     }

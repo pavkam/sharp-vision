@@ -47,6 +47,12 @@ exposed on the public API. Only one control can own a menu at a time: assigning
 the same `ContextMenu` instance to a second control throws `ArgumentException`,
 and the second control keeps whatever context menu it already had.
 
+The retained Popup owns the root light-dismiss registration. ContextMenu
+configures all five pointer buttons, modal-boundary interception, and its
+`Close` callback once during construction; it retains only menu events,
+fixed-origin reset, and focus policy. Indirect Popup closure therefore releases
+the handler without depending on a wrapper property-change subscription.
+
 ## Example
 
 ![The ContextMenu control rendered in the live showcase](../../images/controls/context-menu.png)

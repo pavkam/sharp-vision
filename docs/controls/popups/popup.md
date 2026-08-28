@@ -216,6 +216,21 @@ after a callback failure, and the earliest failure is rethrown once the complete
 transition finishes. A callback cannot reenter `IsOpen`; attempting to do so
 throws `InvalidOperationException` without reversing the outer transition.
 
+Exclusive Popup-family opening resolves the current ownership root and closes
+peers from stable identity snapshots before and after family-specific setup.
+Each candidate is revalidated for open state, family, current root, modality,
+and ancestor exclusion immediately before closure. If a callback reparents or
+disposes a peer, opens another peer, or supersedes the initiating opening, the
+stale traversal cannot continue under the newer identity. Peer failures are
+aggregated without skipping other eligible cleanup.
+
+Popup also owns any framework-configured light-dismiss registration. It installs
+the handler only after presentation and `Opened` commit, preserves the focus
+identity captured before opening, replaces the handler after a committed anchor
+change, and releases it before close notification, detachment, hiding, content
+disposal, or Popup disposal. `Flyout` and `ContextMenu` supply family policy;
+they do not subscribe to Popup state to maintain root handlers themselves.
+
 Disposing a Popup performs the common surface cleanup before disposing its
 currently assigned content. Content removal still publishes the inherited
 committed `Content == null` transition; callback failures cannot interrupt

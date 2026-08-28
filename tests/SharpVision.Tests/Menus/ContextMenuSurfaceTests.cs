@@ -529,10 +529,12 @@ public sealed class ContextMenuSurfaceTests
 
         await surface.Pointer.RightClickAsync(button);
         first.IsOpen.ShouldBeTrue();
+        ((Popup) first.Presentation).HasLightDismissRegistration.ShouldBeTrue();
 
         await surface.UpdateAsync(() => button.ContextMenu = second, "replace context menu");
 
         first.IsOpen.ShouldBeFalse();
+        ((Popup) first.Presentation).HasLightDismissRegistration.ShouldBeFalse();
         second.IsOpen.ShouldBeFalse();
     }
 

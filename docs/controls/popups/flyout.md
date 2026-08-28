@@ -44,6 +44,13 @@ same rule applies both inside and outside that plane: only the Flyout closes,
 and the older modal scope remains active. Moving or resizing the anchor closes
 the open Flyout, so a stale placement is never kept on screen.
 
+The inherited Popup lifecycle owns the registration itself. The Flyout supplies
+only primary-button dismissal, anchor inclusion, and its close callback.
+Registration begins after committed presentation, follows an anchor replacement,
+and is released by close, hide, detach, or disposal. Peer exclusion uses the
+shared Popup snapshot and revalidation engine while filtering candidates to the
+Flyout family, so unrelated owner-managed Popups remain open.
+
 Automatic `IsOpen` presentation uses light dismissal without creating a modal
 scope. The inherited `OpenModal` API remains available when a caller explicitly
 needs application modality. Placement, flipping, root clamping, elevation,
@@ -85,5 +92,6 @@ flyout.ShowAt(triggerButton);
   ancestor. Sibling closure snapshots and revalidates retained identities across
   callback-driven tree mutation.
 - The lifecycle events fire in their documented order, and detaching or
-  disposing the flyout cleans it up.
+  disposing the flyout cleans it up, including its Popup-owned light-dismiss
+  registration.
 - Final rendering resolves to the expected semantic cells.

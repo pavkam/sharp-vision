@@ -3517,7 +3517,6 @@ namespace SharpVision.Popups
     public sealed class Flyout : SharpVision.Popups.Popup
     {
         public Flyout() { }
-        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ShowAt(SharpVision.Controls.ControlBase anchor) { }
     }
     public class Popup : SharpVision.Surfaces.FloatingSurfaceBase

@@ -8,6 +8,54 @@ using ReflectionBindingFlags = System.Reflection.BindingFlags;
 /// <summary>Verifies flyout visibility, light dismiss, and anchor placement.</summary>
 public sealed class FlyoutTests
 {
+    /// <summary>Verifies Popup owns exactly the current Flyout light-dismiss registration across
+    /// open, anchor replacement, close, reopen, and detachment.</summary>
+    [Fact]
+    public async Task LightDismiss_WhenFlyoutLifetimeChanges_FollowsCommittedPopupStateAsync()
+    {
+        var firstAnchor = new Button { Text = "First" };
+        var secondAnchor = new Button { Text = "Second" };
+        var flyout = new Flyout { Anchor = firstAnchor, Content = new ControlText("Flyout") };
+        var root = new Overlay { Children = { firstAnchor, secondAnchor, flyout } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 8),
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => flyout.IsOpen = true, "open Flyout");
+        flyout.HasLightDismissRegistration.ShouldBeTrue();
+
+        await surface.UpdateAsync(() => flyout.Anchor = secondAnchor, "replace open Flyout anchor");
+        flyout.HasLightDismissRegistration.ShouldBeTrue();
+
+        await surface.UpdateAsync(() => flyout.IsOpen = false, "close Flyout");
+        flyout.HasLightDismissRegistration.ShouldBeFalse();
+
+        await surface.UpdateAsync(() => flyout.IsOpen = true, "reopen Flyout");
+        flyout.HasLightDismissRegistration.ShouldBeTrue();
+
+        await surface.UpdateAsync(() => _ = root.Children.Remove(flyout), "detach open Flyout");
+        flyout.HasLightDismissRegistration.ShouldBeFalse();
+
+        await surface.UpdateAsync(() =>
+        {
+            root.Children.Add(flyout);
+            flyout.IsOpen = true;
+            flyout.Visibility = Visibility.Hidden;
+        }, "hide reopened Flyout");
+        flyout.HasLightDismissRegistration.ShouldBeFalse();
+
+        await surface.UpdateAsync(() =>
+        {
+            flyout.Visibility = Visibility.Visible;
+            flyout.IsOpen = true;
+        }, "reopen visible Flyout");
+        flyout.HasLightDismissRegistration.ShouldBeTrue();
+
+        await surface.UpdateAsync(flyout.Dispose, "dispose open Flyout");
+        flyout.HasLightDismissRegistration.ShouldBeFalse();
+    }
+
     /// <summary>Verifies opening a nested Flyout preserves its open ancestor while the ordinary
     /// sibling-exclusion rule remains active.</summary>
     [Fact]
@@ -287,6 +335,38 @@ public sealed class FlyoutTests
 
         first.IsOpen.ShouldBeFalse();
         second.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies Flyout exclusion closes only its exact family and leaves an ordinary
+    /// owner-managed Popup open.</summary>
+    [Fact]
+    public async Task IsOpen_WhenFlyoutOpens_ClosesOnlyFlyoutFamilyAsync()
+    {
+        var anchor = new Button { Text = "Anchor" };
+        var popup = new Popup
+        {
+            Anchor = anchor,
+            Content = new ControlText("Popup"),
+            SuppressCloseOtherPopups = true
+        };
+        var first = new Flyout { Anchor = anchor, Content = new ControlText("First") };
+        var opening = new Flyout { Anchor = anchor, Content = new ControlText("Opening") };
+        var root = new Overlay { Children = { anchor, popup, first, opening } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() =>
+        {
+            popup.IsOpen = true;
+            first.IsOpen = true;
+        }, "open Popup and first Flyout");
+
+        await surface.UpdateAsync(() => opening.IsOpen = true, "open replacement Flyout");
+
+        popup.IsOpen.ShouldBeTrue();
+        first.IsOpen.ShouldBeFalse();
+        opening.IsOpen.ShouldBeTrue();
     }
 
     /// <summary>Verifies setting Content retains it directly on the flyout surface.</summary>
