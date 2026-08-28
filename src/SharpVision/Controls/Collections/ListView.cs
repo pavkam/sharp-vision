@@ -725,14 +725,17 @@ public sealed class ListView: ItemsControl
             item.CommitSelection(_selection.Contains(item.Index));
         }
 
-        // ApplySelection may synchronously re-enter this list (a SelectionChanging handler that
-        // mutates Items again) before returning here. When that happens, the reentrant call has
+        // ApplySelection itself unconditionally bumps _selectionVersion once when it accepts a
+        // commit, so the expected post-call version is the pre-call version plus one when it
+        // returns true - not the unchanged pre-call version. ApplySelection may also synchronously
+        // re-enter this list (a SelectionChanging handler that mutates Items again) before returning
+        // here; when that happens, the reentrant call bumps the version further still, and it has
         // already recomputed active index/anchor/selected-items against the newer state, so this
         // now-stale continuation must be skipped rather than overwriting that newer state.
         var selectionVersion = _selectionVersion;
-        _ = ApplySelection(normalized, cancellable: false, requireAvailability: false);
+        var applied = ApplySelection(normalized, cancellable: false, requireAvailability: false);
 
-        if (_selectionVersion == selectionVersion)
+        if (_selectionVersion == selectionVersion + (applied ? 1 : 0))
         {
             SetActiveIndex(nextActiveIndex);
             _selectionAnchor = nextAnchor;
@@ -1140,12 +1143,15 @@ public sealed class ListView: ItemsControl
             selected == index ||
             !mappedSelection.Contains(selected > index ? selected - 1 : selected)).Order().ToArray();
 
-        // ApplySelection may synchronously re-enter this list (a SelectionChanging handler that
-        // mutates Items again) before returning here. When that happens, the reentrant call has
+        // ApplySelection itself unconditionally bumps _selectionVersion once when it accepts a
+        // commit, so the expected post-call version is the pre-call version plus one when it
+        // returns true - not the unchanged pre-call version. ApplySelection may also synchronously
+        // re-enter this list (a SelectionChanging handler that mutates Items again) before returning
+        // here; when that happens, the reentrant call bumps the version further still, and it has
         // already recomputed active index/anchor/selected-items against the newer state, so this
         // now-stale continuation must be skipped rather than overwriting that newer state.
         var selectionVersion = _selectionVersion;
-        _ = ApplySelection(shifted, cancellable: false, added, removed, requireAvailability: false);
+        var applied = ApplySelection(shifted, cancellable: false, added, removed, requireAvailability: false);
         var nextActiveIndex = ActiveIndex > index
             ? ActiveIndex - 1
             : ActiveIndex >= _items.Count
@@ -1176,7 +1182,7 @@ public sealed class ListView: ItemsControl
             Rewindow();
         }
 
-        if (_selectionVersion == selectionVersion)
+        if (_selectionVersion == selectionVersion + (applied ? 1 : 0))
         {
             SetActiveIndex(nextActiveIndex);
 
@@ -1237,14 +1243,17 @@ public sealed class ListView: ItemsControl
             _ = normalized.Remove(index);
         }
 
-        // ApplySelection may synchronously re-enter this list (a SelectionChanging handler that
-        // mutates Items again) before returning here. When that happens, the reentrant call has
+        // ApplySelection itself unconditionally bumps _selectionVersion once when it accepts a
+        // commit, so the expected post-call version is the pre-call version plus one when it
+        // returns true - not the unchanged pre-call version. ApplySelection may also synchronously
+        // re-enter this list (a SelectionChanging handler that mutates Items again) before returning
+        // here; when that happens, the reentrant call bumps the version further still, and it has
         // already recomputed active index/anchor/selected-items against the newer state, so this
         // now-stale continuation must be skipped rather than overwriting that newer state.
         var selectionVersion = _selectionVersion;
-        _ = ApplySelection(normalized, cancellable: false, requireAvailability: false);
+        var applied = ApplySelection(normalized, cancellable: false, requireAvailability: false);
 
-        if (_selectionVersion == selectionVersion)
+        if (_selectionVersion == selectionVersion + (applied ? 1 : 0))
         {
             if (_selectionAnchor == index && !Equals(previousValue, item))
             {
