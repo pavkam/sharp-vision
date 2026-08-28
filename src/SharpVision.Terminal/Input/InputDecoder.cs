@@ -1202,7 +1202,11 @@ public sealed class InputDecoder: IDisposable
     {
         value = value < 0 ? 1 : value;
         var flags = value - 1;
-        modifiers = (Modifiers) flags;
+
+        // This legacy ctlseqs.txt modifier code has its own 4-bit layout (Shift=1, Alt=2,
+        // Control=4, Meta=8) which only coincidentally aligns with the Modifiers enum's bit
+        // layout in bits 0-2; bit 3 means Meta here, not Super, so it cannot be cast directly.
+        modifiers = (Modifiers) (flags & 0b0111) | ((flags & 0b1000) != 0 ? Modifiers.Meta : Modifiers.None);
         return value is >= 1 and <= 16;
     }
 
@@ -1261,10 +1265,35 @@ public sealed class InputDecoder: IDisposable
         // of the diagnostic it should report.
         var hasSubParameter = keycode.IndexOf((byte) ':') >= 0;
 
-        return !hasSubParameter && (semicolon < 0
-            ? Kitty.Keyboard.KittyKeyDecoder.TryDecimal(keycode, allowEmpty: true, out _)
-            : Kitty.Keyboard.KittyKeyDecoder.TryDecimal(keycode, allowEmpty: true, out _)
-              && Kitty.Keyboard.KittyKeyDecoder.TryReadModifiers(parameters[(semicolon + 1)..], out modifiers, out action));
+        if (hasSubParameter)
+        {
+            return false;
+        }
+
+        if (semicolon < 0)
+        {
+            return Kitty.Keyboard.KittyKeyDecoder.TryDecimal(keycode, allowEmpty: true, out _);
+        }
+
+        if (!Kitty.Keyboard.KittyKeyDecoder.TryDecimal(keycode, allowEmpty: true, out _) ||
+            !Kitty.Keyboard.KittyKeyDecoder.TryReadModifiers(parameters[(semicolon + 1)..], out modifiers, out action))
+        {
+            return false;
+        }
+
+        // KittyKeyDecoder.TryReadModifiers decodes into Kitty's own CSI-u bit layout, where bit 3
+        // is Super. Legacy-grammar CSI modifiers reuse the same wire encoding but define bit 3 as
+        // Meta (per ctlseqs.txt), so remap it here rather than in the shared Kitty decoder.
+        RemapLegacySuperToMeta(ref modifiers);
+        return true;
+    }
+
+    private static void RemapLegacySuperToMeta(ref Modifiers modifiers)
+    {
+        if ((modifiers & Modifiers.Super) != 0)
+        {
+            modifiers = (modifiers & ~Modifiers.Super) | Modifiers.Meta;
+        }
     }
 
     private void BeginPaste() => _pasteAccumulator.Begin();

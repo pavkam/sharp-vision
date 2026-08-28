@@ -342,7 +342,7 @@ internal sealed class MouseDecoder
 
         if ((code & 8) != 0)
         {
-            modifiers |= Modifiers.Alt;
+            modifiers |= Modifiers.Meta;
         }
 
         if ((code & 16) != 0)
