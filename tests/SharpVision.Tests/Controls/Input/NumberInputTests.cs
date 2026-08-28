@@ -711,6 +711,20 @@ public sealed class NumberInputTests
         control.Value.ShouldBe(0.33m);
     }
 
+    /// <summary>Verifies every accepted precision remains safe for immediate stepping and a
+    /// buffered Enter commit even when Decimal cannot apply that many rounding digits.</summary>
+    [Fact]
+    public void Commit_WhenDecimalPlacesExceedsDecimalRoundingLimit_StepsAndCommitsWithoutThrowing()
+    {
+        using var control = new NumberInput { Value = 1m, DecimalPlaces = 1000 };
+
+        _ = Should.NotThrow(() => Router.Route(control, Events.Key, Key(Code.Up)));
+        TypeCharacter(control, '3');
+        _ = Should.NotThrow(() => Router.Route(control, Events.Key, Key(Code.Enter)));
+
+        control.Value.ShouldBe(3m);
+    }
+
     /// <summary>Verifies jump to Minimum when the bound carries more fractional digits than
     /// DecimalPlaces rounds up to the nearest value at the configured precision that is still
     /// within range, rather than naively rounding via RoundingMode and clamping back - the naive

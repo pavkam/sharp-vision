@@ -3,8 +3,6 @@
 
 namespace SharpVision.Controls.Input;
 
-using SharpVision.Terminal.Input;
-
 using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 
 /// <summary>Edits a nullable monetary value through a transient typed buffer committed on Enter or
@@ -13,8 +11,8 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 /// <remarks>
 /// <para>
 /// <see cref="CurrencyInput"/> shares its buffer-then-commit editing model with
-/// <see cref="NumberInput"/>, including the same private <see cref="NumericEditBuffer"/>
-/// primitive for digit, separator, and sign buffering. The buffer itself stays
+/// <see cref="NumberInput"/>, including the same <see cref="NumericEditBehavior"/> routed lifecycle
+/// and <see cref="NumericInputCommitCoordinator"/> nullable range state. The buffer itself stays
 /// currency-agnostic: this control configures it with a cloned
 /// <see cref="NumberFormatInfo"/> whose plain-number decimal separator, group
 /// separator, and group sizes are replaced with the culture's <c>Currency*</c> equivalents before
@@ -51,7 +49,7 @@ public sealed class CurrencyInput: InputBase
 
     private readonly NumericEditBuffer _buffer = new();
     private readonly NumericInputCommitCoordinator _coordinator;
-    private decimal? _value;
+    private readonly NumericEditBehavior _editing;
 
     /// <summary>Initializes a focusable currency field with no committed value.</summary>
     public CurrencyInput()
@@ -59,16 +57,22 @@ public sealed class CurrencyInput: InputBase
         TabNavigation = TabNavigation.None;
         _coordinator = new NumericInputCommitCoordinator(
             _buffer,
-            () => _value,
-            candidate => SetProperty(ref _value, candidate, InvalidationImpact.Render, nameof(Value)),
-            () => Minimum,
-            () => Maximum,
-            () => Step,
+            VerifyMutable,
+            NotifyPropertyChanged,
             ResolveCommitRounding,
-            () => AllowNull,
             () => IsFocused,
             RefreshBuffer,
             (previous, candidate) => ValueChanged?.Invoke(this, new CurrencyInputValueChangedEventArgs(previous, candidate)));
+        _editing = new NumericEditBehavior(
+            _buffer,
+            _coordinator,
+            ConfigureBuffer,
+            () => EffectiveDecimalPlaces,
+            () => IsFocused,
+            ContainsContentPoint,
+            RequestEditingFocus,
+            ResolveCaretIndex,
+            () => Invalidate(InvalidationImpact.Render));
     }
 
     /// <summary>Raised after a committed value transition.</summary>
@@ -81,23 +85,8 @@ public sealed class CurrencyInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public decimal? Value
     {
-        get => _value;
-        set
-        {
-            VerifyMutable();
-
-            if (!value.HasValue)
-            {
-                if (AllowNull)
-                {
-                    _ = _coordinator.CommitValue(null);
-                }
-
-                return;
-            }
-
-            _ = _coordinator.CommitValue(_coordinator.ClampToRange(value.Value));
-        }
+        get => _coordinator.Value;
+        set => _ = _coordinator.SetValue(value);
     }
 
     /// <summary>Gets or sets whether the value may be cleared to null. Default is true.</summary>
@@ -108,20 +97,8 @@ public sealed class CurrencyInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public bool AllowNull
     {
-        get;
-        set => _ = SetPropertyAndContinue(
-            ref field,
-            value,
-            InvalidationImpact.None,
-            RepairNullPolicy);
-    } = true;
-
-    private void RepairNullPolicy()
-    {
-        if (!AllowNull && _value is null)
-        {
-            _ = _coordinator.CommitValue(_coordinator.ClampToRange(0m));
-        }
+        get => _coordinator.AllowNull;
+        set => _ = _coordinator.SetAllowNull(value);
     }
 
     /// <summary>Gets or sets the inclusive lower bound. Default is <see cref="decimal.MinValue"/>.</summary>
@@ -131,14 +108,9 @@ public sealed class CurrencyInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public decimal Minimum
     {
-        get;
-        set
-        {
-            ArgumentException.ThrowIfAboveMaximum(value, Maximum, nameof(value), "Minimum cannot exceed Maximum.");
-
-            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Measure, _coordinator.RepairValue);
-        }
-    } = decimal.MinValue;
+        get => _coordinator.Minimum;
+        set => _ = _coordinator.SetMinimum(value);
+    }
 
     /// <summary>Gets or sets the inclusive upper bound. Default is <see cref="decimal.MaxValue"/>.</summary>
     /// <remarks>Endpoints may be equal.</remarks>
@@ -147,14 +119,9 @@ public sealed class CurrencyInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public decimal Maximum
     {
-        get;
-        set
-        {
-            ArgumentException.ThrowIfBelowMinimum(value, Minimum, nameof(value), "Maximum cannot be less than Minimum.");
-
-            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Measure, _coordinator.RepairValue);
-        }
-    } = decimal.MaxValue;
+        get => _coordinator.Maximum;
+        set => _ = _coordinator.SetMaximum(value);
+    }
 
     /// <summary>Gets or sets the positive increment Up and Down apply, and the jump Home and End
     /// commit to <see cref="Minimum"/> and <see cref="Maximum"/> land on directly. Default is
@@ -164,14 +131,9 @@ public sealed class CurrencyInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public decimal Step
     {
-        get;
-        set
-        {
-            ArgumentOutOfRangeException.ThrowIfNotAPositiveStep(value, nameof(value));
-
-            _ = SetProperty(ref field, value, InvalidationImpact.None);
-        }
-    } = 1m;
+        get => _coordinator.Step;
+        set => _ = _coordinator.SetStep(value);
+    }
 
     /// <summary>Gets or sets an explicit fractional digit count, or null to derive it from
     /// <see cref="NumberFormatInfo.CurrencyDecimalDigits"/> on
@@ -207,9 +169,10 @@ public sealed class CurrencyInput: InputBase
         set => _ = SetProperty(ref field, value, InvalidationImpact.Measure);
     } = true;
 
-    /// <summary>Gets or sets the rounding applied when a typed value commits, using the
-    /// three-argument <see cref="Math.Round(decimal, int, MidpointRounding)"/> overload
-    /// exclusively - never the two-argument overload, which silently rounds to even. Default is
+    /// <summary>Gets or sets the rounding applied when a typed value commits. Accepted explicit or
+    /// culture-derived precision above Decimal's 28-digit rounding limit preserves the
+    /// already-representable value rather than forwarding an invalid digit count to
+    /// <see cref="Math.Round(decimal, int, MidpointRounding)"/>. Default is
     /// <see cref="MidpointRounding.AwayFromZero"/>.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -355,126 +318,10 @@ public sealed class CurrencyInput: InputBase
             return;
         }
 
-        // Keeps the buffer's currency-adapted separator/sign tokens and precision in lockstep with
-        // the current Culture and DecimalPlaces even if a caller drives keyboard input without ever
-        // having routed an actual focus transition through this control - RefreshBuffer's own
-        // Configure call (on focus gain, commit, or a mid-edit Culture change) makes this redundant
-        // on the ordinary focused path, but costs nothing to repeat here.
-        _buffer.Configure(BuildBufferFormat(), EffectiveDecimalPlaces == 0);
-
-        switch (eventArgs)
-        {
-            case KeyEventArgs key:
-                HandleKey(key);
-                break;
-            case TextEventArgs text:
-                _ = _buffer.Insert(text.Text.Value.ToString());
-                text.IsHandled = true;
-                Invalidate(InvalidationImpact.Render);
-                break;
-            case PasteEventArgs paste:
-                _ = _buffer.Insert(Encoding.UTF8.GetString(paste.Paste.Utf8.Span));
-                paste.IsHandled = true;
-                Invalidate(InvalidationImpact.Render);
-                break;
-            case PointerEventArgs pointer:
-                HandlePointer(pointer);
-                break;
-            default:
-                break;
-        }
-
-        if (!eventArgs.IsHandled)
+        if (!_editing.HandleEvent(eventArgs))
         {
             base.OnEvent(eventArgs);
         }
-    }
-
-    private void HandleKey(KeyEventArgs eventArgs)
-    {
-        var stroke = eventArgs.Stroke;
-
-        if (!eventArgs.IsKeyDown)
-        {
-            return;
-        }
-
-        if (TryGetStepDelta(eventArgs, out var delta))
-        {
-            _ = _coordinator.ApplyStep(delta);
-            eventArgs.IsHandled = true;
-            return;
-        }
-
-#pragma warning disable IDE0072 // Every unmatched key intentionally remains unhandled.
-        var handled = stroke.Code switch
-        {
-            Code.Home => _coordinator.JumpToBound(minimum: true, EffectiveDecimalPlaces),
-            Code.End => _coordinator.JumpToBound(minimum: false, EffectiveDecimalPlaces),
-            Code.Enter => _coordinator.CommitBuffer(),
-            Code.Escape when stroke.Modifiers.IsActivationEligible() => _coordinator.RevertBuffer(),
-            Code.Backspace => _buffer.Backspace(),
-            Code.Delete => _buffer.Delete(),
-            Code.Left => _buffer.MovePrevious(extend: false),
-            Code.Right => _buffer.MoveNext(extend: false),
-            Code.Character when stroke.Character is { } ch &&
-                KeyboardModifierPolicy.IsTextEntryEligible(stroke.Modifiers) => _buffer.Insert(ch.ToString()),
-            _ => false
-        };
-#pragma warning restore IDE0072
-
-        if (handled)
-        {
-            eventArgs.IsHandled = true;
-            Invalidate(InvalidationImpact.Render);
-        }
-    }
-
-    private void HandlePointer(PointerEventArgs eventArgs)
-    {
-        var pointer = eventArgs.Pointer;
-
-        if (pointer.Action != PointerAction.Press || (pointer.Buttons & Buttons.Primary) == 0)
-        {
-            return;
-        }
-
-        if (pointer.Cells is not { } cells)
-        {
-            return;
-        }
-
-        var content = ContentBounds;
-
-        if (!content.Contains(cells))
-        {
-            return;
-        }
-
-        if (!IsFocused)
-        {
-            var dispatcher = Dispatcher;
-            _ = RequestFocus();
-
-            if (!CanContinueAfterFocus(dispatcher))
-            {
-                return;
-            }
-        }
-
-        // The rendered text is the currency-composed display (symbol plus sign plus digits), not
-        // the buffer's own raw core, so a click column resolves against the composed text first and
-        // is then mapped back into the buffer's own index space. It is also further inboard of any
-        // configured StartAffix/EndAffix decoration, which - unlike the currency symbol - is never
-        // part of the buffer's editable content.
-        var valueBox = DeflateForAffixes(content, MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap()));
-        var localX = cells.X - valueBox.X;
-        var display = BuildFocusedDisplay();
-        var composedIndex = IndexAtColumn(display.Text, localX, CellPolicy.AmbiguousWidth);
-        var coreIndex = Math.Clamp(composedIndex - display.CoreStart, 0, display.Magnitude.Length);
-        _buffer.SetCaret(display.SignLength + coreIndex);
-        Invalidate(InvalidationImpact.Render);
-        eventArgs.IsHandled = true;
     }
 
     #endregion
@@ -484,12 +331,35 @@ public sealed class CurrencyInput: InputBase
     /// <summary>Resolves the decimal places and rounding policy a freshly parsed buffer value
     /// commits under, for <see cref="NumericInputCommitCoordinator"/>.</summary>
     [Pure]
-    private decimal ResolveCommitRounding(decimal parsed) => Math.Round(parsed, EffectiveDecimalPlaces, RoundingMode);
+    private decimal ResolveCommitRounding(decimal parsed) =>
+        NumericInputCommitCoordinator.RoundAtAcceptedPrecision(parsed, EffectiveDecimalPlaces, RoundingMode);
 
     private void RefreshBuffer()
     {
+        ConfigureBuffer();
+        _buffer.Load(Value is { } value ? FormatCoreForBuffer(value) : string.Empty);
+    }
+
+    private void ConfigureBuffer() =>
         _buffer.Configure(BuildBufferFormat(), EffectiveDecimalPlaces == 0);
-        _buffer.Load(_value is { } value ? FormatCoreForBuffer(value) : string.Empty);
+
+    private bool RequestEditingFocus()
+    {
+        var dispatcher = Dispatcher;
+        _ = RequestFocus();
+        return CanContinueAfterFocus(dispatcher);
+    }
+
+    private bool ContainsContentPoint(Point point) => ContentBounds.Contains(point);
+
+    private int ResolveCaretIndex(Point cells)
+    {
+        var content = ContentBounds;
+        var valueBox = DeflateForAffixes(content, MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap()));
+        var display = BuildFocusedDisplay();
+        var composedIndex = IndexAtColumn(display.Text, cells.X - valueBox.X, CellPolicy.AmbiguousWidth);
+        var coreIndex = Math.Clamp(composedIndex - display.CoreStart, 0, display.Magnitude.Length);
+        return display.SignLength + coreIndex;
     }
 
     #endregion
@@ -579,7 +449,10 @@ public sealed class CurrencyInput: InputBase
 
     [Pure]
     private string FormatValue(decimal value) =>
-        value.ToString("C" + EffectiveDecimalPlaces.ToString(CultureInfo.InvariantCulture), BuildFormatInfo());
+        value.ToString(
+            "C" + NumericInputCommitCoordinator.RepresentableDecimalPlaces(EffectiveDecimalPlaces)
+                .ToString(CultureInfo.InvariantCulture),
+            BuildFormatInfo());
 
     /// <summary>Formats the buffer's editable numeric core - magnitude only, with a literal leading
     /// sign token prepended for a negative value - deliberately never through the culture's plain
@@ -590,7 +463,8 @@ public sealed class CurrencyInput: InputBase
     {
         var format = BuildBufferFormat();
         var specifier = (AllowGrouping ? "N" : "F") +
-            EffectiveDecimalPlaces.ToString(CultureInfo.InvariantCulture);
+            NumericInputCommitCoordinator.RepresentableDecimalPlaces(EffectiveDecimalPlaces)
+                .ToString(CultureInfo.InvariantCulture);
         var magnitude = Math.Abs(value).ToString(specifier, format);
         return value < 0m ? format.NegativeSign + magnitude : magnitude;
     }
@@ -741,7 +615,7 @@ public sealed class CurrencyInput: InputBase
         }
         else
         {
-            displayText = _value is { } value ? FormatValue(value) : string.Empty;
+            displayText = Value is { } value ? FormatValue(value) : string.Empty;
         }
 
         var clipped = canvas.Clip(new Rect(valueBox.X, valueBox.Y, valueBox.Width, 1));
@@ -770,16 +644,7 @@ public sealed class CurrencyInput: InputBase
     {
         base.OnFocusChanged(focused);
 
-        if (focused)
-        {
-            RefreshBuffer();
-        }
-        else
-        {
-            _ = _coordinator.CommitBuffer();
-        }
-
-        Invalidate(InvalidationImpact.Render);
+        _editing.FocusChanged(focused);
     }
 
     /// <inheritdoc/>

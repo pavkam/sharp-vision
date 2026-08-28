@@ -6,48 +6,125 @@ namespace SharpVision.Tests.Input;
 /// <summary>Verifies the shared buffer-then-commit orchestration NumberInput and CurrencyInput both
 /// drive through <see cref="NumericInputCommitCoordinator"/> - directly against the coordinator,
 /// mirroring <see cref="NumericEditBufferTests"/>'s direct-construction style. A small in-test fake
-/// stands in for a control's own SetProperty-backed field, focus state, and typed ValueChanged
-/// event, since the coordinator never owns any of those itself.</summary>
+/// supplies the owner callbacks while the coordinator remains authoritative for numeric state.</summary>
 public sealed class NumericInputCommitCoordinatorTests
 {
     private sealed class Fake
     {
+        private decimal? _initialValue;
+        private bool _initialAllowNull = true;
+        private decimal _initialMinimum = decimal.MinValue;
+        private decimal _initialMaximum = decimal.MaxValue;
+        private decimal _initialStep = 1m;
+
         public NumericEditBuffer Buffer { get; } = new();
-        public decimal? Value { get; set; }
-        public bool AllowNull { get; set; } = true;
+        public NumericInputCommitCoordinator? Coordinator { get; private set; }
+        public decimal? Value
+        {
+            get => Coordinator is null ? _initialValue : Coordinator.Value;
+            set
+            {
+                if (Coordinator is null)
+                {
+                    _initialValue = value;
+                }
+                else
+                {
+                    _ = Coordinator.SetValue(value);
+                }
+            }
+        }
+        public bool AllowNull
+        {
+            get => Coordinator?.AllowNull ?? _initialAllowNull;
+            set
+            {
+                if (Coordinator is null)
+                {
+                    _initialAllowNull = value;
+                }
+                else
+                {
+                    _ = Coordinator.SetAllowNull(value);
+                }
+            }
+        }
         public bool Focused { get; set; }
         public int RefreshCount { get; private set; }
         public List<(decimal? Previous, decimal? Current)> Raised { get; } = [];
-        public decimal Minimum { get; set; } = decimal.MinValue;
-        public decimal Maximum { get; set; } = decimal.MaxValue;
-        public decimal Step { get; set; } = 1m;
+        public decimal Minimum
+        {
+            get => Coordinator?.Minimum ?? _initialMinimum;
+            set
+            {
+                if (Coordinator is null)
+                {
+                    _initialMinimum = value;
+                }
+                else
+                {
+                    _ = Coordinator.SetMinimum(value);
+                }
+            }
+        }
+        public decimal Maximum
+        {
+            get => Coordinator?.Maximum ?? _initialMaximum;
+            set
+            {
+                if (Coordinator is null)
+                {
+                    _initialMaximum = value;
+                }
+                else
+                {
+                    _ = Coordinator.SetMaximum(value);
+                }
+            }
+        }
+        public decimal Step
+        {
+            get => Coordinator?.Step ?? _initialStep;
+            set
+            {
+                if (Coordinator is null)
+                {
+                    _initialStep = value;
+                }
+                else
+                {
+                    _ = Coordinator.SetStep(value);
+                }
+            }
+        }
         public int DecimalPlaces { get; set; }
 
         public NumericInputCommitCoordinator CreateCoordinator()
         {
             Buffer.Configure(NumberFormatInfo.InvariantInfo, integerOnly: false);
 
-            return new NumericInputCommitCoordinator(
+            var initialValue = _initialValue;
+            var initialAllowNull = _initialAllowNull;
+            var initialMinimum = _initialMinimum;
+            var initialMaximum = _initialMaximum;
+            var initialStep = _initialStep;
+            Coordinator = new NumericInputCommitCoordinator(
                 Buffer,
-                () => Value,
-                candidate =>
-                {
-                    if (Value == candidate)
-                    {
-                        return false;
-                    }
-
-                    Value = candidate;
-                    return true;
-                },
-                () => Minimum,
-                () => Maximum,
-                () => Step,
+                () => { },
+                (_, _) => { },
                 parsed => Math.Round(parsed, DecimalPlaces, MidpointRounding.AwayFromZero),
-                () => AllowNull,
                 () => Focused,
                 () => RefreshCount++,
                 (previous, current) => Raised.Add((previous, current)));
+
+            _ = Coordinator.SetMinimum(initialMinimum);
+            _ = Coordinator.SetMaximum(initialMaximum);
+            _ = Coordinator.SetStep(initialStep);
+            _ = Coordinator.SetValue(initialValue);
+            _ = Coordinator.SetAllowNull(initialAllowNull);
+            Raised.Clear();
+            RefreshCount = 0;
+            return Coordinator;
         }
     }
 
@@ -63,13 +140,9 @@ public sealed class NumericInputCommitCoordinatorTests
         // Act and assert
         _ = Should.Throw<ArgumentNullException>(() => new NumericInputCommitCoordinator(
             null!,
-            () => fake.Value,
-            _ => false,
-            () => decimal.MinValue,
-            () => decimal.MaxValue,
-            () => 1m,
+            () => { },
+            (_, _) => { },
             parsed => parsed,
-            () => true,
             () => false,
             () => { },
             (_, _) => { }));
@@ -85,13 +158,9 @@ public sealed class NumericInputCommitCoordinatorTests
         // Act and assert
         _ = Should.Throw<ArgumentNullException>(() => new NumericInputCommitCoordinator(
             buffer,
-            () => null,
-            _ => false,
-            () => decimal.MinValue,
-            () => decimal.MaxValue,
-            () => 1m,
+            () => { },
+            (_, _) => { },
             parsed => parsed,
-            () => true,
             () => false,
             () => { },
             null!));
@@ -294,17 +363,17 @@ public sealed class NumericInputCommitCoordinatorTests
 
     #region RepairValue
 
-    /// <summary>Verifies repair value when the committed value sits outside range clamps it and
-    /// raises the transition.</summary>
+    /// <summary>Verifies tightening a bound through the authoritative state owner clamps the
+    /// committed value and raises exactly one repaired transition.</summary>
     [Fact]
-    public void RepairValue_WhenCommittedValueIsOutsideRange_ClampsAndRaises()
+    public void SetMaximum_WhenCommittedValueIsAboveNewBound_ClampsAndRaises()
     {
         // Arrange
-        var fake = new Fake { Value = 20m, Minimum = 0m, Maximum = 10m };
+        var fake = new Fake { Value = 20m };
         var coordinator = fake.CreateCoordinator();
 
         // Act
-        coordinator.RepairValue();
+        _ = coordinator.SetMaximum(10m);
 
         // Assert
         fake.Value.ShouldBe(10m);

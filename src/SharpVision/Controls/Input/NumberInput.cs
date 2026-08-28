@@ -3,8 +3,6 @@
 
 namespace SharpVision.Controls.Input;
 
-using SharpVision.Terminal.Input;
-
 using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 
 /// <summary>Edits an integer or decimal value through a transient typed buffer committed on Enter
@@ -13,16 +11,17 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 /// Unlike the segmented temporal fields (<see cref="DateInput"/>, <see cref="TimeInput"/>,
 /// <see cref="DateTimeInput"/>), which commit <see cref="Value"/> on every keystroke,
 /// <see cref="NumberInput"/> edits a transient text buffer while typing and only parses and
-/// commits it on Enter or when focus leaves the control - the shared editing primitive is
-/// <see cref="NumericEditBuffer"/>. Up/Down and Home/End bypass the buffer entirely and commit
-/// immediately, matching <see cref="Slider"/>.
+/// commits it on Enter or when focus leaves the control. <see cref="NumericEditBehavior"/> owns
+/// the shared routed editing lifecycle, while <see cref="NumericInputCommitCoordinator"/> owns the
+/// nullable value and range state. Up/Down and Home/End bypass the buffer and commit immediately,
+/// matching <see cref="Slider"/>.
 /// </remarks>
 [PublicAPI]
 public sealed class NumberInput: InputBase
 {
     private readonly NumericEditBuffer _buffer = new();
     private readonly NumericInputCommitCoordinator _coordinator;
-    private decimal? _value;
+    private readonly NumericEditBehavior _editing;
 
     /// <summary>Initializes a focusable number field with no committed value.</summary>
     public NumberInput()
@@ -30,16 +29,22 @@ public sealed class NumberInput: InputBase
         TabNavigation = TabNavigation.None;
         _coordinator = new NumericInputCommitCoordinator(
             _buffer,
-            () => _value,
-            candidate => SetProperty(ref _value, candidate, InvalidationImpact.Render, nameof(Value)),
-            () => Minimum,
-            () => Maximum,
-            () => Step,
+            VerifyMutable,
+            NotifyPropertyChanged,
             ResolveCommitRounding,
-            () => AllowNull,
             () => IsFocused,
             RefreshBuffer,
             (previous, candidate) => ValueChanged?.Invoke(this, new NumberInputValueChangedEventArgs(previous, candidate)));
+        _editing = new NumericEditBehavior(
+            _buffer,
+            _coordinator,
+            ConfigureBuffer,
+            () => Mode == NumberInputMode.Integer ? 0 : DecimalPlaces,
+            () => IsFocused,
+            ContainsContentPoint,
+            RequestEditingFocus,
+            ResolveCaretIndex,
+            () => Invalidate(InvalidationImpact.Render));
     }
 
     /// <summary>Raised after a committed value transition.</summary>
@@ -53,18 +58,14 @@ public sealed class NumberInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public decimal? Value
     {
-        get => _value;
+        get => _coordinator.Value;
         set
         {
             VerifyMutable();
 
             if (!value.HasValue)
             {
-                if (AllowNull)
-                {
-                    _ = _coordinator.CommitValue(null);
-                }
-
+                _ = _coordinator.SetValue(null);
                 return;
             }
 
@@ -75,7 +76,7 @@ public sealed class NumberInput: InputBase
                     nameof(value));
             }
 
-            _ = _coordinator.CommitValue(_coordinator.ClampToRange(value.Value));
+            _ = _coordinator.SetValue(value.Value);
         }
     }
 
@@ -88,13 +89,9 @@ public sealed class NumberInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public bool AllowNull
     {
-        get;
-        set => _ = SetPropertyAndContinue(
-            ref field,
-            value,
-            InvalidationImpact.None,
-            RepairNullPolicy);
-    } = true;
+        get => _coordinator.AllowNull;
+        set => _ = _coordinator.SetAllowNull(value);
+    }
 
     /// <summary>Gets or sets the inclusive lower bound. Default is <see cref="decimal.MinValue"/>.</summary>
     /// <remarks>Endpoints may be equal.</remarks>
@@ -103,14 +100,9 @@ public sealed class NumberInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public decimal Minimum
     {
-        get;
-        set
-        {
-            ArgumentException.ThrowIfAboveMaximum(value, Maximum, nameof(value), "Minimum cannot exceed Maximum.");
-
-            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Measure, _coordinator.RepairValue);
-        }
-    } = decimal.MinValue;
+        get => _coordinator.Minimum;
+        set => _ = _coordinator.SetMinimum(value);
+    }
 
     /// <summary>Gets or sets the inclusive upper bound. Default is <see cref="decimal.MaxValue"/>.</summary>
     /// <remarks>Endpoints may be equal.</remarks>
@@ -119,14 +111,9 @@ public sealed class NumberInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public decimal Maximum
     {
-        get;
-        set
-        {
-            ArgumentException.ThrowIfBelowMinimum(value, Minimum, nameof(value), "Maximum cannot be less than Minimum.");
-
-            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Measure, _coordinator.RepairValue);
-        }
-    } = decimal.MaxValue;
+        get => _coordinator.Maximum;
+        set => _ = _coordinator.SetMaximum(value);
+    }
 
     /// <summary>Gets or sets the positive increment Up and Down apply, and the jump Home and End
     /// commit to <see cref="Minimum"/> and <see cref="Maximum"/> land on directly. Default is
@@ -136,14 +123,9 @@ public sealed class NumberInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public decimal Step
     {
-        get;
-        set
-        {
-            ArgumentOutOfRangeException.ThrowIfNotAPositiveStep(value, nameof(value));
-
-            _ = SetProperty(ref field, value, InvalidationImpact.None);
-        }
-    } = 1m;
+        get => _coordinator.Step;
+        set => _ = _coordinator.SetStep(value);
+    }
 
     /// <summary>Gets or sets whether editing is restricted to whole numbers. Default is
     /// <see cref="NumberInputMode.Decimal"/>.</summary>
@@ -169,18 +151,10 @@ public sealed class NumberInput: InputBase
         }
     } = NumberInputMode.Decimal;
 
-    private void RepairNullPolicy()
-    {
-        if (!AllowNull && _value is null)
-        {
-            _ = _coordinator.CommitValue(_coordinator.ClampToRange(0m));
-        }
-    }
-
     private void ApplyModePolicy()
     {
         if (Mode == NumberInputMode.Integer &&
-            _value is { } current &&
+            Value is { } current &&
             current != decimal.Truncate(current))
         {
             _ = _coordinator.CommitValue(_coordinator.ClampToRange(Math.Round(current, 0, RoundingMode)));
@@ -220,9 +194,9 @@ public sealed class NumberInput: InputBase
         set => _ = SetProperty(ref field, value, InvalidationImpact.Measure);
     } = true;
 
-    /// <summary>Gets or sets the rounding applied when a typed value commits, using the three-argument
-    /// <see cref="Math.Round(decimal, int, MidpointRounding)"/> overload exclusively - never the
-    /// two-argument overload, which silently rounds to even. Default is
+    /// <summary>Gets or sets the rounding applied when a typed value commits. Accepted precision
+    /// above Decimal's 28-digit rounding limit preserves the already-representable value rather
+    /// than forwarding an invalid digit count to <see cref="Math.Round(decimal, int, MidpointRounding)"/>. Default is
     /// <see cref="MidpointRounding.AwayFromZero"/>.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -318,123 +292,10 @@ public sealed class NumberInput: InputBase
             return;
         }
 
-        // Keeps the buffer's separator/sign tokens and integer-only policy in lockstep with the
-        // current Mode and Culture even if a caller drives keyboard input without ever having
-        // routed an actual focus transition through this control - RefreshBuffer's own Configure
-        // call (on focus gain, commit, or a mid-edit Mode/Culture change) makes this redundant on
-        // the ordinary focused path, but costs nothing to repeat here.
-        _buffer.Configure(Culture.NumberFormat, Mode == NumberInputMode.Integer);
-
-        switch (eventArgs)
-        {
-            case KeyEventArgs key:
-                HandleKey(key);
-                break;
-            case TextEventArgs text:
-                _ = _buffer.Insert(text.Text.Value.ToString());
-                text.IsHandled = true;
-                Invalidate(InvalidationImpact.Render);
-                break;
-            case PasteEventArgs paste:
-                _ = _buffer.Insert(Encoding.UTF8.GetString(paste.Paste.Utf8.Span));
-                paste.IsHandled = true;
-                Invalidate(InvalidationImpact.Render);
-                break;
-            case PointerEventArgs pointer:
-                HandlePointer(pointer);
-                break;
-            default:
-                break;
-        }
-
-        if (!eventArgs.IsHandled)
+        if (!_editing.HandleEvent(eventArgs))
         {
             base.OnEvent(eventArgs);
         }
-    }
-
-    private void HandleKey(KeyEventArgs eventArgs)
-    {
-        var stroke = eventArgs.Stroke;
-
-        if (!eventArgs.IsKeyDown)
-        {
-            return;
-        }
-
-        if (TryGetStepDelta(eventArgs, out var delta))
-        {
-            _ = _coordinator.ApplyStep(delta);
-            eventArgs.IsHandled = true;
-            return;
-        }
-
-        var places = Mode == NumberInputMode.Integer ? 0 : DecimalPlaces;
-
-#pragma warning disable IDE0072 // Every unmatched key intentionally remains unhandled.
-        var handled = stroke.Code switch
-        {
-            Code.Home => _coordinator.JumpToBound(minimum: true, places),
-            Code.End => _coordinator.JumpToBound(minimum: false, places),
-            Code.Enter => _coordinator.CommitBuffer(),
-            Code.Escape when stroke.Modifiers.IsActivationEligible() => _coordinator.RevertBuffer(),
-            Code.Backspace => _buffer.Backspace(),
-            Code.Delete => _buffer.Delete(),
-            Code.Left => _buffer.MovePrevious(extend: false),
-            Code.Right => _buffer.MoveNext(extend: false),
-            Code.Character when stroke.Character is { } ch &&
-                KeyboardModifierPolicy.IsTextEntryEligible(stroke.Modifiers) => _buffer.Insert(ch.ToString()),
-            _ => false
-        };
-#pragma warning restore IDE0072
-
-        if (handled)
-        {
-            eventArgs.IsHandled = true;
-            Invalidate(InvalidationImpact.Render);
-        }
-    }
-
-    private void HandlePointer(PointerEventArgs eventArgs)
-    {
-        var pointer = eventArgs.Pointer;
-
-        if (pointer.Action != PointerAction.Press || (pointer.Buttons & Buttons.Primary) == 0)
-        {
-            return;
-        }
-
-        if (pointer.Cells is not { } cells)
-        {
-            return;
-        }
-
-        var content = ContentBounds;
-
-        if (!content.Contains(cells))
-        {
-            return;
-        }
-
-        if (!IsFocused)
-        {
-            var dispatcher = Dispatcher;
-            _ = RequestFocus();
-
-            if (!CanContinueAfterFocus(dispatcher))
-            {
-                return;
-            }
-        }
-
-        // A click that lands on an affix column (outside the value's own deflated box) still
-        // focuses the control; IndexAtColumn clamps a negative or overflowing local column to the
-        // nearest valid caret boundary, so no separate affix-column rejection is needed here.
-        var valueBox = DeflateForAffixes(content, MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap()));
-        var localX = cells.X - valueBox.X;
-        _buffer.SetCaret(_buffer.IndexAtColumn(localX, CellPolicy.AmbiguousWidth));
-        Invalidate(InvalidationImpact.Render);
-        eventArgs.IsHandled = true;
     }
 
     #endregion
@@ -447,7 +308,7 @@ public sealed class NumberInput: InputBase
     private decimal ResolveCommitRounding(decimal parsed)
     {
         var places = Mode == NumberInputMode.Integer ? 0 : DecimalPlaces;
-        return Math.Round(
+        return NumericInputCommitCoordinator.RoundAtAcceptedPrecision(
             Mode == NumberInputMode.Integer ? decimal.Truncate(parsed) : parsed,
             places,
             RoundingMode);
@@ -455,15 +316,35 @@ public sealed class NumberInput: InputBase
 
     private void RefreshBuffer()
     {
+        ConfigureBuffer();
+        _buffer.Load(Value is { } value ? FormatValue(value) : string.Empty);
+    }
+
+    private void ConfigureBuffer() =>
         _buffer.Configure(Culture.NumberFormat, Mode == NumberInputMode.Integer);
-        _buffer.Load(_value is { } value ? FormatValue(value) : string.Empty);
+
+    private bool RequestEditingFocus()
+    {
+        var dispatcher = Dispatcher;
+        _ = RequestFocus();
+        return CanContinueAfterFocus(dispatcher);
+    }
+
+    private bool ContainsContentPoint(Point point) => ContentBounds.Contains(point);
+
+    private int ResolveCaretIndex(Point cells)
+    {
+        var content = ContentBounds;
+        var valueBox = DeflateForAffixes(content, MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap()));
+        return _buffer.IndexAtColumn(cells.X - valueBox.X, CellPolicy.AmbiguousWidth);
     }
 
     [Pure]
     private string FormatValue(decimal value)
     {
         var places = Mode == NumberInputMode.Integer ? 0 : DecimalPlaces;
-        var specifier = (AllowGrouping ? "N" : "F") + places.ToString(CultureInfo.InvariantCulture);
+        var displayPlaces = NumericInputCommitCoordinator.RepresentableDecimalPlaces(places);
+        var specifier = (AllowGrouping ? "N" : "F") + displayPlaces.ToString(CultureInfo.InvariantCulture);
         return value.ToString(specifier, Culture);
     }
 
@@ -490,7 +371,7 @@ public sealed class NumberInput: InputBase
         RenderAffixes(canvas, content, affixes, StartAffix, EndAffix, style);
 
         var valueBox = DeflateForAffixes(content, affixes);
-        var displayText = IsFocused ? _buffer.Text : _value is { } value ? FormatValue(value) : string.Empty;
+        var displayText = IsFocused ? _buffer.Text : Value is { } value ? FormatValue(value) : string.Empty;
         var clipped = canvas.Clip(new Rect(valueBox.X, valueBox.Y, valueBox.Width, 1));
         _ = clipped.Draw(displayText.AsSpan(), new Point(valueBox.X, valueBox.Y), style, background: BackgroundMode.Transparent);
 
@@ -517,16 +398,7 @@ public sealed class NumberInput: InputBase
     {
         base.OnFocusChanged(focused);
 
-        if (focused)
-        {
-            RefreshBuffer();
-        }
-        else
-        {
-            _ = _coordinator.CommitBuffer();
-        }
-
-        Invalidate(InvalidationImpact.Render);
+        _editing.FocusChanged(focused);
     }
 
     /// <inheritdoc/>

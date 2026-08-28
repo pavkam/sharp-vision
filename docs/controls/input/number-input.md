@@ -7,12 +7,14 @@ that commits on Enter or when focus leaves the control.
 
 Unlike the segmented temporal fields ([`DateInput`](date-input.md),
 [`TimeInput`](time-input.md), [`DateTimeInput`](date-time-input.md)), which
-commit their value on every keystroke, `NumberInput` edits a private
+commit their value on every keystroke, `NumberInput` edits a transient
 text-and-selection buffer while typing and only parses and commits it on Enter
-or focus loss. Up/Down step by `Step` and Home/End jump directly to
-`Minimum`/`Maximum` - both commit immediately, bypassing the buffer entirely,
-matching [`Slider`](slider.md#overview). Escape reverts any uncommitted edit
-back to the committed value's formatting.
+or focus loss. It shares one routed editing lifecycle and one authoritative
+nullable value/range state with `CurrencyInput`; formatting, integer admission,
+and rendered-column projection remain control-specific. Up/Down step by `Step`
+and Home/End jump directly to `Minimum`/`Maximum` - both commit immediately,
+bypassing the buffer entirely, matching [`Slider`](slider.md#overview). Escape
+reverts any uncommitted edit back to the committed value's formatting.
 
 `NumberInput` derives from [`InputBase`](../input-base.md#overview) but opts
 into none of its popup or press-activation capabilities - only the base
@@ -27,16 +29,18 @@ value repairs it by rounding to zero places with `RoundingMode`. `Minimum` and
 whenever either endpoint moves; the two endpoints may be equal. `AllowGrouping`
 is a display-only concern - a typed or pasted group separator is always accepted
 and stripped while parsing, regardless of the setting. `RoundingMode` is applied
-only at commit, through the three-argument
-`Math.Round(decimal, int, MidpointRounding)` overload, never the two-argument
-overload that silently rounds to even. `Culture` supplies the decimal separator,
-group separator, sign, and digit grouping used for both display and parsing;
-changing `Culture` or `Mode` while a buffer is mid-edit discards the transient
-text back to the committed value's formatting under the new settings, rather
-than migrating a half-parsed string across the switch. Culture changes use
-reference identity because `CultureInfo` is mutable configuration: a distinct
-same-name clone refreshes formatting and the edit buffer, while reassigning the
-identical instance raises no notification or invalidation.
+only at commit. Precision from zero through 28 uses the three-argument
+`Math.Round(decimal, int, MidpointRounding)` overload; a larger accepted
+`DecimalPlaces` value preserves the decimal value because `decimal` cannot
+represent finer precision, and never turns ordinary input into an invalid
+rounding call. `Culture` supplies the decimal separator, group separator, sign,
+and digit grouping used for both display and parsing; changing `Culture` or
+`Mode` while a buffer is mid-edit discards the transient text back to the
+committed value's formatting under the new settings, rather than migrating a
+half-parsed string across the switch. Culture changes use reference identity
+because `CultureInfo` is mutable configuration: a distinct same-name clone
+refreshes formatting and the edit buffer, while reassigning the identical
+instance raises no notification or invalidation.
 
 Dependent policy repair always reads the live policy after `PropertyChanged`. If
 an observer restores `AllowNull` or `Mode` synchronously, an obsolete outer
@@ -61,7 +65,7 @@ classDiagram
 | `Maximum`       | `decimal`                                        | `decimal.MaxValue`              | The inclusive upper bound (equal to `Minimum` allowed) that repairs the current value.                                           |
 | `Step`          | `decimal`                                        | `1`                             | The positive increment Up/Down apply, and the jump Home/End commit to `Minimum`/`Maximum` land on directly.                      |
 | `Mode`          | `NumberInputMode`                                | `NumberInputMode.Decimal`       | Chooses whole-number-only or fractional editing; switching to `Integer` repairs a fractional committed value.                    |
-| `DecimalPlaces` | `int`                                            | `2`                             | The fractional digits displayed and accepted while `Mode` is `Decimal`; treated as zero under `Integer`.                         |
+| `DecimalPlaces` | `int`                                            | `2`                             | The non-negative fractional digit count while `Mode` is `Decimal`; values above 28 preserve Decimal's available precision.       |
 | `AllowGrouping` | `bool`                                           | `true`                          | Whether the idle and freshly focused display groups digits under `Culture`; parsing always accepts a group separator.            |
 | `RoundingMode`  | `MidpointRounding`                               | `MidpointRounding.AwayFromZero` | The rounding applied to a typed value only at commit.                                                                            |
 | `Culture`       | `CultureInfo`                                    | `CultureInfo.InvariantCulture`  | The culture supplying separators, sign, and grouping for display and parsing; unlike `DateInput.Culture`, defaults to invariant. |

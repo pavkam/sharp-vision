@@ -3,6 +3,8 @@
 
 namespace SharpVision.Input;
 
+using System.Runtime.ExceptionServices;
+
 /// <summary>
 /// Orchestrates the buffer-then-commit workflow shared by every buffer-then-commit numeric field
 /// control (<see cref="Controls.Input.NumberInput"/>, <see cref="Controls.Input.CurrencyInput"/>):
@@ -13,12 +15,9 @@ namespace SharpVision.Input;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Deliberately does not own the committed value, the invalidation plumbing that guards it, or the
-/// caller's typed <c>ValueChanged</c> event: those stay with the owning control, the only party that
-/// can call its own <c>SetProperty</c>-backed field and raise its own event-args type. Every one of
-/// those control-owned steps is threaded through as a constructor delegate instead of assumed here,
-/// alongside <see cref="Controls.Input.NumberInput.Minimum"/>/<see cref="Controls.Input.NumberInput.Maximum"/>/<see cref="Controls.Input.NumberInput.Step"/>
-/// themselves and the one formula - how a parsed buffer rounds - that differs between
+/// Owns the committed nullable value and its range policy. The owning control supplies only its
+/// mutation guard, property publication, focused-buffer refresh, and typed value-event adapter,
+/// alongside the one formula - how a parsed buffer rounds - that differs between
 /// <see cref="Controls.Input.NumberInput"/> and <see cref="Controls.Input.CurrencyInput"/> today
 /// (integer-aware truncation plus a fixed <c>DecimalPlaces</c> for the former, a culture-derived
 /// <c>EffectiveDecimalPlaces</c> for the latter). Clamping and the step/jump/rounding-toward-range
@@ -26,40 +25,31 @@ namespace SharpVision.Input;
 /// them outright rather than taking them as delegates.
 /// </para>
 /// <para>
-/// Key dispatch (recognizing Home/End/Up/Down and the buffer's own editing keys) deliberately stays
-/// on each control instead of moving here: it needs the protected static step-delta helper and the
-/// protected invalidation call both controls inherit from their shared base, neither of which this
-/// internal type - living outside that inheritance chain - can reach. Only the resulting
-/// step/jump/commit/revert computations route through this type.
+/// Routed editing and focus transitions are composed separately by <see cref="NumericEditBehavior"/>;
+/// this type remains the authoritative numeric model and commit engine.
 /// </para>
 /// </remarks>
 internal sealed class NumericInputCommitCoordinator
 {
     private long _commitVersion;
     private readonly NumericEditBuffer _buffer;
-    private readonly Func<decimal?> _getValue;
-    private readonly Func<decimal?, bool> _trySetValue;
-    private readonly Func<decimal> _getMinimum;
-    private readonly Func<decimal> _getMaximum;
-    private readonly Func<decimal> _getStep;
+    private readonly Action _verifyMutable;
+    private readonly Action<string, InvalidationImpact> _notifyPropertyChanged;
     private readonly Func<decimal, decimal> _resolveCommitRounding;
-    private readonly Func<bool> _isAllowNull;
     private readonly Func<bool> _isFocused;
     private readonly Action _refreshBuffer;
     private readonly Action<decimal?, decimal?> _raiseValueChanged;
+    private decimal _minimum = decimal.MinValue;
+    private decimal _maximum = decimal.MaxValue;
 
     /// <summary>Initializes a coordinator bound to one control's buffer and control-specific
     /// data and callbacks.</summary>
     /// <param name="buffer">The shared transient edit buffer this control owns.</param>
-    /// <param name="getValue">Reads the currently committed value.</param>
-    /// <param name="trySetValue">Assigns a candidate through the caller's own SetProperty-backed
-    /// field, returning whether it actually changed.</param>
-    /// <param name="getMinimum">Reads the caller's current inclusive lower bound.</param>
-    /// <param name="getMaximum">Reads the caller's current inclusive upper bound.</param>
-    /// <param name="getStep">Reads the caller's current positive step increment.</param>
+    /// <param name="verifyMutable">Validates the owning control's dispatcher and lifetime.</param>
+    /// <param name="notifyPropertyChanged">Publishes one committed public property and invalidates
+    /// its earliest affected phase.</param>
     /// <param name="resolveCommitRounding">Resolves the decimal places and rounding policy a freshly
     /// parsed buffer value commits under.</param>
-    /// <param name="isAllowNull">Reads whether an empty buffer may commit null.</param>
     /// <param name="isFocused">Reads whether the caller currently holds focus.</param>
     /// <param name="refreshBuffer">Reloads the buffer from the currently committed value.</param>
     /// <param name="raiseValueChanged">Raises the caller's own typed ValueChanged event with the
@@ -67,40 +57,103 @@ internal sealed class NumericInputCommitCoordinator
     /// <exception cref="ArgumentNullException">Any parameter is null.</exception>
     public NumericInputCommitCoordinator(
         NumericEditBuffer buffer,
-        Func<decimal?> getValue,
-        Func<decimal?, bool> trySetValue,
-        Func<decimal> getMinimum,
-        Func<decimal> getMaximum,
-        Func<decimal> getStep,
+        Action verifyMutable,
+        Action<string, InvalidationImpact> notifyPropertyChanged,
         Func<decimal, decimal> resolveCommitRounding,
-        Func<bool> isAllowNull,
         Func<bool> isFocused,
         Action refreshBuffer,
         Action<decimal?, decimal?> raiseValueChanged)
     {
         ArgumentNullException.ThrowIfNull(buffer);
-        ArgumentNullException.ThrowIfNull(getValue);
-        ArgumentNullException.ThrowIfNull(trySetValue);
-        ArgumentNullException.ThrowIfNull(getMinimum);
-        ArgumentNullException.ThrowIfNull(getMaximum);
-        ArgumentNullException.ThrowIfNull(getStep);
+        ArgumentNullException.ThrowIfNull(verifyMutable);
+        ArgumentNullException.ThrowIfNull(notifyPropertyChanged);
         ArgumentNullException.ThrowIfNull(resolveCommitRounding);
-        ArgumentNullException.ThrowIfNull(isAllowNull);
         ArgumentNullException.ThrowIfNull(isFocused);
         ArgumentNullException.ThrowIfNull(refreshBuffer);
         ArgumentNullException.ThrowIfNull(raiseValueChanged);
 
         _buffer = buffer;
-        _getValue = getValue;
-        _trySetValue = trySetValue;
-        _getMinimum = getMinimum;
-        _getMaximum = getMaximum;
-        _getStep = getStep;
+        _verifyMutable = verifyMutable;
+        _notifyPropertyChanged = notifyPropertyChanged;
         _resolveCommitRounding = resolveCommitRounding;
-        _isAllowNull = isAllowNull;
         _isFocused = isFocused;
         _refreshBuffer = refreshBuffer;
         _raiseValueChanged = raiseValueChanged;
+    }
+
+    /// <summary>Gets the committed nullable value.</summary>
+    public decimal? Value { get; private set; }
+
+    /// <summary>Gets whether null is admitted.</summary>
+    public bool AllowNull { get; private set; } = true;
+
+    /// <summary>Gets the inclusive lower bound.</summary>
+    public decimal Minimum => _minimum;
+
+    /// <summary>Gets the inclusive upper bound.</summary>
+    public decimal Maximum => _maximum;
+
+    /// <summary>Gets the positive step increment.</summary>
+    public decimal Step { get; private set; } = 1m;
+
+    /// <summary>Validates and commits a caller-supplied nullable value.</summary>
+    public bool SetValue(decimal? value)
+    {
+        _verifyMutable();
+
+        return value.HasValue
+            ? CommitValue(ClampToRange(value.Value))
+            : AllowNull && CommitValue(null);
+    }
+
+    /// <summary>Commits the null-admission policy and performs any required deterministic reseed.</summary>
+    public bool SetAllowNull(bool value)
+    {
+        _verifyMutable();
+
+        if (AllowNull == value)
+        {
+            return false;
+        }
+
+        AllowNull = value;
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(
+            () => _notifyPropertyChanged(nameof(Controls.Input.NumberInput.AllowNull), InvalidationImpact.None),
+            ref failure);
+        ExceptionAggregation.Capture(RepairNullPolicy, ref failure);
+        failure?.Throw();
+        return true;
+    }
+
+    /// <summary>Validates and commits the inclusive lower bound, then repairs the live value.</summary>
+    public bool SetMinimum(decimal value)
+    {
+        ArgumentException.ThrowIfAboveMaximum(value, _maximum, nameof(value), "Minimum cannot exceed Maximum.");
+        return SetBound(ref _minimum, value, nameof(Controls.Input.NumberInput.Minimum));
+    }
+
+    /// <summary>Validates and commits the inclusive upper bound, then repairs the live value.</summary>
+    public bool SetMaximum(decimal value)
+    {
+        ArgumentException.ThrowIfBelowMinimum(value, _minimum, nameof(value), "Maximum cannot be less than Minimum.");
+        return SetBound(ref _maximum, value, nameof(Controls.Input.NumberInput.Maximum));
+    }
+
+    /// <summary>Validates and commits the positive step increment.</summary>
+    public bool SetStep(decimal value)
+    {
+        ArgumentOutOfRangeException.ThrowIfNotAPositiveStep(value, nameof(value));
+        _verifyMutable();
+
+        if (Step == value)
+        {
+            return false;
+        }
+
+        Step = value;
+        _notifyPropertyChanged(nameof(Controls.Input.NumberInput.Step), InvalidationImpact.None);
+        return true;
     }
 
     /// <summary>Parses the buffer into a rounded, clamped candidate and commits it - or, for an
@@ -112,7 +165,7 @@ internal sealed class NumericInputCommitCoordinator
     {
         if (_buffer.IsEmpty)
         {
-            if (_isAllowNull())
+            if (AllowNull)
             {
                 _ = CommitValue(null);
             }
@@ -143,11 +196,12 @@ internal sealed class NumericInputCommitCoordinator
     /// <returns>True when the candidate differed from the previously committed value.</returns>
     public bool CommitValue(decimal? candidate)
     {
-        var previous = _getValue();
+        _verifyMutable();
+        var previous = Value;
         var priorVersion = _commitVersion;
         var version = ++_commitVersion;
 
-        if (!_trySetValue(candidate))
+        if (Value == candidate)
         {
             if (_commitVersion == version)
             {
@@ -157,12 +211,15 @@ internal sealed class NumericInputCommitCoordinator
             return false;
         }
 
+        Value = candidate;
+        _notifyPropertyChanged(nameof(Controls.Input.NumberInput.Value), InvalidationImpact.Render);
+
         if (_isFocused())
         {
             _refreshBuffer();
         }
 
-        if (_commitVersion == version && _getValue() == candidate)
+        if (_commitVersion == version && Value == candidate)
         {
             _raiseValueChanged(previous, candidate);
         }
@@ -174,7 +231,7 @@ internal sealed class NumericInputCommitCoordinator
     /// the clamped result only when it actually moved.</summary>
     public void RepairValue()
     {
-        if (_getValue() is { } current)
+        if (Value is { } current)
         {
             var clamped = ClampToRange(current);
 
@@ -187,7 +244,7 @@ internal sealed class NumericInputCommitCoordinator
 
     /// <summary>Clamps a value into the caller's current Minimum/Maximum.</summary>
     [Pure]
-    public decimal ClampToRange(decimal value) => value.Clamp(_getMinimum(), _getMaximum());
+    public decimal ClampToRange(decimal value) => value.Clamp(_minimum, _maximum);
 
     /// <summary>Applies one step increment or decrement from the currently committed value (or zero
     /// when unset), rounds and clamps the result through the caller's own commit-rounding formula
@@ -197,12 +254,12 @@ internal sealed class NumericInputCommitCoordinator
     /// <returns>Always true; a step key is always handled.</returns>
     public bool ApplyStep(int direction)
     {
-        var baseline = _getValue() ?? 0m;
+        var baseline = Value ?? 0m;
         decimal stepped;
 
         try
         {
-            stepped = baseline + (_getStep() * direction);
+            stepped = baseline + (Step * direction);
         }
         catch (OverflowException)
         {
@@ -213,6 +270,16 @@ internal sealed class NumericInputCommitCoordinator
         _ = CommitValue(next);
         return true;
     }
+
+    /// <summary>Rounds at an accepted non-negative precision without forwarding values above
+    /// Decimal's 28-digit limit to <see cref="Math.Round(decimal, int, MidpointRounding)"/>.</summary>
+    [Pure]
+    public static decimal RoundAtAcceptedPrecision(decimal value, int places, MidpointRounding mode) =>
+        places > 28 ? value : Math.Round(value, places, mode);
+
+    /// <summary>Bounds formatting precision to the fractional digits Decimal can represent.</summary>
+    [Pure]
+    public static int RepresentableDecimalPlaces(int places) => Math.Min(places, 28);
 
     /// <summary>Commits the caller's Minimum or Maximum directly, rounded toward the interior of the
     /// range at the given precision so a bound configured with more precision than the caller's
@@ -225,7 +292,7 @@ internal sealed class NumericInputCommitCoordinator
     /// <returns>Always true; Home and End are always handled.</returns>
     public bool JumpToBound(bool minimum, int places)
     {
-        var target = minimum ? _getMinimum() : _getMaximum();
+        var target = minimum ? _minimum : _maximum;
         target = ClampToRange(RoundTowardRangeInterior(target, places, minimum));
         _ = CommitValue(target);
         return true;
@@ -276,5 +343,32 @@ internal sealed class NumericInputCommitCoordinator
 
         scaled = isMinimum ? Math.Ceiling(scaled) : Math.Floor(scaled);
         return scaled / scale;
+    }
+
+    private bool SetBound(ref decimal field, decimal value, string propertyName)
+    {
+        _verifyMutable();
+
+        if (field == value)
+        {
+            return false;
+        }
+
+        field = value;
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(
+            () => _notifyPropertyChanged(propertyName, InvalidationImpact.Measure),
+            ref failure);
+        ExceptionAggregation.Capture(RepairValue, ref failure);
+        failure?.Throw();
+        return true;
+    }
+
+    private void RepairNullPolicy()
+    {
+        if (!AllowNull && Value is null)
+        {
+            _ = CommitValue(ClampToRange(0m));
+        }
     }
 }

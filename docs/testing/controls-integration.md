@@ -23,6 +23,13 @@ mounted tree and along an open submenu path. Generated list data, repeated
 documentation chrome, and arrow-navigated catalog entries do not count as
 access-key captions.
 
+The shared numeric-input matrix runs the same routed key, text, paste, focus,
+pointer-caret, nullable value, range repair, stepping, and callback-reentrancy
+contracts through `NumberInput` and `CurrencyInput`. It separately covers
+integer-only admission and currency composition, and proves explicit plus
+culture-derived precision above Decimal's rounding limit cannot escape as a
+routine input exception.
+
 Default-appearance tests require inactive and disabled semantic
 foreground/border pairs for transparent interactive controls, complete triplets
 for explicitly opaque faces, foreground/border-only hover and direct focus with

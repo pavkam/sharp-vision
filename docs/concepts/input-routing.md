@@ -183,6 +183,13 @@ key before this fallback runs. Exceptions propagate after route state and pooled
 storage are cleaned up. Under modality, the fallback traverses and wraps only
 within the [active plane](modality.md#keyboard-text-and-paste).
 
+`NumberInput` and `CurrencyInput` compose one retained numeric editing behavior
+for key, text, paste, pointer-to-caret, focus-entry, and focus-loss handling.
+That behavior delegates formatting and rendered-column projection back to the
+control, while one numeric state owner commits nullable values, bounds, steps,
+and callback-safe repairs. The two controls therefore apply the same handled
+state and lifecycle ordering without duplicating their routed state machines.
+
 Successful Tab and access-key focus does not synchronously scroll against bounds
 captured during routing. It records a current target/attachment/modal-plane
 intent; after focus callbacks and their layout invalidation settle, the

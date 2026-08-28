@@ -8,10 +8,11 @@ Enter or when focus leaves the control, formatted and parsed against a culture's
 currency-specific globalization data rather than a maintained currency database.
 
 `CurrencyInput` shares its buffer-then-commit editing model with
-[`NumberInput`](number-input.md#overview), including the same private
-grapheme-safe editing primitive for digit, separator, and sign buffering.
-Up/Down step by `Step` and Home/End jump directly to `Minimum`/`Maximum` - both
-commit immediately, bypassing the buffer entirely, matching `NumberInput` and
+[`NumberInput`](number-input.md#overview), including one shared routed editing
+lifecycle, one authoritative nullable value/range state, and the same
+grapheme-safe primitive for digit, separator, and sign buffering. Up/Down step
+by `Step` and Home/End jump directly to `Minimum`/`Maximum` - both commit
+immediately, bypassing the buffer entirely, matching `NumberInput` and
 [`Slider`](slider.md#overview). Escape reverts any uncommitted edit back to the
 committed value's formatting.
 
@@ -30,12 +31,14 @@ correctly. `DecimalPlaces` left unset derives from `CurrencyDecimalDigits` and
 re-derives every time it is needed, so it automatically tracks a runtime
 `Culture` change - for example, Japanese yen has no minor unit, so an unset
 `DecimalPlaces` rejects the decimal-separator keystroke outright once `Culture`
-is Japanese. `RoundingMode` is applied only at commit, through the
-three-argument `Math.Round(decimal, int, MidpointRounding)` overload, never the
-two-argument overload that silently rounds to even. `Culture` uses reference
-identity, so assigning a distinct same-name clone refreshes customized currency
-symbols, patterns, separators, grouping, derived decimal places, and any active
-edit buffer; only the identical instance is a no-op.
+is Japanese. `RoundingMode` is applied only at commit. Effective precision from
+zero through 28 uses the three-argument
+`Math.Round(decimal, int, MidpointRounding)` overload; larger accepted explicit
+or culture-derived precision preserves Decimal's available value instead of
+throwing during Enter or stepping. `Culture` uses reference identity, so
+assigning a distinct same-name clone refreshes customized currency symbols,
+patterns, separators, grouping, derived decimal places, and any active edit
+buffer; only the identical instance is a no-op.
 
 Dependent policy repair reads the live `AllowNull` state after
 `PropertyChanged`. If an observer restores nullable input synchronously, the
@@ -59,7 +62,7 @@ classDiagram
 | `Minimum`          | `decimal`                                          | `decimal.MinValue`              | The inclusive lower bound (equal to `Maximum` allowed) that repairs the current value.                                                       |
 | `Maximum`          | `decimal`                                          | `decimal.MaxValue`              | The inclusive upper bound (equal to `Minimum` allowed) that repairs the current value.                                                       |
 | `Step`             | `decimal`                                          | `1`                             | The positive increment Up/Down apply, and the jump Home/End commit to `Minimum`/`Maximum` land on directly.                                  |
-| `DecimalPlaces`    | `int?`                                             | `null`                          | An explicit fractional digit count, or null to derive it from `Culture.NumberFormat.CurrencyDecimalDigits` every time it is needed.          |
+| `DecimalPlaces`    | `int?`                                             | `null`                          | A non-negative explicit digit count, or null for culture-derived precision; effective values above 28 preserve Decimal's available value.    |
 | `AllowGrouping`    | `bool`                                             | `true`                          | Whether the idle and freshly focused display groups digits under `Culture`'s currency group separator and sizes; parsing always accepts one. |
 | `RoundingMode`     | `MidpointRounding`                                 | `MidpointRounding.AwayFromZero` | The rounding applied to a typed value only at commit.                                                                                        |
 | `Culture`          | `CultureInfo`                                      | `CultureInfo.InvariantCulture`  | The culture supplying currency-specific separators, sign, group sizes, and positive/negative pattern for display and parsing.                |

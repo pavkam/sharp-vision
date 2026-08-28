@@ -409,6 +409,35 @@ public sealed class CurrencyInputTests
         control.Value.ShouldBe(0m);
     }
 
+    /// <summary>Verifies an explicit accepted precision above Decimal's rounding limit remains
+    /// safe for both immediate stepping and buffered Enter commit.</summary>
+    [Fact]
+    public void Commit_WhenDecimalPlacesExceedsDecimalRoundingLimit_StepsAndCommitsWithoutThrowing()
+    {
+        using var control = new CurrencyInput { Value = 1m, DecimalPlaces = 1000 };
+
+        _ = Should.NotThrow(() => Router.Route(control, Events.Key, Key(Code.Up)));
+        TypeCharacter(control, '3');
+        _ = Should.NotThrow(() => Router.Route(control, Events.Key, Key(Code.Enter)));
+
+        control.Value.ShouldBe(3m);
+    }
+
+    /// <summary>Verifies culture-derived precision follows the same accepted-value policy as an
+    /// explicit DecimalPlaces assignment.</summary>
+    [Fact]
+    public void Commit_WhenCulturePrecisionExceedsDecimalRoundingLimit_CommitsWithoutThrowing()
+    {
+        var culture = (CultureInfo) CultureInfo.InvariantCulture.Clone();
+        culture.NumberFormat.CurrencyDecimalDigits = 29;
+        using var control = new CurrencyInput { Culture = culture };
+        TypeCharacter(control, '3');
+
+        _ = Should.NotThrow(() => Router.Route(control, Events.Key, Key(Code.Enter)));
+
+        control.Value.ShouldBe(3m);
+    }
+
     /// <summary>Verifies jump to Minimum when the bound carries more fractional digits than the
     /// culture's effective decimal places rounds up to the nearest in-range value at that
     /// precision, rather than naively rounding via RoundingMode and clamping back - the naive
