@@ -176,6 +176,7 @@ internal sealed class DocumentLayout
         bool beginFirst = true)
     {
         var emittedBlocks = 0;
+        var previousBlockIsEmptyList = false;
 
         for (var index = 0; index < blocks.Count; index++)
         {
@@ -184,7 +185,9 @@ internal sealed class DocumentLayout
                 continue;
             }
 
-            if (emittedBlocks > 0)
+            var currentBlockIsEmptyList = blocks[index] is DocumentList { Items.Count: 0 };
+
+            if (emittedBlocks > 0 && !previousBlockIsEmptyList && !currentBlockIsEmptyList)
             {
                 for (var blank = 0; blank < spacing; blank++)
                 {
@@ -199,6 +202,7 @@ internal sealed class DocumentLayout
 
             EmitBlock(blocks[index], indent, face, listDepth, foregroundOverride);
             emittedBlocks++;
+            previousBlockIsEmptyList = currentBlockIsEmptyList;
         }
     }
 
@@ -255,6 +259,12 @@ internal sealed class DocumentLayout
         int listDepth,
         DocumentFaceKind? foregroundOverride)
     {
+        if (list.Items.Count == 0)
+        {
+            EmitBlankLine(indent);
+            return;
+        }
+
         // The gutter is measured from the widest marker the list will actually draw rather than
         // assumed, so a list that reaches "10." or "100." keeps its content aligned and never paints
         // a marker over its own text.
@@ -526,7 +536,8 @@ internal sealed class DocumentLayout
                     row.IsHeader ? DocumentFaceKind.TableHeader : DocumentFaceKind.Table,
                     row.IsHeader ? TerminalAttributes.Bold : TerminalAttributes.None,
                     linkIndex: -1,
-                    linkTarget: null);
+                    linkTarget: null,
+                    normalizeLineBreaks: true);
                 cells[rowIndex][column] = [.. _tokens];
                 widths[column] = Math.Max(widths[column], MeasureTableCell(cells[rowIndex][column]));
             }
@@ -734,7 +745,13 @@ internal sealed class DocumentLayout
     private void Tokenize(DocumentInlineCollection inlines, DocumentFaceKind face)
     {
         _tokens.Clear();
-        Tokenize(inlines, face, TerminalAttributes.None, linkIndex: -1, linkTarget: null);
+        Tokenize(
+            inlines,
+            face,
+            TerminalAttributes.None,
+            linkIndex: -1,
+            linkTarget: null,
+            normalizeLineBreaks: false);
     }
 
     private void Tokenize(
@@ -742,7 +759,8 @@ internal sealed class DocumentLayout
         DocumentFaceKind face,
         TerminalAttributes semanticAttributes,
         int linkIndex,
-        string? linkTarget)
+        string? linkTarget,
+        bool normalizeLineBreaks)
     {
 
         foreach (var inline in inlines)
@@ -756,7 +774,7 @@ internal sealed class DocumentLayout
                         _parsedRuns.Add(new DocumentParsedRun(
                             display,
                             ApplySemanticAttributes(spans, semanticAttributes, linkTarget)));
-                        _selectionBuilder.AppendParsedRun(parsedRunIndex, display);
+                        _selectionBuilder.AppendParsedRun(parsedRunIndex, display, normalizeLineBreaks);
                         TokenizeText(display, parsedRunIndex, face, linkIndex);
                         break;
                     }
@@ -767,7 +785,7 @@ internal sealed class DocumentLayout
                         _parsedRuns.Add(new DocumentParsedRun(
                             code.Text,
                             CreateLiteralSpans(code.Text, semanticAttributes, linkTarget)));
-                        _selectionBuilder.AppendParsedRun(parsedRunIndex, code.Text);
+                        _selectionBuilder.AppendParsedRun(parsedRunIndex, code.Text, normalizeLineBreaks);
                         TokenizeText(code.Text, parsedRunIndex, DocumentFaceKind.Code, linkIndex);
                         break;
                     }
@@ -778,7 +796,8 @@ internal sealed class DocumentLayout
                         face,
                         semanticAttributes | TerminalAttributes.Italic,
                         linkIndex,
-                        linkTarget);
+                        linkTarget,
+                        normalizeLineBreaks);
                     break;
 
                 case DocumentStrong strong:
@@ -787,7 +806,8 @@ internal sealed class DocumentLayout
                         face,
                         semanticAttributes | TerminalAttributes.Bold,
                         linkIndex,
-                        linkTarget);
+                        linkTarget,
+                        normalizeLineBreaks);
                     break;
 
                 case DocumentStrikethrough strikethrough:
@@ -796,7 +816,8 @@ internal sealed class DocumentLayout
                         face,
                         semanticAttributes | TerminalAttributes.Strike,
                         linkIndex,
-                        linkTarget);
+                        linkTarget,
+                        normalizeLineBreaks);
                     break;
 
                 case DocumentLink link:
@@ -809,7 +830,8 @@ internal sealed class DocumentLayout
                             DocumentFaceKind.Link,
                             semanticAttributes,
                             nestedLinkIndex,
-                            link.Target);
+                            link.Target,
+                            normalizeLineBreaks);
 
                         if (!_tokens.Skip(firstToken).Any(
                             token => token.LinkIndex == nestedLinkIndex && token.Cells > 0))
@@ -838,7 +860,15 @@ internal sealed class DocumentLayout
                     break;
 
                 case DocumentLineBreak:
-                    _selectionBuilder.AppendHardBreak();
+                    if (normalizeLineBreaks)
+                    {
+                        _ = _selectionBuilder.AppendSoftBreak();
+                    }
+                    else
+                    {
+                        _selectionBuilder.AppendHardBreak();
+                    }
+
                     _tokens.Add(DocumentFlowToken.ForBreak());
                     break;
 

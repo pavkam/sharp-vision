@@ -50,7 +50,8 @@ internal sealed class DocumentSelectionBuilder
     /// <summary>Appends and indexes one parsed inline display without parsing its markup again.</summary>
     /// <param name="parsedRunIndex">The index assigned by the owning layout.</param>
     /// <param name="display">The markup-free display text.</param>
-    internal void AppendParsedRun(int parsedRunIndex, string display)
+    /// <param name="normalizeLineBreaks">Whether authored line endings become spaces in the semantic stream.</param>
+    internal void AppendParsedRun(int parsedRunIndex, string display, bool normalizeLineBreaks = false)
     {
         Debug.Assert(parsedRunIndex >= 0, "A parsed selection run has a real layout index.");
         Debug.Assert(display is not null, "A parsed selection run has display text.");
@@ -61,7 +62,17 @@ internal sealed class DocumentSelectionBuilder
 
             if (IsLineBreak(cluster))
             {
-                AppendHardBreak();
+                if (normalizeLineBreaks)
+                {
+                    _parsedRanges.Add(
+                        (parsedRunIndex, grapheme.Offset, grapheme.Length),
+                        AppendSoftBreak());
+                }
+                else
+                {
+                    AppendHardBreak();
+                }
+
                 continue;
             }
 

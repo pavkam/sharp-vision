@@ -261,4 +261,31 @@ public sealed class DocumentListTests
         probe.Rows().ShouldBe(["\u2022", "\u2022 Second"]);
         document.Extent.Width.ShouldBeGreaterThanOrEqualTo(2);
     }
+
+    /// <summary>Verifies an empty list still emits one block line between sibling paragraphs,
+    /// preventing its surrounding block separators from becoming two consecutive blank rows.</summary>
+    [Fact]
+    public void Render_WhenListHasNoItems_PreservesOneBlankRowBetweenSiblingBlocks()
+    {
+        var document = new Document
+        {
+            Blocks = { new DocumentParagraph("One"), new DocumentList(), new DocumentParagraph("Two") }
+        };
+
+        using var probe = new DocumentRenderProbe(document, new Size(12, 6));
+
+        probe.Rows().ShouldBe(["One", string.Empty, "Two", string.Empty, string.Empty, string.Empty]);
+    }
+
+    /// <summary>Verifies an empty list remains a real one-line block when it is the document's only content.</summary>
+    [Fact]
+    public void Layout_WhenListHasNoItems_PreservesOneLineExtent()
+    {
+        var document = new Document { Blocks = { new DocumentList() } };
+
+        using var probe = new DocumentRenderProbe(document, new Size(12, 3));
+
+        document.Extent.Height.ShouldBe(1);
+        probe.Rows().ShouldBe([string.Empty, string.Empty, string.Empty]);
+    }
 }

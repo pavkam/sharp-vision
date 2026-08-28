@@ -236,4 +236,56 @@ public sealed class DocumentTableTests
         // Assert
         probe.Row(0).ShouldStartWith("|");
     }
+
+    /// <summary>Verifies literal line endings inside a cell normalize to a space in the semantic
+    /// stream while the table's genuine row boundary remains one LF.</summary>
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r")]
+    [InlineData("\r\n")]
+    public void SelectionMap_WhenCellTextContainsLineBreak_PreservesOnlyRowSeparator(string lineBreak)
+    {
+        var table = new DocumentTable
+        {
+            Rows =
+            {
+                new DocumentTableRow
+                {
+                    Cells = { new DocumentTableCell($"foo{lineBreak}bar"), new DocumentTableCell("baz") }
+                },
+                new DocumentTableRow
+                {
+                    Cells = { new DocumentTableCell("next"), new DocumentTableCell("row") }
+                }
+            }
+        };
+        var document = new Document { Blocks = { table } };
+
+        using var probe = new DocumentRenderProbe(document, new Size(30, 6));
+
+        document.SelectionMap.Text.ShouldBe("foo bar\tbaz\nnext\trow");
+    }
+
+    /// <summary>Verifies an explicit hard-break inline inside a cell cannot impersonate a table row boundary.</summary>
+    [Fact]
+    public void SelectionMap_WhenCellContainsLineBreakInline_PreservesOnlyRowSeparator()
+    {
+        var first = new DocumentTableCell
+        {
+            Inlines = { new DocumentTextRun("foo"), new DocumentLineBreak(), new DocumentTextRun("bar") }
+        };
+        var table = new DocumentTable
+        {
+            Rows =
+            {
+                new DocumentTableRow { Cells = { first, new DocumentTableCell("baz") } },
+                new DocumentTableRow { Cells = { new DocumentTableCell("next"), new DocumentTableCell("row") } }
+            }
+        };
+        var document = new Document { Blocks = { table } };
+
+        using var probe = new DocumentRenderProbe(document, new Size(30, 6));
+
+        document.SelectionMap.Text.ShouldBe("foo bar\tbaz\nnext\trow");
+    }
 }

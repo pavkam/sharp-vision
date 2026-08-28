@@ -250,9 +250,11 @@ Sibling blocks are separated by exactly one blank line, both at the document
 root and inside a block quote. A list item's own blocks are the one exception:
 they are tight, so an item's paragraph sits directly above its nested list.
 
-Emptying a block does not remove its line. An empty paragraph still occupies one
-line, which makes it a deliberate way to add vertical space, and an empty list
-item still occupies one marked line.
+Emptying a block does not remove its line. An empty paragraph or empty
+`DocumentList` still occupies one line, and an empty list item still occupies
+one marked line. An empty list between non-empty sibling blocks supplies their
+single blank separator itself; the layout does not add another blank row on
+either side.
 
 ### DocumentParagraph
 
@@ -594,16 +596,16 @@ newer selection, the superseded transition does not subsequently reach inherited
 
 The stream follows reading semantics rather than painted rows or chrome:
 
-| Content                                          | Copied representation                                                          |
-| ------------------------------------------------ | ------------------------------------------------------------------------------ |
-| Adjacent block values                            | One LF (`\n`), independent of blank display rows or soft wrapping.             |
-| `DocumentSoftBreak` / `DocumentLineBreak`        | One space / one LF.                                                            |
-| Bulleted / numbered list item                    | A hyphen or displayed ordinal, then a period where applicable, then one space. |
-| Table cells / rows                               | Tab-separated cells and LF-separated rows.                                     |
-| Code block                                       | Original tabs with CRLF and CR normalized to LF.                               |
-| Quote, callout, rule, border, and control chrome | Decorative glyphs are omitted; semantic labels and callout title/body remain.  |
-| Embedded `ISelectableTextSource`                 | Its complete authoritative text at the inline or block node position.          |
-| Embedded `Document`                              | Its full normalized stream, independent of that nested document's own range.   |
+| Content                                          | Copied representation                                                            |
+| ------------------------------------------------ | -------------------------------------------------------------------------------- |
+| Adjacent block values                            | One LF (`\n`), independent of blank display rows or soft wrapping.               |
+| `DocumentSoftBreak` / `DocumentLineBreak`        | One space / one LF outside a table cell.                                         |
+| Bulleted / numbered list item                    | A hyphen or displayed ordinal, then a period where applicable, then one space.   |
+| Table cells / rows                               | Tab-separated cells and LF-separated rows; line breaks inside a cell are spaces. |
+| Code block                                       | Original tabs with CRLF and CR normalized to LF.                                 |
+| Quote, callout, rule, border, and control chrome | Decorative glyphs are omitted; semantic labels and callout title/body remain.    |
+| Embedded `ISelectableTextSource`                 | Its complete authoritative text at the inline or block node position.            |
+| Embedded `Document`                              | Its full normalized stream, independent of that nested document's own range.     |
 
 Wrapping never inserts copied line breaks. Wide and combining graphemes remain
 indivisible, and clipped half-wide glyphs expose no selectable geometry. A
