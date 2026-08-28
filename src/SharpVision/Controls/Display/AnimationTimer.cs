@@ -4,7 +4,7 @@
 namespace SharpVision.Controls.Display;
 
 /// <summary>Manages a repeating dispatcher timer lifecycle for animated controls.</summary>
-internal sealed class AnimationTimer: IDisposable
+internal sealed class AnimationTimer: IControlAttachmentParticipant
 {
     private DispatcherTimer? _timer;
     private readonly Action _onTick;
@@ -67,7 +67,7 @@ internal sealed class AnimationTimer: IDisposable
         }
     }
 
-    public void Attach(Dispatcher dispatcher)
+    public void OnOwnerAttached(Dispatcher dispatcher)
     {
         _timer = new DispatcherTimer(dispatcher, Interval);
         _timer.Tick += OnTick;
@@ -78,7 +78,7 @@ internal sealed class AnimationTimer: IDisposable
         }
     }
 
-    public void Detach() => Release();
+    public void OnOwnerDetached() => Release();
 
     public void Dispose() => Release();
 

@@ -34,6 +34,15 @@ mutate retained state only when both remain current. Do not expose attachment
 generation numbers, reuse cancellation sources, or treat returning to the same
 dispatcher as the same attachment.
 
+Framework controls that compose a dispatcher-owned resource register that
+resource once during construction as an attachment participant. The framework
+then supplies every committed dispatcher attachment, publishes detachment only
+after invalidating the old attachment, and performs final disposal exactly once.
+Participants run in registration order, and one failure does not skip later
+required lifecycle work. This internal seam is for owned resources such as an
+animation timer; concrete controls keep playback and visual policy in their own
+hooks rather than forwarding the same attachment plumbing.
+
 ### Choosing a role
 
 | Need                                                                                                                      | Base role                                         | Public ownership surface                                                         |

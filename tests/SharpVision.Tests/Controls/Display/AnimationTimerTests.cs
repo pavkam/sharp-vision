@@ -38,7 +38,7 @@ public sealed class AnimationTimerTests
 
         // Act
         await dispatcher.InvokeAsync(
-            () => timer.Attach(dispatcher),
+            () => timer.OnOwnerAttached(dispatcher),
             TestContext.Current.CancellationToken);
 
         clock.Advance(TimeSpan.FromMilliseconds(200));
@@ -59,7 +59,7 @@ public sealed class AnimationTimerTests
         var ticks = 0;
         var timer = new AnimationTimer(TimeSpan.FromMilliseconds(100), () => ticks++);
         await dispatcher.InvokeAsync(
-            () => timer.Attach(dispatcher),
+            () => timer.OnOwnerAttached(dispatcher),
             TestContext.Current.CancellationToken);
 
         // Act
@@ -81,12 +81,12 @@ public sealed class AnimationTimerTests
         var ticks = 0;
         var timer = new AnimationTimer(TimeSpan.FromMilliseconds(100), () => ticks++) { IsPlaying = true };
         await dispatcher.InvokeAsync(
-            () => timer.Attach(dispatcher),
+            () => timer.OnOwnerAttached(dispatcher),
             TestContext.Current.CancellationToken);
 
         // Act
         await dispatcher.InvokeAsync(
-            timer.Detach,
+            timer.OnOwnerDetached,
             TestContext.Current.CancellationToken);
 
         clock.Advance(TimeSpan.FromMilliseconds(300));
@@ -106,7 +106,7 @@ public sealed class AnimationTimerTests
         var ticks = 0;
         var timer = new AnimationTimer(TimeSpan.FromMilliseconds(100), () => ticks++) { IsPlaying = true };
         await dispatcher.InvokeAsync(
-            () => timer.Attach(dispatcher),
+            () => timer.OnOwnerAttached(dispatcher),
             TestContext.Current.CancellationToken);
 
         // Act
@@ -137,7 +137,7 @@ public sealed class AnimationTimerTests
         });
 
         await dispatcher.InvokeAsync(
-            () => timer.Attach(dispatcher),
+            () => timer.OnOwnerAttached(dispatcher),
             TestContext.Current.CancellationToken);
 
         // Act
@@ -163,7 +163,7 @@ public sealed class AnimationTimerTests
         var ticks = 0;
         var timer = new AnimationTimer(TimeSpan.FromMilliseconds(100), () => ticks++) { IsPlaying = true };
         await dispatcher.InvokeAsync(
-            () => timer.Attach(dispatcher),
+            () => timer.OnOwnerAttached(dispatcher),
             TestContext.Current.CancellationToken);
 
         // Act
@@ -198,7 +198,7 @@ public sealed class AnimationTimerTests
         };
 
         await dispatcher.InvokeAsync(
-            () => timer.Attach(dispatcher),
+            () => timer.OnOwnerAttached(dispatcher),
             TestContext.Current.CancellationToken);
 
         // Act -- shorten interval to 50ms, then advance only 50ms
@@ -260,7 +260,7 @@ public sealed class AnimationTimerTests
             IsPlaying = true
         };
         await dispatcher.InvokeAsync(
-            () => timer.Attach(dispatcher),
+            () => timer.OnOwnerAttached(dispatcher),
             TestContext.Current.CancellationToken);
         clock.Advance(TimeSpan.FromMilliseconds(100));
         await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
@@ -301,7 +301,7 @@ public sealed class AnimationTimerTests
         var ticks = 0;
         var timer = new AnimationTimer(TimeSpan.FromMilliseconds(100), () => ticks++) { IsPlaying = true };
         await dispatcher.InvokeAsync(
-            () => timer.Attach(dispatcher),
+            () => timer.OnOwnerAttached(dispatcher),
             TestContext.Current.CancellationToken);
 
         // Act

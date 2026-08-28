@@ -28,6 +28,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 {
     private StyleSlotBase? _primaryStyle;
     private Dictionary<string, StyleSlotBase>? _styleSlots;
+    private List<IControlAttachmentParticipant>? _attachmentParticipants;
     private Dictionary<string, long>? _synchronizedPropertyVersions;
     private long _stylePublicationVersion;
     private static readonly ThemeValueDependency<int> _inputAffixGapThemeDependency = new(
@@ -114,6 +115,36 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
         token = captured;
         return true;
+    }
+
+    /// <summary>Registers one unique resource that follows this control's committed dispatcher
+    /// attachment and final disposal.</summary>
+    /// <param name="participant">The non-null owner-bound participant.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="participant"/> is null.</exception>
+    /// <exception cref="ArgumentException">The same participant is already registered.</exception>
+    /// <exception cref="InvalidOperationException">The control is already attached.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    internal void RegisterAttachmentParticipant(IControlAttachmentParticipant participant)
+    {
+        ArgumentNullException.ThrowIfNull(participant);
+        ThrowIfDisposed();
+
+        if (Dispatcher is not null)
+        {
+            throw new InvalidOperationException(
+                "Attachment participants must be registered before the control is attached.");
+        }
+
+        _attachmentParticipants ??= [];
+
+        if (_attachmentParticipants.Contains(participant, ReferenceEqualityComparer.Instance))
+        {
+            throw new ArgumentException(
+                "The attachment participant is already registered.",
+                nameof(participant));
+        }
+
+        _attachmentParticipants.Add(participant);
     }
 
     /// <summary>Checks whether an opaque identity still names this exact live attachment.</summary>
@@ -1927,6 +1958,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(DisposeBindings, ref failure);
         ExceptionAggregation.Capture(DisposeStyleBindings, ref failure);
+        ExceptionAggregation.Capture(DisposeAttachmentParticipants, ref failure);
         ExceptionAggregation.Capture(OnDisposing, ref failure);
 
         try
@@ -4485,6 +4517,17 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         }
 
         ExceptionAggregation.Capture(OnAttached, ref failure);
+
+        if (_attachmentParticipants is { } participants)
+        {
+            foreach (var participant in participants)
+            {
+                ExceptionAggregation.Capture(
+                    () => participant.OnOwnerAttached(Dispatcher!),
+                    ref failure);
+            }
+        }
+
         failure?.Throw();
     }
 
@@ -4503,7 +4546,35 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             ExceptionAggregation.Capture(bindingRegistry.OnDispatcherDetached, ref failure);
         }
 
+        if (_attachmentParticipants is { } participants)
+        {
+            foreach (var participant in participants)
+            {
+                ExceptionAggregation.Capture(participant.OnOwnerDetached, ref failure);
+            }
+        }
+
         ExceptionAggregation.Capture(OnDetached, ref failure);
+        failure?.Throw();
+    }
+
+    private void DisposeAttachmentParticipants()
+    {
+        var participants = _attachmentParticipants;
+        _attachmentParticipants = null;
+
+        if (participants is null)
+        {
+            return;
+        }
+
+        ExceptionDispatchInfo? failure = null;
+
+        foreach (var participant in participants)
+        {
+            ExceptionAggregation.Capture(participant.Dispose, ref failure);
+        }
+
         failure?.Throw();
     }
 

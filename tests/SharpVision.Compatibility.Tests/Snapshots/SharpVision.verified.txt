@@ -1121,8 +1121,6 @@ namespace SharpVision.Controls.Display
         public int TrailLength { get; set; }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnAttached() { }
-        protected override void OnDetached() { }
-        protected override void OnDisposing() { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
     }
     public readonly struct ChaseIndicatorGlyphs : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Controls.Display.ChaseIndicatorGlyphs>
@@ -1256,9 +1254,6 @@ namespace SharpVision.Controls.Display
         public bool IsPlaying { get; set; }
         public SharpVision.Controls.Display.SpinnerStyle? Style { get; set; }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnAttached() { }
-        protected override void OnDetached() { }
-        protected override void OnDisposing() { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
     }
     public sealed class SpinnerStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Display.SpinnerStyle>

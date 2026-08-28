@@ -20,6 +20,7 @@ public sealed class Spinner: ControlBase, IStyled<SpinnerStyle>
     {
         _style = InitializeStyle(SpinnerStyle.Definition, OnStyleChanged);
         _animation = new AnimationTimer(TimeSpan.FromMilliseconds(200), OnTick, () => EffectiveIsVisible) { IsPlaying = true };
+        RegisterAttachmentParticipant(_animation);
         HorizontalAlignment = HorizontalAlignment.Left;
         VerticalAlignment = VerticalAlignment.Top;
         IsHitTestVisible = false;
@@ -116,30 +117,6 @@ public sealed class Spinner: ControlBase, IStyled<SpinnerStyle>
 
     #endregion
 
-    #region Lifetime and timing
-
-    /// <inheritdoc/>
-    protected override void OnAttached()
-    {
-        base.OnAttached();
-        Debug.Assert(Dispatcher is not null, "An attached spinner owns a dispatcher.");
-        _animation.Attach(Dispatcher);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnDetached()
-    {
-        _animation.Detach();
-        base.OnDetached();
-    }
-
-    /// <inheritdoc/>
-    protected override void OnDisposing()
-    {
-        _animation.Dispose();
-        base.OnDisposing();
-    }
-
     private void OnStyleChanged(SpinnerStyle previous, SpinnerStyle current)
     {
         _ = previous;
@@ -172,5 +149,4 @@ public sealed class Spinner: ControlBase, IStyled<SpinnerStyle>
         Invalidate(InvalidationImpact.Render);
     }
 
-    #endregion
 }

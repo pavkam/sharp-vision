@@ -378,7 +378,10 @@ screens, not private frame indices. They prove pause and resume, interval
 restart, effective visibility, attachment, detachment, disposal, width-policy
 fallback, and timer coalescing — all without sleeping. `SpinnerSurfaceTests` and
 `ChaseIndicatorSurfaceTests` provide the mounted evidence required by the
-public-control behavior catalog.
+public-control behavior catalog. Owner-bound participant tests additionally
+prove same- and cross-dispatcher reattachment, disposal while attached or
+detached, registration order, duplicate rejection, exact-once cleanup, and
+exhaustive cleanup after a participant failure.
 
 Menu mounted-surface proof sends real pointer motion, primary press and release,
 Tab, Shift+Tab, arrows, Enter, Space, and Escape. It asserts the menu remains

@@ -105,6 +105,13 @@ a running timer restarts one complete new interval, and stopping the timer keeps
 its handlers for a later restart. Start, stop, and interval mutation are
 dispatcher-affine. Disposal is thread-safe and idempotent.
 
+An animation timer composed by a control follows the owner's committed
+attachment lifetime. Attachment starts or prepares it on the exact current
+dispatcher; detachment invalidates and stops it before any later reattachment;
+owner disposal releases it exactly once whether the owner is attached or
+detached. Returning to the same dispatcher is still a new lifetime, never a
+continuation of the old timer attachment.
+
 > [!NOTE]
 >
 > The stop/restart symmetry does not extend to disposal. `Dispose()` clears the

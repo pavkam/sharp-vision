@@ -34,6 +34,7 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
     {
         _style = InitializeStyle(ChaseIndicatorStyle.Definition, OnStyleChanged);
         _animation = new AnimationTimer(TimeSpan.FromMilliseconds(200), OnTick, () => EffectiveIsVisible) { IsPlaying = true };
+        RegisterAttachmentParticipant(_animation);
         HorizontalAlignment = HorizontalAlignment.Left;
         VerticalAlignment = VerticalAlignment.Top;
         IsHitTestVisible = false;
@@ -340,21 +341,6 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
         SetLastTimestamp();
         ScheduledInterval = NextInterval();
         _animation.Interval = ScheduledInterval;
-        _animation.Attach(Dispatcher);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnDetached()
-    {
-        _animation.Detach();
-        base.OnDetached();
-    }
-
-    /// <inheritdoc/>
-    protected override void OnDisposing()
-    {
-        _animation.Dispose();
-        base.OnDisposing();
     }
 
     private void OnTick()
