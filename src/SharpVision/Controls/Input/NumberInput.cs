@@ -20,10 +20,6 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 [PublicAPI]
 public sealed class NumberInput: InputBase
 {
-    /// <inheritdoc/>
-    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
-        (theme ?? ThemeCatalog.Dark).GetStyleSet(InputStyle.Default).ToAppearanceStates();
-
     private readonly NumericEditBuffer _buffer = new();
     private readonly NumericInputCommitCoordinator _coordinator;
     private decimal? _value;

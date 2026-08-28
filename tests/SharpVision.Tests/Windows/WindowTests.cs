@@ -15,6 +15,10 @@ public sealed class WindowTests
         var current = ThemeCatalog.Parse(ThemeJson.Create(windowExtra: """, "closeGlyph": "+" """));
         using var window = new Window { CanClose = true };
         window.SetTheme(previous);
+        var size = new Size(10, 4);
+        new LayoutEngine().Layout(window, size);
+        using var frame = new Frame(size);
+        window.Render(frame.Canvas);
         window.Clear(Invalidation.All);
 
         window.SetTheme(current);

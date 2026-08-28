@@ -58,10 +58,15 @@ reentrant newer commit abandons the older publication. The framework owns
 dispatcher checks, notification order, theme transition planning, caching, exact
 invalidation, and disposal of remaining binding edges.
 
-Protected structural resolvers such as the shared input affix gap and drop-down
-glyph register their root-Theme dependency when used. A later Theme replacement
-therefore requests measure or render even though those values do not appear in
-`AppearanceStates`; consuming controls do not duplicate comparison overrides.
+Framework structural resolvers such as the shared input affix gap, drop-down
+glyph, popup anchors, and Window close chrome register a typed Theme-value
+dependency when used. Each stable descriptor owns its resolver, equality, and
+impact. Repeated reads deduplicate without allocating; a later Theme replacement
+compares the concrete resolved values and requests the strongest registered
+measure or render impact even though those values do not appear in
+`AppearanceStates`. Conditional consumers unregister when inactive, and a value
+that has never been read creates no dependency. Controls therefore do not
+duplicate whole-pipeline comparison overrides.
 
 `TStyle` must derive from `ControlStyle` - see
 [themes.md](themes.md#style-types) for the type hierarchy and how a control's
@@ -87,6 +92,13 @@ winning:
 3. The complete local control Style's appearance, when one is assigned.
 4. The developer's complete local `Face` and any protected derived-control
    border, shadow, or state contributions.
+
+A control with one immutable intrinsic appearance overlay registers it once in
+its constructor through `InitializeAppearanceOverlay`. `ControlBase` composes
+that overlay at the same final stage for both the live and prospective Theme, so
+theme-change classification and rendering see identical appearances. A second
+registration is rejected; the overlay is intrinsic chrome, not another mutable
+style slot.
 
 A developer assignment therefore always wins over the Theme. `ResetFace()`
 removes the public local face. The protected chrome reset and state-appearance
@@ -176,10 +188,12 @@ style comparison classifies pressed-shadow geometry from Normal plus the nine
 sparse state contributions directly; it never enumerates the 512-state power
 set, and adding a state therefore grows comparison work linearly.
 
-Controls that consume a root theme value outside an appearance profile register
-that dependency explicitly and grade it by effect. In particular, an active
-marked `Text` mnemonic depends on `Theme.Hotkey` at render level only; unmarked,
-disabled, or `UseMnemonic = false` text does not subscribe to that value.
+Controls that consume a root Theme value outside an appearance profile register
+that typed dependency explicitly and grade it by effect. Equal concrete outputs
+across two Themes do not over-invalidate, and measure outranks render when
+several consumed values change. In particular, an active marked `Text` mnemonic
+depends on `Theme.Hotkey` at render level only; unmarked, disabled, or
+`UseMnemonic = false` text does not subscribe to that value.
 
 Global style-type Normal appearances define high-level chrome. Control-specific
 padding, glyph families, and part colors live in each control's complete typed

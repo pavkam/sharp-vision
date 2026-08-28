@@ -37,17 +37,10 @@ public sealed class Prism: ContentControl
     /// <summary>Initializes an empty Prism with a diagonal eighteen-cell cycle at phase zero.</summary>
     public Prism()
     {
+        InitializeAppearanceOverlay(_prismAppearance);
         _draw = DrawContent;
         _selector = SelectColor;
     }
-
-    /// <inheritdoc/>
-    protected override AppearanceStates AppearanceStates =>
-        base.AppearanceStates.Compose(_prismAppearance);
-
-    /// <inheritdoc/>
-    protected override AppearanceStates GetAppearanceStates(Theme? theme) =>
-        base.GetAppearanceStates(theme).Compose(_prismAppearance);
 
     #endregion
 

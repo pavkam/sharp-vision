@@ -22,6 +22,10 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
     private const TerminalAttributes _blinkAttributes =
         TerminalAttributes.Blink | TerminalAttributes.RapidBlink;
 
+    private static readonly ThemeValueDependency<Color> _hotkeyThemeDependency = new(
+        static theme => theme.Hotkey,
+        InvalidationImpact.Render);
+
     private string _display = string.Empty;
     private StyleSpan[] _spans = [];
     private string? _parsedContent;
@@ -273,9 +277,13 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
             highlightMnemonic &&
             Content.AsSpan().TryGetKey(out _);
         Color? hotkeyColor = hasHighlightedMnemonic
-            ? (Theme ?? ThemeCatalog.Dark).Hotkey
+            ? ResolveThemeValue(_hotkeyThemeDependency)
             : null;
-        SetThemeStructuralDependency(ThemeStructuralDependency.Hotkey, hasHighlightedMnemonic);
+
+        if (!hasHighlightedMnemonic)
+        {
+            SetThemeValueDependency(_hotkeyThemeDependency, active: false);
+        }
 
         if (ReferenceEquals(_parsedContent, Content) &&
             _parsedUseMnemonic == useMnemonic &&

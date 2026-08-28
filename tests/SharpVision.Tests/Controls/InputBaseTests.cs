@@ -22,6 +22,26 @@ public sealed class InputBaseTests
         probe.IsTabStop.ShouldBeTrue();
     }
 
+    /// <summary>Verifies the semantic input base supplies the shared InputStyle fallback without
+    /// requiring each unstyled derivative to repeat it.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenNoTypedStyleIsRegistered_UsesInputStyleAcrossThemes()
+    {
+        var first = ThemeCatalog.Parse(ThemeJson.Create(accent: "#ff0000"));
+        var second = ThemeCatalog.Parse(ThemeJson.Create(accent: "#00ff00"));
+        var probe = new NoCapabilityInputProbe();
+
+        var firstFocused = probe.ResolveAppearance(first, VisualState.Focused);
+        probe.SetTheme(first);
+        var liveFocused = probe.GetActualFace(VisualState.Focused);
+        var secondFocused = probe.ResolveAppearance(second, VisualState.Focused);
+
+        firstFocused.Face.Foreground.ShouldBe(first.ResolveColor(SemanticColor.FocusedText));
+        liveFocused.ShouldBe(firstFocused.Face);
+        secondFocused.Face.Foreground.ShouldBe(second.ResolveColor(SemanticColor.FocusedText));
+        secondFocused.Face.Foreground.ShouldNotBe(firstFocused.Face.Foreground);
+    }
+
     /// <summary>Verifies a control that never calls EnablePopup allocates no popup state at all -
     /// no owned framework-part slot, no owned controls - proving capability isolation.</summary>
     [Fact]

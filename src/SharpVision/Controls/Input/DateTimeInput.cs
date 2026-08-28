@@ -22,10 +22,6 @@ using SharpVision.Terminal.Input;
 public sealed class DateTimeInput: InputBase
 {
     private long _valueVersion;
-    /// <inheritdoc/>
-    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
-        (theme ?? ThemeCatalog.Dark).GetStyleSet(InputStyle.Default).ToAppearanceStates();
-
     // Terminal field geometry: one content row and two border columns. The indicator cell is
     // InputBase.DropDownIndicatorWidth.
     private const int _fieldContentHeight = 1;

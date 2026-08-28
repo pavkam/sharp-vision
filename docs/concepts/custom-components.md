@@ -16,7 +16,9 @@ caption, an optional command, segment editing, step-key translation, the shared
 drop-down glyph, and an owned popup as independent `Enable*` capabilities, so a
 control opts into exactly the ones it needs instead of inheriting all of them -
 `Button` calls `EnablePressActivation`, `EnableCaption`, and `EnableCommand`
-together, while `ComboBox` calls only `EnablePressActivation`.
+together, while `ComboBox` calls only `EnablePressActivation`. The role supplies
+the `InputStyle` appearance fallback even when no capability is enabled; a
+concrete typed style still takes precedence normally.
 
 There is no `View` type and no measure-time `Build()` composition. Construction
 is never deferred to measure, arrange, or rendering: a component creates its
@@ -156,6 +158,12 @@ own subtree — gridlines above cells, a focus ring around an active cell, a
 splitter grip, a drag adorner — overrides `OnRenderAdornment` instead of
 appending a synthetic last child to the public `Children` collection just to
 paint above earlier siblings.
+
+A derived control with one immutable intrinsic appearance overlay calls
+`InitializeAppearanceOverlay` once in its constructor. The base pipeline then
+composes it identically for current rendering and prospective Theme comparison.
+This seam is for fixed control-owned appearance, not a substitute for a mutable
+public Style property.
 
 ## Affix support
 

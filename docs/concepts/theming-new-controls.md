@@ -39,6 +39,10 @@ five well-known types. The framework handles theme publication, state
 composition, caching, and invalidation on its own; a third-party developer
 writes no theme plumbing beyond this one property.
 
+`InputBase` already overrides this hook with the `InputStyle` role. A derivative
+keeps that fallback unless its contract intentionally uses a more specialized
+role or owns a typed style slot.
+
 The chosen type covers the control's overall face, border, and shadow. When the
 control has an additional semantic part outside those three, expose a validated
 `ControlColor` or `ControlDecoration` property with a library-defined semantic
@@ -83,6 +87,18 @@ not change when two themes map it to different colors. Assign a concrete `Color`
 instead when the caller's choice must survive theme changes. Background channels
 may use `Color.Transparent`; glyph-painting foreground channels must reject it
 before mutation.
+
+Framework-owned reusable resolvers use the internal typed Theme-value registry
+for direct structural values. External controls continue to compare their own
+additional semantic properties in `GetThemeChangeImpact`, as above; the registry
+is deliberately not a public mutable extension surface.
+
+An immutable appearance contribution that is intrinsic to a derived control can
+be registered once from its constructor with
+`InitializeAppearanceOverlay(AppearanceStatesOverlay)`. The base pipeline
+applies it after the resolved Theme appearance for both live rendering and
+prospective Theme comparison. Register exactly one overlay; use a typed style or
+the local chrome properties for caller-replaceable presentation.
 
 ## Local customization
 

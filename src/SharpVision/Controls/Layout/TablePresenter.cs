@@ -48,20 +48,13 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
     public TablePresenter(Table owner)
     {
         ArgumentNullException.ThrowIfNull(owner);
+        InitializeAppearanceOverlay(_presenterAppearance);
         _owner = owner;
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Stretch;
         AutoScroll = true;
         ScrollBars = ScrollBars.Vertical;
     }
-
-    /// <inheritdoc/>
-    protected override AppearanceStates AppearanceStates =>
-        base.AppearanceStates.Compose(_presenterAppearance);
-
-    /// <inheritdoc/>
-    protected override AppearanceStates GetAppearanceStates(Theme? theme) =>
-        base.GetAppearanceStates(theme).Compose(_presenterAppearance);
 
     /// <summary>Gets the currently resolved cell width for each semantic column.</summary>
     public int[] ColumnWidths { get; private set; } = [];

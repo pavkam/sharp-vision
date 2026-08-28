@@ -246,6 +246,13 @@ its resolved `normal` alone, so a theme authoring, say,
 `styles.window.pointerOver.closeGlyph` is rejected rather than parsed,
 validated, and silently ignored.
 
+When framework rendering or layout reads one of those structural members
+directly, the control registers a stable typed dependency containing the
+resolver, equality, and invalidation impact. Theme replacement compares the
+resolved immutable values, not the Theme objects or semantic tokens; equal
+outputs remain clean, multiple changes use the strongest impact, and conditional
+consumers stop participating when they no longer read the value.
+
 A color member - whether one of `face`/`border`/`shadow`'s own nested colors or
 a structural one such as `window`'s close-mark colors - accepts the same shapes:
 a `SemanticColor` name, a palette key, or `"transparent"`/`"default"` - never a

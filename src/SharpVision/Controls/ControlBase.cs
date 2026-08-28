@@ -30,7 +30,12 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     private Dictionary<string, StyleSlotBase>? _styleSlots;
     private Dictionary<string, long>? _synchronizedPropertyVersions;
     private long _stylePublicationVersion;
-    private ThemeStructuralDependency _themeStructuralDependencies;
+    private static readonly ThemeValueDependency<int> _inputAffixGapThemeDependency = new(
+        static theme => theme.GetStyleSet(InputStyle.Default).Normal.AffixGap,
+        InvalidationImpact.Measure);
+
+    private IThemeValueDependency[]? _themeValueDependencies;
+    private AppearanceStatesOverlay? _appearanceOverlay;
     private bool? _effectiveIsVisible;
     private bool? _effectiveIsEnabled;
     private long _visibilityVersion;
@@ -2970,49 +2975,78 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// style of its own.
     /// </remarks>
     /// <returns>The cell gap between a present affix and the content it sits beside.</returns>
-    protected int ResolveAffixGap()
+    protected int ResolveAffixGap() => ResolveThemeValue(_inputAffixGapThemeDependency);
+
+    /// <summary>Resolves and registers one typed non-appearance Theme value.</summary>
+    /// <typeparam name="T">The immutable resolved value type.</typeparam>
+    /// <param name="dependency">The stable dependency descriptor.</param>
+    /// <returns>The value resolved against the current Theme or library fallback.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="dependency"/> is null.</exception>
+    private protected T ResolveThemeValue<T>(ThemeValueDependency<T> dependency)
     {
-        TrackThemeStructuralDependency(ThemeStructuralDependency.InputAffixGap);
-        return (Theme ?? ThemeCatalog.Dark).GetStyleSet(InputStyle.Default).Normal.AffixGap;
+        ArgumentNullException.ThrowIfNull(dependency);
+        RegisterThemeValueDependency(dependency);
+        return dependency.Resolve(Theme);
     }
 
-    /// <summary>Records one non-appearance root Theme value used by this control.</summary>
-    /// <param name="dependency">The defined structural dependency.</param>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="dependency"/> is unknown.</exception>
-    private protected void TrackThemeStructuralDependency(ThemeStructuralDependency dependency)
+    /// <summary>Activates or removes one conditional non-appearance Theme dependency.</summary>
+    /// <param name="dependency">The stable dependency descriptor.</param>
+    /// <param name="active">Whether the control currently consumes that Theme value.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="dependency"/> is null.</exception>
+    private protected void SetThemeValueDependency(IThemeValueDependency dependency, bool active)
     {
-        ValidateThemeStructuralDependency(dependency);
+        ArgumentNullException.ThrowIfNull(dependency);
 
-        _themeStructuralDependencies |= dependency;
-    }
-
-    /// <summary>Activates or removes one conditional non-appearance root Theme dependency.</summary>
-    /// <param name="dependency">The defined structural dependency.</param>
-    /// <param name="active">Whether the control currently consumes that root Theme value.</param>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="dependency"/> is unknown.</exception>
-    private protected void SetThemeStructuralDependency(
-        ThemeStructuralDependency dependency,
-        bool active)
-    {
-        ValidateThemeStructuralDependency(dependency);
-        _themeStructuralDependencies = active
-            ? _themeStructuralDependencies | dependency
-            : _themeStructuralDependencies & ~dependency;
-    }
-
-    /// <summary>Rejects empty or unknown non-appearance root Theme dependency flags.</summary>
-    /// <param name="dependency">The flags to validate.</param>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="dependency"/> is empty or unknown.</exception>
-    private static void ValidateThemeStructuralDependency(ThemeStructuralDependency dependency)
-    {
-        if (dependency == ThemeStructuralDependency.None ||
-            (dependency & ~(ThemeStructuralDependency.InputAffixGap |
-                            ThemeStructuralDependency.InputDropDownGlyph |
-                            ThemeStructuralDependency.PopupAnchorGlyphs |
-                            ThemeStructuralDependency.Hotkey)) != 0)
+        if (active)
         {
-            throw new ArgumentOutOfRangeException(nameof(dependency), dependency, "The Theme structural dependency is unknown.");
+            RegisterThemeValueDependency(dependency);
+            return;
         }
+
+        var dependencies = _themeValueDependencies;
+
+        for (var index = 0; index < ThemeValueDependencyCount; index++)
+        {
+            if (!ReferenceEquals(dependencies![index], dependency))
+            {
+                continue;
+            }
+
+            Array.Copy(dependencies, index + 1, dependencies, index, ThemeValueDependencyCount - index - 1);
+            dependencies[--ThemeValueDependencyCount] = null!;
+            return;
+        }
+    }
+
+    /// <summary>Gets the number of distinct non-appearance Theme dependencies retained by this
+    /// control, exposed to prove descriptor deduplication.</summary>
+    internal int ThemeValueDependencyCount { get; private set; }
+
+    /// <summary>Registers one descriptor by reference identity without allocating on repeated reads.</summary>
+    private void RegisterThemeValueDependency(IThemeValueDependency dependency)
+    {
+        var dependencies = _themeValueDependencies;
+
+        for (var index = 0; index < ThemeValueDependencyCount; index++)
+        {
+            if (ReferenceEquals(dependencies![index], dependency))
+            {
+                return;
+            }
+        }
+
+        if (dependencies is null)
+        {
+            dependencies = new IThemeValueDependency[2];
+            _themeValueDependencies = dependencies;
+        }
+        else if (ThemeValueDependencyCount == dependencies.Length)
+        {
+            Array.Resize(ref dependencies, dependencies.Length * 2);
+            _themeValueDependencies = dependencies;
+        }
+
+        dependencies[ThemeValueDependencyCount++] = dependency;
     }
 
     /// <summary>Resolves the printable cell width an affix reserves under the tree's live
@@ -4682,12 +4716,30 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     private ResolvedAppearanceCacheSlot[]? _resolvedAppearanceCache;
     private int _resolvedAppearanceCacheCount;
 
+    /// <summary>Registers the one immutable appearance overlay owned by this control.</summary>
+    /// <param name="overlay">The immutable normal and visual-state contributions to compose.</param>
+    /// <exception cref="InvalidOperationException">An overlay was already registered.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    /// <remarks>Call exactly once from the concrete control constructor. ControlBase composes the
+    /// overlay into both live and prospective Theme resolution without creating another style slot.</remarks>
+    protected void InitializeAppearanceOverlay(AppearanceStatesOverlay overlay)
+    {
+        VerifyMutable();
+
+        if (_appearanceOverlay.HasValue)
+        {
+            throw new InvalidOperationException("A control can initialize only one appearance overlay.");
+        }
+
+        _appearanceOverlay = overlay;
+    }
+
     /// <summary>Gets the immutable theme inherited from the owning application.</summary>
     public Theme? Theme => InheritedTheme;
 
     /// <summary>Gets the complete appearance states that own normal and visual-state presentation.</summary>
     protected virtual AppearanceStates AppearanceStates =>
-        _primaryStyle?.GetAppearance(Theme) ?? GetDefaultAppearanceStates(Theme);
+        ApplyAppearanceOverlay(_primaryStyle?.GetAppearance(Theme) ?? GetDefaultAppearanceStates(Theme));
 
     /// <summary>Resolves the complete appearance states for one explicit prospective Theme.</summary>
     /// <param name="theme">The inherited Theme to resolve, or null for the library fallback.</param>
@@ -4698,10 +4750,13 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// temporarily mutating inherited state.
     /// </remarks>
     protected virtual AppearanceStates GetAppearanceStates(Theme? theme) =>
-        _primaryStyle?.GetAppearance(theme) ??
-        (ReferenceEquals(theme, Theme)
+        ReferenceEquals(theme, Theme)
             ? AppearanceStates
-            : GetDefaultAppearanceStates(theme));
+            : ApplyAppearanceOverlay(_primaryStyle?.GetAppearance(theme) ?? GetDefaultAppearanceStates(theme));
+
+    /// <summary>Composes the constructor-registered immutable overlay, when present.</summary>
+    private AppearanceStates ApplyAppearanceOverlay(AppearanceStates states) =>
+        _appearanceOverlay is { } overlay ? states.Compose(overlay) : states;
 
     /// <summary>Resolves the well-known base style this control type uses when it owns no primary
     /// style slot of its own - the extension point a control overrides to choose which
@@ -4803,33 +4858,22 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             }
         }
 
-        return MaximumImpact(impact, GetTrackedThemeStructuralImpact(previous, current));
+        return MaximumImpact(impact, GetThemeValueDependencyImpact(previous, current));
     }
 
-    /// <summary>Compares every root Theme value previously resolved outside appearance profiles.</summary>
-    private InvalidationImpact GetTrackedThemeStructuralImpact(Theme? previous, Theme? current)
+    /// <summary>Compares every registered value without mutating the active dependency set.</summary>
+    private InvalidationImpact GetThemeValueDependencyImpact(Theme? previous, Theme? current)
     {
-        var previousTheme = previous ?? ThemeCatalog.Dark;
-        var currentTheme = current ?? ThemeCatalog.Dark;
-        var affixGapChanged =
-            (_themeStructuralDependencies & ThemeStructuralDependency.InputAffixGap) != 0 &&
-            previousTheme.GetStyleSet(InputStyle.Default).Normal.AffixGap !=
-            currentTheme.GetStyleSet(InputStyle.Default).Normal.AffixGap;
-        var glyphChanged =
-            ((_themeStructuralDependencies & ThemeStructuralDependency.InputDropDownGlyph) != 0 &&
-                previousTheme.GetStyleSet(InputStyle.Default).Normal.DropDownGlyph !=
-                currentTheme.GetStyleSet(InputStyle.Default).Normal.DropDownGlyph) ||
-            ((_themeStructuralDependencies & ThemeStructuralDependency.PopupAnchorGlyphs) != 0 &&
-                previousTheme.GetStyleSet(PopupStyle.Default).Normal.AnchorGlyphs !=
-                currentTheme.GetStyleSet(PopupStyle.Default).Normal.AnchorGlyphs);
-        var hotkeyChanged =
-            (_themeStructuralDependencies & ThemeStructuralDependency.Hotkey) != 0 &&
-            previousTheme.Hotkey != currentTheme.Hotkey;
-        return affixGapChanged
-            ? InvalidationImpact.Measure
-            : glyphChanged || hotkeyChanged
-                ? InvalidationImpact.Render
-                : InvalidationImpact.None;
+        var impact = InvalidationImpact.None;
+
+        for (var index = 0; index < ThemeValueDependencyCount; index++)
+        {
+            impact = MaximumImpact(
+                impact,
+                _themeValueDependencies![index].GetImpact(previous, current));
+        }
+
+        return impact;
     }
 
     /// <summary>Calculates the exact invalidation impact of one resolved appearance change.</summary>

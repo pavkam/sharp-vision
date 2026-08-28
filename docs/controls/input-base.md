@@ -14,10 +14,12 @@ method allocates none of that capability's state at all, with no forced caption,
 no forced command, no forced popup, no forced segment engine, and no forced
 press behavior for a control that does not use them.
 
-Only the base contract is unconditional: every `InputBase` is `IsFocusable` and
-`IsTabStop` by default, so `CanFocus` is effectively true without any `Enable*`
-call. Calling an `Enable*` method a second time throws
-`InvalidOperationException`; each capability is meant to be wired exactly once.
+The base contract is deliberately small but not appearance-neutral: every
+`InputBase` is `IsFocusable` and `IsTabStop` by default, and resolves its
+default appearance from `InputStyle` without allocating optional capability
+state. A concrete typed Style still supersedes that fallback. Calling an
+`Enable*` method a second time throws `InvalidOperationException`; each
+capability is meant to be wired exactly once.
 
 See [the caption and command capabilities page](pressable.md#overview) for the
 single-text-caption authoring role (`EnableCaption`, `Text`, `TextControl`) and
@@ -48,6 +50,7 @@ classDiagram
 | Member                                                       | Type                     | Default  | Description                                                                                                                                                 |
 | ------------------------------------------------------------ | ------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `InteractionBounds`                                          | `Rect`                   | `Bounds` | Protected virtual; the rectangle press interaction and `HitTest` evaluate. Override when a pressed face paints translated.                                  |
+| `GetDefaultAppearanceStates(Theme?)`                         | `AppearanceStates`       | Input    | Protected override; supplies the shared `InputStyle` appearance fallback for every derivative, including a capability-free one.                             |
 | `IsOpen`                                                     | `bool`                   | —        | Public; the owned popup's open state. Throws `InvalidOperationException` on get or set before `EnablePopup` runs.                                           |
 | `DropDownIndicatorWidth` (constant)                          | `int`                    | `1`      | Protected; the cell width every drop-down field reserves for its disclosure indicator.                                                                      |
 | `EnablePressActivation()`                                    | `void`                   | —        | Opts into the shared pointer-press and Enter/Space keyboard-activation state machine.                                                                       |

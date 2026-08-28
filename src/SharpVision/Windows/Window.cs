@@ -23,6 +23,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     private const int _minimumCloseWidth = 4;
 
     private readonly PressBehavior _closeInteraction;
+    private readonly ThemeValueDependency<WindowCloseChromeThemeValue> _closeChromeThemeDependency;
     private bool _dragging;
     private Point _dragPointerOrigin;
     private Point _dragWindowOrigin;
@@ -53,6 +54,9 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// <summary>Initializes an opaque movable Window with a paired-line border and composite shadow.</summary>
     public Window()
     {
+        _closeChromeThemeDependency = new ThemeValueDependency<WindowCloseChromeThemeValue>(
+            ResolveCloseChromeThemeValue,
+            InvalidationImpact.Render);
         _closeInteraction = new PressBehavior(
             ResolveCloseTargetBounds,
             () => !IsDisposed && CanClose && EffectiveIsEnabled && EffectiveIsVisible && ResolveCloseTargetBounds().Width > 0,
@@ -521,8 +525,22 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     private protected virtual WindowStyle ResolveCloseChromeStyle(Theme? theme) =>
         (theme ?? ThemeCatalog.Dark).GetWindowStyleSet().Normal;
 
+    /// <summary>Resolves every close-chrome member to immutable Theme-specific data.</summary>
+    private WindowCloseChromeThemeValue ResolveCloseChromeThemeValue(Theme theme)
+    {
+        var style = ResolveCloseChromeStyle(theme);
+        return new WindowCloseChromeThemeValue(
+            style.CloseGlyph,
+            style.CloseLeftBracket,
+            style.CloseRightBracket,
+            style.CloseMarkColor.Resolve(theme),
+            style.CloseMarkActiveColor.Resolve(theme),
+            style.CloseMarkPressedColor.Resolve(theme),
+            style.CloseMarkDisabledColor.Resolve(theme));
+    }
+
     private Rune ResolveCloseGlyph() =>
-        ResolveCloseChromeStyle(Theme).CloseGlyph.Resolve(
+        ResolveThemeValue(_closeChromeThemeDependency).CloseGlyph.Resolve(
             ControlGlyphs.Chrome.WindowClose.Fallback,
             CellPolicy.AmbiguousWidth);
 
@@ -535,12 +553,12 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         BackgroundMode background)
     {
         Debug.Assert(closeChrome.Width == _closeChromeWidth, "Full close chrome has its fixed width.");
-        var style = ResolveCloseChromeStyle(Theme);
+        var style = ResolveThemeValue(_closeChromeThemeDependency);
         var glyph = ResolveCloseGlyph();
-        var leftBracket = style.CloseLeftBracket.Resolve(
+        var leftBracket = style.LeftBracket.Resolve(
             ControlGlyphs.Chrome.WindowCloseLeft.Fallback,
             CellPolicy.AmbiguousWidth);
-        var rightBracket = style.CloseRightBracket.Resolve(
+        var rightBracket = style.RightBracket.Resolve(
             ControlGlyphs.Chrome.WindowCloseRight.Fallback,
             CellPolicy.AmbiguousWidth);
         var y = closeChrome.Y;
@@ -555,41 +573,15 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 
     private TerminalStyle ResolveCloseMarkStyle(TerminalStyle border)
     {
-        var style = ResolveCloseChromeStyle(Theme);
+        var style = ResolveThemeValue(_closeChromeThemeDependency);
         var foreground = !EffectiveIsEnabled
-            ? ResolveColor(style.CloseMarkDisabledColor)
+            ? style.DisabledForeground
             : _closePressed
-                ? ResolveColor(style.CloseMarkPressedColor)
+                ? style.PressedForeground
                 : _closePointerOver
-                    ? ResolveColor(style.CloseMarkActiveColor)
-                    : ResolveColor(style.CloseMarkColor);
+                    ? style.ActiveForeground
+                    : style.Foreground;
         return new TerminalStyle(foreground, border.Background, border.Attributes);
-    }
-
-    /// <inheritdoc/>
-    /// <remarks>
-    /// <c>WindowStyle</c> has no <see cref="StyleDefinition{TStyle}"/>/Compare registered - the
-    /// close chrome reads it directly through <see cref="ResolveCloseChromeStyle"/>, flattened from
-    /// <c>GetDefaultAppearanceStates</c> to <c>AppearanceStates</c> for everything else - so the
-    /// base role-profile comparison alone cannot detect a theme swap confined to the four
-    /// <see cref="WindowStyle.CloseMarkColor"/>-family fields.
-    /// </remarks>
-    protected override InvalidationImpact GetThemeChangeImpact(
-        Theme? previous,
-        Theme? current,
-        Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace)
-    {
-        var baseImpact = base.GetThemeChangeImpact(
-            previous,
-            current,
-            previousParentAmbientFace,
-            currentParentAmbientFace);
-        var previousStyle = ResolveCloseChromeStyle(previous);
-        var currentStyle = ResolveCloseChromeStyle(current);
-        var colorImpact = WindowStyle.GetCloseChromeImpact(previousStyle, previous, currentStyle, current);
-
-        return MaximumImpact(baseImpact, colorImpact);
     }
 
     [Pure]

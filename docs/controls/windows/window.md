@@ -111,6 +111,11 @@ interaction state is likewise themeable through `WindowStyle`'s
 `CloseMarkColor`, `CloseMarkActiveColor`, `CloseMarkPressedColor`, and
 `CloseMarkDisabledColor`.
 
+Once close chrome is resolved, Window registers that complete immutable value as
+a render dependency. Theme replacement compares its resolved glyphs and colors
+directly, so equivalent output stays clean and Window needs no separate
+whole-pipeline Theme comparison override.
+
 `Header` is non-null text, clipped before either corner. `HeaderPlacement`
 aligns it left, center, or right within the lane left over after close chrome.
 Automatic width reserves the Unicode-measured header and close cells. Ampersands

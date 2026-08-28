@@ -48,6 +48,12 @@ A property should choose the earliest impact that is truthful. Requesting
 `Measure` when only cells changed is correct but wasteful; requesting `Render`
 when the desired size changed can leave stale geometry on screen.
 
+Framework controls that read a Theme value outside `AppearanceStates` register a
+typed dependency when the value is first consumed. A Theme replacement compares
+the resolved values through that dependency and combines all changes by their
+strongest impact. Equal concrete values stay clean, a dependency that was never
+consumed contributes nothing, and inactive conditional dependencies are removed.
+
 ## Propagation and coalescing
 
 Every control keeps track of its own pending phases. A new request expands to

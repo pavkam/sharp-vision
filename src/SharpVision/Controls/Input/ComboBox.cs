@@ -59,10 +59,6 @@ public sealed class ComboBox: InputBase
         TabNavigation = TabNavigation.None;
     }
 
-    /// <inheritdoc/>
-    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
-        (theme ?? ThemeCatalog.Dark).GetStyleSet(InputStyle.Default).ToAppearanceStates();
-
     /// <summary>Raised after a selected index commits through direct assignment or the drop-down list.</summary>
     public event EventHandler<ListSelectionChangedEventArgs>? SelectionChanged;
 

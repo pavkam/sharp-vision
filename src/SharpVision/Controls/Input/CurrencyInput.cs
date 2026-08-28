@@ -49,10 +49,6 @@ public sealed class CurrencyInput: InputBase
         "$ -n", "n- $", "($ n)", "(n $)"
     ];
 
-    /// <inheritdoc/>
-    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
-        (theme ?? ThemeCatalog.Dark).GetStyleSet(InputStyle.Default).ToAppearanceStates();
-
     private readonly NumericEditBuffer _buffer = new();
     private readonly NumericInputCommitCoordinator _coordinator;
     private decimal? _value;

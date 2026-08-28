@@ -13,10 +13,6 @@ using SharpVision.Terminal.Input;
 [PublicAPI]
 public sealed class DateInput: InputBase
 {
-    /// <inheritdoc/>
-    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
-        (theme ?? ThemeCatalog.Dark).GetStyleSet(InputStyle.Default).ToAppearanceStates();
-
     // The indicator cell (InputBase.DropDownIndicatorWidth) plus its one-cell separating gap.
     private const int _indicatorReservedWidth = 2;
 

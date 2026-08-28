@@ -22,10 +22,6 @@ using SharpVision.Terminal.Input;
 public sealed class TimeInput: InputBase
 {
     private long _valueVersion;
-    /// <inheritdoc/>
-    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
-        (theme ?? ThemeCatalog.Dark).GetStyleSet(InputStyle.Default).ToAppearanceStates();
-
     private const int _contentHeight = 1;
 
     private static readonly IReadOnlyDictionary<char, TemporalSegmentKind> _tokenKinds =

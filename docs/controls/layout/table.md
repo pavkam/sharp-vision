@@ -12,6 +12,11 @@ semantic mutation surfaces: a private scrolling table presenter owns the
 realized cell controls, so `Table` intentionally exposes no general `Children`
 collection.
 
+The private presenter registers its transparent Normal appearance overlay once
+at construction. The base appearance pipeline composes it identically for live
+rendering and prospective Theme comparison, preserving the table's owner-painted
+surface without duplicated overrides.
+
 `SetDataSource` switches a table into an alternative progressive mode that
 requests index-addressed rows on demand instead of owning them upfront — see
 [Progressive loading](#progressive-loading) below.

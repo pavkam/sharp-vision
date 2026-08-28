@@ -420,6 +420,7 @@ namespace SharpVision.Controls
         protected virtual SharpVision.Text.SelectableTextSnapshot GetTextSelectionProjection() { }
         protected virtual SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
         protected virtual int HitTestTextSelectionCore(SharpVision.Terminal.Geometry.Point cells) { }
+        protected void InitializeAppearanceOverlay(SharpVision.Styling.AppearanceStatesOverlay overlay) { }
         protected SharpVision.Controls.StyleSlot<TStyle> InitializePartStyle<TStyle>(SharpVision.Controls.StyleDefinition<TStyle> definition, string propertyName, System.Action<TStyle, TStyle>? changed = null)
             where TStyle : SharpVision.Styling.ControlStyle { }
         protected SharpVision.Controls.StyleSlot<TStyle> InitializeStyle<TStyle>(SharpVision.Controls.StyleDefinition<TStyle> definition, System.Action<TStyle, TStyle>? changed = null)
@@ -546,6 +547,7 @@ namespace SharpVision.Controls
         protected SharpVision.Popups.Popup EnablePopup(SharpVision.Controls.ControlBase content, SharpVision.Popups.PopupPlacement placement = 0, bool focusOnOpen = false, SharpVision.Input.TabNavigation popupTabNavigation = 3, System.Action? beforeOpen = null, System.Action? beforeCloseFocusRestore = null) { }
         protected void EnablePressActivation() { }
         protected void ExecuteCommandIfAny() { }
+        protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected void HandlePressActivation(SharpVision.Input.RoutedEventArgs e) { }
         protected SharpVision.Terminal.Geometry.Size MeasureCaption(SharpVision.Layout.Constraint constraint) { }
@@ -1179,11 +1181,9 @@ namespace SharpVision.Controls.Display
     public sealed class Prism : SharpVision.Controls.ContentControl
     {
         public Prism() { }
-        protected override SharpVision.Styling.AppearanceStates AppearanceStates { get; }
         public int CycleLength { get; set; }
         public SharpVision.Controls.Display.PrismDirection Direction { get; set; }
         public double Phase { get; set; }
-        protected override SharpVision.Styling.AppearanceStates GetAppearanceStates(SharpVision.Styling.Theme? theme) { }
     }
     public enum PrismDirection
     {
@@ -1568,7 +1568,6 @@ namespace SharpVision.Controls.Input
         public event System.EventHandler<SharpVision.Input.ListSelectionChangedEventArgs>? SelectionChanged;
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
-        protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnDropDownClosed() { }
         protected override void OnDropDownOpened() { }
@@ -1641,7 +1640,6 @@ namespace SharpVision.Controls.Input
         public decimal Step { get; set; }
         public decimal? Value { get; set; }
         public event System.EventHandler<SharpVision.Input.CurrencyInputValueChangedEventArgs>? ValueChanged;
-        protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
@@ -1668,7 +1666,6 @@ namespace SharpVision.Controls.Input
         public event System.EventHandler<SharpVision.Input.DateInputValueChangedEventArgs>? ValueChanged;
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
-        protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnDropDownClosed() { }
         protected override void OnDropDownOpened() { }
@@ -1710,7 +1707,6 @@ namespace SharpVision.Controls.Input
         public event System.EventHandler<SharpVision.Input.DateTimeInputValueChangedEventArgs>? ValueChanged;
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
-        protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnDropDownClosed() { }
         protected override void OnDropDownOpened() { }
@@ -1758,7 +1754,6 @@ namespace SharpVision.Controls.Input
         public decimal Step { get; set; }
         public decimal? Value { get; set; }
         public event System.EventHandler<SharpVision.Input.NumberInputValueChangedEventArgs>? ValueChanged;
-        protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
@@ -1944,7 +1939,6 @@ namespace SharpVision.Controls.Input
         public bool Use24HourFormat { get; set; }
         public System.TimeOnly? Value { get; set; }
         public event System.EventHandler<SharpVision.Input.TimeInputValueChangedEventArgs>? ValueChanged;
-        protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
@@ -4354,7 +4348,6 @@ namespace SharpVision.Windows
         public void Close() { }
         protected override SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
-        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnAttached() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }

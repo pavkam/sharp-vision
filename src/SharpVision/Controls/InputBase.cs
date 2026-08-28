@@ -20,7 +20,10 @@ using DisplayText = Display.Text;
 /// </summary>
 /// <remarks>
 /// Every concrete control derived from this type is focusable and participates in Tab traversal
-/// by default. Beyond that, nothing is assumed: a control calls whichever <c>Enable*</c> method
+/// by default. It also resolves its fallback appearance from <see cref="InputStyle"/>, even when
+/// no optional capability is enabled; a concrete typed style still supersedes that fallback
+/// through the ordinary style slot. Beyond that, nothing is assumed: a control calls whichever
+/// <c>Enable*</c> method
 /// matches the capability it actually composes - press activation, a single owned text caption, an
 /// optional command, segmented temporal editing, a step-key translation, the shared drop-down
 /// glyph, or an owned popup - and every capability is independent of the others. Calling an
@@ -30,6 +33,14 @@ using DisplayText = Display.Text;
 [PublicAPI]
 public abstract class InputBase: ControlBase
 {
+    private static readonly ThemeValueDependency<Rune> _dropDownGlyphThemeDependency = new(
+        static theme => theme.GetStyleSet(InputStyle.Default).Normal.DropDownGlyph,
+        InvalidationImpact.Render);
+
+    /// <inheritdoc/>
+    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
+        (theme ?? ThemeCatalog.Dark).GetStyleSet(InputStyle.Default).ToAppearanceStates();
+
     /// <summary>Initializes a focusable control participating in Tab traversal.</summary>
     protected InputBase()
     {
@@ -500,10 +511,8 @@ public abstract class InputBase: ControlBase
     /// <returns>The glyph to draw.</returns>
     protected Rune ResolveDropDownGlyph(Rune fallback)
     {
-        TrackThemeStructuralDependency(ThemeStructuralDependency.InputDropDownGlyph);
-        return (Theme ?? ThemeCatalog.Dark)
-            .GetStyleSet(InputStyle.Default)
-            .Normal.DropDownGlyph.Resolve(fallback, CellPolicy.AmbiguousWidth);
+        return ResolveThemeValue(_dropDownGlyphThemeDependency)
+            .Resolve(fallback, CellPolicy.AmbiguousWidth);
     }
 
     /// <summary>Draws the shared disclosure chevron at the content box's trailing edge.</summary>

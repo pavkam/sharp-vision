@@ -10,6 +10,11 @@ focus, or activation behavior of its own, and its content keeps the usual
 parentage, inherited context, routed ancestry, measurement, arrangement,
 rendering, and disposal behavior of that single-content role.
 
+Prism registers its transparent Normal appearance overlay once during
+construction. `ControlBase` composes that same immutable overlay for current
+rendering and prospective Theme comparison, so the effect never gains an
+accidental opaque background and theme invalidation sees exactly what renders.
+
 Assigning or clearing `Content` goes through the complete `ContentControl`
 ownership transaction. Replacing content returns the detached previous control
 to the caller without disposing it; disposing the Prism disposes whatever

@@ -14,6 +14,10 @@ using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
 [PublicAPI]
 public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 {
+    private static readonly ThemeValueDependency<PopupAnchorGlyphs> _anchorGlyphsThemeDependency = new(
+        static theme => theme.GetStyleSet(PopupStyle.Default).Normal.AnchorGlyphs,
+        InvalidationImpact.Render);
+
     /// <summary>Raised before directly disposed content leaves this popup's owned slot.</summary>
     internal event EventHandler<OwnedContentDisposalEventArgs>? ContentDisposalRequested;
 
@@ -1324,13 +1328,6 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
     /// <summary>Gets the resolved anchor family and records its render dependency for Theme swaps.</summary>
     /// <remarks>Internal so tests can prove the dependency is registered at the resolver boundary.</remarks>
-    internal PopupAnchorGlyphs ResolvedAnchorGlyphs
-    {
-        get
-        {
-            TrackThemeStructuralDependency(ThemeStructuralDependency.PopupAnchorGlyphs);
-            return (Theme ?? ThemeCatalog.Dark).GetStyleSet(PopupStyle.Default).Normal.AnchorGlyphs;
-        }
-    }
+    internal PopupAnchorGlyphs ResolvedAnchorGlyphs => ResolveThemeValue(_anchorGlyphsThemeDependency);
 
 }
