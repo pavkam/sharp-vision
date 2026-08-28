@@ -32,6 +32,8 @@ public sealed class CommandPaletteSurfaceTests
         var focusLosses = new List<FocusChangedEventArgs>();
         surface.Application.Focus.Lost += (_, eventArgs) => focusLosses.Add(eventArgs);
         surface.ShouldHaveFocus(editor);
+        palette.IsOpen.ShouldBeTrue();
+        palette.Items.ShouldBe(["initial"]);
         queries.Clear();
 
         // Act
@@ -47,13 +49,13 @@ public sealed class CommandPaletteSurfaceTests
                 }
             },
             TestContext.Current.CancellationToken);
-        await surface.Application.Dispatcher.InvokeAsync(
-            static () => { },
-            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(static () => { }, "settle Unicode filtering");
 
         // Assert
         palette.Text.ShouldBe("café 🔎");
         queries.ShouldBe(["c", "ca", "caf", "cafe", "café", "café ", "café 🔎"]);
+        palette.IsOpen.ShouldBeTrue();
+        editor.IsFocused.ShouldBeTrue();
         focusLosses.ShouldBeEmpty();
         surface.ShouldHaveFocus(editor);
     }
@@ -202,16 +204,38 @@ public sealed class CommandPaletteSurfaceTests
         list.ActiveIndex.ShouldBe(1);
     }
 
-    /// <summary>Verifies popup-focused input is intercepted by the owner once, so the ListView's
-    /// own bubble handler cannot apply the same navigation stroke a second time.</summary>
-    [Fact]
-    public async Task Navigation_WhenPopupListHasFocus_MovesSelectionExactlyOnceAsync()
+    /// <summary>Verifies every initial and repeated ListView navigation key is intercepted by the
+    /// owner once when the popup list has focus, so its bubble handler cannot apply it again.</summary>
+    [Theory]
+    [InlineData(Code.Up, KeyAction.Press, 2, 1)]
+    [InlineData(Code.Up, KeyAction.Repeat, 2, 1)]
+    [InlineData(Code.Down, KeyAction.Press, 2, 3)]
+    [InlineData(Code.Down, KeyAction.Repeat, 2, 3)]
+    [InlineData(Code.Left, KeyAction.Press, 2, 1)]
+    [InlineData(Code.Left, KeyAction.Repeat, 2, 1)]
+    [InlineData(Code.Right, KeyAction.Press, 2, 3)]
+    [InlineData(Code.Right, KeyAction.Repeat, 2, 3)]
+    [InlineData(Code.Home, KeyAction.Press, 5, 0)]
+    [InlineData(Code.Home, KeyAction.Repeat, 5, 0)]
+    [InlineData(Code.End, KeyAction.Press, 5, 9)]
+    [InlineData(Code.End, KeyAction.Repeat, 5, 9)]
+    [InlineData(Code.PageUp, KeyAction.Press, 5, 2)]
+    [InlineData(Code.PageUp, KeyAction.Repeat, 5, 2)]
+    [InlineData(Code.PageDown, KeyAction.Press, 5, 8)]
+    [InlineData(Code.PageDown, KeyAction.Repeat, 5, 8)]
+    public async Task Navigation_WhenPopupListHasFocus_MovesSelectionExactlyOnceAsync(
+        Code code,
+        KeyAction action,
+        int startingIndex,
+        int expectedIndex)
     {
         // Arrange
         var palette = new CommandPalette
         {
             Width = Length.Cells(18),
-            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["One", "Two", "Three"])
+            DropDownHeight = 3,
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(
+                Enumerable.Range(0, 10).Select(index => (object?) $"Item {index}").ToArray())
         };
         await using var surface = await ComponentSurface.MountAsync(
             palette,
@@ -220,15 +244,26 @@ public sealed class CommandPaletteSurfaceTests
         await surface.UpdateAsync(() => palette.Open(), "open command palette results");
         var list = OwnedTree.Find<UiListView>(palette).ShouldNotBeNull();
         await surface.UpdateAsync(
-            () => surface.Application.Focus.Focus(list).ShouldBeTrue(),
+            () =>
+            {
+                list.SelectedIndex = startingIndex;
+                surface.Application.Focus.Focus(list).ShouldBeTrue();
+            },
             "focus command palette result list");
+        RouteResult? routed = null;
 
         // Act
-        await surface.Keyboard.PressAsync(Code.Down);
+        await surface.Application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                routed = Router.Route(list, Events.Key, Key(code, action));
+            },
+            TestContext.Current.CancellationToken);
 
         // Assert
-        list.SelectedIndex.ShouldBe(1);
-        list.ActiveIndex.ShouldBe(1);
+        routed.ShouldNotBeNull().IsHandled.ShouldBeTrue();
+        list.SelectedIndex.ShouldBe(expectedIndex);
+        list.ActiveIndex.ShouldBe(expectedIndex);
     }
 
     /// <summary>Verifies Escape, direct close, and light dismissal all cancel browsing and restore
@@ -314,6 +349,99 @@ public sealed class CommandPaletteSurfaceTests
         palette.IsOpen.ShouldBeFalse();
         list.SelectedIndex.ShouldBe(1);
         list.ActiveIndex.ShouldBe(1);
+    }
+
+    /// <summary>Verifies refreshed results that invalidate the opening indexes cancel to a stable
+    /// unselected state instead of throwing from rollback.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public async Task Close_WhenRefreshedResultsInvalidateOpeningIndexes_CancelsWithoutThrowingAsync(
+        int filteredResultCount)
+    {
+        // Arrange
+        var palette = new CommandPalette
+        {
+            Width = Length.Cells(18),
+            Resolver = (searchTerms, _) => ValueTask.FromResult<IReadOnlyList<object?>>(
+                searchTerms.Length == 0
+                    ? ["Zero", "One", "Two"]
+                    : Enumerable.Range(0, filteredResultCount).Select(index => (object?) $"Filtered {index}").ToArray())
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            palette,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => palette.Open(), "open command palette results");
+        var list = OwnedTree.Find<UiListView>(palette).ShouldNotBeNull();
+        await surface.Keyboard.PressAsync(Code.Down);
+        await surface.Keyboard.PressAsync(Code.Enter);
+        list.SelectedIndex.ShouldBe(1);
+        await surface.UpdateAsync(() => palette.Open(), "reopen accepted command palette results");
+
+        // Act
+        await surface.Application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                palette.Text = "filter";
+            },
+            TestContext.Current.CancellationToken);
+        await surface.Application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+
+        if (filteredResultCount > 0)
+        {
+            await surface.Application.Dispatcher.InvokeAsync(
+                palette.Close,
+                TestContext.Current.CancellationToken);
+            await surface.Application.Dispatcher.InvokeAsync(
+                static () => { },
+                TestContext.Current.CancellationToken);
+        }
+
+        // Assert
+        palette.IsOpen.ShouldBeFalse();
+        palette.Items.Count.ShouldBe(filteredResultCount);
+        list.SelectedIndex.ShouldBe(-1);
+        list.ActiveIndex.ShouldBe(-1);
+    }
+
+    /// <summary>Verifies a first-result selection deferred while detached is reconciled after
+    /// attachment so immediate Enter accepts the refreshed first item.</summary>
+    [Fact]
+    public async Task Refresh_WhenOpenAndDetached_SelectsFirstResultAfterAttachmentAsync()
+    {
+        // Arrange
+        ItemInvokedEventArgs? invoked = null;
+        var palette = new CommandPalette
+        {
+            Width = Length.Cells(18),
+            Resolver = (searchTerms, _) => ValueTask.FromResult<IReadOnlyList<object?>>(
+                searchTerms.Length == 0 ? ["Initial"] : ["Fresh first", "Fresh second"])
+        };
+        palette.ItemInvoked += (_, eventArgs) => invoked = eventArgs;
+        palette.IsOpen = true;
+        palette.Text = "fresh";
+        var list = OwnedTree.Find<UiListView>(palette).ShouldNotBeNull();
+        list.SelectedIndex.ShouldBe(-1);
+
+        // Act
+        var screen = new HostedControlScreen(palette);
+        await using var surface = await ComponentSurface.MountScreenAsync(
+            screen,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        var actual = invoked.ShouldNotBeNull();
+        actual.Index.ShouldBe(0);
+        actual.Item.ShouldBe("Fresh first");
+        actual.Cause.ShouldBe(ActivationCause.Keyboard);
+        palette.IsOpen.ShouldBeFalse();
+        list.SelectedIndex.ShouldBe(0);
+        list.ActiveIndex.ShouldBe(0);
     }
 
     /// <summary>Verifies an activation from an ended session cannot invoke a command or close a
@@ -459,4 +587,11 @@ public sealed class CommandPaletteSurfaceTests
         palette.IsOpen.ShouldBeFalse();
         surface.Application.Modality.Active.ShouldBeNull();
     }
+
+    private static KeyEventArgs Key(Code code, KeyAction action) => new(new Stroke(
+        code,
+        default,
+        nativeCode: 0,
+        Modifiers.None,
+        action));
 }

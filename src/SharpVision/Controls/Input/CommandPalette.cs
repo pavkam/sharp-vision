@@ -28,6 +28,9 @@ public sealed class CommandPalette: CompositeControlBase
     private int _resolutionGeneration;
     private int _openingSelectedIndex = -1;
     private int _openingCurrentIndex = -1;
+    private int? _pendingFirstSelectionResolutionGeneration;
+    private ulong _pendingFirstSelectionSessionGeneration;
+    private Dispatcher? _pendingFirstSelectionDispatcher;
     private PopupItemActivationIdentity? _itemActivation;
     private bool _wantsOpen;
 
@@ -462,6 +465,7 @@ public sealed class CommandPalette: CompositeControlBase
     {
         base.OnAttached();
         _popupCoordinator.OnOwnerAttached();
+        SchedulePendingFirstResultSelection();
     }
 
     /// <inheritdoc/>
@@ -469,6 +473,7 @@ public sealed class CommandPalette: CompositeControlBase
     {
         base.OnUnavailable(reason);
         _resolutionGeneration++;
+        ClearPendingFirstResultSelection();
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(CancelResolution, ref failure);
         ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
@@ -527,8 +532,10 @@ public sealed class CommandPalette: CompositeControlBase
     private void CancelNavigationSession()
     {
         _itemActivation = null;
-        _list.SelectedIndex = _openingSelectedIndex;
-        _list.SetProvisionalCurrentIndex(_openingCurrentIndex);
+        var selectedIndex = IsCurrentResultIndex(_openingSelectedIndex) ? _openingSelectedIndex : -1;
+        var currentIndex = IsCurrentResultIndex(_openingCurrentIndex) ? _openingCurrentIndex : -1;
+        _list.SelectedIndex = selectedIndex;
+        _list.SetProvisionalCurrentIndex(currentIndex);
     }
 
     /// <summary>Unifies the first available result's selection and current state after the popup
@@ -546,6 +553,7 @@ public sealed class CommandPalette: CompositeControlBase
     private void OnClosed()
     {
         _wantsOpen = false;
+        ClearPendingFirstResultSelection();
         Closed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -574,6 +582,7 @@ public sealed class CommandPalette: CompositeControlBase
 
     private void BeginResolution()
     {
+        ClearPendingFirstResultSelection();
         CancelResolution();
         var generation = ++_resolutionGeneration;
         var resolver = Resolver;
@@ -701,41 +710,76 @@ public sealed class CommandPalette: CompositeControlBase
             _popupCoordinator.IsOpen &&
             _list.SelectedIndex < 0)
         {
-            SelectFirstResultAfterLayout(generation);
+            RequestFirstResultSelection(generation);
         }
     }
 
-    /// <summary>Defers refreshed-result selection until the frame already requested by Items has
-    /// arranged the replacement rows. Initial opening still selects synchronously in
-    /// <see cref="OnOpened"/> because its retained rows were arranged while the popup was closed.</summary>
-    private void SelectFirstResultAfterLayout(int resolutionGeneration)
+    /// <summary>Retains refreshed-result selection intent until an attached dispatcher can run it
+    /// after the frame requested by Items has arranged the replacement rows.</summary>
+    private void RequestFirstResultSelection(int resolutionGeneration)
     {
-        var dispatcher = Dispatcher;
+        _pendingFirstSelectionResolutionGeneration = resolutionGeneration;
+        _pendingFirstSelectionSessionGeneration = _popupCoordinator.SessionGeneration;
+        SchedulePendingFirstResultSelection();
+    }
 
-        if (dispatcher is null)
+    private void SchedulePendingFirstResultSelection()
+    {
+        if (_pendingFirstSelectionResolutionGeneration is null ||
+            Dispatcher is not { } dispatcher ||
+            ReferenceEquals(_pendingFirstSelectionDispatcher, dispatcher))
         {
             return;
         }
 
-        var sessionGeneration = _popupCoordinator.SessionGeneration;
-
-        try
+        if (_pendingFirstSelectionDispatcher is { } previousDispatcher)
         {
-            dispatcher.Post(() =>
-            {
-                if (IsCurrentResolution(resolutionGeneration) &&
-                    _popupCoordinator.IsOpen &&
-                    _popupCoordinator.SessionGeneration == sessionGeneration &&
-                    _list.SelectedIndex < 0)
-                {
-                    _ = _list.MoveSelection(Code.Home);
-                }
-            });
+            previousDispatcher.Idle -= OnPendingFirstSelectionIdle;
         }
-        catch (ObjectDisposedException)
+
+        _pendingFirstSelectionDispatcher = dispatcher;
+        dispatcher.Idle += OnPendingFirstSelectionIdle;
+        dispatcher.RequestIdle();
+    }
+
+    private void OnPendingFirstSelectionIdle(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+
+        if (_pendingFirstSelectionResolutionGeneration is not { } resolutionGeneration)
         {
+            ClearPendingFirstResultSelection();
+
+            return;
+        }
+
+        var sessionGeneration = _pendingFirstSelectionSessionGeneration;
+        ClearPendingFirstResultSelection();
+
+        if (IsCurrentResolution(resolutionGeneration) &&
+            _popupCoordinator.IsOpen &&
+            _popupCoordinator.SessionGeneration == sessionGeneration &&
+            _list.SelectedIndex < 0)
+        {
+            _ = _list.MoveSelection(Code.Home);
         }
     }
+
+    private void ClearPendingFirstResultSelection()
+    {
+        if (_pendingFirstSelectionDispatcher is { } dispatcher)
+        {
+            _pendingFirstSelectionDispatcher = null;
+            dispatcher.Idle -= OnPendingFirstSelectionIdle;
+        }
+
+        _pendingFirstSelectionResolutionGeneration = null;
+        _pendingFirstSelectionSessionGeneration = 0;
+    }
+
+    [Pure]
+    private bool IsCurrentResultIndex(int index) => index == -1 || (index >= 0 && index < Items.Count);
 
     private void ApplyCompletion(
         int generation,
