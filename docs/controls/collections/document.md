@@ -443,7 +443,10 @@ breakable whitespace keeps the greedy wrapping behavior above.
 `DocumentInlineControl` contributes one indivisible, exactly one-cell-high
 retained control to that flow. A collapsed inline control remains retained but
 contributes no token or width; making it visible restores its position without
-restructuring the document tree.
+restructuring the document tree. Before the first layout, semantic selection
+includes an inline control's selectable text without treating its unmeasured
+zero height as a contract violation. Once measured, a control taller than one
+cell is rejected and must be represented by `DocumentBlockControl` instead.
 
 ### DocumentTextRun
 
@@ -613,6 +616,10 @@ selection can nevertheless start or end inside one child's semantic text, so a
 button caption or `CodeView` line is not forced to be atomic. Only mapped text
 cells receive `SelectionFace`; borders, checkbox marks, radio marks, gutters,
 quote bars, and other chrome remain unchanged.
+
+The normalized stream is available before measurement. In that detached state,
+inline and block controls contribute their selectable text, while glyph geometry
+remains absent until layout establishes visible cell positions.
 
 When code, an indivisible prose token, or a table is wider than the viewport,
 keyboard extension and pointer edge scrolling translate the projected content by

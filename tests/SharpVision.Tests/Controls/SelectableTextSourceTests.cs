@@ -120,6 +120,29 @@ public sealed class SelectableTextSourceTests
         ]);
     }
 
+    /// <summary>Verifies a reversed stack aggregates semantic text in its visual reading order.</summary>
+    [Fact]
+    public async Task GetSelectableTextSnapshot_WhenStackIsReversed_AggregatesVisualOrderAsync()
+    {
+        // Arrange
+        var stack = new Stack
+        {
+            Reverse = true,
+            Children = { new ControlText("AAAA"), new ControlText("BBBB"), new ControlText("CCCC") }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            stack,
+            new Size(4, 3),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        SelectableTextSnapshot? snapshot = null;
+        await surface.UpdateAsync(() => snapshot = stack.GetSelectableTextSnapshot(), "project reversed text");
+
+        // Assert
+        snapshot.ShouldNotBeNull().Text.ShouldBe("CCCCBBBBAAAA");
+    }
+
     /// <summary>Verifies direct hidden sources retain semantics without claiming visible geometry.</summary>
     [Fact]
     public async Task GetSelectableTextSnapshot_WhenDirectSourceIsNotEffectivelyVisible_RetainsOnlySemanticsAsync()

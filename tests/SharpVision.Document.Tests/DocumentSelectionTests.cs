@@ -95,6 +95,31 @@ public sealed class DocumentSelectionTests
         changes.ShouldBe(0);
     }
 
+    /// <summary>Verifies semantic selection can project an inline control before any layout has
+    /// established its one-row geometry.</summary>
+    [Fact]
+    public void SelectAll_WhenInlineControlHasNotBeenLaidOut_SelectsItsSemanticText()
+    {
+        // Arrange
+        var document = new Document
+        {
+            Blocks =
+            {
+                new DocumentParagraph
+                {
+                    Inlines = { new DocumentInlineControl(new Button("inline")) }
+                }
+            }
+        };
+
+        // Act
+        document.SelectAll();
+
+        // Assert
+        document.SelectedText.ShouldBe("inline");
+        document.GetSelectableTextSnapshot().Text.ShouldBe("inline");
+    }
+
     /// <summary>Verifies invalid endpoint and grapheme boundaries fail before observable state changes.</summary>
     [Fact]
     public void SetSelection_WhenRangeIsInvalid_ThrowsWithoutMutationOrNotification()

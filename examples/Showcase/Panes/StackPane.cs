@@ -125,7 +125,7 @@ internal sealed class StackPane: CompositeControlBase
             new DocSection(
                 "🔄",
                 "Reverse",
-                "Reverse changes geometry, rendering, and default focus traversal without reparenting children.",
+                "Reverse changes geometry, rendering, selectable-text reading order, and default focus traversal without reparenting children.",
                 new DocExample(
                     "Stable source; reversed presentation",
                     "The source order remains First, Second, Third while the visible and keyboard order runs in reverse.",

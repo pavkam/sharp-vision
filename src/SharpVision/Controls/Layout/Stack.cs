@@ -64,6 +64,24 @@ public sealed class Stack: Container
         Reverse && index < Children.Count ? Children[Children.Count - index - 1] : base.NavigationAt(index);
 
     /// <inheritdoc/>
+    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    {
+        ArgumentNullException.ThrowIfNull(children);
+
+        if (!Reverse)
+        {
+            return base.AddSelectableTextChildren(children);
+        }
+
+        for (var index = Children.Count - 1; index >= 0; index--)
+        {
+            children.Add(Children[index]);
+        }
+
+        return true;
+    }
+
+    /// <inheritdoc/>
     internal override ControlBase? HitTestPopupCore(Point point)
     {
         if (!Reverse)

@@ -18,16 +18,16 @@ classDiagram
 
 ## API
 
-| Member                    | Type                | Default                              | Description                                                                                    |
-| ------------------------- | ------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| Inherited `Children`      | `ControlCollection` | Empty                                | Owns controls in stable stack order.                                                           |
-| `Orientation`             | `Orientation`       | `Vertical`                           | Chooses the primary layout axis.                                                               |
-| `Spacing`                 | `int`               | `0`                                  | Non-negative cells inserted between non-collapsed children.                                    |
-| `Reverse`                 | `bool`              | `false`                              | Reverses geometry, rendering, popup priority, and default focus traversal without reparenting. |
-| Inherited `Border`        | `Border`            | Theme `control` profile (borderless) | Public complete local frame authoring, enabled by `EnableChromeAuthoring()`.                   |
-| Inherited `ResetBorder()` | `void`              | —                                    | Returns the local border to Theme ownership.                                                   |
-| Inherited `Shadow`        | `Shadow`            | Theme `control` profile (none)       | Public complete local shadow authoring, enabled by `EnableChromeAuthoring()`.                  |
-| Inherited `ResetShadow()` | `void`              | —                                    | Returns the local shadow to Theme ownership.                                                   |
+| Member                    | Type                | Default                              | Description                                                                                                                   |
+| ------------------------- | ------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| Inherited `Children`      | `ControlCollection` | Empty                                | Owns controls in stable stack order.                                                                                          |
+| `Orientation`             | `Orientation`       | `Vertical`                           | Chooses the primary layout axis.                                                                                              |
+| `Spacing`                 | `int`               | `0`                                  | Non-negative cells inserted between non-collapsed children.                                                                   |
+| `Reverse`                 | `bool`              | `false`                              | Reverses geometry, rendering, selectable-text reading order, popup priority, and default focus traversal without reparenting. |
+| Inherited `Border`        | `Border`            | Theme `control` profile (borderless) | Public complete local frame authoring, enabled by `EnableChromeAuthoring()`.                                                  |
+| Inherited `ResetBorder()` | `void`              | —                                    | Returns the local border to Theme ownership.                                                                                  |
+| Inherited `Shadow`        | `Shadow`            | Theme `control` profile (none)       | Public complete local shadow authoring, enabled by `EnableChromeAuthoring()`.                                                 |
+| Inherited `ResetShadow()` | `void`              | —                                    | Returns the local shadow to Theme ownership.                                                                                  |
 
 `Children` rejects nulls, duplicates, cycles, and controls that already have a
 parent. `Orientation` defaults to vertical and accepts vertical or horizontal.
@@ -37,7 +37,8 @@ children consume neither a track nor adjacent spacing. `Reverse` defaults to
 `false`; setting it reverses geometry, rendering, and default focus navigation
 consistently, without reparenting any child. Elevated popup descendants follow
 that same order, so reversing the stack also reverses popup drawing and hit
-priority.
+priority. Selectable-text aggregation follows the same visual reading order, so
+semantic offsets, pointer geometry, and copied text remain aligned.
 
 ## Behavior
 

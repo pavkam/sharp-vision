@@ -14,6 +14,27 @@ using Document = Controls.Documents.Document;
 /// <summary>Verifies Markdown-created form controls retain ordinary mounted behavior.</summary>
 public sealed class MarkdownDocumentReaderSurfaceTests
 {
+    /// <summary>Verifies parser-created inline form controls contribute semantic text before the
+    /// document has ever been measured or mounted.</summary>
+    [Fact]
+    public void GetSelectableTextSnapshot_WhenTaskListHasNotBeenLaidOut_ReturnsTaskText()
+    {
+        // Arrange
+        var document = new Document();
+        _ = document.Load(
+            "- [ ] task",
+            new MarkdownDocumentReader(new MarkdownOptions
+            {
+                Extensions = MarkdownExtension.TaskLists
+            }));
+
+        // Act
+        var snapshot = document.GetSelectableTextSnapshot();
+
+        // Assert
+        snapshot.Text.ShouldBe("-  task");
+    }
+
     /// <summary>Verifies parsed radio items become one mutually exclusive retained group.</summary>
     [Fact]
     public void Load_WhenRadioListIsParsed_MountsOneInteractiveExclusiveGroup()

@@ -878,7 +878,11 @@ internal sealed class DocumentLayout
                         break;
                     }
 
-                    if (control.Control.DesiredSize.Height != 1)
+                    // A detached control has no committed measurement yet, so its default zero
+                    // height cannot establish that it violates the one-row inline contract.
+                    // Semantic projection must still include its selectable text before layout;
+                    // once measured, any genuinely multi-row control remains invalid here.
+                    if (control.Control.DesiredSize.Height > 1)
                     {
                         throw new InvalidOperationException(
                             "An inline control must resolve to exactly one cell of height. Use DocumentBlockControl for taller content.");

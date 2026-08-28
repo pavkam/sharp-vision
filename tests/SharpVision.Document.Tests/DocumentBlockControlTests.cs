@@ -171,6 +171,32 @@ public sealed class DocumentBlockControlTests
         render.Row(0).ShouldEndWith("now");
     }
 
+    /// <summary>Verifies semantic projection tolerates only the unmeasured zero-height state and
+    /// still rejects an inline control whose measured contract requires multiple rows.</summary>
+    [Fact]
+    public void Layout_WhenInlineControlMeasuresTallerThanOneCell_Throws()
+    {
+        // Arrange
+        var button = new Button("Tall") { Height = Length.Cells(2) };
+        var document = new Document
+        {
+            Blocks =
+            {
+                new DocumentParagraph
+                {
+                    Inlines = { new DocumentInlineControl(button) }
+                }
+            }
+        };
+
+        // Act
+        var exception = Should.Throw<InvalidOperationException>(
+            () => new LayoutEngine().Layout(document, new Size(20, 3)));
+
+        // Assert
+        exception.Message.ShouldContain("exactly one cell of height");
+    }
+
     /// <summary>Verifies a block control receives its natural height between text blocks.</summary>
     [Fact]
     public void Layout_WhenBlockControlIsUsed_PreservesItsNaturalSizeAndBlockFlow()
