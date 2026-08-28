@@ -642,6 +642,47 @@ public sealed class ListViewTests
         delegated.VerticalOffset.ShouldBeGreaterThan(0);
     }
 
+    /// <summary>Verifies owner-controlled popup session state can seed and restore current without
+    /// changing public selection, and scrolls only once the list is available.</summary>
+    [Fact]
+    public void SetProvisionalCurrentIndex_WhenListIsUnavailable_ChangesOnlyCurrent()
+    {
+        var control = CreateNavigationList(ListSelectionMode.Single);
+        control.SelectedIndex = 1;
+        control.IsEnabled = false;
+        var offset = control.VerticalOffset;
+
+        control.SetProvisionalCurrentIndex(4);
+
+        control.ActiveIndex.ShouldBe(4);
+        control.SelectedIndex.ShouldBe(1);
+        control.VerticalOffset.ShouldBe(offset);
+
+        control.IsEnabled = true;
+        control.SetProvisionalCurrentIndex(8);
+
+        control.ActiveIndex.ShouldBe(8);
+        control.SelectedIndex.ShouldBe(1);
+        control.VerticalOffset.ShouldBeGreaterThan(offset);
+    }
+
+    /// <summary>Verifies provisional current rejects an invalid negative index and clamps a stale
+    /// high opening index after collection shrinkage.</summary>
+    [Fact]
+    public void SetProvisionalCurrentIndex_WhenIndexIsStale_ValidatesAndClampsSafely()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectedIndex = 1;
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.SetProvisionalCurrentIndex(-2));
+        control.ActiveIndex.ShouldBe(1);
+
+        control.SetProvisionalCurrentIndex(99);
+
+        control.ActiveIndex.ShouldBe(2);
+        control.SelectedIndex.ShouldBe(1);
+    }
+
     /// <summary>Verifies delegated selection navigation has the same initial, repeated,
     /// modifier, selection event, and bring-into-view behavior as ordinary routed ListView input.</summary>
     [Fact]

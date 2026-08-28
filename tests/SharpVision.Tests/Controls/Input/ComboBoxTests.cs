@@ -340,6 +340,87 @@ public sealed class ComboBoxTests
         }
     }
 
+    /// <summary>Verifies opening seeds current from the committed ComboBox selection before any
+    /// additional layout pass, so immediate Enter accepts that row rather than the stale current.</summary>
+    [Fact]
+    public void Dispatch_WhenOpenedFromNonzeroSelectionAndEnterIsImmediate_AcceptsOpeningRow()
+    {
+        var box = new ComboBox
+        {
+            Items = ["Zero", "One", "Two"],
+            SelectedIndex = 2,
+            IsOpen = true
+        };
+        var list = box.GetDropDownList();
+        var enter = Router.Route(box, Events.Key, Key(Code.Enter));
+
+        enter.IsHandled.ShouldBeTrue();
+        box.IsOpen.ShouldBeFalse();
+        box.SelectedIndex.ShouldBe(2);
+        list.SelectedIndex.ShouldBe(2);
+        list.ActiveIndex.ShouldBe(2);
+    }
+
+    /// <summary>Verifies an old pointer invocation cannot accept or close a newer decision made
+    /// reentrantly from selection publication.</summary>
+    [Theory]
+    [InlineData("replace-selection")]
+    [InlineData("reopen")]
+    public async Task Dispatch_WhenPointerSelectionReenters_DoesNotAcceptNewerSessionAsync(string mutation)
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var box = new ComboBox
+            {
+                Height = Length.Cells(1),
+                Items = ["Zero", "One", "Two"],
+                SelectedIndex = 1,
+                DropDownHeight = 3
+            };
+            var size = new Size(12, 6);
+            new LayoutEngine().Layout(box, size);
+            box.Attach(dispatcher);
+            using var focus = new FocusManager(box);
+            using var pointer = new PointerManager(box);
+            focus.Focus(box).ShouldBeTrue();
+            box.IsOpen = true;
+            new LayoutEngine().Layout(box, size);
+            var list = box.GetDropDownList();
+            var reentered = false;
+            box.SelectionChanged += (_, _) =>
+            {
+                if (reentered)
+                {
+                    return;
+                }
+
+                reentered = true;
+
+                if (mutation == "reopen")
+                {
+                    box.IsOpen = false;
+                    box.SelectedIndex = 2;
+                    box.IsOpen = true;
+                }
+                else
+                {
+                    box.SelectedIndex = 2;
+                }
+            };
+
+            _ = pointer.Dispatch(Pointer(new Point(list.Bounds.X + 1, list.Bounds.Y), PointerAction.Press));
+            _ = pointer.Dispatch(Pointer(new Point(list.Bounds.X + 1, list.Bounds.Y), PointerAction.Release));
+
+            reentered.ShouldBeTrue();
+            box.SelectedIndex.ShouldBe(2);
+            list.SelectedIndex.ShouldBe(2);
+            list.ActiveIndex.ShouldBe(2);
+            box.IsOpen.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies command-modified Tab leaves an open ComboBox unchanged for shortcut
     /// routing instead of closing without traversal.</summary>
     [Theory]
@@ -777,8 +858,10 @@ public sealed class ComboBoxTests
     }
 
     /// <summary>Verifies pointer input reaches a ListView item through the framed popup and returns focus after committing the choice.</summary>
-    [Fact]
-    public async Task Dispatch_WhenPopupItemIsClicked_CommitsChoiceClosesAndRestoresFocusAsync()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public async Task Dispatch_WhenPopupItemIsClicked_CommitsChoiceClosesAndRestoresFocusAsync(int openingSelectedIndex)
     {
         await using var dispatcher = Dispatcher.Start();
 
@@ -788,7 +871,7 @@ public sealed class ComboBoxTests
             {
                 Height = Length.Cells(1),
                 Items = ["Small", "Large"],
-                SelectedIndex = 1,
+                SelectedIndex = openingSelectedIndex,
                 DropDownHeight = 2
             };
             var size = new Size(12, 6);

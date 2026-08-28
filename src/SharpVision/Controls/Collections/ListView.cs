@@ -1521,6 +1521,34 @@ public sealed class ListView: ItemsControl
         return eventArgs.IsKeyDown && MoveCurrent(eventArgs.Stroke.Code);
     }
 
+    /// <summary>Seeds or restores owner-controlled provisional current state without committing
+    /// public selection.</summary>
+    /// <param name="index">The requested current index, or -1 for no current item. A stale index
+    /// beyond the collection is clamped to its last item.</param>
+    /// <remarks>This seam intentionally bypasses effective item availability because popup owners
+    /// begin and cancel sessions while their retained list is collapsed or otherwise unavailable.
+    /// It scrolls only when the list has a visible, enabled viewport and the target is available.</remarks>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is less than -1.</exception>
+    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    internal void SetProvisionalCurrentIndex(int index)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(index, -1);
+        VerifyMutable();
+
+        var current = _items.Count == 0 ? -1 : Math.Min(index, _items.Count - 1);
+        SetActiveIndex(current);
+
+        if (current >= 0 &&
+            Viewport.Height > 0 &&
+            EffectiveIsVisible &&
+            EffectiveIsEnabled &&
+            IsIndexAvailable(current))
+        {
+            _ = BringIntoView(current);
+        }
+    }
+
     /// <summary>Activates the owned current item without transferring focus to that item.</summary>
     /// <param name="cause">The semantic activation source.</param>
     /// <param name="key">The activating key, or null for non-key activation.</param>

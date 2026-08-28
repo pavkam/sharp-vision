@@ -569,7 +569,17 @@ public sealed class ComboBoxSurfaceTests
         combo.IsOpen.ShouldBeFalse();
         combo.SelectedIndex.ShouldBe(1);
         list.SelectedIndex.ShouldBe(1);
+        list.ActiveIndex.ShouldBe(1);
         surface.Application.Modality.Active.ShouldBeNull();
+
+        await surface.UpdateAsync(() => combo.IsEnabled = true, "re-enable ComboBox");
+        await surface.UpdateAsync(() => combo.IsOpen = true, "reopen ComboBox");
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        combo.IsOpen.ShouldBeFalse();
+        combo.SelectedIndex.ShouldBe(1);
+        list.SelectedIndex.ShouldBe(1);
+        list.ActiveIndex.ShouldBe(1);
     }
 
     /// <summary>Verifies a ComboBox inherits disabled state from an ancestor and keeps stable

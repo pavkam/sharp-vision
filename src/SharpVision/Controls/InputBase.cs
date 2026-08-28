@@ -786,6 +786,11 @@ public abstract class InputBase: ControlBase
         ? coordinator.TransitionVersion
         : throw new InvalidOperationException("The popup capability is not enabled.");
 
+    /// <summary>Gets the current owned-popup navigation-session identity for stale-continuation validation.</summary>
+    internal ulong PopupSessionGeneration => _popupCoordinator is { } coordinator
+        ? coordinator.SessionGeneration
+        : throw new InvalidOperationException("The popup capability is not enabled.");
+
     /// <summary>Called after the owned popup opens.</summary>
     protected virtual void OnDropDownOpened()
     {
