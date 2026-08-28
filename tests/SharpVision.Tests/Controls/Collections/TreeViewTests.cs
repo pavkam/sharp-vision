@@ -859,6 +859,130 @@ public sealed partial class TreeViewTests
         propertyChanges.ShouldBe(2);
     }
 
+    /// <summary>Verifies adding a child publishes the effective aggregate check transition once.</summary>
+    [Fact]
+    public void Children_WhenAddedChildChangesAggregateCheckState_NotifiesParent()
+    {
+        // Arrange
+        var parent = new TreeViewItem { Header = "Parent", IsCheckable = true };
+        parent.Children.Add(new TreeViewItem { Header = "First", IsCheckable = true, IsChecked = true });
+        var changes = new List<CheckChangedEventArgs>();
+        var propertyChanges = 0;
+        parent.CheckStateChanged += (_, eventArgs) => changes.Add(eventArgs);
+        parent.PropertyChanged += (_, eventArgs) =>
+            propertyChanges += eventArgs.PropertyName == nameof(TreeViewItem.IsChecked) ? 1 : 0;
+
+        // Act
+        parent.Children.Add(new TreeViewItem { Header = "Second", IsCheckable = true, IsChecked = false });
+
+        // Assert
+        parent.IsChecked.ShouldBeNull();
+        propertyChanges.ShouldBe(1);
+        var change = changes.ShouldHaveSingleItem();
+        change.Previous.ShouldBe(true);
+        change.Current.ShouldBeNull();
+    }
+
+    /// <summary>Verifies removing a child publishes the effective aggregate check transition once.</summary>
+    [Fact]
+    public void Children_WhenRemovedChildChangesAggregateCheckState_NotifiesParent()
+    {
+        // Arrange
+        var first = new TreeViewItem { Header = "First", IsCheckable = true, IsChecked = true };
+        var second = new TreeViewItem { Header = "Second", IsCheckable = true, IsChecked = false };
+        var parent = new TreeViewItem { Header = "Parent", IsCheckable = true, Children = { first, second } };
+        var changes = new List<CheckChangedEventArgs>();
+        parent.CheckStateChanged += (_, eventArgs) => changes.Add(eventArgs);
+
+        // Act
+        _ = parent.Children.Remove(second);
+
+        // Assert
+        parent.IsChecked.ShouldBe(true);
+        var change = changes.ShouldHaveSingleItem();
+        change.Previous.ShouldBeNull();
+        change.Current.ShouldBe(true);
+    }
+
+    /// <summary>Verifies replacing a child uses the same aggregate check-state transaction as
+    /// insertion and removal.</summary>
+    [Fact]
+    public void Children_WhenReplacementChangesAggregateCheckState_NotifiesParent()
+    {
+        // Arrange
+        var first = new TreeViewItem { Header = "First", IsCheckable = true, IsChecked = true };
+        var second = new TreeViewItem { Header = "Second", IsCheckable = true, IsChecked = false };
+        var parent = new TreeViewItem { Header = "Parent", IsCheckable = true, Children = { first, second } };
+        var changes = new List<CheckChangedEventArgs>();
+        parent.CheckStateChanged += (_, eventArgs) => changes.Add(eventArgs);
+
+        // Act
+        parent.Children[1] = new TreeViewItem { Header = "Replacement", IsCheckable = true, IsChecked = true };
+
+        // Assert
+        parent.IsChecked.ShouldBe(true);
+        var change = changes.ShouldHaveSingleItem();
+        change.Previous.ShouldBeNull();
+        change.Current.ShouldBe(true);
+    }
+
+    /// <summary>Verifies the first-child state callback observes the child in the flattened tree.</summary>
+    [Fact]
+    public void Children_WhenFirstChildMakesParentLoaded_RealizesBeforeStateCallback()
+    {
+        // Arrange
+        var tree = new TreeView();
+        var parent = new TreeViewItem("Parent");
+        var child = new TreeViewItem("Child");
+        tree.Items.Add(parent);
+        parent.ChildStateChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.Current == TreeViewChildState.Loaded)
+            {
+                tree.BringItemIntoView(child).ShouldBeTrue();
+            }
+        };
+
+        // Act and assert
+        Should.NotThrow(() => parent.Children.Add(child));
+    }
+
+    /// <summary>Verifies a child-state transition and its structural realization share one rebuild.</summary>
+    [Fact]
+    public void Children_WhenFirstChildChangesParentState_RebuildsOwnedTreeOnce()
+    {
+        // Arrange
+        var tree = new TreeView();
+        var parent = new TreeViewItem("Parent");
+        tree.Items.Add(parent);
+        tree.OwnedItemsWalkCount = 0;
+
+        // Act
+        parent.Children.Add(new TreeViewItem("Child"));
+
+        // Assert
+        tree.OwnedItemsWalkCount.ShouldBe(1);
+    }
+
+    /// <summary>Verifies selection repair after removing the last child observes the parent's final leaf state.</summary>
+    [Fact]
+    public void Children_WhenSelectedLastChildIsRemoved_SelectionCallbackObservesLeafState()
+    {
+        // Arrange
+        var child = new TreeViewItem("Child");
+        var parent = new TreeViewItem("Parent") { Children = { child } };
+        var tree = new TreeView { Items = { parent } };
+        tree.SelectItem(child);
+        TreeViewChildState? observed = null;
+        tree.SelectionChanged += (_, _) => observed = parent.ChildState;
+
+        // Act
+        _ = parent.Children.Remove(child);
+
+        // Assert
+        observed.ShouldBe(TreeViewChildState.Leaf);
+    }
+
     /// <summary>Verifies a nested checkability transition suppresses the older ancestor snapshot.</summary>
     [Fact]
     public void IsCheckable_WhenPropertyCallbackReenters_SuppressesSupersededAncestorEvent()

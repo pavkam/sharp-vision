@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Collections;
 
+using System.Runtime.ExceptionServices;
+
 using CollectionAccess = JetBrains.Annotations.CollectionAccessAttribute;
 using CollectionAccessType = JetBrains.Annotations.CollectionAccessType;
 
@@ -111,6 +113,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
             }
 
             ValidateCandidate(value);
+            var checkStateChange = BeginReplacementCheckStateChange(old, value);
 
             old.ParentCollection = null;
             old.Children.Owner = null;
@@ -121,7 +124,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
             _ = _itemSet.Add(value);
             value.ParentCollection = this;
             value.Children.Owner = Owner;
-            Owner?.NotifyStructureChanged();
+            CompleteChildMembershipChange(checkStateChange);
         }
     }
 
@@ -163,13 +166,13 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
         }
 
         ValidateCandidate(item);
+        var checkStateChange = BeginInsertionCheckStateChange(item);
 
         _items.Insert(index, item);
         _ = _itemSet.Add(item);
         item.ParentCollection = this;
         item.Children.Owner = Owner;
-        Owner?.NotifyStructureChanged();
-        ParentItem?.OnChildCollectionStructureChanged();
+        CompleteChildMembershipChange(checkStateChange);
     }
 
     // Shared by Add/Insert/the indexer setter: the item is always detached at this
@@ -236,34 +239,40 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
         Owner?.VerifyTreeMutable();
         VerifyNotLoaderOwned();
 
-        if (!_items.Remove(item))
+        var index = _items.IndexOf(item);
+
+        if (index < 0)
         {
             return false;
         }
 
+        var checkStateChange = BeginRemovalCheckStateChange(item);
+        _items.RemoveAt(index);
         _ = _itemSet.Remove(item);
         item.ParentCollection = null;
         item.Children.Owner = null;
         item.CancelPendingChildLoadSubtree();
-        Owner?.NotifyStructureChanged();
-        ParentItem?.OnChildCollectionStructureChanged();
+        CompleteChildMembershipChange(checkStateChange);
         return true;
     }
 
     /// <summary>Removes an item whose own public disposal already validated the mutation context.</summary>
     internal void RemoveForDisposal(TreeViewItem item)
     {
-        if (!_items.Remove(item))
+        var index = _items.IndexOf(item);
+
+        if (index < 0)
         {
             return;
         }
 
+        var checkStateChange = BeginRemovalCheckStateChange(item);
+        _items.RemoveAt(index);
         _ = _itemSet.Remove(item);
         item.ParentCollection = null;
         item.Children.Owner = null;
         item.CancelPendingChildLoadSubtree();
-        Owner?.NotifyStructureChanged();
-        ParentItem?.OnChildCollectionStructureChanged();
+        CompleteChildMembershipChange(checkStateChange);
     }
 
     /// <summary>Removes the owned tree view item at a position.</summary>
@@ -283,13 +292,13 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
         }
 
         var item = _items[index];
+        var checkStateChange = BeginRemovalCheckStateChange(item);
         _items.RemoveAt(index);
         _ = _itemSet.Remove(item);
         item.ParentCollection = null;
         item.Children.Owner = null;
         item.CancelPendingChildLoadSubtree();
-        Owner?.NotifyStructureChanged();
-        ParentItem?.OnChildCollectionStructureChanged();
+        CompleteChildMembershipChange(checkStateChange);
     }
 
     /// <summary>Moves one owned tree view item to a different position, preserving its identity.</summary>
@@ -350,6 +359,8 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
             return;
         }
 
+        var checkStateChange = BeginClearCheckStateChange();
+
         foreach (var item in _items)
         {
             item.ParentCollection = null;
@@ -359,8 +370,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
 
         _items.Clear();
         _itemSet.Clear();
-        Owner?.NotifyStructureChanged();
-        ParentItem?.OnChildCollectionStructureChanged();
+        CompleteChildMembershipChange(checkStateChange);
     }
 
     /// <summary>Releases every child when its semantic parent is being disposed.</summary>
@@ -386,11 +396,13 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
     /// disposed, because eviction disposal is the commit engine's own responsibility.
     /// </summary>
     /// <param name="items">The non-null final ordered content.</param>
+    /// <param name="notifyOwner">Whether to rebuild the owning tree immediately. A loader may
+    /// defer this until its final child-state transition.</param>
     /// <exception cref="ArgumentNullException"><paramref name="items"/> is null.</exception>
     /// <exception cref="InvalidOperationException">An attached owner is mutated off its dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
     [CollectionAccess(CollectionAccessType.UpdatedContent | CollectionAccessType.ModifyExistingContent)]
-    internal void LoaderReplace(IReadOnlyList<TreeViewItem> items)
+    internal void LoaderReplace(IReadOnlyList<TreeViewItem> items, bool notifyOwner = true)
     {
         ArgumentNullException.ThrowIfNull(items);
         Owner?.VerifyTreeMutable();
@@ -412,7 +424,91 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
             item.Children.Owner = Owner;
         }
 
-        Owner?.NotifyStructureChanged();
+        if (notifyOwner)
+        {
+            Owner?.NotifyStructureChanged();
+        }
+    }
+
+    private List<(TreeViewItem Coordinator, long Version, TreeViewItem Item, bool? State)>?
+        BeginInsertionCheckStateChange(TreeViewItem item)
+    {
+        if (ParentItem is not { IsCheckable: true } parent || !item.IsCheckable)
+        {
+            return null;
+        }
+
+        var incoming = item.GetEffectiveCheckState();
+        var previous = parent.GetEffectiveCheckState();
+
+        // Adding one more child cannot resolve an existing mixed aggregate. A matching child also
+        // cannot change a definite aggregate. Avoid opening an ancestor-wide transaction for these
+        // overwhelmingly common construction edits; a deep chain must remain linear to build.
+        return previous is null || previous == incoming
+            ? null
+            : parent.BeginChildMembershipCheckStateChange();
+    }
+
+    private List<(TreeViewItem Coordinator, long Version, TreeViewItem Item, bool? State)>?
+        BeginRemovalCheckStateChange(TreeViewItem item)
+    {
+        if (ParentItem is not { IsCheckable: true } parent || !item.IsCheckable)
+        {
+            return null;
+        }
+
+        var previous = parent.GetEffectiveCheckState();
+        var hasRemainingCheckableChild = _items.Any(
+            candidate => !ReferenceEquals(candidate, item) && candidate.IsCheckable);
+
+        return (hasRemainingCheckableChild && previous is not null) ||
+            (!hasRemainingCheckableChild && previous == parent.OwnCheckState)
+            ? null
+            : parent.BeginChildMembershipCheckStateChange();
+    }
+
+    private List<(TreeViewItem Coordinator, long Version, TreeViewItem Item, bool? State)>?
+        BeginReplacementCheckStateChange(TreeViewItem oldItem, TreeViewItem newItem)
+    {
+        return ParentItem is not { IsCheckable: true } parent ||
+            (!oldItem.IsCheckable && !newItem.IsCheckable) ||
+            (oldItem.IsCheckable && newItem.IsCheckable &&
+                oldItem.GetEffectiveCheckState() == newItem.GetEffectiveCheckState())
+            ? null
+            : parent.BeginChildMembershipCheckStateChange();
+    }
+
+    private List<(TreeViewItem Coordinator, long Version, TreeViewItem Item, bool? State)>?
+        BeginClearCheckStateChange()
+    {
+        return ParentItem is not { IsCheckable: true } parent ||
+            parent.GetEffectiveCheckState() == parent.OwnCheckState
+            ? null
+            : parent.BeginChildMembershipCheckStateChange();
+    }
+
+    private void CompleteChildMembershipChange(
+        List<(TreeViewItem Coordinator, long Version, TreeViewItem Item, bool? State)>? checkStateChange)
+    {
+        ExceptionDispatchInfo? failure = null;
+        var previousChildState = ParentItem?.ChildState;
+        ExceptionAggregation.Capture(() => ParentItem?.OnChildCollectionStructureChanged(), ref failure);
+
+        // A ChildState transition already realizes the final membership before publishing its
+        // callbacks. Mutations that leave ChildState unchanged still need their own rebuild.
+        if (ParentItem is null || previousChildState == ParentItem.ChildState)
+        {
+            ExceptionAggregation.Capture(() => Owner?.NotifyStructureChanged(), ref failure);
+        }
+
+        if (checkStateChange is not null)
+        {
+            ExceptionAggregation.Capture(
+                () => ParentItem?.PublishChildMembershipCheckStateChange(checkStateChange),
+                ref failure);
+        }
+
+        failure?.Throw();
     }
 
     /// <inheritdoc/>

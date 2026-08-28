@@ -7,6 +7,68 @@ namespace SharpVision.Tests.Controls.Collections;
 /// generation-guarded cancellation, atomic commits, validation, and admission control.</summary>
 public sealed partial class TreeViewTests
 {
+    /// <summary>Verifies a loaded-state callback observes the newly committed child in the final
+    /// flattened presentation rather than an intermediate loading tree.</summary>
+    [Fact]
+    public async Task ChildLoad_WhenLoadedCallbackBringsChildIntoView_ObservesRealizedChildAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null, new TreeViewChildDescription("child", "Child"));
+        var root = new TreeViewItem("Root") { ChildSource = source };
+        var tree = new TreeView { Items = { root } };
+        var callbackCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        root.ChildStateChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.Current == TreeViewChildState.Loaded)
+            {
+                tree.BringItemIntoView(root.Children[0]).ShouldBeTrue();
+                callbackCompleted.SetResult();
+            }
+        };
+
+        // Act
+        await dispatcher.InvokeAsync(() => tree.Attach(dispatcher), TestContext.Current.CancellationToken);
+        await callbackCompleted.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        // Assert
+        root.Children.Count.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a loaded child snapshot publishes the resulting aggregate check-state
+    /// transition on its checkable parent.</summary>
+    [Fact]
+    public async Task ChildLoad_WhenMembershipChangesAggregateCheckState_NotifiesParentAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null, new TreeViewChildDescription("child", "Child")
+        {
+            IsCheckable = true,
+            InitialCheckState = false
+        });
+        var root = new TreeViewItem("Root") { ChildSource = source, IsCheckable = true, IsChecked = true };
+        var tree = new TreeView { Items = { root } };
+        var changed = new TaskCompletionSource<CheckChangedEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        root.CheckStateChanged += (_, eventArgs) => _ = changed.TrySetResult(eventArgs);
+
+        // Act
+        await dispatcher.InvokeAsync(() => tree.Attach(dispatcher), TestContext.Current.CancellationToken);
+        await TreeViewChildLoadWait.UntilAsync(
+            root,
+            () => root.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+        var change = await changed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        // Assert
+        root.IsChecked.ShouldBe(false);
+        change.Previous.ShouldBe(true);
+        change.Current.ShouldBe(false);
+    }
+
     /// <summary>Verifies the deferred attach callback from one dispatcher cannot start a request
     /// after the item migrates, while the new attachment's callback still starts exactly once.</summary>
     [Fact]
@@ -599,6 +661,52 @@ public sealed partial class TreeViewTests
         item.ChildState.ShouldBe(TreeViewChildState.Leaf);
         item.Children.ShouldBeEmpty();
         previousChild.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies source eviction publishes the aggregate check-state transition caused by
+    /// removing the loader-owned child snapshot.</summary>
+    [Fact]
+    public async Task ChildSource_WhenLoaderChildrenAreEvicted_NotifiesAggregateCheckStateAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null, new TreeViewChildDescription("a", "A")
+        {
+            IsCheckable = true,
+            InitialCheckState = false,
+            Presence = TreeViewChildPresence.Leaf
+        });
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root")
+            {
+                ChildSource = source,
+                IsCheckable = true,
+                IsChecked = true
+            };
+            var tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        CheckChangedEventArgs? change = null;
+        item.CheckStateChanged += (_, eventArgs) => change = eventArgs;
+
+        // Act
+        await dispatcher.InvokeAsync(() => { item.ChildSource = null; }, TestContext.Current.CancellationToken);
+
+        // Assert
+        item.IsChecked.ShouldBe(true);
+        _ = change.ShouldNotBeNull();
+        change.Previous.ShouldBe(false);
+        change.Current.ShouldBe(true);
     }
 
     /// <summary>Verifies a failed reload retains the children an earlier successful load already

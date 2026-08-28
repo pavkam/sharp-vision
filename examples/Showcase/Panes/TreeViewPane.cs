@@ -147,7 +147,7 @@ internal sealed class TreeViewPane: CompositeControlBase
                 "a single item to override it. Brackets reserve three cells and shift the header " +
                 "accordingly; every cell of the mark is clickable.",
                 new DocExample("Square, Brackets, and Tick",
-                    "Each tree checks the same nodes. Click any mark cell to toggle it.",
+                    "Each tree checks the same nodes. Child membership and check changes keep every ancestor's aggregate state synchronized.",
                     markTrees)),
             CreateAsyncSection(),
             new DocSection("\U0001f4dd", "Affixes",

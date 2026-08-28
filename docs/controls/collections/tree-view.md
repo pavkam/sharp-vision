@@ -192,11 +192,13 @@ no disposed entry remains reachable through `Items` or `Children`.
 Setting `IsChecked` on a checkable parent propagates to its checkable
 descendants, and a parent becomes indeterminate when its checkable children do
 not agree. Check-state and checkability changes share one transaction version at
-the hierarchy root. Every affected item's property and typed callbacks are
-revalidated against that version and its current attachment, so a nested change
-or removal cannot publish the remainder of an obsolete snapshot. `CheckGlyphs`
-keeps the resolved mark layout while replacing only its glyphs, so the two
-surfaces cannot disagree about which glyphs a row draws.
+the hierarchy root. Adding, replacing, removing, clearing, or directly disposing
+a child uses that same transaction and publishes every changed ancestor's
+`IsChecked` property and `CheckStateChanged` event. Every affected callback is
+revalidated against the shared version and current attachment, so a nested
+change or removal cannot publish the remainder of an obsolete snapshot.
+`CheckGlyphs` keeps the resolved mark layout while replacing only its glyphs, so
+the two surfaces cannot disagree about which glyphs a row draws.
 
 A checkable row reserves its indent, one disclosure cell, one gap, the mark, and
 one leading space before the header, and its measured width matches those cells
@@ -308,7 +310,9 @@ cycle with an ancestor, or a header containing a terminal control character is
 rejected without mutating `Children` or `ChildState`, and the rejection surfaces
 through `LastChildLoadError`. A stable key reused across a reload keeps the same
 materialized `TreeViewItem` instance, so its `IsExpanded`, checked, and selected
-state survive the reload.
+state survive the reload. A successful load publishes final `ChildState`,
+flattened realization, selection repair, and aggregate check state in that
+order; callbacks never observe a newly loaded child outside the realized tree.
 
 `ChildSource` reassignment - including to null - cancels a pending request and
 evicts (detaches and disposes) any children the loader previously committed.

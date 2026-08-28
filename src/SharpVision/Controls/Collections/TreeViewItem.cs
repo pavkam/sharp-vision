@@ -400,6 +400,10 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
                     "directly. Clear Children first.");
             }
 
+            var checkStateChange = Children.IsLoaderOwned && IsCheckable
+                ? BeginChildMembershipCheckStateChange()
+                : null;
+
             if (Children.IsLoaderOwned)
             {
                 CancelPendingChildLoadSubtree();
@@ -407,17 +411,33 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
             }
 
             field = value;
+            ExceptionDispatchInfo? callbackFailure = null;
 
             if (value is null)
             {
                 Children.IsLoaderOwned = false;
-                SetChildState(Children.Count > 0 ? TreeViewChildState.Loaded : TreeViewChildState.Leaf);
+                ExceptionAggregation.Capture(
+                    () => SetChildState(Children.Count > 0
+                        ? TreeViewChildState.Loaded
+                        : TreeViewChildState.Leaf),
+                    ref callbackFailure);
             }
             else
             {
                 Children.IsLoaderOwned = true;
-                SetChildState(TreeViewChildState.Unloaded);
+                ExceptionAggregation.Capture(
+                    () => SetChildState(TreeViewChildState.Unloaded),
+                    ref callbackFailure);
             }
+
+            if (checkStateChange is not null)
+            {
+                ExceptionAggregation.Capture(
+                    () => PublishChildMembershipCheckStateChange(checkStateChange),
+                    ref callbackFailure);
+            }
+
+            callbackFailure?.Throw();
         }
     }
 
@@ -1151,6 +1171,78 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         }
     }
 
+    /// <summary>Captures the effective check state of this item and every semantic ancestor before
+    /// child membership changes, and advances their shared transaction generation.</summary>
+    internal List<(TreeViewItem Coordinator, long Version, TreeViewItem Item, bool? State)>
+        BeginChildMembershipCheckStateChange()
+    {
+        var coordinator = GetCheckStateCoordinator();
+        var version = ++coordinator._checkStateVersion;
+        var affected = new List<TreeViewItem>();
+
+        for (var item = this; item is not null; item = item.ParentCollection?.ParentItem)
+        {
+            affected.Add(item);
+        }
+
+        var evaluated = EvaluateStates(affected);
+        var states = new List<(TreeViewItem, long, TreeViewItem, bool?)>(affected.Count);
+
+        foreach (var item in affected)
+        {
+            states.Add((coordinator, version, item, evaluated[item]));
+        }
+
+        return states;
+    }
+
+    /// <summary>Publishes still-current effective ancestor check-state changes after child
+    /// membership, child state, and flattened realization have committed.</summary>
+    internal void PublishChildMembershipCheckStateChange(
+        List<(TreeViewItem Coordinator, long Version, TreeViewItem Item, bool? State)> states)
+    {
+        ArgumentNullException.ThrowIfNull(states);
+        var affected = new List<TreeViewItem>(states.Count);
+
+        foreach (var state in states)
+        {
+            affected.Add(state.Item);
+        }
+
+        var currentStates = EvaluateStates(affected);
+
+        foreach (var (coordinator, version, item, previous) in states)
+        {
+            if (!IsCheckStateTransactionCurrent(coordinator, version, item))
+            {
+                continue;
+            }
+
+            var current = currentStates[item];
+            if (previous == current)
+            {
+                continue;
+            }
+
+            item.InvalidateVisualState();
+            item.NotifyPropertyChanged(nameof(IsChecked), InvalidationImpact.Render);
+
+            if (!IsCheckStateTransactionCurrent(coordinator, version, item))
+            {
+                continue;
+            }
+
+            item.CheckStateChanged?.Invoke(
+                item,
+                new CheckChangedEventArgs(previous, current, ActivationCause.Programmatic));
+
+            if (IsCheckStateTransactionCurrent(coordinator, version, item))
+            {
+                item.FindTreeView()?.NotifyCheckStateChanged(item);
+            }
+        }
+    }
+
     #region Asynchronous child loading
 
     /// <summary>Gets the most recently started load-observation task. Exposed only so a test can
@@ -1226,6 +1318,14 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         ChildState = value;
         var version = ++_childStateVersion;
         ExceptionDispatchInfo? failure = null;
+
+        if (notifyTree && IsCurrentChildState(version, value))
+        {
+            // Realization and selection repair must already reflect the new semantic state before
+            // either public callback can inspect or reenter the tree.
+            ExceptionAggregation.Capture(() => FindTreeView()?.NotifyStructureChanged(), ref failure);
+        }
+
         ExceptionAggregation.Capture(
             () => NotifyPropertyChanged(nameof(ChildState), InvalidationImpact.Measure),
             ref failure);
@@ -1235,14 +1335,6 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
             ExceptionAggregation.Capture(
                 () => ChildStateChanged?.Invoke(this, new TreeViewChildStateChangedEventArgs(previous, value)),
                 ref failure);
-        }
-
-        if (notifyTree && IsCurrentChildState(version, value))
-        {
-            // A status row appears or disappears exactly on a ChildState transition, so every
-            // transition must be able to trigger a flatten. Inside a commit's BeginUpdate/EndUpdate
-            // bracket this is a deferred no-op, folded into that one rebuild.
-            ExceptionAggregation.Capture(() => FindTreeView()?.NotifyStructureChanged(), ref failure);
         }
 
         failure?.Throw();
@@ -1417,23 +1509,18 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
             return;
         }
 
-        var tree = FindTreeView();
-        tree?.BeginUpdate();
-
-        try
-        {
-            ApplyCommittedChildren(result);
-            // Cleared before the transition publishes, so a ChildStateChanged observer reacting to
-            // Loaded never reads the previous request's stale error.
-            LastChildLoadError = null;
-            SetChildState(TreeViewChildState.Loaded);
-        }
-        finally
-        {
-            tree?.EndUpdate();
-        }
-
-        ReleaseCompletedLoad();
+        var checkStateChange = BeginChildMembershipCheckStateChange();
+        ApplyCommittedChildren(result);
+        // Cleared before the transition publishes, so a ChildStateChanged observer reacting to
+        // Loaded never reads the previous request's stale error.
+        LastChildLoadError = null;
+        ExceptionDispatchInfo? callbackFailure = null;
+        ExceptionAggregation.Capture(() => SetChildState(TreeViewChildState.Loaded), ref callbackFailure);
+        ExceptionAggregation.Capture(
+            () => PublishChildMembershipCheckStateChange(checkStateChange),
+            ref callbackFailure);
+        ExceptionAggregation.Capture(ReleaseCompletedLoad, ref callbackFailure);
+        callbackFailure?.Throw();
     }
 
     private void CommitChildLoadFailure(
@@ -1569,7 +1656,10 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
             }
         }
 
-        Children.LoaderReplace(next);
+        // ChildState is committed immediately after membership. Suppressing this intermediate
+        // rebuild lets that transition flatten exactly once with the final Loaded semantics before
+        // any public child-state callback runs.
+        Children.LoaderReplace(next, notifyOwner: false);
 
         if (evicted is not null)
         {
