@@ -24,6 +24,13 @@ most one series, and intentionally has no legend or label properties: a
 sparkline is an inline trend mark, and a presentation that needs a legend or
 labels is what the full charts provide.
 
+`ChartControlBase` directly owns the common scale and presentation fields plus
+the `ChartDataObserver` that tracks borrowed series, nested point collections,
+and their property notifications. Full chart families forward their public
+legend and label properties through narrow base seams; Sparkline overrides the
+resolved policies without acquiring public setters. Disposal releases the
+base-owned observer exactly once with the control lifetime.
+
 `ChartScale` accepts optional finite `Minimum` and `Maximum` bounds and an
 `IncludeZero` policy. `ChartScale.Automatic` includes zero. Bar charts use that
 default; line, area, and sparkline controls leave zero optional so small trends

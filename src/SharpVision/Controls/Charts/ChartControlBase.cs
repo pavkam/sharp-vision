@@ -8,7 +8,12 @@ namespace SharpVision.Controls.Charts;
 [PublicAPI]
 public abstract class ChartControlBase: ControlBase, IStyled<ChartStyle>, IChartControl
 {
+    private readonly ChartDataObserver _observer;
     private readonly StyleSlot<ChartStyle> _style;
+    private ChartLegendPlacement _legendPlacement;
+    private ChartScale _scale;
+    private bool _showCategoryLabels;
+    private bool _showValueLabels;
 
     /// <summary>Initializes common chart state with family-specific presentation defaults.</summary>
     /// <param name="scale">The authored scale bounds and zero-inclusion policy.</param>
@@ -25,8 +30,12 @@ public abstract class ChartControlBase: ControlBase, IStyled<ChartStyle>, IChart
         bool showValueLabels)
     {
         _style = InitializeStyle(ChartStyle.Definition);
+        _scale = scale;
+        _legendPlacement = legendPlacement;
+        _showCategoryLabels = showCategoryLabels;
+        _showValueLabels = showValueLabels;
+        _observer = new ChartDataObserver(this);
         IsHitTestVisible = false;
-        State = new ChartControlState(this, scale, legendPlacement, showCategoryLabels, showValueLabels);
     }
 
     /// <summary>Gets or sets the complete local presentation, or null for theme ownership.</summary>
@@ -42,25 +51,63 @@ public abstract class ChartControlBase: ControlBase, IStyled<ChartStyle>, IChart
     public ChartStyle ActualStyle => _style.Actual;
 
     /// <summary>Gets or sets the borrowed observable series source.</summary>
+    /// <exception cref="ArgumentNullException">The assigned source is null.</exception>
+    /// <exception cref="ArgumentException">The assigned membership violates the concrete chart's series contract.</exception>
+    /// <exception cref="InvalidOperationException">The attached chart is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The chart is disposed.</exception>
     public IReadOnlyList<ChartSeries> Series
     {
-        get => State.Series;
+        get => _observer.Current;
         set
         {
             ValidateSeriesCore(value);
-            State.Series = value;
+            VerifyMutable();
+            _observer.Replace(value);
         }
     }
 
     /// <summary>Gets or sets authored scale bounds and zero inclusion.</summary>
+    /// <exception cref="InvalidOperationException">The attached chart is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The chart is disposed.</exception>
     public ChartScale Scale
     {
-        get => State.Scale;
-        set => State.Scale = value;
+        get => _scale;
+        set => SetChartProperty(ref _scale, value, InvalidationImpact.Render, nameof(Scale));
     }
 
-    /// <summary>Gets the common state shared with the owning concrete chart.</summary>
-    private protected ChartControlState State { get; }
+    /// <summary>Gets or sets the legend policy exposed by full chart families.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The assigned placement is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached chart is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The chart is disposed.</exception>
+    private protected ChartLegendPlacement LegendPlacementCore
+    {
+        get => _legendPlacement;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The chart legend placement is unknown.");
+
+            SetChartProperty(ref _legendPlacement, value, InvalidationImpact.Measure, nameof(IChartControl.LegendPlacement));
+        }
+    }
+
+    /// <summary>Gets or sets whether category labels may consume cells in full chart families.</summary>
+    /// <exception cref="InvalidOperationException">The attached chart is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The chart is disposed.</exception>
+    private protected bool ShowCategoryLabelsCore
+    {
+        get => _showCategoryLabels;
+        set => SetChartProperty(
+            ref _showCategoryLabels, value, InvalidationImpact.Measure, nameof(IChartControl.ShowCategoryLabels));
+    }
+
+    /// <summary>Gets or sets whether value labels may consume cells in full chart families.</summary>
+    /// <exception cref="InvalidOperationException">The attached chart is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The chart is disposed.</exception>
+    private protected bool ShowValueLabelsCore
+    {
+        get => _showValueLabels;
+        set => SetChartProperty(ref _showValueLabels, value, InvalidationImpact.Measure, nameof(IChartControl.ShowValueLabels));
+    }
 
     ControlBase IChartControl.Control => this;
 
@@ -71,17 +118,17 @@ public abstract class ChartControlBase: ControlBase, IStyled<ChartStyle>, IChart
     bool IChartControl.ShowValueLabels => ResolveShowValueLabels();
 
     /// <summary>Gets the legend policy reported to <see cref="IChartControl"/> consumers. The
-    /// default forwards to <see cref="State"/>; a chart family with a fixed policy (no public
+    /// default forwards to the base-owned authored value; a chart family with a fixed policy (no public
     /// legend surface) overrides this instead of exposing a settable property.</summary>
-    protected virtual ChartLegendPlacement ResolveLegendPlacement() => State.LegendPlacement;
+    protected virtual ChartLegendPlacement ResolveLegendPlacement() => _legendPlacement;
 
     /// <summary>Gets whether category labels are reported to <see cref="IChartControl"/>
     /// consumers. See <see cref="ResolveLegendPlacement"/> for the override convention.</summary>
-    protected virtual bool ResolveShowCategoryLabels() => State.ShowCategoryLabels;
+    protected virtual bool ResolveShowCategoryLabels() => _showCategoryLabels;
 
     /// <summary>Gets whether value labels are reported to <see cref="IChartControl"/> consumers.
     /// See <see cref="ResolveLegendPlacement"/> for the override convention.</summary>
-    protected virtual bool ResolveShowValueLabels() => State.ShowValueLabels;
+    protected virtual bool ResolveShowValueLabels() => _showValueLabels;
 
     void IChartControl.ValidateSeries(IReadOnlyList<ChartSeries> series) => ValidateSeriesCore(series);
 
@@ -117,6 +164,19 @@ public abstract class ChartControlBase: ControlBase, IStyled<ChartStyle>, IChart
     /// <summary>Gets the fixed size this chart reports regardless of its measure constraint.</summary>
     protected abstract Size DefaultSize { get; }
 
+    private void SetChartProperty<T>(ref T field, T value, InvalidationImpact impact, string propertyName)
+    {
+        VerifyMutable();
+
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            return;
+        }
+
+        field = value;
+        NotifyPropertyChanged(propertyName, impact);
+    }
+
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
@@ -124,7 +184,7 @@ public abstract class ChartControlBase: ControlBase, IStyled<ChartStyle>, IChart
 
         if (reason == ReleaseReason.Disposed)
         {
-            State.Dispose();
+            _observer.Dispose();
         }
     }
 }
