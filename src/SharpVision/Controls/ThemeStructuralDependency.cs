@@ -17,5 +17,8 @@ internal enum ThemeStructuralDependency
     InputDropDownGlyph = 2,
 
     /// <summary>The shared popup anchor glyph family affects rendering.</summary>
-    PopupAnchorGlyphs = 4
+    PopupAnchorGlyphs = 4,
+
+    /// <summary>The root hotkey color affects rendered mnemonic emphasis.</summary>
+    Hotkey = 8
 }

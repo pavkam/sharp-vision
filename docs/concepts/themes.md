@@ -527,7 +527,10 @@ Assigning `Application.Theme` publishes an already-frozen theme through the
 retained control tree on the dispatcher; controls are not reconstructed. The
 resolver caches each style type's resolved set per
 `(Theme, VisualState combination)`, and theme replacement, local appearance
-changes, and relevant state changes invalidate those entries.
+changes, and relevant state changes invalidate those entries. A control may also
+register an exact root-value dependency outside the style profile. Active marked
+`Text` mnemonics register `Hotkey` as render-only, including retained captions;
+text with no active mnemonic does not receive that invalidation.
 
 ## Expected behavior
 

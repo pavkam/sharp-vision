@@ -62,6 +62,114 @@ public sealed class TextSurfaceTests
         mnemonic.Style.Attributes.ShouldBe(TerminalAttributes.Underline);
     }
 
+    /// <summary>Verifies a hotkey-only theme replacement reparses a standalone mnemonic and keeps
+    /// the replacement color through later repaints.</summary>
+    [Fact]
+    public async Task Theme_WhenStandaloneMnemonicIsActive_RepaintsFromTheCurrentHotkeyColorAsync()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var text = new ControlText("&Save")
+        {
+            UseMnemonic = true,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            text,
+            new Size(4, 1),
+            mounted,
+            TestContext.Current.CancellationToken);
+        var mountedColor = surface.Cell(default).Style.Foreground;
+
+        // Act
+        await surface.UpdateAsync(() => surface.Application.Theme = replacement, "swap hotkey-only theme");
+        await surface.UpdateAsync(() => text.Invalidate(Invalidation.Render), "repaint unchanged mnemonic text");
+
+        // Assert
+        var replacementColor = TerminalPalette.Project(replacement.Hotkey, ColorDepth.Basic16);
+        surface.Cell(default).Style.Foreground.ShouldBe(replacementColor);
+        surface.Cell(default).Style.Foreground.ShouldNotBe(mountedColor);
+        surface.Cell(default).Style.Attributes.ShouldBe(TerminalAttributes.Underline);
+    }
+
+    /// <summary>Verifies an InputBase-owned retained caption tracks theme and owner enablement
+    /// without replacing its Text child.</summary>
+    [Fact]
+    public async Task Theme_WhenInputCaptionOwnsMnemonic_TracksHotkeyAndOwnerEnablementAsync()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var button = new Button
+        {
+            Text = "&Run",
+            UseMnemonic = true,
+            Width = Length.Cells(7),
+            Height = Length.Cells(3),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            button,
+            new Size(7, 3),
+            mounted,
+            TestContext.Current.CancellationToken);
+        var caption = button.TextControl.ShouldNotBeNull();
+        var mnemonicPoint = new Point(caption.Bounds.X, caption.Bounds.Y);
+
+        // Act
+        await surface.UpdateAsync(() => surface.Application.Theme = replacement, "swap caption hotkey theme");
+
+        // Assert
+        surface.Cell(mnemonicPoint).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(replacement.Hotkey, ColorDepth.Basic16));
+
+        await surface.UpdateAsync(() => button.IsEnabled = false, "disable caption owner");
+
+        caption.EffectiveIsEnabled.ShouldBeFalse();
+        surface.Cell(mnemonicPoint).Style.Foreground.ShouldNotBe(
+            TerminalPalette.Project(replacement.Hotkey, ColorDepth.Basic16));
+        surface.Cell(mnemonicPoint).Style.Attributes.ShouldBe(TerminalAttributes.Underline);
+
+        await surface.UpdateAsync(() => button.IsEnabled = true, "re-enable caption owner");
+
+        surface.Cell(mnemonicPoint).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(replacement.Hotkey, ColorDepth.Basic16));
+    }
+
+    /// <summary>Verifies a HeaderedContentControl-owned retained caption uses the replacement
+    /// theme's hotkey color.</summary>
+    [Fact]
+    public async Task Theme_WhenHeaderedCaptionOwnsMnemonic_RepaintsFromTheCurrentHotkeyColorAsync()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var owner = new ProbeHeaderedContentControl
+        {
+            HeaderText = "&Title",
+            UseMnemonic = true,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            owner,
+            new Size(5, 1),
+            mounted,
+            TestContext.Current.CancellationToken);
+        var header = owner.Header.ShouldBeOfType<ControlText>();
+        var mnemonicPoint = new Point(header.Bounds.X, header.Bounds.Y);
+
+        // Act
+        await surface.UpdateAsync(() => surface.Application.Theme = replacement, "swap header hotkey theme");
+
+        // Assert
+        surface.Cell(mnemonicPoint).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(replacement.Hotkey, ColorDepth.Basic16));
+    }
+
     /// <summary>Verifies passive text observes physical hover without entering focus or press state.</summary>
     [Fact]
     public async Task Pointer_WhenTextIsMounted_TracksHoverWithoutFocusOrPressAsync()

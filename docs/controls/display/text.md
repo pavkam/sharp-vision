@@ -52,7 +52,11 @@ the base control's documented `InvalidOperationException` or
 
 Content, overflow, and ambiguous-width changes invalidate measure. Alignment
 changes invalidate arrange. Resolved control style, theme, and visual-state
-changes invalidate render through the base styling behavior.
+changes invalidate render through the base styling behavior. When an enabled
+mnemonic marker is active, `Text` also tracks the resolved `Theme.Hotkey` color
+as a render-only dependency; a hotkey-only theme swap does not measure or
+arrange the control. Text without an effective marker does not acquire that
+dependency.
 
 Unlike captioned action controls, rich or body `Text` defaults `UseMnemonic` to
 false, so ordinary ampersands stay literal. Set it to true when a standalone
@@ -178,11 +182,13 @@ When `UseMnemonic` is enabled, access-key syntax is converted to markup before
 parsing. While enabled, the marked grapheme receives the active `Theme.Hotkey`
 color plus an underline; disabled text keeps its resolved disabled foreground.
 
-`Text` reparses only when content changes, reuses its owned line array, and
-reformats only when the visible text, width, overflow, or ambiguous-width policy
-changes. An alignment-only change rewrites the leading-cell metrics without
-re-enumerating graphemes. No pooled or borrowed parser memory crosses a layout
-or frame boundary.
+`Text` reparses when content, effective mnemonic ownership, enabled state, or
+the resolved hotkey color changes. Its parsed-span cache includes the concrete
+hotkey color, so a later unrelated repaint cannot resurrect a color from an old
+theme. It reuses its owned line array and reformats only when the visible text,
+width, overflow, or ambiguous-width policy changes. An alignment-only change
+rewrites the leading-cell metrics without re-enumerating graphemes. No pooled or
+borrowed parser memory crosses a layout or frame boundary.
 
 ## Example
 
@@ -222,7 +228,9 @@ status.Content = $"<info>User:</info> {Text.Escape(userName)}";
 - `TextSurfaceTests` additionally mounts the control beneath a real application
   and demonstrates combining and wide-grapheme ownership, terminal-visible
   markup styles, ellipsis-to-alignment mutation with stale-cell clearing, and
-  transparent composition over an opaque parent surface. A mounted resize
+  transparent composition over an opaque parent surface. Standalone and retained
+  `InputBase`/`HeaderedContentControl` captions prove that hotkey-only theme
+  swaps repaint without stale cached colors or geometry work. A mounted resize
   demonstrates Unicode-safe wrap reflow and removal of the obsolete row. The
   showcase owns one merged `Text` page with live markup, Unicode, overflow,
   hyperlink, and mutation specimens. A warmed, unchanged 80-column Unicode

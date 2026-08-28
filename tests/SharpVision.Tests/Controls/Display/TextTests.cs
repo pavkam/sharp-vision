@@ -203,6 +203,80 @@ public sealed class TextTests
         frame.GetCell(default).Style.ShouldBe(new TerminalStyle(ReferenceColors.Get(45), ReferenceColors.Get(238)));
     }
 
+    /// <summary>Verifies an active marked mnemonic registers a render-only dependency on the
+    /// root theme's hotkey color.</summary>
+    [Fact]
+    public void Theme_WhenMarkedMnemonicIsActive_InvalidatesOnlyRenderForHotkeyChange()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var text = new ControlText("&Save") { UseMnemonic = true };
+        text.SetTheme(mounted);
+        new LayoutEngine().Layout(text, new Size(4, 1));
+        text.Clear(Invalidation.All);
+
+        // Act
+        text.SetTheme(replacement);
+
+        // Assert
+        text.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies text without an effective mnemonic marker does not subscribe to an
+    /// unrelated root hotkey color.</summary>
+    [Theory]
+    [InlineData("Save", true)]
+    [InlineData("&Save", false)]
+    public void Theme_WhenMnemonicHighlightingIsInactive_IgnoresHotkeyOnlyChange(string content, bool useMnemonic)
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var text = new ControlText(content) { UseMnemonic = useMnemonic };
+        text.SetTheme(mounted);
+        new LayoutEngine().Layout(text, new Size(4, 1));
+        text.Clear(Invalidation.All);
+
+        // Act
+        text.SetTheme(replacement);
+
+        // Assert
+        text.Pending.ShouldBe(Invalidation.None);
+    }
+
+    /// <summary>Verifies changing mnemonic participation removes and restores the conditional
+    /// hotkey dependency after the corresponding layout is consumed.</summary>
+    [Fact]
+    public void UseMnemonic_WhenChanged_UpdatesTheHotkeyThemeDependency()
+    {
+        // Arrange
+        var first = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
+        var second = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var text = new ControlText("&Save") { UseMnemonic = true };
+        var layout = new LayoutEngine();
+        text.SetTheme(first);
+        layout.Layout(text, new Size(4, 1));
+
+        // Act - consume the disabled mnemonic state, then replace only Hotkey.
+        text.UseMnemonic = false;
+        layout.Layout(text, new Size(5, 1));
+        text.Clear(Invalidation.All);
+        text.SetTheme(second);
+
+        // Assert
+        text.Pending.ShouldBe(Invalidation.None);
+
+        // Act - consume the active mnemonic state again, then replace only Hotkey.
+        text.UseMnemonic = true;
+        layout.Layout(text, new Size(4, 1));
+        text.Clear(Invalidation.All);
+        text.SetTheme(first);
+
+        // Assert
+        text.Pending.ShouldBe(Invalidation.Render);
+    }
+
     /// <summary>Verifies hidden and collapsed text do not draw stale cells.</summary>
     [Theory]
     [InlineData(Visibility.Hidden)]

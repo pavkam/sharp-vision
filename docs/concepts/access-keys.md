@@ -130,7 +130,10 @@ into its existing semantic markup before grapheme layout, so clipping, wrapping,
 wide-cell ownership, inherited background, attributes, and underline metadata
 remain authoritative. Only the marked grapheme receives the resolved
 `Theme.Hotkey` foreground. A disabled owner keeps its disabled foreground while
-marker collapse and the underline remain visible.
+marker collapse and the underline remain visible. A live hotkey-only theme
+replacement repaints active standalone and retained captions without measuring
+or arranging them; captions without an effective marker ignore that unrelated
+theme value.
 
 ## Expected behavior
 

@@ -2981,15 +2981,38 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="dependency"/> is unknown.</exception>
     private protected void TrackThemeStructuralDependency(ThemeStructuralDependency dependency)
     {
+        ValidateThemeStructuralDependency(dependency);
+
+        _themeStructuralDependencies |= dependency;
+    }
+
+    /// <summary>Activates or removes one conditional non-appearance root Theme dependency.</summary>
+    /// <param name="dependency">The defined structural dependency.</param>
+    /// <param name="active">Whether the control currently consumes that root Theme value.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="dependency"/> is unknown.</exception>
+    private protected void SetThemeStructuralDependency(
+        ThemeStructuralDependency dependency,
+        bool active)
+    {
+        ValidateThemeStructuralDependency(dependency);
+        _themeStructuralDependencies = active
+            ? _themeStructuralDependencies | dependency
+            : _themeStructuralDependencies & ~dependency;
+    }
+
+    /// <summary>Rejects empty or unknown non-appearance root Theme dependency flags.</summary>
+    /// <param name="dependency">The flags to validate.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="dependency"/> is empty or unknown.</exception>
+    private static void ValidateThemeStructuralDependency(ThemeStructuralDependency dependency)
+    {
         if (dependency == ThemeStructuralDependency.None ||
             (dependency & ~(ThemeStructuralDependency.InputAffixGap |
                             ThemeStructuralDependency.InputDropDownGlyph |
-                            ThemeStructuralDependency.PopupAnchorGlyphs)) != 0)
+                            ThemeStructuralDependency.PopupAnchorGlyphs |
+                            ThemeStructuralDependency.Hotkey)) != 0)
         {
             throw new ArgumentOutOfRangeException(nameof(dependency), dependency, "The Theme structural dependency is unknown.");
         }
-
-        _themeStructuralDependencies |= dependency;
     }
 
     /// <summary>Resolves the printable cell width an affix reserves under the tree's live
@@ -4799,9 +4822,12 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             ((_themeStructuralDependencies & ThemeStructuralDependency.PopupAnchorGlyphs) != 0 &&
                 previousTheme.GetStyleSet(PopupStyle.Default).Normal.AnchorGlyphs !=
                 currentTheme.GetStyleSet(PopupStyle.Default).Normal.AnchorGlyphs);
+        var hotkeyChanged =
+            (_themeStructuralDependencies & ThemeStructuralDependency.Hotkey) != 0 &&
+            previousTheme.Hotkey != currentTheme.Hotkey;
         return affixGapChanged
             ? InvalidationImpact.Measure
-            : glyphChanged
+            : glyphChanged || hotkeyChanged
                 ? InvalidationImpact.Render
                 : InvalidationImpact.None;
     }
