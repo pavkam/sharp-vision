@@ -1304,6 +1304,11 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             return;
         }
 
+        if (!KeyboardModifierPolicy.IsScalarNavigationEligible(stroke.Modifiers))
+        {
+            return;
+        }
+
         _ = stroke.Code == TerminalInput.Code.Up
             ? MoveActive(-1, 0)
             : stroke.Code == TerminalInput.Code.Down

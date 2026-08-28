@@ -300,7 +300,8 @@ selects the hit row or cell and makes the clicked cell active. `Up`, `Down`,
 `PageOverlap`. The paging keys are handled even when the active cell cannot move
 any further, so the keystroke never escapes to page an enclosing scrollable
 container. Every move — including `Home` and `End` — brings the active cell into
-view.
+view. Non-progressive movement accepts incidental lock state but leaves Shift
+and every application-command-modified movement key unhandled.
 
 The initial `Enter` press activates the active row, and begins editing when the
 active cell is an editable `TextInput`; held-key repeats neither invoke nor

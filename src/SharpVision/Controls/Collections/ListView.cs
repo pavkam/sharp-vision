@@ -1505,7 +1505,9 @@ public sealed class ListView: ItemsControl
     internal bool HandleCurrentNavigationKey(KeyEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
-        return eventArgs.IsKeyDown && MoveCurrent(eventArgs.Stroke.Code);
+        return eventArgs.IsKeyDown &&
+            KeyboardModifierPolicy.IsScalarNavigationEligible(eventArgs.Stroke.Modifiers) &&
+            MoveCurrent(eventArgs.Stroke.Code);
     }
 
     /// <summary>Seeds or restores owner-controlled provisional current state without committing
@@ -1761,7 +1763,9 @@ public sealed class ListView: ItemsControl
     internal bool HandleSelectionNavigationKey(KeyEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
-        return eventArgs.IsKeyDown && MoveSelection(eventArgs.Stroke.Code);
+        return eventArgs.IsKeyDown &&
+            KeyboardModifierPolicy.IsScalarNavigationEligible(eventArgs.Stroke.Modifiers) &&
+            MoveSelection(eventArgs.Stroke.Code);
     }
 
     /// <summary>Moves selection and current item through the shared keyboard-navigation transaction,

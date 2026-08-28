@@ -110,8 +110,10 @@ surface. `BringItemIntoView` accepts direct or grouped items from either section
 and returns whether an owning offset changed. Enter and Space toggle a current
 group or invoke a current item without transferring focus, firing once per key
 hold and only with activation-eligible modifiers, while the navigation keys
-repeat while held. When no entry is current, activation first establishes the
-first available entry and then applies its action.
+repeat while held. Navigation accepts incidental lock state but leaves Shift and
+application-command-modified movement keys unhandled. When no entry is current,
+activation first establishes the first available entry and then applies its
+action.
 
 An entry that becomes hidden cannot remain selected or current. An entry that
 becomes disabled may retain its selected identity, but it immediately loses

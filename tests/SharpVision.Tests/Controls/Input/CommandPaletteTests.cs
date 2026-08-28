@@ -6,6 +6,26 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies command-palette resolution, forwarding, validation, and stale-result handling.</summary>
 public sealed class CommandPaletteTests
 {
+    /// <summary>Verifies command-modified list navigation bubbles without changing provisional state.</summary>
+    [Fact]
+    public void Navigation_WhenCommandModified_LeavesCurrentSelectionUnchangedAndUnhandled()
+    {
+        var palette = new CommandPalette
+        {
+            IsOpen = true,
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["First", "Second"])
+        };
+        var list = OwnedTree.Find<UiListView>(palette).ShouldNotBeNull();
+        var editor = OwnedTree.Find<TextInput>(palette).ShouldNotBeNull();
+        list.SelectedIndex = 0;
+
+        var routed = Router.Route(editor, Events.Key, Key(Code.Down, KeyAction.Press, Modifiers.Control));
+
+        routed.IsHandled.ShouldBeFalse();
+        list.SelectedIndex.ShouldBe(0);
+        list.ActiveIndex.ShouldBe(0);
+    }
+
     /// <summary>Verifies every initial and repeated ListView navigation key is delegated through
     /// the canonical selection transaction while the retained editor owns the route.</summary>
     [Theory]
@@ -511,10 +531,13 @@ public sealed class CommandPaletteTests
         palette.IsOpen.ShouldBeFalse();
     }
 
-    private static KeyEventArgs Key(Code code, KeyAction action) => new(new Stroke(
+    private static KeyEventArgs Key(
+        Code code,
+        KeyAction action,
+        Modifiers modifiers = Modifiers.None) => new(new Stroke(
         code,
         default,
         nativeCode: 0,
-        Modifiers.None,
+        modifiers,
         action));
 }

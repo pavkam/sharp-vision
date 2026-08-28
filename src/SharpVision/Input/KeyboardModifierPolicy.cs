@@ -33,6 +33,12 @@ internal static class KeyboardModifierPolicy
     internal static bool IsCollectionSelectionEligible(Modifiers modifiers) =>
         (modifiers & ~_collectionSelectionModifiers) == 0;
 
+    /// <summary>Reports whether scalar navigation carries only incidental lock-key state.</summary>
+    /// <param name="modifiers">The decoded modifier state.</param>
+    /// <returns>True when the normalized command is unmodified.</returns>
+    internal static bool IsScalarNavigationEligible(Modifiers modifiers) =>
+        MatchesCommand(modifiers, Modifiers.None);
+
     /// <summary>Compares a command chord after removing incidental lock-key state.</summary>
     /// <param name="modifiers">The decoded modifier state.</param>
     /// <param name="expected">The exact command modifiers required by the binding.</param>

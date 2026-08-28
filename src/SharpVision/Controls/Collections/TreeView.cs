@@ -790,6 +790,11 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
             return;
         }
 
+        if (!KeyboardModifierPolicy.IsCollectionSelectionEligible(eventArgs.Stroke.Modifiers))
+        {
+            return;
+        }
+
         // Home/End: jump to first/last visible item
         if (eventArgs.Stroke.Code is Code.Home or Code.End)
         {

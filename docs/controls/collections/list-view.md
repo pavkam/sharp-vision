@@ -175,6 +175,9 @@ the pending invocation instead of indexing its former position.
 | Shift click (`Multiple` mode)   | Selects the inclusive range from the stable anchor, skipping unavailable rows.                                                           |
 | Unmodified click                | Replaces the selection in `Single` and `Multiple` modes; `None` mode still permits navigation and invocation without selecting.          |
 
+Keyboard movement accepts incidental lock state but leaves Shift and every
+application-command-modified movement key unhandled.
+
 In `Single` and `Multiple` modes, every initial or repeated arrow-key move also
 replaces the selection with the active row; when a `SelectionChanging`
 transaction is cancelled, both values stay unchanged. `None` mode moves only the

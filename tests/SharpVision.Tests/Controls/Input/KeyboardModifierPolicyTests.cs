@@ -6,6 +6,35 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies controls apply the shared keyboard-modifier classifications consistently.</summary>
 public sealed class KeyboardModifierPolicyTests
 {
+    /// <summary>Gets scalar-navigation modifier cases after incidental lock normalization.</summary>
+    public static TheoryData<Modifiers, bool> ScalarNavigationModifiers => new()
+    {
+        { Modifiers.None, true },
+        { Modifiers.CapsLock, true },
+        { Modifiers.NumLock, true },
+        { Modifiers.Shift, false },
+        { Modifiers.Control, false },
+        { Modifiers.Alt, false },
+        { Modifiers.Super, false },
+        { Modifiers.Hyper, false },
+        { Modifiers.Meta, false }
+    };
+
+    /// <summary>Gets collection-navigation modifier cases including selection modifiers.</summary>
+    public static TheoryData<Modifiers, bool> CollectionNavigationModifiers => new()
+    {
+        { Modifiers.None, true },
+        { Modifiers.CapsLock, true },
+        { Modifiers.NumLock, true },
+        { Modifiers.Shift, true },
+        { Modifiers.Control, true },
+        { Modifiers.Control | Modifiers.Shift, true },
+        { Modifiers.Alt, false },
+        { Modifiers.Super, false },
+        { Modifiers.Hyper, false },
+        { Modifiers.Meta, false }
+    };
+
     /// <summary>Verifies popup, drop-down, palette, and window dismissal families reject application chords.</summary>
     [Fact]
     public void Dispatch_WhenEscapeCarriesModifiers_DismissesOnlyActivationEligibleSurfaces()
@@ -70,6 +99,128 @@ public sealed class KeyboardModifierPolicyTests
             VerifyCalendar(modifiers, expectedHandled: false);
             VerifyContainer(modifiers, expectedHandled: false);
         }
+    }
+
+    /// <summary>Verifies Menu navigation applies the scalar modifier policy.</summary>
+    [Theory]
+    [MemberData(nameof(ScalarNavigationModifiers))]
+    public void Dispatch_WhenMenuMovementHasModifiers_UsesExactCommandPolicy(Modifiers modifiers, bool expectedHandled)
+    {
+        using var control = new Menu { Orientation = Orientation.Vertical };
+        control.Items.Add(new MenuItem { Text = "First" });
+        control.Items.Add(new MenuItem { Text = "Second" });
+        control.SelectedIndex = 0;
+
+        var key = Route(control, Code.Down, modifiers);
+
+        key.IsHandled.ShouldBe(expectedHandled);
+        control.SelectedIndex.ShouldBe(expectedHandled ? 1 : 0);
+    }
+
+    /// <summary>Verifies NavigationView navigation applies the scalar modifier policy.</summary>
+    [Theory]
+    [MemberData(nameof(ScalarNavigationModifiers))]
+    public void Dispatch_WhenNavigationViewMovementHasModifiers_UsesExactCommandPolicy(
+        Modifiers modifiers,
+        bool expectedHandled)
+    {
+        using var control = new NavigationView();
+        var first = new NavigationViewItem { Text = "First" };
+        control.Items.Add(first);
+        control.Items.Add(new NavigationViewItem { Text = "Second" });
+
+        var key = Route(control, Code.Down, modifiers);
+
+        key.IsHandled.ShouldBe(expectedHandled);
+        control.SelectedItem.ShouldBe(expectedHandled ? first : null);
+    }
+
+    /// <summary>Verifies ListView navigation applies the scalar modifier policy.</summary>
+    [Theory]
+    [MemberData(nameof(ScalarNavigationModifiers))]
+    public void Dispatch_WhenListViewMovementHasModifiers_UsesExactCommandPolicy(
+        Modifiers modifiers,
+        bool expectedHandled)
+    {
+        using var control = new UiListView { Items = ["First", "Second"], SelectedIndex = 0 };
+
+        var key = Route(control, Code.Down, modifiers);
+
+        key.IsHandled.ShouldBe(expectedHandled);
+        control.SelectedIndex.ShouldBe(expectedHandled ? 1 : 0);
+    }
+
+    /// <summary>Verifies ComboBox popup navigation applies the scalar modifier policy.</summary>
+    [Theory]
+    [MemberData(nameof(ScalarNavigationModifiers))]
+    public void Dispatch_WhenComboBoxMovementHasModifiers_UsesExactCommandPolicy(
+        Modifiers modifiers,
+        bool expectedHandled)
+    {
+        using var control = new ComboBox { Items = ["First", "Second"], SelectedIndex = 0, IsOpen = true };
+        new LayoutEngine().Layout(control, new Size(16, 6));
+
+        var key = Route(control, Code.Down, modifiers);
+
+        key.IsHandled.ShouldBe(expectedHandled);
+        control.GetDropDownList().ActiveIndex.ShouldBe(expectedHandled ? 1 : 0);
+        control.SelectedIndex.ShouldBe(0);
+    }
+
+    /// <summary>Verifies JsonView navigation applies the scalar modifier policy.</summary>
+    [Theory]
+    [MemberData(nameof(ScalarNavigationModifiers))]
+    public void Dispatch_WhenJsonViewMovementHasModifiers_UsesExactCommandPolicy(
+        Modifiers modifiers,
+        bool expectedHandled)
+    {
+        using var control = new JsonView { Json = "[0,1]" };
+
+        var key = Route(control, Code.Down, modifiers);
+
+        key.IsHandled.ShouldBe(expectedHandled);
+        control.SelectedPath.ShouldBe(expectedHandled ? "/1" : "/0");
+    }
+
+    /// <summary>Verifies non-progressive Table navigation applies the scalar modifier policy.</summary>
+    [Theory]
+    [MemberData(nameof(ScalarNavigationModifiers))]
+    public void Dispatch_WhenTableMovementHasModifiers_UsesExactCommandPolicy(
+        Modifiers modifiers,
+        bool expectedHandled)
+    {
+        var first = new TableRow([new ControlText("First")]);
+        var second = new TableRow([new ControlText("Second")]);
+        using var control = new Table { SelectionMode = TableSelectionMode.Row };
+        control.Columns.Add(TableColumn.Auto("Name"));
+        control.Rows.Add(first);
+        control.Rows.Add(second);
+        control.SelectRow(first);
+
+        var key = Route(control, Code.Down, modifiers);
+
+        key.IsHandled.ShouldBe(expectedHandled);
+        control.ActiveRow.ShouldBeSameAs(expectedHandled ? second : first);
+    }
+
+    /// <summary>Verifies TreeView navigation retains collection modifiers and rejects command modifiers.</summary>
+    [Theory]
+    [MemberData(nameof(CollectionNavigationModifiers))]
+    public void Dispatch_WhenTreeViewMovementHasModifiers_UsesCollectionSelectionPolicy(
+        Modifiers modifiers,
+        bool expectedHandled)
+    {
+        var first = new TreeViewItem { Header = "First" };
+        var second = new TreeViewItem { Header = "Second" };
+        using var control = new TreeView { SelectionMode = TreeSelectionMode.Multiple };
+        control.Items.Add(first);
+        control.Items.Add(second);
+        control.SelectItem(first);
+
+        var key = Route(control, Code.Down, modifiers);
+
+        key.IsHandled.ShouldBe(expectedHandled);
+        control.SelectedItems.Contains(second).ShouldBe(expectedHandled);
     }
 
     private static void VerifyFamilies(Modifiers modifiers, bool expectedDismissed)

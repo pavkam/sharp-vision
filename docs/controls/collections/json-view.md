@@ -96,6 +96,9 @@ Navigation follows the visible depth-first projection:
 | Primary key click | Select that property or array index.                                                 |
 | Disclosure click  | Select and toggle that container.                                                    |
 
+Keyboard movement accepts incidental lock state but leaves Shift and every
+application-command-modified movement key unhandled.
+
 The movement rows repeat while a key is held; the Enter/Space toggle fires once
 per key hold and only with activation-eligible modifiers, so a command chord
 such as Ctrl+Enter never toggles a container.

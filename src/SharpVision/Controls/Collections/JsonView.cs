@@ -991,6 +991,13 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
             code = Code.Enter;
         }
 
+        if (code is Code.Up or Code.Down or Code.PageUp or Code.PageDown or
+            Code.Home or Code.End or Code.Left or Code.Right &&
+            !KeyboardModifierPolicy.IsScalarNavigationEligible(eventArgs.Stroke.Modifiers))
+        {
+            return;
+        }
+
         if (code == Code.Up)
         {
             eventArgs.IsHandled = MoveSelection(-1);

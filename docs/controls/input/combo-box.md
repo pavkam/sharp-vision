@@ -189,7 +189,9 @@ Super, Hyper, or Meta remains unhandled and leaves the popup open. The arrow
 keys (Up/Down/Left/Right), Home, End, Page Up, and Page Down move between items
 through the ListView's own keyboard handler. Initial and repeated key-down input
 share that path, so holding a navigation key continues moving the current row
-and keeps it visible while the ComboBox retains focus.
+and keeps it visible while the ComboBox retains focus. Movement accepts
+incidental lock state but leaves Shift and application-command-modified keys
+unhandled without changing the provisional current row.
 
 Printable Unicode scalars provide basic case-insensitive type-to-select. The
 search starts after the current item, wraps around once, and falls back to the

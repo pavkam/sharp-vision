@@ -136,8 +136,10 @@ refusing it would leave the control in a state its own configuration forbids.
 | Primary pointer click on the check mark       | Toggles the check state; every cell of the mark is a hit target.                                                           |
 | Primary pointer click elsewhere on the row    | Invokes and applies selection.                                                                                             |
 
-The movement keys repeat while held; Space, Enter, and Control+A fire once per
-key hold.
+Movement accepts Control, Shift, and incidental lock state for collection
+selection, but leaves Alt, Super, Hyper, Meta, and larger application chords
+unhandled. The movement keys repeat while held; Space, Enter, and Control+A fire
+once per key hold.
 
 Each `TreeViewItem` preserves its inherited routed key and pointer events before
 applying row activation. A handler that consumes the event suppresses the

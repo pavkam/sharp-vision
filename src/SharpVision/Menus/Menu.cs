@@ -259,9 +259,10 @@ public sealed class Menu: ItemsControl
 
         var previous = Orientation == Orientation.Horizontal ? Code.Left : Code.Up;
         var next = Orientation == Orientation.Horizontal ? Code.Right : Code.Down;
-        var target = key.Stroke.Code == previous
+        var scalarNavigationEligible = KeyboardModifierPolicy.IsScalarNavigationEligible(key.Stroke.Modifiers);
+        var target = scalarNavigationEligible && key.Stroke.Code == previous
             ? SingleSelectionIndex.FindWrapped(_selectedIndex, -1, ItemControlCount, Available)
-            : key.Stroke.Code == next
+            : scalarNavigationEligible && key.Stroke.Code == next
                 ? SingleSelectionIndex.FindWrapped(_selectedIndex, 1, ItemControlCount, Available)
                 : key.Stroke.Code == Code.Tab && KeyboardModifierPolicy.IsTabTraversalEligible(key.Stroke.Modifiers)
                     ? SingleSelectionIndex.FindWrapped(_selectedIndex, (key.Stroke.Modifiers & Modifiers.Shift) == 0 ? 1 : -1, ItemControlCount, Available)

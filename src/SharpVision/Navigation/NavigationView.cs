@@ -875,6 +875,11 @@ public sealed class NavigationView: CompositeControlBase
             return;
         }
 
+        if (!KeyboardModifierPolicy.IsScalarNavigationEligible(eventArgs.Stroke.Modifiers))
+        {
+            return;
+        }
+
         if (eventArgs.Stroke.Code is Code.Home or Code.End)
         {
             var endpoints = CollectNavigableEntries();

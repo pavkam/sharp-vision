@@ -683,8 +683,8 @@ public sealed class ListViewTests
         var delegated = CreateNavigationList(ListSelectionMode.None);
         var ordinaryInitial = RoutedNavigationKey(ordinary, Code.PageDown, KeyAction.Press, Modifiers.None);
         var delegatedInitial = NavigationKey(Code.PageDown, KeyAction.Press, Modifiers.None);
-        var ordinaryRepeated = RoutedNavigationKey(ordinary, Code.Down, KeyAction.Repeat, Modifiers.Control);
-        var delegatedRepeated = NavigationKey(Code.Down, KeyAction.Repeat, Modifiers.Control);
+        var ordinaryRepeated = RoutedNavigationKey(ordinary, Code.Down, KeyAction.Repeat, Modifiers.NumLock);
+        var delegatedRepeated = NavigationKey(Code.Down, KeyAction.Repeat, Modifiers.NumLock);
 
         var initialHandled = delegated.HandleCurrentNavigationKey(delegatedInitial);
         var repeatedHandled = delegated.HandleCurrentNavigationKey(delegatedRepeated);
@@ -757,8 +757,8 @@ public sealed class ListViewTests
             delegatedChanges.Add($"{Join(eventArgs.AddedIndexes)}/{Join(eventArgs.RemovedIndexes)}");
         var ordinaryInitial = RoutedNavigationKey(ordinary, Code.PageDown, KeyAction.Press, Modifiers.None);
         var delegatedInitial = NavigationKey(Code.PageDown, KeyAction.Press, Modifiers.None);
-        var ordinaryRepeated = RoutedNavigationKey(ordinary, Code.Down, KeyAction.Repeat, Modifiers.Control);
-        var delegatedRepeated = NavigationKey(Code.Down, KeyAction.Repeat, Modifiers.Control);
+        var ordinaryRepeated = RoutedNavigationKey(ordinary, Code.Down, KeyAction.Repeat, Modifiers.NumLock);
+        var delegatedRepeated = NavigationKey(Code.Down, KeyAction.Repeat, Modifiers.NumLock);
 
         var initialHandled = delegated.HandleSelectionNavigationKey(delegatedInitial);
         var repeatedHandled = delegated.HandleSelectionNavigationKey(delegatedRepeated);

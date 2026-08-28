@@ -60,13 +60,13 @@ classDiagram
 
 Arrow keys follow `Orientation`, while Tab and Shift+Tab move forward and
 backward regardless of orientation; Caps Lock and Num Lock are incidental, while
-command-modified Tab remains unhandled. All navigation keys repeat while held.
-Navigation wraps, skips separators and unavailable items, updates
-`SelectedIndex`, and keeps focus on the menu. Enter, or a Space press completed
-on the menu, activates the selected private item with a keyboard cause, once per
-key hold and only with activation-eligible modifiers. A primary pointer click
-invokes through the shared [press-activation](../pressable.md#overview)
-contract.
+Shift and application-command-modified arrows and command-modified Tab remain
+unhandled. All navigation keys repeat while held. Navigation wraps, skips
+separators and unavailable items, updates `SelectedIndex`, and keeps focus on
+the menu. Enter, or a Space press completed on the menu, activates the selected
+private item with a keyboard cause, once per key hold and only with
+activation-eligible modifiers. A primary pointer click invokes through the
+shared [press-activation](../pressable.md#overview) contract.
 
 An ampersand
 [access key](../../concepts/access-keys.md#focus-and-semantic-actions) on an
