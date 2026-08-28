@@ -101,7 +101,8 @@ of by position:
    expected `O(old count + new count)` time.
 2. An item that remains in the new snapshot stays selected even when its index
    changes. When selected items are removed, the selection is cleared or
-   narrowed to the remaining valid items.
+   narrowed to the remaining valid items. Eager and windowed replacement both
+   publish the resulting stable index delta through `SelectionChanged`.
 3. A removed or unavailable active row falls back to the available realized row
    with the smallest absolute distance from the clamped prior position,
    preferring the lower index on a tie; when the prior position is beyond the
@@ -232,7 +233,8 @@ results, file listings); leave it `null` for everything else.
   optimistically treated as eligible until a realized row proves otherwise.
   First realization caches actual availability before presentation; an already
   disabled or collapsed row is removed from selection and active state through
-  the same non-cancellable repair used for a later availability transition.
+  the same non-cancellable repair used when realized template content later
+  becomes effectively disabled or hidden.
 - A ListView that relies on auto-width sizing (no explicit `Width` and no
   `HorizontalAlignment.Stretch` parent slot) while windowed can see its own
   measured width jitter across a scroll, the same accepted tradeoff virtualizing

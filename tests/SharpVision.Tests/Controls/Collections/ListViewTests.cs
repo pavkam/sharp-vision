@@ -356,6 +356,63 @@ public sealed class ListViewTests
         control.Items[control.ActiveIndex].ShouldNotBeSameAs(selected);
     }
 
+    /// <summary>Verifies complete item replacement publishes the same removed-selection delta in
+    /// eager and fixed-row-height realization modes.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Items_WhenReplacementRemovesSelection_PublishesDelta(bool virtualized)
+    {
+        // Arrange
+        var selected = new object();
+        var remaining = new object();
+        var control = new UiListView
+        {
+            RowHeight = virtualized ? 1 : null,
+            Items = [selected, remaining],
+            SelectedIndex = 0
+        };
+        var changes = new List<ListSelectionChangedEventArgs>();
+        control.SelectionChanged += (_, eventArgs) => changes.Add(eventArgs);
+
+        // Act
+        control.Items = [new object(), remaining];
+
+        // Assert
+        control.SelectedIndex.ShouldBe(-1);
+        var change = changes.ShouldHaveSingleItem();
+        change.AddedIndexes.ToArray().ShouldBeEmpty();
+        change.RemovedIndexes.ToArray().ShouldBe([0]);
+    }
+
+    /// <summary>Verifies selected items remapped to another index publish identical deltas in eager
+    /// and fixed-row-height realization modes.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Items_WhenReplacementRemapsSelection_PublishesIndexDelta(bool virtualized)
+    {
+        // Arrange
+        var selected = new object();
+        var control = new UiListView
+        {
+            RowHeight = virtualized ? 1 : null,
+            Items = [selected, new object()],
+            SelectedIndex = 0
+        };
+        ListSelectionChangedEventArgs? change = null;
+        control.SelectionChanged += (_, eventArgs) => change = eventArgs;
+
+        // Act
+        control.Items = [new object(), selected];
+
+        // Assert
+        control.SelectedIndex.ShouldBe(1);
+        _ = change.ShouldNotBeNull();
+        change.AddedIndexes.ToArray().ShouldBe([1]);
+        change.RemovedIndexes.ToArray().ShouldBe([0]);
+    }
+
     /// <summary>Verifies programmatic selection rejects an unavailable row without disturbing valid selection.</summary>
     [Fact]
     public void SetSelected_WhenItemIsDisabled_RejectsSelectionAndPreservesValidSelection()
@@ -1252,10 +1309,17 @@ public sealed class ListViewTests
     /// SelectionChanged notification wins the active row - the outer replacement's now-stale
     /// continuation must be skipped rather than resuming with an active index it computed against
     /// data the reentrant call already superseded.</summary>
-    [Fact]
-    public void Items_WhenSelectionChangedReentersDuringReplace_PreservesReentrantActiveRow()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Items_WhenSelectionChangedReentersDuringReplace_PreservesReentrantActiveRow(bool virtualized)
     {
-        var control = new UiListView { Items = ["A", "B", "C"], SelectedIndex = 1 };
+        var control = new UiListView
+        {
+            RowHeight = virtualized ? 1 : null,
+            Items = ["A", "B", "C"],
+            SelectedIndex = 1
+        };
         var reentered = false;
         control.SelectionChanged += (_, _) =>
         {
@@ -2456,6 +2520,41 @@ public sealed class ListViewTests
         control.SelectedIndex.ShouldBe(-1);
         control.ActiveIndex.ShouldBe(0);
         control.Items[control.ActiveIndex].ShouldBe("A");
+    }
+
+    /// <summary>Verifies disabling selected realized content repairs active and selected state in
+    /// both eager and fixed-row-height realization modes.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void IsEnabled_WhenSelectedRowContentBecomesDisabled_RepairsAvailability(bool virtualized)
+    {
+        // Arrange
+        List<ControlText> realized = [];
+        var control = new UiListView
+        {
+            RowHeight = virtualized ? 1 : null,
+            ItemTemplate = item => Add(realized, new ControlText((string) item!)),
+            Items = ["A", "B"],
+            SelectedIndex = 1
+        };
+        new LayoutEngine().Layout(control, new Size(10, 2));
+        var changes = new List<ListSelectionChangedEventArgs>();
+        control.SelectionChanged += (_, eventArgs) => changes.Add(eventArgs);
+
+        // Act
+        realized.Single(item => item.Content == "B").IsEnabled = false;
+
+        // Assert
+        control.SelectedIndex.ShouldBe(-1);
+        control.ActiveIndex.ShouldBe(0);
+        var change = changes.ShouldHaveSingleItem();
+        change.RemovedIndexes.ToArray().ShouldBe([1]);
+
+        realized.Single(item => item.Content == "B").IsEnabled = true;
+        control.SelectedIndex.ShouldBe(-1);
+        control.ActiveIndex.ShouldBe(0);
+        changes.Count.ShouldBe(1);
     }
 
     /// <summary>Verifies collapsing the sole row's content clears both ActiveIndex and selection

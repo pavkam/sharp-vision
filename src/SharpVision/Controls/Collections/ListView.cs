@@ -803,18 +803,26 @@ public sealed class ListView: ItemsControl
             nextAnchor = nextActiveIndex;
         }
 
-        _selection.Clear();
-        _selection.UnionWith(normalized);
-        RemapPendingSelectionReveal(nextActiveIndex);
-        ActiveIndex = nextActiveIndex;
-        _selectionAnchor = nextAnchor;
-        RefreshSelectedItems();
-        Rewindow();
-        NotifyPropertyChanged(nameof(ActiveIndex), InvalidationImpact.Render);
-        NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Render);
-        NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
-        NotifyPropertyChanged(nameof(SelectedItems), InvalidationImpact.Render);
-        NotifyPropertyChanged(nameof(Items), InvalidationImpact.Measure);
+        void RebuildVirtualizedPresentation()
+        {
+            RemapPendingSelectionReveal(nextActiveIndex);
+            SetActiveIndex(nextActiveIndex);
+            _selectionAnchor = nextAnchor;
+            Rewindow();
+        }
+
+        var selectionVersion = _selectionVersion;
+        var applied = ApplySelection(
+            normalized,
+            cancellable: false,
+            requireAvailability: false,
+            afterSelectionInstalled: RebuildVirtualizedPresentation);
+
+        if (_selectionVersion == selectionVersion + (applied ? 1 : 0))
+        {
+            RefreshSelectedItems();
+            NotifyPropertyChanged(nameof(Items), InvalidationImpact.Measure);
+        }
     }
 
     private void ResetAvailability()
@@ -1396,7 +1404,8 @@ public sealed class ListView: ItemsControl
         bool cancellable,
         int[]? stableAdded = null,
         int[]? stableRemoved = null,
-        bool requireAvailability = true)
+        bool requireAvailability = true,
+        Action? afterSelectionInstalled = null)
     {
         // IsIndexAvailable factors in EffectiveIsVisible for a realized row, which is false for
         // every row while an ancestor (a closed Popup, a collapsed tab) hides the whole list — that
@@ -1426,6 +1435,7 @@ public sealed class ListView: ItemsControl
 
         if (!committed)
         {
+            afterSelectionInstalled?.Invoke();
             return false;
         }
 
@@ -1438,6 +1448,15 @@ public sealed class ListView: ItemsControl
         {
             var realizedItem = (ListItem) GetItemControl(position);
             realizedItem.CommitSelection(_selection.Contains(realizedItem.Index));
+        }
+
+        // Windowed snapshot replacement installs the mapped selection before rebuilding its
+        // realized window, so every newly created wrapper reflects the commit before observers run.
+        afterSelectionInstalled?.Invoke();
+
+        if (_selectionVersion != selectionVersion)
+        {
+            return true;
         }
 
         RefreshSelectedItems();
