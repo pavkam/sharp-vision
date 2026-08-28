@@ -716,13 +716,16 @@ internal sealed class OwnedControlRegistry
                 AppearanceSnapshot.CaptureSubtree(control, previousAppearance);
             }
 
+            var previousDerivedState = ControlBase.SnapshotDerivedFocusState(
+                changes.SelectMany(change => change.Removed.Concat(change.Added)));
+
             var plans = new List<ContextTransitionPlan>();
             var themeTransitions = new List<ThemeTransition>();
             var currentAppearance = new Dictionary<ControlBase, AppearanceSnapshot>(previousAppearance.Count);
             var attached = new List<ControlBase>();
             var detached = new List<ControlBase>();
 
-            foreach (var control in changes.SelectMany(change => change.Removed))
+            foreach (var control in OutermostRoots(changes.SelectMany(change => change.Removed)))
             {
                 AddPlan(ContextTransitionPlan.Create(
                     control,
@@ -829,6 +832,11 @@ internal sealed class OwnedControlRegistry
                 }
             }
 
+            ExceptionAggregation.Capture(
+                () => ControlBase.PublishDerivedFocusStateChanges(previousDerivedState),
+                ref failure);
+            ControlBase.ClearDerivedFocusStateCaches(previousDerivedState);
+
             foreach (var change in appearanceChanges)
             {
                 ExceptionAggregation.Capture(
@@ -864,6 +872,25 @@ internal sealed class OwnedControlRegistry
                 {
                     currentAppearance.Add(entry.Key, entry.Value);
                 }
+            }
+
+            static List<ControlBase> OutermostRoots(IEnumerable<ControlBase> candidates)
+            {
+                var ordered = candidates.Distinct<ControlBase>(ReferenceEqualityComparer.Instance).ToList();
+                var selected = ordered.ToHashSet<ControlBase>(ReferenceEqualityComparer.Instance);
+
+                return ordered.FindAll(control =>
+                {
+                    for (var parent = control.Parent; parent is not null; parent = parent.Parent)
+                    {
+                        if (selected.Contains(parent))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                });
             }
         }
         finally

@@ -3899,14 +3899,38 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// IsEnabled) has committed. Nothing has changed yet when this runs, so each live property
     /// getter is already the correct "before" value.</summary>
     private List<(ControlBase Control, bool EffectiveIsVisible, bool EffectiveIsEnabled, bool CanFocus, bool CanTabStop)>
-        SnapshotDerivedFocusState()
+        SnapshotDerivedFocusState() => SnapshotDerivedFocusState([this]);
+
+    /// <summary>Captures each distinct control in the supplied owned subtrees exactly once for a
+    /// later derived availability comparison.</summary>
+    /// <param name="roots">The non-null roots whose complete owned subtrees may change ancestry.</param>
+    /// <returns>A deterministic pre-mutation snapshot in first-encounter traversal order.</returns>
+    internal static List<(
+        ControlBase Control,
+        bool EffectiveIsVisible,
+        bool EffectiveIsEnabled,
+        bool CanFocus,
+        bool CanTabStop)> SnapshotDerivedFocusState(IEnumerable<ControlBase> roots)
     {
-        List<(ControlBase, bool, bool, bool, bool)> snapshot = [Capture(this)];
-        VisitChildren(Add);
+        Debug.Assert(roots is not null, "Derived-state capture requires roots.");
+        List<(ControlBase, bool, bool, bool, bool)> snapshot = [];
+        var visited = new HashSet<ControlBase>(ReferenceEqualityComparer.Instance);
+
+        foreach (var root in roots)
+        {
+            Debug.Assert(root is not null, "Derived-state capture requires non-null roots.");
+            Add(root);
+        }
+
         return snapshot;
 
         void Add(ControlBase control)
         {
+            if (!visited.Add(control))
+            {
+                return;
+            }
+
             snapshot.Add(Capture(control));
             control.VisitChildren(Add);
         }
@@ -3918,7 +3942,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <summary>Raises <see cref="PropertyChanged"/> for exactly the derived properties that
     /// actually changed, on exactly the controls where they changed - comparing the given
     /// pre-mutation snapshot against each control's current (post-mutation) value.</summary>
-    private static void PublishDerivedFocusStateChanges(
+    internal static void PublishDerivedFocusStateChanges(
         List<(ControlBase Control, bool EffectiveIsVisible, bool EffectiveIsEnabled, bool CanFocus, bool CanTabStop)> before)
     {
         ExceptionDispatchInfo? failure = null;
@@ -3959,6 +3983,21 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         }
 
         failure?.Throw();
+    }
+
+    /// <summary>Restores cache-neutral ownership mutation semantics after comparing and publishing
+    /// one derived-state snapshot.</summary>
+    /// <param name="snapshot">The non-null transaction snapshot whose controls were compared.</param>
+    internal static void ClearDerivedFocusStateCaches(
+        List<(ControlBase Control, bool EffectiveIsVisible, bool EffectiveIsEnabled, bool CanFocus, bool CanTabStop)> snapshot)
+    {
+        Debug.Assert(snapshot is not null, "Derived-state cache cleanup requires a snapshot.");
+
+        foreach (var entry in snapshot)
+        {
+            entry.Control._effectiveIsVisible = null;
+            entry.Control._effectiveIsEnabled = null;
+        }
     }
 
     private void ClearHandlers()

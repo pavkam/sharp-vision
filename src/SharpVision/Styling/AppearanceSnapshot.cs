@@ -41,11 +41,11 @@ internal readonly struct AppearanceSnapshot
         return snapshots;
     }
 
-    /// <summary>Appends one subtree's top-down cache-neutral snapshots to a transaction map.</summary>
+    /// <summary>Appends one subtree's top-down cache-neutral snapshots to a transaction map,
+    /// skipping any complete overlapping subtree already captured by the transaction.</summary>
     /// <param name="root">The non-null subtree root.</param>
-    /// <param name="snapshots">The non-null destination without duplicate subtree members.</param>
+    /// <param name="snapshots">The non-null destination, which may already contain complete overlapping subtrees.</param>
     /// <exception cref="ArgumentNullException">A required argument is null.</exception>
-    /// <exception cref="ArgumentException">A control is already present in <paramref name="snapshots"/>.</exception>
     internal static void CaptureSubtree(
         ControlBase root,
         Dictionary<ControlBase, AppearanceSnapshot> snapshots)
@@ -57,6 +57,11 @@ internal readonly struct AppearanceSnapshot
 
         while (stack.TryPop(out var entry))
         {
+            if (snapshots.ContainsKey(entry.Control))
+            {
+                continue;
+            }
+
             var state = entry.Control.GetAppearanceState();
             var actual = entry.Control.ResolveSnapshot(state, entry.ParentAmbient);
             var ambientFace = entry.Control.AmbientAppearanceState == state

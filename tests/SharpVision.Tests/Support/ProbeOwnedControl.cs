@@ -6,14 +6,13 @@ namespace SharpVision.Tests.Support;
 /// <summary>Provides a non-container owner with multiple independently ordered visual slots.</summary>
 internal sealed class ProbeOwnedControl: ControlBase
 {
-    private readonly OwnedControlSlot _primary;
     private readonly OwnedControlSlot _secondary;
 
     /// <summary>Initializes two same-role slots with independent capacities.</summary>
     /// <param name="primaryCapacity">The non-negative primary-slot capacity.</param>
     internal ProbeOwnedControl(int primaryCapacity = int.MaxValue)
     {
-        _primary = RegisterOwnedSlot(
+        PrimarySlot = RegisterOwnedSlot(
             new OwnedControlOptions(
                 OwnedControlRole.FrameworkPart,
                 OwnedControlLayer.Normal,
@@ -34,13 +33,16 @@ internal sealed class ProbeOwnedControl: ControlBase
     }
 
     /// <summary>Gets the number of controls in the primary slot.</summary>
-    internal int PrimaryCount => _primary.Count;
+    internal int PrimaryCount => PrimarySlot.Count;
 
     /// <summary>Gets the number of controls in the secondary slot.</summary>
     internal int SecondaryCount => _secondary.Count;
 
     /// <summary>Gets the primary-slot metadata.</summary>
-    internal OwnedControlOptions PrimaryOptions => _primary.Options;
+    internal OwnedControlOptions PrimaryOptions => PrimarySlot.Options;
+
+    /// <summary>Gets the primary slot for compound ownership-transaction tests.</summary>
+    internal OwnedControlSlot PrimarySlot { get; }
 
     /// <summary>Gets the number of committed primary-slot changes.</summary>
     internal int PrimaryChanges { get; private set; }
@@ -54,14 +56,14 @@ internal sealed class ProbeOwnedControl: ControlBase
     /// <summary>Gets one primary control by index.</summary>
     /// <param name="index">The zero-based index.</param>
     /// <returns>The control at the requested index.</returns>
-    internal ControlBase PrimaryAt(int index) => _primary[index];
+    internal ControlBase PrimaryAt(int index) => PrimarySlot[index];
 
     /// <summary>Adds one detached control to the primary slot.</summary>
     /// <param name="control">The non-null detached control.</param>
     internal void AddPrimary(ControlBase control)
     {
         EnsurePrimaryChangeSubscription();
-        _primary.Add(control);
+        PrimarySlot.Add(control);
     }
 
     /// <summary>Inserts one detached control into the primary slot.</summary>
@@ -70,7 +72,7 @@ internal sealed class ProbeOwnedControl: ControlBase
     internal void InsertPrimary(int index, ControlBase control)
     {
         EnsurePrimaryChangeSubscription();
-        _primary.Insert(index, control);
+        PrimarySlot.Insert(index, control);
     }
 
     /// <summary>Replaces one primary child atomically.</summary>
@@ -79,7 +81,7 @@ internal sealed class ProbeOwnedControl: ControlBase
     internal void ReplacePrimary(int index, ControlBase control)
     {
         EnsurePrimaryChangeSubscription();
-        _primary[index] = control;
+        PrimarySlot[index] = control;
     }
 
     /// <summary>Atomically replaces the complete primary slot.</summary>
@@ -87,7 +89,7 @@ internal sealed class ProbeOwnedControl: ControlBase
     internal void ReplaceAllPrimary(IEnumerable<ControlBase> controls)
     {
         EnsurePrimaryChangeSubscription();
-        _primary.ReplaceAll(controls);
+        PrimarySlot.ReplaceAll(controls);
     }
 
     /// <summary>Removes one primary control.</summary>
@@ -96,14 +98,14 @@ internal sealed class ProbeOwnedControl: ControlBase
     internal bool RemovePrimary(ControlBase control)
     {
         EnsurePrimaryChangeSubscription();
-        return _primary.Remove(control);
+        return PrimarySlot.Remove(control);
     }
 
     /// <summary>Clears the complete primary slot atomically.</summary>
     internal void ClearPrimary()
     {
         EnsurePrimaryChangeSubscription();
-        _primary.Clear();
+        PrimarySlot.Clear();
     }
 
     /// <summary>Adds one detached control to the secondary slot.</summary>
@@ -128,7 +130,7 @@ internal sealed class ProbeOwnedControl: ControlBase
             return;
         }
 
-        _primary.Changed += OnPrimaryChanged;
+        PrimarySlot.Changed += OnPrimaryChanged;
         IsPrimaryChangeSubscribed = true;
     }
 

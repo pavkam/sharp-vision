@@ -3,10 +3,218 @@
 
 namespace SharpVision.Tests.Controls;
 
+using SharpVision.DataBinding;
+
 /// <summary>Verifies central ownership slots, transactional publication, and disposal, plus
 /// cross-cutting Tab, render, and hit-test traversal over every central ownership slot.</summary>
 public sealed class OwnedControlRegistryTests
 {
+    /// <summary>Verifies a disabled ordinary owner publishes each changed derived state once for
+    /// every affected level on add and remove, while an already-disabled descendant stays silent.</summary>
+    [Fact]
+    public void AddAndRemove_WhenOwnerIsDisabled_PublishesChangedDerivedStateAcrossSubtreeExactlyOnce()
+    {
+        var owner = new ProbeContainer { IsEnabled = false };
+        var branch = new ProbeOwnedControl { IsFocusable = true };
+        var leaf = new ProbeControl { IsFocusable = true };
+        var locallyDisabled = new ProbeControl { IsFocusable = true, IsEnabled = false };
+        branch.AddPrimary(leaf);
+        branch.AddPrimary(locallyDisabled);
+        var branchNotifications = new List<string?>();
+        var leafNotifications = new List<string?>();
+        var locallyDisabledNotifications = new List<string?>();
+        branch.PropertyChanged += (_, eventArgs) => branchNotifications.Add(eventArgs.PropertyName);
+        leaf.PropertyChanged += (_, eventArgs) => leafNotifications.Add(eventArgs.PropertyName);
+        locallyDisabled.PropertyChanged += (_, eventArgs) => locallyDisabledNotifications.Add(eventArgs.PropertyName);
+        string?[] expected =
+        [
+            nameof(ControlBase.EffectiveIsEnabled),
+            nameof(ControlBase.CanFocus),
+            nameof(ControlBase.CanTabStop),
+        ];
+
+        owner.Children.Add(branch);
+
+        branchNotifications.ShouldBe(expected);
+        leafNotifications.ShouldBe(expected);
+        locallyDisabledNotifications.ShouldBeEmpty();
+        branchNotifications.Clear();
+        leafNotifications.Clear();
+
+        owner.Children.Remove(branch).ShouldBeTrue();
+
+        branchNotifications.ShouldBe(expected);
+        leafNotifications.ShouldBe(expected);
+        locallyDisabledNotifications.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a collapsed ordinary owner publishes only visibility-derived changes on
+    /// add and remove, while an already-collapsed descendant remains unchanged and silent.</summary>
+    [Fact]
+    public void AddAndRemove_WhenOwnerIsCollapsed_PublishesChangedVisibilityStateAcrossSubtreeExactlyOnce()
+    {
+        var owner = new ProbeContainer { Visibility = Visibility.Collapsed };
+        var branch = new ProbeOwnedControl { IsFocusable = true };
+        var leaf = new ProbeControl { IsFocusable = true };
+        var locallyCollapsed = new ProbeControl { IsFocusable = true, Visibility = Visibility.Collapsed };
+        branch.AddPrimary(leaf);
+        branch.AddPrimary(locallyCollapsed);
+        var branchNotifications = new List<string?>();
+        var leafNotifications = new List<string?>();
+        var locallyCollapsedNotifications = new List<string?>();
+        branch.PropertyChanged += (_, eventArgs) => branchNotifications.Add(eventArgs.PropertyName);
+        leaf.PropertyChanged += (_, eventArgs) => leafNotifications.Add(eventArgs.PropertyName);
+        locallyCollapsed.PropertyChanged += (_, eventArgs) => locallyCollapsedNotifications.Add(eventArgs.PropertyName);
+        string?[] expected =
+        [
+            nameof(ControlBase.EffectiveIsVisible),
+            nameof(ControlBase.CanFocus),
+            nameof(ControlBase.CanTabStop),
+        ];
+
+        owner.Children.Add(branch);
+
+        branchNotifications.ShouldBe(expected);
+        leafNotifications.ShouldBe(expected);
+        locallyCollapsedNotifications.ShouldBeEmpty();
+        branchNotifications.Clear();
+        leafNotifications.Clear();
+
+        owner.Children.Remove(branch).ShouldBeTrue();
+
+        branchNotifications.ShouldBe(expected);
+        leafNotifications.ShouldBe(expected);
+        locallyCollapsedNotifications.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a failing derived-state listener cannot suppress remaining property or
+    /// slot publications after a framework-part ownership commit.</summary>
+    [Fact]
+    public void Add_WhenDerivedStateNotificationThrows_PublishesRemainingStateAndSlotThenRethrows()
+    {
+        var owner = new ProbeOwnedControl { IsEnabled = false };
+        var branch = new ProbeOwnedControl { IsFocusable = true };
+        var leaf = new ProbeControl { IsFocusable = true };
+        branch.AddPrimary(leaf);
+        var branchNotifications = new List<string?>();
+        var leafNotifications = new List<string?>();
+        var publicationOrder = new List<string>();
+        branch.ParentChanging = (_, _, _) => publicationOrder.Add("parent");
+        owner.PrimaryChanging = _ => publicationOrder.Add("slot");
+        branch.PropertyChanged += (_, eventArgs) =>
+        {
+            branchNotifications.Add(eventArgs.PropertyName);
+            publicationOrder.Add($"branch:{eventArgs.PropertyName}");
+            if (eventArgs.PropertyName == nameof(ControlBase.EffectiveIsEnabled))
+            {
+                throw new InvalidOperationException("derived state publication failed");
+            }
+        };
+        leaf.PropertyChanged += (_, eventArgs) =>
+        {
+            leafNotifications.Add(eventArgs.PropertyName);
+            publicationOrder.Add($"leaf:{eventArgs.PropertyName}");
+        };
+
+        var exception = Should.Throw<InvalidOperationException>(() => owner.AddPrimary(branch));
+
+        exception.Message.ShouldBe("derived state publication failed");
+        branch.Parent.ShouldBeSameAs(owner);
+        branchNotifications.ShouldBe(
+        [
+            nameof(ControlBase.EffectiveIsEnabled),
+            nameof(ControlBase.CanFocus),
+            nameof(ControlBase.CanTabStop),
+        ]);
+        leafNotifications.ShouldBe(branchNotifications);
+        owner.PrimaryChanges.ShouldBe(1);
+        publicationOrder.ShouldBe(
+        [
+            "parent",
+            $"branch:{nameof(ControlBase.EffectiveIsEnabled)}",
+            $"branch:{nameof(ControlBase.CanFocus)}",
+            $"branch:{nameof(ControlBase.CanTabStop)}",
+            $"leaf:{nameof(ControlBase.EffectiveIsEnabled)}",
+            $"leaf:{nameof(ControlBase.CanFocus)}",
+            $"leaf:{nameof(ControlBase.CanTabStop)}",
+            "slot",
+        ]);
+    }
+
+    /// <summary>Verifies one-way bindings sourced from every derived availability property remain
+    /// current when a source control enters and leaves a disabled, collapsed owner.</summary>
+    [Fact]
+    public void AddAndRemove_WhenDerivedStateIsBound_UpdatesEveryBinding()
+    {
+        var owner = new ProbeContainer { IsEnabled = false, Visibility = Visibility.Collapsed };
+        var source = new ProbeControl { IsFocusable = true };
+        var visibleTarget = new ProbeControl();
+        var enabledTarget = new ProbeControl();
+        var focusTarget = new ProbeControl();
+        var tabStopTarget = new ProbeControl();
+        using var visibleBinding = visibleTarget.BindProperty(
+            target => target.IsEnabled,
+            source,
+            model => model.EffectiveIsVisible,
+            BindingMode.OneWay);
+        using var enabledBinding = enabledTarget.BindProperty(
+            target => target.IsEnabled,
+            source,
+            model => model.EffectiveIsEnabled,
+            BindingMode.OneWay);
+        using var focusBinding = focusTarget.BindProperty(
+            target => target.IsEnabled,
+            source,
+            model => model.CanFocus,
+            BindingMode.OneWay);
+        using var tabStopBinding = tabStopTarget.BindProperty(
+            target => target.IsEnabled,
+            source,
+            model => model.CanTabStop,
+            BindingMode.OneWay);
+
+        owner.Children.Add(source);
+
+        visibleTarget.IsEnabled.ShouldBeFalse();
+        enabledTarget.IsEnabled.ShouldBeFalse();
+        focusTarget.IsEnabled.ShouldBeFalse();
+        tabStopTarget.IsEnabled.ShouldBeFalse();
+
+        owner.Children.Remove(source).ShouldBeTrue();
+
+        visibleTarget.IsEnabled.ShouldBeTrue();
+        enabledTarget.IsEnabled.ShouldBeTrue();
+        focusTarget.IsEnabled.ShouldBeTrue();
+        tabStopTarget.IsEnabled.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies compound mutations that name both an ancestor and one of its descendants
+    /// capture and publish the descendant's derived state only once.</summary>
+    [Fact]
+    public void CommitCompound_WhenChangedRootsOverlap_PublishesEachDerivedStateOnce()
+    {
+        var owner = new ProbeContainer { IsEnabled = false };
+        var branch = new ProbeOwnedControl { IsFocusable = true };
+        var leaf = new ProbeControl { IsFocusable = true };
+        branch.AddPrimary(leaf);
+        owner.Children.Add(branch);
+        var leafNotifications = new List<string?>();
+        leaf.PropertyChanged += (_, eventArgs) => leafNotifications.Add(eventArgs.PropertyName);
+
+        OwnedControlRegistry.CommitCompound(
+            static () => { },
+            (owner.Children.OwnedSlot, Array.Empty<ControlBase>()),
+            (branch.PrimarySlot, Array.Empty<ControlBase>()));
+
+        leaf.Parent.ShouldBeNull();
+        leafNotifications.ShouldBe(
+        [
+            nameof(ControlBase.EffectiveIsEnabled),
+            nameof(ControlBase.CanFocus),
+            nameof(ControlBase.CanTabStop),
+        ]);
+    }
+
     /// <summary>Verifies a compound commit publishes lifecycle only after both owned hosts expose
     /// their final snapshots, rejects reentry across either host, and continues later callbacks.</summary>
     [Fact]

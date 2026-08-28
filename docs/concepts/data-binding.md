@@ -43,6 +43,13 @@ null or empty property name refreshes every segment owned by that publisher.
 Notifications for unrelated names are ignored. Binding never polls a plain
 object and never rewrites one into a proxy.
 
+`ControlBase` publishes its derived `EffectiveIsEnabled`, `EffectiveIsVisible`,
+`CanFocus`, and `CanTabStop` changes when either authored ancestor state or
+ownership ancestry changes. A binding sourced from any of those read-only
+properties therefore remains current when its source subtree is added, removed,
+or moved through a framework ownership transaction; no polling or manual refresh
+is required.
+
 ## Modes and natural values
 
 | Mode             | Initial value    | Source changes | Target changes |

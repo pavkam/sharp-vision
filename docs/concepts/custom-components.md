@@ -110,10 +110,13 @@ When one semantic item spans several retained hosts, framework controls stage
 the complete proposed snapshot for every participating ownership slot. The
 shared compound transaction validates every snapshot first, commits all parent
 and inherited-context edges as one structural boundary, and only then publishes
-parent, appearance, attachment, and slot callbacks in deterministic participant
-order. A callback therefore observes the complete compound graph. Failure is
-aggregated without inverse ownership publication or rollback, and reentrant tree
-mutation through any participant is rejected until publication completes.
+parent callbacks, changed derived availability/focus properties, appearance,
+attachment, and slot callbacks in deterministic participant order. A callback
+therefore observes the complete compound graph. Overlapping roots are captured
+once, so descendants publish each changed derived property once even when both
+their own slot and an ancestor slot participate. Failure is aggregated without
+inverse ownership publication or rollback, and reentrant tree mutation through
+any participant is rejected until publication completes.
 
 ## Chrome and custom rendering
 

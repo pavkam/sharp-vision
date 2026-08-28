@@ -97,8 +97,13 @@ changes away and back before the callback returns.
 
 `EffectiveIsEnabled` and `EffectiveIsVisible` are computed across the whole
 ancestor chain, and changing an inherited state invalidates the affected
-descendants. `IsHitTestVisible` affects pointer targeting only; it does not
-suppress drawing, visibility, enabled state, or explicit focus.
+descendants. When either authored ancestor state or an ownership edge changes,
+each affected control raises `PropertyChanged` exactly once for every derived
+value that actually changed: `EffectiveIsEnabled`, `EffectiveIsVisible`,
+`CanFocus`, and `CanTabStop`. A locally disabled or collapsed descendant stays
+silent when its corresponding effective value was already false.
+`IsHitTestVisible` affects pointer targeting only; it does not suppress drawing,
+visibility, enabled state, or explicit focus.
 
 ## Semantic text selection
 
@@ -301,8 +306,10 @@ Owner-driven teardown skips both. The transaction order is then:
 2. For root-manager disposal, this cleanup may run before the transaction
    commits slot membership, parent links, dispatcher, Unicode policy, theme, and
    manager context, with no further callbacks in between.
-3. Parent changes, theme changes, detach hooks, and attach hooks then publish
-   from the complete new tree.
+3. Parent changes publish from the complete new tree, followed by exactly the
+   derived availability/focus property changes caused by the new ancestry. Theme
+   changes, detach hooks, and attach hooks follow. Overlapping changed roots are
+   captured once, so a descendant is never notified twice.
 4. The transaction requests its slot invalidation impact exactly once, before
    the slot-changed notification, so a notification callback can consume current
    layout without leaving a redundant pass behind.
