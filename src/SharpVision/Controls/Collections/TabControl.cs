@@ -34,6 +34,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     private Length _writingWidth;
     private Visibility _writingVisibility;
     private int _selectedIndex = -1;
+    private long _closeRequestVersion;
     private long _selectionVersion;
 
     /// <summary>Initializes an empty tab control with typed managed pages.</summary>
@@ -70,7 +71,8 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     /// <summary>Raised after the selected tab index changes.</summary>
     public event EventHandler<TabSelectionChangedEventArgs>? SelectionChanged;
 
-    /// <summary>Raised before a closeable tab is removed; handlers may cancel the request.</summary>
+    /// <summary>Raised before a closeable tab is removed; handlers may cancel the request, which
+    /// stops delivery to later subscribers.</summary>
     public event EventHandler<TabCloseRequestedEventArgs>? CloseRequested;
 
     /// <summary>Gets the typed managed tab pages.</summary>
@@ -620,10 +622,11 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         }
 
         var request = new TabCloseRequestedEventArgs(item);
+        var closeRequestVersion = unchecked(++_closeRequestVersion);
 
         try
         {
-            CloseRequested?.Invoke(this, request);
+            RaiseCloseRequested(request, closeRequestVersion);
         }
         finally
         {
@@ -631,6 +634,29 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         }
 
         return IndexOfItemControl(item) < 0 || (!request.Cancel && RemoveItem(item));
+    }
+
+    private void RaiseCloseRequested(TabCloseRequestedEventArgs eventArgs, long closeRequestVersion)
+    {
+        var handlers = CloseRequested;
+
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var subscriber in handlers.GetInvocationList())
+        {
+            if (eventArgs.Cancel ||
+                closeRequestVersion != _closeRequestVersion ||
+                IndexOfItemControl(eventArgs.Item) < 0)
+            {
+                break;
+            }
+
+            var handler = (EventHandler<TabCloseRequestedEventArgs>) subscriber;
+            handler(this, eventArgs);
+        }
     }
 
     internal void ClearItems()

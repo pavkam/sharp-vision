@@ -20,8 +20,12 @@ re-points focus, detaches, hides, disables, or disposes the target makes the
 request report false even though the change committed and every notification
 fired. A committed change updates `Focused` and both controls' `IsFocused` state
 before raising `Lost` and `Gained`. If the tree is mutated during the `Changing`
-event, the target is revalidated before the change commits. Cleanup triggered by
-detach, hide, disable, or disposal cannot be cancelled.
+event, the target is revalidated before the change commits. A request made by
+one `Changing` subscriber supersedes the interrupted proposal's remaining
+subscriber delivery immediately. The outer transaction still finishes under its
+normal cancellation and eligibility rules, then the queued newer request runs
+next. Cleanup triggered by detach, hide, disable, or disposal cannot be
+cancelled.
 
 Every synchronous focus callback is an invalidation boundary. The manager
 revalidates the committed target after each control and manager notification; an
@@ -42,7 +46,7 @@ sequenceDiagram
     participant NewAncestors as New's divergent ancestors
 
     Caller->>FocusManager: Focus(control)
-    FocusManager->>FocusManager: Changing?.Invoke(preview)
+    FocusManager->>FocusManager: Changing subscribers in registration order
 
     alt cancellable && preview.Cancel, or target now ineligible/disallowed, or manager disposed
         FocusManager-->>Caller: false (no commit)

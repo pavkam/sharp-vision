@@ -198,6 +198,45 @@ public sealed class FocusManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a newer focus request queued by an earlier preview subscriber owns the
+    /// remaining preview stream while both requests retain their FIFO transaction semantics.</summary>
+    [Fact]
+    public async Task Focus_WhenChangingSubscriberQueuesNewerRequest_StopsSupersededDeliveryAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var previous = new ProbeControl { IsFocusable = true };
+            var superseded = new ProbeControl { IsFocusable = true };
+            var current = new ProbeControl { IsFocusable = true };
+            root.Children.Add(previous);
+            root.Children.Add(superseded);
+            root.Children.Add(current);
+            root.Attach(dispatcher);
+            using var manager = new FocusManager(root);
+            manager.Focus(previous).ShouldBeTrue();
+            var laterProposals = new List<ControlBase?>();
+            manager.Changing += (_, eventArgs) =>
+            {
+                if (ReferenceEquals(eventArgs.Next, superseded))
+                {
+                    manager.Focus(current).ShouldBeFalse();
+                }
+            };
+            manager.Changing += (_, eventArgs) => laterProposals.Add(eventArgs.Next);
+
+            manager.Focus(superseded).ShouldBeTrue();
+
+            manager.Focused.ShouldBeSameAs(current);
+            previous.IsFocused.ShouldBeFalse();
+            superseded.IsFocused.ShouldBeFalse();
+            current.IsFocused.ShouldBeTrue();
+            laterProposals.ShouldBe([current]);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies commit happens before lost and gained callbacks.</summary>
     [Fact]
     public async Task Focus_WhenTargetIsEligible_CommitsBeforeNotificationsAsync()

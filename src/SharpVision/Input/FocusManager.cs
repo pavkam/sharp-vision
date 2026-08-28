@@ -42,7 +42,8 @@ public sealed class FocusManager: IDisposable
         root.SetFocusOwner(this);
     }
 
-    /// <summary>Raised before an observable focus request commits; unavailable cleanup bypasses this preview.</summary>
+    /// <summary>Raised before an observable focus request commits; a newer request suppresses the
+    /// superseded proposal's remaining subscribers, and unavailable cleanup bypasses this preview.</summary>
     public event EventHandler<FocusChangingEventArgs>? Changing;
 
     /// <summary>Raised after the manager commits away from a previous control.</summary>
@@ -64,6 +65,8 @@ public sealed class FocusManager: IDisposable
     private bool CleanupPending { get; set; }
 
     private bool DisposalPending { get; set; }
+
+    private long ChangingPublicationVersion { get; set; }
 
     private List<ControlBase>? EligibilityNotificationsPending { get; set; }
 
@@ -554,9 +557,11 @@ public sealed class FocusManager: IDisposable
             {
                 var preview = new FocusChangingEventArgs(Focused, control, reason);
 
+                var changingPublicationVersion = unchecked(++ChangingPublicationVersion);
+
                 if (publishChanging)
                 {
-                    Changing?.Invoke(this, preview);
+                    RaiseChanging(preview, changingPublicationVersion);
                 }
 
                 // Preview handlers may detach, hide, disable, or dispose the target.
@@ -818,6 +823,11 @@ public sealed class FocusManager: IDisposable
         Func<bool>? isValid,
         ExceptionDispatchInfo? priorFailure)
     {
+        unchecked
+        {
+            ChangingPublicationVersion++;
+        }
+
         var scope = Root.ModalityOwner?.Active;
         (PendingRequests ??= []).Enqueue((
             control,
@@ -827,6 +837,29 @@ public sealed class FocusManager: IDisposable
             isValid,
             scope,
             priorFailure));
+    }
+
+    private void RaiseChanging(
+        FocusChangingEventArgs eventArgs,
+        long changingPublicationVersion)
+    {
+        var handlers = Changing;
+
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var subscriber in handlers.GetInvocationList())
+        {
+            if (changingPublicationVersion != ChangingPublicationVersion)
+            {
+                break;
+            }
+
+            var handler = (EventHandler<FocusChangingEventArgs>) subscriber;
+            handler(this, eventArgs);
+        }
     }
 
     private void PublishEligibilityNotifications()

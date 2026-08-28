@@ -46,7 +46,7 @@ classDiagram
 | `ActualStyle`          | `TabControlStyle`                            | Resolved                          | Read-only; the local style when assigned, otherwise the `control` role plus code-owned tab-strip members.         |
 | `RequestClose(item)`   | `bool`                                       | —                                 | Requests closure of a closeable owned page; raises `CloseRequested` and removes it unless cancelled.              |
 | `SelectionChanged`     | `EventHandler<TabSelectionChangedEventArgs>` | No subscribers                    | Raised after the selected tab index changes.                                                                      |
-| `CloseRequested`       | `EventHandler<TabCloseRequestedEventArgs>`   | No subscribers                    | Raised before a closeable tab is removed; handlers may cancel before removal.                                     |
+| `CloseRequested`       | `EventHandler<TabCloseRequestedEventArgs>`   | No subscribers                    | Raised before a closeable tab is removed; cancellation or a newer request stops delivery to later subscribers.    |
 
 `Items : TabItemCollection` exposes typed `Add`, `Insert`, `Remove`, `RemoveAt`,
 `Move`, `IndexOf`, and `Clear` operations for `TabItem`, plus a settable typed
@@ -93,10 +93,13 @@ it, and selection repairs exactly as for `Items.Remove`.
   `CloseRequested` is raised before removal with a cancellable
   [`TabCloseRequestedEventArgs`](#tabcloserequestedeventargs) payload. A nested
   request for the same page is bounded and returns false without republishing;
-  the outer request continues. If a callback removes, replaces, clears, or
-  disposes the page, the request returns true from that final ownership state,
-  even when the callback also sets `Cancel`. No close glyph or mouse-only close
-  affordance is part of this basic contract.
+  the outer request continues. A subscriber that cancels or ends ownership of
+  the page stops delivery to later subscribers. A nested request for a different
+  page owns the remaining delivery stream, so later subscribers observe the
+  nested current request but not the superseded outer proposal. If a callback
+  removes, replaces, clears, or disposes the page, the request returns true from
+  that final ownership state, even when the callback also sets `Cancel`. No
+  close glyph or mouse-only close affordance is part of this basic contract.
 - When the selected page is removed, disabled, or collapsed, the control chooses
   the nearest eligible successor, then the nearest predecessor, and otherwise
   clears the selection. Clearing the collection clears the selection.

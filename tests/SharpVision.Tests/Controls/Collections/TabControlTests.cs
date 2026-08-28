@@ -370,6 +370,50 @@ public sealed class TabControlTests
         tabs.Items.ShouldNotContain(item);
     }
 
+    /// <summary>Verifies cancellation by an earlier subscriber resolves the proposal before a
+    /// later subscriber can act on it.</summary>
+    [Fact]
+    public void RequestClose_WhenEarlierSubscriberCancels_StopsLaterDelivery()
+    {
+        var item = Create("First", "One");
+        item.IsClosable = true;
+        var tabs = Create(item);
+        var laterCalls = 0;
+        tabs.CloseRequested += (_, args) => args.Cancel = true;
+        tabs.CloseRequested += (_, _) => laterCalls++;
+
+        tabs.RequestClose(item).ShouldBeFalse();
+
+        laterCalls.ShouldBe(0);
+        tabs.Items.ShouldContain(item);
+    }
+
+    /// <summary>Verifies a cross-tab close requested by an earlier subscriber owns the remaining
+    /// delivery stream before the outer request resumes its final ownership decision.</summary>
+    [Fact]
+    public void RequestClose_WhenEarlierSubscriberRequestsDifferentItem_StopsSupersededDelivery()
+    {
+        var first = Create("First", "One");
+        first.IsClosable = true;
+        var second = Create("Second", "Two");
+        second.IsClosable = true;
+        var tabs = Create(first, second);
+        var laterRequests = new List<TabItem>();
+        tabs.CloseRequested += (_, args) =>
+        {
+            if (ReferenceEquals(args.Item, first))
+            {
+                tabs.RequestClose(second).ShouldBeTrue();
+            }
+        };
+        tabs.CloseRequested += (_, args) => laterRequests.Add(args.Item);
+
+        tabs.RequestClose(first).ShouldBeTrue();
+
+        laterRequests.ShouldBe([second]);
+        tabs.Items.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies callback-completed removal, replacement, clear, and disposal all report
     /// the requested page closed from final ownership, even when the callback also cancels.</summary>
     [Theory]
