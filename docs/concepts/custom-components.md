@@ -151,6 +151,12 @@ chrome is painted around it, so the override must not repeat border or padding
 deflation. The public `ActualBorder` and `ActualShadow` properties expose the
 resolved result whether or not chrome authoring is enabled.
 
+Custom `ArrangeOverride` implementations arrange only children participating in
+their placement policy. The sealed arrange completion step clears the bounds of
+every directly owned collapsed child, including retained content and private
+framework parts, so an override must not add its own collapsed-child cleanup
+loop.
+
 Rendering runs `OnRenderContent` beneath a control's own children, in a fixed
 order: content, then descendants, then `OnRenderAdornment`, then the framework
 border and any internal overlay chrome. A component that needs to paint over its

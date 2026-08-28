@@ -340,7 +340,6 @@ public sealed class Overlay: Container
         {
             if (child.Visibility == Visibility.Collapsed)
             {
-                child.Arrange(default);
                 continue;
             }
 

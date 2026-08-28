@@ -183,6 +183,11 @@ Use the strongest row that applies to the complete observable change:
 | Geometry is stable and only semantic cells change             | `Render`  |
 | No layout or cell output can change                           | `None`    |
 
+A direct `Shadow` assignment or `ResetShadow()` follows the same classification
+as theme and Style resolution: changing `IsVisible`, `Offset`, or `Mode` changes
+the visual-overflow footprint and invalidates measure. A glyph, color, or
+decoration-only shadow change invalidates render.
+
 Validation happens before state is mutated. Assigning an equivalent value
 changes no state, raises no property notification, and requests no phase work.
 Equivalence follows the property's declared policy: value-like properties use

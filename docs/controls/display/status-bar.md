@@ -134,7 +134,8 @@ space first; earlier trailing items receive partial or zero-width slots, and
 leading items get only whatever cells remain. All child bounds stay contained by
 the bar. This keeps compact mode and position indicators stable while a longer
 descriptive message yields first. Collapsed items consume neither width nor
-spacing; hidden items retain their layout space under the shared visibility
+spacing, and the shared arrange pipeline clears their previously committed
+bounds; hidden items retain their layout space under the shared visibility
 contract.
 
 Within one item, the left separator receives the first available cell, the right

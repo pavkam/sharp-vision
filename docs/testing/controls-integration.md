@@ -75,7 +75,11 @@ shadow cells while the primary pointer remains held.
 Layout tests use recording controls to assert measure constraints, desired size,
 arranged slots, call order, cache invalidation, non-reentrancy, rounding, and
 clipping. Routed-input tests record the route, phase, source, handled state,
-local coordinates, mutation during dispatch, default behavior, and cleanup.
+local coordinates, mutation during dispatch, default behavior, and cleanup. The
+shared owner-pipeline fixtures also prove that visible-to-collapsed transitions
+clear stale bounds for representative container, retained-content, and
+framework-part ownership without panel-local cleanup or duplicate bounds
+notifications, and that a failed arrange defers cleanup to its retry.
 
 Control-render tests inspect the final `Frame` cells and the copied grapheme
 bytes. They cover nested clips, later-child overwrite, padding, hidden and
