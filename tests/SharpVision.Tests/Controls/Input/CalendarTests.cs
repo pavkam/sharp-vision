@@ -214,6 +214,27 @@ public sealed class CalendarTests
         calendar.DisplayMonth.ShouldBe(new DateOnly(2025, 2, 1));
     }
 
+    /// <summary>Verifies a delegated calendar handler recognizes initial and repeated movement
+    /// strokes with the same active-date behavior as ordinary focused calendar input.</summary>
+    [Fact]
+    public void HandleNavigationKey_WhenInitialAndRepeatedKeysAreDelegated_MovesActiveDate()
+    {
+        var initial = new DateOnly(2026, 7, 19);
+        using var calendar = new UiCalendar { Selection = new DateInterval(initial, initial) };
+        calendar.Selection = null;
+        var initialKey = NavigationKey(Code.Right, KeyAction.Press);
+        var repeatedKey = NavigationKey(Code.Right, KeyAction.Repeat);
+
+        var initialHandled = calendar.HandleNavigationKey(initialKey);
+        var repeatedHandled = calendar.HandleNavigationKey(repeatedKey);
+
+        initialHandled.ShouldBeTrue();
+        repeatedHandled.ShouldBeTrue();
+        initialKey.IsHandled.ShouldBeFalse();
+        repeatedKey.IsHandled.ShouldBeFalse();
+        calendar.ActiveDate.ShouldBe(initial.AddDays(2));
+    }
+
     /// <summary>Verifies header and wheel month navigation share bounded month arithmetic.</summary>
     [Fact]
     public void Dispatch_WhenHeaderAndWheelNavigate_ChangesDisplayedMonthOnly()
@@ -1521,6 +1542,9 @@ public sealed class CalendarTests
         _ = Router.Route(calendar, Events.Key, eventArgs);
         return eventArgs;
     }
+
+    private static KeyEventArgs NavigationKey(Code code, KeyAction action) =>
+        new(new Stroke(code, character: null, nativeCode: 0, Modifiers.None, action));
 
     private static KeyEventArgs CharacterKey(
         UiCalendar calendar,

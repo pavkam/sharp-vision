@@ -617,6 +617,52 @@ public sealed class ListViewTests
         control.ActiveIndex.ShouldBe(4);
     }
 
+    /// <summary>Verifies delegated initial and repeated navigation preserves a drop-down owner's
+    /// current-only browsing semantics instead of committing a ListView selection.</summary>
+    [Fact]
+    public void HandleCurrentNavigationKey_WhenInitialAndRepeatedKeysAreDelegated_MovesOnlyCurrentItem()
+    {
+        var control = new UiListView
+        {
+            ItemTemplate = item => new ControlText((string) item!),
+            Items = ["A", "B", "C"],
+            SelectedIndex = 0
+        };
+        var initial = NavigationKey(Code.Down, KeyAction.Press);
+        var repeated = NavigationKey(Code.Down, KeyAction.Repeat);
+
+        var initialHandled = control.HandleCurrentNavigationKey(initial);
+        var repeatedHandled = control.HandleCurrentNavigationKey(repeated);
+
+        initialHandled.ShouldBeTrue();
+        repeatedHandled.ShouldBeTrue();
+        control.ActiveIndex.ShouldBe(2);
+        control.SelectedIndex.ShouldBe(0);
+    }
+
+    /// <summary>Verifies delegated initial and repeated navigation retains ordinary focused
+    /// ListView selection semantics when selection browsing is requested.</summary>
+    [Fact]
+    public void HandleSelectionNavigationKey_WhenInitialAndRepeatedKeysAreDelegated_MovesCurrentAndSelection()
+    {
+        var control = new UiListView
+        {
+            ItemTemplate = item => new ControlText((string) item!),
+            Items = ["A", "B", "C"],
+            SelectedIndex = 0
+        };
+        var initial = NavigationKey(Code.Down, KeyAction.Press);
+        var repeated = NavigationKey(Code.Down, KeyAction.Repeat);
+
+        var initialHandled = control.HandleSelectionNavigationKey(initial);
+        var repeatedHandled = control.HandleSelectionNavigationKey(repeated);
+
+        initialHandled.ShouldBeTrue();
+        repeatedHandled.ShouldBeTrue();
+        control.ActiveIndex.ShouldBe(2);
+        control.SelectedIndex.ShouldBe(2);
+    }
+
     /// <summary>Verifies active fallback chooses a closer available higher row over a farther lower row.</summary>
     [Fact]
     public void Items_WhenHigherAvailableRowIsCloser_ChoosesHigherRow()
@@ -1349,6 +1395,9 @@ public sealed class ListViewTests
                 nativeCode: 0,
                 Modifiers.None,
                 action)));
+
+    private static KeyEventArgs NavigationKey(Code code, KeyAction action) =>
+        new(new Stroke(code, character: null, nativeCode: 0, Modifiers.None, action));
 
     private static KeyEventArgs KeyWithModifiers(ControlBase target, Code code, Modifiers modifiers)
     {

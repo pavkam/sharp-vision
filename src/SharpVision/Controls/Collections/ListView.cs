@@ -1509,6 +1509,18 @@ public sealed class ListView: ItemsControl
         return true;
     }
 
+    /// <summary>Handles one delegated navigation stroke by moving only the current item.</summary>
+    /// <param name="eventArgs">The routed key record to interpret.</param>
+    /// <returns><see langword="true"/> when the stroke moved the current item; otherwise,
+    /// <see langword="false"/>.</returns>
+    /// <remarks>This seam lets a drop-down owner browse a retained list without committing the
+    /// list selection it maintains separately.</remarks>
+    internal bool HandleCurrentNavigationKey(KeyEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        return eventArgs.IsKeyDown && MoveCurrent(eventArgs.Stroke.Code);
+    }
+
     /// <summary>Activates the owned current item without transferring focus to that item.</summary>
     /// <param name="cause">The semantic activation source.</param>
     /// <param name="key">The activating key, or null for non-key activation.</param>
@@ -1708,7 +1720,20 @@ public sealed class ListView: ItemsControl
             return;
         }
 
-        eventArgs.IsHandled = MoveSelection(eventArgs.Stroke.Code);
+        eventArgs.IsHandled = HandleSelectionNavigationKey(eventArgs);
+    }
+
+    /// <summary>Handles one delegated navigation stroke through ordinary ListView selection
+    /// semantics.</summary>
+    /// <param name="eventArgs">The routed key record to interpret.</param>
+    /// <returns><see langword="true"/> when the stroke resolved an eligible navigation target;
+    /// otherwise, <see langword="false"/>.</returns>
+    /// <remarks>This seam preserves the selection transaction used when a focused ListView owns
+    /// the same initial or repeated key itself.</remarks>
+    internal bool HandleSelectionNavigationKey(KeyEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        return eventArgs.IsKeyDown && MoveSelection(eventArgs.Stroke.Code);
     }
 
     /// <summary>Moves selection and current item through the shared keyboard-navigation transaction,

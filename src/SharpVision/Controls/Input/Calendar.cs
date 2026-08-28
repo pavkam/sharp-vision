@@ -463,11 +463,28 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
 
     private void HandleKey(KeyEventArgs eventArgs)
     {
+        if (HandleNavigationKey(eventArgs))
+        {
+            eventArgs.IsHandled = true;
+        }
+    }
+
+    /// <summary>Handles one delegated key stroke through the Calendar's canonical navigation and
+    /// activation state machine.</summary>
+    /// <param name="eventArgs">The routed key record to interpret.</param>
+    /// <returns><see langword="true"/> when the Calendar recognized and completed the command;
+    /// otherwise, <see langword="false"/>.</returns>
+    /// <remarks>The caller owns route consumption, allowing a popup coordinator to prevent a
+    /// focused Calendar from receiving the same stroke twice.</remarks>
+    internal bool HandleNavigationKey(KeyEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+
         var stroke = eventArgs.Stroke;
 
         if (!eventArgs.IsKeyDown)
         {
-            return;
+            return false;
         }
 
         var navigationEligible = KeyboardModifierPolicy.MatchesCommand(
@@ -475,7 +492,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
             Modifiers.None);
 
 #pragma warning disable IDE0072 // Unknown or unsupported keys intentionally remain unhandled.
-        var handled = stroke.Code switch
+        return stroke.Code switch
         {
             Code.Left when navigationEligible => MoveByDays(-1),
             Code.Right when navigationEligible => MoveByDays(1),
@@ -492,11 +509,6 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
             _ => false
         };
 #pragma warning restore IDE0072
-
-        if (handled)
-        {
-            eventArgs.IsHandled = true;
-        }
     }
 
     private void HandlePointer(PointerEventArgs eventArgs)
