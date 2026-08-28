@@ -617,6 +617,12 @@ button caption or `CodeView` line is not forced to be atomic. Only mapped text
 cells receive `SelectionFace`; borders, checkbox marks, radio marks, gutters,
 quote bars, and other chrome remain unchanged.
 
+Block spacing and multi-row embedded controls can occupy several painted rows
+while adjacent semantic values retain their single LF separator. Vertical and
+page caret movement crosses those sparse rows monotonically: it scans to the
+next endpoint in the requested semantic direction rather than reversing across
+the shared separator. This navigation rule does not add synthetic copied text.
+
 The normalized stream is available before measurement. In that detached state,
 inline and block controls contribute their selectable text, while glyph geometry
 remains absent until layout establishes visible cell positions.

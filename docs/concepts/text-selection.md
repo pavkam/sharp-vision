@@ -61,10 +61,12 @@ ordinary click path remains intact until the shared drag threshold is crossed.
 - Ctrl+A selects the complete stream.
 - Left/Right moves by grapheme and Ctrl+Left/Right moves by word; without Shift,
   an existing range first collapses toward the requested direction.
-- Up/Down preserves a visual column.
+- Up/Down preserves a visual column. When several sparse visual rows share one
+  semantic separator, navigation continues through them until the caret advances
+  in the requested semantic direction or reaches the projection boundary.
 - Home/End moves to a visual-row boundary.
 - Page Up/Page Down moves by the visible height minus `PageOverlap`, with a
-  minimum of one row.
+  minimum of one row and the same directional guarantee across sparse rows.
 - Shift extends each navigation command from the established anchor.
 
 An edge-held drag offers scrolling from the innermost eligible

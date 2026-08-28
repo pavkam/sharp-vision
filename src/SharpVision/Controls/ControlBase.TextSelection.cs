@@ -1106,11 +1106,27 @@ public abstract partial class ControlBase: ISelectableTextSource
         var distance = code is Code.PageUp or Code.PageDown
             ? TextSelectionPageDistance()
             : 1;
-        _textSelectionDesiredRow = (int) Math.Clamp(
+        var targetRow = (int) Math.Clamp(
             (long) _textSelectionDesiredRow.Value + (direction * distance),
             0,
             Math.Max(0, map.VisualRowCount - 1));
-        return map.OffsetAtVisualColumn(_textSelectionDesiredRow.Value, _textSelectionDesiredColumn.Value);
+        var currentCaret = CommittedTextSelection.Caret;
+        var targetCaret = map.OffsetAtVisualColumn(targetRow, _textSelectionDesiredColumn.Value);
+
+        // Several visual rows can share one semantic separator. Sparse-row hit testing alone can
+        // therefore choose the glyph on the opposite side of the current caret. Keep walking in
+        // the requested visual direction until the semantic endpoint advances the same way.
+        while ((direction < 0 ? targetCaret >= currentCaret : targetCaret <= currentCaret) &&
+               targetRow != (direction < 0 ? 0 : map.VisualRowCount - 1))
+        {
+            targetRow += direction;
+            targetCaret = map.OffsetAtVisualColumn(targetRow, _textSelectionDesiredColumn.Value);
+        }
+
+        _textSelectionDesiredRow = targetRow;
+        return direction < 0
+            ? targetCaret < currentCaret ? targetCaret : currentCaret
+            : targetCaret > currentCaret ? targetCaret : currentCaret;
     }
 
     /// <summary>Gets the visual-row distance used by common page selection navigation.</summary>

@@ -215,6 +215,57 @@ public sealed class DocumentSelectionSurfaceTests
             TestContext.Current.CancellationToken)).ShouldBeLessThan(lastBlankOffset);
     }
 
+    /// <summary>Verifies a multi-row non-selectable block cannot make Up cross the single semantic
+    /// separator in the opposite direction when several visual rows share that one offset.</summary>
+    [Fact]
+    public async Task Keyboard_WhenBlockControlRowsShareOneSemanticSeparator_NeverReversesDirectionAsync()
+    {
+        var spacer = new Overlay
+        {
+            Width = Length.Cells(1),
+            Height = Length.Cells(3)
+        };
+        var document = new Document
+        {
+            Blocks =
+            {
+                new DocumentParagraph("abcd"),
+                new DocumentBlockControl(spacer),
+                new DocumentParagraph("wxyz")
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(10, 8),
+            TestContext.Current.CancellationToken);
+        document.SelectionMap.Text.ShouldBe("abcd\nwxyz");
+        const int separator = 4;
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                document.SetSelection(new Selection(separator, separator));
+                document.Focus().ShouldBeTrue();
+            },
+            "establish the caret at the collapsed semantic separator");
+
+        await RouteKeyAsync(surface, document, Code.Up, Modifiers.None);
+
+        (await surface.Application.Dispatcher.InvokeAsync(
+            () => document.Selection.Caret,
+            TestContext.Current.CancellationToken)).ShouldBeLessThan(separator);
+
+        await surface.UpdateAsync(
+            () => document.SetSelection(new Selection(separator, separator)),
+            "restore the collapsed semantic separator");
+
+        await RouteKeyAsync(surface, document, Code.Down, Modifiers.None);
+
+        (await surface.Application.Dispatcher.InvokeAsync(
+            () => document.Selection.Caret,
+            TestContext.Current.CancellationToken)).ShouldBeGreaterThan(separator);
+    }
+
     /// <summary>Verifies keyboard caret reveal remains confined to the active modal plane and
     /// cannot scroll an enclosing container outside that plane.</summary>
     [Fact]
