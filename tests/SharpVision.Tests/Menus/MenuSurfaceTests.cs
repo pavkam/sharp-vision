@@ -6,6 +6,38 @@ namespace SharpVision.Tests.Menus;
 /// <summary>Proves menu entries and navigation through mounted terminal surfaces.</summary>
 public sealed class MenuSurfaceTests
 {
+    /// <summary>Verifies an owner-managed submenu opening does not close an unrelated
+    /// owner-managed popup elsewhere in the same tree.</summary>
+    [Fact]
+    public async Task Submenu_WhenOpened_DoesNotCloseUnrelatedOwnerManagedPopupAsync()
+    {
+        // Arrange
+        var pinned = new Popup
+        {
+            Content = new ControlText("Pinned"),
+            ModalBehavior = PopupModalBehavior.None,
+            FocusOnOpen = false
+        };
+        var submenu = new Menu { Orientation = Orientation.Vertical };
+        submenu.Items.Add(new MenuItem { Text = "About" });
+        var help = new MenuItem { Text = "Help", Submenu = submenu };
+        var menu = new Menu { Orientation = Orientation.Horizontal };
+        menu.Items.Add(help);
+        var root = new Overlay { Children = { pinned, menu } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(40, 12),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => pinned.IsOpen = true, "open unrelated popup");
+
+        // Act
+        await surface.Pointer.ClickAsync(help);
+
+        // Assert
+        help.IsSubmenuOpen.ShouldBeTrue();
+        pinned.IsOpen.ShouldBeTrue();
+    }
+
     /// <summary>Verifies SubmenuChrome's border override reaches the rendered open submenu frame,
     /// not just the property value.</summary>
     [Fact]

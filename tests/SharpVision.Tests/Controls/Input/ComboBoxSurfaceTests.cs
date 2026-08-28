@@ -6,6 +6,34 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves ComboBox and its transient list through mounted terminal surfaces.</summary>
 public sealed class ComboBoxSurfaceTests
 {
+    /// <summary>Verifies the shared owner-managed input popup does not close an unrelated
+    /// owner-managed popup elsewhere in the same tree.</summary>
+    [Fact]
+    public async Task IsOpen_WhenOpened_DoesNotCloseUnrelatedOwnerManagedPopupAsync()
+    {
+        // Arrange
+        var pinned = new Popup
+        {
+            Content = new ControlText("Pinned"),
+            ModalBehavior = PopupModalBehavior.None,
+            FocusOnOpen = false
+        };
+        var combo = new ComboBox { Items = ["One", "Two"], SelectedIndex = 0 };
+        var root = new Overlay { Children = { pinned, combo } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 12),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => pinned.IsOpen = true, "open unrelated popup");
+
+        // Act
+        await surface.UpdateAsync(() => combo.IsOpen = true, "open ComboBox popup");
+
+        // Assert
+        combo.IsOpen.ShouldBeTrue();
+        pinned.IsOpen.ShouldBeTrue();
+    }
+
     /// <summary>Verifies Turbo Vision preserves the bright bottom edge of a disabled sunken field.</summary>
     [Fact]
     public async Task Render_WhenTurboVisionComboBoxIsDisabled_KeepsBottomBorderVisibleAsync()

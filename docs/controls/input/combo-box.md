@@ -111,6 +111,8 @@ ListView's selection, scrolling, and surface appearance inside the Popup.
   limits only the list interior; the Popup adds its three visible frame edges
   outside that limit and keeps the open list above later page content, as
   defined by the [Popup contract](../popups/popup.md#overview).
+- Opening the owner-managed popup leaves unrelated owner-managed Popup surfaces
+  elsewhere in the tree open; ComboBox coordinates only its own logical plane.
 
 `ComboBox` has no typed-text input path; it only selects from `Items`. For an
 editable suggestion field, compose `TextInput` with a `Popup` directly.

@@ -36,13 +36,13 @@ classDiagram
 
 `ShowAt(anchor)` validates the anchor, assigns it, and opens the same Flyout
 instance. Opening installs light-dismiss observation, closes any other open
-Flyout beneath the same logical root, and keeps normal routed ancestry. A
-primary press outside the Flyout and its anchor closes it without replaying the
-press to the background and restores the focus held before opening. When the
-anchor belongs to an older modal plane, the same rule applies both inside and
-outside that plane: only the Flyout closes, and the older modal scope remains
-active. Moving or resizing the anchor closes the open Flyout, so a stale
-placement is never kept on screen.
+sibling Flyout beneath the same logical root, preserves open ancestor Flyouts,
+and keeps normal routed ancestry. A primary press outside the Flyout and its
+anchor closes it without replaying the press to the background and restores the
+focus held before opening. When the anchor belongs to an older modal plane, the
+same rule applies both inside and outside that plane: only the Flyout closes,
+and the older modal scope remains active. Moving or resizing the anchor closes
+the open Flyout, so a stale placement is never kept on screen.
 
 Automatic `IsOpen` presentation uses light dismissal without creating a modal
 scope. The inherited `OpenModal` API remains available when a caller explicitly
@@ -81,8 +81,9 @@ flyout.ShowAt(triggerButton);
   background control or dismiss an older modal plane. Escape closes it, and
   opening transfers focus to the first eligible descendant.
 - Opening one flyout closes a sibling under the same logical root, and moving or
-  resizing the anchor closes the open flyout. Sibling closure snapshots and
-  revalidates retained identities across callback-driven tree mutation.
+  resizing the anchor closes the open flyout. A nested Flyout preserves its open
+  ancestor. Sibling closure snapshots and revalidates retained identities across
+  callback-driven tree mutation.
 - The lifecycle events fire in their documented order, and detaching or
   disposing the flyout cleans it up.
 - Final rendering resolves to the expected semantic cells.

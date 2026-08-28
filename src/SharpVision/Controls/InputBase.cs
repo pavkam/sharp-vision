@@ -579,6 +579,7 @@ public abstract class InputBase: ControlBase
             TabNavigation = popupTabNavigation,
             ConnectsToAnchor = true,
             Placement = placement,
+            SuppressCloseOtherPopups = true,
             // The owner re-arranges its own popup child from its own ArrangeOverride every pass,
             // so base Popup's anchor-reflow tracking would be a redundant second placement pass
             // reacting to the same self-owned anchor.

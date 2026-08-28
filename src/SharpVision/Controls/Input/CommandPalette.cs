@@ -50,6 +50,7 @@ public sealed class CommandPalette: CompositeControlBase
             FocusOnOpen = false,
             ModalBehavior = PopupModalBehavior.None,
             Placement = PopupPlacement.Below,
+            SuppressCloseOtherPopups = true,
             TabNavigation = TabNavigation.None,
             TracksAnchorReflow = false
         };

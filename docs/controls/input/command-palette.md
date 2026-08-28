@@ -85,7 +85,9 @@ busy state is left without work capable of completing it.
 The result popup uses the shared dismissing modal scope, so outside input closes
 it and restores the focus that preceded `Open()`. The retained editor is the
 modal plane's initial focus target even though the public composite itself is
-not focusable.
+not focusable. The owner-managed results popup does not run Popup's global
+sibling-exclusion pass, so opening it leaves unrelated owner-managed Popup
+surfaces elsewhere in the tree open.
 
 ## Placement and appearance
 

@@ -100,6 +100,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
                 ModalBehavior = PopupModalBehavior.None,
                 Placement = PopupPlacement.Below,
                 Content = value,
+                SuppressCloseOtherPopups = true,
                 // MenuItem re-arranges its own submenu popup from its own ArrangeOverride every
                 // pass (RootBounds(bounds) elsewhere in this file), so base Popup's anchor-reflow
                 // tracking would be a redundant second placement pass reacting to the same

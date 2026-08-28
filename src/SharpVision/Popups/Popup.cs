@@ -1304,8 +1304,12 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         }
     }
 
+    /// <summary>Reports whether one retained control owns the other's ancestor chain.</summary>
+    /// <param name="candidate">The possible retained ancestor.</param>
+    /// <param name="descendant">The descendant whose parent chain is inspected.</param>
+    /// <returns>True when <paramref name="candidate"/> appears in the parent chain.</returns>
     [Pure]
-    private static bool IsAncestorOf(ControlBase candidate, ControlBase descendant)
+    internal static bool IsAncestorOf(ControlBase candidate, ControlBase descendant)
     {
         for (var current = descendant.Parent; current is not null; current = current.Parent)
         {

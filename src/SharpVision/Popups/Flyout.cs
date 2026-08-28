@@ -118,6 +118,7 @@ public sealed class Flyout: Popup
             if (flyout.IsOpen &&
                 !ReferenceEquals(flyout, except) &&
                 !flyout.IsOpenTransitioning &&
+                !IsAncestorOf(flyout, except) &&
                 ModalityManager.IsWithin(flyout, control))
             {
                 flyout.IsOpen = false;

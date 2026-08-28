@@ -75,8 +75,10 @@ classDiagram
 > Two of the defaults above hold only for a directly constructed `Popup`. Both
 > shipped subclasses flip `SuppressCloseOtherPopups` to `true` in their
 > constructors (`Tooltip`, `Flyout`), so showing either leaves an open drop-down
-> or menu untouched; and the popups `InputBase.EnablePopup` builds default
-> `FocusOnOpen` to `false`, with `Tooltip` setting it false again.
+> or menu untouched. Framework-owned menu, input, and CommandPalette popups also
+> set that policy because their owners coordinate dismissal inside their own
+> logical plane. The popups `InputBase.EnablePopup` builds default `FocusOnOpen`
+> to `false`, with `Tooltip` setting it false again.
 
 ## Content ownership
 
@@ -263,6 +265,8 @@ popup.IsOpen = true;
 - Sibling exclusion snapshots identities before publishing close callbacks and
   revalidates ownership before each close, so callback-driven tree mutation
   cannot skip or index past a sibling.
+- Owner-managed menu, input, and CommandPalette popups do not run the global
+  sibling sweep, so opening one leaves unrelated owner-managed surfaces open.
 - Focus discovery crosses private slots on open, and closing restores focus.
 - A failing `Opened` observer rolls back public and common presentation state so
   the same instance can reopen. Later callback failures complete cleanup, the

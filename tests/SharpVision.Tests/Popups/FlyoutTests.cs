@@ -8,6 +8,29 @@ using ReflectionBindingFlags = System.Reflection.BindingFlags;
 /// <summary>Verifies flyout visibility, light dismiss, and anchor placement.</summary>
 public sealed class FlyoutTests
 {
+    /// <summary>Verifies opening a nested Flyout preserves its open ancestor while the ordinary
+    /// sibling-exclusion rule remains active.</summary>
+    [Fact]
+    public async Task IsOpen_WhenOpenedFromInsideAnotherOpenFlyout_DoesNotCloseAncestorAsync()
+    {
+        var anchor = new Button { Text = "Anchor" };
+        var nestedAnchor = new Button { Text = "More" };
+        var nested = new Flyout { Content = new ControlText("Nested") };
+        var parentContent = new Grid { Children = { nestedAnchor, nested } };
+        var parent = new Flyout { Anchor = anchor, Content = parentContent };
+        var root = new Overlay { Children = { anchor, parent } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(40, 12),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => parent.IsOpen = true, "open parent Flyout");
+
+        await surface.UpdateAsync(() => nested.ShowAt(nestedAnchor), "open nested Flyout");
+
+        parent.IsOpen.ShouldBeTrue();
+        nested.IsOpen.ShouldBeTrue();
+    }
+
     /// <summary>Verifies Flyout exclusion snapshots the owned tree before a closing sibling removes
     /// itself and invalidates live child indices.</summary>
     [Fact]

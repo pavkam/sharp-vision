@@ -6,6 +6,37 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves command-palette focus, keyboard selection, activation, and popup cells when mounted.</summary>
 public sealed class CommandPaletteSurfaceTests
 {
+    /// <summary>Verifies the owner-managed results popup does not close an unrelated
+    /// owner-managed popup elsewhere in the same tree.</summary>
+    [Fact]
+    public async Task Open_WhenCalled_DoesNotCloseUnrelatedOwnerManagedPopupAsync()
+    {
+        // Arrange
+        var pinned = new Popup
+        {
+            Content = new ControlText("Pinned"),
+            ModalBehavior = PopupModalBehavior.None,
+            FocusOnOpen = false
+        };
+        var palette = new CommandPalette
+        {
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["One", "Two"])
+        };
+        var root = new Overlay { Children = { pinned, palette } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 12),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => pinned.IsOpen = true, "open unrelated popup");
+
+        // Act
+        await surface.UpdateAsync(() => palette.Open(), "open command palette results");
+
+        // Assert
+        palette.IsOpen.ShouldBeTrue();
+        pinned.IsOpen.ShouldBeTrue();
+    }
+
     /// <summary>Verifies resolved results start with one unified selected and current row while
     /// keyboard focus remains in the editor.</summary>
     [Fact]

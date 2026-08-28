@@ -286,7 +286,10 @@ A framework control whose retained Popup belongs to a larger logical plane
 coordinates that plane internally rather than stacking one scope per surface.
 ComboBox roots one scope at its public field, so the field, the private
 ListView, and the Popup stay together. Menu marks every submenu Popup
-owner-managed and keeps one top-menu-rooted scope for the complete chain.
+owner-managed and keeps one top-menu-rooted scope for the complete chain. These
+owner-managed surfaces, including CommandPalette results, suppress the generic
+tree-wide popup exclusion pass; opening one never closes an unrelated logical
+plane.
 
 Neither control has a permanent `IsModal` flag. A normal Window remains
 modeless, and disposing a Window's returned scope ends its modal presentation

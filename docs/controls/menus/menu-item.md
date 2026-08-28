@@ -220,10 +220,10 @@ Generic popup fallback, promotion, light dismissal, and ancestor-chain
 preservation are unchanged. Closing the submenu restores focus to the owning
 menu. Every retained popup and nested Menu participates as a descendant of the
 top owner's [single menu plane](../../concepts/modality.md#menu-planes), so
-opening a nested item never creates one modal scope per submenu. Directly
-disposing the retained `Submenu` clears the relationship and retires its popup
-immediately, whether the submenu is closed, open, or part of an active nested
-menu chain.
+opening a nested item never creates one modal scope per submenu and never closes
+an unrelated owner-managed Popup elsewhere in the tree. Directly disposing the
+retained `Submenu` clears the relationship and retires its popup immediately,
+whether the submenu is closed, open, or part of an active nested menu chain.
 
 ## MenuSeparator
 
