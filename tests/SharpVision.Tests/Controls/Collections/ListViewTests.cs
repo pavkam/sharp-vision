@@ -1230,8 +1230,7 @@ public sealed class ListViewTests
     [Fact]
     public void Items_WhenSelectionChangedReentersDuringReplace_PreservesReentrantActiveRow()
     {
-        var control = new UiListView { Items = ["A", "B", "C"] };
-        control.SelectedIndex = 1;
+        var control = new UiListView { Items = ["A", "B", "C"], SelectedIndex = 1 };
         var reentered = false;
         control.SelectionChanged += (_, _) =>
         {

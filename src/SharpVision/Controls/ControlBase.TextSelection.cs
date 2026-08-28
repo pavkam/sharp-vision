@@ -17,7 +17,6 @@ public abstract partial class ControlBase: ISelectableTextSource
     private bool _textSelectionCaretEstablished;
     private ulong _textSelectionFingerprint;
     private ulong _textSelectionCapabilityVersion;
-    private ulong _textSelectionTransitionVersion;
 
     /// <summary>Gets the common pointer-selection phase for behavioral invariant tests.</summary>
     internal TextSelectionGesturePhase TextSelectionPhase =>
@@ -29,7 +28,7 @@ public abstract partial class ControlBase: ISelectableTextSource
     /// <summary>Gets the current commit's transition version, for reentrancy detection by an
     /// <see cref="OnTextSelectionStateChanged(TextSelectionChangedEventArgs)"/> override that
     /// publishes more than one dependent notification for a single commit.</summary>
-    protected ulong TextSelectionTransitionVersion => _textSelectionTransitionVersion;
+    protected ulong TextSelectionTransitionVersion { get; private set; }
 
     /// <summary>Raised synchronously after the directional semantic-text selection changes.</summary>
     /// <remarks>
@@ -256,28 +255,28 @@ public abstract partial class ControlBase: ISelectableTextSource
         CommittedTextSelection = selection;
         unchecked
         {
-            _textSelectionTransitionVersion++;
+            TextSelectionTransitionVersion++;
         }
-        var transitionVersion = _textSelectionTransitionVersion;
+        var transitionVersion = TextSelectionTransitionVersion;
         Invalidate(Invalidation.Render);
         var eventArgs = new TextSelectionChangedEventArgs(previous, selection);
         OnTextSelectionStateChanged(eventArgs);
 
-        if (_textSelectionTransitionVersion != transitionVersion)
+        if (TextSelectionTransitionVersion != transitionVersion)
         {
             return true;
         }
 
         beforeNotifications?.Invoke();
 
-        if (_textSelectionTransitionVersion != transitionVersion)
+        if (TextSelectionTransitionVersion != transitionVersion)
         {
             return true;
         }
 
         OnTextSelectionCommitted(eventArgs, transitionVersion);
 
-        if (_textSelectionTransitionVersion == transitionVersion)
+        if (TextSelectionTransitionVersion == transitionVersion)
         {
             RaiseTextSelectionChanged(eventArgs, transitionVersion);
         }
@@ -298,7 +297,7 @@ public abstract partial class ControlBase: ISelectableTextSource
 
         foreach (var subscriber in handlers.GetInvocationList())
         {
-            if (_textSelectionTransitionVersion != transitionVersion)
+            if (TextSelectionTransitionVersion != transitionVersion)
             {
                 break;
             }
@@ -325,7 +324,7 @@ public abstract partial class ControlBase: ISelectableTextSource
 
         foreach (var subscriber in handlers.GetInvocationList())
         {
-            if (_textSelectionTransitionVersion != transitionVersion)
+            if (TextSelectionTransitionVersion != transitionVersion)
             {
                 break;
             }
@@ -354,7 +353,7 @@ public abstract partial class ControlBase: ISelectableTextSource
 
         foreach (var subscriber in handlers.GetInvocationList())
         {
-            if (_textSelectionTransitionVersion != transitionVersion)
+            if (TextSelectionTransitionVersion != transitionVersion)
             {
                 break;
             }
@@ -607,9 +606,9 @@ public abstract partial class ControlBase: ISelectableTextSource
         _textSelectionFingerprint = map.Fingerprint;
         unchecked
         {
-            _textSelectionTransitionVersion++;
+            TextSelectionTransitionVersion++;
         }
-        var transitionVersion = _textSelectionTransitionVersion;
+        var transitionVersion = TextSelectionTransitionVersion;
         Invalidate(Invalidation.Render);
         RaiseTextSelectionChanged(new TextSelectionChangedEventArgs(previous, default), transitionVersion);
         return map;
