@@ -3,8 +3,6 @@
 
 namespace SharpVision.Controls.Input;
 
-using SharpVision.Terminal.Input;
-
 /// <summary>Defines a bordered field control for editing <see cref="TimeOnly"/> values using inline segment editing.</summary>
 /// <remarks>
 /// Each time segment (hour, minute, second, AM/PM) is independently editable.
@@ -21,7 +19,6 @@ using SharpVision.Terminal.Input;
 [PublicAPI]
 public sealed class TimeInput: InputBase
 {
-    private long _valueVersion;
     private const int _contentHeight = 1;
 
     private static readonly IReadOnlyDictionary<char, TemporalSegmentKind> _tokenKinds =
@@ -35,8 +32,8 @@ public sealed class TimeInput: InputBase
         };
 
     private readonly SegmentFieldBehavior _segments;
-    private TimeOnly? _value;
-    private bool _seeded;
+    private readonly SegmentFieldKeyOptions _segmentKeyOptions;
+    private readonly TemporalValueState<TimeOnly> _state;
     private CultureInfo _culture;
 
     #region Construction and properties
@@ -49,11 +46,23 @@ public sealed class TimeInput: InputBase
         // TimeProvider must observe that dispatcher's clock instead of latching the clock that
         // happened to be current at construction.
         _culture = CultureInfo.InvariantCulture;
+        _state = new TemporalValueState<TimeOnly>(
+            TimeOnly.MinValue,
+            TimeOnly.MaxValue,
+            VerifyMutable,
+            NotifyPropertyChanged,
+            () => TimeOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime),
+            (previous, current) =>
+                ValueChanged?.Invoke(this, new TimeInputValueChangedEventArgs(previous, current)));
         _segments = EnableSegmentEditing(
             BuildSegments,
             ApplyDigitValue,
             IncrementSegmentValue,
             ClearSegmentValue);
+        _segmentKeyOptions = new SegmentFieldKeyOptions(
+            ResolveStepDelta,
+            ClearValue,
+            HandleCharacterCommand);
         TabNavigation = TabNavigation.None;
     }
 
@@ -67,10 +76,10 @@ public sealed class TimeInput: InputBase
     {
         get
         {
-            EnsureSeeded();
-            return _value;
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
+            return _state.EnsureSeeded();
         }
-        set => Commit(value);
+        set => _ = _state.SetValue(value);
     }
 
     /// <summary>Gets or sets whether the value may be cleared to null. Default is true.</summary>
@@ -78,17 +87,8 @@ public sealed class TimeInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public bool AllowNull
     {
-        get;
-        set => _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.None, RepairNullPolicy);
-    } = true;
-
-    private void RepairNullPolicy()
-    {
-        // An unseeded control must wait for the dispatcher clock selected by EnsureSeeded.
-        if (!AllowNull && _seeded && _value is null)
-        {
-            _ = Commit(ClampToRange(TimeOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime)));
-        }
+        get => _state.AllowNull;
+        set => _ = _state.SetAllowNull(value);
     }
 
     /// <summary>Gets or sets the culture applied to the rendered time separator, the AM/PM
@@ -209,14 +209,9 @@ public sealed class TimeInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public TimeOnly Minimum
     {
-        get;
-        set
-        {
-            ArgumentException.ThrowIfAboveMaximum(value, Maximum, nameof(value), "Minimum cannot exceed Maximum.");
-
-            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Render, ClampCurrentValue);
-        }
-    } = TimeOnly.MinValue;
+        get => _state.Minimum;
+        set => _ = _state.SetMinimum(value);
+    }
 
     /// <summary>Gets or sets the inclusive upper bound for the value. Default is <see cref="TimeOnly.MaxValue"/>.</summary>
     /// <exception cref="ArgumentException">The maximum is below <see cref="Minimum"/>.</exception>
@@ -224,14 +219,9 @@ public sealed class TimeInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public TimeOnly Maximum
     {
-        get;
-        set
-        {
-            ArgumentException.ThrowIfBelowMinimum(value, Minimum, nameof(value), "Maximum cannot be less than Minimum.");
-
-            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Render, ClampCurrentValue);
-        }
-    } = TimeOnly.MaxValue;
+        get => _state.Maximum;
+        set => _ = _state.SetMaximum(value);
+    }
 
     /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inside the
     /// content box and outside the editable segment layout - it never overlaps a segment.</summary>
@@ -314,61 +304,29 @@ public sealed class TimeInput: InputBase
         }
     }
 
-    private void HandleKey(KeyEventArgs eventArgs)
+    private void HandleKey(KeyEventArgs eventArgs) =>
+        _segments.HandleKey(eventArgs, _segmentKeyOptions);
+
+    private void HandlePointer(PointerEventArgs eventArgs)
     {
-        var stroke = eventArgs.Stroke;
-
-        if (!eventArgs.IsKeyDown)
-        {
-            return;
-        }
-
-        if (TryGetStepDelta(eventArgs, out var delta))
-        {
-            if (_segments.Increment(delta))
-            {
-                eventArgs.IsHandled = true;
-            }
-
-            return;
-        }
-
-#pragma warning disable IDE0072 // Unknown or unsupported keys intentionally remain unhandled.
-        var handled = stroke.Code switch
-        {
-            Code.Left => _segments.MoveSegment(-1, wrap: false),
-            Code.Right => _segments.MoveSegment(1, wrap: false),
-            Code.Home => _segments.MoveToEdge(first: true),
-            Code.End => _segments.MoveToEdge(first: false),
-            Code.Delete => ClearValue(),
-            Code.Backspace => _segments.ClearActiveSegment(),
-            Code.Character when stroke.Character is { } ch &&
-                KeyboardModifierPolicy.IsTextEntryEligible(stroke.Modifiers) && IsDigit(ch) =>
-                _segments.TypeDigit(ch.Value - '0'),
-            Code.Character when stroke.Character is { } ch &&
-                KeyboardModifierPolicy.IsTextEntryEligible(stroke.Modifiers) && IsAmPmToggle(ch) =>
-                ToggleAmPm(),
-            _ => false
-        };
-#pragma warning restore IDE0072
-
-        if (handled)
-        {
-            eventArgs.IsHandled = true;
-        }
-    }
-
-    private void HandlePointer(PointerEventArgs eventArgs) =>
-        TemporalSegmentClassification.HandlePointer(
+        var dispatcher = Dispatcher;
+        _segments.HandlePointer(
             eventArgs,
             ResolveTextBox(),
             CellPolicy.AmbiguousWidth,
-            _segments,
             IsFocused,
-            RequestFocus);
+            RequestFocus,
+            () => CanContinueAfterFocus(dispatcher));
+    }
+
+    private int? ResolveStepDelta(KeyEventArgs eventArgs) =>
+        TryGetStepDelta(eventArgs, out var delta) ? delta : null;
+
+    private bool HandleCharacterCommand(Rune character) =>
+        IsAmPmToggle(character) && ToggleAmPm();
 
     private bool ToggleAmPm() =>
-        TemporalSegmentClassification.ToggleAmPm(BuildSegments, () => _value.HasValue, _segments);
+        TemporalSegmentClassification.ToggleAmPm(BuildSegments, () => _state.Value.HasValue, _segments);
 
     /// <summary>Gets whether the current layout - whether derived from <see cref="Use24HourFormat"/>
     /// or overridden by <see cref="Format"/> - includes an AM/PM designator segment, used as the
@@ -376,10 +334,7 @@ public sealed class TimeInput: InputBase
     private bool HasAmPmDesignator => TemporalSegmentClassification.HasAmPmDesignator(BuildSegments);
 
     private bool ClearValue() =>
-        AllowNull && _value.HasValue && Commit(null);
-
-    [Pure]
-    private static bool IsDigit(Rune character) => TemporalSegmentClassification.IsDigit(character);
+        AllowNull && _state.Value.HasValue && Commit(null);
 
     [Pure]
     private static bool IsAmPmToggle(Rune character) => TemporalSegmentClassification.IsAmPmToggle(character);
@@ -390,17 +345,17 @@ public sealed class TimeInput: InputBase
 
     private bool ApplyDigitValue(TemporalSegmentKind kind, int value)
     {
-        if (!_value.HasValue)
+        if (!_state.Value.HasValue)
         {
             _ = Commit(ClampToRange(TimeOnly.MinValue));
 
-            if (!_value.HasValue)
+            if (!_state.Value.HasValue)
             {
                 return false;
             }
         }
 
-        var time = _value.Value;
+        var time = _state.Value.Value;
 
         var hasAmPm = HasAmPmDesignator;
 #pragma warning disable IDE0072 // AM/PM designator segments never reach this callback: their digit capacity is zero.
@@ -431,12 +386,12 @@ public sealed class TimeInput: InputBase
 
     private bool IncrementSegmentValue(TemporalSegmentKind kind, int delta)
     {
-        if (!_value.HasValue)
+        if (!_state.Value.HasValue)
         {
             return Commit(ClampToRange(TimeOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime)));
         }
 
-        var time = _value.Value;
+        var time = _state.Value.Value;
 
         // Every case below is only reached for a kind the current layout actually contains
         // (the engine dispatches by the active segment's own kind), so no additional
@@ -457,12 +412,12 @@ public sealed class TimeInput: InputBase
 
     private bool ClearSegmentValue(TemporalSegmentKind kind)
     {
-        if (!_value.HasValue)
+        if (!_state.Value.HasValue)
         {
             return false;
         }
 
-        var time = _value.Value;
+        var time = _state.Value.Value;
 #pragma warning disable IDE0072 // Every calendar kind (Month, Day, Year) and AmPmDesignator are unreachable or intentionally no-op here.
         var result = kind switch
         {
@@ -499,57 +454,16 @@ public sealed class TimeInput: InputBase
     #region Commit and validation
 
     private bool Commit(TimeOnly? requested)
-    {
-        EnsureSeeded();
-        var previous = _value;
-        var clamped = requested.HasValue
-            ? ClampToRange(requested.Value)
-            : AllowNull ? null : _value;
-
-        if (!SetVersionedProperty(
-                ref _value,
-                clamped,
-                InvalidationImpact.Render,
-                ref _valueVersion,
-                out var version,
-                nameof(Value)))
-        {
-            return false;
-        }
-
-        if (IsVersionedPropertyCurrent(_value, clamped, _valueVersion, version))
-        {
-            ValueChanged?.Invoke(this, new TimeInputValueChangedEventArgs(previous, clamped));
-        }
-
-        return true;
-    }
+        => _state.SetValue(requested);
 
     /// <summary>Latches Value to the current local time on first read, so a control mounted under
     /// a dispatcher observes that dispatcher's clock instead of the clock current at
     /// construction. A value already committed - including an explicit null under
     /// <see cref="AllowNull"/> - is left untouched.</summary>
-    private void EnsureSeeded()
-    {
-        if (_seeded)
-        {
-            return;
-        }
-
-        _seeded = true;
-        _value = ClampToRange(TimeOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime));
-    }
+    private void EnsureSeeded() => _ = _state.EnsureSeeded();
 
     [Pure]
-    private TimeOnly ClampToRange(TimeOnly time) => time.Clamp(Minimum, Maximum);
-
-    private void ClampCurrentValue()
-    {
-        if (_value.HasValue)
-        {
-            _ = Commit(ClampToRange(_value.Value));
-        }
-    }
+    private TimeOnly ClampToRange(TimeOnly time) => _state.Clamp(time);
 
     #endregion
 
@@ -568,7 +482,7 @@ public sealed class TimeInput: InputBase
         EnsureSeeded();
         var style = ResolvedStyle;
         var highlight = SegmentHighlightStyle(style);
-        var canHighlight = IsFocused && _value.HasValue;
+        var canHighlight = IsFocused && _state.Value.HasValue;
         var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
         RenderAffixes(canvas, content, affixes, StartAffix, EndAffix, style);
         var textBox = DeflateForAffixes(content, affixes);
@@ -640,7 +554,7 @@ public sealed class TimeInput: InputBase
 
         IReadOnlyList<string> text;
 
-        if (_value is { } time)
+        if (_state.Value is { } time)
         {
             text = TemporalPatternSegmenter.FormatSegments(
                 pattern,

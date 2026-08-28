@@ -240,6 +240,15 @@ Calendar command set also remain available to inherited routed input. Header and
 day hit testing uses the committed `ContentBounds`, so border, padding,
 clipping, and tiny allocations never create invisible targets.
 
+When retained by `DateInput` or `DateTimeInput`, one shared drop-down
+coordinator owns Calendar construction and activation subscription. Owner-driven
+culture, bounds, selection, and displayed-month pushes run inside a
+depth-counted programmatic synchronization scope and never masquerade as user
+acceptance. User navigation remains provisional; Enter, Space, or date
+activation commits once and closes, while cancellation restores the opening
+Calendar state only when the captured value and bounds versions are still
+current.
+
 ## Example
 
 ![The Calendar control rendered in the live showcase](../../images/controls/calendar.png)

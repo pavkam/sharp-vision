@@ -32,11 +32,20 @@ owned Calendar before `PropertyChanged` is published.
 
 `DateInput` derives from [`InputBase`](../input-base.md#overview), enabling
 press activation, an owned Calendar popup, and segment editing. It shares its
-active-segment navigation, digit-entry buffering, and pointer hit-testing engine
-with [`TimeInput`](time-input.md) and [`DateTimeInput`](date-time-input.md)
-through [`InputBase.EnableSegmentEditing`](../input-base.md#api). Each control
-keeps its own calendar/clock arithmetic and pattern (`ResolveDatePattern` here)
-on top of that shared engine.
+complete routed key and pointer editing engine - including active-segment
+navigation, digit-entry buffering, recognized-without-change handling, popup
+precedence, and focus continuation - with [`TimeInput`](time-input.md) and
+[`DateTimeInput`](date-time-input.md) through
+[`InputBase.EnableSegmentEditing`](../input-base.md#api). Each control keeps its
+own calendar/clock arithmetic and pattern (`ResolveDatePattern` here) on top of
+that shared engine.
+
+The three temporal fields also use one generic nullable value state for lazy
+dispatcher-clock seeding, inclusive bounds, endpoint repair, and reentrant-safe
+`ValueChanged` publication. `DateInput` and `DateTimeInput` additionally share
+one Calendar drop-down coordinator: it owns the retained Calendar, programmatic
+synchronization depth, open-session snapshots, acceptance, rollback, and event
+detachment. Calendar navigation remains provisional until explicit acceptance.
 
 Disabling `AllowNull` repairs an existing null only if that policy remains live
 after `PropertyChanged`. A synchronous observer that restores `AllowNull`

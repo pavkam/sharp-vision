@@ -3,6 +3,8 @@
 
 namespace SharpVision.Input;
 
+using SharpVision.Terminal.Input;
+
 /// <summary>
 /// Implements the shared active-segment navigation, digit-entry buffering, and pointer
 /// hit-testing state machine used by every segmented temporal field control
@@ -267,6 +269,140 @@ internal sealed class SegmentFieldBehavior
 
         ResetDigitBuffer();
         return _clearSegment(editable[ActiveSegment].Kind!.Value);
+    }
+
+    /// <summary>Classifies and applies one routed key through this field's shared navigation and
+    /// edit state, while leaving popup and typed-value policy in the owning control.</summary>
+    /// <param name="eventArgs">The routed key event.</param>
+    /// <param name="options">The owning control's typed commands and handled policy.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> or <paramref name="options"/> is null.</exception>
+    public void HandleKey(KeyEventArgs eventArgs, SegmentFieldKeyOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (!eventArgs.IsKeyDown)
+        {
+            return;
+        }
+
+        var popupResult = options.HandlePopupCommand?.Invoke(eventArgs);
+
+        if (popupResult.HasValue)
+        {
+            eventArgs.IsHandled = popupResult.Value;
+            return;
+        }
+
+        var stepDelta = options.ResolveStepDelta(eventArgs);
+
+        if (stepDelta.HasValue)
+        {
+            var stepChanged = HasEditableSegments && Increment(stepDelta.Value);
+            eventArgs.IsHandled = stepChanged || (HasEditableSegments && options.HandleRecognizedWithoutChange);
+            return;
+        }
+
+        var stroke = eventArgs.Stroke;
+        var recognized = false;
+        var changed = false;
+
+#pragma warning disable IDE0010, IDE0072 // Unknown or unsupported keys intentionally remain unhandled.
+        switch (stroke.Code)
+        {
+            case Code.Left:
+                recognized = HasEditableSegments;
+                changed = recognized && MoveSegment(-1, wrap: false);
+                break;
+            case Code.Right:
+                recognized = HasEditableSegments;
+                changed = recognized && MoveSegment(1, wrap: false);
+                break;
+            case Code.Home:
+                recognized = HasEditableSegments;
+                changed = recognized && MoveToEdge(first: true);
+                break;
+            case Code.End:
+                recognized = HasEditableSegments;
+                changed = recognized && MoveToEdge(first: false);
+                break;
+            case Code.Delete:
+                changed = options.ClearValue();
+                recognized = changed;
+                break;
+            case Code.Backspace:
+                recognized = HasEditableSegments;
+                changed = recognized && ClearActiveSegment();
+                break;
+            case Code.Character when stroke.Character is { } character &&
+                KeyboardModifierPolicy.IsTextEntryEligible(stroke.Modifiers):
+                if (TemporalSegmentClassification.IsDigit(character))
+                {
+                    recognized = HasEditableSegments;
+                    changed = recognized && TypeDigit(character.Value - '0');
+                }
+                else if (options.HandleCharacterCommand is not null)
+                {
+                    recognized = true;
+                    changed = options.HandleCharacterCommand(character);
+                }
+
+                break;
+            default:
+                break;
+        }
+#pragma warning restore IDE0010, IDE0072
+
+        eventArgs.IsHandled = changed || (recognized && options.HandleRecognizedWithoutChange);
+    }
+
+    /// <summary>Activates the segment under a primary pointer press and performs focus transfer
+    /// only while the owning control remains available.</summary>
+    /// <param name="eventArgs">The routed pointer event.</param>
+    /// <param name="segmentBox">The rendered segment box, excluding affixes and popup indicators.</param>
+    /// <param name="ambiguousWidth">The ambient ambiguous-width policy used to render the box.</param>
+    /// <param name="isFocused">Whether the owning control currently has focus.</param>
+    /// <param name="requestFocus">Requests focus for the owner.</param>
+    /// <param name="canContinueAfterFocus">Reports whether focus callbacks left the owner available.</param>
+    /// <exception cref="ArgumentNullException">An event or callback is null.</exception>
+    public void HandlePointer(
+        PointerEventArgs eventArgs,
+        Rect segmentBox,
+        Ambiguous ambiguousWidth,
+        bool isFocused,
+        Func<bool> requestFocus,
+        Func<bool> canContinueAfterFocus)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        ArgumentNullException.ThrowIfNull(requestFocus);
+        ArgumentNullException.ThrowIfNull(canContinueAfterFocus);
+
+        var pointer = eventArgs.Pointer;
+
+        if (pointer.Action != PointerAction.Press ||
+            (pointer.Buttons & Buttons.Primary) == 0 ||
+            pointer.Cells is not { } cells ||
+            !segmentBox.Contains(cells))
+        {
+            return;
+        }
+
+        if (!ActivateSegmentAtColumn(cells.X - segmentBox.X, ambiguousWidth))
+        {
+            return;
+        }
+
+        if (!isFocused)
+        {
+            _ = requestFocus();
+
+            if (!canContinueAfterFocus())
+            {
+                return;
+            }
+        }
+
+        eventArgs.IsHandled = true;
     }
 
     /// <summary>Activates the editable segment occupying a rendered column, discarding any partial digit.</summary>

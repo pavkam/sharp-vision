@@ -3,8 +3,6 @@
 
 namespace SharpVision.Controls.Input;
 
-using System.Runtime.ExceptionServices;
-
 using Popups;
 
 using SharpVision.Terminal.Input;
@@ -21,7 +19,6 @@ using SharpVision.Terminal.Input;
 [PublicAPI]
 public sealed class DateTimeInput: InputBase
 {
-    private long _valueVersion;
     // Terminal field geometry: one content row and two border columns. The indicator cell is
     // InputBase.DropDownIndicatorWidth.
     private const int _fieldContentHeight = 1;
@@ -41,19 +38,12 @@ public sealed class DateTimeInput: InputBase
             ['t'] = TemporalSegmentKind.AmPmDesignator
         };
 
-#pragma warning disable IDE0032 // Production code owns the field directly; tests observe it through a read-only invariant seam.
-    private readonly Calendar _calendar;
-#pragma warning restore IDE0032
+    private readonly CalendarDropDownCoordinator<DateTime> _calendarDropDown;
     private readonly Popup _popup;
     private readonly SegmentFieldBehavior _segments;
+    private readonly SegmentFieldKeyOptions _segmentKeyOptions;
+    private readonly TemporalValueState<DateTime> _state;
 
-    private DateTime? _value;
-    private DateOnly _openingActiveDate;
-    private DateInterval? _openingCalendarSelection;
-    private long _openingBoundsVersion;
-    private long _openingValueVersion;
-    private long _boundsVersion;
-    private bool _seeded;
     private CultureInfo _culture;
 
     #region Construction and properties
@@ -68,39 +58,51 @@ public sealed class DateTimeInput: InputBase
         // selection to match; EnsureSeeded pushes the resolved value into it once seeding
         // actually happens.
         _culture = CultureInfo.InvariantCulture;
-        _calendar = new Calendar
-        {
-            SelectionMode = CalendarSelectionMode.Select,
-            IsTabStop = false
-        };
+        _state = new TemporalValueState<DateTime>(
+            DateTime.MinValue,
+            DateTime.MaxValue,
+            VerifyMutable,
+            NotifyPropertyChanged,
+            () => TimeProvider.GetLocalNow().DateTime,
+            (previous, current) =>
+                ValueChanged?.Invoke(this, new DateTimeInputValueChangedEventArgs(previous, current)),
+            SynchronizeCalendarValue,
+            SyncCalendarBounds);
+        _calendarDropDown = new CalendarDropDownCoordinator<DateTime>(
+            _culture,
+            EnsureSeeded,
+            () => _state.Value,
+            value => _ = _state.SetValue(value),
+            static value => DateOnly.FromDateTime(value),
+            CombineCalendarDate,
+            ResolveCalendarMinimum,
+            ResolveCalendarMaximum,
+            () => _state.ValueVersion,
+            () => _state.BoundsVersion,
+            () => IsOpen,
+            () => IsOpen = false,
+            AcceptPopupAndClose);
 
         _popup = EnablePopupNavigationSession(
-            _calendar,
+            _calendarDropDown.Calendar,
             focusOnOpen: true,
-            beforeOpen: () =>
-            {
-                EnsureSeeded();
-
-                if (_value.HasValue)
-                {
-                    var date = DateOnly.FromDateTime(_value.Value);
-                    _calendar.DisplayMonth = new DateOnly(date.Year, date.Month, 1);
-                    PushCalendarSelection(date);
-                }
-            },
-            beginSession: BeginCalendarSession,
-            handleNavigationKey: HandlePopupNavigationKey,
-            cancelSession: CancelCalendarSession,
-            acceptSession: AcceptCalendarSession);
+            beforeOpen: _calendarDropDown.BeforeOpen,
+            beginSession: _calendarDropDown.BeginSession,
+            handleNavigationKey: _calendarDropDown.HandleNavigationKey,
+            cancelSession: _calendarDropDown.CancelSession,
+            acceptSession: _calendarDropDown.AcceptSession);
         EnablePressActivation();
-
-        _calendar.DateActivated += OnCalendarDateActivated;
 
         _segments = EnableSegmentEditing(
             BuildSegments,
             ApplyDigitValue,
             IncrementSegmentValue,
             ClearSegmentValue);
+        _segmentKeyOptions = new SegmentFieldKeyOptions(
+            ResolveStepDelta,
+            ClearValue,
+            HandleCharacterCommand,
+            HandlePopupCommand);
         TabNavigation = TabNavigation.None;
     }
 
@@ -120,10 +122,10 @@ public sealed class DateTimeInput: InputBase
     {
         get
         {
-            EnsureSeeded();
-            return _value;
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
+            return _state.EnsureSeeded();
         }
-        set => Commit(value);
+        set => _ = _state.SetValue(value);
     }
 
     /// <summary>Gets or sets whether the value may be cleared to null. Default is true.</summary>
@@ -131,17 +133,8 @@ public sealed class DateTimeInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public bool AllowNull
     {
-        get;
-        set => _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.None, RepairNullPolicy);
-    } = true;
-
-    private void RepairNullPolicy()
-    {
-        // An unseeded control must wait for the dispatcher clock selected by EnsureSeeded.
-        if (!AllowNull && _seeded && _value is null)
-        {
-            _ = Commit(ClampToRange(TimeProvider.GetLocalNow().DateTime));
-        }
+        get => _state.AllowNull;
+        set => _ = _state.SetAllowNull(value);
     }
 
     /// <summary>
@@ -188,7 +181,7 @@ public sealed class DateTimeInput: InputBase
                 InvalidationImpact.Measure,
                 () =>
                 {
-                    _calendar.Culture = Culture;
+                    _calendarDropDown.SyncCulture(Culture);
                     _segments.ClampActiveSegment();
                     _segments.ResetDigitBuffer();
                 },
@@ -282,14 +275,9 @@ public sealed class DateTimeInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public DateTime Minimum
     {
-        get;
-        set
-        {
-            ArgumentException.ThrowIfAboveMaximum(value, Maximum, nameof(value), "Minimum cannot exceed Maximum.");
-
-            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Render, RepairBoundState);
-        }
-    } = DateTime.MinValue;
+        get => _state.Minimum;
+        set => _ = _state.SetMinimum(value);
+    }
 
     /// <summary>Gets or sets the inclusive upper bound for the value. Default is <see cref="DateTime.MaxValue"/>.</summary>
     /// <exception cref="ArgumentException">The maximum is below <see cref="Minimum"/>.</exception>
@@ -297,14 +285,9 @@ public sealed class DateTimeInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public DateTime Maximum
     {
-        get;
-        set
-        {
-            ArgumentException.ThrowIfBelowMinimum(value, Minimum, nameof(value), "Maximum cannot be less than Minimum.");
-
-            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Render, RepairBoundState);
-        }
-    } = DateTime.MaxValue;
+        get => _state.Maximum;
+        set => _ = _state.SetMaximum(value);
+    }
 
     /// <summary>Gets or sets the maximum visible calendar height in terminal cells.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is zero or negative.</exception>
@@ -355,26 +338,26 @@ public sealed class DateTimeInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public CalendarStyle? CalendarStyle
     {
-        get => _calendar.Style;
+        get => _calendarDropDown.Calendar.Style;
         set
         {
             VerifyMutable();
 
-            if (_calendar.Style == value)
+            if (_calendarDropDown.Calendar.Style == value)
             {
                 return;
             }
 
-            _calendar.Style = value;
+            _calendarDropDown.Calendar.Style = value;
             NotifyPropertyChanged(nameof(CalendarStyle), InvalidationImpact.None);
         }
     }
 
     /// <summary>Gets the resolved presentation of the owned Calendar.</summary>
-    public CalendarStyle ActualCalendarStyle => _calendar.ActualStyle;
+    public CalendarStyle ActualCalendarStyle => _calendarDropDown.Calendar.ActualStyle;
 
     /// <summary>Gets the retained calendar for proving bound synchronization invariants.</summary>
-    internal Calendar OwnedCalendar => _calendar;
+    internal Calendar OwnedCalendar => _calendarDropDown.Calendar;
 
     /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inside the
     /// field box and strictly inboard of the drop-down indicator.</summary>
@@ -549,7 +532,7 @@ public sealed class DateTimeInput: InputBase
 
         if (reason == ReleaseReason.Disposed)
         {
-            _calendar.DateActivated -= OnCalendarDateActivated;
+            _calendarDropDown.Dispose();
             ValueChanged = null;
             DropDownOpened = null;
             DropDownClosed = null;
@@ -560,74 +543,49 @@ public sealed class DateTimeInput: InputBase
 
     #region Keyboard input
 
-    private void HandleKey(KeyEventArgs eventArgs)
+    private void HandleKey(KeyEventArgs eventArgs) =>
+        _segments.HandleKey(eventArgs, _segmentKeyOptions);
+
+    private void HandlePointer(PointerEventArgs eventArgs)
     {
-        var stroke = eventArgs.Stroke;
-
-        if (!eventArgs.IsKeyDown)
-        {
-            return;
-        }
-
-        if (eventArgs.IsInitialKeyDown &&
-            stroke.Code == Code.Down &&
-            (stroke.Modifiers & Modifiers.Alt) != 0)
-        {
-            if (KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Alt))
-            {
-                IsOpen = true;
-                eventArgs.IsHandled = true;
-            }
-
-            return;
-        }
-
-        if (TryGetStepDelta(eventArgs, out var delta))
-        {
-            if (_segments.Increment(delta))
-            {
-                eventArgs.IsHandled = true;
-            }
-
-            return;
-        }
-
-#pragma warning disable IDE0072 // Unknown or unsupported keys intentionally remain unhandled.
-        var handled = stroke.Code switch
-        {
-            Code.Left => _segments.MoveSegment(-1, wrap: false),
-            Code.Right => _segments.MoveSegment(1, wrap: false),
-            Code.Home => _segments.MoveToEdge(first: true),
-            Code.End => _segments.MoveToEdge(first: false),
-            Code.Delete => ClearValue(),
-            Code.Backspace => _segments.ClearActiveSegment(),
-            Code.Character when stroke.Character is { } ch &&
-                KeyboardModifierPolicy.IsTextEntryEligible(stroke.Modifiers) && IsDigit(ch) =>
-                _segments.TypeDigit(ch.Value - '0'),
-            Code.Character when stroke.Character is { } ch &&
-                KeyboardModifierPolicy.IsTextEntryEligible(stroke.Modifiers) && IsAmPmToggle(ch) =>
-                ToggleAmPm(),
-            _ => false
-        };
-#pragma warning restore IDE0072
-
-        if (handled)
-        {
-            eventArgs.IsHandled = true;
-        }
-    }
-
-    private void HandlePointer(PointerEventArgs eventArgs) =>
-        TemporalSegmentClassification.HandlePointer(
+        var dispatcher = Dispatcher;
+        _segments.HandlePointer(
             eventArgs,
             ResolveTextBox(),
             CellPolicy.AmbiguousWidth,
-            _segments,
             IsFocused,
-            RequestFocus);
+            RequestFocus,
+            () => CanContinueAfterFocus(dispatcher));
+    }
+
+    private int? ResolveStepDelta(KeyEventArgs eventArgs) =>
+        TryGetStepDelta(eventArgs, out var delta) ? delta : null;
+
+    private bool HandleCharacterCommand(Rune character) =>
+        IsAmPmToggle(character) && ToggleAmPm();
+
+    private bool? HandlePopupCommand(KeyEventArgs eventArgs)
+    {
+        var stroke = eventArgs.Stroke;
+
+        if (!eventArgs.IsInitialKeyDown ||
+            stroke.Code != Code.Down ||
+            (stroke.Modifiers & Modifiers.Alt) == 0)
+        {
+            return null;
+        }
+
+        if (!KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Alt))
+        {
+            return false;
+        }
+
+        IsOpen = true;
+        return true;
+    }
 
     private bool ToggleAmPm() =>
-        TemporalSegmentClassification.ToggleAmPm(BuildSegments, () => _value.HasValue, _segments);
+        TemporalSegmentClassification.ToggleAmPm(BuildSegments, () => _state.Value.HasValue, _segments);
 
     /// <summary>Gets whether the current layout - whether derived from <see cref="Use24HourFormat"/>
     /// or overridden by <see cref="Format"/> - includes an AM/PM designator segment, used as the
@@ -636,17 +594,17 @@ public sealed class DateTimeInput: InputBase
 
     private bool ApplyDigitValue(TemporalSegmentKind kind, int value)
     {
-        if (!_value.HasValue)
+        if (!_state.Value.HasValue)
         {
             _ = Commit(ClampToRange(TimeProvider.GetLocalNow().DateTime));
 
-            if (!_value.HasValue)
+            if (!_state.Value.HasValue)
             {
                 return false;
             }
         }
 
-        var dt = _value.Value;
+        var dt = _state.Value.Value;
         var hasAmPm = HasAmPmDesignator;
 
         try
@@ -685,12 +643,12 @@ public sealed class DateTimeInput: InputBase
 
     private bool IncrementSegmentValue(TemporalSegmentKind kind, int delta)
     {
-        if (!_value.HasValue)
+        if (!_state.Value.HasValue)
         {
             return Commit(ClampToRange(TimeProvider.GetLocalNow().DateTime));
         }
 
-        var dt = _value.Value;
+        var dt = _state.Value.Value;
 
         // Every case below is only reached for a kind the current layout actually contains
         // (the engine dispatches by the active segment's own kind), so no additional
@@ -714,12 +672,12 @@ public sealed class DateTimeInput: InputBase
 
     private bool ClearSegmentValue(TemporalSegmentKind kind)
     {
-        if (!_value.HasValue)
+        if (!_state.Value.HasValue)
         {
             return false;
         }
 
-        var dt = _value.Value;
+        var dt = _state.Value.Value;
 
         try
         {
@@ -745,10 +703,7 @@ public sealed class DateTimeInput: InputBase
     }
 
     private bool ClearValue() =>
-        AllowNull && _value.HasValue && Commit(null);
-
-    [Pure]
-    private static bool IsDigit(Rune character) => TemporalSegmentClassification.IsDigit(character);
+        AllowNull && _state.Value.HasValue && Commit(null);
 
     [Pure]
     private static bool IsAmPmToggle(Rune character) => TemporalSegmentClassification.IsAmPmToggle(character);
@@ -758,96 +713,40 @@ public sealed class DateTimeInput: InputBase
     #region Commit and validation
 
     private bool Commit(DateTime? requested)
-    {
-        EnsureSeeded();
-        var previous = _value;
-        var clamped = requested.HasValue
-            ? ClampToRange(requested.Value)
-            : AllowNull ? null : _value;
-
-        if (!SetVersionedProperty(
-                ref _value,
-                clamped,
-                InvalidationImpact.Render,
-                ref _valueVersion,
-                out var version,
-                nameof(Value)))
-        {
-            return false;
-        }
-
-        if (IsVersionedPropertyCurrent(_value, clamped, _valueVersion, version) && clamped.HasValue)
-        {
-            PushCalendarSelection(DateOnly.FromDateTime(clamped.Value));
-        }
-
-        if (IsVersionedPropertyCurrent(_value, clamped, _valueVersion, version))
-        {
-            ValueChanged?.Invoke(this, new DateTimeInputValueChangedEventArgs(previous, clamped));
-        }
-
-        return true;
-    }
+        => _state.SetValue(requested);
 
     /// <summary>Latches Value to the current local date and time on first read, so a control
     /// mounted under a dispatcher observes that dispatcher's clock instead of the clock current
     /// at construction, and pushes the newly resolved value into the owned Calendar. A value
     /// already committed - including an explicit null under <see cref="AllowNull"/> - is left
     /// untouched.</summary>
-    private void EnsureSeeded()
-    {
-        ObjectDisposedException.ThrowIf(IsDisposed, this);
-
-        if (_seeded)
-        {
-            return;
-        }
-
-        _seeded = true;
-        var now = ClampToRange(TimeProvider.GetLocalNow().DateTime);
-        _value = now;
-        PushCalendarSelection(DateOnly.FromDateTime(now));
-    }
+    private void EnsureSeeded() => _ = _state.EnsureSeeded();
 
     [Pure]
-    private DateTime ClampToRange(DateTime dateTime) => dateTime.Clamp(Minimum, Maximum);
+    private DateTime ClampToRange(DateTime dateTime) => _state.Clamp(dateTime);
 
-    private void ClampCurrentValue()
+    private void SyncCalendarBounds() => _calendarDropDown.SyncBounds();
+
+    private void SynchronizeCalendarValue(DateTime? value) =>
+        _calendarDropDown.SyncValue(value);
+
+    [Pure]
+    private DateOnly ResolveCalendarMinimum() => Minimum > DateTime.MinValue
+        ? DateOnly.FromDateTime(Minimum)
+        : DateOnly.MinValue;
+
+    [Pure]
+    private DateOnly ResolveCalendarMaximum() => Maximum < DateTime.MaxValue
+        ? DateOnly.FromDateTime(Maximum)
+        : DateOnly.MaxValue;
+
+    [Pure]
+    private static DateTime CombineCalendarDate(DateOnly date, DateTime? current)
     {
-        if (_value.HasValue)
-        {
-            _ = Commit(ClampToRange(_value.Value));
-        }
+        var timePart = current?.TimeOfDay ?? TimeSpan.Zero;
+        var kind = current?.Kind ?? DateTimeKind.Unspecified;
+        return date.ToDateTime(TimeOnly.FromTimeSpan(timePart), kind);
     }
-
-    private void RepairBoundState()
-    {
-        _boundsVersion++;
-        ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(SyncCalendarBounds, ref failure);
-        ExceptionAggregation.Capture(ClampCurrentValue, ref failure);
-        failure?.Throw();
-    }
-
-    private void SyncCalendarBounds()
-    {
-        ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(
-            () => _calendar.MinimumDate = Minimum > DateTime.MinValue
-                ? DateOnly.FromDateTime(Minimum)
-                : DateOnly.MinValue,
-            ref failure);
-        ExceptionAggregation.Capture(
-            () => _calendar.MaximumDate = Maximum < DateTime.MaxValue
-                ? DateOnly.FromDateTime(Maximum)
-                : DateOnly.MaxValue,
-            ref failure);
-        failure?.Throw();
-    }
-
-    /// <summary>Pushes a date into the owned Calendar's committed selection.</summary>
-    private void PushCalendarSelection(DateOnly date) =>
-        _calendar.Selection = new DateInterval(date, date);
 
     #endregion
 
@@ -863,120 +762,6 @@ public sealed class DateTimeInput: InputBase
 
         IsOpen = !IsOpen;
     }
-
-    private void OnCalendarDateActivated(DateOnly date)
-    {
-        _ = date;
-
-        if (IsOpen)
-        {
-            AcceptPopupAndClose();
-        }
-    }
-
-    private void BeginCalendarSession()
-    {
-        _openingActiveDate = _calendar.ActiveDate;
-        _openingCalendarSelection = _calendar.Selection;
-        _openingBoundsVersion = _boundsVersion;
-        _openingValueVersion = _valueVersion;
-    }
-
-    private bool HandlePopupNavigationKey(KeyEventArgs eventArgs)
-    {
-        var stroke = eventArgs.Stroke;
-
-        if (eventArgs.IsInitialKeyDown &&
-            stroke.Code == Code.Escape &&
-            stroke.Modifiers.IsActivationEligible())
-        {
-            eventArgs.IsHandled = true;
-            IsOpen = false;
-            return true;
-        }
-
-        if (eventArgs.IsInitialKeyDown &&
-            stroke.Code == Code.Tab &&
-            KeyboardModifierPolicy.IsTabTraversalEligible(stroke.Modifiers))
-        {
-            IsOpen = false;
-            return false;
-        }
-
-        if (eventArgs.IsRepeat &&
-            stroke.Code == Code.Down &&
-            KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Alt))
-        {
-            return true;
-        }
-
-        var accepts = eventArgs.IsInitialKeyDown &&
-            stroke.Modifiers.IsActivationEligible() &&
-            (stroke.Code == Code.Enter ||
-             (stroke.Code == Code.Character && stroke.Character == new Rune(' ')));
-
-        if (accepts)
-        {
-            eventArgs.IsHandled = true;
-        }
-
-        return _calendar.HandleNavigationKey(eventArgs) || accepts;
-    }
-
-    private void CancelCalendarSession()
-    {
-        if (_boundsVersion == _openingBoundsVersion &&
-            _valueVersion == _openingValueVersion &&
-            IsOpeningCalendarStateValid())
-        {
-            RestoreOpeningCalendarState();
-            return;
-        }
-
-        SyncCalendarBounds();
-
-        if (_value is { } value)
-        {
-            PushCalendarSelection(DateOnly.FromDateTime(value));
-        }
-        else
-        {
-            _calendar.Selection = null;
-        }
-    }
-
-    private void AcceptCalendarSession()
-    {
-        var selectedDate = _calendar.ActiveDate;
-        var timePart = _value?.TimeOfDay ?? TimeSpan.Zero;
-        var kind = _value?.Kind ?? DateTimeKind.Unspecified;
-        var combined = selectedDate.ToDateTime(TimeOnly.FromTimeSpan(timePart), kind);
-        _ = Commit(combined);
-    }
-
-    private void RestoreOpeningCalendarState()
-    {
-        _calendar.Selection = null;
-        _calendar.Selection = new DateInterval(_openingActiveDate, _openingActiveDate);
-
-        if (_openingCalendarSelection is null)
-        {
-            _calendar.Selection = null;
-        }
-        else if (_openingCalendarSelection.Value.Start != _openingActiveDate)
-        {
-            _calendar.Selection = _openingCalendarSelection;
-        }
-    }
-
-    private bool IsOpeningCalendarStateValid() =>
-        IsDateWithinCalendarBounds(_openingActiveDate) &&
-        (_openingCalendarSelection is not { } selection ||
-         (IsDateWithinCalendarBounds(selection.Start) &&
-          IsDateWithinCalendarBounds(selection.End)));
-
-    private bool IsDateWithinCalendarBounds(DateOnly date) =>
-        date >= _calendar.MinimumDate && date <= _calendar.MaximumDate;
 
     /// <inheritdoc/>
     protected override void OnDropDownOpened() => DropDownOpened?.Invoke(this, EventArgs.Empty);
@@ -1025,7 +810,7 @@ public sealed class DateTimeInput: InputBase
 
         IReadOnlyList<string> text;
 
-        if (_value is { } dt)
+        if (_state.Value is { } dt)
         {
             var renderingPattern = hasAmPm ? pattern : NormalizeDesignatorlessHourPattern(pattern);
             text = TemporalPatternSegmenter.FormatSegments(

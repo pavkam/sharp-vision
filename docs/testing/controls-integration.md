@@ -30,6 +30,15 @@ integer-only admission and currency composition, and proves explicit plus
 culture-derived precision above Decimal's rounding limit cannot escape as a
 routine input exception.
 
+The shared temporal-input matrix runs routed step, navigation, digit, clear,
+AM/PM, popup-precedence, pointer-hit, and focus-continuation contracts through
+`DateInput`, `TimeInput`, and `DateTimeInput`. Direct model tests cover lazy
+one-shot clock seeding, nullable admission, inclusive endpoint repair, and
+reentrant supersession for `DateOnly`, `TimeOnly`, and `DateTime`. Date-bearing
+fixtures additionally prove Calendar culture/bounds/value synchronization,
+provisional navigation, current-version rollback, single acceptance, disposal
+cleanup, and preservation of `DateTimeKind` and sub-second ticks.
+
 Default-appearance tests require inactive and disabled semantic
 foreground/border pairs for transparent interactive controls, complete triplets
 for explicitly opaque faces, foreground/border-only hover and direct focus with

@@ -26,13 +26,15 @@ since a 12-hour hour token without a designator is treated as a 24-hour segment
 for editing purposes. `TimeInput` derives from
 [`InputBase`](../input-base.md#overview), enabling only segment editing - it has
 no press activation and no popup. It shares its active-segment navigation,
-digit-entry buffering, and pointer hit-testing engine with
-[`DateInput`](date-input.md) and [`DateTimeInput`](date-time-input.md) through
+digit-entry buffering, routed key classification, pointer hit testing, and
+focus-continuation engine with [`DateInput`](date-input.md) and
+[`DateTimeInput`](date-time-input.md) through
 [`InputBase.EnableSegmentEditing`](../input-base.md#api). Only the
-calendar/clock arithmetic for each control's own value type differs. It also
-shares its AM/PM designator toggle, pointer-driven segment activation, and
-digit/AM-PM keystroke classification with [`DateTimeInput`](date-time-input.md)
-alone, through the internal `TemporalSegmentClassification` toolkit.
+calendar/clock arithmetic and pattern for each control's own value type differ.
+The three controls also use the same generic nullable value state for one-shot
+dispatcher-clock seeding, inclusive clamping, endpoint repair, and
+reentrant-safe event publication. AM/PM discovery and conversion remain pure
+shared temporal classification helpers used by the two clock-capable fields.
 
 Disabling `AllowNull` repairs an existing null only if that policy remains live
 after `PropertyChanged`. A synchronous observer that restores `AllowNull`

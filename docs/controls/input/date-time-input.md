@@ -19,17 +19,21 @@ preserves the current time and `DateTimeKind`.
 
 `DateTimeInput` derives from [`InputBase`](../input-base.md#overview), enabling
 press activation, an owned Calendar popup, and segment editing. It shares its
-active-segment navigation, digit-entry buffering, and pointer hit-testing engine
-with [`DateInput`](date-input.md) and [`TimeInput`](time-input.md) through
-[`InputBase.EnableSegmentEditing`](../input-base.md#api). It also shares its
-AM/PM designator toggle, pointer-driven segment activation, and digit/AM-PM
-keystroke classification with [`TimeInput`](time-input.md) alone, through the
-internal `TemporalSegmentClassification` toolkit; each control still owns its
-own value type and clamping. `Culture` now drives both the popup calendar's
-month/day names _and_ the typed field's own date segment order, widths, and
-separators - the same way `DateInput.Culture` does, deriving the layout from
-`DateTimeFormatInfo.ShortDatePattern` - so a German culture, for example,
-renders day before month with a period separator. A distinct customized
+complete routed key and pointer editing engine - active-segment navigation,
+digit-entry buffering, popup precedence, AM/PM commands, and focus
+continuation - with [`DateInput`](date-input.md) and
+[`TimeInput`](time-input.md) through
+[`InputBase.EnableSegmentEditing`](../input-base.md#api). The three controls use
+one generic nullable value state for dispatcher-clock seeding, bounds, repair,
+and current-aware event publication. `DateInput` and `DateTimeInput` also use
+one Calendar drop-down coordinator for Calendar ownership, culture/bounds/value
+synchronization, open-session rollback, user acceptance, and cleanup. The
+date-time combiner preserves the current time, sub-second ticks, and
+`DateTimeKind` when a date is accepted. `Culture` drives both the popup
+calendar's month/day names _and_ the typed field's own date segment order,
+widths, and separators - the same way `DateInput.Culture` does, deriving the
+layout from `DateTimeFormatInfo.ShortDatePattern` - so a German culture, for
+example, renders day before month with a period separator. A distinct customized
 same-name `CultureInfo` clone is a real transition: it refreshes the segments
 and synchronizes the retained Calendar before publication; only the identical
 instance is silent. The time portion keeps the fixed

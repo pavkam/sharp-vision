@@ -266,6 +266,18 @@ modifier. Escape dismissal instead follows activation eligibility, accepting
 Shift and lock state while leaving Control, Alt, Super, Hyper, Meta, and larger
 chords unhandled before any close, cancellation, or rollback occurs.
 
+### Segmented temporal fields
+
+`DateInput`, `TimeInput`, and `DateTimeInput` route their inline key and pointer
+records through one stateful segment behavior. The behavior owns step,
+left/right, edge, whole-value clear, segment clear, digit, optional AM/PM, and
+pointer-hit classification; typed options preserve each control's handled policy
+and popup command set. A popup opening chord is classified before Down can
+become a step, including the deliberate unhandled result for an Alt+Down chord
+with extra command modifiers. Pointer activation snapshots owner availability
+across focus callbacks and never handles a stale continuation after detach,
+reparent, or disposal.
+
 ## Pointer capture and coordinates
 
 Capture is exclusive per pointer source and supports press, drag, scrollbar,

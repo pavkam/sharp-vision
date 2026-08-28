@@ -3,8 +3,6 @@
 
 namespace SharpVision.Input;
 
-using SharpVision.Terminal.Input;
-
 using InstantHandle = JetBrains.Annotations.InstantHandleAttribute;
 
 /// <summary>
@@ -120,61 +118,4 @@ internal static class TemporalSegmentClassification
     public static int To24Hour(int hour12, bool isPm) =>
         hour12 == 12 ? isPm ? 12 : 0 : isPm ? hour12 + 12 : hour12;
 
-    /// <summary>Activates the editable segment under a primary pointer press and requests focus,
-    /// the shared pointer-hit-testing entry point every segmented temporal field with inline
-    /// editing uses.</summary>
-    /// <param name="eventArgs">The routed pointer event.</param>
-    /// <param name="segmentBox">
-    /// The box segment text is actually drawn into - already deflated for any active start/end
-    /// <see cref="Affix"/> and, for a popup-bearing control, already excluding the
-    /// drop-down indicator's own reserved columns - so a press over an affix or the indicator
-    /// never mis-activates a segment.
-    /// </param>
-    /// <param name="ambiguousWidth">
-    /// The owning control's ambient East Asian Ambiguous width policy, matching the policy its
-    /// canvas rendered the same segments under.
-    /// </param>
-    /// <param name="segments">The owning control's own segment navigation engine.</param>
-    /// <param name="isFocused">Whether the owning control currently has focus.</param>
-    /// <param name="requestFocus">Requests focus for the owning control.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/>, <paramref name="segments"/>, or <paramref name="requestFocus"/> is null.</exception>
-    public static void HandlePointer(
-        PointerEventArgs eventArgs,
-        Rect segmentBox,
-        Ambiguous ambiguousWidth,
-        SegmentFieldBehavior segments,
-        bool isFocused,
-        [InstantHandle] Func<bool> requestFocus)
-    {
-        ArgumentNullException.ThrowIfNull(eventArgs);
-        ArgumentNullException.ThrowIfNull(segments);
-        ArgumentNullException.ThrowIfNull(requestFocus);
-
-        var pointer = eventArgs.Pointer;
-
-        if (pointer.Action != PointerAction.Press || (pointer.Buttons & Buttons.Primary) == 0)
-        {
-            return;
-        }
-
-        if (pointer.Cells is not { } cells)
-        {
-            return;
-        }
-
-        if (!segmentBox.Contains(cells))
-        {
-            return;
-        }
-
-        var localX = cells.X - segmentBox.X;
-        _ = segments.ActivateSegmentAtColumn(localX, ambiguousWidth);
-
-        if (!isFocused)
-        {
-            _ = requestFocus();
-        }
-
-        eventArgs.IsHandled = true;
-    }
 }

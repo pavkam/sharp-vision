@@ -187,7 +187,7 @@ public sealed class TemporalSegmentClassificationTests
 
     #region HandlePointer
 
-    /// <summary>Verifies the constructor-free pointer handler rejects every required argument.</summary>
+    /// <summary>Verifies the stateful segment pointer handler rejects every required argument.</summary>
     [Fact]
     public void HandlePointer_WhenRequiredArgumentIsNull_ThrowsArgumentNullException()
     {
@@ -195,14 +195,14 @@ public sealed class TemporalSegmentClassificationTests
         var press = new PointerEventArgs(Press(new Point(0, 0)));
 
         _ = Should.Throw<ArgumentNullException>(() =>
-            TemporalSegmentClassification.HandlePointer(
-                null!, new Rect(0, 0, 5, 1), Ambiguous.Narrow, segments, isFocused: false, () => true));
+            segments.HandlePointer(
+                null!, new Rect(0, 0, 5, 1), Ambiguous.Narrow, isFocused: false, () => true, () => true));
         _ = Should.Throw<ArgumentNullException>(() =>
-            TemporalSegmentClassification.HandlePointer(
-                press, new Rect(0, 0, 5, 1), Ambiguous.Narrow, null!, isFocused: false, () => true));
+            segments.HandlePointer(
+                press, new Rect(0, 0, 5, 1), Ambiguous.Narrow, isFocused: false, null!, () => true));
         _ = Should.Throw<ArgumentNullException>(() =>
-            TemporalSegmentClassification.HandlePointer(
-                press, new Rect(0, 0, 5, 1), Ambiguous.Narrow, segments, isFocused: false, null!));
+            segments.HandlePointer(
+                press, new Rect(0, 0, 5, 1), Ambiguous.Narrow, isFocused: false, () => true, null!));
     }
 
     /// <summary>Verifies a primary press inside the segment box activates the segment under the
@@ -214,17 +214,17 @@ public sealed class TemporalSegmentClassificationTests
         var requested = false;
         var eventArgs = new PointerEventArgs(Press(new Point(3, 0)));
 
-        TemporalSegmentClassification.HandlePointer(
+        segments.HandlePointer(
             eventArgs,
             new Rect(0, 0, 5, 1),
             Ambiguous.Narrow,
-            segments,
             isFocused: false,
             () =>
             {
                 requested = true;
                 return true;
-            });
+            },
+            () => true);
 
         eventArgs.IsHandled.ShouldBeTrue();
         requested.ShouldBeTrue();
@@ -239,17 +239,17 @@ public sealed class TemporalSegmentClassificationTests
         var requested = false;
         var eventArgs = new PointerEventArgs(Press(new Point(0, 0)));
 
-        TemporalSegmentClassification.HandlePointer(
+        segments.HandlePointer(
             eventArgs,
             new Rect(0, 0, 5, 1),
             Ambiguous.Narrow,
-            segments,
             isFocused: true,
             () =>
             {
                 requested = true;
                 return true;
-            });
+            },
+            () => true);
 
         requested.ShouldBeFalse();
     }
@@ -263,12 +263,12 @@ public sealed class TemporalSegmentClassificationTests
         var segments = Behavior(SegmentsWithoutAmPm(), out var activeBefore);
         var eventArgs = new PointerEventArgs(Press(new Point(9, 0)));
 
-        TemporalSegmentClassification.HandlePointer(
+        segments.HandlePointer(
             eventArgs,
             new Rect(0, 0, 5, 1),
             Ambiguous.Narrow,
-            segments,
             isFocused: false,
+            () => true,
             () => true);
 
         eventArgs.IsHandled.ShouldBeFalse();
@@ -292,12 +292,12 @@ public sealed class TemporalSegmentClassificationTests
             isCellPositionInferred: false);
         var eventArgs = new PointerEventArgs(pointer);
 
-        TemporalSegmentClassification.HandlePointer(
+        segments.HandlePointer(
             eventArgs,
             new Rect(0, 0, 5, 1),
             Ambiguous.Narrow,
-            segments,
             isFocused: false,
+            () => true,
             () => true);
 
         eventArgs.IsHandled.ShouldBeFalse();
@@ -320,12 +320,12 @@ public sealed class TemporalSegmentClassificationTests
             isCellPositionInferred: false);
         var eventArgs = new PointerEventArgs(pointer, clickCount: 0);
 
-        TemporalSegmentClassification.HandlePointer(
+        segments.HandlePointer(
             eventArgs,
             new Rect(0, 0, 5, 1),
             Ambiguous.Narrow,
-            segments,
             isFocused: false,
+            () => true,
             () => true);
 
         eventArgs.IsHandled.ShouldBeFalse();
