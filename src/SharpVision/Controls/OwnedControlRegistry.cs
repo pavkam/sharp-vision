@@ -76,29 +76,11 @@ internal sealed class OwnedControlRegistry
         IEnumerable<ControlBase>? candidates = null)
     {
         ArgumentNullException.ThrowIfNull(owner);
-        var root = owner;
-
-        while (root.Parent is { } parent)
-        {
-            root = parent;
-        }
-
-        var entered = new List<OwnedControlRegistry>();
-        var unique = new HashSet<OwnedControlRegistry>(ReferenceEqualityComparer.Instance);
-        EnterRegistry(root.OwnedControls, unique, entered);
-
-        if (candidates is not null)
-        {
-            foreach (var candidate in candidates)
-            {
-                EnterRegistry(candidate.OwnedControls, unique, entered);
-            }
-        }
-
-        return entered;
+        return EnterCompoundPublication([owner], candidates);
     }
 
-    /// <summary>Releases registries previously marked by <see cref="EnterPublication"/>.</summary>
+    /// <summary>Releases registries previously marked by
+    /// <see cref="EnterPublication(ControlBase, IEnumerable{ControlBase}?)"/>.</summary>
     /// <param name="entered">The non-null distinct registry snapshot.</param>
     public static void ExitPublication(List<OwnedControlRegistry> entered)
     {
@@ -493,7 +475,7 @@ internal sealed class OwnedControlRegistry
             publicationAlreadyActive: true);
     }
 
-    private void RemoveAtCore(
+    private static void RemoveAtCore(
         OwnedControlSlot slot,
         int index,
         ReleaseReason reason,
@@ -559,16 +541,144 @@ internal sealed class OwnedControlRegistry
         control.ValidateAttachment();
     }
 
-    private void Commit(
+    private static void Commit(
         OwnedControlSlot slot,
         List<ControlBase> next,
         ReleaseReason reason,
         bool notifyUnavailable,
         bool publicationAlreadyActive = false)
     {
-        var previous = new List<ControlBase>(slot.Items);
-        var removed = previous.FindAll(control => !ContainsIdentity(next, control));
-        var added = next.FindAll(control => !ContainsIdentity(previous, control));
+        CommitCompound(
+            structuralContinuation: null,
+            [(slot, next, reason, notifyUnavailable)],
+            publicationAlreadyActive);
+    }
+
+    /// <summary>Commits complete snapshots for several owned slots as one guarded structural boundary.</summary>
+    /// <param name="structuralContinuation">Non-throwing framework state synchronization that must
+    /// become visible before lifecycle publication.</param>
+    /// <param name="snapshots">The distinct slots and their complete proposed ordered contents.</param>
+    /// <remarks>Every snapshot is copied and validated before mutation. All ownership and inherited
+    /// context commits precede the continuation and every lifecycle or slot callback. Callback
+    /// failures are aggregated without rolling back the coherent compound graph.</remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="structuralContinuation"/>, <paramref name="snapshots"/>, a slot, a sequence,
+    /// or a sequence element is null.
+    /// </exception>
+    /// <exception cref="ArgumentException">A slot repeats or a candidate cannot belong to its owner.</exception>
+    /// <exception cref="InvalidOperationException">An owner is off-dispatcher or an ownership transaction is active.</exception>
+    /// <exception cref="ObjectDisposedException">An owner or candidate is disposed.</exception>
+    internal static void CommitCompound(
+        Action structuralContinuation,
+        params (OwnedControlSlot Slot, IEnumerable<ControlBase> Controls)[] snapshots)
+        => CommitCompound(
+            structuralContinuation,
+            ReleaseReason.Detached,
+            notifyUnavailable: true,
+            publicationAlreadyActive: false,
+            snapshots);
+
+    /// <summary>Commits compound disposal snapshots while the containing owner already holds the
+    /// structural publication guard.</summary>
+    /// <param name="structuralContinuation">Non-throwing framework state synchronization.</param>
+    /// <param name="snapshots">The distinct slots and their complete proposed ordered contents.</param>
+    internal static void CommitCompoundForOwnerDisposal(
+        Action structuralContinuation,
+        params (OwnedControlSlot Slot, IEnumerable<ControlBase> Controls)[] snapshots)
+        => CommitCompound(
+            structuralContinuation,
+            ReleaseReason.Disposed,
+            notifyUnavailable: true,
+            publicationAlreadyActive: true,
+            snapshots);
+
+    private static void CommitCompound(
+        Action structuralContinuation,
+        ReleaseReason reason,
+        bool notifyUnavailable,
+        bool publicationAlreadyActive,
+        (OwnedControlSlot Slot, IEnumerable<ControlBase> Controls)[] snapshots)
+    {
+        ArgumentNullException.ThrowIfNull(structuralContinuation);
+        ArgumentNullException.ThrowIfNull(snapshots);
+        var prepared = new (OwnedControlSlot Slot, List<ControlBase> Next, ReleaseReason Reason, bool NotifyUnavailable)[snapshots.Length];
+
+        for (var index = 0; index < snapshots.Length; index++)
+        {
+            var (slot, controls) = snapshots[index];
+            ArgumentNullException.ThrowIfNull(slot);
+            ArgumentNullException.ThrowIfNull(controls);
+            var next = new List<ControlBase>();
+
+            foreach (var control in controls)
+            {
+                if (control is null)
+                {
+                    throw new ArgumentNullException(nameof(snapshots), "An owned-control snapshot contains null.");
+                }
+
+                next.Add(control);
+            }
+
+            prepared[index] = (slot, next, reason, notifyUnavailable);
+        }
+
+        CommitCompound(structuralContinuation, prepared, publicationAlreadyActive);
+    }
+
+    private static void CommitCompound(
+        Action? structuralContinuation,
+        (OwnedControlSlot Slot, List<ControlBase> Next, ReleaseReason Reason, bool NotifyUnavailable)[] snapshots,
+        bool publicationAlreadyActive)
+    {
+        var distinctSlots = new HashSet<OwnedControlSlot>(ReferenceEqualityComparer.Instance);
+        var distinctControls = new HashSet<ControlBase>(ReferenceEqualityComparer.Instance);
+        var changes = new List<OwnedControlMutation>();
+
+        foreach (var (slot, next, reason, notifyUnavailable) in snapshots)
+        {
+            var registry = slot.Registry;
+            registry.VerifySlot(slot);
+            registry.Owner.VerifyMutable();
+
+            if (!publicationAlreadyActive)
+            {
+                registry.VerifyNotTransacting();
+            }
+
+            if (!distinctSlots.Add(slot))
+            {
+                throw new ArgumentException("A compound ownership transaction cannot repeat a slot.", nameof(snapshots));
+            }
+
+            registry.ValidateSnapshot(slot, next);
+
+            foreach (var control in next)
+            {
+                if (!distinctControls.Add(control))
+                {
+                    throw new ArgumentException(
+                        "A compound ownership transaction cannot place one control in several slots.",
+                        nameof(snapshots));
+                }
+            }
+
+            if (SameOrder(slot.Items, next))
+            {
+                continue;
+            }
+
+            var previous = new List<ControlBase>(slot.Items);
+            var removed = previous.FindAll(control => !ContainsIdentity(next, control));
+            var added = next.FindAll(control => !ContainsIdentity(previous, control));
+            changes.Add(new OwnedControlMutation(slot, next, removed, added, reason, notifyUnavailable));
+        }
+
+        if (changes.Count == 0)
+        {
+            return;
+        }
+
         ExceptionDispatchInfo? failure = null;
         var committed = false;
         var invalidated = false;
@@ -576,40 +686,43 @@ internal sealed class OwnedControlRegistry
 
         if (!publicationAlreadyActive)
         {
-            var changingRoots = new List<ControlBase>(removed.Count + added.Count);
-            changingRoots.AddRange(removed);
-            changingRoots.AddRange(added);
-            entered = EnterPublication(Owner, changingRoots);
+            var changingRoots = changes.SelectMany(change => change.Removed.Concat(change.Added));
+            entered = EnterCompoundPublication(changes.Select(change => change.Slot.Registry.Owner), changingRoots);
         }
 
         try
         {
-            if (notifyUnavailable)
+            foreach (var change in changes)
             {
-                foreach (var control in removed)
+                if (!change.NotifyUnavailable)
                 {
-                    ExceptionAggregation.Capture(() => control.NotifyUnavailable(reason), ref failure);
+                    continue;
+                }
+
+                foreach (var control in change.Removed)
+                {
+                    ExceptionAggregation.Capture(() => control.NotifyUnavailable(change.Reason), ref failure);
                 }
             }
 
             var previousAppearance = new Dictionary<ControlBase, AppearanceSnapshot>();
-            foreach (var control in removed)
+            foreach (var control in changes.SelectMany(change => change.Removed))
             {
                 AppearanceSnapshot.CaptureSubtree(control, previousAppearance);
             }
 
-            foreach (var control in added)
+            foreach (var control in changes.SelectMany(change => change.Added))
             {
                 AppearanceSnapshot.CaptureSubtree(control, previousAppearance);
             }
 
-            var plans = new List<ContextTransitionPlan>(removed.Count + added.Count);
+            var plans = new List<ContextTransitionPlan>();
             var themeTransitions = new List<ThemeTransition>();
             var currentAppearance = new Dictionary<ControlBase, AppearanceSnapshot>(previousAppearance.Count);
             var attached = new List<ControlBase>();
             var detached = new List<ControlBase>();
 
-            foreach (var control in removed)
+            foreach (var control in changes.SelectMany(change => change.Removed))
             {
                 AddPlan(ContextTransitionPlan.Create(
                     control,
@@ -624,34 +737,50 @@ internal sealed class OwnedControlRegistry
                     propagateContext: true));
             }
 
-            var ownerAmbientFace = AppearanceSnapshot.ResolveParentAmbient(Owner);
-            foreach (var control in added)
+            foreach (var change in changes)
             {
-                AddPlan(ContextTransitionPlan.Create(
-                    control,
-                    Owner.Dispatcher,
-                    Owner.CellPolicy,
-                    Owner.FocusOwner,
-                    Owner.CaptureOwner,
-                    Owner.ModalityOwner,
-                    Owner.InheritedTheme,
-                    previousAppearance,
-                    ownerAmbientFace,
-                    propagateContext: true));
+                var owner = change.Slot.Registry.Owner;
+                var ownerAmbientFace = AppearanceSnapshot.ResolveParentAmbient(owner);
+
+                foreach (var control in change.Added)
+                {
+                    AddPlan(ContextTransitionPlan.Create(
+                        control,
+                        owner.Dispatcher,
+                        owner.CellPolicy,
+                        owner.FocusOwner,
+                        owner.CaptureOwner,
+                        owner.ModalityOwner,
+                        owner.InheritedTheme,
+                        previousAppearance,
+                        ownerAmbientFace,
+                        propagateContext: true));
+                }
             }
 
             committed = true;
-            slot.Items.Clear();
-            slot.Items.AddRange(next);
-
-            foreach (var control in removed)
+            foreach (var change in changes)
             {
-                control.CommitOwnership(null, null);
+                change.Slot.Items.Clear();
+                change.Slot.Items.AddRange(change.Next);
             }
 
-            foreach (var control in added)
+            foreach (var change in changes)
             {
-                control.CommitOwnership(Owner, slot);
+                foreach (var control in change.Removed)
+                {
+                    control.CommitOwnership(null, null);
+                }
+            }
+
+            foreach (var change in changes)
+            {
+                var owner = change.Slot.Registry.Owner;
+
+                foreach (var control in change.Added)
+                {
+                    control.CommitOwnership(owner, change.Slot);
+                }
             }
 
             foreach (var plan in plans)
@@ -659,10 +788,20 @@ internal sealed class OwnedControlRegistry
                 plan.Commit();
             }
 
-            foreach (var control in added)
+            foreach (var change in changes)
             {
-                control.SetCapabilities(Owner.CapabilityContext);
-                control.SetCellMetrics(Owner.CellMetricsContext);
+                var owner = change.Slot.Registry.Owner;
+
+                foreach (var control in change.Added)
+                {
+                    control.SetCapabilities(owner.CapabilityContext);
+                    control.SetCellMetrics(owner.CellMetricsContext);
+                }
+            }
+
+            if (structuralContinuation is not null)
+            {
+                ExceptionAggregation.Capture(structuralContinuation, ref failure);
             }
 
             var appearanceChanges = AppearanceChange.CreateChanges(
@@ -670,14 +809,24 @@ internal sealed class OwnedControlRegistry
                 previousAppearance,
                 currentAppearance);
 
-            foreach (var control in removed)
+            foreach (var change in changes)
             {
-                ExceptionAggregation.Capture(() => control.PublishParentChanged(Owner, null), ref failure);
+                var owner = change.Slot.Registry.Owner;
+
+                foreach (var control in change.Removed)
+                {
+                    ExceptionAggregation.Capture(() => control.PublishParentChanged(owner, null), ref failure);
+                }
             }
 
-            foreach (var control in added)
+            foreach (var change in changes)
             {
-                ExceptionAggregation.Capture(() => control.PublishParentChanged(null, Owner), ref failure);
+                var owner = change.Slot.Registry.Owner;
+
+                foreach (var control in change.Added)
+                {
+                    ExceptionAggregation.Capture(() => control.PublishParentChanged(null, owner), ref failure);
+                }
             }
 
             foreach (var change in appearanceChanges)
@@ -698,7 +847,11 @@ internal sealed class OwnedControlRegistry
             }
 
             InvalidateOnce();
-            ExceptionAggregation.Capture(slot.PublishChanged, ref failure);
+
+            foreach (var change in changes)
+            {
+                ExceptionAggregation.Capture(change.Slot.PublishChanged, ref failure);
+            }
 
             void AddPlan(ContextTransitionPlan plan)
             {
@@ -746,26 +899,67 @@ internal sealed class OwnedControlRegistry
             // added roots still owe, floor to Render when anything was removed so stale cells
             // are repainted, and normalize to the earliest single named phase, since Expand
             // only closes over dependents for the named singletons.
-            var invalidation = ControlBase.InvalidationFor(slot.Options.Impact);
+            var byOwner = new Dictionary<ControlBase, Invalidation>(ReferenceEqualityComparer.Instance);
 
-            foreach (var control in added)
+            foreach (var change in changes)
             {
-                invalidation |= control.Pending;
+                var owner = change.Slot.Registry.Owner;
+                var invalidation = ControlBase.InvalidationFor(change.Slot.Options.Impact);
+
+                foreach (var control in change.Added)
+                {
+                    invalidation |= control.Pending;
+                }
+
+                if (change.Removed.Count > 0)
+                {
+                    invalidation |= Invalidation.Render;
+                }
+
+                byOwner[owner] = byOwner.GetValueOrDefault(owner) | invalidation;
             }
 
-            if (removed.Count > 0)
+            foreach (var (owner, invalidation) in byOwner)
             {
-                invalidation |= Invalidation.Render;
+                var normalized =
+                    (invalidation & Invalidation.Measure) != Invalidation.None ? Invalidation.Measure
+                    : (invalidation & Invalidation.Arrange) != Invalidation.None ? Invalidation.Arrange
+                    : (invalidation & Invalidation.Render) != Invalidation.None ? Invalidation.Render
+                    : Invalidation.None;
+
+                owner.Invalidate(normalized);
             }
-
-            var normalized =
-                (invalidation & Invalidation.Measure) != Invalidation.None ? Invalidation.Measure
-                : (invalidation & Invalidation.Arrange) != Invalidation.None ? Invalidation.Arrange
-                : (invalidation & Invalidation.Render) != Invalidation.None ? Invalidation.Render
-                : Invalidation.None;
-
-            Owner.Invalidate(normalized);
         }
+    }
+
+    private static List<OwnedControlRegistry> EnterCompoundPublication(
+        IEnumerable<ControlBase> owners,
+        IEnumerable<ControlBase>? candidates)
+    {
+        var entered = new List<OwnedControlRegistry>();
+        var unique = new HashSet<OwnedControlRegistry>(ReferenceEqualityComparer.Instance);
+
+        foreach (var owner in owners)
+        {
+            var root = owner;
+
+            while (root.Parent is { } parent)
+            {
+                root = parent;
+            }
+
+            EnterRegistry(root.OwnedControls, unique, entered);
+        }
+
+        if (candidates is not null)
+        {
+            foreach (var candidate in candidates)
+            {
+                EnterRegistry(candidate.OwnedControls, unique, entered);
+            }
+        }
+
+        return entered;
     }
 
     private void VerifySlot(OwnedControlSlot slot)

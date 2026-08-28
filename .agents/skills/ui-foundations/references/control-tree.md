@@ -28,6 +28,10 @@ disposal.
 3. Test parent changes, focus/capture cleanup, dispatcher adoption, disposal,
    and exception aggregation.
 4. Keep private hosts inside the same ownership registry as public children.
+5. When one semantic item spans several owned hosts, stage every final slot
+   snapshot in one compound ownership transaction. Commit framework mappings
+   before lifecycle publication, preserve deterministic participant order, and
+   test callback failure plus cross-host reentrancy.
 
 ## Project-specific traps
 
@@ -37,6 +41,9 @@ disposal.
   retired.
 - `ContentControl` is caller-replaceable content; `ItemsControl` exposes
   semantic items rather than its presentation host.
+- Sequential mutations of parallel private hosts expose half an item to
+  lifecycle callbacks. Do not repair that with callback-time rollback; use the
+  compound transaction and leave its complete committed state in place.
 
 ## Focused verification
 

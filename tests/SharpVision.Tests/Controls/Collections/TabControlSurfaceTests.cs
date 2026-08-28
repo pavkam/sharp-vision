@@ -6,6 +6,54 @@ namespace SharpVision.Tests.Controls.Collections;
 /// <summary>Proves tab selection and navigation through mounted terminal surfaces.</summary>
 public sealed class TabControlSurfaceTests
 {
+    /// <summary>Verifies a lifecycle failure during mounted insertion leaves a rendered,
+    /// keyboard-interactive page/header pair rather than a half-committed tab.</summary>
+    [Fact]
+    public async Task Insert_WhenPageLifecycleFails_RendersAndNavigatesCommittedTabsAsync()
+    {
+        var tabs = new TabControl
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            tabs,
+            new Size(24, 4),
+            TestContext.Current.CancellationToken);
+        var first = new TabItem { HeaderText = "First", Content = new ControlText("First body") };
+        first.ParentChanged += (_, _) =>
+        {
+            if (first.Parent is not null)
+            {
+                throw new InvalidOperationException("page lifecycle failed");
+            }
+        };
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                var exception = Should.Throw<InvalidOperationException>(() => tabs.Items.Add(first));
+                exception.Message.ShouldBe("page lifecycle failed");
+            },
+            "insert first tab through a failing lifecycle observer");
+        await surface.UpdateAsync(
+            () => tabs.Items.Add(new TabItem
+            {
+                HeaderText = "Second",
+                Content = new ControlText("Second body")
+            }),
+            "insert second tab after lifecycle failure");
+
+        tabs.SelectedItem.ShouldBeSameAs(first);
+        surface.Cell(new Point(1, 0)).Text.ShouldBe("F");
+        surface.Cell(new Point(0, 2)).Text.ShouldBe("F");
+        await surface.UpdateAsync(() => tabs.Focus().ShouldBeTrue(), "focus committed tab control");
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        tabs.SelectedIndex.ShouldBe(1);
+        surface.Cell(new Point(0, 2)).Text.ShouldBe("S");
+    }
+
     /// <summary>Verifies selectable text follows the one presented page, preserves Unicode
     /// graphemes, and excludes both collapsed pages and private header chrome.</summary>
     [Fact]

@@ -6,6 +6,173 @@ namespace SharpVision.Tests.Controls.Collections;
 /// <summary>Verifies TabControl typed ownership, selection, repair, events, layout, and validation.</summary>
 public sealed class TabControlTests
 {
+    /// <summary>Verifies a page lifecycle failure cannot expose or leave a tab whose page was
+    /// committed without its parallel retained header and selection state.</summary>
+    [Fact]
+    public void Add_WhenPageParentChangedThrows_CommitsCompleteTabBeforeRethrowing()
+    {
+        var tabs = new TabControl();
+        var item = Create("General", "Body");
+        item.ParentChanged += (_, _) =>
+        {
+            tabs.ItemCount.ShouldBe(1);
+            tabs.HeaderAt(0).Text.ShouldBe("General");
+            tabs.SelectedIndex.ShouldBe(0);
+            tabs.SelectedItem.ShouldBeSameAs(item);
+            throw new InvalidOperationException("page parent publication failed");
+        };
+
+        var exception = Should.Throw<InvalidOperationException>(() => tabs.Items.Add(item));
+
+        exception.Message.ShouldBe("page parent publication failed");
+        tabs.Items.ShouldBe([item]);
+        tabs.HeaderAt(0).Text.ShouldBe("General");
+        tabs.SelectedIndex.ShouldBe(0);
+        tabs.SelectedItem.ShouldBeSameAs(item);
+    }
+
+    /// <summary>Verifies the page callback observes the retained header soon enough to install a
+    /// failing header callback, and that both publications leave one complete selected tab.</summary>
+    [Fact]
+    public void Add_WhenHeaderParentChangedThrows_CommitsCompleteTabBeforeRethrowing()
+    {
+        var tabs = new TabControl();
+        var item = Create("General", "Body");
+        item.ParentChanged += (_, _) =>
+        {
+            if (item.Parent is not null)
+            {
+                tabs.HeaderAt(0).ParentChanged += (_, _) =>
+                    throw new InvalidOperationException("header parent publication failed");
+            }
+        };
+
+        var exception = Should.Throw<InvalidOperationException>(() => tabs.Items.Add(item));
+
+        exception.Message.ShouldBe("header parent publication failed");
+        tabs.Items.ShouldBe([item]);
+        tabs.HeaderAt(0).Text.ShouldBe("General");
+        tabs.SelectedItem.ShouldBeSameAs(item);
+    }
+
+    /// <summary>Verifies replacement publishes every lifecycle callback against the complete new
+    /// page/header pair and preserves the earliest failure after selection repair.</summary>
+    [Fact]
+    public void Replace_WhenOldPageParentChangedThrows_CommitsReplacementAndPublishesNewPage()
+    {
+        var old = Create("Old", "Old body");
+        var tabs = Create(old);
+        var replacement = Create("New", "New body");
+        var replacementParentChanges = 0;
+        old.ParentChanged += (_, _) =>
+        {
+            if (old.Parent is null)
+            {
+                tabs.Items.ShouldBe([replacement]);
+                tabs.HeaderAt(0).Text.ShouldBe("New");
+                tabs.SelectedItem.ShouldBeSameAs(replacement);
+                throw new InvalidOperationException("old page publication failed");
+            }
+        };
+        replacement.ParentChanged += (_, _) => replacementParentChanges++;
+
+        var exception = Should.Throw<InvalidOperationException>(() => tabs.Items[0] = replacement);
+
+        exception.Message.ShouldBe("old page publication failed");
+        replacementParentChanges.ShouldBe(1);
+        tabs.Items.ShouldBe([replacement]);
+        tabs.HeaderAt(0).Text.ShouldBe("New");
+        tabs.SelectedItem.ShouldBeSameAs(replacement);
+        old.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies clear continues every page and header publication after an earlier page
+    /// callback fails, then exposes one empty coherent snapshot.</summary>
+    [Fact]
+    public void Clear_WhenPageParentChangedThrows_CommitsEmptyPageAndHeaderGraphs()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        var tabs = Create(first, second);
+        var secondParentChanges = 0;
+        first.ParentChanged += (_, _) =>
+        {
+            if (first.Parent is null)
+            {
+                tabs.Items.ShouldBeEmpty();
+                _ = Should.Throw<ArgumentOutOfRangeException>(() => tabs.HeaderAt(0));
+                tabs.SelectedIndex.ShouldBe(-1);
+                tabs.SelectedItem.ShouldBeNull();
+                throw new InvalidOperationException("first page publication failed");
+            }
+        };
+        second.ParentChanged += (_, _) => secondParentChanges++;
+
+        var exception = Should.Throw<InvalidOperationException>(tabs.Items.Clear);
+
+        exception.Message.ShouldBe("first page publication failed");
+        secondParentChanges.ShouldBe(1);
+        tabs.Items.ShouldBeEmpty();
+        tabs.SelectedIndex.ShouldBe(-1);
+        first.Parent.ShouldBeNull();
+        second.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies attachment publication for page content observes the complete retained
+    /// tab pair and cannot prevent final selection repair when it fails.</summary>
+    [Fact]
+    public async Task Add_WhenPageContentAttachedThrows_CommitsCompleteTabBeforeRethrowingAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var tabs = new TabControl();
+            tabs.Attach(dispatcher);
+            var content = new OwnershipObserverControl();
+            var item = new TabItem { HeaderText = "Attached", Content = content };
+            content.Attaching = _ =>
+            {
+                tabs.Items.ShouldBe([item]);
+                tabs.HeaderAt(0).Text.ShouldBe("Attached");
+                throw new InvalidOperationException("content attachment failed");
+            };
+
+            var exception = Should.Throw<InvalidOperationException>(() => tabs.Items.Add(item));
+
+            exception.Message.ShouldBe("content attachment failed");
+            tabs.Items.ShouldBe([item]);
+            tabs.HeaderAt(0).Text.ShouldBe("Attached");
+            tabs.SelectedItem.ShouldBeSameAs(item);
+            content.AttachedCalls.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies owner-driven teardown removes the page/header pair as one transaction
+    /// before either retained child's parent callback is published.</summary>
+    [Fact]
+    public void Dispose_WhenHeaderParentChanges_ObservesEmptyParallelGraphsAndDisposesPages()
+    {
+        var item = Create("General", "Body");
+        var tabs = Create(item);
+        var header = tabs.HeaderAt(0);
+        header.ParentChanged += (_, _) =>
+        {
+            if (header.Parent is null)
+            {
+                tabs.ItemCount.ShouldBe(0);
+                _ = Should.Throw<ArgumentOutOfRangeException>(() => tabs.HeaderAt(0));
+                tabs.SelectedIndex.ShouldBe(-1);
+            }
+        };
+
+        tabs.Dispose();
+
+        tabs.IsDisposed.ShouldBeTrue();
+        item.IsDisposed.ShouldBeTrue();
+        header.IsDisposed.ShouldBeTrue();
+    }
+
     /// <summary>Verifies documented defaults for a new TabControl.</summary>
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()

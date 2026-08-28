@@ -43,6 +43,15 @@ checks automatically - a mechanical catalog that only asserts "a test exists"
 for every exported type, without exercising real behavior, is a test smell in
 this codebase and is deliberately not part of the suite.
 
+Compound ownership fixtures use two retained hosts and assert complete snapshot
+visibility from the first parent callback, deterministic later-callback and
+slot-notification delivery after an earlier failure, cross-host reentrancy
+rejection, and stable ownership after add, replace, remove, move, clear, direct
+child disposal, and owner disposal. `TabControlTests` applies that foundation to
+page/header parity, mappings, subscriptions, presentation restoration, and
+selection repair. Its mounted fixture then proves the committed selected page
+and generated header render and remain interactive through the real dispatcher.
+
 Toast surface evidence mounts notifications through both a Screen presentation
 plane and an explicit Overlay. It proves all six edge positions, newest-nearest
 stacking, elapsed entrance geometry, semantic cells, keyboard and capture-aware

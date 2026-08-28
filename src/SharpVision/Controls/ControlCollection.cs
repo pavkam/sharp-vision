@@ -7,7 +7,7 @@ namespace SharpVision.Controls;
 [PublicAPI]
 public sealed class ControlCollection: IList<ControlBase>, IReadOnlyList<ControlBase>
 {
-    private readonly OwnedControlSlot _slot;
+    private OwnedControlSlot Slot { get; }
 
     /// <summary>Raised after one complete collection change, including child-initiated disposal.</summary>
     /// <remarks>
@@ -16,9 +16,12 @@ public sealed class ControlCollection: IList<ControlBase>, IReadOnlyList<Control
     /// </remarks>
     internal event Action? Changed
     {
-        add => _slot.Changed += value;
-        remove => _slot.Changed -= value;
+        add => Slot.Changed += value;
+        remove => Slot.Changed -= value;
     }
+
+    /// <summary>Gets the registered slot used by framework-owned compound transactions.</summary>
+    internal OwnedControlSlot OwnedSlot => Slot;
 
     /// <summary>Initializes an empty public container-child collection.</summary>
     /// <param name="owner">The owning container.</param>
@@ -44,45 +47,45 @@ public sealed class ControlCollection: IList<ControlBase>, IReadOnlyList<Control
     internal ControlCollection(ControlBase owner, int capacity, OwnedControlOptions options)
     {
         ArgumentNullException.ThrowIfNull(owner);
-        _slot = owner.RegisterOwnedSlot(options, capacity);
+        Slot = owner.RegisterOwnedSlot(options, capacity);
     }
 
     /// <inheritdoc cref="IList{T}.this" />
     public ControlBase this[int index]
     {
-        get => _slot[index];
-        set => _slot[index] = value;
+        get => Slot[index];
+        set => Slot[index] = value;
     }
 
     /// <inheritdoc cref="ICollection{T}.Count" />
-    public int Count => _slot.Count;
+    public int Count => Slot.Count;
 
     /// <inheritdoc/>
     public bool IsReadOnly => false;
 
     /// <inheritdoc/>
-    public void Add(ControlBase item) => _slot.Add(item);
+    public void Add(ControlBase item) => Slot.Add(item);
 
     /// <inheritdoc/>
-    public void Clear() => _slot.Clear();
+    public void Clear() => Slot.Clear();
 
     /// <inheritdoc/>
     [Pure]
-    public bool Contains(ControlBase item) => _slot.Contains(item);
+    public bool Contains(ControlBase item) => Slot.Contains(item);
 
     /// <inheritdoc/>
-    public void CopyTo(ControlBase[] array, int arrayIndex) => _slot.CopyTo(array, arrayIndex);
+    public void CopyTo(ControlBase[] array, int arrayIndex) => Slot.CopyTo(array, arrayIndex);
 
     /// <summary>Gets the allocation-free value enumerator used by direct iteration.</summary>
     /// <returns>The underlying slot enumerator.</returns>
-    public List<ControlBase>.Enumerator GetEnumerator() => _slot.GetEnumerator();
+    public List<ControlBase>.Enumerator GetEnumerator() => Slot.GetEnumerator();
 
     /// <inheritdoc/>
     [Pure]
-    public int IndexOf(ControlBase item) => _slot.IndexOf(item);
+    public int IndexOf(ControlBase item) => Slot.IndexOf(item);
 
     /// <inheritdoc/>
-    public void Insert(int index, ControlBase item) => _slot.Insert(index, item);
+    public void Insert(int index, ControlBase item) => Slot.Insert(index, item);
 
     /// <summary>Atomically assigns or clears the only child of a capacity-one collection.</summary>
     /// <param name="item">The new detached child, or null to clear the collection.</param>
@@ -91,17 +94,17 @@ public sealed class ControlCollection: IList<ControlBase>, IReadOnlyList<Control
     /// <exception cref="ObjectDisposedException">The owner or new child is disposed.</exception>
     internal void SetOnly(ControlBase? item)
     {
-        if (_slot.Capacity != 1)
+        if (Slot.Capacity != 1)
         {
             throw new InvalidOperationException("Only a capacity-one collection supports SetOnly.");
         }
 
-        _slot.ReplaceAll(item is null ? [] : [item]);
+        Slot.ReplaceAll(item is null ? [] : [item]);
     }
 
     /// <summary>Atomically replaces the complete child collection.</summary>
     /// <param name="items">The non-null candidate sequence.</param>
-    internal void ReplaceAll(IEnumerable<ControlBase> items) => _slot.ReplaceAll(items);
+    internal void ReplaceAll(IEnumerable<ControlBase> items) => Slot.ReplaceAll(items);
 
     /// <summary>Atomically reorders one retained child without changing ownership or availability.</summary>
     /// <param name="oldIndex">The current zero-based position.</param>
@@ -116,22 +119,22 @@ public sealed class ControlCollection: IList<ControlBase>, IReadOnlyList<Control
             return;
         }
 
-        var next = new List<ControlBase>(_slot.Items);
+        var next = new List<ControlBase>(Slot.Items);
         var item = next[oldIndex];
         next.RemoveAt(oldIndex);
         next.Insert(newIndex, item);
-        _slot.ReplaceAll(next);
+        Slot.ReplaceAll(next);
     }
 
     /// <inheritdoc/>
-    public bool Remove(ControlBase item) => _slot.Remove(item);
+    public bool Remove(ControlBase item) => Slot.Remove(item);
 
     /// <inheritdoc/>
-    public void RemoveAt(int index) => _slot.RemoveAt(index);
+    public void RemoveAt(int index) => Slot.RemoveAt(index);
 
     /// <inheritdoc/>
-    IEnumerator<ControlBase> IEnumerable<ControlBase>.GetEnumerator() => _slot.Items.GetEnumerator();
+    IEnumerator<ControlBase> IEnumerable<ControlBase>.GetEnumerator() => Slot.Items.GetEnumerator();
 
     /// <inheritdoc/>
-    IEnumerator IEnumerable.GetEnumerator() => _slot.Items.GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator() => Slot.Items.GetEnumerator();
 }

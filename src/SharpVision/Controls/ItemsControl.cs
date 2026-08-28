@@ -36,6 +36,9 @@ public abstract class ItemsControl: ControlBase
     /// <exception cref="InvalidOperationException">The presentation host is not available.</exception>
     protected int ItemControlCount => GetItemsHost().Children.Count;
 
+    /// <summary>Gets the realized-control slot for a framework-owned compound transaction.</summary>
+    private protected OwnedControlSlot ItemControlsSlot => GetItemsHost().Children.OwnedSlot;
+
     /// <summary>Installs the one private presentation host for this item owner.</summary>
     /// <param name="host">The non-null detached container that will own realized item controls.</param>
     /// <remarks>
@@ -226,9 +229,18 @@ public abstract class ItemsControl: ControlBase
     /// <inheritdoc/>
     protected override void OnDisposing()
     {
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(OnItemsControlDisposing, ref failure);
+
         _itemsHost?.Children.Changed -= OnHostItemsChanged;
 
-        base.OnDisposing();
+        ExceptionAggregation.Capture(base.OnDisposing, ref failure);
+        failure?.Throw();
+    }
+
+    /// <summary>Allows framework item owners to settle semantic state before their private hosts are disposed.</summary>
+    private protected virtual void OnItemsControlDisposing()
+    {
     }
 
     [Pure]

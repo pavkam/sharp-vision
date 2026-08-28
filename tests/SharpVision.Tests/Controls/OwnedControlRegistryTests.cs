@@ -7,6 +7,93 @@ namespace SharpVision.Tests.Controls;
 /// cross-cutting Tab, render, and hit-test traversal over every central ownership slot.</summary>
 public sealed class OwnedControlRegistryTests
 {
+    /// <summary>Verifies a compound commit publishes lifecycle only after both owned hosts expose
+    /// their final snapshots, rejects reentry across either host, and continues later callbacks.</summary>
+    [Fact]
+    public void CommitCompound_WhenFirstParentCallbackFails_KeepsBothHostsCoherentAndGuarded()
+    {
+        var root = new ProbeContainer();
+        var pages = new ProbeContainer();
+        var headers = new ProbeContainer();
+        root.Children.Add(pages);
+        root.Children.Add(headers);
+        var page = new OwnershipObserverControl();
+        var header = new OwnershipObserverControl();
+        var headerParentChanges = 0;
+        page.ParentChanging = (_, _, current) =>
+        {
+            current.ShouldBeSameAs(pages);
+            pages.Children.ShouldBe([page]);
+            headers.Children.ShouldBe([header]);
+            _ = Should.Throw<InvalidOperationException>(() => headers.Children.Add(new ProbeControl()));
+            throw new InvalidOperationException("page parent publication failed");
+        };
+        header.ParentChanging = (_, _, current) =>
+        {
+            current.ShouldBeSameAs(headers);
+            headerParentChanges++;
+        };
+
+        var exception = Should.Throw<InvalidOperationException>(() =>
+            OwnedControlRegistry.CommitCompound(
+                static () => { },
+                (pages.Children.OwnedSlot, new ControlBase[] { page }),
+                (headers.Children.OwnedSlot, new ControlBase[] { header })));
+
+        exception.Message.ShouldBe("page parent publication failed");
+        pages.Children.ShouldBe([page]);
+        headers.Children.ShouldBe([header]);
+        headerParentChanges.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a failing first slot notification cannot suppress the later participant's
+    /// notification or roll back either committed snapshot.</summary>
+    [Fact]
+    public void CommitCompound_WhenSlotNotificationThrows_PublishesEveryParticipantThenRethrows()
+    {
+        var pages = new ProbeContainer();
+        var headers = new ProbeContainer();
+        var page = new ProbeControl();
+        var header = new ProbeControl();
+        var headerChanges = 0;
+        pages.Children.Changed += () => throw new InvalidOperationException("page slot publication failed");
+        headers.Children.Changed += () => headerChanges++;
+
+        var exception = Should.Throw<InvalidOperationException>(() =>
+            OwnedControlRegistry.CommitCompound(
+                static () => { },
+                (pages.Children.OwnedSlot, new ControlBase[] { page }),
+                (headers.Children.OwnedSlot, new ControlBase[] { header })));
+
+        exception.Message.ShouldBe("page slot publication failed");
+        pages.Children.ShouldBe([page]);
+        headers.Children.ShouldBe([header]);
+        headerChanges.ShouldBe(1);
+    }
+
+    /// <summary>Verifies every participating snapshot is validated before the first slot or
+    /// framework bookkeeping continuation can change.</summary>
+    [Fact]
+    public void CommitCompound_WhenDetachedCandidateRepeatsAcrossSlots_RejectsBeforeMutation()
+    {
+        var pages = new ProbeContainer();
+        var headers = new ProbeContainer();
+        var candidate = new ProbeControl();
+        var continuationCalls = 0;
+
+        _ = Should.Throw<ArgumentException>(() =>
+            OwnedControlRegistry.CommitCompound(
+                () => continuationCalls++,
+                (pages.Children.OwnedSlot, new ControlBase[] { candidate }),
+                (headers.Children.OwnedSlot, new ControlBase[] { candidate })));
+
+        continuationCalls.ShouldBe(0);
+        pages.Children.ShouldBeEmpty();
+        headers.Children.ShouldBeEmpty();
+        candidate.Parent.ShouldBeNull();
+    }
+
+
     /// <summary>Verifies add preflights Theme impact before changing slot ownership or context.</summary>
     [Fact]
     public void Add_WhenThemeImpactHookThrows_PreservesOwnershipAndContext()

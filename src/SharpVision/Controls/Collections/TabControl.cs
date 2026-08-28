@@ -323,53 +323,93 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             Width = HeaderWidth,
         };
         header.Activated += OnHeaderActivated;
-        InsertItemControl(index, item);
+        var nextItems = new List<ControlBase>(ItemControlsSlot.Items);
+        nextItems.Insert(index, item);
+        var nextHeaders = new List<ControlBase>(_headers.Children);
+        nextHeaders.Insert(index, header);
+        var previousSelectedIndex = _selectedIndex;
+        var previousSelectedItem = previousSelectedIndex >= 0 ? ItemAt(previousSelectedIndex) : null;
+        var stagedSelectedIndex = previousSelectedIndex;
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        var committed = false;
+        ExceptionAggregation.Capture(
+            () => OwnedControlRegistry.CommitCompound(
+                () =>
+                {
+                    committed = true;
+                    _headersByItem.Add(item, header);
+                    _requestedPresentations.Add(item, requestedPresentation);
+                    item.PropertyChanged += OnItemPropertyChanged;
 
-        try
+                    if (previousSelectedIndex >= index)
+                    {
+                        stagedSelectedIndex = previousSelectedIndex + 1;
+                    }
+                    else if (previousSelectedIndex < 0)
+                    {
+                        stagedSelectedIndex = SingleSelectionIndex.FindLinear(0, 1, ItemControlCount, IsEligible);
+                    }
+
+                    if (stagedSelectedIndex != previousSelectedIndex)
+                    {
+                        _selectedIndex = stagedSelectedIndex;
+                        _selectionVersion++;
+                    }
+                },
+                (ItemControlsSlot, nextItems),
+                (_headers.Children.OwnedSlot, nextHeaders)),
+            ref failure);
+
+        if (!committed)
         {
-            _headers.Children.Insert(index, header);
-        }
-        catch
-        {
-            _ = RemoveItemControl(item);
+            header.Activated -= OnHeaderActivated;
             header.Dispose();
-            throw;
-        }
-
-        _headersByItem.Add(item, header);
-        _requestedPresentations.Add(item, requestedPresentation);
-        item.PropertyChanged += OnItemPropertyChanged;
-        WriteItemWidth(item, Length.Percent(100));
-
-        if (!IsCommitted(item, header))
-        {
+            failure?.Throw();
             return;
         }
 
-        WriteItemHeight(item, Length.Percent(100));
+        ExceptionAggregation.Capture(() => WriteItemWidth(item, Length.Percent(100)), ref failure);
 
         if (!IsCommitted(item, header))
         {
+            failure?.Throw();
             return;
         }
 
-        // The newly inserted page never displaces an already-selected page: the
-        // selected item keeps its identity, so only its numeric index shifts.
-        if (_selectedIndex >= index)
+        ExceptionAggregation.Capture(() => WriteItemHeight(item, Length.Percent(100)), ref failure);
+
+        if (!IsCommitted(item, header))
         {
-            _selectedIndex++;
-            _selectionVersion++;
-            NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure);
+            failure?.Throw();
+            return;
         }
 
-        if (_selectedIndex < 0 && SingleSelectionIndex.FindLinear(0, 1, ItemControlCount, IsEligible) is var first and >= 0)
-        {
-            Select(first);
-        }
-        else
-        {
-            ApplyPresentation();
-        }
+        ExceptionAggregation.Capture(
+            () =>
+            {
+                if (previousSelectedIndex >= 0 && stagedSelectedIndex != previousSelectedIndex)
+                {
+                    // The newly inserted page never displaces an already-selected page: the
+                    // selected item keeps its identity, so only its numeric index shifts.
+                    NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure);
+                    ApplyPresentation();
+                }
+                else if (previousSelectedIndex < 0 && stagedSelectedIndex >= 0)
+                {
+                    CommitSelection(
+                        stagedSelectedIndex,
+                        previousSelectedIndex,
+                        previousSelectedItem,
+                        force: true);
+                }
+                else
+                {
+                    ApplyPresentation();
+                }
+            },
+            ref failure);
+
+        failure?.Throw();
     }
 
     internal bool RemoveItem(TabItem item)
@@ -412,36 +452,81 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         // may resolve to a different surviving item or be out of range.
         var previousSelectedItem = _selectedIndex >= 0 ? ItemAt(_selectedIndex) : null;
         var header = HeaderAt(idx);
-        item.PropertyChanged -= OnItemPropertyChanged;
-        header.Activated -= OnHeaderActivated;
-        _ = _headersByItem.Remove(item);
-        _ = _requestedPresentations.Remove(item, out var requestedPresentation);
-        header.CommitSelection(false);
-        _ = RemoveItemControl(item);
-        _ = _headers.Children.Remove(header);
-        header.Dispose();
+        var requestedPresentation = _requestedPresentations[item];
+        var nextItems = new List<ControlBase>(ItemControlsSlot.Items);
+        nextItems.RemoveAt(idx);
+        var nextHeaders = new List<ControlBase>(_headers.Children);
+        nextHeaders.RemoveAt(idx);
+        var stagedSelectedIndex = previousSelectedIndex;
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        var committed = false;
+        ExceptionAggregation.Capture(
+            () => OwnedControlRegistry.CommitCompound(
+                () =>
+                {
+                    committed = true;
+                    item.PropertyChanged -= OnItemPropertyChanged;
+                    header.Activated -= OnHeaderActivated;
+                    _ = _headersByItem.Remove(item);
+                    _ = _requestedPresentations.Remove(item);
 
-        if (wasSelected)
+                    if (wasSelected)
+                    {
+                        stagedSelectedIndex = SingleSelectionIndex.FindNearest(
+                            Math.Min(idx, ItemControlCount - 1),
+                            ItemControlCount,
+                            IsEligible);
+                    }
+                    else if (idx < previousSelectedIndex)
+                    {
+                        stagedSelectedIndex = previousSelectedIndex - 1;
+                    }
+
+                    if (stagedSelectedIndex != previousSelectedIndex)
+                    {
+                        _selectedIndex = stagedSelectedIndex;
+                        _selectionVersion++;
+                    }
+                },
+                (ItemControlsSlot, nextItems),
+                (_headers.Children.OwnedSlot, nextHeaders)),
+            ref failure);
+
+        if (!committed)
         {
-            var target = SingleSelectionIndex.FindNearest(Math.Min(idx, ItemControlCount - 1), ItemControlCount, IsEligible);
-            CommitSelectionAfterMutation(target, previousSelectedIndex, previousSelectedItem);
+            failure?.Throw();
+            return;
         }
-        else
-        {
-            if (idx < _selectedIndex)
+
+        ExceptionAggregation.Capture(
+            () =>
             {
-                // Mirrors InsertItem's symmetric case: the selected page's identity is
-                // unaffected by removing an earlier page, so only its numeric index shifts
-                // silently, with no SelectionChanged.
-                _selectedIndex--;
-                _selectionVersion++;
-                NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure);
-            }
+                if (wasSelected)
+                {
+                    CommitSelection(
+                        stagedSelectedIndex,
+                        previousSelectedIndex,
+                        previousSelectedItem,
+                        force: true);
+                }
+                else
+                {
+                    if (stagedSelectedIndex != previousSelectedIndex)
+                    {
+                        // Mirrors InsertItem's symmetric case: the selected page's identity is
+                        // unaffected by removing an earlier page, so only its numeric index shifts
+                        // silently, with no SelectionChanged.
+                        NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure);
+                    }
 
-            ApplyPresentation();
-        }
-
-        RestorePresentation(item, requestedPresentation);
+                    ApplyPresentation();
+                }
+            },
+            ref failure);
+        ExceptionAggregation.Capture(() => header.CommitSelection(false), ref failure);
+        ExceptionAggregation.Capture(header.Dispose, ref failure);
+        ExceptionAggregation.Capture(() => RestorePresentation(item, requestedPresentation), ref failure);
+        failure?.Throw();
     }
 
     internal void ReplaceItem(int index, TabItem item)
@@ -475,66 +560,78 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         };
         newHeader.Activated += OnHeaderActivated;
 
-        // The item host validates and atomically detaches the old item while
-        // attaching the new one; only after that succeeds is the parallel
-        // header strip touched, so a rejected candidate never desynchronizes it.
-        ReplaceItemControl(index, item);
+        var oldPresentation = _requestedPresentations[old];
+        var nextItems = new List<ControlBase>(ItemControlsSlot.Items) { [index] = item };
+        var nextHeaders = new List<ControlBase>(_headers.Children) { [index] = newHeader };
+        var stagedSelectedIndex = previousSelectedIndex;
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        var committed = false;
+        ExceptionAggregation.Capture(
+            () => OwnedControlRegistry.CommitCompound(
+                () =>
+                {
+                    committed = true;
+                    old.PropertyChanged -= OnItemPropertyChanged;
+                    oldHeader.Activated -= OnHeaderActivated;
+                    _ = _headersByItem.Remove(old);
+                    _ = _requestedPresentations.Remove(old);
+                    _headersByItem.Add(item, newHeader);
+                    _requestedPresentations.Add(item, requestedPresentation);
+                    item.PropertyChanged += OnItemPropertyChanged;
 
-        try
+                    if (wasSelected)
+                    {
+                        stagedSelectedIndex = IsEligible(index)
+                            ? index
+                            : SingleSelectionIndex.FindNearest(index, ItemControlCount, IsEligible);
+                        _selectedIndex = stagedSelectedIndex;
+                        _selectionVersion++;
+                    }
+                },
+                (ItemControlsSlot, nextItems),
+                (_headers.Children.OwnedSlot, nextHeaders)),
+            ref failure);
+
+        if (!committed)
         {
-            _headers.Children[index] = newHeader;
-        }
-        catch
-        {
-            ReplaceItemControl(index, old);
+            newHeader.Activated -= OnHeaderActivated;
             newHeader.Dispose();
-            throw;
+            failure?.Throw();
+            return;
         }
 
-        old.PropertyChanged -= OnItemPropertyChanged;
-        oldHeader.Activated -= OnHeaderActivated;
-        _ = _headersByItem.Remove(old);
-        _ = _requestedPresentations.Remove(old, out var oldPresentation);
-        oldHeader.CommitSelection(false);
-        oldHeader.Dispose();
+        ExceptionAggregation.Capture(() => oldHeader.CommitSelection(false), ref failure);
+        ExceptionAggregation.Capture(oldHeader.Dispose, ref failure);
+        ExceptionAggregation.Capture(() => WriteItemWidth(item, Length.Percent(100)), ref failure);
 
-        _headersByItem.Add(item, newHeader);
-        _requestedPresentations.Add(item, requestedPresentation);
-        item.PropertyChanged += OnItemPropertyChanged;
-        try
+        if (IsCommitted(item, newHeader))
         {
-            WriteItemWidth(item, Length.Percent(100));
-
-            if (!IsCommitted(item, newHeader))
-            {
-                return;
-            }
-
-            WriteItemHeight(item, Length.Percent(100));
-
-            if (!IsCommitted(item, newHeader))
-            {
-                return;
-            }
-
-            if (wasSelected)
-            {
-                _selectedIndex = -1;
-                _selectionVersion++;
-                var target = IsEligible(index)
-                    ? index
-                    : SingleSelectionIndex.FindNearest(index, ItemControlCount, IsEligible);
-                CommitSelection(target, previousSelectedIndex, previousSelectedItem);
-            }
-            else
-            {
-                ApplyPresentation();
-            }
+            ExceptionAggregation.Capture(() => WriteItemHeight(item, Length.Percent(100)), ref failure);
         }
-        finally
+
+        if (IsCommitted(item, newHeader))
         {
-            RestorePresentation(old, oldPresentation);
+            ExceptionAggregation.Capture(
+                () =>
+                {
+                    if (wasSelected)
+                    {
+                        CommitSelection(
+                            stagedSelectedIndex,
+                            previousSelectedIndex,
+                            previousSelectedItem,
+                            force: true);
+                    }
+                    else
+                    {
+                        ApplyPresentation();
+                    }
+                },
+                ref failure);
         }
+
+        ExceptionAggregation.Capture(() => RestorePresentation(old, oldPresentation), ref failure);
+        failure?.Throw();
     }
 
     internal void MoveItem(int oldIndex, int newIndex)
@@ -558,39 +655,57 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             return;
         }
 
-        var item = ItemAt(oldIndex);
-        var header = HeaderAt(oldIndex);
-
         // A genuine reposition, not remove+insert through the public surface: the
         // item and header keep their identity, subscriptions, and presentation
         // state, and the selected item's identity never changes, so no
         // SelectionChanged fires — only the numeric SelectedIndex may shift.
         System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(() => MoveItemControl(oldIndex, newIndex), ref failure);
-        ExceptionAggregation.Capture(() => _headers.Children.Move(oldIndex, newIndex), ref failure);
-
+        var nextItems = new List<ControlBase>(ItemControlsSlot.Items);
+        var item = nextItems[oldIndex];
+        nextItems.RemoveAt(oldIndex);
+        nextItems.Insert(newIndex, item);
+        var nextHeaders = new List<ControlBase>(_headers.Children);
+        var header = nextHeaders[oldIndex];
+        nextHeaders.RemoveAt(oldIndex);
+        nextHeaders.Insert(newIndex, header);
         var previousSelectedIndex = _selectedIndex;
+        var stagedSelectedIndex = previousSelectedIndex;
 
-        if (_selectedIndex == oldIndex)
+        if (previousSelectedIndex == oldIndex)
         {
-            _selectedIndex = newIndex;
+            stagedSelectedIndex = newIndex;
         }
-        else if (oldIndex < _selectedIndex && _selectedIndex <= newIndex)
+        else if (oldIndex < previousSelectedIndex && previousSelectedIndex <= newIndex)
         {
-            _selectedIndex--;
+            stagedSelectedIndex--;
         }
-        else if (newIndex <= _selectedIndex && _selectedIndex < oldIndex)
+        else if (newIndex <= previousSelectedIndex && previousSelectedIndex < oldIndex)
         {
-            _selectedIndex++;
-        }
-
-        if (_selectedIndex != previousSelectedIndex)
-        {
-            _selectionVersion++;
-            NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure);
+            stagedSelectedIndex++;
         }
 
-        ApplyPresentation();
+        ExceptionAggregation.Capture(
+            () => OwnedControlRegistry.CommitCompound(
+                () =>
+                {
+                    if (stagedSelectedIndex != previousSelectedIndex)
+                    {
+                        _selectedIndex = stagedSelectedIndex;
+                        _selectionVersion++;
+                    }
+                },
+                (ItemControlsSlot, nextItems),
+                (_headers.Children.OwnedSlot, nextHeaders)),
+            ref failure);
+
+        if (stagedSelectedIndex != previousSelectedIndex)
+        {
+            ExceptionAggregation.Capture(
+                () => NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure),
+                ref failure);
+        }
+
+        ExceptionAggregation.Capture(ApplyPresentation, ref failure);
         failure?.Throw();
     }
 
@@ -659,9 +774,18 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         }
     }
 
-    internal void ClearItems()
+    internal void ClearItems() => ClearItems(disposing: false);
+
+    private void ClearItems(bool disposing)
     {
         VerifyMutable();
+
+        if (ItemControlCount == 0)
+        {
+            return;
+        }
+
+        var items = new TabItem[ItemControlCount];
         var headers = new TabHeader[_headers.Children.Count];
         var previousSelectedIndex = _selectedIndex;
         var previousSelectedItem = previousSelectedIndex >= 0 ? ItemAt(previousSelectedIndex) : null;
@@ -670,29 +794,83 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         {
             var item = ItemAt(index);
             var header = HeaderAt(index);
-            item.PropertyChanged -= OnItemPropertyChanged;
-            header.Activated -= OnHeaderActivated;
-            _ = _headersByItem.Remove(item);
-            header.CommitSelection(false);
+            items[index] = item;
             headers[index] = header;
         }
 
         var presentations = _requestedPresentations.ToArray();
-        _requestedPresentations.Clear();
-        ClearItemControls();
-        _headers.Children.Clear();
-        CommitSelectionAfterMutation(-1, previousSelectedIndex, previousSelectedItem);
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        var committed = false;
+        ExceptionAggregation.Capture(CommitSnapshots, ref failure);
+
+        if (!committed)
+        {
+            failure?.Throw();
+            return;
+        }
+
+        ExceptionAggregation.Capture(
+            () => CommitSelection(-1, previousSelectedIndex, previousSelectedItem, force: true),
+            ref failure);
 
         foreach (var header in headers)
         {
-            header.Dispose();
+            ExceptionAggregation.Capture(() => header.CommitSelection(false), ref failure);
+            ExceptionAggregation.Capture(header.Dispose, ref failure);
         }
 
         foreach (var (item, presentation) in presentations)
         {
-            RestorePresentation(item, presentation);
+            ExceptionAggregation.Capture(() => RestorePresentation(item, presentation), ref failure);
+
+            if (disposing)
+            {
+                ExceptionAggregation.Capture(item.DisposeAfterUnavailable, ref failure);
+            }
+        }
+
+        failure?.Throw();
+        return;
+
+        void CommitSnapshots()
+        {
+            if (disposing)
+            {
+                OwnedControlRegistry.CommitCompoundForOwnerDisposal(
+                    SynchronizeState,
+                    (ItemControlsSlot, Array.Empty<ControlBase>()),
+                    (_headers.Children.OwnedSlot, Array.Empty<ControlBase>()));
+            }
+            else
+            {
+                OwnedControlRegistry.CommitCompound(
+                    SynchronizeState,
+                    (ItemControlsSlot, Array.Empty<ControlBase>()),
+                    (_headers.Children.OwnedSlot, Array.Empty<ControlBase>()));
+            }
+        }
+
+        void SynchronizeState()
+        {
+            committed = true;
+
+            for (var index = 0; index < items.Length; index++)
+            {
+                var item = items[index];
+                var header = headers[index];
+                item.PropertyChanged -= OnItemPropertyChanged;
+                header.Activated -= OnHeaderActivated;
+            }
+
+            _headersByItem.Clear();
+            _requestedPresentations.Clear();
+            _selectedIndex = -1;
+            _selectionVersion++;
         }
     }
+
+    /// <inheritdoc/>
+    private protected override void OnItemsControlDisposing() => ClearItems(disposing: true);
 
     // Restoration runs only after ownership, headers, and selection have reached their final
     // snapshot. Caller PropertyChanged handlers can therefore mutate the collection without
@@ -761,23 +939,18 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         CommitSelection(index, _selectedIndex, previousItem);
     }
 
-    private void CommitSelectionAfterMutation(int index, int previousIndex, TabItem? previousItem)
+    private void CommitSelection(
+        int index,
+        int previousIndex,
+        TabItem? previousItem,
+        bool force = false)
     {
-        VerifyMutable();
-        _selectedIndex = -1;
-        _selectionVersion++;
-        CommitSelection(index, previousIndex, previousItem);
-    }
-
-    private void CommitSelection(int index, int previousIndex, TabItem? previousItem)
-    {
-
         if (index >= 0 && !IsEligible(index))
         {
             throw new InvalidOperationException("An unavailable tab page cannot be selected.");
         }
 
-        if (_selectedIndex == index && previousIndex == index)
+        if (!force && _selectedIndex == index && previousIndex == index)
         {
             return;
         }

@@ -785,6 +785,8 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
     private bool OwnedDisposalRequested { get; set; }
 
+    private bool UnavailableAlreadyPublishedForDisposal { get; set; }
+
     private bool FocusableNotificationPending { get; set; }
 
     private List<IHandler>? Handlers { get; set; }
@@ -1735,6 +1737,26 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         }
     }
 
+    /// <summary>Disposes a detached control after a compound owner transaction already published
+    /// its final unavailability notification.</summary>
+    /// <remarks>This seam prevents duplicate focus, capture, modality, and control cleanup while
+    /// still running the complete disposal lifecycle for a child removed atomically with peers.</remarks>
+    internal void DisposeAfterUnavailable()
+    {
+        Debug.Assert(Parent is null && OwningSlot is null, "Post-unavailability disposal requires a detached control.");
+        Debug.Assert(!UnavailableAlreadyPublishedForDisposal, "Post-unavailability disposal cannot nest.");
+        UnavailableAlreadyPublishedForDisposal = true;
+
+        try
+        {
+            Dispose();
+        }
+        finally
+        {
+            UnavailableAlreadyPublishedForDisposal = false;
+        }
+    }
+
     private void DisposeWithPublication()
     {
         var entered = OwnedControlRegistry.EnterPublication(this, [this]);
@@ -1760,9 +1782,12 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
         try
         {
-            ExceptionAggregation.Capture(
-                () => NotifyUnavailable(ReleaseReason.Disposed),
-                ref failure);
+            if (!UnavailableAlreadyPublishedForDisposal)
+            {
+                ExceptionAggregation.Capture(
+                    () => NotifyUnavailable(ReleaseReason.Disposed),
+                    ref failure);
+            }
 
             if (OwningSlot is { } slot)
             {

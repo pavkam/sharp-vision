@@ -27,6 +27,14 @@ change caused by direct item disposal. It observes the complete new order while
 guarded ownership publication is still active. A callback failure does not roll
 back the committed snapshot, and reentrant ownership mutation is rejected.
 
+A framework control whose one semantic item requires controls in several private
+hosts uses the internal compound ownership transaction rather than calling these
+single-host helpers sequentially. All participating snapshots are prevalidated,
+all slot contents and inherited context commit together, and only then do
+lifecycle and per-host change callbacks run. This is a framework composition
+facility; consumer-derived item controls continue to use the protected
+single-host authoring surface below.
+
 The base measures the host inside its own content box, includes a visible host
 margin in its desired size, and arranges the host with both axes resolved. The
 host owns item-specific layout and any optional scrolling; `ItemsControl` itself

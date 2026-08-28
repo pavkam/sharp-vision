@@ -106,6 +106,15 @@ helpers. The host's `Children` collection never becomes public API. `ListView`,
 presenter private and exposes only `Rows`, `Columns`, and delegated scroll
 state.
 
+When one semantic item spans several retained hosts, framework controls stage
+the complete proposed snapshot for every participating ownership slot. The
+shared compound transaction validates every snapshot first, commits all parent
+and inherited-context edges as one structural boundary, and only then publishes
+parent, appearance, attachment, and slot callbacks in deterministic participant
+order. A callback therefore observes the complete compound graph. Failure is
+aggregated without inverse ownership publication or rollback, and reentrant tree
+mutation through any participant is rejected until publication completes.
+
 ## Chrome and custom rendering
 
 `Border` and `Shadow` are declared once on `ControlBase` and are already public

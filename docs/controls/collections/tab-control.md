@@ -56,6 +56,16 @@ without disposing. `Move` reorders the existing page and header identities in
 place: neither control detaches, changes parent, loses focus, nor crosses an
 attachment lifecycle boundary.
 
+Every typed collection mutation stages the page-host and generated-header-host
+snapshots together. Both ownership graphs, the item/header mapping,
+subscriptions, and requested presentation bookkeeping commit before any
+`ParentChanged`, appearance, attachment, or host-change callback runs. Those
+callbacks execute in page-host then header-host participant order under one
+reentrancy guard. If a callback fails, later required callbacks and selection
+repair still run, the complete compound snapshot remains committed, and the
+earliest failure is rethrown. The control never rolls back by publishing inverse
+parent transitions.
+
 Directly disposing an owned `TabItem` first removes it through the same semantic
 collection path. Its generated header and presentation bookkeeping leave with
 it, and selection repairs exactly as for `Items.Remove`.
@@ -220,10 +230,10 @@ and selects that page. Page body text is not the tab caption.
 
 ## Expected behavior
 
-| Scope       | Observable evidence                                                                                                                 |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Public API  | Typed ownership and validation at the collection boundary, selection defaults and explicit clearing, and deterministic event order. |
-| Integration | Nested pointer activation, pointer capture cleanup, and keyboard navigation through mounted routed input.                           |
+| Scope       | Observable evidence                                                                                                                         |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public API  | Typed ownership and validation at the collection boundary, atomic page/header snapshots, selection defaults, and deterministic event order. |
+| Integration | Nested pointer activation, pointer capture cleanup, keyboard navigation, and lifecycle-failure recovery through mounted application state.  |
 
 - Removing a page repairs availability deterministically; the header, divider,
   and rule render into exact cells; selected and hover appearance stay local to
