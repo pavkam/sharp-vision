@@ -794,6 +794,85 @@ public sealed class TimeInputTests
         designator.IsHandled.ShouldBe(expectedEdit);
     }
 
+    #region Sub-second precision
+
+    /// <summary>Verifies typing a digit on the Hour segment preserves the pre-existing
+    /// sub-second (millisecond-resolution) remainder instead of silently truncating it, since the
+    /// segment reconstruction only ever supplies whole hour/minute/second components.</summary>
+    [Fact]
+    public void TypeDigit_WhenEditingHourSegment_PreservesSubSecondPrecision()
+    {
+        // Arrange
+        using var control = new TimeInput { Value = new TimeOnly(10, 15, 30, 450) };
+
+        // Act
+        TypeCharacter(control, '9');
+
+        // Assert
+        var value = control.Value.ShouldNotBeNull();
+        value.Hour.ShouldBe(9);
+        value.Millisecond.ShouldBe(450);
+    }
+
+    /// <summary>Verifies typing a digit on the Minute segment preserves the pre-existing
+    /// sub-second remainder.</summary>
+    [Fact]
+    public void TypeDigit_WhenEditingMinuteSegment_PreservesSubSecondPrecision()
+    {
+        // Arrange
+        using var control = new TimeInput { Value = new TimeOnly(10, 15, 30, 450) };
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+
+        // Act
+        TypeCharacter(control, '5');
+
+        // Assert
+        var value = control.Value.ShouldNotBeNull();
+        value.Minute.ShouldBe(5);
+        value.Millisecond.ShouldBe(450);
+    }
+
+    /// <summary>Verifies typing a digit on the Second segment preserves the pre-existing
+    /// sub-second remainder, proving even the segment that shares the same integer-second
+    /// granularity still keeps the finer tick-resolution precision underneath it.</summary>
+    [Fact]
+    public void TypeDigit_WhenEditingSecondSegment_PreservesSubSecondPrecision()
+    {
+        // Arrange
+        using var control = new TimeInput { Value = new TimeOnly(10, 15, 30, 450), ShowSeconds = true };
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+
+        // Act
+        TypeCharacter(control, '5');
+
+        // Assert
+        var value = control.Value.ShouldNotBeNull();
+        value.Second.ShouldBe(5);
+        value.Millisecond.ShouldBe(450);
+    }
+
+    /// <summary>Verifies clearing the Hour segment via Backspace preserves the sub-second
+    /// remainder of the still-unedited minute/second portion.</summary>
+    [Fact]
+    public void ClearSegment_WhenBackspaceOnHourSegment_PreservesSubSecondPrecision()
+    {
+        // Arrange
+        using var control = new TimeInput { Value = new TimeOnly(10, 15, 30, 450) };
+
+        // Act
+        _ = Router.Route(control, Events.Key, Key(Code.Backspace));
+
+        // Assert
+        var value = control.Value.ShouldNotBeNull();
+        value.Hour.ShouldBe(0);
+        value.Minute.ShouldBe(15);
+        value.Second.ShouldBe(30);
+        value.Millisecond.ShouldBe(450);
+    }
+
+    #endregion
+
     #region Helpers
 
     private static string Row(Frame frame, int y)

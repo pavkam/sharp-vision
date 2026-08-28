@@ -698,18 +698,18 @@ public sealed class DateTimeInput: InputBase
                     DateTime.DaysInMonth(dt.Year, dt.Month))),
                 TemporalSegmentKind.Year => ReplaceYear(dt, Math.Clamp(value, 1, 9999)),
                 TemporalSegmentKind.Hour when hasAmPm =>
-                    dt.Date.Add(new TimeSpan(
+                    WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(
                         To24Hour(TemporalClockArithmetic.ClampHour(value, hasAmPmDesignator: true), dt.Hour >= 12),
-                        dt.Minute, dt.Second)),
+                        dt.Minute, dt.Second)), dt),
                 TemporalSegmentKind.Hour =>
-                    dt.Date.Add(new TimeSpan(
-                        TemporalClockArithmetic.ClampHour(value, hasAmPmDesignator: false), dt.Minute, dt.Second)),
+                    WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(
+                        TemporalClockArithmetic.ClampHour(value, hasAmPmDesignator: false), dt.Minute, dt.Second)), dt),
                 TemporalSegmentKind.Minute =>
-                    dt.Date.Add(new TimeSpan(
-                        dt.Hour, TemporalClockArithmetic.ClampMinuteOrSecond(value), dt.Second)),
+                    WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(
+                        dt.Hour, TemporalClockArithmetic.ClampMinuteOrSecond(value), dt.Second)), dt),
                 TemporalSegmentKind.Second =>
-                    dt.Date.Add(new TimeSpan(
-                        dt.Hour, dt.Minute, TemporalClockArithmetic.ClampMinuteOrSecond(value))),
+                    WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(
+                        dt.Hour, dt.Minute, TemporalClockArithmetic.ClampMinuteOrSecond(value))), dt),
                 _ => dt
             };
 #pragma warning restore IDE0072
@@ -768,9 +768,9 @@ public sealed class DateTimeInput: InputBase
                 TemporalSegmentKind.Month => ReplaceMonth(dt, 1),
                 TemporalSegmentKind.Day => ReplaceDay(dt, 1),
                 TemporalSegmentKind.Year => ReplaceYear(dt, 1),
-                TemporalSegmentKind.Hour => dt.Date.Add(new TimeSpan(0, dt.Minute, dt.Second)),
-                TemporalSegmentKind.Minute => dt.Date.Add(new TimeSpan(dt.Hour, 0, dt.Second)),
-                TemporalSegmentKind.Second => dt.Date.Add(new TimeSpan(dt.Hour, dt.Minute, 0)),
+                TemporalSegmentKind.Hour => WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(0, dt.Minute, dt.Second)), dt),
+                TemporalSegmentKind.Minute => WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(dt.Hour, 0, dt.Second)), dt),
+                TemporalSegmentKind.Second => WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(dt.Hour, dt.Minute, 0)), dt),
                 _ => dt
             };
 #pragma warning restore IDE0072
@@ -1056,7 +1056,7 @@ public sealed class DateTimeInput: InputBase
     private static DateTime ReplaceMonth(DateTime dt, int month)
     {
         var (year, resolvedMonth, day) = TemporalCalendarArithmetic.ReplaceMonth(dt.Year, dt.Day, month);
-        return new DateTime(year, resolvedMonth, day, dt.Hour, dt.Minute, dt.Second, dt.Kind);
+        return WithSubSecondTicksOf(new DateTime(year, resolvedMonth, day, dt.Hour, dt.Minute, dt.Second, dt.Kind), dt);
     }
 
     // Every call site already pre-clamps day to DateTime.DaysInMonth(dt.Year, dt.Month) - the
@@ -1067,15 +1067,24 @@ public sealed class DateTimeInput: InputBase
     private static DateTime ReplaceDay(DateTime dt, int day)
     {
         var (year, month, clampedDay) = TemporalCalendarArithmetic.ClampDayOfMonth(dt.Year, dt.Month, day);
-        return new DateTime(year, month, clampedDay, dt.Hour, dt.Minute, dt.Second, dt.Kind);
+        return WithSubSecondTicksOf(new DateTime(year, month, clampedDay, dt.Hour, dt.Minute, dt.Second, dt.Kind), dt);
     }
 
     [Pure]
     private static DateTime ReplaceYear(DateTime dt, int year)
     {
         var (clampedYear, month, day) = TemporalCalendarArithmetic.ReplaceYear(dt.Month, dt.Day, year);
-        return new DateTime(clampedYear, month, day, dt.Hour, dt.Minute, dt.Second, dt.Kind);
+        return WithSubSecondTicksOf(new DateTime(clampedYear, month, day, dt.Hour, dt.Minute, dt.Second, dt.Kind), dt);
     }
+
+    /// <summary>Rebuilds <paramref name="result"/> with the sub-second (tick-resolution) remainder
+    /// carried over from <paramref name="original"/>, since <paramref name="result"/> is always
+    /// reconstructed from whole hour/minute/second (or whole-day, for the calendar-segment
+    /// replacements) components and would otherwise silently drop any fractional-second precision
+    /// <paramref name="original"/> already had.</summary>
+    [Pure]
+    private static DateTime WithSubSecondTicksOf(DateTime result, DateTime original) =>
+        result.AddTicks(original.Ticks % TimeSpan.TicksPerSecond);
 
     [Pure]
     private static DateTime SafeAddMonths(DateTime dt, int delta)

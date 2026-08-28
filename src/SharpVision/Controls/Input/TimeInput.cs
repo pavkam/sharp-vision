@@ -426,7 +426,7 @@ public sealed class TimeInput: InputBase
         };
 #pragma warning restore IDE0072
 
-        return Commit(result);
+        return Commit(WithSubSecondTicksOf(result, time));
     }
 
     private bool IncrementSegmentValue(TemporalSegmentKind kind, int delta)
@@ -473,7 +473,7 @@ public sealed class TimeInput: InputBase
         };
 #pragma warning restore IDE0072
 
-        return Commit(result);
+        return Commit(WithSubSecondTicksOf(result, time));
     }
 
     private static TimeOnly AddWithoutWrap(TimeOnly value, long ticks)
@@ -483,6 +483,14 @@ public sealed class TimeInput: InputBase
             < 0 when ticks < TimeOnly.MinValue.Ticks - value.Ticks => TimeOnly.MinValue,
             _ => new TimeOnly(value.Ticks + ticks)
         };
+
+    /// <summary>Rebuilds <paramref name="result"/> with the sub-second (tick-resolution) remainder
+    /// carried over from <paramref name="original"/>, since <paramref name="result"/> is always
+    /// reconstructed from whole hour/minute/second components and would otherwise silently drop
+    /// any fractional-second precision <paramref name="original"/> already had.</summary>
+    [Pure]
+    private static TimeOnly WithSubSecondTicksOf(TimeOnly result, TimeOnly original) =>
+        new(result.Ticks + (original.Ticks % TimeSpan.TicksPerSecond));
 
     private static int To24Hour(int hour12, bool isPm) => TemporalSegmentClassification.To24Hour(hour12, isPm);
 

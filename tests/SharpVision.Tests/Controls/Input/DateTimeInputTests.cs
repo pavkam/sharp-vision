@@ -1195,4 +1195,178 @@ public sealed class DateTimeInputTests
     }
 
     #endregion
+
+    #region Sub-second precision
+
+    /// <summary>Verifies typing a digit on the Month segment preserves the pre-existing
+    /// sub-second (millisecond-resolution) remainder instead of silently truncating it, since
+    /// <c>ReplaceMonth</c> only ever reconstructs the value from whole hour/minute/second
+    /// components.</summary>
+    [Fact]
+    public void TypeDigit_WhenEditingMonthSegment_PreservesSubSecondPrecision()
+    {
+        // Arrange
+        using var control = new DateTimeInput { Value = new DateTime(2026, 1, 15, 10, 15, 30).AddMilliseconds(450) };
+
+        // Act: Month is the first segment, already active.
+        _ = Router.Route(control, Events.Key, CharacterKey('0'));
+        _ = Router.Route(control, Events.Key, CharacterKey('4'));
+
+        // Assert
+        var value = control.Value.ShouldNotBeNull();
+        value.Month.ShouldBe(4);
+        value.Millisecond.ShouldBe(450);
+    }
+
+    /// <summary>Verifies typing a digit on the Day segment preserves the pre-existing sub-second
+    /// remainder.</summary>
+    [Fact]
+    public void TypeDigit_WhenEditingDaySegment_PreservesSubSecondPrecision()
+    {
+        // Arrange
+        using var control = new DateTimeInput { Value = new DateTime(2026, 1, 15, 10, 15, 30).AddMilliseconds(450) };
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+
+        // Act
+        _ = Router.Route(control, Events.Key, CharacterKey('0'));
+        _ = Router.Route(control, Events.Key, CharacterKey('9'));
+
+        // Assert
+        var value = control.Value.ShouldNotBeNull();
+        value.Day.ShouldBe(9);
+        value.Millisecond.ShouldBe(450);
+    }
+
+    /// <summary>Verifies typing a digit on the Year segment preserves the pre-existing sub-second
+    /// remainder.</summary>
+    [Fact]
+    public void TypeDigit_WhenEditingYearSegment_PreservesSubSecondPrecision()
+    {
+        // Arrange
+        using var control = new DateTimeInput { Value = new DateTime(2020, 1, 15, 10, 15, 30).AddMilliseconds(450) };
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+
+        // Act
+        _ = Router.Route(control, Events.Key, CharacterKey('2'));
+        _ = Router.Route(control, Events.Key, CharacterKey('0'));
+        _ = Router.Route(control, Events.Key, CharacterKey('2'));
+        _ = Router.Route(control, Events.Key, CharacterKey('6'));
+
+        // Assert
+        var value = control.Value.ShouldNotBeNull();
+        value.Year.ShouldBe(2026);
+        value.Millisecond.ShouldBe(450);
+    }
+
+    /// <summary>Verifies typing a digit on the Hour segment preserves the pre-existing sub-second
+    /// remainder.</summary>
+    [Fact]
+    public void TypeDigit_WhenEditingHourSegment_PreservesSubSecondPrecision()
+    {
+        // Arrange
+        using var control = new DateTimeInput { Value = new DateTime(2026, 1, 15, 10, 15, 30).AddMilliseconds(450) };
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+
+        // Act
+        _ = Router.Route(control, Events.Key, CharacterKey('9'));
+
+        // Assert
+        var value = control.Value.ShouldNotBeNull();
+        value.Hour.ShouldBe(9);
+        value.Millisecond.ShouldBe(450);
+    }
+
+    /// <summary>Verifies typing a digit on the Minute segment preserves the pre-existing
+    /// sub-second remainder.</summary>
+    [Fact]
+    public void TypeDigit_WhenEditingMinuteSegment_PreservesSubSecondPrecision()
+    {
+        // Arrange
+        using var control = new DateTimeInput { Value = new DateTime(2026, 1, 15, 10, 15, 30).AddMilliseconds(450) };
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+
+        // Act
+        _ = Router.Route(control, Events.Key, CharacterKey('5'));
+
+        // Assert
+        var value = control.Value.ShouldNotBeNull();
+        value.Minute.ShouldBe(5);
+        value.Millisecond.ShouldBe(450);
+    }
+
+    /// <summary>Verifies typing a digit on the Second segment preserves the pre-existing
+    /// sub-second remainder, proving even the segment that shares the same integer-second
+    /// granularity still keeps the finer tick-resolution precision underneath it.</summary>
+    [Fact]
+    public void TypeDigit_WhenEditingSecondSegment_PreservesSubSecondPrecision()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Value = new DateTime(2026, 1, 15, 10, 15, 30).AddMilliseconds(450),
+            ShowSeconds = true
+        };
+        for (var index = 0; index < 5; index++)
+        {
+            _ = Router.Route(control, Events.Key, Key(Code.Right));
+        }
+
+        // Act
+        _ = Router.Route(control, Events.Key, CharacterKey('5'));
+
+        // Assert
+        var value = control.Value.ShouldNotBeNull();
+        value.Second.ShouldBe(5);
+        value.Millisecond.ShouldBe(450);
+    }
+
+    /// <summary>Verifies clearing the Hour segment via Backspace preserves the sub-second
+    /// remainder of the still-unedited minute/second portion.</summary>
+    [Fact]
+    public void ClearSegment_WhenBackspaceOnHourSegment_PreservesSubSecondPrecision()
+    {
+        // Arrange
+        using var control = new DateTimeInput { Value = new DateTime(2026, 1, 15, 10, 15, 30).AddMilliseconds(450) };
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+
+        // Act
+        _ = Router.Route(control, Events.Key, Key(Code.Backspace));
+
+        // Assert
+        var value = control.Value.ShouldNotBeNull();
+        value.Hour.ShouldBe(0);
+        value.Minute.ShouldBe(15);
+        value.Second.ShouldBe(30);
+        value.Millisecond.ShouldBe(450);
+    }
+
+    /// <summary>Verifies stepping the Year segment with Up (<c>SafeAddYears</c>, which rebuilds the
+    /// value through <c>ReplaceYear</c>'s 7-argument DateTime constructor) preserves the
+    /// pre-existing sub-second remainder instead of silently truncating it.</summary>
+    [Fact]
+    public void Increment_WhenYearIsSteppedViaUp_PreservesSubSecondPrecision()
+    {
+        // Arrange
+        using var control = new DateTimeInput { Value = new DateTime(2026, 1, 15, 10, 15, 30).AddMilliseconds(450) };
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+
+        // Act
+        _ = Router.Route(control, Events.Key, Key(Code.Up));
+
+        // Assert
+        var value = control.Value.ShouldNotBeNull();
+        value.Year.ShouldBe(2027);
+        value.Millisecond.ShouldBe(450);
+    }
+
+    #endregion
 }
