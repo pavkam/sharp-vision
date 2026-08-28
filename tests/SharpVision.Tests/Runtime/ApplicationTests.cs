@@ -2084,7 +2084,7 @@ public sealed partial class ApplicationTests
         terminal.QueueResize(new Dimensions(new Size(1, 1), new Size(2, 3)));
         terminal.Written += value =>
         {
-            if (value.Span.IndexOf("a=d,d=I"u8) >= 0)
+            if (value.Span.IndexOf("a=d,d=N"u8) >= 0)
             {
                 order.Add("delete");
             }
@@ -2158,7 +2158,7 @@ public sealed partial class ApplicationTests
         application.FrameRendered -= OnFrameRendered;
 
         var bytes = terminal.Writes.Skip(writeCount).SelectMany(static value => value).ToArray();
-        bytes.AsSpan().IndexOf("a=d,d=I"u8).ShouldBeGreaterThanOrEqualTo(0);
+        bytes.AsSpan().IndexOf("a=d,d=N"u8).ShouldBeGreaterThanOrEqualTo(0);
         bytes.AsSpan().IndexOf("a=t,"u8).ShouldBe(-1);
         bytes.AsSpan().IndexOf("a=p,"u8).ShouldBe(-1);
         application.Capabilities.ShouldBeSameAs(revoked);
@@ -2260,7 +2260,7 @@ public sealed partial class ApplicationTests
 
         var bytes = terminal.Writes.Skip(writeCount).SelectMany(static value => value).ToArray();
         var upload = bytes.AsSpan().IndexOf("a=t,"u8);
-        var removal = bytes.AsSpan().IndexOf("a=d,d=I"u8);
+        var removal = bytes.AsSpan().IndexOf("a=d,d=N"u8);
         upload.ShouldBeGreaterThanOrEqualTo(0);
         removal.ShouldBeGreaterThan(upload);
         await application.StopAsync(TestContext.Current.CancellationToken);

@@ -83,14 +83,18 @@ Direct data is Base64 encoded into APC payloads no longer than 4,096 bytes. A
 non-final chunk therefore contains 3,072 raw bytes and has a Base64 length
 divisible by four. After the first chunk, only `m` and optional `q` metadata are
 emitted. One image finishes all chunks before another graphics command begins.
-The backend uses quiet mode 2 and never opens a terminal-supplied path. Retained
-uploads use Kitty's capital `I` image-number field rather than claiming a
-process-local `i` image id. Kitty creates a fresh image even when another client
-used the same number. The acknowledgement is routed through `Application` and
-`Renderer` to the retained backend, which correlates the echoed `I` number and
-switches later placement and cleanup commands to the terminal-assigned `i` id.
-This prevents one client from replacing or deleting another client's image
-merely because both began allocating at one.
+The backend never opens a terminal-supplied path. Retained uploads use Kitty's
+capital `I` image-number field rather than claiming a process-local `i` image
+id, and transmit with quiet mode 0 while still number-addressed so the
+terminal's `OK` response - the only way a client using `I=` ever learns the
+terminal-assigned `i=` id - is not suppressed; once addressing has switched to
+the terminal-assigned id, quiet mode 2 is used, since no further correlation
+reply is needed. Kitty creates a fresh image even when another client used the
+same number. The acknowledgement is routed through `Application` and `Renderer`
+to the retained backend, which correlates the echoed `I` number and switches
+later placement and cleanup commands to the terminal-assigned `i` id. This
+prevents one client from replacing or deleting another client's image merely
+because both began allocating at one.
 
 `KittyGraphicsWriter.WriteEncoded` is a checked public convenience, not a way
 around validation. It accepts only query, transmit, or frame transmission
@@ -113,13 +117,15 @@ terminal save/restore slot. Kitty terminals are VT-compatible; this CUP
 requirement is part of backend selection.
 
 Updating the same semantic placement reuses its image/placement pair. Removing
-one placement of a shared image uses `a=d,d=i,I=...,p=...` before
-acknowledgement and `a=d,d=i,i=...,p=...` afterwards. Removing the last use
-follows the same reference transition with `d=I`, freeing that exact image and
-all its placements. When a frame removes the final visible Kitty placement, the
-renderer also performs a complete cell reconstruction. Its standard clear-screen
-operation clears retained raster state before replacement cells are painted,
-while the exact hard deletes still release the corresponding stored image data.
+one placement of a shared image uses `a=d,d=n,I=...,p=...` before
+acknowledgement (deleting by number) and `a=d,d=i,i=...,p=...` afterwards
+(deleting by the terminal-assigned id). Removing the last use follows the same
+reference transition, using `d=N` before acknowledgement and `d=I` afterwards,
+freeing that exact image and all its placements. When a frame removes the final
+visible Kitty placement, the renderer also performs a complete cell
+reconstruction. Its standard clear-screen operation clears retained raster state
+before replacement cells are painted, while the exact hard deletes still release
+the corresponding stored image data.
 
 ## Frame transmission and animation control (protocol surface only)
 
