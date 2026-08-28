@@ -1182,12 +1182,14 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
     }
 
     /// <inheritdoc/>
-    protected override void OnTextSelectionCommitted(TextSelectionChangedEventArgs eventArgs)
+    protected override void OnTextSelectionCommitted(TextSelectionChangedEventArgs eventArgs, ulong transitionVersion)
     {
         EnsureCaretVisible(_editorBounds, remeasure: false);
-        SelectionChanged?.Invoke(
+        RaiseTextSelectionCompatibilityEvent(
+            SelectionChanged,
             this,
-            new InputSelectionChangedEventArgs(eventArgs.PreviousSelection, eventArgs.Selection));
+            new InputSelectionChangedEventArgs(eventArgs.PreviousSelection, eventArgs.Selection),
+            transitionVersion);
     }
 
     /// <inheritdoc/>

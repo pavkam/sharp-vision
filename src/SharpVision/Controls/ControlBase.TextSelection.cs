@@ -275,7 +275,7 @@ public abstract partial class ControlBase: ISelectableTextSource
             return true;
         }
 
-        OnTextSelectionCommitted(eventArgs);
+        OnTextSelectionCommitted(eventArgs, transitionVersion);
 
         if (_textSelectionTransitionVersion == transitionVersion)
         {
@@ -308,9 +308,69 @@ public abstract partial class ControlBase: ISelectableTextSource
         }
     }
 
+    /// <summary>Invokes a component's own compatibility selection-changed event without redelivering
+    /// a transition superseded by a subscriber that reenters during delivery.</summary>
+    /// <param name="handlers">The subscribed compatibility delegate, or null when unsubscribed.</param>
+    /// <param name="sender">The event sender.</param>
+    /// <param name="transitionVersion">The transition version captured before <see cref="OnTextSelectionCommitted"/> ran.</param>
+    protected void RaiseTextSelectionCompatibilityEvent(
+        EventHandler? handlers,
+        object? sender,
+        ulong transitionVersion)
+    {
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var subscriber in handlers.GetInvocationList())
+        {
+            if (_textSelectionTransitionVersion != transitionVersion)
+            {
+                break;
+            }
+
+            ((EventHandler) subscriber)(sender, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>Invokes a component's own compatibility selection-changed event without redelivering
+    /// a transition superseded by a subscriber that reenters during delivery.</summary>
+    /// <typeparam name="TEventArgs">The compatibility event's argument type.</typeparam>
+    /// <param name="handlers">The subscribed compatibility delegate, or null when unsubscribed.</param>
+    /// <param name="sender">The event sender.</param>
+    /// <param name="eventArgs">The immutable compatibility event payload.</param>
+    /// <param name="transitionVersion">The transition version captured before <see cref="OnTextSelectionCommitted"/> ran.</param>
+    protected void RaiseTextSelectionCompatibilityEvent<TEventArgs>(
+        EventHandler<TEventArgs>? handlers,
+        object? sender,
+        TEventArgs eventArgs,
+        ulong transitionVersion)
+    {
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var subscriber in handlers.GetInvocationList())
+        {
+            if (_textSelectionTransitionVersion != transitionVersion)
+            {
+                break;
+            }
+
+            ((EventHandler<TEventArgs>) subscriber)(sender, eventArgs);
+        }
+    }
+
     /// <summary>Publishes component compatibility state after base selection commits.</summary>
     /// <param name="eventArgs">The immutable common transition.</param>
-    protected virtual void OnTextSelectionCommitted(TextSelectionChangedEventArgs eventArgs) => _ = eventArgs;
+    /// <param name="transitionVersion">
+    /// The transition version to pass to <see cref="RaiseTextSelectionCompatibilityEvent(EventHandler?, object?, ulong)"/>
+    /// or its generic overload so a reentrant commit cannot redeliver this obsolete transition.
+    /// </param>
+    protected virtual void OnTextSelectionCommitted(TextSelectionChangedEventArgs eventArgs, ulong transitionVersion) =>
+        _ = (eventArgs, transitionVersion);
 
     /// <summary>Synchronizes component state immediately after the base range changes.</summary>
     /// <param name="eventArgs">The immutable common transition.</param>
@@ -545,8 +605,13 @@ public abstract partial class ControlBase: ISelectableTextSource
         _textSelectionDesiredColumn = null;
         _textSelectionDesiredRow = null;
         _textSelectionFingerprint = map.Fingerprint;
+        unchecked
+        {
+            _textSelectionTransitionVersion++;
+        }
+        var transitionVersion = _textSelectionTransitionVersion;
         Invalidate(Invalidation.Render);
-        TextSelectionChanged?.Invoke(this, new TextSelectionChangedEventArgs(previous, default));
+        RaiseTextSelectionChanged(new TextSelectionChangedEventArgs(previous, default), transitionVersion);
         return map;
     }
 

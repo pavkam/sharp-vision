@@ -196,4 +196,37 @@ public sealed partial class ControlBaseTests
 
         control.TextSelection.ShouldBe(default);
     }
+
+    /// <summary>Verifies the lazy reconciliation path that clears a stale selection cannot publish
+    /// its obsolete transition after a subscriber reentrantly commits a newer selection through the
+    /// same shared event.</summary>
+    [Fact]
+    public void TextSelectionChanged_WhenReconcileSubscriberReenters_PublishesOnlyCurrentTransition()
+    {
+        // Arrange
+        var control = new Stack
+        {
+            IsTextSelectionEnabled = true,
+            Children = { new ControlText("same") }
+        };
+        control.SetTextSelection(new Selection(0, 4));
+        control.Children.Clear();
+        control.Children.Add(new ControlText("same"));
+        var observed = new List<Selection>();
+        control.TextSelectionChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.Selection == default)
+            {
+                control.SetTextSelection(new Selection(0, 2));
+            }
+        };
+        control.TextSelectionChanged += (_, eventArgs) => observed.Add(eventArgs.Selection);
+
+        // Act
+        var selection = control.TextSelection;
+
+        // Assert
+        selection.ShouldBe(new Selection(0, 2));
+        observed.ShouldBe([new Selection(0, 2)]);
+    }
 }

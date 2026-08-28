@@ -451,10 +451,12 @@ namespace SharpVision.Controls
         protected virtual void OnRenderAdornment(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected virtual void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected virtual void OnTextSelectionClickCompleted(SharpVision.Controls.ControlBase? originalSource, SharpVision.Terminal.Geometry.Point pressCells, SharpVision.Terminal.Geometry.Point releaseCells, int clickCount, SharpVision.Input.PointerEventArgs eventArgs) { }
-        protected virtual void OnTextSelectionCommitted(SharpVision.Input.TextSelectionChangedEventArgs eventArgs) { }
+        protected virtual void OnTextSelectionCommitted(SharpVision.Input.TextSelectionChangedEventArgs eventArgs, ulong transitionVersion) { }
         protected virtual void OnTextSelectionEnabledChanged(bool enabled) { }
         protected virtual void OnTextSelectionStateChanged(SharpVision.Input.TextSelectionChangedEventArgs eventArgs) { }
         protected virtual void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected void RaiseTextSelectionCompatibilityEvent(System.EventHandler? handlers, object? sender, ulong transitionVersion) { }
+        protected void RaiseTextSelectionCompatibilityEvent<TEventArgs>(System.EventHandler<TEventArgs>? handlers, object? sender, TEventArgs eventArgs, ulong transitionVersion) { }
         protected void ReleasePointerCapture() { }
         protected void RenderAffixes(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect contentBox, SharpVision.Controls.AffixMetrics metrics, SharpVision.Styling.Affix? start, SharpVision.Styling.Affix? end, SharpVision.Terminal.Rendering.CellStyle style) { }
         protected bool RequestFocus() { }
@@ -1907,7 +1909,7 @@ namespace SharpVision.Controls.Input
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
-        protected override void OnTextSelectionCommitted(SharpVision.Input.TextSelectionChangedEventArgs eventArgs) { }
+        protected override void OnTextSelectionCommitted(SharpVision.Input.TextSelectionChangedEventArgs eventArgs, ulong transitionVersion) { }
         protected override void OnTextSelectionStateChanged(SharpVision.Input.TextSelectionChangedEventArgs eventArgs) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool Redo() { }

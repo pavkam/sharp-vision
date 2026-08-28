@@ -586,6 +586,30 @@ public sealed class CodeViewTests
         observed.ShouldBe([(new Selection(0, 2), new Selection(0, 2))]);
     }
 
+    /// <summary>Verifies a compatibility subscriber that reenters cannot let a later subscriber on
+    /// the same event observe a transition already superseded during delivery.</summary>
+    [Fact]
+    public void SelectionChanged_WhenSubscriberReenters_DoesNotRedeliverToLaterSubscriber()
+    {
+        // Arrange
+        var view = new CodeView { Code = "abcdef" };
+        var raised = 0;
+        view.SelectionChanged += (_, _) =>
+        {
+            if (view.Selection == new Selection(0, 1))
+            {
+                view.SetSelection(new Selection(0, 2));
+            }
+        };
+        view.SelectionChanged += (_, _) => raised++;
+
+        // Act
+        view.SetSelection(new Selection(0, 1));
+
+        // Assert
+        raised.ShouldBe(1);
+    }
+
     /// <summary>Verifies a line beginning a region fold can be collapsed and expanded.</summary>
     [Fact]
     public void SetFolded_WhenLineBeginsARegion_CollapsesAndExpands()

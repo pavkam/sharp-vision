@@ -721,6 +721,30 @@ public sealed class TextInputTests
         ]);
     }
 
+    /// <summary>Verifies a compatibility subscriber that reenters cannot let a later subscriber on
+    /// the same event observe a transition already superseded during delivery.</summary>
+    [Fact]
+    public void SelectionChanged_WhenSubscriberReenters_PublishesOnlyCurrentTransitionToLaterSubscribers()
+    {
+        // Arrange
+        var control = new TextInput { Text = "abcd" };
+        var observed = new List<Selection>();
+        control.SelectionChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.Selection == new Selection(0, 1))
+            {
+                control.Select(0, 2);
+            }
+        };
+        control.SelectionChanged += (_, eventArgs) => observed.Add(eventArgs.Selection);
+
+        // Act
+        control.Select(0, 1);
+
+        // Assert
+        observed.ShouldBe([new Selection(0, 2)]);
+    }
+
     /// <summary>Verifies typed text and owned paste share policy and grapheme maximum handling.</summary>
     [Fact]
     public void Dispatch_WhenTextAndPasteArrive_AppliesPolicyAndMaximum()

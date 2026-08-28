@@ -164,6 +164,31 @@ public sealed class DocumentSelectionTests
         observed.ShouldBe([(new Selection(0, 2), new Selection(0, 2))]);
     }
 
+    /// <summary>Verifies a compatibility subscriber that reenters cannot let a later subscriber on
+    /// the same event observe a transition already superseded during delivery.</summary>
+    [Fact]
+    public void SelectionChanged_WhenSubscriberReenters_DoesNotRedeliverToLaterSubscriber()
+    {
+        // Arrange
+        var document = new Document { Blocks = { new DocumentParagraph("abcd") } };
+        using var probe = new DocumentRenderProbe(document, new Size(10, 2));
+        var raised = 0;
+        document.SelectionChanged += (_, _) =>
+        {
+            if (document.Selection == new Selection(0, 1))
+            {
+                document.SetSelection(new Selection(0, 2));
+            }
+        };
+        document.SelectionChanged += (_, _) => raised++;
+
+        // Act
+        document.SetSelection(new Selection(0, 1));
+
+        // Assert
+        raised.ShouldBe(1);
+    }
+
     /// <summary>Verifies geometry-only rebuilds preserve logical endpoints and selected text.</summary>
     [Fact]
     public void Selection_WhenLayoutReflows_PreservesSemanticRange()

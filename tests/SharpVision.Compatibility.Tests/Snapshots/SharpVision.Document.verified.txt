@@ -33,7 +33,7 @@
         protected override int NormalizeTextSelectionClickCount(SharpVision.Controls.ControlBase? originalSource, int clickCount) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnTextSelectionClickCompleted(SharpVision.Controls.ControlBase? originalSource, SharpVision.Terminal.Geometry.Point pressCells, SharpVision.Terminal.Geometry.Point releaseCells, int clickCount, SharpVision.Input.PointerEventArgs eventArgs) { }
-        protected override void OnTextSelectionCommitted(SharpVision.Input.TextSelectionChangedEventArgs eventArgs) { }
+        protected override void OnTextSelectionCommitted(SharpVision.Input.TextSelectionChangedEventArgs eventArgs, ulong transitionVersion) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool RevealSelectableTextOffset(int offset) { }
         public bool ScrollBy(int lines, SharpVision.Scrolling.ScrollCause cause = 0) { }

@@ -673,8 +673,11 @@ public sealed class Document:
     internal override TextSelectionMap GetTextSelectionMap() => EnsureSelectionProjection();
 
     /// <inheritdoc/>
-    protected override void OnTextSelectionCommitted(TextSelectionChangedEventArgs eventArgs) =>
-        SelectionChanged?.Invoke(this, EventArgs.Empty);
+    protected override void OnTextSelectionCommitted(TextSelectionChangedEventArgs eventArgs, ulong transitionVersion)
+    {
+        _ = eventArgs;
+        RaiseTextSelectionCompatibilityEvent(SelectionChanged, this, transitionVersion);
+    }
 
     private TextSelectionMap EnsureSelectionProjection()
     {

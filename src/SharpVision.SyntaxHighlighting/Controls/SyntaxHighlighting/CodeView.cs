@@ -598,10 +598,10 @@ public sealed class CodeView:
     internal void RequestClipboardCopy() => ClipboardWriter?.Invoke(CopySelection());
 
     /// <inheritdoc/>
-    protected override void OnTextSelectionCommitted(TextSelectionChangedEventArgs eventArgs)
+    protected override void OnTextSelectionCommitted(TextSelectionChangedEventArgs eventArgs, ulong transitionVersion)
     {
         _ = eventArgs;
-        SelectionChanged?.Invoke(this, EventArgs.Empty);
+        RaiseTextSelectionCompatibilityEvent(SelectionChanged, this, EventArgs.Empty, transitionVersion);
     }
 
     /// <inheritdoc/>
