@@ -57,12 +57,15 @@ own fonts through the same lookup and `Load` surface:
 | `FigletCatalog.FromFonts(fonts)`             | Already-parsed `FigletFont` instances, keyed by their own name. |
 
 Every parsing entry point — `Load(name)` and its `Load(name, limits)` overload
-included — is bounded by a `FigletLimits` value, defaulting to
-`FigletLimits.Default`. The record's six positive members cap parsing
-(`MaxInputBytes` 16 MiB, `MaxGlyphs` 4096, `MaxHeight` 256, `MaxRowWidth` 16384,
-`MaxComments` 4096) and rendered output (`MaxOutputChars` 16 MiB), each
-rejecting a non-positive value with `ArgumentOutOfRangeException`, so untrusted
-font files cannot exhaust memory during catalog construction or rendering.
+included — is bounded by a `FigletLimits` value. `FigletCatalog.Default` and
+`FromFonts` use `FigletLimits.Default`; `FromDirectory` and `FromZip` retain
+their optional `limits` argument as the default for later `Load(name)` calls.
+Passing limits directly to `Load(name, limits)` overrides that catalog default.
+The record's six positive members cap parsing (`MaxInputBytes` 16 MiB,
+`MaxGlyphs` 4096, `MaxHeight` 256, `MaxRowWidth` 16384, `MaxComments` 4096) and
+rendered output (`MaxOutputChars` 16 MiB), each rejecting a non-positive value
+with `ArgumentOutOfRangeException`, so untrusted font files cannot exhaust
+memory during catalog construction or rendering.
 
 ```csharp
 var catalog = FigletCatalog.FromDirectory("/opt/myapp/fonts");
@@ -75,6 +78,10 @@ every entry regardless of source; entries from `FromFonts` report placeholder
 `"unaudited"` metadata, since an already-parsed font carries no source file or
 byte sequence to hash. `Names` is an immutable ordinally sorted inventory
 snapshot for every catalog source.
+
+When rendering an undefined Unicode scalar, a font-authored code-zero
+missing-character glyph takes precedence over the mandatory question-mark glyph.
+Fonts without a code-zero glyph retain the deterministic question-mark fallback.
 
 Installing only `SharpVision` still provides `FigletText`, `FigletFont`, the
 parser, renderer, layout values, and caller-supplied font loading. It embeds no

@@ -278,6 +278,51 @@ public sealed class FigletCatalogTests
         }
     }
 
+    /// <summary>Verifies the catalog's configured limits remain the default for later name-only loads.</summary>
+    [Fact]
+    public void FromDirectory_WhenLimitsAreConfigured_NameOnlyLoadUsesThem()
+    {
+        var directory = CreateTempDirectory();
+        var limits = new FigletLimits(maxOutputChars: 4);
+
+        try
+        {
+            File.WriteAllText(Path.Combine(directory, "Alpha.flf"), CreateFontText());
+            var catalog = FigletCatalog.FromDirectory(directory, limits);
+
+            var font = catalog.Load("Alpha");
+
+            font.Limits.ShouldBe(limits);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>Verifies explicit load limits override a directory catalog's configured default.</summary>
+    [Fact]
+    public void Load_WhenDirectoryCatalogHasDefaultLimits_ExplicitLimitsTakePrecedence()
+    {
+        var directory = CreateTempDirectory();
+        var defaultLimits = new FigletLimits(maxOutputChars: 4);
+        var explicitLimits = new FigletLimits(maxOutputChars: 8);
+
+        try
+        {
+            File.WriteAllText(Path.Combine(directory, "Alpha.flf"), CreateFontText());
+            var catalog = FigletCatalog.FromDirectory(directory, defaultLimits);
+
+            var font = catalog.Load("Alpha", explicitLimits);
+
+            font.Limits.ShouldBe(explicitLimits);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     /// <summary>Verifies a directory with no font files is rejected rather than producing an empty catalog.</summary>
     [Fact]
     public void FromDirectory_WhenDirectoryHasNoFontFiles_ThrowsArgumentException()
@@ -309,6 +354,19 @@ public sealed class FigletCatalogTests
         catalog.Names.ShouldBe(["Alpha", "Beta"]);
         catalog.Load("Alpha").Name.ShouldBe("Alpha");
         catalog.Load("Beta").Name.ShouldBe("Beta");
+    }
+
+    /// <summary>Verifies the archive catalog's configured limits remain the default for later name-only loads.</summary>
+    [Fact]
+    public void FromZip_WhenLimitsAreConfigured_NameOnlyLoadUsesThem()
+    {
+        using var archive = CreateZip(("Alpha.flf", CreateFontText()));
+        var limits = new FigletLimits(maxOutputChars: 4);
+        var catalog = FigletCatalog.FromZip(archive, limits);
+
+        var font = catalog.Load("Alpha");
+
+        font.Limits.ShouldBe(limits);
     }
 
     /// <summary>Verifies an archive with no font entries is rejected rather than producing an empty catalog.</summary>

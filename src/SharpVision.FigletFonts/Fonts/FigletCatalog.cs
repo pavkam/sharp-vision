@@ -24,16 +24,19 @@ public sealed class FigletCatalog
 
     private readonly Dictionary<string, FigletFontInfo> _entries;
     private readonly Dictionary<string, Func<FigletCatalog, FigletLimits, FigletFont>> _loaders;
+    private readonly FigletLimits _defaultLimits;
     private readonly Dictionary<(string Name, FigletLimits Limits), Lazy<FigletFont>> _cache = [];
     private readonly Lock _cacheGate = new();
     private int _embeddedResourceReadCount;
 
     private FigletCatalog(
         Dictionary<string, FigletFontInfo> entries,
-        Dictionary<string, Func<FigletCatalog, FigletLimits, FigletFont>> loaders)
+        Dictionary<string, Func<FigletCatalog, FigletLimits, FigletFont>> loaders,
+        FigletLimits defaultLimits)
     {
         _entries = entries;
         _loaders = loaders;
+        _defaultLimits = defaultLimits;
         Names = Array.AsReadOnly(entries.Keys.Order(StringComparer.Ordinal).ToArray());
     }
 
@@ -88,7 +91,7 @@ public sealed class FigletCatalog
         }
 
         return entries.Count > 0
-            ? new FigletCatalog(entries, loaders)
+            ? new FigletCatalog(entries, loaders, effectiveLimits)
             : throw new ArgumentException("The directory contains no .flf or .tlf font files.", nameof(path));
     }
 
@@ -136,7 +139,7 @@ public sealed class FigletCatalog
         }
 
         return entries.Count > 0
-            ? new FigletCatalog(entries, loaders)
+            ? new FigletCatalog(entries, loaders, effectiveLimits)
             : throw new ArgumentException("The archive contains no .flf or .tlf font entries.", nameof(archive));
     }
 
@@ -183,7 +186,7 @@ public sealed class FigletCatalog
         }
 
         return entries.Count > 0
-            ? new FigletCatalog(entries, loaders)
+            ? new FigletCatalog(entries, loaders, FigletLimits.Default)
             : throw new ArgumentException("The sequence contains no fonts.", nameof(fonts));
     }
 
@@ -201,14 +204,14 @@ public sealed class FigletCatalog
             : throw new KeyNotFoundException($"The FIGlet catalog does not contain '{name}'.");
     }
 
-    /// <summary>Loads and validates one named font using default finite limits.</summary>
+    /// <summary>Loads and validates one named font using this catalog's default finite limits.</summary>
     /// <param name="name">The non-null exact case-sensitive name.</param>
     /// <returns>A parsed font instance.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="name"/> is null.</exception>
     /// <exception cref="KeyNotFoundException">The exact name is absent.</exception>
     /// <exception cref="InvalidDataException">The source bytes disagree with recorded provenance.</exception>
     /// <exception cref="FormatException">The selected entry is not a supported FIGfont.</exception>
-    public FigletFont Load(string name) => Load(name, FigletLimits.Default);
+    public FigletFont Load(string name) => Load(name, _defaultLimits);
 
     /// <summary>Loads and validates one named font using explicit finite limits.</summary>
     /// <param name="name">The non-null exact case-sensitive name.</param>
@@ -285,7 +288,7 @@ public sealed class FigletCatalog
             loaders[name] = (catalog, limits) => catalog.LoadEmbeddedResource(assembly, info, limits);
         }
 
-        return new FigletCatalog(entries, loaders);
+        return new FigletCatalog(entries, loaders, FigletLimits.Default);
     }
 
     private FigletFont LoadEmbeddedResource(Assembly assembly, FigletFontInfo info, FigletLimits limits)

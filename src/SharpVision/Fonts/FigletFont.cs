@@ -138,14 +138,16 @@ public sealed class FigletFont
         return FigletRenderer.Render(this, text, options);
     }
 
-    /// <summary>Gets a scalar glyph or the question-mark fallback.</summary>
+    /// <summary>Gets a scalar glyph, the font-defined missing-character glyph, or the question-mark fallback.</summary>
     /// <param name="value">The Unicode scalar value.</param>
     /// <returns>The matching immutable glyph.</returns>
     [Pure]
     internal FigletGlyph GetGlyph(int value) =>
         _glyphs.TryGetValue(value, out var glyph)
             ? glyph
-            : _glyphs['?'];
+            : _glyphs.TryGetValue(0, out var missing)
+                ? missing
+                : _glyphs['?'];
 
     /// <summary>Gets the finite limits retained for rendering.</summary>
     internal FigletLimits Limits { get; }

@@ -261,6 +261,16 @@ public sealed class FigletFontTests
         font.Render("😀").ShouldBe("?");
     }
 
+    /// <summary>Verifies a font-authored code-zero glyph takes precedence over the question-mark fallback.</summary>
+    [Fact]
+    public void Render_WhenGlyphIsMissingAndFontDefinesCodeZero_UsesMissingCharacterGlyph()
+    {
+        using var stream = Stream($"{CreateFont()}0 missing character\nX@@\n");
+        var font = FigletFont.Load(stream, "missing-character");
+
+        font.Render("😀").ShouldBe("X");
+    }
+
     /// <summary>Verifies hardblanks become visible spaces only after composition.</summary>
     [Fact]
     public void Render_WhenGlyphContainsHardblank_ReplacesItAfterComposition()
