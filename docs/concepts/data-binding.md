@@ -152,7 +152,9 @@ target detaches or migrates before it runs, the old callback is inert and the
 dirty latest value waits for or reschedules through the current attachment. A
 worker notification received while a previously attached target is detached
 never writes that target from the worker thread; reattachment performs the
-catch-up synchronization. A target that has never been attached retains the
+catch-up synchronization. Collection catch-up is deferred by one dispatcher turn
+after attachment so rebuilding a realized item tree cannot reenter the parent's
+ownership transaction. A target that has never been attached retains the
 ordinary synchronous detached-control behavior.
 
 A notification that arrives while the callback is executing requests one
@@ -190,15 +192,23 @@ move, and reset. A caller that supplies an incremental-apply delegate has each
 supported single-item action applied directly to the target instead of
 re-reading a complete snapshot; unsupported or coalesced actions still fall back
 to one latest complete read. A null collection projects empty items, and
-replacing the collection detaches the old one.
+replacing the collection detaches the old one. Subscription replacement is a
+staged transaction: event accessors run outside observer locks, a source becomes
+authoritative only after subscription succeeds, and a failed add remains
+retryable. Cleanup failure does not roll authority back to the old source.
 
 Incremental application tracks the identity of the collection it is currently
-observing. A change notification delivered from a collection the binding has
-already replaced is discarded rather than applied to the new target snapshot.
-This can happen even on a single thread: when an earlier-registered handler on
-the same collection replaces the bound source from within its own
-`CollectionChanged` callback, the runtime has already captured the event
-invocation list before any handler in it runs.
+observing, its observation generation, and the source-path revision that
+selected it. Before applying a pending delta, binding cheaply re-reads the
+current source identity. A property replacement supersedes every pending delta
+from the prior revision, including work retained while detached or queued behind
+the dispatcher, and forces one complete snapshot. A change notification
+delivered from a collection the binding has already replaced is likewise
+discarded rather than applied to the new target snapshot. This can happen even
+on a single thread: when an earlier-registered handler on the same collection
+replaces the bound source from within its own `CollectionChanged` callback, the
+runtime has already captured the event invocation list before any handler in it
+runs.
 
 Snapshot construction is `O(n)` in `ListView`'s default eager mode, which
 realizes every item. Setting

@@ -85,7 +85,10 @@ ListView's selection, scrolling, and surface appearance inside the Popup.
 
 - `Items` copies the non-null choices into the owned single-selection list. When
   no selection exists yet, assigning a non-empty list selects the first item and
-  raises `SelectionChanged`.
+  raises `SelectionChanged`. An items binding accepts incremental changes only
+  from the current source identity and source-path revision; replacement while
+  an old delta is queued or retained across detachment forces a complete
+  replacement snapshot instead.
 - `SelectedIndex` is `-1` or an index within `Items`; a committed selection
   publishes `PropertyChanged(SelectedIndex)` before `SelectionChanged`.
   Publication is versioned under synchronous reentry: a `PropertyChanged`

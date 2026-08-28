@@ -26,6 +26,8 @@ public sealed class Binding: IDisposable
     private bool _refreshSourceAfterTarget;
     private bool _sourceDirty;
     private bool _sourceScheduled;
+    private long _observedSourcePathRevision = -1;
+    private long _sourcePathRevision;
     private Dispatcher? _scheduledDispatcher;
     private long _scheduledAttachmentVersion;
     private CollectionObserver? _collectionObserver;
@@ -91,12 +93,12 @@ public sealed class Binding: IDisposable
         {
             if (_tracksCollection)
             {
-                _collectionObserver = new CollectionObserver(OnSourceInvalidated);
+                _collectionObserver = new CollectionObserver(OnCollectionInvalidated);
             }
 
             if (Mode is BindingMode.OneWay or BindingMode.TwoWay)
             {
-                _sourceObserver = new PropertyPathObserver(_source, _sourcePath, OnSourceInvalidated);
+                _sourceObserver = new PropertyPathObserver(_source, _sourcePath, OnSourcePathInvalidated);
             }
 
             if (Mode is BindingMode.TwoWay or BindingMode.OneWayToSource)
@@ -147,7 +149,7 @@ public sealed class Binding: IDisposable
     }
 
     /// <summary>Schedules any source notification retained while the target was detached.</summary>
-    internal void OnTargetAttached() => ScheduleSourceUpdate();
+    internal void OnTargetAttached() => ScheduleSourceUpdate(deferInline: _tracksCollection);
 
     /// <summary>Invalidates scheduling state owned by the target's former dispatcher attachment.</summary>
     internal void OnTargetDetached()
@@ -172,13 +174,33 @@ public sealed class Binding: IDisposable
             return;
         }
 
-        if (TryApplyIncrementalChange())
+        long sourcePathRevisionBeforeRead;
+
+        lock (_gate)
+        {
+            sourcePathRevisionBeforeRead = _sourcePathRevision;
+        }
+
+        var available = _sourcePath.TryRead(_source, out var sourceValue);
+        var observedValue = available ? sourceValue : null;
+        var observer = _collectionObserver;
+        observer?.Observe(observedValue);
+        long sourcePathRevision;
+        bool canApplyIncrementally;
+
+        lock (_gate)
+        {
+            sourcePathRevision = _sourcePathRevision;
+            canApplyIncrementally = sourcePathRevisionBeforeRead == sourcePathRevision &&
+                sourcePathRevision == _observedSourcePathRevision;
+        }
+
+        if (canApplyIncrementally && TryApplyIncrementalChange(observer, observedValue))
         {
             return;
         }
 
-        var available = _sourcePath.TryRead(_source, out var sourceValue);
-        _collectionObserver?.Observe(available ? sourceValue : null);
+        _ = observer?.TryTakePendingChange(observedValue, out _);
         object? targetValue;
 
         if (available)
@@ -199,6 +221,7 @@ public sealed class Binding: IDisposable
 
         if (_targetPath.TryRead(Target, out var current) && Equals(current, targetValue))
         {
+            MarkSourcePathObserved(sourcePathRevisionBeforeRead, sourcePathRevision);
             return;
         }
 
@@ -238,13 +261,35 @@ public sealed class Binding: IDisposable
                 _registry.ExitTargetUpdate(succeeded);
             }
         }
+
+        if (succeeded)
+        {
+            MarkSourcePathObserved(sourcePathRevisionBeforeRead, sourcePathRevision);
+        }
     }
 
-    private bool TryApplyIncrementalChange()
+    /// <summary>Commits a stable source-path read as the incremental baseline revision.</summary>
+    private void MarkSourcePathObserved(long revisionBeforeRead, long revisionAfterRead)
     {
-        if (_collectionObserver is not { } observer ||
+        if (revisionBeforeRead != revisionAfterRead)
+        {
+            return;
+        }
+
+        lock (_gate)
+        {
+            if (_sourcePathRevision == revisionAfterRead)
+            {
+                _observedSourcePathRevision = revisionAfterRead;
+            }
+        }
+    }
+
+    private bool TryApplyIncrementalChange(CollectionObserver? observer, object? observedValue)
+    {
+        if (observer is null ||
             _applyIncrementalChange is not { } applyIncremental ||
-            !observer.TryTakePendingChange(out var change))
+            !observer.TryTakePendingChange(observedValue, out var change))
         {
             return false;
         }
@@ -441,13 +486,22 @@ public sealed class Binding: IDisposable
         }
     }
 
-    private void OnSourceInvalidated()
+    private void OnCollectionInvalidated() => OnSourceInvalidated(sourcePathChanged: false);
+
+    private void OnSourcePathInvalidated() => OnSourceInvalidated(sourcePathChanged: true);
+
+    private void OnSourceInvalidated(bool sourcePathChanged)
     {
         lock (_gate)
         {
             if (IsDisposed)
             {
                 return;
+            }
+
+            if (sourcePathChanged)
+            {
+                _sourcePathRevision++;
             }
 
             _sourceDirty = true;
@@ -467,7 +521,7 @@ public sealed class Binding: IDisposable
         ScheduleSourceUpdate();
     }
 
-    private void ScheduleSourceUpdate()
+    private void ScheduleSourceUpdate(bool deferInline = false)
     {
         var dispatcher = Target.Dispatcher;
 
@@ -490,7 +544,7 @@ public sealed class Binding: IDisposable
             _scheduledAttachmentVersion = attachmentVersion;
         }
 
-        if (dispatcher.CheckAccess())
+        if (dispatcher.CheckAccess() && !deferInline)
         {
             DrainSourceUpdates(dispatcher, attachmentVersion);
             return;

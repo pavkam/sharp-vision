@@ -10,9 +10,14 @@ internal sealed class CollectionObserver: IDisposable
 {
     private readonly Lock _gate = new();
     private readonly Action _invalidated;
+    private readonly List<INotifyCollectionChanged> _retired = [];
     private INotifyCollectionChanged? _current;
     private NotifyCollectionChangedEventArgs? _pendingChange;
+    private long _generation;
+    private long _pendingGeneration;
+    private long _transitionVersion;
     private bool _coalesced;
+    private bool _disposed;
 
     /// <summary>Initializes an empty observer with one invalidation callback.</summary>
     public CollectionObserver(Action invalidated)
@@ -35,42 +40,168 @@ internal sealed class CollectionObserver: IDisposable
     {
         lock (_gate)
         {
-            change = _coalesced ? null : _pendingChange;
-            _pendingChange = null;
-            _coalesced = false;
-            return change is not null;
+            return TryTakePendingChangeCore(_current, enforceExpectedSource: false, out change);
         }
     }
 
-    /// <summary>Replaces the currently observed collection identity.</summary>
-    public void Observe(object? value)
+    /// <summary>
+    /// Atomically takes a pending change only when it belongs to the expected current source and
+    /// observation generation. Pending state is consumed even when it is stale so a complete
+    /// snapshot can establish a fresh baseline.
+    /// </summary>
+    /// <param name="expectedSource">The collection identity resolved from the current source path.</param>
+    /// <param name="change">The current pending change, when one is available.</param>
+    /// <returns>Whether a current, non-coalesced pending change was available.</returns>
+    public bool TryTakePendingChange(
+        object? expectedSource,
+        [NotNullWhen(true)] out NotifyCollectionChangedEventArgs? change)
     {
         lock (_gate)
         {
-            var replacement = value as INotifyCollectionChanged;
+            return TryTakePendingChangeCore(
+                expectedSource as INotifyCollectionChanged,
+                enforceExpectedSource: true,
+                out change);
+        }
+    }
+
+    /// <summary>
+    /// Replaces the currently observed collection through a staged subscription transaction.
+    /// Caller-controlled event accessors run outside the state lock. A candidate becomes current
+    /// only after its add accessor succeeds, while a synchronous notification during that accessor
+    /// is ignored and followed by the caller's complete snapshot refresh.
+    /// </summary>
+    /// <exception cref="Exception">A collection event accessor reports a subscription or cleanup failure.</exception>
+    public void Observe(object? value)
+    {
+        var replacement = value as INotifyCollectionChanged;
+        long transitionVersion;
+
+        lock (_gate)
+        {
+            if (_disposed)
+            {
+                return;
+            }
 
             if (ReferenceEquals(_current, replacement))
             {
                 return;
             }
 
-            _current?.CollectionChanged -= OnCollectionChanged;
+            transitionVersion = ++_transitionVersion;
+        }
 
-            _current = replacement;
-            _pendingChange = null;
-            _coalesced = false;
+        if (replacement is not null)
+        {
+            try
+            {
+                replacement.CollectionChanged += OnCollectionChanged;
+            }
+            catch
+            {
+                try
+                {
+                    replacement.CollectionChanged -= OnCollectionChanged;
+                }
+                catch
+                {
+                    // The original add failure remains authoritative. Disposal still retries any
+                    // source that was known to have committed successfully.
+                }
 
-            _current?.CollectionChanged += OnCollectionChanged;
+                throw;
+            }
+        }
+
+        INotifyCollectionChanged? previous = null;
+        var committed = false;
+
+        lock (_gate)
+        {
+            if (!_disposed && _transitionVersion == transitionVersion)
+            {
+                previous = _current;
+                _current = replacement;
+                _generation++;
+                _pendingChange = null;
+                _pendingGeneration = 0;
+                _coalesced = false;
+                committed = true;
+            }
+        }
+
+        if (!committed)
+        {
+            replacement?.CollectionChanged -= OnCollectionChanged;
+            return;
+        }
+
+        if (previous is null)
+        {
+            return;
+        }
+
+        try
+        {
+            previous.CollectionChanged -= OnCollectionChanged;
+        }
+        catch
+        {
+            lock (_gate)
+            {
+                if (!_retired.Contains(previous))
+                {
+                    _retired.Add(previous);
+                }
+            }
+
+            throw;
         }
     }
 
-    /// <summary>Releases the current collection subscription.</summary>
+    /// <summary>Releases every successfully registered collection subscription.</summary>
+    /// <exception cref="Exception">A collection event accessor reports a cleanup failure.</exception>
     public void Dispose()
     {
+        INotifyCollectionChanged? current;
+        INotifyCollectionChanged[] retired;
+
         lock (_gate)
         {
-            _current?.CollectionChanged -= OnCollectionChanged;
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            _transitionVersion++;
+            current = _current;
             _current = null;
+            retired = [.. _retired];
+            _retired.Clear();
+            _pendingChange = null;
+            _pendingGeneration = 0;
+            _coalesced = false;
+        }
+
+        Exception? failure = null;
+
+        foreach (var source in current is null ? retired : [current, .. retired])
+        {
+            try
+            {
+                source.CollectionChanged -= OnCollectionChanged;
+            }
+            catch (Exception exception)
+            {
+                failure ??= exception;
+            }
+        }
+
+        if (failure is not null)
+        {
+            throw failure;
         }
     }
 
@@ -100,6 +231,7 @@ internal sealed class CollectionObserver: IDisposable
             }
 
             _pendingChange = eventArgs;
+            _pendingGeneration = _generation;
             shouldInvalidate = true;
         }
 
@@ -107,5 +239,20 @@ internal sealed class CollectionObserver: IDisposable
         {
             _invalidated();
         }
+    }
+
+    private bool TryTakePendingChangeCore(
+        INotifyCollectionChanged? expectedSource,
+        bool enforceExpectedSource,
+        [NotNullWhen(true)] out NotifyCollectionChangedEventArgs? change)
+    {
+        var isCurrent = !enforceExpectedSource || ReferenceEquals(expectedSource, _current);
+        change = isCurrent && !_coalesced && _pendingGeneration == _generation
+            ? _pendingChange
+            : null;
+        _pendingChange = null;
+        _pendingGeneration = 0;
+        _coalesced = false;
+        return change is not null;
     }
 }

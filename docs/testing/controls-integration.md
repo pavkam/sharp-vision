@@ -363,11 +363,13 @@ retention, and late stale-generation rejection.
 
 Binding tests cover scalar modes, nested replacement and null recovery,
 conversion, event ordering, validation, lifetime, dispatcher affinity,
-observable collection actions, and item and selection coordination. A worker
-burst publishes 10,000 changes while the dispatcher is occupied and must commit
-only the latest value in one target update. A warmed allocation test bounds
-scalar updates at 256 managed bytes each and proves reverse updates cannot
-recurse.
+observable collection actions, and item and selection coordination. Adversarial
+collection tests cover throwing and reentrant event accessors, staged
+notifications, stale observation generations, detached replacement, and old
+deltas queued before a newer source-path revision. A worker burst publishes
+10,000 changes while the dispatcher is occupied and must commit only the latest
+value in one target update. A warmed allocation test bounds scalar updates at
+256 managed bytes each and proves reverse updates cannot recurse.
 
 ## Required evidence
 

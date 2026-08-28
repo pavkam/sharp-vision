@@ -138,6 +138,97 @@ public sealed class CollectionObserverTests
         observer.TryTakePendingChange(out _).ShouldBeTrue();
     }
 
+    /// <summary>Verifies a failed candidate subscription remains retryable and never replaces the
+    /// still-authoritative observed source.</summary>
+    [Fact]
+    public void Observe_WhenCandidateAddThrows_RetrySubscribesExactlyOnce()
+    {
+        using var observer = new CollectionObserver(() => { });
+        var source = new ProbeCollectionChangedSource { ThrowOnNextAdd = true };
+
+        _ = Should.Throw<InvalidOperationException>(() => observer.Observe(source));
+        source.SubscriberCount.ShouldBe(0);
+
+        observer.Observe(source);
+        source.SubscriberCount.ShouldBe(1);
+        source.RaiseAdd();
+
+        observer.TryTakePendingChange(out var change).ShouldBeTrue();
+        change.Action.ShouldBe(NotifyCollectionChangedAction.Add);
+    }
+
+    /// <summary>Verifies an add accessor that registers before throwing is compensated before a
+    /// later retry, so the successful retry still owns exactly one handler.</summary>
+    [Fact]
+    public void Observe_WhenCandidateAddThrowsAfterRegistration_RetryDoesNotDuplicateHandler()
+    {
+        using var observer = new CollectionObserver(() => { });
+        var source = new ProbeCollectionChangedSource { ThrowAfterNextAdd = true };
+
+        _ = Should.Throw<InvalidOperationException>(() => observer.Observe(source));
+        source.SubscriberCount.ShouldBe(0);
+
+        observer.Observe(source);
+
+        source.SubscriberCount.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a committed replacement remains authoritative when cleanup of its old
+    /// source reports a failure.</summary>
+    [Fact]
+    public void Observe_WhenOldRemovalThrows_KeepsReplacementAuthoritative()
+    {
+        using var observer = new CollectionObserver(() => { });
+        var previous = new ProbeCollectionChangedSource();
+        var replacement = new ProbeCollectionChangedSource();
+        observer.Observe(previous);
+        previous.ThrowOnNextRemove = true;
+
+        _ = Should.Throw<InvalidOperationException>(() => observer.Observe(replacement));
+        replacement.SubscriberCount.ShouldBe(1);
+
+        previous.RaiseAdd();
+        observer.TryTakePendingChange(out _).ShouldBeFalse();
+        replacement.RaiseAdd();
+        observer.TryTakePendingChange(out _).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies synchronous candidate notification during event registration is ignored
+    /// until that candidate commits and a complete snapshot can establish its baseline.</summary>
+    [Fact]
+    public void Observe_WhenCandidateRaisesDuringAdd_DoesNotPublishPrematureChange()
+    {
+        using var observer = new CollectionObserver(() => { });
+        var source = new ProbeCollectionChangedSource();
+        source.Added = source.RaiseAdd;
+
+        observer.Observe(source);
+
+        observer.TryTakePendingChange(out _).ShouldBeFalse();
+        source.RaiseAdd();
+        observer.TryTakePendingChange(out _).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies add-accessor reentry cannot leave a superseded candidate subscribed or
+    /// duplicate the final winner's handler.</summary>
+    [Fact]
+    public void Observe_WhenCandidateAddReentersWithNewWinner_SubscribesOnlyWinner()
+    {
+        using var observer = new CollectionObserver(() => { });
+        var candidate = new ProbeCollectionChangedSource();
+        var winner = new ProbeCollectionChangedSource();
+        candidate.Adding = () =>
+        {
+            candidate.Adding = null;
+            observer.Observe(winner);
+        };
+
+        observer.Observe(candidate);
+
+        candidate.SubscriberCount.ShouldBe(0);
+        winner.SubscriberCount.ShouldBe(1);
+    }
+
     /// <summary>
     /// Verifies a notification delivered from a source Observe() has already
     /// replaced is rejected instead of corrupting state tracked for the new

@@ -1308,6 +1308,138 @@ public sealed partial class BindingTests
         target.Items.Select(static item => item!.ToString()).ShouldBe(["X", "Y", "Z", "W"]);
     }
 
+    /// <summary>Verifies a detached ListView rejects an incremental add retained from the old
+    /// collection when the bound property has since selected a replacement collection.</summary>
+    [Theory]
+    [InlineData("Add")]
+    [InlineData("Remove")]
+    [InlineData("Replace")]
+    public async Task BindItems_WhenDetachedOldSourceChangesBeforeReplacement_UsesReplacementListAsync(
+        string action)
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var first = new ObservableCollection<BindingItem> { new("A"), new("B") };
+        var replacement = new ObservableCollection<BindingItem> { new("X") };
+        var model = new BindingModel { Items = first };
+        var target = new UiListView();
+        var root = new Overlay { Children = { target } };
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            _ = target.BindItems(model, value => value.Items);
+            root.Attach(dispatcher);
+            root.Children.Remove(target).ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+
+        MutateOldSource(first, action);
+        model.Items = replacement;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            root.Children.Add(target);
+        }, TestContext.Current.CancellationToken);
+        await dispatcher.InvokeAsync(() =>
+        {
+            target.Items.Select(static item => item!.ToString()).ShouldBe(["X"]);
+            root.Dispose();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies ComboBox shares the stale-delta rejection contract when reattached after
+    /// its bound collection identity changes.</summary>
+    [Theory]
+    [InlineData("Add")]
+    [InlineData("Remove")]
+    [InlineData("Replace")]
+    public async Task BindItems_WhenDetachedComboBoxOldSourceChangesBeforeReplacement_UsesReplacementListAsync(
+        string action)
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var first = new ObservableCollection<BindingItem> { new("A"), new("B") };
+        var replacement = new ObservableCollection<BindingItem> { new("X") };
+        var model = new BindingModel { Items = first };
+        var target = new ComboBox();
+        var root = new Overlay { Children = { target } };
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            _ = target.BindItems(model, value => value.Items);
+            root.Attach(dispatcher);
+            root.Children.Remove(target).ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+
+        MutateOldSource(first, action);
+        model.Items = replacement;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            root.Children.Add(target);
+        }, TestContext.Current.CancellationToken);
+        await dispatcher.InvokeAsync(() =>
+        {
+            target.Items.Select(static item => item!.ToString()).ShouldBe(["X"]);
+            root.Dispose();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Applies one supported incremental mutation to an obsolete source snapshot.</summary>
+    private static void MutateOldSource(ObservableCollection<BindingItem> source, string action)
+    {
+        switch (action)
+        {
+            case "Add":
+                source.Add(new BindingItem("stale"));
+                break;
+            case "Remove":
+                source.RemoveAt(0);
+                break;
+            case "Replace":
+                source[0] = new BindingItem("stale");
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(action), action, "Unknown mutation action.");
+        }
+    }
+
+    /// <summary>Verifies a replacement property notification supersedes an old collection delta
+    /// while both are waiting behind the same occupied dispatcher turn.</summary>
+    [Fact]
+    public async Task BindItems_WhenOldDeltaAndReplacementAwaitQueuedDrain_UsesReplacementListAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var first = new ObservableCollection<BindingItem> { new("A") };
+        var replacement = new ObservableCollection<BindingItem> { new("X") };
+        var model = new BindingModel { Items = first };
+        var target = new UiListView();
+        var root = new Overlay { Children = { target } };
+        await dispatcher.InvokeAsync(() =>
+        {
+            _ = target.BindItems(model, value => value.Items);
+            root.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new();
+        dispatcher.Post(() =>
+        {
+            entered.SetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        await Task.Run(() =>
+        {
+            first.Add(new BindingItem("stale"));
+            model.Items = replacement;
+        }, TestContext.Current.CancellationToken);
+        release.Set();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            target.Items.Select(static item => item!.ToString()).ShouldBe(["X"]);
+            root.Dispose();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>
     /// Verifies a collection-changed notification from a source the binding has
     /// already moved past does not apply to the replacement target. The

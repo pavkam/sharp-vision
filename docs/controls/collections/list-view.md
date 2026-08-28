@@ -110,6 +110,12 @@ of by position:
 4. Insert, remove, and replace notifications from an observed collection follow
    the same stable index and item rules.
 
+An items binding applies those single-item notifications incrementally only
+while the emitting collection remains the current bound property identity and
+source-path revision. Replacing the property while an older notification is
+queued or retained across detachment discards that delta and installs one full
+snapshot of the replacement before later incremental changes resume.
+
 `SelectionChanging` receives owned, sorted added and removed index snapshots and
 may cancel the change before it commits. `SelectionChanged` reports the same
 committed delta after all selected views and visual states have updated.
