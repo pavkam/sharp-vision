@@ -953,4 +953,68 @@ public sealed class DateInputSurfaceTests
         input.Value.ShouldBe(new DateOnly(2026, 3, 16));
         input.IsOpen.ShouldBeFalse();
     }
+
+    /// <summary>Verifies clicking the already-selected Calendar date still accepts the semantic
+    /// activation and closes even though the Calendar selection does not mutate.</summary>
+    [Fact]
+    public async Task Pointer_WhenSelectedCalendarDateIsClicked_AcceptsAndClosesAsync()
+    {
+        // Arrange
+        var openingDate = new DateOnly(2026, 3, 15);
+        var input = new DateInput
+        {
+            Value = openingDate,
+            Culture = CultureInfo.InvariantCulture
+        };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(32, 15),
+            TestContext.Current.CancellationToken);
+        var calendar = OwnedTree.Find<UiCalendar>(input).ShouldNotBeNull();
+        await surface.UpdateAsync(() => input.IsOpen = true, "open DateInput popup");
+
+        // Act - March 15 is the Sunday cell on the third displayed week row.
+        await surface.Pointer.ClickAsync(calendar, new Point(2, 5));
+
+        // Assert
+        input.Value.ShouldBe(openingDate);
+        input.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a close callback that reopens after keyboard acceptance establishes a
+    /// replacement session that the completed activation cannot close again.</summary>
+    [Fact]
+    public async Task Keyboard_WhenAcceptedCloseReopens_PreservesReplacementSessionAsync()
+    {
+        // Arrange
+        var input = new DateInput
+        {
+            Value = new DateOnly(2026, 3, 15),
+            Culture = CultureInfo.InvariantCulture
+        };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(32, 15),
+            TestContext.Current.CancellationToken);
+        var closed = 0;
+        input.DropDownClosed += (_, _) =>
+        {
+            closed++;
+
+            if (closed == 1)
+            {
+                input.IsOpen = true;
+            }
+        };
+        await surface.UpdateAsync(() => input.IsOpen = true, "open DateInput popup");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        closed.ShouldBe(1);
+        input.IsOpen.ShouldBeTrue();
+    }
 }

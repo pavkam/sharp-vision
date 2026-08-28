@@ -977,6 +977,29 @@ public sealed class CalendarTests
         changes.ShouldBe(1);
     }
 
+    /// <summary>Verifies semantic activation is observable even when the selected date is already
+    /// committed and the selection assignment is consequently a no-op.</summary>
+    [Fact]
+    public void ActivateDate_WhenSelectedDateIsActivated_RaisesDateActivatedOnce()
+    {
+        // Arrange
+        var date = new DateOnly(2026, 7, 19);
+        using var calendar = new UiCalendar
+        {
+            SelectionMode = CalendarSelectionMode.Select,
+            Selection = new DateInterval(date, date)
+        };
+        List<DateOnly> activations = [];
+        calendar.DateActivated += activations.Add;
+
+        // Act
+        var changed = calendar.ActivateDate(date);
+
+        // Assert
+        changed.ShouldBeFalse();
+        activations.ShouldBe([date]);
+    }
+
     /// <summary>Verifies held navigation repeats while Enter and Space establish an interval
     /// anchor only once for one physical key hold.</summary>
     [Theory]

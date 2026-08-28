@@ -147,6 +147,10 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
     /// <summary>Raised after a changed selection commits.</summary>
     public event EventHandler<CalendarSelectionChangedEventArgs>? SelectionChanged;
 
+    /// <summary>Raised after one valid semantic date activation, including activation of an
+    /// already-selected date whose committed selection does not change.</summary>
+    internal event Action<DateOnly>? DateActivated;
+
     /// <summary>Gets or sets whether activation selects one date or an inclusive interval.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -376,7 +380,9 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         {
             // CommitSelection itself moves ActiveDate to the committed interval's Start
             // (== date here), so no separate SetActiveDate call is needed on this path.
-            return CommitSelection(new DateInterval(date, date));
+            var changed = CommitSelection(new DateInterval(date, date));
+            DateActivated?.Invoke(date);
+            return changed;
         }
 
         if (_intervalAnchor is not { } anchor)
@@ -386,6 +392,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
             SetActiveDate(date);
             _ = CommitSelection(null);
             SetIntervalAnchor(date);
+            DateActivated?.Invoke(date);
             return true;
         }
 
@@ -403,7 +410,9 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
 
         SetActiveDate(date);
         SetIntervalAnchor(null);
-        return CommitSelection(interval);
+        var committed = CommitSelection(interval);
+        DateActivated?.Invoke(date);
+        return committed;
     }
 
     #endregion
@@ -454,6 +463,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         if (reason == ReleaseReason.Disposed)
         {
             SelectionChanged = null;
+            DateActivated = null;
         }
     }
 

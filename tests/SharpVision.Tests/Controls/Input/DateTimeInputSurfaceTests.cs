@@ -472,11 +472,8 @@ public sealed class DateTimeInputSurfaceTests
 
     /// <summary>Verifies a programmatic Value change while the Calendar popup is already open
     /// commits exactly once and leaves the popup open, instead of the push into the owned
-    /// Calendar's Selection re-entering OnCalendarSelectionChanged as if it were a user pick -
-    /// which would both commit a second time and set IsOpen = false out from under the caller.
-    /// Sibling DateInput guards this same reentrancy with a _synchronizingCalendar flag; this
-    /// proves DateTimeInput's equivalent guard covers the same hazard on every programmatic push,
-    /// not just the lazy seeding path.</summary>
+    /// Calendar's Selection being mistaken for a semantic Calendar activation, which would both
+    /// commit a second time and set IsOpen = false out from under the caller.</summary>
     [Fact]
     public async Task Value_WhenChangedWhilePopupIsOpen_CommitsOnceAndKeepsPopupOpenAsync()
     {
@@ -821,5 +818,66 @@ public sealed class DateTimeInputSurfaceTests
         accepted.Kind.ShouldBe(DateTimeKind.Utc);
         accepted.TimeOfDay.Ticks.ShouldBe(openingValue.TimeOfDay.Ticks);
         input.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies clicking the already-selected Calendar date accepts and closes without
+    /// requiring a selection mutation or disturbing time ticks and <see cref="DateTimeKind"/>.</summary>
+    [Fact]
+    public async Task Pointer_WhenSelectedCalendarDateIsClicked_AcceptsAndPreservesTimeAsync()
+    {
+        // Arrange
+        var openingValue = new DateTime(2026, 3, 15, 14, 30, 45, DateTimeKind.Utc).AddTicks(6789);
+        var input = new DateTimeInput { Value = openingValue };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(32, 15),
+            TestContext.Current.CancellationToken);
+        var calendar = OwnedTree.Find<UiCalendar>(input).ShouldNotBeNull();
+        await surface.UpdateAsync(() => input.IsOpen = true, "open DateTimeInput popup");
+
+        // Act - March 15 is the Sunday cell on the third displayed week row.
+        await surface.Pointer.ClickAsync(calendar, new Point(2, 5));
+
+        // Assert
+        input.Value.ShouldBe(openingValue);
+        input.Value.ShouldNotBeNull().Kind.ShouldBe(DateTimeKind.Utc);
+        input.Value.ShouldNotBeNull().TimeOfDay.Ticks.ShouldBe(openingValue.TimeOfDay.Ticks);
+        input.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a close callback that reopens after keyboard acceptance establishes a
+    /// replacement session that the completed activation cannot close again.</summary>
+    [Fact]
+    public async Task Keyboard_WhenAcceptedCloseReopens_PreservesReplacementSessionAsync()
+    {
+        // Arrange
+        var input = new DateTimeInput
+        {
+            Value = new DateTime(2026, 3, 15, 14, 30, 45, DateTimeKind.Utc).AddTicks(6789)
+        };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(32, 15),
+            TestContext.Current.CancellationToken);
+        var closed = 0;
+        input.DropDownClosed += (_, _) =>
+        {
+            closed++;
+
+            if (closed == 1)
+            {
+                input.IsOpen = true;
+            }
+        };
+        await surface.UpdateAsync(() => input.IsOpen = true, "open DateTimeInput popup");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        closed.ShouldBe(1);
+        input.IsOpen.ShouldBeTrue();
     }
 }

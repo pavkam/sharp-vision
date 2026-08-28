@@ -41,7 +41,6 @@ public sealed class DateInput: InputBase
     private DateInterval? _openingCalendarSelection;
     private long _valueVersion;
     private bool _seeded;
-    private bool _synchronizingCalendar;
     private CultureInfo _culture;
 
     #region Construction and properties
@@ -64,7 +63,6 @@ public sealed class DateInput: InputBase
             SelectionMode = CalendarSelectionMode.Select
         };
         SyncCalendar();
-        _calendar.SelectionChanged += OnCalendarSelectionChanged;
         _popup = EnablePopup(
             _calendar,
             placement: PopupPlacement.Below,
@@ -79,6 +77,7 @@ public sealed class DateInput: InputBase
             handleNavigationKey: HandlePopupNavigationKey,
             cancelSession: CancelCalendarSession,
             acceptSession: AcceptCalendarSession);
+        _calendar.DateActivated += OnCalendarDateActivated;
         EnablePressActivation();
         _segments = EnableSegmentEditing(
             BuildSegments,
@@ -569,7 +568,7 @@ public sealed class DateInput: InputBase
 
         if (reason == ReleaseReason.Disposed)
         {
-            _calendar.SelectionChanged -= OnCalendarSelectionChanged;
+            _calendar.DateActivated -= OnCalendarDateActivated;
             ValueChanged = null;
             DropDownOpened = null;
             DropDownClosed = null;
@@ -591,15 +590,9 @@ public sealed class DateInput: InputBase
         IsOpen = !IsOpen;
     }
 
-    private void OnCalendarSelectionChanged(object? sender, CalendarSelectionChangedEventArgs eventArgs)
+    private void OnCalendarDateActivated(DateOnly date)
     {
-        _ = sender;
-        _ = eventArgs;
-
-        if (_synchronizingCalendar)
-        {
-            return;
-        }
+        _ = date;
 
         if (IsOpen)
         {
@@ -651,14 +644,7 @@ public sealed class DateInput: InputBase
             eventArgs.IsHandled = true;
         }
 
-        var handled = _calendar.HandleNavigationKey(eventArgs);
-
-        if (accepts && IsOpen)
-        {
-            AcceptPopupAndClose();
-        }
-
-        return handled || accepts;
+        return _calendar.HandleNavigationKey(eventArgs) || accepts;
     }
 
     private void CancelCalendarSession() => RestoreOpeningCalendarState();
@@ -667,25 +653,16 @@ public sealed class DateInput: InputBase
 
     private void RestoreOpeningCalendarState()
     {
-        _synchronizingCalendar = true;
+        _calendar.Selection = null;
+        _calendar.Selection = new DateInterval(_openingActiveDate, _openingActiveDate);
 
-        try
+        if (_openingCalendarSelection is null)
         {
             _calendar.Selection = null;
-            _calendar.Selection = new DateInterval(_openingActiveDate, _openingActiveDate);
-
-            if (_openingCalendarSelection is null)
-            {
-                _calendar.Selection = null;
-            }
-            else if (_openingCalendarSelection.Value.Start != _openingActiveDate)
-            {
-                _calendar.Selection = _openingCalendarSelection;
-            }
         }
-        finally
+        else if (_openingCalendarSelection.Value.Start != _openingActiveDate)
         {
-            _synchronizingCalendar = false;
+            _calendar.Selection = _openingCalendarSelection;
         }
     }
 
@@ -970,30 +947,17 @@ public sealed class DateInput: InputBase
 
     private void SyncCalendar()
     {
-        // Guards against OnCalendarSelectionChanged treating this programmatic resync as a user
-        // pick: without it, setting _calendar.Selection below re-enters through the
-        // SelectionChanged event and unconditionally closes the popup, even when the caller only
-        // meant to keep an already-open popup showing the field's current value.
-        _synchronizingCalendar = true;
+        _calendar.Culture = _culture;
+        _calendar.MinimumDate = Minimum;
+        _calendar.MaximumDate = Maximum;
 
-        try
+        if (_value is { } date)
         {
-            _calendar.Culture = _culture;
-            _calendar.MinimumDate = Minimum;
-            _calendar.MaximumDate = Maximum;
-
-            if (_value is { } date)
-            {
-                _calendar.Selection = new DateInterval(date, date);
-            }
-            else
-            {
-                _ = _calendar.ClearSelection();
-            }
+            _calendar.Selection = new DateInterval(date, date);
         }
-        finally
+        else
         {
-            _synchronizingCalendar = false;
+            _ = _calendar.ClearSelection();
         }
     }
 
