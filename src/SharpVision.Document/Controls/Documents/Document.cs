@@ -691,6 +691,7 @@ public sealed class Document:
     protected override void OnTextSelectionCommitted(TextSelectionChangedEventArgs eventArgs, ulong transitionVersion)
     {
         _ = eventArgs;
+        InvalidateRetainedDescendant(_surface, InvalidationImpact.Render);
         RaiseTextSelectionCompatibilityEvent(SelectionChanged, this, transitionVersion);
     }
 

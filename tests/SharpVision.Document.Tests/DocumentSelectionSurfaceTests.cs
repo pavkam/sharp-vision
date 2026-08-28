@@ -2167,6 +2167,135 @@ public sealed class DocumentSelectionSurfaceTests
             TestContext.Current.CancellationToken)).ShouldBe(new Selection(0, 2));
     }
 
+    /// <summary>Verifies clearing a mounted document selection repaints the private surface instead
+    /// of retaining the previous frame's selection face.</summary>
+    [Fact]
+    public async Task ClearSelection_WhenDocumentIsMounted_RemovesSelectionFaceFromPreviousRangeAsync()
+    {
+        // Arrange
+        var selectionBackground = Color.Rgb(205, 0, 0);
+        var document = new Document
+        {
+            Style = DocumentStyle.Default with
+            {
+                SelectionFace = SelectionFace(selectionBackground)
+            },
+            Blocks = { new DocumentParagraph("0123456789") }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(20, 3),
+            TestContext.Current.CancellationToken);
+        var plainStyle = surface.Cell(new Point(0, 0)).Style;
+        await surface.UpdateAsync(document.SelectAll, "select all document text");
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(
+            TerminalPalette.Project(selectionBackground, ColorDepth.Basic16));
+
+        // Act
+        await surface.UpdateAsync(document.ClearSelection, "clear document selection");
+
+        // Assert
+        for (var column = 0; column < 10; column++)
+        {
+            surface.Cell(new Point(column, 0)).Style.ShouldBe(plainStyle);
+        }
+    }
+
+    /// <summary>Verifies replacing a mounted document selection repaints only the deselected
+    /// prefix while retaining and extending the current selection face.</summary>
+    [Fact]
+    public async Task SetSelection_WhenRangesPartiallyOverlap_RepaintsEveryResultingRegionAsync()
+    {
+        // Arrange
+        var selectionBackground = Color.Rgb(205, 0, 0);
+        var document = new Document
+        {
+            Style = DocumentStyle.Default with
+            {
+                SelectionFace = SelectionFace(selectionBackground)
+            },
+            Blocks = { new DocumentParagraph("01234567890123456789") }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(22, 3),
+            TestContext.Current.CancellationToken);
+        var plainStyle = surface.Cell(new Point(0, 0)).Style;
+        var selectedBackground = TerminalPalette.Project(selectionBackground, ColorDepth.Basic16);
+        await surface.UpdateAsync(
+            () => document.SetSelection(new Selection(0, 10)),
+            "select document prefix");
+
+        // Act
+        await surface.UpdateAsync(
+            () => document.SetSelection(new Selection(5, 15)),
+            "replace selection with partially overlapping range");
+
+        // Assert
+        for (var column = 0; column < 20; column++)
+        {
+            var style = surface.Cell(new Point(column, 0)).Style;
+            if (column is >= 5 and < 15)
+            {
+                style.Background.ShouldBe(selectedBackground);
+            }
+            else
+            {
+                style.ShouldBe(plainStyle);
+            }
+        }
+    }
+
+    /// <summary>Verifies a semantic source disappearing after the drag crosses it cancels stale
+    /// gesture state instead of committing an out-of-range anchor through the application.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Pointer_WhenPassedSourceCollapsesDuringDrag_DoesNotFaultApplicationAsync(bool moveBeforeRelease)
+    {
+        // Arrange
+        var source = new DocumentSelectionSourceProbe();
+        var document = new Document
+        {
+            Blocks =
+            {
+                new DocumentParagraph
+                {
+                    Inlines =
+                    {
+                        new DocumentInlineControl(source),
+                        new DocumentTextRun("XY")
+                    }
+                }
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(20, 4),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(document, new Point(6, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(document, new Point(5, 0));
+        surface.ShouldHaveCapture(document);
+
+        // Act
+        await surface.UpdateAsync(
+            () => source.Visibility = Visibility.Collapsed,
+            "collapse passed selectable source");
+
+        if (moveBeforeRelease)
+        {
+            await surface.Pointer.MovePressedToAsync(document, new Point(4, 0));
+        }
+
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        surface.Application.Failure.ShouldBeNull();
+        surface.ShouldHaveCapture(null);
+        document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Idle);
+    }
+
     /// <summary>Verifies the language default uses the theme's selected text over selected control pair.</summary>
     [Fact]
     public void Default_WhenSelectionFaceResolves_UsesSelectedTextOverSelectedControl()

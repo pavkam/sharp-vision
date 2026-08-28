@@ -72,15 +72,20 @@ An edge-held drag offers scrolling from the innermost eligible
 ancestor `AutoScroll` containers. The interval is 50 milliseconds and the
 per-tick delta is bounded to eight cells. Modal boundaries stop ancestor
 propagation. Source mutation, capture loss, terminal-focus loss, unavailability,
-disable, detach, and disposal stop retained gesture work.
+disable, detach, and disposal stop retained gesture work. A semantic projection
+change during an active drag cancels the gesture before another move or release
+can commit its obsolete anchor.
 
 ## Rendering and clipboard
 
 The common owner paints selection as a final subtree adornment using
 `SemanticColor.SelectedText` on `SemanticColor.SelectedControl`. Only complete
 mapped graphemes are restyled, so wide cells are never split and borders or
-other non-semantic chrome remain untouched. Specialized controls may retain a
-typed selection face while exposing the same inherited state.
+other non-semantic chrome remain untouched. Every committed range change also
+invalidates the retained surface that supplies the underlying glyph cells, so
+shrinking or clearing a range repaints cells that no longer receive the
+adornment. Specialized controls may retain a typed selection face while exposing
+the same inherited state.
 
 The framework's Ctrl+C handler acts during the preview phase from the
 application root, ahead of descendant handlers and control defaults;

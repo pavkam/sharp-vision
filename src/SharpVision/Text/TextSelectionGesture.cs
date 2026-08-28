@@ -183,6 +183,13 @@ internal sealed class TextSelectionGesture
 
     private void HandleSelecting(PointerEventArgs eventArgs)
     {
+        if (_owner.TextSelectionFingerprint != _semanticFingerprint)
+        {
+            eventArgs.IsHandled = true;
+            Cancel(releaseCapture: true);
+            return;
+        }
+
         var pointer = eventArgs.Pointer;
 
         if (pointer is
