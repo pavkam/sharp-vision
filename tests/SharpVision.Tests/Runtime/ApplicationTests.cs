@@ -2722,6 +2722,51 @@ public sealed partial class ApplicationTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies out-of-band bytes buffered behind an in-flight EARLIER out-of-band write
+    /// (not a frame render) are still flushed when a forced stop commits before that first
+    /// write's flush completes. <c>PumpAfterWrite</c> - the sibling of <c>CompleteRender</c> that
+    /// decides what runs next once an out-of-band write retires - used to gate on <c>_stopping</c>
+    /// alone and return, silently stranding anything a later <see
+    /// cref="Application.PostOutOfBand"/> buffered behind the first write once stopping committed
+    /// first, exactly the class of bug <see
+    /// cref="CompleteRender_WhenStopCommitsWhileOutOfBandIsBuffered_FlushesBufferedOutOfBandBytesAsync"/>
+    /// fixes for a frame render's own in-flight write.</summary>
+    [Fact]
+    public async Task PumpAfterWrite_WhenStopCommitsWhileOutOfBandIsBuffered_FlushesBufferedOutOfBandBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        terminal.PauseFlush();
+
+        // The first out-of-band write starts flushing immediately (nothing else is rendering) and
+        // its flush pauses; IsRendering becomes true for the duration, exactly like a frame render.
+        application.PostOutOfBand(new byte[] { 0x07 });
+        await WaitForAsync(() => application.IsRendering, TimeSpan.FromSeconds(5));
+
+        // A second out-of-band write arrives while the first is still in flight - buffered, not
+        // flushed, since DrainOutOfBand's own IsRendering guard defers to PumpAfterWrite below.
+        application.PostOutOfBand(new byte[] { 0x08 });
+
+        // Commit a forced stop BEFORE the first write's flush completes.
+        application.Shutdown();
+
+        // Guarantee the queued Closed record has already been dispatched (and _stopping latched)
+        // before releasing the paused write, same FIFO argument as the frame-render sibling test.
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        terminal.ReleaseFlush(); // let the first write's flush succeed (or observe the shutdown cancellation)
+
+        await application.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        terminal.Writes.ShouldContain(write => write.Length == 1 && write[0] == 0x07); // the first write landed
+        terminal.Writes.ShouldContain(write => write.Length == 1 && write[0] == 0x08); // BUG (pre-fix): stranded
+        application.Failure.ShouldBeNull();
+        application.LastCleanupException.ShouldBeNull();
+    }
+
     // IsRendering has no change notification of its own, so a condition built on it cannot be
     // awaited through an event or a completion source. Polling the flag is the only available
     // signal; the wait stays real wall-clock by necessity, not oversight.

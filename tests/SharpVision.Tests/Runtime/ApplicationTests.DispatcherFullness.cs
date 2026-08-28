@@ -842,6 +842,12 @@ public sealed partial class ApplicationTests
 
             _ = failure.ShouldBeOfType<InvalidOperationException>();
             failure.ShouldNotBeSameAs(rendererFailure);
+
+            // DisposeTerminalResourcesAsync assigns LastCleanupException from its own separate
+            // fallback chain (lifetimeDiagnostic ?? _renderer?.LastCleanupException ?? ...) before
+            // returning failure - the public property must reflect the same preserved first
+            // failure the return value does, not silently diverge from it.
+            application.LastCleanupException.ShouldBeSameAs(failure);
         }
         finally
         {

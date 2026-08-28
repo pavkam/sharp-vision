@@ -1101,8 +1101,9 @@ public sealed class Application:
     }
 
     /// <summary>
-    /// Flushes out-of-band bytes still buffered when a stop commits between this frame's write
-    /// completing and <see cref="CompleteRender"/> deciding what runs next. Mirrors
+    /// Flushes out-of-band bytes still buffered when a stop commits between an in-flight write -
+    /// a frame render's (<see cref="CompleteRender"/>) or an earlier out-of-band write's
+    /// (<see cref="PumpAfterWrite"/>) - completing and that caller deciding what runs next. Mirrors
     /// <see cref="FlushOutOfBand"/>'s <see cref="IsRendering"/>/<c>_renderTask</c> bookkeeping so
     /// <see cref="ObserveSessionAsync"/>'s shutdown drain (<c>do { await _renderTask; } while
     /// (IsRendering);</c>) waits for this write before <see cref="DisposeTerminalResourcesAsync"/>
@@ -2471,7 +2472,22 @@ public sealed class Application:
 
     private void PumpAfterWrite()
     {
-        if (_stopping || Suspended())
+        if (_stopping)
+        {
+            // The same stranding this method's caller (CompleteOutOfBand) exists to avoid for a
+            // frame render applies identically here: a stop can commit while THIS out-of-band
+            // write was itself in flight, and any bytes a later PostOutOfBand buffered behind it
+            // (Bell/SetTitle/clipboard OSC writes) must still be flushed - nothing downstream of
+            // this method ever looks at _outOfBand again once stopping.
+            if (HasPendingOutOfBand())
+            {
+                FlushOutOfBandOnStop();
+            }
+
+            return;
+        }
+
+        if (Suspended())
         {
             return;
         }
