@@ -905,6 +905,39 @@ public sealed class MarkdownDocumentReaderTests
         emphasis.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("both");
     }
 
+    /// <summary>Verifies a delimiter run longer than the directly rendered one-to-three marker
+    /// forms peels a strong pair while retaining the unmatched opener markers as literal content.</summary>
+    [Theory]
+    [InlineData("****ab**", "**ab")]
+    [InlineData("____ab__", "__ab")]
+    public void Read_WhenEmphasisDelimiterRunExceedsThree_PeelsStrongDelimiter(
+        string source,
+        string expectedText)
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read(source)
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        var strong = paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentStrong>();
+        strong.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(expectedText);
+    }
+
+    /// <summary>Verifies matching four-marker runs peel two strong pairs into nested semantic
+    /// containers rather than treating the entire delimiter runs as literal text.</summary>
+    [Fact]
+    public void Read_WhenMatchingEmphasisDelimiterRunsExceedThree_PeelsNestedStrongDelimiters()
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read("****both****")
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        var outer = paragraph.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentStrong>();
+        var inner = outer.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentStrong>();
+        inner.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("both");
+    }
+
     /// <summary>Verifies a bare thematic-break line produces a DocumentSeparator.</summary>
     [Fact]
     public void Read_WhenLineIsThreeAsterisks_ProducesThematicBreak()
@@ -2042,6 +2075,8 @@ public sealed class MarkdownDocumentReaderTests
     /// <summary>Verifies longer runs and whitespace-adjacent delimiters remain literal.</summary>
     [Theory]
     [InlineData("This ~~~three~~~")]
+    [InlineData("text ~~~a~~")]
+    [InlineData("text ~~~a~~b~")]
     [InlineData("~~ foo~~")]
     [InlineData("~~foo ~~")]
     [InlineData("~ foo~")]

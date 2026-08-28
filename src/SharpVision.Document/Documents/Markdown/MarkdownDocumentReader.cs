@@ -766,38 +766,47 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
             if (source[index] is '*' or '_')
             {
-                var emphasisMarker = source[index];
-                var emphasisRunLength = CountRun(source, index, emphasisMarker);
-                var emphasisClose = GetEmphasisClose(emphasisCloses, emphasisMarker, emphasisRunLength, index);
-
-                if (emphasisClose >= 0)
+                if (TryGetEmphasisClose(
+                    emphasisCloses,
+                    index,
+                    out var emphasisClose,
+                    out var emphasisDelimiterLength))
                 {
                     Flush();
 
-                    if (emphasisRunLength == 3)
+                    if (emphasisDelimiterLength == 2)
                     {
                         var strong = new DocumentStrong();
-                        var emphasis = new DocumentEmphasis();
-                        ParseInlines(source[(index + 3)..emphasisClose], emphasis.Inlines, insideLink);
-                        strong.Inlines.Add(emphasis);
+                        ParseInlines(
+                            source[(index + emphasisDelimiterLength)..emphasisClose],
+                            strong.Inlines,
+                            insideLink);
                         destination.Add(strong);
-                        index = emphasisClose + 3;
-                    }
-                    else if (emphasisRunLength == 2)
-                    {
-                        var strong = new DocumentStrong();
-                        ParseInlines(source[(index + 2)..emphasisClose], strong.Inlines, insideLink);
-                        destination.Add(strong);
-                        index = emphasisClose + 2;
+                        index = emphasisClose + emphasisDelimiterLength;
                     }
                     else
                     {
                         var emphasis = new DocumentEmphasis();
-                        ParseInlines(source[(index + 1)..emphasisClose], emphasis.Inlines, insideLink);
+                        ParseInlines(
+                            source[(index + emphasisDelimiterLength)..emphasisClose],
+                            emphasis.Inlines,
+                            insideLink);
                         destination.Add(emphasis);
-                        index = emphasisClose + 1;
+                        index = emphasisClose + emphasisDelimiterLength;
                     }
 
+                    continue;
+                }
+            }
+
+            if (Has(MarkdownExtension.Strikethrough) && source[index] == '~')
+            {
+                var rejectedRunLength = CountRun(source, index, '~');
+
+                if (rejectedRunLength >= 3)
+                {
+                    _ = plain.Append(source, index, rejectedRunLength);
+                    index += rejectedRunLength;
                     continue;
                 }
             }
@@ -1035,28 +1044,19 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         return end >= 0;
     }
 
-    /// <summary>Precomputes, per marker (<c>*</c>/<c>_</c>) and exact delimiter-run length (1 to 3),
-    /// the position where an active opener is closed. This implements CommonMark's delimiter-stack
-    /// algorithm in one forward pass over <paramref name="source"/>: each run is classified once with
-    /// <see cref="CanOpenEmphasisRun"/>/<see cref="CanCloseEmphasisRun"/>, and a closer always binds to
-    /// the nearest still-open opener of the same marker and length (last-in-first-out), so a nested
-    /// same-marker pair (for example the inner <c>_bar_</c> in <c>"_foo _bar_ baz_"</c>) resolves
-    /// before its enclosing pair instead of the outer opener capturing the inner closer. Replacing the
-    /// old per-candidate forward rescan with this single pass also removes the quadratic behavior on a
-    /// long run of open-only delimiters.</summary>
-    private Dictionary<(char Marker, int Length), int[]> BuildEmphasisCloses(string source)
+    /// <summary>Precomputes the position and width where each emphasis opener is closed. Delimiter
+    /// runs are consumed incrementally, two markers at a time when both sides permit strong emphasis
+    /// and one marker otherwise. A partially consumed opener remains available for a later closer, so
+    /// arbitrary run lengths peel into nested semantic nodes instead of becoming wholly literal.</summary>
+    private (int[] Closes, int[] DelimiterLengths) BuildEmphasisCloses(string source)
     {
-        var closes = new Dictionary<(char Marker, int Length), int[]>();
-        var openers = new Dictionary<(char Marker, int Length), Stack<int>>();
-
-        foreach (var marker in new[] { '*', '_' })
+        var closes = CreateUnresolvedIndex(source.Length);
+        var delimiterLengths = new int[source.Length];
+        var openers = new Dictionary<char, Stack<(int Index, int Remaining)>>
         {
-            for (var length = 1; length <= 3; length++)
-            {
-                closes[(marker, length)] = CreateUnresolvedIndex(source.Length);
-                openers[(marker, length)] = new Stack<int>();
-            }
-        }
+            ['*'] = new(),
+            ['_'] = new()
+        };
 
         var index = 0;
 
@@ -1078,39 +1078,54 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
             var marker = source[index];
             var runLength = CountRun(source, index, marker);
+            var canOpen = CanOpenEmphasisRun(source, index, runLength, marker);
+            var canClose = CanCloseEmphasisRun(source, index, runLength, marker);
+            var stack = openers[marker];
 
-            if (runLength is >= 1 and <= 3)
+            if (canClose && stack.Count > 0)
             {
-                var key = (marker, runLength);
-                var canOpen = CanOpenEmphasisRun(source, index, runLength, marker);
-                var canClose = CanCloseEmphasisRun(source, index, runLength, marker);
-                var stack = openers[key];
+                var opener = stack.Pop();
+                var delimiterLength = opener.Remaining >= 2 && runLength >= 2 ? 2 : 1;
 
-                if (canClose && stack.Count > 0)
+                // Consume the outer edge of each run. Any markers left between those edges remain
+                // inside the matched slice and are parsed recursively into the next semantic layer.
+                closes[opener.Index] = index + runLength - delimiterLength;
+                delimiterLengths[opener.Index] = delimiterLength;
+                opener.Remaining -= delimiterLength;
+
+                if (opener.Remaining > 0)
                 {
-                    closes[key][stack.Pop()] = index;
+                    stack.Push(opener);
                 }
-                else if (canOpen)
-                {
-                    stack.Push(index);
-                }
+            }
+            else if (canOpen)
+            {
+                stack.Push((index, runLength));
             }
 
             index += runLength;
         }
 
-        return closes;
+        return (closes, delimiterLengths);
     }
 
-    /// <summary>Looks up the position where the delimiter run of <paramref name="marker"/> and exact
-    /// <paramref name="runLength"/> starting at <paramref name="index"/> is closed, per the delimiter
-    /// stack built by <see cref="BuildEmphasisCloses"/>, or -1 if <paramref name="index"/> is not a
-    /// matched opener (including when <paramref name="runLength"/> is outside the 1-3 range this reader
-    /// resolves).</summary>
+    /// <summary>Gets the closing position and consumed delimiter width for an emphasis opener.</summary>
+    /// <param name="matches">The precomputed emphasis matches.</param>
+    /// <param name="index">The candidate opener position.</param>
+    /// <param name="close">The matched closer position, when successful.</param>
+    /// <param name="delimiterLength">The number of markers consumed on each side.</param>
+    /// <returns><see langword="true"/> when <paramref name="index"/> is a matched opener.</returns>
     [Pure]
-    private static int GetEmphasisClose(
-        Dictionary<(char Marker, int Length), int[]> closes, char marker, int runLength, int index) =>
-        runLength is >= 1 and <= 3 ? closes[(marker, runLength)][index] : -1;
+    private static bool TryGetEmphasisClose(
+        (int[] Closes, int[] DelimiterLengths) matches,
+        int index,
+        out int close,
+        out int delimiterLength)
+    {
+        close = matches.Closes[index];
+        delimiterLength = matches.DelimiterLengths[index];
+        return close >= 0;
+    }
 
     [Pure]
     private static int[] CreateUnresolvedIndex(int length)

@@ -115,14 +115,16 @@ delimiter stack: every run in a paragraph is classified once, in one forward
 pass, using the
 [CommonMark 0.31.2 left- and right-flanking rules](https://spec.commonmark.org/0.31.2/#emphasis-and-strong-emphasis),
 and a closer always binds to the nearest still-open opener of the same marker
-and run length. Nested same-marker emphasis therefore resolves its inner pair
-before its enclosing pair - `_foo _bar_ baz_` nests an emphasized `bar` inside
-the outer emphasis rather than the outer opener capturing the inner closer.
-Whitespace cannot sit inside a delimiter boundary; Unicode punctuation and
-symbol categories apply the specified adjacency exceptions; and an invalid
-candidate closer is skipped so a later valid run can close the container.
-Underscores additionally retain the intraword restrictions defined by those
-rules.
+while consuming two markers from each run for strong emphasis when possible and
+one otherwise. Runs longer than three markers peel into nested semantic layers;
+unmatched markers remain literal content. Nested same-marker emphasis therefore
+resolves its inner pair before its enclosing pair - `_foo _bar_ baz_` nests an
+emphasized `bar` inside the outer emphasis rather than the outer opener
+capturing the inner closer. Whitespace cannot sit inside a delimiter boundary;
+Unicode punctuation and symbol categories apply the specified adjacency
+exceptions; and an invalid candidate closer is skipped so a later valid run can
+close the container. Underscores additionally retain the intraword restrictions
+defined by those rules.
 
 Ordered-list markers follow the
 [CommonMark 0.31.2 list-item grammar](https://spec.commonmark.org/0.31.2/#list-items):
