@@ -178,15 +178,20 @@ public abstract class FloatingSurfaceBase: ContentControl
     protected bool CloseSurface(
         [InstantHandle] Action commitClosingState,
         [InstantHandle] Action commitUnavailableState) =>
-        CloseSurfaceCore(commitClosingState, commitUnavailableState, publishClosing: true);
+        CloseSurfaceCore(
+            commitClosingState,
+            commitUnavailableState,
+            publishCloseRequested: true,
+            publishClosing: true);
 
     /// <summary>Completes closure after the concrete surface has already published its closing request.</summary>
     /// <param name="commitClosingState">Commits family state that makes the surface ineligible.</param>
     /// <param name="commitUnavailableState">Makes the family-specific content unavailable.</param>
     /// <returns><see langword="true"/> when a presented surface was closed; otherwise false.</returns>
     /// <remarks>
-    /// This seam avoids a duplicate <see cref="Closing"/> notification while preserving modal exit,
-    /// unavailable-state commit, bounds clearing, and one final <see cref="Closed"/> notification.
+    /// This seam avoids a duplicate <see cref="CloseRequested"/> and a duplicate <see cref="Closing"/>
+    /// notification while preserving modal exit, unavailable-state commit, bounds clearing, and one
+    /// final <see cref="Closed"/> notification.
     /// Cleanup continues after callback failures and rethrows the earliest failure.
     /// </remarks>
     /// <exception cref="ArgumentNullException">A callback is null.</exception>
@@ -198,11 +203,16 @@ public abstract class FloatingSurfaceBase: ContentControl
     private protected bool CloseSurfaceAfterClosingRequest(
         [InstantHandle] Action commitClosingState,
         [InstantHandle] Action commitUnavailableState) =>
-        CloseSurfaceCore(commitClosingState, commitUnavailableState, publishClosing: false);
+        CloseSurfaceCore(
+            commitClosingState,
+            commitUnavailableState,
+            publishCloseRequested: false,
+            publishClosing: false);
 
     private bool CloseSurfaceCore(
         [InstantHandle] Action commitClosingState,
         [InstantHandle] Action commitUnavailableState,
+        bool publishCloseRequested,
         bool publishClosing)
     {
         ArgumentNullException.ThrowIfNull(commitClosingState);
@@ -233,7 +243,7 @@ public abstract class FloatingSurfaceBase: ContentControl
 
         try
         {
-            if (!RaiseCloseRequested())
+            if (publishCloseRequested && !RaiseCloseRequested())
             {
                 return false;
             }

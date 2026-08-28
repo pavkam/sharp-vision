@@ -535,7 +535,10 @@ public sealed class DialogTests
         dialog.IsDisposed.ShouldBeTrue();
     }
 
-    /// <summary>Verifies an observed Escape close request does not duplicate Closing before Closed.</summary>
+    /// <summary>Verifies an observed Escape close request does not duplicate CloseRequested or Closing
+    /// before Closed. The shared close engine publishes the closing request once from the Escape/Window
+    /// path and must not re-raise it when the dialog later completes the close through the seam that
+    /// finishes a closing request already published.</summary>
     [Fact]
     public async Task Escape_WhenDialogIsPresented_PublishesOneClosingAndOneClosedAsync()
     {
@@ -550,11 +553,13 @@ public sealed class DialogTests
             () => pending = MessageBox.ShowAsync(opener, "Ready.", "Status"),
             "present dismissible lifecycle dialog");
         var dialog = OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldNotBeNull();
+        var closeRequested = 0;
         var closing = 0;
         var closed = 0;
         await surface.UpdateAsync(
             () =>
             {
+                dialog.CloseRequested += (_, _) => closeRequested++;
                 dialog.Closing += (_, _) => closing++;
                 dialog.Closed += (_, _) => closed++;
             },
@@ -563,9 +568,42 @@ public sealed class DialogTests
         await surface.Keyboard.PressAsync(Code.Escape);
 
         (await pending!).ShouldBe(MessageBoxResult.Cancel);
+        closeRequested.ShouldBe(1);
         closing.ShouldBe(1);
         closed.ShouldBe(1);
         dialog.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Regression coverage for a shared-close-engine bug: completing an Escape-driven close
+    /// re-raised CloseRequested a second time after the surface's Visibility was already collapsed by
+    /// the first raise. If a handler happened to veto that synthetic second raise, the dialog's awaited
+    /// task never settled even though the surface had already disappeared. Asserts CloseRequested fires
+    /// exactly once and the awaited task actually settles, rather than hanging forever.</summary>
+    [Fact]
+    public async Task Escape_WhenDialogIsPresented_RaisesCloseRequestedOnceAndSettlesTheAwaitedTaskAsync()
+    {
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            TestContext.Current.CancellationToken);
+        Task<MessageBoxResult>? pending = null;
+        await surface.UpdateAsync(
+            () => pending = MessageBox.ShowAsync(opener, "Ready.", "Status"),
+            "present dismissible lifecycle dialog");
+        var dialog = OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldNotBeNull();
+        var closeRequested = 0;
+        await surface.UpdateAsync(
+            () => dialog.CloseRequested += (_, _) => closeRequested++,
+            "observe close-requested notifications");
+
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        var result = await pending!.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        closeRequested.ShouldBe(1);
+        result.ShouldBe(MessageBoxResult.Cancel);
     }
 
     /// <summary>Verifies the ControlBase-based PresentAsync overload throws and leaves the dialog
