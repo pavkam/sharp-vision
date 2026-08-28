@@ -88,7 +88,9 @@ ListView's selection, scrolling, and surface appearance inside the Popup.
   raises `SelectionChanged`. An items binding accepts incremental changes only
   from the current source identity and source-path revision; replacement while
   an old delta is queued or retained across detachment forces a complete
-  replacement snapshot instead.
+  replacement snapshot instead. Every direct or incremental item-domain change
+  invalidates an open navigation snapshot even when all numeric indexes remain
+  in range, so Escape cannot restore a cursor captured for different items.
 - Opening snapshots the accepted `SelectedIndex` and the popup list's current
   row, then seeds provisional current-row navigation from the accepted item.
   Directional, endpoint, and page browsing does not change `SelectedIndex` or

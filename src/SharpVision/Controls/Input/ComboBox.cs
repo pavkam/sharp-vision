@@ -106,7 +106,6 @@ public sealed class ComboBox: InputBase
             // correct post-remap value once the forward returns.
             var wasUnselected = _selectedIndex < 0;
             _list.Items = value;
-            _itemsVersion++;
 
             if (wasUnselected && value.Count > 0)
             {
@@ -669,6 +668,12 @@ public sealed class ComboBox: InputBase
     private void OnListPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
         _ = sender;
+
+        if (eventArgs.PropertyName == nameof(ListView.Items))
+        {
+            _itemsVersion++;
+            return;
+        }
 
         if (_synchronizingSelection ||
             eventArgs.PropertyName != nameof(ListView.SelectedIndex) ||

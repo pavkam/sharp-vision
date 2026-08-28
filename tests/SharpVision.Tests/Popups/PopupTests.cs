@@ -2152,6 +2152,44 @@ public sealed class PopupTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a forced close continuation cannot collapse content belonging to a
+    /// newer open transition started synchronously by the close-state notification.</summary>
+    [Fact]
+    public async Task Visibility_WhenCloseNotificationRestoresAndReopensPopup_PreservesNewOpenContentAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var content = new ProbeControl { IsFocusable = true };
+            var popup = new Popup { Content = content, ModalBehavior = PopupModalBehavior.None };
+            var root = new Overlay { Children = { popup } };
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            popup.IsOpen = true;
+            var reopened = false;
+            popup.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(Popup.IsOpen) && !popup.IsOpen && !reopened)
+                {
+                    reopened = true;
+                    popup.Visibility = Visibility.Visible;
+                    popup.IsOpen = true;
+                }
+            };
+
+            popup.Visibility = Visibility.Collapsed;
+
+            reopened.ShouldBeTrue();
+            popup.IsOpen.ShouldBeTrue();
+            popup.Visibility.ShouldBe(Visibility.Visible);
+            content.Visibility.ShouldBe(Visibility.Visible);
+            modality.Active.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies removing an ancestor of an open popup — not the popup itself — still releases
     /// presentation, so the popup can reopen after the ancestor is reattached instead of permanently
     /// failing FloatingSurfaceBase's already-open guard.</summary>

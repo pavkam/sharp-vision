@@ -248,6 +248,58 @@ public sealed class PopupDropDownCoordinatorTests
         coordinator.SessionGeneration.ShouldBe(3UL);
     }
 
+    /// <summary>Verifies failure cleanup from an older open call cannot exit the modal scope or
+    /// cancel the session created when its DropDownOpened callback closes and reopens.</summary>
+    [Fact]
+    public async Task SetOpen_WhenDropDownOpenedReopensThenThrows_PreservesNewSessionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var owner = new ProbeContainer { IsFocusable = true };
+            var content = new ProbeControl { IsFocusable = true };
+            owner.Children.Add(content);
+            root.Children.Add(owner);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            using var popup = new Popup();
+            var expected = new InvalidOperationException("The stale opening callback failed.");
+            var reopen = true;
+            var cancellations = 0;
+            PopupDropDownCoordinator? coordinator = null;
+            coordinator = Create(
+                owner,
+                popup,
+                content,
+                raiseDropDownOpened: () =>
+                {
+                    if (!reopen)
+                    {
+                        return;
+                    }
+
+                    reopen = false;
+                    coordinator!.SetOpen(false);
+                    coordinator.SetOpen(true);
+                    throw expected;
+                },
+                cancelSession: () => cancellations++);
+
+            var exception = Should.Throw<InvalidOperationException>(() => coordinator.SetOpen(true));
+
+            exception.ShouldBeSameAs(expected);
+            popup.IsOpen.ShouldBeTrue();
+            coordinator.IsOpen.ShouldBeTrue();
+            coordinator.SessionGeneration.ShouldBe(3UL);
+            cancellations.ShouldBe(1);
+            _ = modality.Active.ShouldNotBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a modal-entry failure - here an owner that is not an eligible initial-focus
     /// target - force-closes the popup it had just opened and propagates the failure before
     /// DropDownOpened is ever raised, instead of reporting an open drop-down that never actually

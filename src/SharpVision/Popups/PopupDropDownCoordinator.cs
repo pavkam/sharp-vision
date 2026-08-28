@@ -236,16 +236,20 @@ internal sealed class PopupDropDownCoordinator
         catch (Exception exception)
         {
             var failure = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception);
-            ExceptionAggregation.Capture(_modalTracker.Exit, ref failure);
-
-            if (IsActiveSession(openingGeneration) && _popup.IsOpen)
-            {
-                ExceptionAggregation.Capture(() => _popup.IsOpen = false, ref failure);
-            }
 
             if (IsActiveSession(openingGeneration))
             {
-                ExceptionAggregation.Capture(() => EndSession(restoreOpeningState: true), ref failure);
+                ExceptionAggregation.Capture(_modalTracker.Exit, ref failure);
+
+                if (IsActiveSession(openingGeneration) && _popup.IsOpen)
+                {
+                    ExceptionAggregation.Capture(() => _popup.IsOpen = false, ref failure);
+                }
+
+                if (IsActiveSession(openingGeneration))
+                {
+                    ExceptionAggregation.Capture(() => EndSession(restoreOpeningState: true), ref failure);
+                }
             }
 
             failure!.Throw();
@@ -313,12 +317,24 @@ internal sealed class PopupDropDownCoordinator
     {
         _ = sender;
         _ = eventArgs;
+
+        if (_popup.IsOpen)
+        {
+            return;
+        }
+
+        var closingGeneration = SessionGeneration;
+        var hadActiveSession = _hasActiveSession;
         System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(() => EndSession(restoreOpeningState: true), ref failure);
-        ExceptionAggregation.Capture(_modalTracker.Exit, ref failure);
-        _closeCompletionPending = true;
 
-        if (!_isCloseRequestInProgress)
+        if (!hadActiveSession || SessionGeneration == closingGeneration + 1)
+        {
+            ExceptionAggregation.Capture(_modalTracker.Exit, ref failure);
+            _closeCompletionPending = true;
+        }
+
+        if (_closeCompletionPending && !_isCloseRequestInProgress)
         {
             ExceptionAggregation.Capture(PublishCloseCompletion, ref failure);
         }

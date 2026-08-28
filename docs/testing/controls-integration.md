@@ -190,17 +190,21 @@ real `Application`, then drives a
 through terminal keyboard and pointer reports. `ComboBoxSurfaceTests` proves
 initial and repeat movement exactly once while focus remains on the owner,
 Escape and light-dismiss rollback, unavailability rollback, Enter and pointer
-acceptance, and replacement-session survival. `CommandPaletteSurfaceTests`
-proves every initial and repeated list-navigation key exactly once while focus
-remains in the editor, plus Escape, `Close()`, `IsOpen = false`, light-dismiss,
-and unavailability rollback. `DateInputSurfaceTests` proves Calendar-focused
-initial and repeat movement, Enter, Space, and pointer acceptance, and Escape,
-direct-close, light-dismiss, and owner-unavailability rollback.
-`DateTimeInputSurfaceTests` proves the same Calendar-focused movement and
-acceptance while preserving time ticks and kind, plus Escape, direct-close,
-light-dismiss, and owner-unavailability rollback. Both date fixtures also prove
-replacement-session survival. The detached target fixtures supplement this
-mounted matrix with exhaustive key semantics and focus-independent delegation.
+acceptance and replacement-session survival. ComboBox binding fixtures also
+prove cancellation after incremental bound-item domain replacement. Popup
+lifecycle fixtures prove that forced-close and failed-open cleanup cannot mutate
+a synchronously reopened presentation or modal session.
+`CommandPaletteSurfaceTests` proves every initial and repeated list-navigation
+key exactly once while focus remains in the editor, plus Escape, `Close()`,
+`IsOpen = false`, light-dismiss, and unavailability rollback.
+`DateInputSurfaceTests` proves Calendar-focused initial and repeat movement,
+Enter, Space, and pointer acceptance, and Escape, direct-close, light-dismiss,
+and owner-unavailability rollback. `DateTimeInputSurfaceTests` proves the same
+Calendar-focused movement and acceptance while preserving time ticks and kind,
+plus Escape, direct-close, light-dismiss, and owner-unavailability rollback.
+Both date fixtures also prove replacement-session survival. The detached target
+fixtures supplement this mounted matrix with exhaustive key semantics and
+focus-independent delegation.
 
 `ComponentCompositionSurfaceTests` places heterogeneous controls on one root and
 drives forward and reverse Tab, local arrow behavior, hover transfer, and press

@@ -156,7 +156,11 @@ unavailability, detachment, and disposal restore the opening target state and
 leave the owner's accepted value unchanged. Restoration runs once even when a
 close path reenters another lifecycle callback. If a callback closes and reopens
 the popup, the reopening creates a distinct session; completion or rollback from
-the older session cannot close or overwrite the newer one.
+the older session cannot close or overwrite the newer one. A snapshot also
+expires when the target's semantic item domain changes, including an incremental
+bound-collection delta whose numeric indexes remain stable; cancellation rebases
+to current accepted state instead of applying an index captured for different
+items.
 
 ## Ownership, elevation, and modality
 

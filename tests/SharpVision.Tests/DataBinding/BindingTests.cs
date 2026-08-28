@@ -1245,6 +1245,32 @@ public sealed partial class BindingTests
         target.SelectedItem.ShouldBeSameAs(third);
     }
 
+    /// <summary>Verifies an incremental item replacement invalidates the ComboBox's opening
+    /// navigation snapshot even when neither the selected nor current numeric index changes.</summary>
+    [Fact]
+    public void BindItems_WhenOpenComboItemDomainChanges_EscapeDoesNotRestoreStaleCurrentIndex()
+    {
+        var first = new BindingItem("A");
+        var source = new ObservableCollection<BindingItem> { first, new("B") };
+        var model = new BindingModel { Items = source };
+        var target = new ComboBox { DropDownHeight = 4 };
+        using var binding = target.BindItems(model, value => value.Items);
+        target.SelectedIndex = -1;
+        target.GetDropDownList().SetProvisionalCurrentIndex(0);
+        target.IsOpen = true;
+        var list = target.GetDropDownList();
+
+        source[0] = new BindingItem("Replacement");
+        _ = Router.Route(
+            target,
+            Events.Key,
+            new KeyEventArgs(new Stroke(Code.Escape, null, 0, Modifiers.None, KeyAction.Press)));
+
+        target.IsOpen.ShouldBeFalse();
+        target.SelectedIndex.ShouldBe(-1);
+        list.ActiveIndex.ShouldBe(-1);
+    }
+
     /// <summary>Verifies a later arrange pass does not force-write ComboBox's stale cached
     /// SelectedIndex back onto the private drop-down list, corrupting the list's own
     /// already-correct post-shift selection — the actual failure mode reported against this
