@@ -73,6 +73,12 @@ classDiagram
 render invalidation is marshaled to the owning dispatcher and is valid only for
 that exact attachment generation. Detachment discards queued invalidation from
 the former dispatcher, and notifications received while detached are inert.
+Command replacement uses reference identity and reconciles one exact borrowed
+event handler before publishing `PropertyChanged`. Nested replacement from a
+property callback or event accessor is latest-wins; a superseded candidate is
+detached, and a failed add or remove remains retryable without duplicating the
+winning subscription. Assigning the identical healthy command reference is
+silent and does not touch its event accessors.
 
 `EnablePopup` accepts the popup's content control, its preferred
 `PopupPlacement` (default `Below`), whether opening transfers focus to the first

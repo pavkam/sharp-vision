@@ -3291,6 +3291,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <param name="value">The validated replacement value.</param>
     /// <param name="impact">The validated earliest affected phase.</param>
     /// <param name="synchronize">Updates retained state derived from the committed value.</param>
+    /// <param name="comparer">The optional equality policy for both the commit gate and currentness check.</param>
     /// <param name="propertyName">The non-empty property name supplied by the compiler.</param>
     /// <returns>Whether a changed value was committed.</returns>
     /// <remarks>
@@ -3311,6 +3312,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         T value,
         InvalidationImpact impact,
         Action synchronize,
+        IEqualityComparer<T>? comparer = null,
         [CallerMemberName] string? propertyName = null)
     {
         ArgumentNullException.ThrowIfNull(synchronize);
@@ -3318,7 +3320,9 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         ArgumentException.ThrowIfNullOrEmpty(propertyName);
         VerifyMutable();
 
-        if (EqualityComparer<T>.Default.Equals(field, value))
+        comparer ??= EqualityComparer<T>.Default;
+
+        if (comparer.Equals(field, value))
         {
             return false;
         }
@@ -3333,7 +3337,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         ExceptionAggregation.Capture(synchronize, ref failure);
 
         if (_synchronizedPropertyVersions[propertyName] == version &&
-            EqualityComparer<T>.Default.Equals(field, value))
+            comparer.Equals(field, value))
         {
             ExceptionAggregation.Capture(
                 () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)),

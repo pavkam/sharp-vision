@@ -474,6 +474,268 @@ public sealed class InputBaseTests
         next.HasCanExecuteChangedSubscribers.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a PropertyChanged replacement supersedes the interrupted command
+    /// transition without duplicating the final command subscription.</summary>
+    [Fact]
+    public void Command_WhenPropertyChangedReplacesCandidate_SubscribesOnlyFinalCommand()
+    {
+        var candidate = new ProbeCommand();
+        var winner = new ProbeCommand();
+        var control = new ProbePressable();
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(InputBase.Command) &&
+                ReferenceEquals(control.Command, candidate))
+            {
+                control.Command = winner;
+            }
+        };
+
+        control.Command = candidate;
+
+        candidate.AddCount.ShouldBe(1);
+        candidate.RemoveCount.ShouldBe(1);
+        candidate.SubscriberCount.ShouldBe(0);
+        winner.AddCount.ShouldBe(1);
+        winner.SubscriberCount.ShouldBe(1);
+
+        control.Dispose();
+
+        winner.RemoveCount.ShouldBe(1);
+        winner.SubscriberCount.ShouldBe(0);
+    }
+
+    /// <summary>Verifies multiple nested property replacements settle on one subscription to the
+    /// final committed command.</summary>
+    [Fact]
+    public void Command_WhenPropertyChangedReplacesMultipleTimes_SubscribesOnlyLastWinner()
+    {
+        var first = new ProbeCommand();
+        var second = new ProbeCommand();
+        var third = new ProbeCommand();
+        var control = new ProbePressable();
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName != nameof(InputBase.Command))
+            {
+                return;
+            }
+
+            if (ReferenceEquals(control.Command, first))
+            {
+                control.Command = second;
+            }
+            else if (ReferenceEquals(control.Command, second))
+            {
+                control.Command = third;
+            }
+        };
+
+        control.Command = first;
+
+        first.SubscriberCount.ShouldBe(0);
+        second.SubscriberCount.ShouldBe(0);
+        third.SubscriberCount.ShouldBe(1);
+        third.AddCount.ShouldBe(1);
+    }
+
+    /// <summary>Verifies add-accessor reentry cannot leave its superseded candidate subscribed.</summary>
+    [Fact]
+    public void Command_WhenCandidateAddReentersWithWinner_SubscribesOnlyWinner()
+    {
+        var candidate = new ProbeCommand();
+        var winner = new ProbeCommand();
+        var control = new ProbePressable();
+        candidate.Adding = () =>
+        {
+            candidate.Adding = null;
+            control.Command = winner;
+        };
+
+        control.Command = candidate;
+
+        control.Command.ShouldBeSameAs(winner);
+        candidate.SubscriberCount.ShouldBe(0);
+        winner.SubscriberCount.ShouldBe(1);
+    }
+
+    /// <summary>Verifies remove-accessor reentry supersedes the interrupted replacement instead of
+    /// allowing that stale outer setter to overwrite the winner.</summary>
+    [Fact]
+    public void Command_WhenCurrentRemoveReentersWithWinner_PreservesWinner()
+    {
+        var previous = new ProbeCommand();
+        var interrupted = new ProbeCommand();
+        var winner = new ProbeCommand();
+        var control = new ProbePressable { Command = previous };
+        previous.Removing = () =>
+        {
+            previous.Removing = null;
+            control.Command = winner;
+        };
+
+        control.Command = interrupted;
+
+        control.Command.ShouldBeSameAs(winner);
+        previous.SubscriberCount.ShouldBe(0);
+        interrupted.SubscriberCount.ShouldBe(0);
+        winner.SubscriberCount.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a failed add remains uncommitted and a same-value retry installs one
+    /// subscription without publishing another property transition.</summary>
+    [Fact]
+    public void Command_WhenCandidateAddThrows_SameValueRetrySubscribesOnce()
+    {
+        var command = new ProbeCommand { ThrowOnNextAdd = true };
+        var control = new ProbePressable();
+        var propertyChanges = 0;
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(InputBase.Command))
+            {
+                propertyChanges++;
+            }
+        };
+
+        _ = Should.Throw<InvalidOperationException>(() => control.Command = command);
+        command.SubscriberCount.ShouldBe(0);
+        propertyChanges.ShouldBe(1);
+
+        control.Command = command;
+
+        command.SubscriberCount.ShouldBe(1);
+        propertyChanges.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a candidate handler registered before an add failure is compensated so a
+    /// same-reference retry cannot duplicate it.</summary>
+    [Fact]
+    public void Command_WhenCandidateAddThrowsAfterRegistration_RetrySubscribesOnce()
+    {
+        var command = new ProbeCommand { ThrowAfterNextAdd = true };
+        var control = new ProbePressable();
+
+        _ = Should.Throw<InvalidOperationException>(() => control.Command = command);
+        command.SubscriberCount.ShouldBe(0);
+
+        control.Command = command;
+
+        command.SubscriberCount.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a failed old-source removal keeps its tracked subscription retryable while
+    /// the new public command remains authoritative.</summary>
+    [Fact]
+    public void Command_WhenCurrentRemoveThrows_SameValueRetryReconcilesWinner()
+    {
+        var previous = new ProbeCommand();
+        var winner = new ProbeCommand();
+        var control = new ProbePressable { Command = previous };
+        previous.ThrowOnNextRemove = true;
+
+        _ = Should.Throw<InvalidOperationException>(() => control.Command = winner);
+        control.Command.ShouldBeSameAs(winner);
+        previous.SubscriberCount.ShouldBe(1);
+        winner.SubscriberCount.ShouldBe(0);
+
+        control.Command = winner;
+
+        previous.SubscriberCount.ShouldBe(0);
+        winner.SubscriberCount.ShouldBe(1);
+    }
+
+    /// <summary>Verifies disposal retries every tracked removal after replacement reported a
+    /// cleanup failure.</summary>
+    [Fact]
+    public void Dispose_WhenCommandRemovalPreviouslyFailed_ReleasesRetiredSubscription()
+    {
+        var previous = new ProbeCommand();
+        var winner = new ProbeCommand();
+        var control = new ProbePressable { Command = previous };
+        previous.ThrowOnNextRemove = true;
+        _ = Should.Throw<InvalidOperationException>(() => control.Command = winner);
+
+        control.Dispose();
+
+        previous.SubscriberCount.ShouldBe(0);
+        winner.SubscriberCount.ShouldBe(0);
+    }
+
+    /// <summary>Verifies assigning the identical healthy command reference neither publishes nor
+    /// churns its established event subscription.</summary>
+    [Fact]
+    public void Command_WhenSameReferenceAssigned_DoesNotChurnSubscription()
+    {
+        var command = new ProbeCommand();
+        var control = new ProbePressable { Command = command };
+        var propertyChanges = 0;
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(InputBase.Command))
+            {
+                propertyChanges++;
+            }
+        };
+
+        control.Command = command;
+
+        command.AddCount.ShouldBe(1);
+        command.RemoveCount.ShouldBe(0);
+        propertyChanges.ShouldBe(0);
+    }
+
+    /// <summary>Verifies mutable command objects use reference identity even when their custom
+    /// equality implementation reports two distinct instances as equal.</summary>
+    [Fact]
+    public void Command_WhenDistinctInstancesCompareEqual_CommitsReplacement()
+    {
+        var previous = new ProbeCommand { EqualsOtherCommands = true };
+        var replacement = new ProbeCommand { EqualsOtherCommands = true };
+        var control = new ProbePressable { Command = previous };
+
+        control.Command = replacement;
+
+        control.Command.ShouldBeSameAs(replacement);
+        previous.SubscriberCount.ShouldBe(0);
+        replacement.SubscriberCount.ShouldBe(1);
+    }
+
+    /// <summary>Verifies replacing a command with null removes the one established subscription.</summary>
+    [Fact]
+    public void Command_WhenReplacedWithNull_UnsubscribesPrevious()
+    {
+        var command = new ProbeCommand();
+        var control = new ProbePressable { Command = command };
+
+        control.Command = null;
+
+        control.Command.ShouldBeNull();
+        command.SubscriberCount.ShouldBe(0);
+        command.RemoveCount.ShouldBe(1);
+    }
+
+    /// <summary>Verifies dispatcher and disposal validation reject replacement before touching any
+    /// command event accessor.</summary>
+    [Fact]
+    public async Task Command_WhenMutationIsInvalid_DoesNotTouchSubscriptionsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var current = new ProbeCommand();
+        var rejected = new ProbeCommand();
+        var control = new ProbePressable { Command = current };
+        await dispatcher.InvokeAsync(() => control.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => control.Command = rejected);
+        current.SubscriberCount.ShouldBe(1);
+        rejected.AddCount.ShouldBe(0);
+
+        await dispatcher.InvokeAsync(control.Dispose, TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<ObjectDisposedException>(() => control.Command = rejected);
+        rejected.AddCount.ShouldBe(0);
+    }
+
     /// <summary>Verifies disposing a control with an assigned Command unsubscribes CanExecuteChanged
     /// exactly once, leaving no dangling subscription.</summary>
     [Fact]

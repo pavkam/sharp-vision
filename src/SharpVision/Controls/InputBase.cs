@@ -3,6 +3,7 @@
 
 namespace SharpVision.Controls;
 
+using System.Runtime.ExceptionServices;
 using System.Windows.Input;
 
 using Popups;
@@ -253,6 +254,9 @@ public abstract class InputBase: ControlBase
 
     private bool _commandEnabled;
     private ICommand? _command;
+    private readonly List<(ICommand Command, EventHandler Handler)> _retiredCommandSubscriptions = [];
+    private ICommand? _subscribedCommand;
+    private EventHandler? _subscribedCommandHandler;
 
     /// <summary>Opts into an optional command a concrete control invokes on activation, exposed
     /// through <see cref="Command"/> and <see cref="CommandParameter"/>.</summary>
@@ -269,9 +273,14 @@ public abstract class InputBase: ControlBase
         _commandEnabled = true;
     }
 
-    /// <summary>Gets or sets the optional command a concrete control invokes on activation.</summary>
+    /// <summary>Gets or sets the borrowed optional command a concrete control invokes on activation.</summary>
+    /// <remarks>
+    /// Replacement publishes only after the event subscription has been reconciled. Reentrant
+    /// replacement is latest-wins, and event-accessor failures retain enough subscription identity
+    /// for a same-reference assignment or disposal to retry cleanup deterministically.
+    /// </remarks>
     /// <exception cref="InvalidOperationException">The command capability is not enabled, or the
-    /// attached control is mutated off-dispatcher.</exception>
+    /// attached control is mutated off-dispatcher; a command event accessor may also report this exception.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public ICommand? Command
     {
@@ -287,14 +296,18 @@ public abstract class InputBase: ControlBase
 
             VerifyMutable();
 
-            if (EqualityComparer<ICommand?>.Default.Equals(_command, value))
+            if (ReferenceEquals(_command, value))
             {
+                ReconcileCommandSubscription();
                 return;
             }
 
-            _command?.CanExecuteChanged -= OnCanExecuteChanged;
-            _ = SetProperty(ref _command, value, InvalidationImpact.Render);
-            _command?.CanExecuteChanged += OnCanExecuteChanged;
+            _ = SetPropertyAndSynchronize(
+                ref _command,
+                value,
+                InvalidationImpact.Render,
+                ReconcileCommandSubscription,
+                ReferenceEqualityComparer.Instance);
         }
     }
 
@@ -350,12 +363,14 @@ public abstract class InputBase: ControlBase
         }
     }
 
-    private void OnCanExecuteChanged(object? sender, EventArgs eventArgs)
+    private void OnCanExecuteChanged(ICommand source, object? sender, EventArgs eventArgs)
     {
         _ = sender;
         _ = eventArgs;
 
-        if (IsDisposed)
+        if (IsDisposed ||
+            !ReferenceEquals(source, _command) ||
+            !ReferenceEquals(source, _subscribedCommand))
         {
             return;
         }
@@ -604,6 +619,136 @@ public abstract class InputBase: ControlBase
         }
     }
 
+    /// <summary>Reconciles exactly one event handler to the still-current borrowed command.</summary>
+    private void ReconcileCommandSubscription()
+    {
+        while (true)
+        {
+            var desired = IsDisposed ? null : _command;
+
+            if (ReferenceEquals(_subscribedCommand, desired))
+            {
+                return;
+            }
+
+            if (_subscribedCommand is { } subscribed)
+            {
+                var subscribedHandler = _subscribedCommandHandler;
+                Debug.Assert(subscribedHandler is not null, "A tracked command always owns its exact handler.");
+
+                try
+                {
+                    subscribed.CanExecuteChanged -= subscribedHandler;
+                }
+                catch
+                {
+                    TrackRetiredCommandSubscription(subscribed, subscribedHandler);
+                    throw;
+                }
+
+                if (ReferenceEquals(_subscribedCommand, subscribed) &&
+                    _subscribedCommandHandler == subscribedHandler)
+                {
+                    _subscribedCommand = null;
+                    _subscribedCommandHandler = null;
+                }
+
+                UntrackRetiredCommandSubscription(subscribed, subscribedHandler);
+                continue;
+            }
+
+            if (desired is null)
+            {
+                return;
+            }
+
+            void CandidateHandler(object? sender, EventArgs eventArgs) =>
+                OnCanExecuteChanged(desired, sender, eventArgs);
+
+            EventHandler candidateHandler = CandidateHandler;
+
+            try
+            {
+                desired.CanExecuteChanged += candidateHandler;
+            }
+            catch
+            {
+                try
+                {
+                    desired.CanExecuteChanged -= candidateHandler;
+                }
+                catch
+                {
+                    TrackRetiredCommandSubscription(desired, candidateHandler);
+                }
+
+                throw;
+            }
+
+            if (!IsDisposed &&
+                ReferenceEquals(_command, desired) &&
+                _subscribedCommand is null)
+            {
+                _subscribedCommand = desired;
+                _subscribedCommandHandler = candidateHandler;
+                return;
+            }
+
+            try
+            {
+                desired.CanExecuteChanged -= candidateHandler;
+            }
+            catch
+            {
+                TrackRetiredCommandSubscription(desired, candidateHandler);
+                throw;
+            }
+        }
+    }
+
+    /// <summary>Records a handler whose remove accessor did not complete successfully.</summary>
+    private void TrackRetiredCommandSubscription(ICommand command, EventHandler handler)
+    {
+        if (!_retiredCommandSubscriptions.Any(candidate =>
+                ReferenceEquals(candidate.Command, command) && candidate.Handler == handler))
+        {
+            _retiredCommandSubscriptions.Add((command, handler));
+        }
+    }
+
+    /// <summary>Forgets a retired handler after a later removal completes successfully.</summary>
+    private void UntrackRetiredCommandSubscription(ICommand command, EventHandler handler) =>
+        _retiredCommandSubscriptions.RemoveAll(candidate =>
+            ReferenceEquals(candidate.Command, command) && candidate.Handler == handler);
+
+    /// <summary>Detaches every known command handler while retaining the first accessor failure.</summary>
+    private void ReleaseCommandSubscriptions()
+    {
+        var subscriptions = _retiredCommandSubscriptions.ToList();
+
+        if (_subscribedCommand is { } subscribed &&
+            _subscribedCommandHandler is { } subscribedHandler &&
+            !subscriptions.Any(candidate =>
+                ReferenceEquals(candidate.Command, subscribed) && candidate.Handler == subscribedHandler))
+        {
+            subscriptions.Add((subscribed, subscribedHandler));
+        }
+
+        _subscribedCommand = null;
+        _subscribedCommandHandler = null;
+        _retiredCommandSubscriptions.Clear();
+        ExceptionDispatchInfo? failure = null;
+
+        foreach (var subscription in subscriptions)
+        {
+            ExceptionAggregation.Capture(
+                () => subscription.Command.CanExecuteChanged -= subscription.Handler,
+                ref failure);
+        }
+
+        failure?.Throw();
+    }
+
     /// <summary>Gets the current owned-popup request version for continuation validation.</summary>
     internal ulong PopupTransitionVersion => _popupCoordinator is { } coordinator
         ? coordinator.TransitionVersion
@@ -652,9 +797,11 @@ public abstract class InputBase: ControlBase
 
         if (reason == ReleaseReason.Disposed)
         {
-            _popupCoordinator?.Detach();
-            _command?.CanExecuteChanged -= OnCanExecuteChanged;
             _command = null;
+            ExceptionDispatchInfo? failure = null;
+            ExceptionAggregation.Capture(() => _popupCoordinator?.Detach(), ref failure);
+            ExceptionAggregation.Capture(ReleaseCommandSubscriptions, ref failure);
+            failure?.Throw();
         }
     }
 

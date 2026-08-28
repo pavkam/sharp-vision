@@ -359,6 +359,12 @@ configured visible-row cap. Deterministic dialog tests prove filters, hidden
 toggling, multiple selection, directory invocation, recoverable failure
 retention, and late stale-generation rejection.
 
+InputBase command tests use counting, throwing, and synchronously reentrant
+`ICommand` event accessors. They prove nested property and accessor replacement
+settles on one final subscription, superseded candidates are removed, failed
+add/remove operations remain retryable, same-reference assignment does not
+churn, and disposal exhaustively releases every known handler.
+
 ## Data-binding proof
 
 Binding tests cover scalar modes, nested replacement and null recovery,

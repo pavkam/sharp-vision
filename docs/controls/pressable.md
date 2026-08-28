@@ -70,11 +70,14 @@ is shared. The shipped controls capture the bound command and parameter at
 activation entry, so an event handler that swaps or clears `Command`
 mid-activation cannot redirect that activation; the protected
 `ExecuteCommandIfAny()` seam deliberately keeps live lookup for third-party
-derivatives. A concrete `Activate` override decides whether and how `Command`
-factors into its own semantics - `Button` and `HyperlinkButton` check
-`CanExecute` and call `Execute` after their `Click` event; toggles and menu
-items that have not called `EnableCommand` simply never expose the property at
-all.
+derivatives. Replacement reconciles one exact `CanExecuteChanged` handler before
+publishing the property transition. Reentrant callbacks select the latest
+command, and failed event accessors retain retryable cleanup identity instead of
+leaking or duplicating the winner. A concrete `Activate` override decides
+whether and how `Command` factors into its own semantics - `Button` and
+`HyperlinkButton` check `CanExecute` and call `Execute` after their `Click`
+event; toggles and menu items that have not called `EnableCommand` simply never
+expose the property at all.
 
 ## Interaction
 
