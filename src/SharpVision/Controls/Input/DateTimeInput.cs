@@ -232,8 +232,8 @@ public sealed class DateTimeInput: InputBase
     /// When set, the pattern's own token runs - not <see cref="Culture"/>'s date pattern or
     /// <see cref="Use24HourFormat"/>/<see cref="ShowSeconds"/> - determine the segment order and
     /// count; pair a 12-hour <c>h</c>/<c>hh</c> hour token with a <c>t</c>/<c>tt</c> AM/PM
-    /// designator token for correct 12-hour clamping, since a 12-hour hour token without a
-    /// designator token is treated as a 24-hour segment for editing purposes.
+    /// designator token for correct 12-hour clamping and rendering, since a lowercase hour token
+    /// without a designator token is treated as a 24-hour segment for both editing and display.
     /// </remarks>
     /// <exception cref="ArgumentException">The value is empty, or cannot be rendered by a <see cref="DateTime"/> under <see cref="Culture"/>.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -835,6 +835,8 @@ public sealed class DateTimeInput: InputBase
     /// untouched.</summary>
     private void EnsureSeeded()
     {
+        ObjectDisposedException.ThrowIf(IsDisposed, this);
+
         if (_seeded)
         {
             return;
@@ -988,8 +990,9 @@ public sealed class DateTimeInput: InputBase
 
         if (_value is { } dt)
         {
+            var renderingPattern = hasAmPm ? pattern : NormalizeDesignatorlessHourPattern(pattern);
             text = TemporalPatternSegmenter.FormatSegments(
-                pattern,
+                renderingPattern,
                 tokens,
                 _tokenKinds,
                 format => dt.ToString(format, _culture));
@@ -1032,6 +1035,37 @@ public sealed class DateTimeInput: InputBase
         }
 
         return descriptors;
+    }
+
+    /// <summary>Rewrites unquoted lowercase hour tokens to their 24-hour equivalents when the
+    /// pattern has no AM/PM designator, keeping rendering consistent with segment editing.</summary>
+    [Pure]
+    private static string NormalizeDesignatorlessHourPattern(string pattern)
+    {
+        var normalized = new StringBuilder(pattern.Length);
+        var quote = '\0';
+
+        for (var index = 0; index < pattern.Length; index++)
+        {
+            var character = pattern[index];
+
+            if (character == '\\' && index + 1 < pattern.Length)
+            {
+                _ = normalized.Append(character).Append(pattern[++index]);
+                continue;
+            }
+
+            if (character is '\'' or '"')
+            {
+                quote = quote == '\0' ? character : quote == character ? '\0' : quote;
+                _ = normalized.Append(character);
+                continue;
+            }
+
+            _ = normalized.Append(quote == '\0' && character == 'h' ? 'H' : character);
+        }
+
+        return normalized.ToString();
     }
 
 #pragma warning disable IDE0072 // Every segment kind is individually handled.

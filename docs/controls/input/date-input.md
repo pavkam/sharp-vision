@@ -22,6 +22,10 @@ quoted or escaped literals remain display text and never become editable
 segments. When a format contains no editable segments, segment-editing keys are
 left unhandled while popup and clearing commands remain available.
 
+`Culture` accepts only cultures whose active calendar is Gregorian, keeping the
+typed field's formatted segments, Gregorian `DateOnly` arithmetic, and the owned
+Calendar popup on one calendar system.
+
 `DateInput` derives from [`InputBase`](../input-base.md#overview), enabling
 press activation, an owned Calendar popup, and segment editing. It shares its
 active-segment navigation, digit-entry buffering, and pointer hit-testing engine
@@ -48,7 +52,7 @@ classDiagram
 | ---------------------------------- | ---------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `Value`                            | `DateOnly?`                                    | current local date                              | The nullable committed date, clamped to the inclusive bounds.                                                            |
 | `AllowNull`                        | `bool`                                         | `true`                                          | Allows clearing the value; disabling it repairs a null value.                                                            |
-| `Culture`                          | `CultureInfo`                                  | current Gregorian culture or invariant fallback | Supplies the segment order and formatting.                                                                               |
+| `Culture`                          | `CultureInfo`                                  | current Gregorian culture or invariant fallback | Supplies the segment order and formatting; rejects cultures whose active calendar is not Gregorian.                      |
 | `Format`                           | `string`                                       | `"d"`                                           | A non-null, non-empty date format string.                                                                                |
 | `Minimum`                          | `DateOnly`                                     | `DateOnly.MinValue`                             | The inclusive lower bound that repairs the current value.                                                                |
 | `Maximum`                          | `DateOnly`                                     | `DateOnly.MaxValue`                             | The inclusive upper bound that repairs the current value.                                                                |
@@ -93,3 +97,5 @@ var dateInput = new DateInput();
 - Direct digit entry follows the shared
   [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy),
   leaving command-modified characters unhandled without changing a segment.
+- Reading `Value` after disposal always throws, including every read after a
+  failed attempt to seed the lazy default.

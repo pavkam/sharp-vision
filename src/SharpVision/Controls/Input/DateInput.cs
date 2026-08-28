@@ -20,8 +20,7 @@ public sealed class DateInput: InputBase
     // The indicator cell (InputBase.DropDownIndicatorWidth) plus its one-cell separating gap.
     private const int _indicatorReservedWidth = 2;
 
-    // Every supported calendar - including the narrowest, UmAlQuraCalendar
-    // (max 2077-11-16) - can represent this date, unlike DateOnly.MaxValue.
+    // A stable, representative date used to validate candidate formatting patterns.
     private static readonly DateOnly _probeDate = DateOnly.FromDateTime(DateTime.UnixEpoch);
 
     private static readonly IReadOnlyDictionary<char, TemporalSegmentKind> _tokenKinds =
@@ -171,7 +170,7 @@ public sealed class DateInput: InputBase
 
     /// <summary>Gets or sets the Gregorian culture used for date formatting and segment order.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
-    /// <exception cref="ArgumentException">The current <see cref="Format"/> cannot be rendered by a <see cref="DateOnly"/> under this culture.</exception>
+    /// <exception cref="ArgumentException">The culture's active calendar is not Gregorian, or the current <see cref="Format"/> cannot be rendered by a <see cref="DateOnly"/> under this culture.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public CultureInfo Culture
@@ -180,6 +179,13 @@ public sealed class DateInput: InputBase
         set
         {
             ArgumentNullException.ThrowIfNull(value);
+
+            if (value.DateTimeFormat.Calendar is not GregorianCalendar)
+            {
+                throw new ArgumentException(
+                    "DateInput requires a Gregorian display culture.", nameof(value));
+            }
+
             VerifyMutable();
 
             if (ReferenceEquals(_culture, value))
@@ -191,9 +197,7 @@ public sealed class DateInput: InputBase
                 Format, value, nameof(value), "DateOnly", static (f, c) => _probeDate.ToString(f, c));
 
             _culture = value;
-            _calendar.Culture = value.DateTimeFormat.Calendar is GregorianCalendar
-                ? value
-                : CultureInfo.InvariantCulture;
+            _calendar.Culture = value;
             NotifyPropertyChanged(nameof(Culture), InvalidationImpact.Measure);
         }
     }
@@ -932,9 +936,7 @@ public sealed class DateInput: InputBase
 
         try
         {
-            _calendar.Culture = _culture.DateTimeFormat.Calendar is GregorianCalendar
-                ? _culture
-                : CultureInfo.InvariantCulture;
+            _calendar.Culture = _culture;
             _calendar.MinimumDate = Minimum;
             _calendar.MaximumDate = Maximum;
 
@@ -960,6 +962,8 @@ public sealed class DateInput: InputBase
     /// untouched.</summary>
     private void EnsureSeeded()
     {
+        ObjectDisposedException.ThrowIf(IsDisposed, this);
+
         if (_seeded)
         {
             return;

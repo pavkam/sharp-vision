@@ -168,6 +168,35 @@ public sealed class DateTimeInputSurfaceTests
         input.Value.Value.Hour.ShouldBe(15);
     }
 
+    /// <summary>Verifies a designator-less lowercase hour token renders the same 24-hour digits
+    /// that segment editing accepts and commits.</summary>
+    [Fact]
+    public async Task Keyboard_WhenLowercaseHourHasNoDesignator_RendersCommittedDigitsAsync()
+    {
+        // Arrange
+        var input = new DateTimeInput
+        {
+            Format = "yyyy-MM-dd hh:mm",
+            Value = new DateTime(2026, 7, 19, 0, 0, 0)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(30, 3),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Right);
+        await surface.Keyboard.PressAsync(Code.Right);
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        // Act
+        await surface.Keyboard.TypeAsync("15");
+
+        // Assert
+        input.Value.ShouldNotBeNull().Hour.ShouldBe(15);
+        surface.Cell(new Point(12, 1)).Text.ShouldBe("1");
+        surface.Cell(new Point(13, 1)).Text.ShouldBe("5");
+    }
+
     /// <summary>Verifies navigating Right four times reaches the minute segment.</summary>
     [Fact]
     public async Task Keyboard_WhenNavigatedToMinute_IncrementsMinuteAsync()

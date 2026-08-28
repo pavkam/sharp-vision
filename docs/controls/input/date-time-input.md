@@ -35,8 +35,9 @@ already select, localizing only its separator, AM/PM designator text, and digit
 glyphs. Set `Format` to a custom combined pattern (for example
 `"yyyy/MM/dd hh:mm tt"`) to override that structure directly; pair a 12-hour
 `h`/`hh` hour token with a `t`/`tt` AM/PM designator token for correct 12-hour
-clamping, since a 12-hour hour token without a designator is treated as a
-24-hour segment for editing purposes.
+clamping and rendering. A lowercase hour token without a designator is treated
+as a 24-hour segment for both editing and display, so committed values above 12
+round-trip through the visible digits unchanged.
 
 Disabling `AllowNull` repairs an existing null only if that policy remains live
 after `PropertyChanged`. A synchronous observer that restores `AllowNull`
@@ -104,3 +105,5 @@ var dateTimeInput = new DateTimeInput { TimeStep = TimeSpan.FromMinutes(15) };
 - Direct digit and AM/PM entry follows the shared
   [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy),
   leaving command-modified characters unhandled without changing a segment.
+- Reading `Value` after disposal always throws, including every read after a
+  failed attempt to seed the lazy default.

@@ -373,42 +373,22 @@ public sealed class DateInputTests
         Should.NotThrow(() => control.Render(frame.Canvas));
     }
 
-    /// <summary>Verifies a culture whose default calendar cannot represent DateOnly.MaxValue is still
-    /// assignable: the probe date must be representable by every supported calendar, not just the
-    /// Gregorian range, since UmAlQuraCalendar's max supported date (2077-11-16) is exceeded by
-    /// DateOnly.MaxValue (9999-12-31), which previously rejected these otherwise-valid cultures
-    /// with an internal ArgumentOutOfRangeException instead of laying out correctly.</summary>
+    /// <summary>Verifies a culture whose active calendar is not Gregorian is rejected before the
+    /// field and its owned Calendar can render or edit the same value under different calendars.</summary>
     [Theory]
     [InlineData("ar-SA")]
     [InlineData("en-SA")]
-    public void Culture_WhenDefaultCalendarCannotRepresentDateOnlyMaxValue_IsAssignable(string cultureName)
+    public void Culture_WhenCalendarIsNotGregorian_ThrowsAndPreservesCulture(string cultureName)
     {
         // Arrange
         using var control = new DateInput { Value = new DateOnly(2026, 7, 19) };
         var culture = new CultureInfo(cultureName);
+        var previous = control.Culture;
 
         // Act and assert
-        _ = Should.NotThrow(() => control.Culture = culture);
-        control.Culture.ShouldBeSameAs(culture);
-        new LayoutEngine().Layout(control, new Size(30, 3));
-        using Frame frame = new(new Size(30, 3));
-        Should.NotThrow(() => control.Render(frame.Canvas));
-    }
-
-    /// <summary>Verifies a time-bearing Format is still rejected under a culture whose default
-    /// calendar is UmAlQura, and that the exception surfaced is the documented ArgumentException -
-    /// this culture's own probe boundary must not change which patterns are valid, only which
-    /// culture assignments succeed.</summary>
-    [Fact]
-    public void Format_WhenCultureUsesUmAlQuraCalendarAndPatternHasTimeSpecifier_ThrowsArgumentException()
-    {
-        // Arrange
-        using var control = new DateInput { Culture = new CultureInfo("ar-SA") };
-
-        // Act and assert
-        var thrown = Should.Throw<ArgumentException>(() => control.Format = "HH:mm");
-        thrown.ShouldNotBeOfType<ArgumentOutOfRangeException>();
-        control.Format.ShouldBe("d");
+        _ = Should.Throw<ArgumentException>(() => control.Culture = culture);
+        control.Culture.ShouldBeSameAs(previous);
+        control.OwnedCalendar.Culture.ShouldBeSameAs(previous);
     }
 
     /// <summary>Verifies setting an invalid Format while Value is still null does not arm a later
@@ -739,6 +719,20 @@ public sealed class DateInputTests
 
         // Assert
         _ = value.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies a disposed DateInput rejects every Value read even when a failed lazy seed
+    /// attempt has already exercised the getter once.</summary>
+    [Fact]
+    public void Value_WhenDisposedBeforeSeeding_ThrowsOnEveryRead()
+    {
+        // Arrange
+        var control = new DateInput();
+        control.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(() => _ = control.Value);
+        _ = Should.Throw<ObjectDisposedException>(() => _ = control.Value);
     }
 
     /// <summary>Verifies a disabled DateInput ignores a segment-adjustment key instead of

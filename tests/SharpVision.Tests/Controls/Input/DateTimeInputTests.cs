@@ -424,6 +424,20 @@ public sealed class DateTimeInputTests
         _ = value.ShouldNotBeNull();
     }
 
+    /// <summary>Verifies a disposed DateTimeInput rejects every Value read even when a failed lazy
+    /// seed attempt has already exercised the getter once.</summary>
+    [Fact]
+    public void Value_WhenDisposedBeforeSeeding_ThrowsOnEveryRead()
+    {
+        // Arrange
+        var control = new DateTimeInput();
+        control.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(() => _ = control.Value);
+        _ = Should.Throw<ObjectDisposedException>(() => _ = control.Value);
+    }
+
     /// <summary>Verifies a disabled DateTimeInput ignores a segment-adjustment key instead of
     /// committing a changed Value, proving the detached OnEvent gate honors EffectiveIsEnabled on
     /// its own - independently of the mounted focus and hit-test pipeline the surface evidence
