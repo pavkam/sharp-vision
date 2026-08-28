@@ -725,11 +725,20 @@ public sealed class ListView: ItemsControl
             item.CommitSelection(_selection.Contains(item.Index));
         }
 
+        // ApplySelection may synchronously re-enter this list (a SelectionChanging handler that
+        // mutates Items again) before returning here. When that happens, the reentrant call has
+        // already recomputed active index/anchor/selected-items against the newer state, so this
+        // now-stale continuation must be skipped rather than overwriting that newer state.
+        var selectionVersion = _selectionVersion;
         _ = ApplySelection(normalized, cancellable: false, requireAvailability: false);
-        SetActiveIndex(nextActiveIndex);
-        _selectionAnchor = nextAnchor;
-        RefreshSelectedItems();
-        NotifyPropertyChanged(nameof(Items), InvalidationImpact.Measure);
+
+        if (_selectionVersion == selectionVersion)
+        {
+            SetActiveIndex(nextActiveIndex);
+            _selectionAnchor = nextAnchor;
+            RefreshSelectedItems();
+            NotifyPropertyChanged(nameof(Items), InvalidationImpact.Measure);
+        }
     }
 
     /// <summary>Replaces the complete item snapshot without eagerly realizing every row - the
@@ -1130,6 +1139,12 @@ public sealed class ListView: ItemsControl
         var removed = previousSelection.Where(selected =>
             selected == index ||
             !mappedSelection.Contains(selected > index ? selected - 1 : selected)).Order().ToArray();
+
+        // ApplySelection may synchronously re-enter this list (a SelectionChanging handler that
+        // mutates Items again) before returning here. When that happens, the reentrant call has
+        // already recomputed active index/anchor/selected-items against the newer state, so this
+        // now-stale continuation must be skipped rather than overwriting that newer state.
+        var selectionVersion = _selectionVersion;
         _ = ApplySelection(shifted, cancellable: false, added, removed, requireAvailability: false);
         var nextActiveIndex = ActiveIndex > index
             ? ActiveIndex - 1
@@ -1161,23 +1176,26 @@ public sealed class ListView: ItemsControl
             Rewindow();
         }
 
-        SetActiveIndex(nextActiveIndex);
+        if (_selectionVersion == selectionVersion)
+        {
+            SetActiveIndex(nextActiveIndex);
 
-        if (_selectionAnchor == index)
-        {
-            _selectionAnchor = _selection.Contains(ActiveIndex) ? ActiveIndex : -1;
-        }
-        else if (_selectionAnchor > index)
-        {
-            _selectionAnchor--;
-        }
-        else if (_selectionAnchor >= _items.Count)
-        {
-            _selectionAnchor = _items.Count - 1;
-        }
+            if (_selectionAnchor == index)
+            {
+                _selectionAnchor = _selection.Contains(ActiveIndex) ? ActiveIndex : -1;
+            }
+            else if (_selectionAnchor > index)
+            {
+                _selectionAnchor--;
+            }
+            else if (_selectionAnchor >= _items.Count)
+            {
+                _selectionAnchor = _items.Count - 1;
+            }
 
-        RefreshSelectedItems();
-        NotifyPropertyChanged(nameof(Items), InvalidationImpact.Measure);
+            RefreshSelectedItems();
+            NotifyPropertyChanged(nameof(Items), InvalidationImpact.Measure);
+        }
     }
 
     /// <summary>Replaces one item value and its realized control at a validated position.</summary>
@@ -1219,19 +1237,27 @@ public sealed class ListView: ItemsControl
             _ = normalized.Remove(index);
         }
 
+        // ApplySelection may synchronously re-enter this list (a SelectionChanging handler that
+        // mutates Items again) before returning here. When that happens, the reentrant call has
+        // already recomputed active index/anchor/selected-items against the newer state, so this
+        // now-stale continuation must be skipped rather than overwriting that newer state.
+        var selectionVersion = _selectionVersion;
         _ = ApplySelection(normalized, cancellable: false, requireAvailability: false);
 
-        if (_selectionAnchor == index && !Equals(previousValue, item))
+        if (_selectionVersion == selectionVersion)
         {
-            _selectionAnchor = _selection.Contains(ActiveIndex) ? ActiveIndex : -1;
-        }
+            if (_selectionAnchor == index && !Equals(previousValue, item))
+            {
+                _selectionAnchor = _selection.Contains(ActiveIndex) ? ActiveIndex : -1;
+            }
 
-        var nextActiveIndex = IsIndexAvailable(ActiveIndex)
-            ? ActiveIndex
-            : FindAvailableActiveIndex(ActiveIndex);
-        SetActiveIndex(nextActiveIndex);
-        RefreshSelectedItems();
-        NotifyPropertyChanged(nameof(Items), InvalidationImpact.Measure);
+            var nextActiveIndex = IsIndexAvailable(ActiveIndex)
+                ? ActiveIndex
+                : FindAvailableActiveIndex(ActiveIndex);
+            SetActiveIndex(nextActiveIndex);
+            RefreshSelectedItems();
+            NotifyPropertyChanged(nameof(Items), InvalidationImpact.Measure);
+        }
     }
 
     [MustUseReturnValue]

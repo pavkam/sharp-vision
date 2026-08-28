@@ -1223,6 +1223,35 @@ public sealed class ListViewTests
         control.VerticalOffset.ShouldBe(4);
     }
 
+    /// <summary>Verifies a reentrant Items replacement triggered from the outer replacement's own
+    /// SelectionChanged notification wins the active row - the outer replacement's now-stale
+    /// continuation must be skipped rather than resuming with an active index it computed against
+    /// data the reentrant call already superseded.</summary>
+    [Fact]
+    public void Items_WhenSelectionChangedReentersDuringReplace_PreservesReentrantActiveRow()
+    {
+        var control = new UiListView { Items = ["A", "B", "C"] };
+        control.SelectedIndex = 1;
+        var reentered = false;
+        control.SelectionChanged += (_, _) =>
+        {
+            if (reentered)
+            {
+                return;
+            }
+
+            reentered = true;
+            control.Items = ["X", "Y", "Z", "W"];
+            control.SelectedIndex = 3;
+        };
+
+        control.Items = ["P", "Q"];
+
+        control.Items.ShouldBe(new object?[] { "X", "Y", "Z", "W" });
+        control.SelectedIndex.ShouldBe(3);
+        control.ActiveIndex.ShouldBe(3);
+    }
+
     /// <summary>Verifies an explicit repeated directional key is the same repeatable navigation
     /// command as an initial key down.</summary>
     [Fact]
@@ -2121,6 +2150,36 @@ public sealed class ListViewTests
         control.Items[control.SelectedIndex].ShouldBe("A");
     }
 
+    /// <summary>Verifies a reentrant removal triggered from the outer removal's own
+    /// SelectionChanged notification wins the active row - the outer removal's now-stale
+    /// continuation must be skipped instead of re-applying its own index shift on top of an active
+    /// row the reentrant removal already resolved, which would otherwise split the active row from
+    /// the (correctly unaffected) selection.</summary>
+    [Fact]
+    public void RemoveItem_WhenSelectionChangedReentersWithAnotherRemoval_PreservesReentrantActiveRow()
+    {
+        var control = Create("A", "B", "C", "D", "E");
+        control.SelectedIndex = 1;
+        var reentered = false;
+        control.SelectionChanged += (_, _) =>
+        {
+            if (reentered)
+            {
+                return;
+            }
+
+            reentered = true;
+            control.RemoveItem(0);
+            control.SelectedIndex = 2;
+        };
+
+        control.RemoveItem(1);
+
+        control.Items.ShouldBe(new object?[] { "C", "D", "E" });
+        control.SelectedIndex.ShouldBe(2);
+        control.ActiveIndex.ShouldBe(2);
+    }
+
     /// <summary>Verifies replacing an item swaps the value and realized control.</summary>
     [Fact]
     public void ReplaceItem_WhenCalled_SwapsItemValue()
@@ -2190,6 +2249,54 @@ public sealed class ListViewTests
         control.ActiveIndex.ShouldBe(0);
         control.Items[control.ActiveIndex].ShouldBe("A");
         realized[^1].EffectiveIsEnabled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a reentrant removal triggered from the outer replacement's own
+    /// SelectionChanged notification - one that never touches the replaced index's anchor itself -
+    /// is not overwritten by the outer replacement's stale continuation afterward. The reentrant
+    /// removal correctly leaves the anchor untouched (it removes an unrelated, later item); the
+    /// outer replacement's own anchor-repair check coincidentally still matches its now-stale
+    /// index and, unfixed, forces the anchor to -1 anyway. A later Shift-click range-select from
+    /// that anchor is the only way to observe the private anchor field: a live anchor covers both
+    /// endpoints, while a corrupted (-1) anchor collapses the gesture to an exclusive single pick.</summary>
+    [Fact]
+    public async Task ReplaceItem_WhenSelectionChangedReentersWithUnrelatedRemoval_PreservesAnchorForFollowingRangeSelectAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = Create("A", "B", "C", "D", "E");
+        control.SelectionMode = ListSelectionMode.Multiple;
+        control.Bounds = new Rect(0, 0, 5, 5);
+        new LayoutEngine().Layout(control, new Size(5, 5));
+        control.SelectedIndex = 1;
+        var reentered = false;
+        control.SelectionChanged += (_, _) =>
+        {
+            if (reentered)
+            {
+                return;
+            }
+
+            reentered = true;
+
+            // Unrelated to the anchor at index 1: removing the last item must never disturb it.
+            control.RemoveItem(4);
+        };
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            control.Attach(dispatcher);
+            using PointerManager capture = new(control);
+
+            // Replaces the anchor/selected item itself, clearing selection and reentering via
+            // SelectionChanged into the unrelated removal above.
+            control.ReplaceItem(1, "Z");
+
+            // A Shift-click range-select from the still-live anchor (index 1) down to index 2
+            // must cover both.
+            Click(capture, new Point(0, 2), Modifiers.Shift);
+        }, TestContext.Current.CancellationToken);
+
+        control.SelectedItems.ShouldBe(new object?[] { "Z", "C" });
     }
 
     /// <summary>Verifies multiple sequential inserts produce the correct final state.</summary>
