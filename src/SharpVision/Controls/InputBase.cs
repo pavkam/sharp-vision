@@ -85,6 +85,7 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
             SetPressed,
             Activate,
             () => Capabilities.KeyReleaseEvents.Authoritative);
+        RegisterLifecycleParticipant(_press);
     }
 
     /// <summary>Routes one event through the press-activation state machine, if enabled.</summary>
@@ -857,18 +858,11 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     #region Lifecycle
 
     /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-        _press?.FocusChanged(focused);
-    }
+    protected override void OnFocusChanged(bool focused) => base.OnFocusChanged(focused);
 
     /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason) =>
         base.OnLostPointerCapture(reason);
-        _press?.CaptureLost();
-    }
 
     /// <inheritdoc/>
     protected override void OnAttached()
@@ -881,7 +875,6 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        _press?.Unavailable();
         _popupCoordinator?.OnOwnerUnavailable(reason);
 
         if (reason == ReleaseReason.Disposed)

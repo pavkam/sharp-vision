@@ -36,6 +36,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
             () => CaptureOwner?.Captured is { } captured && ReferenceEquals(captured, this),
             () => CaptureOwner?.Release(),
             SetPressed);
+        RegisterLifecycleParticipant(_drag);
         IsFocusable = true;
         IsTabStop = true;
         TabNavigation = TabNavigation.None;
@@ -221,7 +222,6 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
     protected override void OnFocusChanged(bool focused)
     {
         base.OnFocusChanged(focused);
-        _drag.FocusChanged(focused);
         ResetDragState();
     }
 
@@ -229,7 +229,6 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        _drag.Unavailable();
         ResetDragState();
 
         if (reason == ReleaseReason.Disposed)
@@ -242,7 +241,6 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
     protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
     {
         base.OnLostPointerCapture(reason);
-        _drag.CaptureLost();
         ResetDragState();
     }
 

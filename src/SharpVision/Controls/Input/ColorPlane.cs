@@ -24,6 +24,7 @@ internal sealed class ColorPlane: ControlBase
             () => HasPointerCapture,
             ReleasePointerCapture,
             SetPressed);
+        RegisterLifecycleParticipant(_drag);
         IsFocusable = true;
         IsTabStop = true;
         TabNavigation = TabNavigation.None;
@@ -111,26 +112,11 @@ internal sealed class ColorPlane: ControlBase
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        _drag.Unavailable();
 
         if (reason == ReleaseReason.Disposed)
         {
             Changed = null;
         }
-    }
-
-    /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-        _drag.FocusChanged(focused);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
-        base.OnLostPointerCapture(reason);
-        _drag.CaptureLost();
     }
 
     /// <inheritdoc/>

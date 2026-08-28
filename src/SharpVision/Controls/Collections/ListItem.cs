@@ -38,6 +38,7 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
             SetPressed,
             Activate,
             () => Capabilities.KeyReleaseEvents.Authoritative);
+        RegisterLifecycleParticipant(_interaction);
         HorizontalAlignment = HorizontalAlignment.Stretch;
         IsFocusable = false;
         IsTabStop = false;
@@ -149,7 +150,6 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
     protected override void OnFocusChanged(bool focused)
     {
         base.OnFocusChanged(focused);
-        _interaction.FocusChanged(focused);
 
         if (focused)
         {
@@ -157,13 +157,6 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
             Debug.Assert(list is not null, "A focused ListItem belongs to a ListView.");
             list.NotifyItemFocused(this);
         }
-    }
-
-    /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
-        base.OnLostPointerCapture(reason);
-        _interaction.CaptureLost();
     }
 
     /// <inheritdoc/>
@@ -225,7 +218,6 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        _interaction.Unavailable();
 
         if (reason == ReleaseReason.Disposed)
         {

@@ -43,6 +43,14 @@ required lifecycle work. This internal seam is for owned resources such as an
 animation timer; concrete controls keep playback and visual policy in their own
 hooks rather than forwarding the same attachment plumbing.
 
+Framework press and drag behaviors use a separate control-owned lifecycle
+participant seam. A control registers each composed behavior once; direct focus
+loss, pointer-capture loss, and unavailability then cancel it before the
+component hook. Registration rejects duplicate identities, uses deterministic
+snapshot order under reentry, and releases retained participant references when
+the control is disposed. Concrete cleanup remains in the component hook after
+that shared fan-out.
+
 ### Choosing a role
 
 | Need                                                                                                                      | Base role                                         | Public ownership surface                                                         |

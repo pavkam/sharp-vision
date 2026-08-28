@@ -31,6 +31,7 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
             () => HasPointerCapture,
             ReleasePointerCapture,
             SetPressed);
+        RegisterLifecycleParticipant(_drag);
         IsFocusable = true;
         IsTabStop = true;
         TabNavigation = TabNavigation.None;
@@ -198,7 +199,6 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
     protected override void OnFocusChanged(bool focused)
     {
         base.OnFocusChanged(focused);
-        _drag.FocusChanged(focused);
         ResetDragState();
     }
 
@@ -206,7 +206,6 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        _drag.Unavailable();
         ResetDragState();
 
         if (reason == ReleaseReason.Disposed)
@@ -219,7 +218,6 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
     protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
     {
         base.OnLostPointerCapture(reason);
-        _drag.CaptureLost();
         ResetDragState();
     }
 

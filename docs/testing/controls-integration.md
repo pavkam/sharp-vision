@@ -372,6 +372,13 @@ selection styling, routed clipboard ownership, Shift navigation and reveal, and
 separate fixtures are intentionally selection-system suites rather than a
 reflection-based control inventory.
 
+The interaction-lifecycle participant fixtures prove registration order,
+duplicate rejection, exact capture and unavailability reasons, exhaustive
+failure handling, reentrant unavailability snapshots, disposal release, and
+self-disposal without stale focus continuation. Representative PressBehavior and
+DragBehavior consumers then prove the shared fan-out preserves their mounted
+focus, capture, availability, and control-specific cleanup ordering.
+
 Animated display controls use the same deterministic application clock. Tests
 advance one interval at a time and compare consecutive complete semantic
 screens, not private frame indices. They prove pause and resume, interval

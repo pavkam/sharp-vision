@@ -55,8 +55,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
             SetPressed,
             Activate,
             () => Capabilities.KeyReleaseEvents.Authoritative);
-        LostPointerCapture += OnGroupLostPointerCapture;
-        PropertyChanged += OnGroupAvailabilityChanged;
+        RegisterLifecycleParticipant(_press);
     }
 
     /// <summary>Gets this group's constrained sub-item collection.</summary>
@@ -467,29 +466,9 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
         IsExpanded = !IsExpanded;
     }
 
-    private void OnGroupLostPointerCapture(object? sender, PointerCaptureLostEventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-        _press.CaptureLost();
-    }
-
-    private void OnGroupAvailabilityChanged(
-        object? sender,
-        System.ComponentModel.PropertyChangedEventArgs eventArgs)
-    {
-        _ = sender;
-
-        if (eventArgs.PropertyName is nameof(EffectiveIsVisible) or nameof(EffectiveIsEnabled))
-        {
-            _press.Unavailable();
-        }
-    }
-
     /// <inheritdoc/>
     internal override void OnDirectDisposalRequested()
     {
-        _press.Unavailable();
         FindNavigationView()?.RemoveEntryForDisposal(this);
         _requestedPresentations.Clear();
         base.OnDirectDisposalRequested();

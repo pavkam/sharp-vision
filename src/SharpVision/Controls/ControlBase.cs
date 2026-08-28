@@ -825,11 +825,6 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         }
     }
 
-    private readonly ControlInteractionState _interactionState = new();
-
-    /// <summary>Gets whether this control currently owns keyboard focus.</summary>
-    public bool IsFocused => _interactionState.IsFocused;
-
     /// <summary>Raised after this control loses direct keyboard focus.</summary>
     public event EventHandler? LostFocus;
 
@@ -859,20 +854,11 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         }
     }
 
-    /// <summary>Gets whether the pointer is over this control or one of its descendants.</summary>
-    public bool IsPointerOver => _interactionState.IsPointerOver;
-
-    /// <summary>Gets whether the pointer directly targets this control.</summary>
-    public bool IsPointerDirectlyOver => _interactionState.IsPointerDirectlyOver;
-
     /// <summary>Raised after the physical pointer enters this control's subtree.</summary>
     public event EventHandler? PointerEntered;
 
     /// <summary>Raised after the physical pointer exits this control's subtree.</summary>
     public event EventHandler? PointerExited;
-
-    /// <summary>Gets whether an active pointer press began on this control.</summary>
-    public bool IsPressed => _interactionState.IsPressed;
 
     /// <summary>Raised after a primary pointer press arrives through the routed event system.</summary>
     public event EventHandler<PointerEventArgs>? PointerPressed;
@@ -1979,6 +1965,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
             ExceptionAggregation.Capture(OwnedControls.DisposeAll, ref failure);
             ExceptionAggregation.Capture(ClearHandlers, ref failure);
+            ClearLifecycleParticipants();
         }
         finally
         {
@@ -2287,7 +2274,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     {
         VerifyMutable();
 
-        if (!_interactionState.SetFocused(value))
+        if (!CommitFocusedFact(value))
         {
             return;
         }
@@ -2298,7 +2285,11 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFocused))),
             ref failure);
         ExceptionAggregation.Capture(() => CancelTextSelectionForFocusChange(value), ref failure);
-        ExceptionAggregation.Capture(() => OnFocusChanged(value), ref failure);
+        ExceptionAggregation.Capture(() => NotifyLifecycleFocusChanged(value), ref failure);
+        if (!IsDisposed)
+        {
+            ExceptionAggregation.Capture(() => OnFocusChanged(value), ref failure);
+        }
         failure?.Throw();
     }
 
@@ -2310,7 +2301,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// </remarks>
     internal void CommitFocusFact(bool value)
     {
-        if (!_interactionState.SetFocused(value) || IsDisposed || Dispatcher is null)
+        if (!CommitFocusedFact(value) || IsDisposed || Dispatcher is null)
         {
             return;
         }
@@ -2398,7 +2389,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     {
         VerifyMutable();
 
-        if (!_interactionState.SetPointerOver(value, directlyOver, out var wasOver))
+        if (!CommitPointerOverFacts(value, directlyOver, out var wasOver))
         {
             return;
         }
@@ -2446,7 +2437,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     {
         VerifyMutable();
 
-        if (!_interactionState.SetPressed(value))
+        if (!CommitPressedFact(value))
         {
             return;
         }
@@ -2486,7 +2477,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         SetSelectedStateCallCount++;
         VerifyMutable();
 
-        if (_interactionState.SetSelected(value))
+        if (CommitSelectedFact(value))
         {
             InvalidateVisualStateCore();
         }
@@ -2500,7 +2491,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         SetCurrentStateCallCount++;
         VerifyMutable();
 
-        if (!_interactionState.SetCurrent(value))
+        if (!CommitCurrentFact(value))
         {
             return;
         }
@@ -2614,9 +2605,10 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
     /// <summary>Responds after this control's keyboard-focus state and mandatory framework cleanup commit.</summary>
     /// <param name="focused">The newly committed focus state.</param>
-    /// <remarks>Losing focus cancels framework text-selection state and releases its capture before
-    /// this component hook runs. The base implementation only asserts framework invariants; a
-    /// derived override does not call it for cleanup.</remarks>
+    /// <remarks>Losing focus cancels framework text-selection state and releases its capture, then
+    /// notifies registered interaction lifecycle participants before this component hook runs. The
+    /// base implementation only asserts framework invariants; a derived override does not call it
+    /// for cleanup.</remarks>
     protected virtual void OnFocusChanged(bool focused)
     {
         _ = focused;
@@ -2672,9 +2664,9 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
     /// <summary>Responds after this control loses pointer capture or its associated press transaction.</summary>
     /// <param name="reason">The defined reason exclusive pointer ownership ended.</param>
-    /// <remarks>Framework text-selection state is cancelled before this component hook runs. The
-    /// base implementation only asserts framework invariants; a derived override does not call it
-    /// for cleanup.</remarks>
+    /// <remarks>Framework text-selection state is cancelled and registered interaction lifecycle
+    /// participants are notified before this component hook runs. The base implementation only
+    /// asserts framework invariants; a derived override does not call it for cleanup.</remarks>
     protected virtual void OnLostPointerCapture(PointerCaptureLossReason reason) =>
         Debug.Assert(Enum.IsDefined(reason), "Capture-loss reasons are validated internally.");
 
@@ -2691,9 +2683,9 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
     /// <summary>Releases component-owned transient state when this control becomes unavailable.</summary>
     /// <param name="reason">The precise unavailability reason.</param>
-    /// <remarks>Focus, capture, modality, and framework text-selection cleanup complete before this
-    /// component hook runs. The base implementation only asserts framework invariants; a derived
-    /// override does not call it for cleanup.</remarks>
+    /// <remarks>Focus, capture, modality, framework text-selection, and registered interaction
+    /// participant cleanup complete before this component hook runs. The base implementation only
+    /// asserts framework invariants; a derived override does not call it for cleanup.</remarks>
     protected virtual void OnUnavailable(ReleaseReason reason) =>
         Debug.Assert(Enum.IsDefined(reason), "Unavailable reasons are validated internally.");
 
@@ -2940,17 +2932,17 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// depending on <see cref="PressBehavior"/> or <see cref="DragBehavior"/>. This is the supported
     /// seam for participating in pressed styling without overriding <see cref="GetAppearanceState"/>.
     /// </remarks>
-    protected virtual bool IsPressedState => _interactionState.IsPressed;
+    protected virtual bool IsPressedState => IsPressed;
 
     /// <summary>Gets whether the control is the selected member of an owning collection.</summary>
     /// <remarks>
     /// Defaults to inherited collection selection propagated by an owning list; a control with its
     /// own selection concept overrides this to drive <see cref="VisualState.Selected"/>.
     /// </remarks>
-    protected virtual bool IsSelectedState => _interactionState.IsSelected;
+    protected virtual bool IsSelectedState => IsSelectedFact;
 
     /// <summary>Gets whether this control is the current member of an owning navigator.</summary>
-    protected virtual bool IsCurrentState => _interactionState.IsCurrent;
+    protected virtual bool IsCurrentState => IsCurrentFact;
 
     /// <summary>Gets whether the control holds a mixed or indeterminate value.</summary>
     /// <remarks>
@@ -4296,8 +4288,8 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         Handlers = null;
     }
 
-    /// <summary>Completes manager and framework interaction cleanup before invoking the component
-    /// unavailability hook, continuing every step after callback failure.</summary>
+    /// <summary>Completes manager, framework, and registered interaction cleanup before invoking
+    /// the component unavailability hook, continuing every step after callback failure.</summary>
     /// <param name="reason">The defined reason the control is unavailable.</param>
     internal void NotifyUnavailable(ReleaseReason reason)
     {
@@ -4324,8 +4316,14 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                 () => _textSelectionGesture?.Cancel(releaseCapture: false),
                 ref failure);
             ExceptionAggregation.Capture(
-                () => OnUnavailable(reason),
+                () => NotifyLifecycleUnavailable(reason),
                 ref failure);
+            if (!IsDisposed)
+            {
+                ExceptionAggregation.Capture(
+                    () => OnUnavailable(reason),
+                    ref failure);
+            }
 
             if (reason == ReleaseReason.Disposed)
             {
@@ -4353,8 +4351,9 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         failure?.Throw();
     }
 
-    /// <summary>Cancels framework selection state and invokes the component capture-loss hook after
-    /// manager state is clear, preserving the earliest failure after both steps.</summary>
+    /// <summary>Cancels framework selection state, notifies registered interaction participants,
+    /// and invokes the component capture-loss hook after manager state is clear, preserving the
+    /// earliest failure after every step.</summary>
     /// <param name="reason">The defined capture-loss reason.</param>
     internal void NotifyLostPointerCapture(PointerCaptureLossReason reason)
     {
@@ -4363,7 +4362,13 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         ExceptionAggregation.Capture(
             () => _textSelectionGesture?.Cancel(releaseCapture: false),
             ref failure);
-        ExceptionAggregation.Capture(() => OnLostPointerCapture(reason), ref failure);
+        ExceptionAggregation.Capture(
+            () => NotifyLifecycleCaptureLost(reason),
+            ref failure);
+        if (!IsDisposed)
+        {
+            ExceptionAggregation.Capture(() => OnLostPointerCapture(reason), ref failure);
+        }
         failure?.Throw();
     }
 

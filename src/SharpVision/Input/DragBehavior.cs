@@ -4,7 +4,7 @@
 namespace SharpVision.Input;
 
 /// <summary>Composable drag interaction state machine for pointer-driven value editing.</summary>
-internal sealed class DragBehavior
+internal sealed class DragBehavior: IControlLifecycleParticipant
 {
     private readonly Func<Rect> _contentBounds;
     private readonly Func<bool> _isAvailable;
@@ -94,4 +94,16 @@ internal sealed class DragBehavior
     public void CaptureLost() => Cancel(releaseCapture: false);
 
     public void Unavailable() => Cancel(releaseCapture: false);
+
+    void IControlLifecycleParticipant.CaptureLost(PointerCaptureLossReason reason)
+    {
+        _ = reason;
+        CaptureLost();
+    }
+
+    void IControlLifecycleParticipant.Unavailable(ReleaseReason reason)
+    {
+        _ = reason;
+        Unavailable();
+    }
 }

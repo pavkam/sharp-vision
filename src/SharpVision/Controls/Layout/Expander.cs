@@ -38,6 +38,7 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
             () => HasPointerCapture, ReleasePointerCapture, SetPressed,
             _ => IsExpanded = !IsExpanded,
             () => Capabilities.KeyReleaseEvents.Authoritative);
+        RegisterLifecycleParticipant(_interaction);
         IsFocusable = true;
         IsTabStop = true;
     }
@@ -332,11 +333,7 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
     }
 
     /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-        _interaction.FocusChanged(focused);
-    }
+    protected override void OnFocusChanged(bool focused) => base.OnFocusChanged(focused);
 
     /// <inheritdoc/>
     protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver)
@@ -351,17 +348,13 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
     }
 
     /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason) =>
         base.OnLostPointerCapture(reason);
-        _interaction.CaptureLost();
-    }
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        _interaction.Unavailable();
         if (reason == ReleaseReason.Disposed)
         {
             ExpandedChanged = null;

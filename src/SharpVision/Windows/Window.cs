@@ -58,6 +58,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             SetClosePressed,
             _ => RequestClose(),
             () => Capabilities.KeyReleaseEvents.Authoritative);
+        RegisterLifecycleParticipant(_closeInteraction);
         BeginSurfaceOpenLifetime();
         PropertyChanged += OnWindowPropertyChanged;
         EnableChromeAuthoring();
@@ -685,7 +686,6 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
     {
         base.OnLostPointerCapture(reason);
-        _closeInteraction.CaptureLost();
         _dragging = false;
         _resizing = false;
     }
@@ -708,7 +708,6 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         ExceptionDispatchInfo? failure = null;
 
         ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
-        ExceptionAggregation.Capture(_closeInteraction.Unavailable, ref failure);
 
         if (reason == ReleaseReason.Disposed)
         {

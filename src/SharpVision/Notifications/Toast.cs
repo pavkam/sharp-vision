@@ -46,6 +46,7 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
             SetPressed,
             _ => Dismiss(),
             () => Capabilities.KeyReleaseEvents.Authoritative);
+        RegisterLifecycleParticipant(_closeInteraction);
         IsFocusable = true;
         HorizontalAlignment = HorizontalAlignment.Left;
         VerticalAlignment = VerticalAlignment.Top;
@@ -525,24 +526,16 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
     }
 
     /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-        _closeInteraction.FocusChanged(focused);
-    }
+    protected override void OnFocusChanged(bool focused) => base.OnFocusChanged(focused);
 
     /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason) =>
         base.OnLostPointerCapture(reason);
-        _closeInteraction.CaptureLost();
-    }
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(_closeInteraction.Unavailable, ref failure);
         ToastCoordinator? hiddenCoordinator = null;
         var publishClosedState = false;
 

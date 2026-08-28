@@ -520,7 +520,9 @@ stale hook continuation or entry/exit event.
 
 `GetAppearanceState` derives the local flags from physical pointer membership,
 focus, availability, and the control's explicit pressed, current, selection,
-checked, or indeterminate facts. A derived control uses `SetVisualStateProperty`
+checked, or indeterminate facts. `ControlBase` stores those committed local
+interaction facts directly; focus and pointer managers remain the authorities
+that decide their transitions. A derived control uses `SetVisualStateProperty`
 when a CLR state property changes one of those facts. IsPressed defaults to the
 interaction state tracked by the framework's own gesture behaviors; a control
 with its own press concept - continuous drag tracking rather than one-shot

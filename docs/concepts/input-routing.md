@@ -425,9 +425,14 @@ full transition completes.
 
 The same separation applies to direct focus loss and unavailability: non-virtual
 notifiers cancel selection capture, semantic anchors, source identity, and
-auto-scroll before invoking `OnFocusChanged`, `OnLostPointerCapture`, or
-`OnUnavailable`. Their base implementations own no cleanup, so an override may
-omit `base` or throw without retaining framework interaction state.
+auto-scroll, then fan out to the control-owned press and drag lifecycle
+participants in registration order before invoking `OnFocusChanged`,
+`OnLostPointerCapture`, or `OnUnavailable`. Participant fan-out uses a stable
+snapshot, aggregates failures, and carries the precise capture-loss or
+unavailability reason. Self-disposal completes its nested disposal cleanup and
+retires the superseded outer notification instead of resuming stale callbacks.
+The component-hook base implementations own no cleanup, so an override may omit
+`base` or throw without retaining framework interaction state.
 
 An externally derived control uses `RequestFocus()` and `CapturePointer()`
 instead of holding manager references. Both return false while the control is
