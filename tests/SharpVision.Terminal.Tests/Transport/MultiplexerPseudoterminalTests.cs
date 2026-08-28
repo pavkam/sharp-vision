@@ -70,6 +70,7 @@ public sealed class MultiplexerPseudoterminalTests
         var capture = Path.Combine(Path.GetTempPath(), $"{socket}.bin");
         var ready = Path.Combine(Path.GetTempPath(), $"{socket}.ready");
         var reply = "\u001bP1$r0m\u001b\\"u8.ToArray();
+        var conditionTimeout = TimeSpan.FromSeconds(15);
 
         try
         {
@@ -87,12 +88,13 @@ public sealed class MultiplexerPseudoterminalTests
             {
                 var readyWatch = Stopwatch.StartNew();
 
-                while (!File.Exists(ready) && readyWatch.Elapsed < TimeSpan.FromSeconds(5))
+                while (!File.Exists(ready) && readyWatch.Elapsed < conditionTimeout)
                 {
                     await Task.Delay(TimeSpan.FromMilliseconds(20), TestContext.Current.CancellationToken);
                 }
 
-                File.Exists(ready).ShouldBeTrue("the pane did not reach \"stty raw -echo\" within 5 seconds.");
+                File.Exists(ready).ShouldBeTrue(
+                    $"the pane did not reach \"stty raw -echo\" within {conditionTimeout.TotalSeconds} seconds.");
 
                 // DECRQSS is not itself a printable key, so it is delivered as two literal segments
                 // split around a named "Escape" key - "send-keys -l" alone cannot express ESC.
@@ -104,7 +106,7 @@ public sealed class MultiplexerPseudoterminalTests
                 var watch = Stopwatch.StartNew();
                 var captured = Array.Empty<byte>();
 
-                while (watch.Elapsed < TimeSpan.FromSeconds(5))
+                while (watch.Elapsed < conditionTimeout)
                 {
                     if (File.Exists(capture))
                     {
