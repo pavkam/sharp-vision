@@ -2621,6 +2621,35 @@ public sealed partial class TreeViewTests
         tree.SelectedItems.ShouldBe([first]);
     }
 
+    /// <summary>
+    /// Verifies a SelectionChanging subscriber that reentrantly commits another selection change
+    /// from inside its own handler does not let the now-superseded outer proposal reach a second
+    /// subscriber registered after it on the same event - the second subscriber must only ever
+    /// observe the reentrant transition that actually won.
+    /// </summary>
+    [Fact]
+    public void SetSelected_WhenChangingSubscriberReentrantlyChangesSelection_LaterSubscriberNeverSeesSupersededProposal()
+    {
+        var tree = Build(out var first, out var second, out _);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        List<string> secondSubscriberObservations = [];
+
+        tree.SelectionChanging += (_, eventArgs) =>
+        {
+            if (eventArgs.AddedItems.Any(item => ReferenceEquals(item, second)))
+            {
+                _ = tree.SetSelected(first, true);
+            }
+        };
+        tree.SelectionChanging += (_, eventArgs) =>
+            secondSubscriberObservations.Add(Names(eventArgs.AddedItems));
+
+        _ = tree.SetSelected(second, true);
+
+        tree.SelectedItems.ShouldBe([first]);
+        secondSubscriberObservations.ShouldBe(["first"]);
+    }
+
     /// <summary>Verifies normalization the control performs on its own behalf is not cancellable.</summary>
     [Fact]
     public void SelectionMode_WhenNarrowed_IgnoresCancellation()

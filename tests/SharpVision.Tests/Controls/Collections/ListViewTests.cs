@@ -720,6 +720,32 @@ public sealed class ListViewTests
         ]);
     }
 
+    /// <summary>Verifies a SelectionChanging subscriber that reentrantly commits another selection
+    /// change from inside its own handler does not let the now-superseded outer proposal reach a
+    /// second subscriber registered after it on the same event - the second subscriber must only
+    /// ever observe the reentrant transition that actually won.</summary>
+    [Fact]
+    public void SelectedIndex_WhenChangingSubscriberReentrantlyChangesSelection_LaterSubscriberNeverSeesSupersededProposal()
+    {
+        var control = Create("A", "B", "C");
+        List<string> secondSubscriberObservations = [];
+
+        control.SelectionChanging += (_, eventArgs) =>
+        {
+            if (eventArgs.AddedIndexes.Span.Contains(1))
+            {
+                control.SelectedIndex = 2;
+            }
+        };
+        control.SelectionChanging += (_, eventArgs) =>
+            secondSubscriberObservations.Add(Join(eventArgs.AddedIndexes));
+
+        control.SelectedIndex = 1;
+
+        control.SelectedIndex.ShouldBe(2);
+        secondSubscriberObservations.ShouldBe(["2"]);
+    }
+
     /// <summary>Verifies arrows skip unavailable items, Space selects, Enter invokes, and Home/End navigate.</summary>
     [Fact]
     public async Task Dispatch_WhenKeyboardNavigates_UsesStableRealizedOrderAsync()

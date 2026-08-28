@@ -1054,7 +1054,8 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
             cancellable,
             ref _selectionVersion,
             static (added, removed) => new TreeViewSelectionChangingEventArgs(added, removed),
-            changing => SelectionChanging?.Invoke(this, changing),
+            this,
+            SelectionChanging,
             out var selection,
             out var added,
             out var removed);

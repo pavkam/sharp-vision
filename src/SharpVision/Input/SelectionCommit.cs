@@ -12,12 +12,14 @@ using JetBrains.Annotations;
 /// <remarks>
 /// A multi-select collection commits a proposed selection the same way regardless of what it
 /// iterates over: filter the proposal against availability, short-circuit when it would not
-/// actually change anything, compute the added/removed delta, snapshot a version counter, raise a
-/// cancellable changing notification, and refuse to commit if that notification was cancelled or a
-/// reentrant handler already bumped the version counter while it ran. This type owns only that
-/// orchestration - the delta algorithm and the changing event's argument type are both supplied by
-/// the caller, because a flat index range and a tree walk disagree on how "stable order" is defined,
-/// and each control's changing event carries its own argument type.
+/// actually change anything, compute the added/removed delta, snapshot a version counter, deliver a
+/// cancellable changing notification to each subscriber one at a time (re-checking the version
+/// before every subscriber so a reentrant one stops delivery to the rest), and refuse to commit if
+/// that notification was cancelled or a reentrant handler already bumped the version counter while
+/// it ran. This type owns only that orchestration - the delta algorithm and the changing event's
+/// argument type are both supplied by the caller, because a flat index range and a tree walk
+/// disagree on how "stable order" is defined, and each control's changing event carries its own
+/// argument type.
 /// </remarks>
 internal static class SelectionCommit<TKey>
 {
@@ -37,8 +39,13 @@ internal static class SelectionCommit<TKey>
     /// its own selection change invalidates this one; incremented on an accepted commit.</param>
     /// <param name="createChangingArgs">Constructs the caller's own changing event arguments from
     /// the computed added/removed delta.</param>
-    /// <param name="raiseChanging">Raises the caller's own changing event with the constructed
-    /// arguments.</param>
+    /// <param name="sender">The sender to pass to each <paramref name="changingEvent"/> subscriber.</param>
+    /// <param name="changingEvent">The caller's own changing event field, or <see langword="null"/>
+    /// when it currently has no subscribers. Invoked one subscriber at a time via
+    /// <see cref="Delegate.GetInvocationList"/> rather than a single multicast <c>Invoke</c>, so
+    /// <paramref name="selectionVersion"/> can be re-checked before each subscriber runs: a
+    /// subscriber that reentrantly commits a newer selection stops delivery to every subscriber
+    /// after it, instead of letting them observe the now-superseded proposal.</param>
     /// <param name="selection">The filtered selection the caller should adopt when this method
     /// returns true.</param>
     /// <param name="added">The stable list of keys newly selected by this commit.</param>
@@ -56,7 +63,8 @@ internal static class SelectionCommit<TKey>
         bool cancellable,
         ref int selectionVersion,
         [InstantHandle] Func<TKey[], TKey[], TChangingArgs> createChangingArgs,
-        [InstantHandle] Action<TChangingArgs> raiseChanging,
+        object sender,
+        EventHandler<TChangingArgs>? changingEvent,
         out HashSet<TKey> selection,
         out TKey[] added,
         out TKey[] removed)
@@ -67,7 +75,7 @@ internal static class SelectionCommit<TKey>
         ArgumentNullException.ThrowIfNull(comparer);
         ArgumentNullException.ThrowIfNull(computeDelta);
         ArgumentNullException.ThrowIfNull(createChangingArgs);
-        ArgumentNullException.ThrowIfNull(raiseChanging);
+        ArgumentNullException.ThrowIfNull(sender);
 
         selection = isEligible is null
             ? new HashSet<TKey>(proposed, comparer)
@@ -87,7 +95,19 @@ internal static class SelectionCommit<TKey>
         if (cancellable)
         {
             var changingArgs = createChangingArgs(added, removed);
-            raiseChanging(changingArgs);
+
+            if (changingEvent is not null)
+            {
+                foreach (var subscriber in changingEvent.GetInvocationList())
+                {
+                    if (version != selectionVersion)
+                    {
+                        break;
+                    }
+
+                    ((EventHandler<TChangingArgs>) subscriber)(sender, changingArgs);
+                }
+            }
 
             if (changingArgs.Cancel ||
                 version != selectionVersion ||

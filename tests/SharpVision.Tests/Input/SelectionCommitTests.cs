@@ -19,6 +19,8 @@ public sealed class SelectionCommitTests
     private static readonly Func<int[], int[], ChangingArgs> _createChangingArgs =
         static (added, removed) => new ChangingArgs(added, removed);
 
+    private static readonly object _sender = new();
+
     private static (int[] Added, int[] Removed) DefaultDelta(IReadOnlySet<int> current, IReadOnlySet<int> selectable) =>
         ([.. selectable.Except(current).Order()], [.. current.Except(selectable).Order()]);
 
@@ -45,7 +47,8 @@ public sealed class SelectionCommitTests
             cancellable: true,
             selectionVersion: ref version,
             createChangingArgs: _createChangingArgs,
-            raiseChanging: _ => raised = true,
+            sender: _sender,
+            changingEvent: (_, _) => raised = true,
             selection: out _,
             added: out _,
             removed: out _);
@@ -76,7 +79,8 @@ public sealed class SelectionCommitTests
             cancellable: true,
             selectionVersion: ref version,
             createChangingArgs: _createChangingArgs,
-            raiseChanging: static _ => { },
+            sender: _sender,
+            changingEvent: static (_, _) => { },
             selection: out var selection,
             added: out _,
             removed: out _);
@@ -111,7 +115,8 @@ public sealed class SelectionCommitTests
             cancellable: false,
             selectionVersion: ref version,
             createChangingArgs: _createChangingArgs,
-            raiseChanging: _ => raised = true,
+            sender: _sender,
+            changingEvent: (_, _) => raised = true,
             selection: out var selection,
             added: out var added,
             removed: out var removed);
@@ -146,7 +151,8 @@ public sealed class SelectionCommitTests
             cancellable: true,
             selectionVersion: ref version,
             createChangingArgs: _createChangingArgs,
-            raiseChanging: args => observed = args,
+            sender: _sender,
+            changingEvent: (_, args) => observed = args,
             selection: out var selection,
             added: out var added,
             removed: out var removed);
@@ -186,7 +192,8 @@ public sealed class SelectionCommitTests
             cancellable: true,
             selectionVersion: ref version,
             createChangingArgs: _createChangingArgs,
-            raiseChanging: static args => args.Cancel = true,
+            sender: _sender,
+            changingEvent: static (_, args) => args.Cancel = true,
             selection: out _,
             added: out _,
             removed: out _);
@@ -217,13 +224,55 @@ public sealed class SelectionCommitTests
             cancellable: true,
             selectionVersion: ref version,
             createChangingArgs: _createChangingArgs,
-            raiseChanging: _ => version++,
+            sender: _sender,
+            changingEvent: (_, _) => version++,
             selection: out _,
             added: out _,
             removed: out _);
 
         // Assert
         committed.ShouldBeFalse();
+        version.ShouldBe(1);
+    }
+
+    /// <summary>Verifies that when the changing notification has two subscribers on the very same
+    /// multicast delegate and the first one reentrantly commits a newer selection (bumping the
+    /// version counter), the second subscriber - registered after it on the same event - never
+    /// observes the now-superseded proposal. A single check performed once before or after the
+    /// whole invocation list would let this second subscriber see stale data; the version must be
+    /// re-checked before each individual subscriber is invoked.</summary>
+    [Fact]
+    public void TryCommit_WhenFirstSubscriberReentrantlyBumpsVersion_SecondSubscriberIsNeverInvoked()
+    {
+        // Arrange
+        var current = new HashSet<int> { 1 };
+        var version = 0;
+        var secondSubscriberInvoked = false;
+
+        EventHandler<ChangingArgs> first = (_, _) => version++;
+        EventHandler<ChangingArgs> second = (_, _) => secondSubscriberInvoked = true;
+        var changingEvent = first + second;
+
+        // Act
+        var committed = SelectionCommit<int>.TryCommit(
+            current: current,
+            proposed: [2],
+            comparer: EqualityComparer<int>.Default,
+            isEligible: null,
+            selectionDisabled: false,
+            computeDelta: DefaultDelta,
+            cancellable: true,
+            selectionVersion: ref version,
+            createChangingArgs: _createChangingArgs,
+            sender: _sender,
+            changingEvent: changingEvent,
+            selection: out _,
+            added: out _,
+            removed: out _);
+
+        // Assert
+        committed.ShouldBeFalse();
+        secondSubscriberInvoked.ShouldBeFalse();
         version.ShouldBe(1);
     }
 
@@ -251,7 +300,8 @@ public sealed class SelectionCommitTests
             cancellable: true,
             selectionVersion: ref version,
             createChangingArgs: _createChangingArgs,
-            raiseChanging: static _ => { },
+            sender: _sender,
+            changingEvent: static (_, _) => { },
             selection: out _,
             added: out _,
             removed: out _);
@@ -283,7 +333,8 @@ public sealed class SelectionCommitTests
             cancellable: false,
             selectionVersion: ref version,
             createChangingArgs: _createChangingArgs,
-            raiseChanging: static _ => { },
+            sender: _sender,
+            changingEvent: static (_, _) => { },
             selection: out var selection,
             added: out _,
             removed: out _);
@@ -317,7 +368,8 @@ public sealed class SelectionCommitTests
             cancellable: false,
             selectionVersion: ref version,
             createChangingArgs: _createChangingArgs,
-            raiseChanging: static _ => { },
+            sender: _sender,
+            changingEvent: static (_, _) => { },
             selection: out var selection,
             added: out var added,
             removed: out _);
@@ -347,7 +399,8 @@ public sealed class SelectionCommitTests
             cancellable: false,
             selectionVersion: ref version,
             createChangingArgs: _createChangingArgs,
-            raiseChanging: static _ => { },
+            sender: _sender,
+            changingEvent: static (_, _) => { },
             selection: out var selection,
             added: out _,
             removed: out _);
@@ -389,7 +442,8 @@ public sealed class SelectionCommitTests
             cancellable: false,
             selectionVersion: ref version,
             createChangingArgs: _createChangingArgs,
-            raiseChanging: static _ => { },
+            sender: _sender,
+            changingEvent: static (_, _) => { },
             selection: out _,
             added: out var added,
             removed: out var removed);
