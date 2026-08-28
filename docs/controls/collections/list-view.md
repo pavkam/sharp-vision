@@ -144,9 +144,10 @@ with Control, Shift, Alt, Super, Meta, or Hyper never raises `ItemInvoked`. Each
 held pointer press retains its own modifiers and click count until release; an
 intervening keyboard activation or navigation command cannot reclassify that
 physical gesture. Selection callbacks are also an identity boundary: invocation
-continues only while the exact activated realized row remains owned. Clearing,
-replacing, or inserting items in a way that replaces that row abandons the
-pending invocation instead of indexing its former position.
+continues only while the ListView remains attached and effectively available and
+the exact activated realized row remains owned and available. Disable, detach,
+clearing, replacing, or inserting items in a way that replaces that row abandons
+the pending invocation instead of indexing its former position.
 
 ## Interaction and layout
 

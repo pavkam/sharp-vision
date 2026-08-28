@@ -721,22 +721,23 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     internal void NotifyItemInvoked(TreeViewItem item, ActivationCause cause, Modifiers modifiers = Modifiers.None)
     {
         ArgumentNullException.ThrowIfNull(item);
+        var dispatcher = Dispatcher;
 
-        if (!OwnsInvokedItem(item))
+        if (!OwnsInvokedItem(item, dispatcher))
         {
             return;
         }
 
         _ = _navigator.SetCurrent(item);
 
-        if (!OwnsInvokedItem(item))
+        if (!OwnsInvokedItem(item, dispatcher))
         {
             return;
         }
 
         _ = ApplyInputSelection(item, modifiers);
 
-        if (!OwnsInvokedItem(item))
+        if (!OwnsInvokedItem(item, dispatcher))
         {
             return;
         }
@@ -948,9 +949,10 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
 
         if (_navigator.Current is TreeViewItem item)
         {
+            var dispatcher = Dispatcher;
             item.ActivateFromOwner(ActivationCause.Keyboard);
 
-            if (!OwnsInvokedItem(item))
+            if (!OwnsInvokedItem(item, dispatcher))
             {
                 return true;
             }
@@ -959,7 +961,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
 
             // An incidental modifier still applies selection above, but does not commit an
             // invocation the user did not intend.
-            if (modifiers.IsActivationEligible() && OwnsInvokedItem(item))
+            if (modifiers.IsActivationEligible() && OwnsInvokedItem(item, dispatcher))
             {
                 ItemInvoked?.Invoke(this, new TreeViewItemInvokedEventArgs(item, ActivationCause.Keyboard));
             }
@@ -970,8 +972,15 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
         return false;
     }
 
-    private bool OwnsInvokedItem(TreeViewItem item) =>
-        !item.IsDisposed && ReferenceEquals(item.FindTreeView(), this);
+    private bool OwnsInvokedItem(TreeViewItem item, Dispatcher? dispatcher) =>
+        !IsDisposed &&
+        ReferenceEquals(Dispatcher, dispatcher) &&
+        EffectiveIsVisible &&
+        EffectiveIsEnabled &&
+        !item.IsDisposed &&
+        item.EffectiveIsVisible &&
+        item.EffectiveIsEnabled &&
+        ReferenceEquals(item.FindTreeView(), this);
 
     private void CommitCurrent(ControlBase current, Modifiers modifiers)
     {

@@ -6,6 +6,44 @@ namespace SharpVision.Tests.Controls.Collections;
 /// <summary>Verifies TreeView composition, selection, expand/collapse, keyboard navigation, and pointer interaction through mounted surfaces.</summary>
 public sealed partial class TreeViewSurfaceTests
 {
+    /// <summary>Verifies a selection callback that disables or detaches the TreeView ends the
+    /// current pointer transaction before ItemInvoked can publish.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Pointer_WhenSelectionCallbackMakesTreeUnavailable_DoesNotInvokeItemAsync(bool detach)
+    {
+        // Arrange
+        var item = new TreeViewItem { Header = "One" };
+        var tree = CreateTree(8);
+        tree.Items.Add(item);
+        var root = new Overlay { Children = { tree } };
+        var invoked = 0;
+        tree.ItemInvoked += (_, _) => invoked++;
+        tree.SelectionChanged += (_, _) =>
+        {
+            if (detach)
+            {
+                _ = root.Children.Remove(tree);
+            }
+            else
+            {
+                tree.IsEnabled = false;
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(8, 2),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.ClickAsync(item);
+
+        // Assert
+        invoked.ShouldBe(0);
+    }
+
     /// <summary>Verifies indented hierarchy, Tab entry, directional selection, keyboard and pointer activation, and unavailable cleanup.</summary>
     [Fact]
     public async Task Render_WhenTreeIsPopulated_DrawsIndentedHierarchyAsync()

@@ -8,6 +8,44 @@ using System.Text.Json;
 /// <summary>Verifies Table layout, selection, editing, sorting, scrolling, mutation, resize, and hit targets through mounted surfaces.</summary>
 public sealed class TableSurfaceTests
 {
+    /// <summary>Verifies a selection callback that disables or detaches an eager Table ends the
+    /// current pointer transaction before RowInvoked can publish.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Pointer_WhenSelectionCallbackMakesTableUnavailable_DoesNotInvokeRowAsync(bool detach)
+    {
+        // Arrange
+        var row = new TableRow([new ControlText("One")]);
+        var table = new Table { ShowHeader = false, ShowGridLines = false };
+        table.Columns.Add(TableColumn.Fixed("Name", 5));
+        table.Rows.Add(row);
+        var root = new Overlay { Children = { table } };
+        var invoked = 0;
+        table.RowInvoked += (_, _) => invoked++;
+        table.SelectionChanged += (_, _) =>
+        {
+            if (detach)
+            {
+                _ = root.Children.Remove(table);
+            }
+            else
+            {
+                table.IsEnabled = false;
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(8, 2),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.ClickAsync(table, new Point(1, 0));
+
+        // Assert
+        invoked.ShouldBe(0);
+    }
+
     /// <summary>Verifies every column kind aligns headers, grid lines, combining text, and wide cells exactly.</summary>
     [Fact]
     public async Task Render_WhenColumnsMixKinds_DrawsExactHeaderGridAndUnicodeCellsAsync()

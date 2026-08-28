@@ -1052,6 +1052,96 @@ public sealed class TableTests
         changes.ShouldBe([(0, TableSortDirection.Ascending), (-1, TableSortDirection.None)]);
     }
 
+    /// <summary>Verifies a newer sort committed from a property observer owns the remaining event
+    /// stream, so the superseded outer sort cannot publish arguments that disagree with live state.</summary>
+    [Fact]
+    public void SetSort_WhenPropertyObserverCommitsNewerSort_DoesNotPublishSupersededSortChanged()
+    {
+        // Arrange
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("First"));
+        table.Columns.Add(TableColumn.Auto("Second"));
+        table.Rows.Add(new TableRow([new ControlText("b"), new ControlText("1")]));
+        table.Rows.Add(new TableRow([new ControlText("a"), new ControlText("2")]));
+        var reentered = false;
+        table.PropertyChanged += (_, eventArgs) =>
+        {
+            if (!reentered && eventArgs.PropertyName == nameof(Table.SortColumnIndex))
+            {
+                reentered = true;
+                table.SetSort(1, TableSortDirection.Descending);
+            }
+        };
+        var changes = new List<(int ReportedColumn, TableSortDirection ReportedDirection, int LiveColumn, TableSortDirection LiveDirection)>();
+        table.SortChanged += (_, eventArgs) => changes.Add(
+            (eventArgs.ColumnIndex, eventArgs.Direction, table.SortColumnIndex, table.SortDirection));
+
+        // Act
+        table.SetSort(0, TableSortDirection.Ascending);
+
+        // Assert
+        changes.ShouldBe([(1, TableSortDirection.Descending, 1, TableSortDirection.Descending)]);
+        table.Rows.Select(static row => ((ControlText) row.Cells[1]).Content).ShouldBe(["2", "1"]);
+    }
+
+    /// <summary>Verifies a reentrant call that merely reapplies the just-committed state does not
+    /// supersede the outer transaction or suppress its one truthful typed event.</summary>
+    [Fact]
+    public void SetSort_WhenPropertyObserverReappliesSameSort_PublishesOuterSortChanged()
+    {
+        // Arrange
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(new TableRow([new ControlText("b")]));
+        table.Rows.Add(new TableRow([new ControlText("a")]));
+        table.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Table.SortColumnIndex))
+            {
+                table.SetSort(0, TableSortDirection.Ascending);
+            }
+        };
+        var changes = new List<(int Column, TableSortDirection Direction)>();
+        table.SortChanged += (_, eventArgs) => changes.Add((eventArgs.ColumnIndex, eventArgs.Direction));
+
+        // Act
+        table.SetSort(0, TableSortDirection.Ascending);
+
+        // Assert
+        changes.ShouldBe([(0, TableSortDirection.Ascending)]);
+    }
+
+    /// <summary>Verifies reentry from the reset direction notification also transfers ownership of
+    /// the remaining event stream to the newer sort transaction.</summary>
+    [Fact]
+    public void ResetSort_WhenDirectionObserverCommitsNewerSort_DoesNotPublishSupersededReset()
+    {
+        // Arrange
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("First"));
+        table.Columns.Add(TableColumn.Auto("Second"));
+        table.Rows.Add(new TableRow([new ControlText("b"), new ControlText("1")]));
+        table.Rows.Add(new TableRow([new ControlText("a"), new ControlText("2")]));
+        table.SetSort(0, TableSortDirection.Ascending);
+        table.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Table.SortDirection) &&
+                table.SortDirection == TableSortDirection.None)
+            {
+                table.SetSort(1, TableSortDirection.Descending);
+            }
+        };
+        var changes = new List<(int Column, TableSortDirection Direction)>();
+        table.SortChanged += (_, eventArgs) => changes.Add((eventArgs.ColumnIndex, eventArgs.Direction));
+
+        // Act
+        table.ResetSort();
+
+        // Assert
+        changes.ShouldBe([(1, TableSortDirection.Descending)]);
+        table.Rows.Select(static row => ((ControlText) row.Cells[1]).Content).ShouldBe(["2", "1"]);
+    }
+
     /// <summary>Verifies inserting two equal-keyed rows while sorted places each new row after
     /// every existing row sharing its key, matching SetSort's own insertion-order tie-break.</summary>
     [Fact]
@@ -1273,6 +1363,111 @@ public sealed class TableTests
         table.SelectedRows.ShouldBeEmpty();
         table.ActiveRow.ShouldBeSameAs(fourth);
         table.Rows.ShouldBe([first, second, fourth]);
+    }
+
+    /// <summary>Verifies row removal resumes by semantic identity after SelectionChanged instead of
+    /// applying its captured numeric index after a nested removal shifted the collection.</summary>
+    [Fact]
+    public void Rows_WhenSelectionChangedReentrantlyRemovesSameRow_DoesNotRemoveFollowingRow()
+    {
+        // Arrange
+        var removed = new TableRow([new ControlText("removed")]);
+        var remaining = new TableRow([new ControlText("remaining")]);
+        var table = new Table { SelectionMode = TableSelectionMode.Row };
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(removed);
+        table.Rows.Add(remaining);
+        table.SelectRow(removed);
+        table.SelectionChanged += (_, _) => _ = table.Rows.Remove(removed);
+
+        // Act
+        _ = table.Rows.Remove(removed);
+
+        // Assert
+        table.Rows.ShouldBe([remaining]);
+        removed.Cells[0].Parent.ShouldBeNull();
+        _ = remaining.Cells[0].Parent.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies a nested clear supersedes the outer row removal cleanly instead of letting
+    /// it resume against an empty collection with a stale index.</summary>
+    [Fact]
+    public void Rows_WhenSelectionChangedReentrantlyClearsRows_DoesNotResumeStaleRemoval()
+    {
+        // Arrange
+        var first = new TableRow([new ControlText("first")]);
+        var second = new TableRow([new ControlText("second")]);
+        var table = new Table { SelectionMode = TableSelectionMode.Row };
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(first);
+        table.Rows.Add(second);
+        table.SelectRow(first);
+        table.SelectionChanged += (_, _) => table.Rows.Clear();
+
+        // Act and assert
+        Should.NotThrow(() => table.Rows.RemoveAt(0));
+        table.Rows.ShouldBeEmpty();
+        first.Cells[0].Parent.ShouldBeNull();
+        second.Cells[0].Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies removing an earlier sibling during SelectionChanged shifts but does not
+    /// redirect the outer semantic removal to the row that takes the captured index.</summary>
+    [Fact]
+    public void Rows_WhenSelectionChangedReentrantlyRemovesEarlierRow_RemovesCapturedRowByIdentity()
+    {
+        // Arrange
+        var earlier = new TableRow([new ControlText("earlier")]);
+        var removed = new TableRow([new ControlText("removed")]);
+        var remaining = new TableRow([new ControlText("remaining")]);
+        var table = new Table { SelectionMode = TableSelectionMode.Row };
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(earlier);
+        table.Rows.Add(removed);
+        table.Rows.Add(remaining);
+        table.SelectRow(removed);
+        table.SelectionChanged += (_, _) => _ = table.Rows.Remove(earlier);
+
+        // Act
+        table.Rows.RemoveAt(1);
+
+        // Assert
+        table.Rows.ShouldBe([remaining]);
+        removed.Cells[0].Parent.ShouldBeNull();
+        _ = remaining.Cells[0].Parent.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies a replacement committed during SelectionChanged supersedes the outer
+    /// removal without detaching the newly owned row that occupies the former index.</summary>
+    [Fact]
+    public void Rows_WhenSelectionChangedReentrantlyReplacesRow_PreservesReplacement()
+    {
+        // Arrange
+        var removed = new TableRow([new ControlText("removed")]);
+        var replacement = new TableRow([new ControlText("replacement")]);
+        var table = new Table { SelectionMode = TableSelectionMode.Row };
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(removed);
+        table.SelectRow(removed);
+        var reentered = false;
+        table.SelectionChanged += (_, _) =>
+        {
+            if (!reentered)
+            {
+                reentered = true;
+                table.Rows[0] = replacement;
+            }
+        };
+
+        // Act
+        _ = table.Rows.Remove(removed);
+
+        // Assert
+        table.Rows.ShouldBe([replacement]);
+        removed.Cells[0].Parent.ShouldBeNull();
+        _ = replacement.Cells[0].Parent.ShouldNotBeNull();
+        Should.NotThrow(() => table.SelectRow(replacement, Modifiers.Shift));
+        table.SelectedRows.ShouldBe([replacement]);
     }
 
     /// <summary>Verifies clearing rows publishes one coherent selection change for all selected rows and cells.</summary>

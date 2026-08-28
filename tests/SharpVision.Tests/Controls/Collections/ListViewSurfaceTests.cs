@@ -189,6 +189,47 @@ public sealed class ListViewSurfaceTests
                              """);
     }
 
+    /// <summary>Verifies a selection callback that disables or detaches the ListView ends the
+    /// current pointer transaction before ItemInvoked can publish.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Pointer_WhenSelectionCallbackMakesListUnavailable_DoesNotInvokeItemAsync(bool detach)
+    {
+        // Arrange
+        List<ControlText> realized = [];
+        var list = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new ControlText((string) item!)),
+            Items = ["One"],
+            ScrollBars = ScrollBars.None
+        };
+        var root = new Overlay { Children = { list } };
+        var invoked = 0;
+        list.ItemInvoked += (_, _) => invoked++;
+        list.SelectionChanged += (_, _) =>
+        {
+            if (detach)
+            {
+                _ = root.Children.Remove(list);
+            }
+            else
+            {
+                list.IsEnabled = false;
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(8, 2),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.ClickAsync(realized[0].Parent.ShouldNotBeNull());
+
+        // Assert
+        invoked.ShouldBe(0);
+    }
+
     /// <summary>Verifies collapsing the active row's own content eagerly repairs ActiveIndex and
     /// drops that row from selection, and the rendered output reflows the remaining rows into its
     /// place - matching removal's own rendered repair rather than leaving a stale gap.</summary>

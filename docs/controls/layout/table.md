@@ -308,19 +308,23 @@ state and raise `SelectionChanged`. `SelectedRows` and `SelectedCells` property
 notifications are transaction boundaries: a callback that commits a newer
 selection suppresses the superseded transaction's remaining notification and
 typed event. After a pointer selection callback returns, editing and
-`RowInvoked` continue only when the exact hit row and cell remain owned and
-available; removal, replacement, clearing, or disposal ends that input
-transaction, while moving the same row preserves its current identity and index.
-`RowInvoked` reports pointer and keyboard activation. `SortBy` cycles a column
-through ascending, descending, and reset; `SetSort` selects an explicit state
-and raises `SortChanged` when the column or direction actually changes — a call
-that re-applies the currently active column and direction raises nothing,
-matching `SortColumnIndex`'s and `SortDirection`'s own change-gated property
-notifications. Inserting or replacing a row while sorted re-splices it into the
-active order without raising `SortChanged`, since the sort settings themselves
-are unchanged; the row collection's own mutation is the signal for that. A
-supplied `SortKey` is compared with culture-independent ordering, and rows with
-equal keys keep their original insertion order in both directions.
+`RowInvoked` continue only when the Table remains attached and effectively
+available and the exact hit row and cell remain owned and available; disable,
+detach, removal, replacement, clearing, or disposal ends that input transaction,
+while moving the same row preserves its current identity and index. `RowInvoked`
+reports pointer and keyboard activation. `SortBy` cycles a column through
+ascending, descending, and reset; `SetSort` selects an explicit state and raises
+`SortChanged` when the column or direction actually changes — a call that
+re-applies the currently active column and direction raises nothing, matching
+`SortColumnIndex`'s and `SortDirection`'s own change-gated property
+notifications. Those property notifications are transaction boundaries: a
+callback that commits a newer sort suppresses the superseded transaction's
+remaining notifications and typed event. Inserting or replacing a row while
+sorted re-splices it into the active order without raising `SortChanged`, since
+the sort settings themselves are unchanged; the row collection's own mutation is
+the signal for that. A supplied `SortKey` is compared with culture-independent
+ordering, and rows with equal keys keep their original insertion order in both
+directions.
 
 `CopySelection()` returns the selected rows or cells as deterministic
 tab-separated text with LF row separators. A host can pass that text to the

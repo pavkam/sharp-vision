@@ -1532,9 +1532,10 @@ public sealed class ListView: ItemsControl
     private void OnActivated(object? sender, ActivationEventArgs eventArgs)
     {
         var item = (ListItem) sender!;
+        var dispatcher = Dispatcher;
         SetActiveIndex(item.Index);
 
-        if (!IsActivatedItemCurrent(item))
+        if (!IsActivatedItemCurrent(item, dispatcher))
         {
             return;
         }
@@ -1558,7 +1559,7 @@ public sealed class ListView: ItemsControl
 
         _ = ApplyInputSelection(item.Index, isSpaceToggle ? modifiers | Modifiers.Control : modifiers);
 
-        if (!IsActivatedItemCurrent(item))
+        if (!IsActivatedItemCurrent(item, dispatcher))
         {
             return;
         }
@@ -1577,9 +1578,13 @@ public sealed class ListView: ItemsControl
     }
 
     [Pure]
-    private bool IsActivatedItemCurrent(ListItem item) =>
+    private bool IsActivatedItemCurrent(ListItem item, Dispatcher? dispatcher) =>
         !IsDisposed &&
+        ReferenceEquals(Dispatcher, dispatcher) &&
+        EffectiveIsVisible &&
+        EffectiveIsEnabled &&
         !item.IsDisposed &&
+        item.IsAvailable &&
         ReferenceEquals(ItemAt(item.Index), item);
 
     // Reacts only to the realized row's own content leaving availability, never to it arriving -

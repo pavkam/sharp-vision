@@ -24,6 +24,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     private bool _isReordering;
     private long _progressiveSortVersion;
     private long _selectionVersion;
+    private long _sortVersion;
     private TableRow? _selectionAnchorRow;
     private int _selectionAnchorColumn = -1;
     private TableEditState? _edit;
@@ -583,6 +584,9 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
 
             var resetColumnChanged = SortColumnIndex != -1;
             var resetDirectionChanged = SortDirection != TableSortDirection.None;
+            var resetSortVersion = resetColumnChanged || resetDirectionChanged
+                ? ++_sortVersion
+                : _sortVersion;
             SortColumnIndex = -1;
             SortDirection = TableSortDirection.None;
             ReorderRows(_sourceRows);
@@ -593,11 +597,21 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             if (resetColumnChanged)
             {
                 NotifyPropertyChanged(nameof(SortColumnIndex), InvalidationImpact.Render);
+
+                if (_sortVersion != resetSortVersion)
+                {
+                    return;
+                }
             }
 
             if (resetDirectionChanged)
             {
                 NotifyPropertyChanged(nameof(SortDirection), InvalidationImpact.Render);
+
+                if (_sortVersion != resetSortVersion)
+                {
+                    return;
+                }
             }
 
             // SortChanged reports a real change to the sort settings, not merely that
@@ -615,6 +629,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual((uint) columnIndex, (uint) Columns.Count);
         var columnChanged = SortColumnIndex != columnIndex;
         var directionChanged = SortDirection != direction;
+        var sortVersion = columnChanged || directionChanged ? ++_sortVersion : _sortVersion;
         SortColumnIndex = columnIndex;
         SortDirection = direction;
 
@@ -640,11 +655,21 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         if (columnChanged)
         {
             NotifyPropertyChanged(nameof(SortColumnIndex), InvalidationImpact.Render);
+
+            if (_sortVersion != sortVersion)
+            {
+                return;
+            }
         }
 
         if (directionChanged)
         {
             NotifyPropertyChanged(nameof(SortDirection), InvalidationImpact.Render);
+
+            if (_sortVersion != sortVersion)
+            {
+                return;
+            }
         }
 
         // SortChanged reports a real change to the sort settings, not merely that SetSort was
@@ -1388,12 +1413,13 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         }
 
         var modifiers = eventArgs.Pointer.Modifiers;
+        var dispatcher = Dispatcher;
 
         if (SelectionMode is TableSelectionMode.Row or TableSelectionMode.MultipleRows)
         {
             SelectRow(row, modifiers);
 
-            if (!IsPointerTargetAvailable(row, column))
+            if (!IsPointerTargetAvailable(row, column, dispatcher))
             {
                 return;
             }
@@ -1405,7 +1431,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             SelectCell(row, column, modifiers);
         }
 
-        if (!IsPointerTargetAvailable(row, column))
+        if (!IsPointerTargetAvailable(row, column, dispatcher))
         {
             return;
         }
@@ -1414,7 +1440,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         {
             _ = BeginEdit(row, column);
 
-            if (!IsPointerTargetAvailable(row, column))
+            if (!IsPointerTargetAvailable(row, column, dispatcher))
             {
                 return;
             }
@@ -1424,8 +1450,14 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     }
 
     [Pure]
-    private bool IsPointerTargetAvailable(TableRow row, [NonNegativeValue] int columnIndex) =>
+    private bool IsPointerTargetAvailable(
+        TableRow row,
+        [NonNegativeValue] int columnIndex,
+        Dispatcher? dispatcher) =>
         !IsDisposed &&
+        ReferenceEquals(Dispatcher, dispatcher) &&
+        EffectiveIsVisible &&
+        EffectiveIsEnabled &&
         Rows.IndexOf(row) >= 0 &&
         columnIndex >= 0 &&
         columnIndex < Columns.Count &&
@@ -1439,9 +1471,16 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             return;
         }
 
+        var dispatcher = Dispatcher;
         SelectIndex(index);
 
-        if (!controller.IsPlaceholder(index) && controller.RowAt(index) is { } row)
+        if (!IsDisposed &&
+            ReferenceEquals(Dispatcher, dispatcher) &&
+            EffectiveIsVisible &&
+            EffectiveIsEnabled &&
+            ReferenceEquals(Progressive, controller) &&
+            !controller.IsPlaceholder(index) &&
+            controller.RowAt(index) is { } row)
         {
             RowInvoked?.Invoke(this, new TableRowInvokedEventArgs(row, index, ActivationCause.Pointer));
         }
@@ -2251,19 +2290,28 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             RepairSelectionForRows([row], fallback);
         }
 
+        index = Rows.IndexOf(row);
+
+        if (index < 0)
+        {
+            return;
+        }
+
+        // Commit semantic removal before detaching cells. Any lifecycle callback raised while a
+        // cell leaves the presenter then observes that this exact row is already gone and cannot
+        // recursively remove it or redirect the outer operation through its former numeric index.
+        owner.RemoveAttached(index);
+        _rowIndexCache = null;
+
         foreach (var cell in row.Cells)
         {
             _ = _presenter.Children.Remove(cell);
         }
 
-        owner.RemoveAttached(index);
-
         // Every position after the removed index shifts, so the whole cache is stale, not just
         // one entry - discarded here and rebuilt lazily the next time navigation needs it. This
         // also means IndexOfRow(row) already reports -1 for the just-detached row by the time the
         // ActiveRow repair below calls CommitActiveCell.
-        _rowIndexCache = null;
-
         if (!_isReordering)
         {
             _ = _sourceRows.Remove(row);
@@ -2321,6 +2369,13 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         }
 
         RepairSelectionForRows([previous], row);
+
+        index = Rows.IndexOf(previous);
+
+        if (index < 0)
+        {
+            return;
+        }
 
         foreach (var cell in previous.Cells)
         {

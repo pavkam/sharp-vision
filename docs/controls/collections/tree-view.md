@@ -139,8 +139,9 @@ applying row activation. A handler that consumes the event suppresses the
 built-in row action. Every `ItemInvoked` event reports one defined keyboard,
 pointer, or programmatic activation cause. Item invocation and selection
 callbacks may remove or dispose the candidate; keyboard and pointer activation
-revalidate ownership after each callback and never publish a tree-level
-invocation for an obsolete item.
+revalidate owner attachment and effective availability plus item ownership after
+each callback, and never publish a tree-level invocation for an unavailable or
+obsolete item.
 
 Hierarchy depth is caller-controlled and has no fixed limit. Ownership
 propagation, cycle detection, flattening, expand and collapse, item collection,

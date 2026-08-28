@@ -29,6 +29,44 @@ public sealed class TableDataControllerTests
         return table;
     }
 
+    /// <summary>Verifies a selection callback that disables or detaches a progressive Table ends
+    /// the current pointer transaction before RowInvoked can publish.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Pointer_WhenProgressiveSelectionCallbackMakesTableUnavailable_DoesNotInvokeRowAsync(bool detach)
+    {
+        // Arrange
+        var table = CreateHost();
+        var root = new Overlay { Children = { table } };
+        var invoked = 0;
+        table.RowInvoked += (_, _) => invoked++;
+        table.SelectionChanged += (_, _) =>
+        {
+            if (detach)
+            {
+                _ = root.Children.Remove(table);
+            }
+            else
+            {
+                table.IsEnabled = false;
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(8, 2),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(
+            () => table.SetDataSource(CreateSource(1), BuildRow, 1),
+            "bind one progressive row");
+
+        // Act
+        await surface.Pointer.ClickAsync(table, new Point(1, 0));
+
+        // Assert
+        invoked.ShouldBe(0);
+    }
+
     #region SetDataSource preconditions
 
     /// <summary>Verifies a non-empty Rows collection is rejected and leaves an eager table eager.</summary>
