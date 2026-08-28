@@ -128,7 +128,7 @@ internal sealed class CommandPalettePane: CompositeControlBase
 
         return new DocPage(
             Title,
-            "<info>CommandPalette</info> keeps a real TextInput focused while a cancellable resolver supplies fresh ListView results for every query.",
+            "<info>CommandPalette</info> keeps a real TextInput focused while a cancellable resolver supplies fresh ListView results; pending queries cannot invoke stale rows.",
             new DocSection(
                 "⌕",
                 "Embedded search",

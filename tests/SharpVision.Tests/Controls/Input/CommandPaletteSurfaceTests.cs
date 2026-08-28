@@ -213,6 +213,41 @@ public sealed class CommandPaletteSurfaceTests
         palette.IsOpen.ShouldBeFalse();
     }
 
+    /// <summary>Verifies Enter cannot activate the previous query's selected row while a newer
+    /// asynchronous resolution is still pending.</summary>
+    [Fact]
+    public async Task Enter_WhenNewerResolutionIsPending_DoesNotInvokeStaleResultAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        ItemInvokedEventArgs? invoked = null;
+        var palette = new CommandPalette
+        {
+            Width = Length.Cells(18),
+            Resolver = (searchTerms, _) => searchTerms == "o"
+                ? ValueTask.FromResult<IReadOnlyList<object?>>(["Open file"])
+                : new ValueTask<IReadOnlyList<object?>>(completion.Task)
+        };
+        palette.ItemInvoked += (_, eventArgs) => invoked = eventArgs;
+        await using var surface = await ComponentSurface.MountAsync(
+            palette,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => palette.Text = "o", "resolve current results");
+        await surface.UpdateAsync(() => palette.Text = "op", "start newer resolution");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        invoked.ShouldBeNull();
+        palette.IsResolving.ShouldBeTrue();
+
+        // Cleanup
+        completion.SetResult([]);
+    }
+
     /// <summary>Verifies resolved rows render through the owned Popup and remain pointer-activatable.</summary>
     [Fact]
     public async Task Results_WhenResolved_RenderInPopupAndSupportPointerInvocationAsync()

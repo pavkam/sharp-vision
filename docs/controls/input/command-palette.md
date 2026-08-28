@@ -64,16 +64,19 @@ only when the failing request is still current.
 2. A current successful completion copies and publishes `Items`, raises
    `ResultsChanged`, and opens the popup when results are non-empty.
 3. A cancelled or stale completion has no observable effect.
-4. Detachment increments the generation, cancels the request, and clears
-   `IsResolving`; a resolver that ignores cancellation still cannot mutate or
-   publish into the detached palette.
+4. Disabling or hiding the palette suppresses interaction without canceling its
+   live request; a completion for the still-current text may commit while the
+   control is transiently unavailable. Detachment increments the generation,
+   cancels the request, and clears `IsResolving`; a resolver that ignores
+   cancellation still cannot mutate or publish into the detached palette.
 5. Opening non-empty results selects the first available row and makes that same
    row the list's current item while focus stays in the editor. Initial and
    repeated Down or Up key-down input moves selection and current item through
    the `ListView` navigation transaction, which scrolls the result viewport
-   minimally to keep the row visible. Enter invokes the selected current result;
-   pointer activation uses the same `ItemInvoked` contract. Escape closes
-   results.
+   minimally to keep the row visible. Enter invokes the selected current result
+   only when `IsResolving` is false; while a newer query is pending, Enter is
+   consumed without activating the older visible snapshot. Pointer activation
+   uses the same `ItemInvoked` contract. Escape closes results.
 
 Every public callback is a generation boundary. If `ResultsChanged`, popup
 lifecycle, or property notification code starts another query or disposes the

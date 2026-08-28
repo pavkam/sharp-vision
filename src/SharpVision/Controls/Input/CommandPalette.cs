@@ -463,10 +463,14 @@ public sealed class CommandPalette: CompositeControlBase
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        _resolutionGeneration++;
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(CancelResolution, ref failure);
-        ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
+
+        if (reason is ReleaseReason.Detached or ReleaseReason.Disposed)
+        {
+            _resolutionGeneration++;
+            ExceptionAggregation.Capture(CancelResolution, ref failure);
+            ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
+        }
 
         if (reason == ReleaseReason.Disposed)
         {
@@ -503,10 +507,11 @@ public sealed class CommandPalette: CompositeControlBase
 
         if (eventArgs.IsInitialKeyDown && eventArgs.Stroke.Code == Code.Enter)
         {
-            eventArgs.IsHandled = _list.ActivateCurrent(
-                ActivationCause.Keyboard,
-                eventArgs.Stroke.Code,
-                eventArgs.Stroke.Modifiers);
+            eventArgs.IsHandled = IsResolving ||
+                _list.ActivateCurrent(
+                    ActivationCause.Keyboard,
+                    eventArgs.Stroke.Code,
+                    eventArgs.Stroke.Modifiers);
             return;
         }
 

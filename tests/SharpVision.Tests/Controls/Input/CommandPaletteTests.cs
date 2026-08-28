@@ -39,6 +39,57 @@ public sealed class CommandPaletteTests
         callbacks.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies transient local availability changes do not cancel the live request for
+    /// the palette's still-current text.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Resolver_WhenTemporarilyUnavailableMidResolution_StillCommitsAsync(bool hide)
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var committed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var palette = new CommandPalette
+        {
+            Resolver = (searchTerms, _) => searchTerms == "conf"
+                ? new ValueTask<IReadOnlyList<object?>>(completion.Task)
+                : ValueTask.FromResult<IReadOnlyList<object?>>(["initial"])
+        };
+        palette.ResultsChanged += (_, _) =>
+        {
+            if (palette.Items.Count == 1 && Equals(palette.Items[0], "Confirm"))
+            {
+                _ = committed.TrySetResult();
+            }
+        };
+        await using var dispatcher = Dispatcher.Start();
+        await dispatcher.InvokeAsync(() =>
+        {
+            palette.Attach(dispatcher);
+            palette.Text = "conf";
+
+            if (hide)
+            {
+                palette.Visibility = Visibility.Hidden;
+                palette.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                palette.IsEnabled = false;
+                palette.IsEnabled = true;
+            }
+        }, TestContext.Current.CancellationToken);
+
+        // Act
+        completion.SetResult(["Confirm"]);
+        await committed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        // Assert
+        palette.Items.ShouldHaveSingleItem().ShouldBe("Confirm");
+        palette.IsResolving.ShouldBeFalse();
+    }
+
     /// <summary>Verifies a success callback that starts an empty current query prevents the stale
     /// outer success from reopening the popup.</summary>
     [Fact]
