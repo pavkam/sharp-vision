@@ -481,7 +481,7 @@ public sealed partial class ApplicationTests
         stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(1));
     }
 
-    // #769: none of the six sites above ever rolled the wake flag back when the Post attempt
+    // None of the six sites above ever rolled the wake flag back when the Post attempt
     // itself failed with anything other than ObjectDisposedException - so a single transient
     // full-queue trip, survived via a handled UnhandledException or simply outlived once the
     // backlog drained, permanently and silently froze that entire pipeline for the rest of the
@@ -532,7 +532,7 @@ public sealed partial class ApplicationTests
 
     /// <summary>Verifies the resize-wake site recovers from a full-queue trip: once the dispatcher
     /// drains, a later, ordinary resize is actually applied instead of the flag staying stuck
-    /// latched from the failed post. Mirrors the exact reproducer filed with #769.</summary>
+    /// latched from the failed post.</summary>
     [Fact]
     public async Task Resize_AfterQueueFullTrip_LaterOrdinaryResizeIsAppliedAsync()
     {

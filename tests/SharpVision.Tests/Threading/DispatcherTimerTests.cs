@@ -305,6 +305,12 @@ public sealed class DispatcherTimerTests
         release.Set();
         await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
 
+        // The new generation's own Deliver, posted from inside the dispatcher-thread callback
+        // above, races this test's own first InvokeAsync round-trip to enqueue: whichever wins
+        // decides whether the tick is already visible after one round-trip or only after two, so
+        // a second round-trip is required to deterministically observe it either way.
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
         // Assert
         ticks.ShouldBe(1);
         timer.Dispose();
@@ -391,6 +397,12 @@ public sealed class DispatcherTimerTests
         // latches `_pending` and queues Deliver(gen0) behind the stop/restart callback above.
         timer.SimulateElapsedForGeneration(gen0);
         release.Set();
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // The new generation's own Deliver, posted from inside the dispatcher-thread callback
+        // above, races this test's own first InvokeAsync round-trip to enqueue: whichever wins
+        // decides whether the tick is already visible after one round-trip or only after two, so
+        // a second round-trip is required to deterministically observe it either way.
         await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
 
         // Assert

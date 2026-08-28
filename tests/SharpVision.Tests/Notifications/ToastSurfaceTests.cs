@@ -849,6 +849,16 @@ public sealed class ToastSurfaceTests
         await surface.UpdateAsync(() => root.Invalidate(Invalidation.Render), "enter Toast-hiding idle callback");
         await removalIdle.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
 
+        // observeRemovalIdle's own TaskCompletionSource resolves on the dispatcher thread but
+        // (per RunContinuationsAsynchronously) hands this await's own resumption to the thread
+        // pool - a genuinely different thread that races Toast's own Dispatcher.Idle subscriber
+        // (OnRemovalDispatcherIdle), which runs synchronously right after Application.Idle
+        // finishes raising on that same dispatcher-thread pass. A plain empty round-trip through
+        // the dispatcher only ever runs after everything already queued or already mid-dispatch
+        // ahead of it - including that same-pass Idle subscriber - so it is what actually
+        // guarantees the removal below has landed, not the TaskCompletionSource by itself.
+        await surface.Application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
         toast.IsOpen.ShouldBeFalse();
         toast.Parent.ShouldBeNull();
         root.Children.ShouldNotContain(toast);

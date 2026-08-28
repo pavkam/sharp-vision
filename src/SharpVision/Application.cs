@@ -1022,6 +1022,20 @@ public sealed class Application:
                 {
                     Report(exception);
                 }
+                else if (_stopping && HasPendingOutOfBand())
+                {
+                    // A frame render genuinely in flight when a stop commits does not reach the
+                    // ordinary completion path below at all: BeginStopping's _lifetime.Cancel()
+                    // (run in the same synchronous step that sets _stopping) cancels this frame's
+                    // own still-outstanding transport write/flush, which is bound to the same
+                    // token, so it surfaces here as the benign cancellation this branch already
+                    // exists to swallow - never as a successful completion. Out-of-band bytes
+                    // buffered behind that same in-flight frame (Bell/SetTitle/clipboard OSC
+                    // writes) must still be flushed from here for the same reason documented on
+                    // FlushOutOfBandOnStop below: nothing downstream of this method ever looks at
+                    // _outOfBand again.
+                    FlushOutOfBandOnStop();
+                }
 
                 return;
             }
