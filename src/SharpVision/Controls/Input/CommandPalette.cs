@@ -26,6 +26,9 @@ public sealed class CommandPalette: CompositeControlBase
     private readonly PopupDropDownCoordinator _popupCoordinator;
     private CancellationTokenSource? _resolutionCancellation;
     private int _resolutionGeneration;
+    private int _openingSelectedIndex = -1;
+    private int _openingCurrentIndex = -1;
+    private PopupItemActivationIdentity? _itemActivation;
     private bool _wantsOpen;
 
     #region Construction and events
@@ -41,6 +44,7 @@ public sealed class CommandPalette: CompositeControlBase
             MaxHeight = _defaultDropDownHeight,
             SelectionMode = ListSelectionMode.Single
         };
+        _list.ItemActivationStarting += OnItemActivationStarting;
         _list.ItemInvoked += OnItemInvoked;
         _popup = new Popup
         {
@@ -70,9 +74,11 @@ public sealed class CommandPalette: CompositeControlBase
             _input.Focus,
             () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None),
             OnOpened,
-            () => Closed?.Invoke(this, EventArgs.Empty),
-            ownerInitialFocus: _input);
-        _ = AddHandler(Events.Key, OnKeyRouted, handledEventsToo: true);
+            OnClosed,
+            ownerInitialFocus: _input,
+            beginSession: BeginNavigationSession,
+            handleNavigationKey: HandleNavigationKey,
+            cancelSession: CancelNavigationSession);
         InitializeContent(_input);
     }
 
@@ -470,6 +476,7 @@ public sealed class CommandPalette: CompositeControlBase
         if (reason == ReleaseReason.Disposed)
         {
             _input.TextChanged -= OnTextChanged;
+            _list.ItemActivationStarting -= OnItemActivationStarting;
             _list.ItemInvoked -= OnItemInvoked;
             _popupCoordinator.Detach();
             Opened = null;
@@ -482,38 +489,46 @@ public sealed class CommandPalette: CompositeControlBase
         failure?.Throw();
     }
 
-    private void OnKeyRouted(object? sender, KeyEventArgs eventArgs)
+    private void BeginNavigationSession()
     {
-        _ = sender;
+        _openingSelectedIndex = _list.SelectedIndex;
+        _openingCurrentIndex = _list.ActiveIndex;
+        _itemActivation = null;
+    }
 
-        if (eventArgs.Phase != RoutingPhase.Preview || eventArgs.IsHandled || !IsOpen)
-        {
-            return;
-        }
+    private bool HandleNavigationKey(KeyEventArgs eventArgs)
+    {
+        var stroke = eventArgs.Stroke;
 
         if (eventArgs.IsInitialKeyDown &&
-            eventArgs.Stroke.Code == Code.Escape &&
-            eventArgs.Stroke.Modifiers.IsActivationEligible())
+            stroke.Code == Code.Escape &&
+            stroke.Modifiers.IsActivationEligible())
         {
-            Close();
             eventArgs.IsHandled = true;
-            return;
+            _popupCoordinator.SetOpen(false);
+            return true;
         }
 
-        if (eventArgs.IsInitialKeyDown && eventArgs.Stroke.Code == Code.Enter)
+        if (eventArgs.IsInitialKeyDown && stroke.Code == Code.Enter)
         {
-            eventArgs.IsHandled = _list.ActivateCurrent(
+            var handled = _list.ActivateCurrent(
                 ActivationCause.Keyboard,
-                eventArgs.Stroke.Code,
-                eventArgs.Stroke.Modifiers);
-            return;
+                stroke.Code,
+                stroke.Modifiers);
+            eventArgs.IsHandled |= handled;
+            return handled;
         }
 
-        if (eventArgs.IsKeyDown &&
-            eventArgs.Stroke.Code is Code.Up or Code.Down)
-        {
-            eventArgs.IsHandled = _list.MoveSelection(eventArgs.Stroke.Code);
-        }
+        var navigated = _list.HandleSelectionNavigationKey(eventArgs);
+        eventArgs.IsHandled |= navigated;
+        return navigated;
+    }
+
+    private void CancelNavigationSession()
+    {
+        _itemActivation = null;
+        _list.SelectedIndex = _openingSelectedIndex;
+        _list.SetProvisionalCurrentIndex(_openingCurrentIndex);
     }
 
     /// <summary>Unifies the first available result's selection and current state after the popup
@@ -526,6 +541,12 @@ public sealed class CommandPalette: CompositeControlBase
         }
 
         Opened?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnClosed()
+    {
+        _wantsOpen = false;
+        Closed?.Invoke(this, EventArgs.Empty);
     }
 
     #endregion
@@ -680,7 +701,39 @@ public sealed class CommandPalette: CompositeControlBase
             _popupCoordinator.IsOpen &&
             _list.SelectedIndex < 0)
         {
-            _ = _list.MoveSelection(Code.Home);
+            SelectFirstResultAfterLayout(generation);
+        }
+    }
+
+    /// <summary>Defers refreshed-result selection until the frame already requested by Items has
+    /// arranged the replacement rows. Initial opening still selects synchronously in
+    /// <see cref="OnOpened"/> because its retained rows were arranged while the popup was closed.</summary>
+    private void SelectFirstResultAfterLayout(int resolutionGeneration)
+    {
+        var dispatcher = Dispatcher;
+
+        if (dispatcher is null)
+        {
+            return;
+        }
+
+        var sessionGeneration = _popupCoordinator.SessionGeneration;
+
+        try
+        {
+            dispatcher.Post(() =>
+            {
+                if (IsCurrentResolution(resolutionGeneration) &&
+                    _popupCoordinator.IsOpen &&
+                    _popupCoordinator.SessionGeneration == sessionGeneration &&
+                    _list.SelectedIndex < 0)
+                {
+                    _ = _list.MoveSelection(Code.Home);
+                }
+            });
+        }
+        catch (ObjectDisposedException)
+        {
         }
     }
 
@@ -768,14 +821,40 @@ public sealed class CommandPalette: CompositeControlBase
     private void OnItemInvoked(object? sender, ItemInvokedEventArgs eventArgs)
     {
         _ = sender;
-        Invoke(eventArgs.Index, eventArgs.Cause);
+        var activation = _itemActivation;
+        _itemActivation = null;
+        var isCurrentInvocation =
+            activation is { } identity &&
+            !IsDisposed &&
+            IsOpen &&
+            eventArgs.ActivationGeneration == identity.ItemGeneration &&
+            eventArgs.Index == identity.ItemIndex &&
+            eventArgs.Index == _list.SelectedIndex &&
+            eventArgs.Index == _list.ActiveIndex &&
+            _popupCoordinator.TransitionVersion == identity.PopupTransitionVersion &&
+            _popupCoordinator.SessionGeneration == identity.PopupSessionGeneration;
+
+        if (!isCurrentInvocation)
+        {
+            return;
+        }
+
+        _popupCoordinator.AcceptAndClose();
+        ItemInvoked?.Invoke(
+            this,
+            new ItemInvokedEventArgs(eventArgs.Index, eventArgs.Item, eventArgs.Cause));
     }
 
-    private void Invoke(int index, ActivationCause cause)
+    private void OnItemActivationStarting(object? sender, ItemInvokedEventArgs eventArgs)
     {
-        var eventArgs = new ItemInvokedEventArgs(index, Items[index], cause);
-        Close();
-        ItemInvoked?.Invoke(this, eventArgs);
+        _ = sender;
+        _itemActivation = !IsDisposed && IsOpen
+            ? new PopupItemActivationIdentity(
+                eventArgs.ActivationGeneration,
+                eventArgs.Index,
+                _popupCoordinator.TransitionVersion,
+                _popupCoordinator.SessionGeneration)
+            : null;
     }
 
     #endregion
