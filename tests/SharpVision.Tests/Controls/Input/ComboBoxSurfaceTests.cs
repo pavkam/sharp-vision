@@ -6,6 +6,39 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves ComboBox and its transient list through mounted terminal surfaces.</summary>
 public sealed class ComboBoxSurfaceTests
 {
+    /// <summary>Verifies an open owner-managed drop-down preserves its presentation while an
+    /// unrelated ancestor is disabled and enters one fresh modal scope after recovery.</summary>
+    [Fact]
+    public async Task IsOpen_WhenAncestorIsDisabledAndRecovers_PreservesDropDownAndRestoresScopeAsync()
+    {
+        // Arrange
+        var combo = new ComboBox { Items = ["One", "Two"], SelectedIndex = 0 };
+        var root = new Overlay { Children = { combo } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 10),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => combo.IsOpen = true, "open ComboBox drop-down");
+        var first = surface.Application.Modality.Active.ShouldNotBeNull();
+
+        // Act
+        await surface.UpdateAsync(() => root.IsEnabled = false, "disable ComboBox ancestor");
+
+        // Assert
+        combo.IsOpen.ShouldBeTrue();
+        first.IsActive.ShouldBeFalse();
+        surface.Application.Modality.Active.ShouldBeNull();
+
+        // Act
+        await surface.UpdateAsync(() => root.IsEnabled = true, "restore ComboBox ancestor");
+
+        // Assert
+        var restored = surface.Application.Modality.Active.ShouldNotBeNull();
+        restored.ShouldNotBeSameAs(first);
+        restored.Root.ShouldBeSameAs(combo);
+        restored.IsActive.ShouldBeTrue();
+    }
+
     /// <summary>Verifies the shared owner-managed input popup does not close an unrelated
     /// owner-managed popup elsewhere in the same tree.</summary>
     [Fact]

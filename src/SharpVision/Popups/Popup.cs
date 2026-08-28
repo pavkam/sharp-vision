@@ -152,7 +152,13 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     }
 
     /// <summary>Gets or sets an optional fixed origin that overrides anchor-based positioning.</summary>
-    internal Point? FixedOrigin { get; set; }
+    /// <exception cref="InvalidOperationException">The attached popup is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The popup is disposed.</exception>
+    internal Point? FixedOrigin
+    {
+        get;
+        set => _ = SetProperty(ref field, value, InvalidationImpact.Arrange);
+    }
 
     #endregion
 

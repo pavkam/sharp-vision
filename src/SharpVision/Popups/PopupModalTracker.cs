@@ -20,6 +20,9 @@ internal sealed class PopupModalTracker
     private readonly Popup _popup;
     private readonly Action _close;
     private ModalScope? _scope;
+    private ControlBase? _owner;
+    private ControlBase? _ownerInitialFocus;
+    private ControlBase? _availabilityAncestor;
 
     /// <summary>Initializes a tracker for one popup with a close callback invoked on dismiss.</summary>
     /// <param name="popup">The popup whose <see cref="Popup.IsOpen"/> state is tracked.</param>
@@ -28,6 +31,7 @@ internal sealed class PopupModalTracker
     {
         _popup = popup;
         _close = close;
+        _popup.PropertyChanged += OnPopupPropertyChanged;
     }
 
     /// <summary>Enters a dismiss-mode modal scope on the owner's modality manager.</summary>
@@ -37,6 +41,9 @@ internal sealed class PopupModalTracker
     /// of a non-focusable composite owner.</param>
     public void Enter(ControlBase owner, ControlBase? ownerInitialFocus = null)
     {
+        _owner = owner;
+        _ownerInitialFocus = ownerInitialFocus;
+
         if (_scope?.IsActive == true || owner.ModalityOwner is not { } modality)
         {
             return;
@@ -112,6 +119,8 @@ internal sealed class PopupModalTracker
     /// <summary>Exits and clears the tracked modal scope if one is active.</summary>
     public void Exit()
     {
+        StopAwaitingAvailability();
+
         if (_scope is not { } scope)
         {
             return;
@@ -123,6 +132,15 @@ internal sealed class PopupModalTracker
         }
 
         Clear(scope);
+    }
+
+    /// <summary>Releases the tracker subscriptions when its composite owner is disposed.</summary>
+    public void Detach()
+    {
+        StopAwaitingAvailability();
+        _popup.PropertyChanged -= OnPopupPropertyChanged;
+        _owner = null;
+        _ownerInitialFocus = null;
     }
 
     private void OnDismissRequested(object? sender, EventArgs eventArgs)
@@ -147,12 +165,90 @@ internal sealed class PopupModalTracker
             return;
         }
 
+        var preserveOpen = _popup.ModalityOwner?.IsUnavailable(_popup) == true;
         Clear(scope);
 
-        if (_popup.IsOpen)
+        if (!preserveOpen && _popup.IsOpen)
         {
             _popup.IsOpen = false;
         }
+        else if (preserveOpen && _popup.IsOpen)
+        {
+            AwaitAvailability();
+        }
+    }
+
+    private void AwaitAvailability()
+    {
+        var unavailable = FindUnavailableAncestor();
+
+        if (ReferenceEquals(_availabilityAncestor, unavailable))
+        {
+            return;
+        }
+
+        StopAwaitingAvailability();
+
+        if (unavailable is not null)
+        {
+            _availabilityAncestor = unavailable;
+            unavailable.PropertyChanged += OnAvailabilityAncestorPropertyChanged;
+            return;
+        }
+
+        if (_popup.IsOpen && _owner is { EffectiveIsEnabled: true, EffectiveIsVisible: true } owner)
+        {
+            Enter(owner, _ownerInitialFocus);
+        }
+    }
+
+    [Pure]
+    private ControlBase? FindUnavailableAncestor()
+    {
+        for (var current = _popup.Parent; current is not null; current = current.Parent)
+        {
+            if (current.Visibility != Visibility.Visible || !current.IsEnabled)
+            {
+                return current;
+            }
+        }
+
+        return null;
+    }
+
+    private void OnAvailabilityAncestorPropertyChanged(
+        object? sender,
+        System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.PropertyName is nameof(ControlBase.IsEnabled) or nameof(ControlBase.Visibility))
+        {
+            AwaitAvailability();
+        }
+    }
+
+    private void OnPopupPropertyChanged(
+        object? sender,
+        System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.PropertyName == nameof(Popup.IsOpen) && !_popup.IsOpen)
+        {
+            StopAwaitingAvailability();
+        }
+    }
+
+    private void StopAwaitingAvailability()
+    {
+        if (_availabilityAncestor is not { } ancestor)
+        {
+            return;
+        }
+
+        _availabilityAncestor = null;
+        ancestor.PropertyChanged -= OnAvailabilityAncestorPropertyChanged;
     }
 
     private void Clear(ModalScope scope)

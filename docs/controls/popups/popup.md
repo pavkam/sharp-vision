@@ -138,6 +138,11 @@ unhandled in-plane wheel closes the popup without replaying that input.
 its disposable `ModalScope`, for callers that need a non-default policy or focus
 target. One popup cannot own two live modal presentations.
 
+Owner-managed composite fields preserve an open Popup when only an ancestor
+becomes unavailable. Their owner-rooted modal scope exits for the unavailable
+interval and is replaced once after the ancestor recovers; the public open state
+and retained presentation remain one continuous lifetime.
+
 An ordinary close raises `Closing` while its modal scope and content are still
 available, then exits the scope before content becomes unavailable. Disposing
 the returned or application-visible scope closes the Popup, so an attached

@@ -140,6 +140,7 @@ internal sealed class PopupDropDownCoordinator
     /// <summary>Unsubscribes from the owned popup's lifecycle events. Called from the owner's disposal path.</summary>
     public void Detach()
     {
+        _modalTracker.Detach();
         _popup.Opened -= OnPopupOpened;
         _popup.Closing -= OnPopupClosing;
         _popup.Closed -= OnPopupClosed;

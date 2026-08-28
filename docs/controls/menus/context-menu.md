@@ -26,18 +26,18 @@ classDiagram
 
 ## API
 
-| Member                         | Type                  | Default        | Description                                                                                                                                                                                                |
-| ------------------------------ | --------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ContextMenu()`                | —                     | —              | Initializes a closed context menu with its own empty vertical menu.                                                                                                                                        |
-| `ContextMenu(Menu menu)`       | —                     | —              | Initializes a closed context menu that adopts an already-built menu. Throws `ArgumentNullException` for a null menu and `ArgumentException` when the menu already belongs to a tree.                       |
-| `Items`                        | `MenuEntryCollection` | Empty          | The typed collection of menu entries the menu manages.                                                                                                                                                     |
-| `IsOpen`                       | `bool`                | `false`        | Reports the committed popup visibility. Read-only.                                                                                                                                                         |
-| `PopupChrome`                  | `PopupChrome`         | Theme-owned    | Gets or sets the owned popup's border and shadow together.                                                                                                                                                 |
-| `Show(int row, int col)`       | `void`                | —              | Opens at a non-negative zero-based root-cell position; throws `ArgumentOutOfRangeException` for either negative coordinate and otherwise remains a no-op until assigned to some `ControlBase.ContextMenu`. |
-| `Close()`                      | `void`                | —              | Closes the menu and clears its fixed origin; safe to call again.                                                                                                                                           |
-| `ResetPopupChrome()`           | `void`                | —              | Returns the owned popup's border and shadow to `PopupChrome` ownership.                                                                                                                                    |
-| `Dispose()`                    | `void`                | —              | Closes the menu and disposes the owned popup and menu tree; the coordinator is unusable afterward.                                                                                                         |
-| `Opening`, `Closing`, `Closed` | `EventHandler`        | No subscribers | Lifecycle notifications raised in order around visibility changes.                                                                                                                                         |
+| Member                         | Type                  | Default        | Description                                                                                                                                                                                                               |
+| ------------------------------ | --------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ContextMenu()`                | —                     | —              | Initializes a closed context menu with its own empty vertical menu.                                                                                                                                                       |
+| `ContextMenu(Menu menu)`       | —                     | —              | Initializes a closed context menu that adopts an already-built menu. Throws `ArgumentNullException` for a null menu and `ArgumentException` when the menu already belongs to a tree.                                      |
+| `Items`                        | `MenuEntryCollection` | Empty          | The typed collection of menu entries the menu manages.                                                                                                                                                                    |
+| `IsOpen`                       | `bool`                | `false`        | Reports the committed popup visibility. Read-only.                                                                                                                                                                        |
+| `PopupChrome`                  | `PopupChrome`         | Theme-owned    | Gets or sets the owned popup's border and shadow together.                                                                                                                                                                |
+| `Show(int row, int col)`       | `void`                | —              | Opens or repositions at a non-negative zero-based root-cell position; throws `ArgumentOutOfRangeException` for either negative coordinate and otherwise remains a no-op until assigned to some `ControlBase.ContextMenu`. |
+| `Close()`                      | `void`                | —              | Closes the menu and clears its fixed origin; safe to call again.                                                                                                                                                          |
+| `ResetPopupChrome()`           | `void`                | —              | Returns the owned popup's border and shadow to `PopupChrome` ownership.                                                                                                                                                   |
+| `Dispose()`                    | `void`                | —              | Closes the menu and disposes the owned popup and menu tree; the coordinator is unusable afterward.                                                                                                                        |
+| `Opening`, `Closing`, `Closed` | `EventHandler`        | No subscribers | Lifecycle notifications raised in order around visibility changes.                                                                                                                                                        |
 
 ## Ownership
 
@@ -80,8 +80,12 @@ var contextMenu = new ContextMenu(
   coordinator; every subsequent public operation rejects the disposed
   relationship instead of exposing or reopening retained presentation state.
 - The open surface is placed relative to the root, clips to it, renders with
-  menu appearance, and draws elevated above ordinary content.
+  menu appearance, and draws elevated above ordinary content. Calling `Show`
+  again while open immediately rearranges the surface at the new position.
 - Right-click opens the menu on its owning control, keyboard navigation works
-  within it, invoking an item closes it, and any primary, middle, secondary,
-  back, or forward press outside dismisses it through light dismiss. The press
-  is consumed even when a modal boundary intercepts routing.
+  within it, invoking an item closes it after every `ItemInvoked` subscriber has
+  observed the still-open menu chain, and any primary, middle, secondary, back,
+  or forward press outside dismisses it through light dismiss. The press is
+  consumed even when a modal boundary intercepts routing. The private Popup owns
+  the complete ContextMenu modal session; opening a submenu reuses that scope
+  instead of nesting a second Menu scope.

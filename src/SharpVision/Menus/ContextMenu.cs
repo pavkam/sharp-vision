@@ -35,13 +35,14 @@ public class ContextMenu: IDisposable
         ArgumentNullException.ThrowIfNull(menu);
 
         Menu = menu;
-        Menu.ItemInvoked += OnMenuItemInvoked;
+        Menu.ItemInvocationCompleted += OnMenuItemInvocationCompleted;
         _popup = new Popup
         {
             Content = Menu,
             SuppressCloseOtherPopups = true,
             HorizontalAlignment = HorizontalAlignment.Left
         };
+        Menu.UsesExternalModalSession = true;
         _popup.Closing += OnPopupClosing;
         _popup.Closed += OnPopupClosed;
         _popup.ContentDisposalRequested += OnContentDisposalRequested;
@@ -173,7 +174,7 @@ public class ContextMenu: IDisposable
         _popup.ContentDisposalRequested -= OnContentDisposalRequested;
         _popup.PropertyChanged -= OnPopupPropertyChanged;
         _popup.ParentChanged -= OnPopupParentChanged;
-        Menu.ItemInvoked -= OnMenuItemInvoked;
+        Menu.ItemInvocationCompleted -= OnMenuItemInvocationCompleted;
         ExceptionAggregation.Capture(_popup.Dispose, ref failure);
         Opening = null;
         Closing = null;
@@ -190,7 +191,12 @@ public class ContextMenu: IDisposable
         }
     }
 
-    private void OnMenuItemInvoked(object? sender, MenuItemInvokedEventArgs e) => Close();
+    private void OnMenuItemInvocationCompleted(object? sender, MenuItemInvokedEventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+        Close();
+    }
 
     private void OnPopupClosing(object? sender, EventArgs e) => Closing?.Invoke(this, EventArgs.Empty);
 

@@ -6,6 +6,84 @@ namespace SharpVision.Tests.Menus;
 /// <summary>Verifies context menu behaviour with real pointer routing across control types and configurations.</summary>
 public sealed class ContextMenuSurfaceTests
 {
+    /// <summary>Verifies showing an already-open context menu at a new root-cell position
+    /// immediately rearranges its retained popup.</summary>
+    [Fact]
+    public async Task Show_WhenCalledAgainWhileOpen_RepositionsPopupAsync()
+    {
+        // Arrange
+        var menu = new ContextMenu();
+        menu.Items.Add(new MenuItem { Text = "Inspect" });
+        var button = new Button
+        {
+            Text = "Target",
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            ContextMenu = menu
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            button,
+            new Size(30, 20),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => menu.Show(2, 2), "show context menu at first position");
+        var popup = (Popup) menu.Presentation;
+        popup.SurfaceBounds.X.ShouldBe(2);
+        popup.SurfaceBounds.Y.ShouldBe(2);
+
+        // Act
+        await surface.UpdateAsync(() => menu.Show(10, 10), "reposition open context menu");
+
+        // Assert
+        popup.SurfaceBounds.X.ShouldBe(10);
+        popup.SurfaceBounds.Y.ShouldBe(10);
+    }
+
+    /// <summary>Verifies a ContextMenu-owned Menu publishes leaf invocation while its sibling
+    /// submenu is still open, matching the ordering of a directly mounted Menu session.</summary>
+    [Fact]
+    public async Task ItemInvoked_WhenSiblingSubmenuIsOpen_ObservesOpenChainBeforeClosureAsync()
+    {
+        // Arrange
+        var submenu = new Menu { Orientation = Orientation.Vertical };
+        submenu.Items.Add(new MenuItem { Text = "About" });
+        var file = new MenuItem { Text = "File", Submenu = submenu };
+        var save = new MenuItem { Text = "Save" };
+        var innerMenu = new Menu { Orientation = Orientation.Vertical };
+        innerMenu.Items.Add(file);
+        innerMenu.Items.Add(save);
+        var contextMenu = new ContextMenu(innerMenu);
+        var target = new Button
+        {
+            Text = "Target",
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            ContextMenu = contextMenu
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            target,
+            new Size(40, 20),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => contextMenu.Show(2, 2), "open context menu");
+        await surface.Pointer.ClickAsync(file);
+        file.IsSubmenuOpen.ShouldBeTrue();
+        surface.Application.Modality.Active.ShouldNotBeNull().Root.ShouldBeSameAs(contextMenu.Presentation);
+        bool? observedSubmenuOpen = null;
+        innerMenu.ItemInvoked += (_, args) =>
+        {
+            if (ReferenceEquals(args.Item, save))
+            {
+                observedSubmenuOpen = file.IsSubmenuOpen;
+            }
+        };
+
+        // Act
+        await surface.UpdateAsync(save.PerformInvoke, "invoke context-menu leaf");
+
+        // Assert
+        observedSubmenuOpen.ShouldBe(true);
+        contextMenu.IsOpen.ShouldBeFalse();
+    }
+
     /// <summary>Verifies PopupChrome's border override reaches the rendered open context menu frame,
     /// not just the property value.</summary>
     [Fact]

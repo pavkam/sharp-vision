@@ -285,11 +285,14 @@ failure during that entry leaves the popup open exactly as it found it.
 A framework control whose retained Popup belongs to a larger logical plane
 coordinates that plane internally rather than stacking one scope per surface.
 ComboBox roots one scope at its public field, so the field, the private
-ListView, and the Popup stay together. Menu marks every submenu Popup
-owner-managed and keeps one top-menu-rooted scope for the complete chain. These
-owner-managed surfaces, including CommandPalette results, suppress the generic
-tree-wide popup exclusion pass; opening one never closes an unrelated logical
-plane.
+ListView, and the Popup stay together; temporary ancestor unavailability exits
+that scope without closing the drop-down, and recovery enters one fresh scope.
+Menu marks every submenu Popup owner-managed and keeps one top-menu-rooted scope
+for the complete chain. ContextMenu instead lets its private Popup own the
+complete session; its Menu reuses that scope instead of entering a second one.
+These owner-managed surfaces, including CommandPalette results, suppress the
+generic tree-wide popup exclusion pass; opening one never closes an unrelated
+logical plane.
 
 Neither control has a permanent `IsModal` flag. A normal Window remains
 modeless, and disposing a Window's returned scope ends its modal presentation

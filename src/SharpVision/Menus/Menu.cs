@@ -58,8 +58,14 @@ public sealed class Menu: ItemsControl
     /// <summary>Raised after an owned item invokes through keyboard, pointer, or programmatic input.</summary>
     public event EventHandler<MenuItemInvokedEventArgs>? ItemInvoked;
 
+    /// <summary>Raised internally after one committed item invocation and its menu-chain cleanup complete.</summary>
+    internal event EventHandler<MenuItemInvokedEventArgs>? ItemInvocationCompleted;
+
     /// <summary>Gets the typed managed menu items.</summary>
     public MenuEntryCollection Items { get; }
+
+    /// <summary>Gets or sets whether an owning composite surface supplies this menu's modal session.</summary>
+    internal bool UsesExternalModalSession { get; set; }
 
     /// <summary>Gets or sets horizontal or vertical menu layout.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -784,6 +790,7 @@ public sealed class Menu: ItemsControl
         if (reason == ReleaseReason.Disposed)
         {
             ItemInvoked = null;
+            ItemInvocationCompleted = null;
         }
 
         failure?.Throw();
@@ -811,6 +818,7 @@ public sealed class Menu: ItemsControl
         var owner = FindSessionOwner();
         owner._itemInvocationDepth++;
         ExceptionDispatchInfo? failure = null;
+        var invocationCompleted = false;
 
         try
         {
@@ -847,6 +855,21 @@ public sealed class Menu: ItemsControl
             {
                 owner._closeChainAfterInvocation = false;
                 ExceptionAggregation.Capture(owner.CloseChain, ref failure);
+                invocationCompleted = true;
+            }
+        }
+
+        var completionHandlers = invocationCompleted
+            ? ItemInvocationCompleted?.GetInvocationList()
+            : null;
+
+        if (completionHandlers is not null)
+        {
+            foreach (var handler in completionHandlers)
+            {
+                ExceptionAggregation.Capture(
+                    () => ((EventHandler<MenuItemInvokedEventArgs>) handler).Invoke(this, eventArgs),
+                    ref failure);
             }
         }
 
@@ -1119,6 +1142,11 @@ public sealed class Menu: ItemsControl
 
     private bool EnsureModalSession()
     {
+        if (UsesExternalModalSession)
+        {
+            return true;
+        }
+
         if (_modalScope?.IsActive == true)
         {
             return true;
