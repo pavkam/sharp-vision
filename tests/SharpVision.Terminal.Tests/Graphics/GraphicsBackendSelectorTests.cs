@@ -143,6 +143,28 @@ public sealed class GraphicsBackendSelectorTests
         GraphicsBackendSelector.Create(profile.Capabilities, hidden).ShouldBeNull();
     }
 
+    /// <summary>Verifies a route too small for one worst-case Kitty chunk falls through to an
+    /// otherwise-authoritative fallback protocol instead of constructing a KittyGraphicsBackend
+    /// that would later throw out of Prepare when the undersized budget is discovered.</summary>
+    [Fact]
+    public void Create_WhenRouteIsTooSmallForOneKittyChunk_FallsBackToNonRetainedBackend()
+    {
+        var profile = Profile(
+            kitty: new Feature(CapabilitySupport.Supported, Origin.Query),
+            sixel: new Feature(CapabilitySupport.Supported, Origin.Query));
+        var route = new MultiplexerRoute(new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Graphics,
+            maxEnvelopeBytes: 10));
+
+        using var backend = GraphicsBackendSelector.Create(profile.Capabilities, route);
+
+        _ = backend.ShouldBeOfType<NonRetainedGraphicsBackend>();
+    }
+
     /// <summary>Verifies mixed RGBA and PNG placements retain original paint order in one stream.</summary>
     [Fact]
     public void Prepare_WhenSixelAndItermAreAuthoritative_PreservesMixedFrameOrder()

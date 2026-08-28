@@ -19,6 +19,12 @@ public static class KittyGraphicsWriter
     private const int _metadataBytes = 512;
     private const int _defaultMaxPayloadBytes = 256 * 1024 * 1024;
 
+    /// <summary>Gets the exact worst-case complete byte count of one encoded APC frame: opening
+    /// ESC and '_' (2), 'G' (1), the metadata key/value bytes, ';' (1), the encoded chunk payload,
+    /// and the closing ST (2). A route that cannot carry at least this many bytes cannot carry a
+    /// single Kitty chunk regardless of how small the actual payload turns out to be.</summary>
+    internal const int MaximumFrameBytes = 2 + 1 + _metadataBytes + 1 + _encodedChunkBytes + 2;
+
     #region Public encoding
 
     /// <summary>Writes one command, Base64-encoding its complete raw payload.</summary>

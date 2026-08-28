@@ -369,6 +369,23 @@ public sealed class KittyGraphicsBackendTests
         _ = Should.Throw<NotSupportedException>(() => new KittyGraphicsBackend(route: new MultiplexerRoute(policy)));
     }
 
+    /// <summary>Verifies a route too small to carry even one worst-case encoded chunk rejects
+    /// backend selection at construction, rather than letting Prepare throw later when the
+    /// undersized budget is discovered mid-transaction.</summary>
+    [Fact]
+    public void Constructor_WhenRouteIsTooSmallForOneChunk_RejectsBackendSelection()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Graphics,
+            maxEnvelopeBytes: 10);
+
+        _ = Should.Throw<NotSupportedException>(() => new KittyGraphicsBackend(route: new MultiplexerRoute(policy)));
+    }
+
     /// <summary>Verifies each direct-data chunk receives its own bounded tmux envelope.</summary>
     [Fact]
     public void Prepare_WhenUploadHasMultipleChunks_RoutesEachApcIndependently()

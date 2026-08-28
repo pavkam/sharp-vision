@@ -90,7 +90,9 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         _output = new BoundedBufferWriter(maxPreparedBytes, initialRentBytes: 256);
         _route = route;
 
-        if (route is not null && !route.CanRouteGraphics)
+        if (route is not null &&
+            (!route.CanRouteGraphics ||
+             route.GetMaximumGraphicsFrameBytes(escapeBytes: 2) < KittyGraphicsWriter.MaximumFrameBytes))
         {
             _output.Dispose();
             throw new NotSupportedException("The explicit multiplexer route cannot carry Kitty graphics.");

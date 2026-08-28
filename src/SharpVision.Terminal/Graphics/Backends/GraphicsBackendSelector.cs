@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Graphics.Backends;
 
 using Capabilities;
 
+using Kitty.Graphics;
+
 using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
 
 /// <summary>Selects one renderer backend from authoritative evidence and route policy.</summary>
@@ -35,7 +37,8 @@ internal static class GraphicsBackendSelector
             return null;
         }
 
-        if (Authoritative(capabilities.KittyGraphics, allowQuery: true))
+        if (Authoritative(capabilities.KittyGraphics, allowQuery: true) &&
+            (route is null || route.GetMaximumGraphicsFrameBytes(escapeBytes: 2) >= KittyGraphicsWriter.MaximumFrameBytes))
         {
             return new KittyGraphicsBackend(maxPreparedBytes: maxPreparedBytes, route: route);
         }
