@@ -54,6 +54,9 @@ public sealed class DateTimeInput: InputBase
     private DateTime? _value;
     private DateOnly _openingActiveDate;
     private DateInterval? _openingCalendarSelection;
+    private long _openingBoundsVersion;
+    private long _openingValueVersion;
+    private long _boundsVersion;
     private bool _seeded;
     private CultureInfo _culture;
 
@@ -75,7 +78,7 @@ public sealed class DateTimeInput: InputBase
             IsTabStop = false
         };
 
-        _popup = EnablePopup(
+        _popup = EnablePopupNavigationSession(
             _calendar,
             focusOnOpen: true,
             beforeOpen: () =>
@@ -822,6 +825,7 @@ public sealed class DateTimeInput: InputBase
 
     private void RepairBoundState()
     {
+        _boundsVersion++;
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(SyncCalendarBounds, ref failure);
         ExceptionAggregation.Capture(ClampCurrentValue, ref failure);
@@ -877,6 +881,8 @@ public sealed class DateTimeInput: InputBase
     {
         _openingActiveDate = _calendar.ActiveDate;
         _openingCalendarSelection = _calendar.Selection;
+        _openingBoundsVersion = _boundsVersion;
+        _openingValueVersion = _valueVersion;
     }
 
     private bool HandlePopupNavigationKey(KeyEventArgs eventArgs)
@@ -920,7 +926,27 @@ public sealed class DateTimeInput: InputBase
         return _calendar.HandleNavigationKey(eventArgs) || accepts;
     }
 
-    private void CancelCalendarSession() => RestoreOpeningCalendarState();
+    private void CancelCalendarSession()
+    {
+        if (_boundsVersion == _openingBoundsVersion &&
+            _valueVersion == _openingValueVersion &&
+            IsOpeningCalendarStateValid())
+        {
+            RestoreOpeningCalendarState();
+            return;
+        }
+
+        SyncCalendarBounds();
+
+        if (_value is { } value)
+        {
+            PushCalendarSelection(DateOnly.FromDateTime(value));
+        }
+        else
+        {
+            _calendar.Selection = null;
+        }
+    }
 
     private void AcceptCalendarSession()
     {
@@ -945,6 +971,15 @@ public sealed class DateTimeInput: InputBase
             _calendar.Selection = _openingCalendarSelection;
         }
     }
+
+    private bool IsOpeningCalendarStateValid() =>
+        IsDateWithinCalendarBounds(_openingActiveDate) &&
+        (_openingCalendarSelection is not { } selection ||
+         (IsDateWithinCalendarBounds(selection.Start) &&
+          IsDateWithinCalendarBounds(selection.End)));
+
+    private bool IsDateWithinCalendarBounds(DateOnly date) =>
+        date >= _calendar.MinimumDate && date <= _calendar.MaximumDate;
 
     /// <inheritdoc/>
     protected override void OnDropDownOpened() => DropDownOpened?.Invoke(this, EventArgs.Empty);

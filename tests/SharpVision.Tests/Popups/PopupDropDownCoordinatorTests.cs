@@ -167,6 +167,8 @@ public sealed class PopupDropDownCoordinatorTests
             using var pointer = new PointerManager(root);
             using var modality = new ModalityManager(root, focus, pointer);
             var fail = true;
+            var begins = 0;
+            var cancellations = 0;
             var expected = new InvalidOperationException("owner PropertyChanged failed");
             var coordinator = Create(
                 owner,
@@ -178,7 +180,9 @@ public sealed class PopupDropDownCoordinatorTests
                     {
                         throw expected;
                     }
-                });
+                },
+                beginSession: () => begins++,
+                cancelSession: () => cancellations++);
 
             var thrown = Should.Throw<InvalidOperationException>(() => coordinator.SetOpen(true));
             thrown.ShouldBeSameAs(expected);
@@ -187,12 +191,61 @@ public sealed class PopupDropDownCoordinatorTests
             popup.SurfaceBounds.ShouldBe(default);
             coordinator.IsOpen.ShouldBeFalse();
             modality.Active.ShouldBeNull();
+            begins.ShouldBe(1);
+            cancellations.ShouldBe(1);
+            coordinator.SessionGeneration.ShouldBe(2UL);
             fail = false;
             coordinator.SetOpen(true);
             popup.IsOpen.ShouldBeTrue();
             coordinator.IsOpen.ShouldBeTrue();
             _ = modality.Active.ShouldNotBeNull();
+            begins.ShouldBe(2);
+            cancellations.ShouldBe(1);
+            coordinator.SessionGeneration.ShouldBe(3UL);
         }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a failing owner open notification closes the already-open popup, cancels
+    /// that exact session once, and leaves a later opening independent.</summary>
+    [Fact]
+    public void SetOpen_WhenDropDownOpenedPublicationFails_RollsBackAndRemainsReusable()
+    {
+        var owner = new ProbeControl();
+        var content = new ProbeControl();
+        using var popup = new Popup();
+        var expected = new InvalidOperationException("DropDownOpened failed");
+        var fail = true;
+        var begins = 0;
+        var cancellations = 0;
+        var coordinator = Create(
+            owner,
+            popup,
+            content,
+            raiseDropDownOpened: () =>
+            {
+                if (fail)
+                {
+                    throw expected;
+                }
+            },
+            beginSession: () => begins++,
+            cancelSession: () => cancellations++);
+
+        var thrown = Should.Throw<InvalidOperationException>(() => coordinator.SetOpen(true));
+
+        thrown.ShouldBeSameAs(expected);
+        popup.IsOpen.ShouldBeFalse();
+        begins.ShouldBe(1);
+        cancellations.ShouldBe(1);
+        coordinator.SessionGeneration.ShouldBe(2UL);
+
+        fail = false;
+        coordinator.SetOpen(true);
+
+        popup.IsOpen.ShouldBeTrue();
+        begins.ShouldBe(2);
+        cancellations.ShouldBe(1);
+        coordinator.SessionGeneration.ShouldBe(3UL);
     }
 
     /// <summary>Verifies a modal-entry failure - here an owner that is not an eligible initial-focus
@@ -239,10 +292,9 @@ public sealed class PopupDropDownCoordinatorTests
 
     /// <summary>Verifies the critical close-path reentrancy ordering: PopupModalTracker.Exit
     /// synchronously restores focus and can itself close the popup (firing Closing/Closed, and
-    /// therefore this coordinator's own hooks, from inside Exit), so Closing/Closed must fire
-    /// exactly once each - never once from the reentrant path and again from the coordinator's own
-    /// explicit assignment - while DropDownClosed still fires last, from the coordinator's own
-    /// close path, after the reentrant Closed handler already ran.</summary>
+    /// therefore this coordinator's cancellation hook, from inside Exit), so Closing/Closed must
+    /// fire exactly once each - never once from the reentrant path and again from the coordinator's
+    /// own explicit assignment - while owner close completion waits until Exit has returned.</summary>
     [Fact]
     public async Task SetOpen_WhenClosing_ExitsModalBeforePopupFlipsAndNeverDoubleFiresPopupEventsAsync()
     {
@@ -287,10 +339,9 @@ public sealed class PopupDropDownCoordinatorTests
             closingCount.ShouldBe(1);
             closedCount.ShouldBe(1);
 
-            // BeforeCloseFocusRestore always runs first, from inside the reentrant Closing fired
-            // by Exit(); the Closed handler's PropertyChanged fires next, also from inside Exit();
-            // DropDownClosed fires last of all, from the coordinator's own close path, proving it
-            // is not raised a second time by the already-closed popup.
+            // BeforeCloseFocusRestore runs from the reentrant Popup Closing fired inside Exit().
+            // Owner property and close publication wait for that modal unwind to return, then run
+            // exactly once from the popup's committed-close completion.
             events.ShouldBe(["BeforeCloseFocusRestore", "PropertyChanged", "DropDownClosed"]);
         }, TestContext.Current.CancellationToken);
     }
@@ -540,8 +591,9 @@ public sealed class PopupDropDownCoordinatorTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies each non-accepting close path cancels the active session exactly once,
-    /// including Escape, owner-driven close, direct popup close, and modal light dismissal.</summary>
+    /// <summary>Verifies each non-accepting close path cancels the active session and publishes the
+    /// owner's close completion exactly once, including Escape, owner-driven close, direct popup
+    /// close, and modal light dismissal.</summary>
     [Fact]
     public async Task Close_WhenSessionWasNotAccepted_CancelsExactlyOnceForEveryClosePathAsync()
     {
@@ -560,20 +612,29 @@ public sealed class PopupDropDownCoordinatorTests
             using var pointer = new PointerManager(root);
             using var modality = new ModalityManager(root, focus, pointer);
             var cancellations = 0;
-            var coordinator = Create(owner, popup, content, cancelSession: () => cancellations++);
+            var ownerCloses = 0;
+            var coordinator = Create(
+                owner,
+                popup,
+                content,
+                raiseDropDownClosed: () => ownerCloses++,
+                cancelSession: () => cancellations++);
 
             coordinator.SetOpen(true);
             _ = Router.Route(content, Events.Key, Key(Code.Escape, KeyAction.Press));
             cancellations.ShouldBe(1);
+            ownerCloses.ShouldBe(1);
 
             coordinator.SetOpen(true);
             coordinator.SetOpen(false);
             cancellations.ShouldBe(2);
+            ownerCloses.ShouldBe(2);
 
             coordinator.SetOpen(true);
             var directCloseScope = modality.Active.ShouldNotBeNull();
             popup.IsOpen = false;
             cancellations.ShouldBe(3);
+            ownerCloses.ShouldBe(3);
             modality.Active.ShouldBeNull();
 
             coordinator.SetOpen(true);
@@ -590,6 +651,7 @@ public sealed class PopupDropDownCoordinatorTests
                 isMotion: false,
                 isCellPositionInferred: false));
             cancellations.ShouldBe(4);
+            ownerCloses.ShouldBe(4);
             modality.Active.ShouldBeNull();
         }, TestContext.Current.CancellationToken);
     }
@@ -678,6 +740,7 @@ public sealed class PopupDropDownCoordinatorTests
             using var popup = new Popup();
             var expected = new InvalidOperationException("cancel failed");
             var events = new List<string>();
+            var ownerCloses = 0;
             var coordinator = Create(
                 owner,
                 popup,
@@ -687,6 +750,7 @@ public sealed class PopupDropDownCoordinatorTests
                     events.Add("RequestFocus");
                     return true;
                 },
+                raiseDropDownClosed: () => ownerCloses++,
                 beforeCloseFocusRestore: () => events.Add("BeforeCloseFocusRestore"),
                 cancelSession: () => throw expected);
 
@@ -698,6 +762,7 @@ public sealed class PopupDropDownCoordinatorTests
             thrown.ShouldBeSameAs(expected);
             events.ShouldBe(["BeforeCloseFocusRestore", "RequestFocus"]);
             popup.IsOpen.ShouldBeFalse();
+            ownerCloses.ShouldBe(1);
         }, TestContext.Current.CancellationToken);
     }
 

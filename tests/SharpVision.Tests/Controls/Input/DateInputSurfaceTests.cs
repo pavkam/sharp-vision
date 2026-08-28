@@ -381,14 +381,14 @@ public sealed class DateInputSurfaceTests
 
     /// <summary>
     /// Verifies opening the Calendar popup leaves the Calendar itself genuinely focused, not just
-    /// functionally reachable through DateInput's own key-forwarding. PopupModalTracker.Enter used
+    /// functionally reachable through shared owner-preview delegation. PopupModalTracker.Enter used
     /// to always re-commit focus to the popup's owner as the modal scope's initial focus, silently
     /// discarding whatever Popup.FocusOnOpen (true for DateInput) had just placed on the Calendar a
     /// moment earlier in the very same call. The regression was invisible to
     /// <see cref="Keyboard_WhenRightAndEnterArePressedWhileOpen_SelectsNextDateAsync"/> above,
-    /// which only proves the committed value ends up correct: Calendar.MoveByDays runs and mutates
-    /// ActiveDate regardless of real focus, because DateInput.OnEvent forwards the key directly via
-    /// InvokeDefault - but Calendar's own keyboard-cursor underline (Calendar.ResolveDateStyle) is
+    /// which only proves the committed value ends up correct: the coordinator delegates the owner
+    /// preview stroke to Calendar.HandleNavigationKey regardless of real focus, but Calendar's own
+    /// keyboard-cursor underline (Calendar.ResolveDateStyle) is
     /// gated on Calendar.IsFocused, so a user watching the popup saw no cursor move at all.
     /// </summary>
     [Fact]
@@ -802,6 +802,7 @@ public sealed class DateInputSurfaceTests
     [Theory]
     [InlineData("escape")]
     [InlineData("direct")]
+    [InlineData("popup-direct")]
     [InlineData("unavailable")]
     public async Task Keyboard_WhenPopupNavigationUsesMountedCalendarRoute_MovesOnceAndRollsBackAsync(
         string closePath)
@@ -813,12 +814,15 @@ public sealed class DateInputSurfaceTests
             Value = openingDate,
             Culture = CultureInfo.InvariantCulture
         };
+        var closed = 0;
+        input.DropDownClosed += (_, _) => closed++;
         var root = new Overlay { Children = { input } };
         await using var surface = await ComponentSurface.MountAsync(
             root,
             new Size(30, 15),
             TestContext.Current.CancellationToken);
         var calendar = OwnedTree.Find<UiCalendar>(input).ShouldNotBeNull();
+        var popup = OwnedTree.Find<Popup>(input).ShouldNotBeNull();
         await surface.Keyboard.PressAsync(Code.Tab);
         surface.ShouldHaveFocus(input);
         await surface.Keyboard.PressAsync(Code.Down, Modifiers.Alt);
@@ -840,6 +844,10 @@ public sealed class DateInputSurfaceTests
         {
             await surface.UpdateAsync(() => input.IsOpen = false, "close DateInput directly");
         }
+        else if (closePath == "popup-direct")
+        {
+            await surface.UpdateAsync(() => popup.IsOpen = false, "close the owned DateInput popup directly");
+        }
         else
         {
             await surface.UpdateAsync(() => input.IsEnabled = false, "make DateInput unavailable");
@@ -848,6 +856,67 @@ public sealed class DateInputSurfaceTests
         input.IsOpen.ShouldBeFalse();
         input.Value.ShouldBe(openingDate);
         calendar.ActiveDate.ShouldBe(openingDate);
+        closed.ShouldBe(1);
+    }
+
+    /// <summary>Verifies tightening bounds while a session is open supersedes an opening cursor
+    /// that is no longer valid and cancellation preserves the repaired committed value.</summary>
+    [Fact]
+    public async Task Keyboard_WhenMinimumTightensDuringOpenSession_EscapePreservesRepairedDateAsync()
+    {
+        var openingDate = new DateOnly(2026, 3, 15);
+        var repairedDate = new DateOnly(2026, 3, 20);
+        var input = new DateInput
+        {
+            Value = openingDate,
+            Culture = CultureInfo.InvariantCulture
+        };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+        var calendar = OwnedTree.Find<UiCalendar>(input).ShouldNotBeNull();
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down, Modifiers.Alt);
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        await surface.UpdateAsync(() => input.Minimum = repairedDate, "tighten DateInput minimum while open");
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        input.IsOpen.ShouldBeFalse();
+        input.Value.ShouldBe(repairedDate);
+        calendar.ActiveDate.ShouldBe(repairedDate);
+    }
+
+    /// <summary>Verifies a committed value mutation while the Calendar is open supersedes the
+    /// opening cursor snapshot instead of leaving the calendar on stale state after Escape.</summary>
+    [Fact]
+    public async Task Keyboard_WhenValueChangesExternallyDuringOpenSession_EscapePreservesNewDateAsync()
+    {
+        var openingDate = new DateOnly(2026, 3, 15);
+        var replacementDate = new DateOnly(2026, 4, 20);
+        var input = new DateInput
+        {
+            Value = openingDate,
+            Culture = CultureInfo.InvariantCulture
+        };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+        var calendar = OwnedTree.Find<UiCalendar>(input).ShouldNotBeNull();
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down, Modifiers.Alt);
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        await surface.UpdateAsync(() => input.Value = replacementDate, "replace DateInput value while open");
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        input.IsOpen.ShouldBeFalse();
+        input.Value.ShouldBe(replacementDate);
+        calendar.ActiveDate.ShouldBe(replacementDate);
     }
 
     /// <summary>Verifies Enter and Space accept an unchanged provisional date and close the

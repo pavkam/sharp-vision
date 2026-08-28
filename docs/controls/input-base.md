@@ -65,8 +65,8 @@ classDiagram
 | `TryGetStepDelta(KeyEventArgs, out int)`                     | `bool`                   | —        | Protected static; translates an Up key to `+1` and a Down key to `-1`, returning `false` for every other key.                                               |
 | `ResolveDropDownGlyph(Rune)`                                 | `Rune`                   | —        | Resolves the shared disclosure chevron from the active theme's `InputStyle`, falling back to the supplied code-owned glyph.                                 |
 | `DrawDropDownIndicator(TerminalCanvas, Rect, TerminalStyle)` | `void`                   | —        | Protected; draws the shared disclosure chevron via `ResolveDropDownGlyph`, right-aligned within `DropDownIndicatorWidth` at the content box's top row.      |
-| `EnablePopup(...)`                                           | `Popup`                  | —        | Opts into an owned popup and its optional provisional navigation-session callbacks. Returns the popup.                                                      |
-| `AcceptPopupAndClose()`                                      | `void`                   | —        | Protected; commits and closes an active open popup session without cancellation rollback; a no-op when no session is active and open.                       |
+| `EnablePopup(...)`                                           | `Popup`                  | —        | Protected; opts into an owned popup with shared open/close publication, modality, and focus restoration. Returns the popup.                                 |
+| `AcceptPopupAndClose()`                                      | `void`                   | —        | Protected; closes an active owned popup through its accepted-session path; a no-op when no popup session is active and open.                                |
 | `OnDropDownOpened()`, `OnDropDownClosed()`                   | `void`                   | —        | Protected virtual, no-op by default; a control that enables the popup overrides these to raise its own public events.                                       |
 | `VerifyMutable()`                                            | `void`                   | —        | Exposes `ControlBase`'s internal off-dispatcher/disposed guard under a protected name a third-party derivative can call directly.                           |
 
@@ -85,22 +85,21 @@ silent and does not touch its event accessors.
 `PopupPlacement` (default `Below`), whether opening transfers focus to the first
 eligible descendant of the content (`focusOnOpen`, default `false`), the popup's
 own Tab-traversal boundary (`popupTabNavigation`, default `TabNavigation.None`),
-optional `beforeOpen`/`beforeCloseFocusRestore` hooks, and four optional session
-callbacks. `beginSession` snapshots accepted owner and target state;
-`handleNavigationKey` delegates one live preview-route key to target-owned
-behavior; `cancelSession` restores the opening state after any close without
-acceptance; and `acceptSession` commits provisional state. A derived control
-calls `AcceptPopupAndClose()` only after a semantic keyboard or pointer
-activation accepts the target. Calling it without an enabled popup, off the
-owning dispatcher, or after disposal throws through the documented mutation
-guards. Calling it when the enabled popup has no active open session is a no-op.
+and optional `beforeOpen`/`beforeCloseFocusRestore` hooks. These six parameters
+are the complete public/protected authoring contract; provisional navigation
+callbacks used by first-party controls are not exposed to external derivatives.
+A derived control calls `AcceptPopupAndClose()` only after a semantic keyboard
+or pointer activation accepts its popup content. Calling it without an enabled
+popup, off the owning dispatcher, or after disposal throws through the
+documented mutation guards. Calling it when the enabled popup has no active open
+session is a no-op.
 
 The constructed popup always anchors to the owning control, omits the frame edge
 adjoining it (`ConnectsToAnchor`), and never tracks the anchor's own reflow
 independently - the owner re-arranges its popup child from its own layout pass
-every time instead. The complete acceptance, cancellation, supersession, and
-rollback lifetime belongs to the
-[popup navigation session contract](../concepts/floating-surfaces.md#popup-navigation-sessions).
+every time instead. Its ownership and close lifetime follow the
+[popup navigation session contract](../concepts/floating-surfaces.md#popup-navigation-sessions),
+while first-party provisional state remains an internal implementation detail.
 
 ## Example
 

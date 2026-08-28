@@ -745,6 +745,8 @@ public sealed class ComboBoxTests
             DropDownHeight = 4,
             IsOpen = true
         };
+        var closed = 0;
+        box.DropDownClosed += (_, _) => closed++;
         new LayoutEngine().Layout(box, new Size(16, 8));
         var list = box.GetDropDownList();
         _ = Router.Route(box, Events.Key, Key(Code.Down));
@@ -769,6 +771,7 @@ public sealed class ComboBoxTests
         box.SelectedIndex.ShouldBe(1);
         list.SelectedIndex.ShouldBe(1);
         list.ActiveIndex.ShouldBe(1);
+        closed.ShouldBe(1);
     }
 
     /// <summary>Verifies an empty session recognizes neither navigation nor Enter acceptance and

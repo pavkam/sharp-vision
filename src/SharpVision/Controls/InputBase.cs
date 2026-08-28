@@ -527,28 +527,15 @@ public abstract class InputBase: ControlBase
 
     private PopupDropDownCoordinator? _popupCoordinator;
 
-    /// <summary>Opts into an owned popup with the shared open/close lifecycle, modal composition,
-    /// and framework-part slot every composite drop-down field (a ComboBox, a DateInput, a
-    /// DateTimeInput) uses.</summary>
+    /// <summary>Opts a derived input into an owned popup with shared open/close publication,
+    /// modal composition, focus restoration, and a framework-part slot.</summary>
     /// <param name="content">The non-null popup content, also used as its focus scope.</param>
     /// <param name="placement">The preferred anchor-relative placement.</param>
     /// <param name="focusOnOpen">Whether opening transfers focus to the first eligible descendant of <paramref name="content"/>.</param>
-    /// <param name="popupTabNavigation">
-    /// The Tab-traversal boundary the owned popup itself applies to <paramref name="content"/>.
-    /// Controls differ here today: a control whose own keyboard handling drives every navigation
-    /// key while its popup is open (a ComboBox, a DateTimeInput) excludes the popup from ordinary
-    /// Tab traversal; a control that instead forwards navigation keys straight into its popup
-    /// content (a DateInput) leaves the popup's own scope boundary at its default.
-    /// </param>
+    /// <param name="popupTabNavigation">The Tab-traversal boundary the owned popup itself applies
+    /// to <paramref name="content"/>.</param>
     /// <param name="beforeOpen">Optional work run before the popup opens, such as seeding a value or syncing a calendar.</param>
     /// <param name="beforeCloseFocusRestore">Optional work run before the closing focus-restore check, such as discarding type-ahead state.</param>
-    /// <param name="beginSession">Optional work that snapshots committed owner state and seeds
-    /// provisional popup state for each opening.</param>
-    /// <param name="handleNavigationKey">Optional canonical popup-navigation handler invoked from
-    /// the owner's preview route while a session remains current.</param>
-    /// <param name="cancelSession">Optional work that restores the opening state after a close
-    /// without acceptance.</param>
-    /// <param name="acceptSession">Optional work that commits provisional state before an accepted close.</param>
     /// <returns>The newly constructed, owned popup.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="content"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The popup capability is already enabled.</exception>
@@ -558,11 +545,66 @@ public abstract class InputBase: ControlBase
         bool focusOnOpen = false,
         TabNavigation popupTabNavigation = TabNavigation.None,
         Action? beforeOpen = null,
+        Action? beforeCloseFocusRestore = null) =>
+        EnablePopupCore(
+            content,
+            placement,
+            focusOnOpen,
+            popupTabNavigation,
+            beforeOpen,
+            beforeCloseFocusRestore,
+            beginSession: null,
+            handleNavigationKey: null,
+            cancelSession: null,
+            acceptSession: null);
+
+    /// <summary>Opts an in-assembly input into the owned-popup lifecycle plus provisional
+    /// navigation delegated once from the owner's preview route.</summary>
+    /// <param name="content">The non-null popup content, also used as its focus scope.</param>
+    /// <param name="placement">The preferred anchor-relative placement.</param>
+    /// <param name="focusOnOpen">Whether opening transfers focus into <paramref name="content"/>.</param>
+    /// <param name="popupTabNavigation">The popup content's Tab-traversal boundary.</param>
+    /// <param name="beforeOpen">Optional work run before the popup opens.</param>
+    /// <param name="beforeCloseFocusRestore">Optional work run before closing focus restoration.</param>
+    /// <param name="beginSession">Snapshots and seeds one provisional session.</param>
+    /// <param name="handleNavigationKey">Delegates one live owner-preview navigation stroke.</param>
+    /// <param name="cancelSession">Restores or rebases a session closed without acceptance.</param>
+    /// <param name="acceptSession">Commits provisional state before an accepted close.</param>
+    /// <returns>The newly constructed, owned popup.</returns>
+    private protected Popup EnablePopupNavigationSession(
+        ControlBase content,
+        PopupPlacement placement = PopupPlacement.Below,
+        bool focusOnOpen = false,
+        TabNavigation popupTabNavigation = TabNavigation.None,
+        Action? beforeOpen = null,
         Action? beforeCloseFocusRestore = null,
         Action? beginSession = null,
         Func<KeyEventArgs, bool>? handleNavigationKey = null,
         Action? cancelSession = null,
-        Action? acceptSession = null)
+        Action? acceptSession = null) =>
+        EnablePopupCore(
+            content,
+            placement,
+            focusOnOpen,
+            popupTabNavigation,
+            beforeOpen,
+            beforeCloseFocusRestore,
+            beginSession,
+            handleNavigationKey,
+            cancelSession,
+            acceptSession);
+
+    private Popup EnablePopupCore(
+        ControlBase content,
+        PopupPlacement placement,
+        bool focusOnOpen,
+        TabNavigation popupTabNavigation,
+        Action? beforeOpen,
+        Action? beforeCloseFocusRestore,
+        Action? beginSession,
+        Func<KeyEventArgs, bool>? handleNavigationKey,
+        Action? cancelSession,
+        Action? acceptSession)
     {
         ArgumentNullException.ThrowIfNull(content);
         VerifyMutable();

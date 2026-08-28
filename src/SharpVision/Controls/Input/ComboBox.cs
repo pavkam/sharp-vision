@@ -35,6 +35,9 @@ public sealed class ComboBox: InputBase
     private bool _listSelectionChangedFired;
     private int _openingSelectedIndex = -1;
     private int _openingCurrentIndex = -1;
+    private long _openingItemsVersion;
+    private long _openingSelectionVersion;
+    private long _itemsVersion;
     private PopupItemActivationIdentity? _pointerActivation;
 
     #region Construction and properties
@@ -51,7 +54,7 @@ public sealed class ComboBox: InputBase
         _list.ItemInvoked += OnItemInvoked;
         _list.SelectionChanged += OnSelectionChanged;
         _list.PropertyChanged += OnListPropertyChanged;
-        _popup = EnablePopup(
+        _popup = EnablePopupNavigationSession(
             _list,
             focusOnOpen: false,
             beforeCloseFocusRestore: () => _typeAhead = string.Empty,
@@ -103,6 +106,7 @@ public sealed class ComboBox: InputBase
             // correct post-remap value once the forward returns.
             var wasUnselected = _selectedIndex < 0;
             _list.Items = value;
+            _itemsVersion++;
 
             if (wasUnselected && value.Count > 0)
             {
@@ -492,6 +496,8 @@ public sealed class ComboBox: InputBase
     {
         _openingSelectedIndex = _selectedIndex;
         _openingCurrentIndex = _selectedIndex >= 0 ? _selectedIndex : _list.ActiveIndex;
+        _openingItemsVersion = _itemsVersion;
+        _openingSelectionVersion = _selectionVersion;
         _list.SetProvisionalCurrentIndex(_selectedIndex);
     }
 
@@ -522,6 +528,19 @@ public sealed class ComboBox: InputBase
 
     private void CancelNavigationSession()
     {
+        var openingSnapshotIsCurrent =
+            _itemsVersion == _openingItemsVersion &&
+            _selectionVersion == _openingSelectionVersion &&
+            IsValidNavigationIndex(_openingSelectedIndex) &&
+            IsValidNavigationIndex(_openingCurrentIndex);
+
+        if (!openingSnapshotIsCurrent)
+        {
+            SynchronizeListSelection(_selectedIndex);
+            _list.SetProvisionalCurrentIndex(_selectedIndex);
+            return;
+        }
+
         if (_selectedIndex != _openingSelectedIndex)
         {
             SetSelectedIndex(_openingSelectedIndex);
@@ -533,6 +552,9 @@ public sealed class ComboBox: InputBase
 
         _list.SetProvisionalCurrentIndex(_openingCurrentIndex);
     }
+
+    private bool IsValidNavigationIndex(int index) =>
+        index == -1 || (uint) index < (uint) Items.Count;
 
     private void AcceptNavigationSession()
     {

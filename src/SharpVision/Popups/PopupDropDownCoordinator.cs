@@ -53,6 +53,8 @@ internal sealed class PopupDropDownCoordinator
     private readonly IDisposable _ownerKeyRegistration;
     private bool _hasActiveSession;
     private bool _sessionAccepted;
+    private bool _closeCompletionPending;
+    private bool _isCloseRequestInProgress;
     private bool _isDetached;
 
     /// <summary>Initializes a coordinator for one owner's private popup.</summary>
@@ -118,7 +120,7 @@ internal sealed class PopupDropDownCoordinator
 
         _popup.Opened += OnPopupOpened;
         _popup.Closing += OnPopupClosing;
-        _popup.Closed += OnPopupClosed;
+        _popup.CloseTransitionCompleted += OnPopupCloseTransitionCompleted;
         _modalTracker = new PopupModalTracker(_popup, () => SetOpen(false));
         _ownerKeyRegistration = _owner.AddHandler(Events.Key, OnOwnerPreviewKey, handledEventsToo: true);
     }
@@ -211,7 +213,7 @@ internal sealed class PopupDropDownCoordinator
         _isDetached = true;
         _popup.Opened -= OnPopupOpened;
         _popup.Closing -= OnPopupClosing;
-        _popup.Closed -= OnPopupClosed;
+        _popup.CloseTransitionCompleted -= OnPopupCloseTransitionCompleted;
         System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(_ownerKeyRegistration.Dispose, ref failure);
         ExceptionAggregation.Capture(() => EndSession(restoreOpeningState: true), ref failure);
@@ -223,9 +225,31 @@ internal sealed class PopupDropDownCoordinator
     {
         _beforeOpen?.Invoke();
         BeginSession();
-        _popup.IsOpen = true;
-        _modalTracker.Enter(_owner, _ownerInitialFocus);
-        _raiseDropDownOpened();
+        var openingGeneration = SessionGeneration;
+
+        try
+        {
+            _popup.IsOpen = true;
+            _modalTracker.Enter(_owner, _ownerInitialFocus);
+            _raiseDropDownOpened();
+        }
+        catch (Exception exception)
+        {
+            var failure = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception);
+            ExceptionAggregation.Capture(_modalTracker.Exit, ref failure);
+
+            if (IsActiveSession(openingGeneration) && _popup.IsOpen)
+            {
+                ExceptionAggregation.Capture(() => _popup.IsOpen = false, ref failure);
+            }
+
+            if (IsActiveSession(openingGeneration))
+            {
+                ExceptionAggregation.Capture(() => EndSession(restoreOpeningState: true), ref failure);
+            }
+
+            failure!.Throw();
+        }
     }
 
     private void Close()
@@ -233,14 +257,24 @@ internal sealed class PopupDropDownCoordinator
         // See the type remarks: Exit() can synchronously close the popup before the explicit
         // assignment below runs, making that assignment a no-op. Do not reorder these statements.
         var sessionGeneration = SessionGeneration;
-        _modalTracker.Exit();
-
-        if (IsCurrentSession(sessionGeneration))
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        _isCloseRequestInProgress = true;
+        try
         {
-            _popup.IsOpen = false;
+            ExceptionAggregation.Capture(_modalTracker.Exit, ref failure);
+
+            if (IsCurrentSession(sessionGeneration))
+            {
+                ExceptionAggregation.Capture(() => _popup.IsOpen = false, ref failure);
+            }
+        }
+        finally
+        {
+            _isCloseRequestInProgress = false;
         }
 
-        _raiseDropDownClosed();
+        ExceptionAggregation.Capture(PublishCloseCompletion, ref failure);
+        failure?.Throw();
     }
 
     private void OnPopupOpened(object? sender, EventArgs eventArgs)
@@ -275,11 +309,35 @@ internal sealed class PopupDropDownCoordinator
         failure?.Throw();
     }
 
-    private void OnPopupClosed(object? sender, EventArgs eventArgs)
+    private void OnPopupCloseTransitionCompleted(object? sender, EventArgs eventArgs)
     {
         _ = sender;
         _ = eventArgs;
-        _raiseIsOpenPropertyChanged();
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(() => EndSession(restoreOpeningState: true), ref failure);
+        ExceptionAggregation.Capture(_modalTracker.Exit, ref failure);
+        _closeCompletionPending = true;
+
+        if (!_isCloseRequestInProgress)
+        {
+            ExceptionAggregation.Capture(PublishCloseCompletion, ref failure);
+        }
+
+        failure?.Throw();
+    }
+
+    private void PublishCloseCompletion()
+    {
+        if (!_closeCompletionPending)
+        {
+            return;
+        }
+
+        _closeCompletionPending = false;
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(_raiseIsOpenPropertyChanged, ref failure);
+        ExceptionAggregation.Capture(_raiseDropDownClosed, ref failure);
+        failure?.Throw();
     }
 
     private void BeginSession()
@@ -316,10 +374,12 @@ internal sealed class PopupDropDownCoordinator
     }
 
     private bool IsCurrentSession(ulong generation) =>
-        _hasActiveSession &&
-        SessionGeneration == generation &&
+        IsActiveSession(generation) &&
         _popup.IsOpen &&
         !_isDetached;
+
+    private bool IsActiveSession(ulong generation) =>
+        _hasActiveSession && SessionGeneration == generation;
 
     private void VerifyAvailable()
     {

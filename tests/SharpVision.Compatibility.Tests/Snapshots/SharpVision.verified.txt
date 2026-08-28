@@ -543,7 +543,7 @@ namespace SharpVision.Controls
         protected void DrawDropDownIndicator(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect content, SharpVision.Terminal.Rendering.CellStyle style) { }
         protected void EnableCaption() { }
         protected void EnableCommand() { }
-        protected SharpVision.Popups.Popup EnablePopup(SharpVision.Controls.ControlBase content, SharpVision.Popups.PopupPlacement placement = 0, bool focusOnOpen = false, SharpVision.Input.TabNavigation popupTabNavigation = 3, System.Action? beforeOpen = null, System.Action? beforeCloseFocusRestore = null, System.Action? beginSession = null, System.Func<SharpVision.Input.KeyEventArgs, bool>? handleNavigationKey = null, System.Action? cancelSession = null, System.Action? acceptSession = null) { }
+        protected SharpVision.Popups.Popup EnablePopup(SharpVision.Controls.ControlBase content, SharpVision.Popups.PopupPlacement placement = 0, bool focusOnOpen = false, SharpVision.Input.TabNavigation popupTabNavigation = 3, System.Action? beforeOpen = null, System.Action? beforeCloseFocusRestore = null) { }
         protected void EnablePressActivation() { }
         protected void ExecuteCommandIfAny() { }
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }

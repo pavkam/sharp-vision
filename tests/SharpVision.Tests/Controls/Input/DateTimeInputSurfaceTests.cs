@@ -315,10 +315,10 @@ public sealed class DateTimeInputSurfaceTests
 
     /// <summary>
     /// Verifies opening the Calendar popup leaves the Calendar itself genuinely focused, not just
-    /// functionally reachable through DateTimeInput's own key-forwarding. Calendar's own
+    /// functionally reachable through shared owner-preview delegation. Calendar's own
     /// keyboard-cursor underline (Calendar.ResolveDateStyle) is gated on Calendar.IsFocused, so a
     /// user watching the popup needs real focus on the Calendar to see the cursor move as arrow
-    /// keys are forwarded into it.
+    /// keys are delegated into it.
     /// </summary>
     [Fact]
     public async Task Keyboard_WhenPopupOpens_FocusesTheCalendarAsync()
@@ -681,6 +681,7 @@ public sealed class DateTimeInputSurfaceTests
     [Theory]
     [InlineData("escape")]
     [InlineData("direct")]
+    [InlineData("popup-direct")]
     [InlineData("light-dismiss")]
     public async Task Keyboard_WhenPopupNavigationUsesMountedCalendarRoute_MovesOnceAndRollsBackAsync(
         string closePath)
@@ -688,6 +689,8 @@ public sealed class DateTimeInputSurfaceTests
         // Arrange
         var openingValue = new DateTime(2026, 3, 15, 14, 30, 45, DateTimeKind.Utc).AddTicks(6789);
         var input = new DateTimeInput { Value = openingValue };
+        var closed = 0;
+        input.DropDownClosed += (_, _) => closed++;
         var background = new ControlText("outside");
         Overlay.SetTop(background, Length.Cells(14));
         Overlay.SetLeft(background, Length.Cells(29));
@@ -697,6 +700,7 @@ public sealed class DateTimeInputSurfaceTests
             new Size(32, 16),
             TestContext.Current.CancellationToken);
         var calendar = OwnedTree.Find<UiCalendar>(input).ShouldNotBeNull();
+        var popup = OwnedTree.Find<Popup>(input).ShouldNotBeNull();
         await surface.Keyboard.PressAsync(Code.Tab);
         await surface.Keyboard.PressAsync(Code.Down, Modifiers.Alt);
         surface.ShouldHaveFocus(calendar);
@@ -714,6 +718,10 @@ public sealed class DateTimeInputSurfaceTests
         {
             await surface.Pointer.ClickAsync(background);
         }
+        else if (closePath == "popup-direct")
+        {
+            await surface.UpdateAsync(() => popup.IsOpen = false, "close the owned DateTimeInput popup directly");
+        }
         else
         {
             await surface.UpdateAsync(() => input.IsOpen = false, "close DateTimeInput directly");
@@ -723,6 +731,62 @@ public sealed class DateTimeInputSurfaceTests
         input.IsOpen.ShouldBeFalse();
         input.Value.ShouldBe(openingValue);
         calendar.ActiveDate.ShouldBe(DateOnly.FromDateTime(openingValue));
+        closed.ShouldBe(1);
+    }
+
+    /// <summary>Verifies tightening bounds while a session is open supersedes an opening cursor
+    /// that is no longer valid and Escape preserves the repaired date-time.</summary>
+    [Fact]
+    public async Task Keyboard_WhenMinimumTightensDuringOpenSession_EscapePreservesRepairedValueAsync()
+    {
+        var openingValue = new DateTime(2026, 3, 15, 14, 30, 45, DateTimeKind.Utc).AddTicks(6789);
+        var repairedValue = new DateTime(2026, 3, 20, 9, 10, 11, DateTimeKind.Utc).AddTicks(4321);
+        var input = new DateTimeInput { Value = openingValue };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+        var calendar = OwnedTree.Find<UiCalendar>(input).ShouldNotBeNull();
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down, Modifiers.Alt);
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        await surface.UpdateAsync(() => input.Minimum = repairedValue, "tighten DateTimeInput minimum while open");
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        input.IsOpen.ShouldBeFalse();
+        input.Value.ShouldBe(repairedValue);
+        calendar.ActiveDate.ShouldBe(DateOnly.FromDateTime(repairedValue));
+    }
+
+    /// <summary>Verifies a committed value mutation while the Calendar is open supersedes the
+    /// opening cursor while retaining its time ticks and kind after Escape.</summary>
+    [Fact]
+    public async Task Keyboard_WhenValueChangesExternallyDuringOpenSession_EscapePreservesNewValueAsync()
+    {
+        var openingValue = new DateTime(2026, 3, 15, 14, 30, 45, DateTimeKind.Utc).AddTicks(6789);
+        var replacementValue = new DateTime(2026, 4, 20, 8, 7, 6, DateTimeKind.Local).AddTicks(5432);
+        var input = new DateTimeInput { Value = openingValue };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+        var calendar = OwnedTree.Find<UiCalendar>(input).ShouldNotBeNull();
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down, Modifiers.Alt);
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        await surface.UpdateAsync(() => input.Value = replacementValue, "replace DateTimeInput value while open");
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        var value = input.Value.ShouldNotBeNull();
+        input.IsOpen.ShouldBeFalse();
+        value.ShouldBe(replacementValue);
+        value.Kind.ShouldBe(DateTimeKind.Local);
+        value.TimeOfDay.Ticks.ShouldBe(replacementValue.TimeOfDay.Ticks);
+        calendar.ActiveDate.ShouldBe(DateOnly.FromDateTime(replacementValue));
     }
 
     /// <summary>Verifies accepting a changed Calendar date preserves every time tick and the
@@ -772,6 +836,8 @@ public sealed class DateTimeInputSurfaceTests
         // Arrange
         var openingValue = new DateTime(2026, 3, 15, 14, 30, 45, DateTimeKind.Local).AddTicks(6789);
         var input = new DateTimeInput { Value = openingValue };
+        var closed = 0;
+        input.DropDownClosed += (_, _) => closed++;
         await using var surface = await ComponentSurface.MountAsync(
             input,
             new Size(30, 15),
@@ -788,6 +854,7 @@ public sealed class DateTimeInputSurfaceTests
         input.IsOpen.ShouldBeFalse();
         input.Value.ShouldBe(openingValue);
         calendar.ActiveDate.ShouldBe(DateOnly.FromDateTime(openingValue));
+        closed.ShouldBe(1);
     }
 
     /// <summary>Verifies Calendar pointer acceptance changes only the date while preserving every

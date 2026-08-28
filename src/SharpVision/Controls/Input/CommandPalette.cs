@@ -152,6 +152,11 @@ public sealed class CommandPalette: CompositeControlBase
     /// <summary>Gets whether the current resolver request has not completed.</summary>
     public bool IsResolving { get; private set; }
 
+    /// <summary>Gets whether detached or pre-arrange result selection remains queued. Tests use
+    /// this seam to prove every popup close path releases deferred session work.</summary>
+    internal bool HasPendingFirstResultSelection =>
+        _pendingFirstSelectionResolutionGeneration is not null;
+
     /// <summary>Gets or sets the detached-control factory used to realize each result row.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
     /// <exception cref="ArgumentException">Candidate output is invalid or duplicated.</exception>

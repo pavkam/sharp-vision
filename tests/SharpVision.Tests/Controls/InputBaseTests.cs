@@ -990,18 +990,18 @@ public sealed class InputBaseTests
 
     /// <summary>Verifies accepting without an open session is an inert authoring operation.</summary>
     [Fact]
-    public void AcceptPopupAndClose_WhenNoSessionIsOpen_DoesNotInvokeAcceptanceOrThrow()
+    public void AcceptPopupAndClose_WhenNoSessionIsOpen_DoesNotCloseOrThrow()
     {
         var probe = new PopupListInputProbe();
 
         Should.NotThrow(probe.ProbeAcceptPopupAndClose);
 
         probe.IsOpen.ShouldBeFalse();
-        probe.AcceptSessionCount.ShouldBe(0);
+        probe.DropDownClosedCount.ShouldBe(0);
     }
 
-    /// <summary>Verifies the protected acceptance seam commits the active session before closing
-    /// its popup.</summary>
+    /// <summary>Verifies the protected acceptance seam closes its active popup session exactly
+    /// once.</summary>
     [Fact]
     public void AcceptPopupAndClose_WhenSessionIsOpen_AcceptsOnceAndCloses()
     {
@@ -1010,7 +1010,7 @@ public sealed class InputBaseTests
         probe.ProbeAcceptPopupAndClose();
 
         probe.IsOpen.ShouldBeFalse();
-        probe.AcceptSessionCount.ShouldBe(1);
+        probe.DropDownClosedCount.ShouldBe(1);
     }
 
     /// <summary>Verifies the owner lifecycle guard wins over the missing-capability guard after

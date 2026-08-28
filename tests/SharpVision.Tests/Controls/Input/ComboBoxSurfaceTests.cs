@@ -496,6 +496,67 @@ public sealed class ComboBoxSurfaceTests
         list.ActiveIndex.ShouldBe(1);
     }
 
+    /// <summary>Verifies replacing the live item domain supersedes an opening snapshot whose
+    /// selected and current indexes no longer exist.</summary>
+    [Fact]
+    public async Task Input_WhenItemsShrinkDuringOpenSession_EscapePreservesRepairedSelectionAsync()
+    {
+        var combo = new ComboBox
+        {
+            Items = ["Zero", "One", "Two", "Three"],
+            SelectedIndex = 3,
+            Width = Length.Cells(10),
+            Height = Length.Cells(3),
+            DropDownHeight = 4
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            combo,
+            new Size(12, 8),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Enter);
+        var list = OwnedTree.Find<UiListView>(combo).ShouldNotBeNull();
+
+        await surface.UpdateAsync(() => combo.Items = ["Zero"], "shrink the open ComboBox item domain");
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        combo.IsOpen.ShouldBeFalse();
+        combo.SelectedIndex.ShouldBe(-1);
+        list.SelectedIndex.ShouldBe(-1);
+        list.ActiveIndex.ShouldBe(-1);
+    }
+
+    /// <summary>Verifies a committed selection mutation during browsing supersedes the opening
+    /// snapshot instead of being overwritten by later cancellation.</summary>
+    [Fact]
+    public async Task Input_WhenSelectionChangesExternallyDuringOpenSession_EscapePreservesNewSelectionAsync()
+    {
+        var combo = new ComboBox
+        {
+            Items = ["Zero", "One", "Two"],
+            SelectedIndex = 0,
+            Width = Length.Cells(10),
+            Height = Length.Cells(3),
+            DropDownHeight = 3
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            combo,
+            new Size(12, 7),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Enter);
+        await surface.Keyboard.PressAsync(Code.Down);
+        var list = OwnedTree.Find<UiListView>(combo).ShouldNotBeNull();
+
+        await surface.UpdateAsync(() => combo.SelectedIndex = 2, "replace the committed open-session selection");
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        combo.IsOpen.ShouldBeFalse();
+        combo.SelectedIndex.ShouldBe(2);
+        list.SelectedIndex.ShouldBe(2);
+        list.ActiveIndex.ShouldBe(2);
+    }
+
     /// <summary>Verifies modal light dismissal cancels provisional browsing and restores the
     /// opening current item without changing public selection.</summary>
     [Fact]
@@ -544,6 +605,8 @@ public sealed class ComboBoxSurfaceTests
             Height = Length.Cells(3),
             DropDownHeight = 3
         };
+        var closed = 0;
+        combo.DropDownClosed += (_, _) => closed++;
         await using var surface = await ComponentSurface.MountAsync(
             combo,
             new Size(12, 7),
@@ -561,6 +624,7 @@ public sealed class ComboBoxSurfaceTests
         list.SelectedIndex.ShouldBe(1);
         list.ActiveIndex.ShouldBe(1);
         surface.Application.Modality.Active.ShouldBeNull();
+        closed.ShouldBe(1);
 
         await surface.UpdateAsync(() => combo.IsEnabled = true, "re-enable ComboBox");
         await surface.Keyboard.PressAsync(Code.Tab);
@@ -571,6 +635,7 @@ public sealed class ComboBoxSurfaceTests
         combo.SelectedIndex.ShouldBe(1);
         list.SelectedIndex.ShouldBe(1);
         list.ActiveIndex.ShouldBe(1);
+        closed.ShouldBe(2);
     }
 
     /// <summary>Verifies acceptance callbacks that reopen the owner establish a replacement

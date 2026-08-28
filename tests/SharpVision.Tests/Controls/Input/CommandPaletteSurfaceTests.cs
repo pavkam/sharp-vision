@@ -271,6 +271,8 @@ public sealed class CommandPaletteSurfaceTests
             Width = Length.Cells(18),
             Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["One", "Two", "Three"])
         };
+        var closed = 0;
+        palette.Closed += (_, _) => closed++;
         var background = new ControlText("outside");
         Overlay.SetTop(background, Length.Cells(7));
         Overlay.SetLeft(background, Length.Cells(20));
@@ -306,6 +308,112 @@ public sealed class CommandPaletteSurfaceTests
         palette.IsOpen.ShouldBeFalse();
         list.SelectedIndex.ShouldBe(-1);
         list.ActiveIndex.ShouldBe(-1);
+        closed.ShouldBe(1);
+
+        await surface.UpdateAsync(
+            () => palette.Resolver = static (_, _) =>
+                ValueTask.FromResult<IReadOnlyList<object?>>(["Replacement"]),
+            "replace resolver after command palette close");
+
+        palette.IsOpen.ShouldBeFalse();
+        closed.ShouldBe(1);
+    }
+
+    /// <summary>Verifies direct and availability-forced owned-popup closure publish completion once
+    /// and clear open intent and deferred selection work before a later result refresh.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Close_WhenOwnedPopupClosesDirectlyOrBecomesHidden_CleansOwnerStateExactlyOnceAsync(
+        bool hidePopup)
+    {
+        var palette = new CommandPalette
+        {
+            Width = Length.Cells(18),
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["Initial"])
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            palette,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        var list = OwnedTree.Find<UiListView>(palette).ShouldNotBeNull();
+        var popup = OwnedTree.FindAll<Popup>(palette)
+            .Single(candidate => ReferenceEquals(candidate.Content, list));
+        var closed = 0;
+        palette.Closed += (_, _) => closed++;
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                _ = palette.Open();
+                popup.IsOpen.ShouldBeTrue();
+
+                if (hidePopup)
+                {
+                    popup.Visibility = Visibility.Hidden;
+                }
+                else
+                {
+                    popup.IsOpen = false;
+                }
+            },
+            hidePopup
+                ? "hide the open command palette popup"
+                : "close the command palette popup directly");
+
+        closed.ShouldBe(1);
+        palette.HasPendingFirstResultSelection.ShouldBeFalse();
+        palette.IsOpen.ShouldBeFalse();
+        list.SelectedIndex.ShouldBe(-1);
+        list.ActiveIndex.ShouldBe(-1);
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                popup.Visibility = Visibility.Visible;
+                palette.Resolver = static (_, _) =>
+                    ValueTask.FromResult<IReadOnlyList<object?>>(["Replacement"]);
+            },
+            "replace resolver after direct popup close");
+
+        palette.IsOpen.ShouldBeFalse();
+        palette.HasPendingFirstResultSelection.ShouldBeFalse();
+        closed.ShouldBe(1);
+    }
+
+    /// <summary>Verifies direct owned-popup closure clears first-result selection work queued
+    /// before attachment and prevents a subsequent resolver change from reopening results.</summary>
+    [Fact]
+    public void Close_WhenDetachedFirstSelectionIsPending_ClearsDeferredWorkExactlyOnce()
+    {
+        var palette = new CommandPalette
+        {
+            Resolver = (searchTerms, _) => ValueTask.FromResult<IReadOnlyList<object?>>(
+                searchTerms.Length == 0 ? ["Initial"] : ["Fresh"])
+        };
+        var list = OwnedTree.Find<UiListView>(palette).ShouldNotBeNull();
+        var popup = OwnedTree.FindAll<Popup>(palette)
+            .Single(candidate => ReferenceEquals(candidate.Content, list));
+        var closed = 0;
+        palette.Closed += (_, _) => closed++;
+        palette.IsOpen = true;
+        palette.Text = "fresh";
+        popup.IsOpen.ShouldBeTrue();
+        palette.HasPendingFirstResultSelection.ShouldBeTrue();
+
+        popup.IsOpen = false;
+
+        palette.IsOpen.ShouldBeFalse();
+        palette.HasPendingFirstResultSelection.ShouldBeFalse();
+        list.SelectedIndex.ShouldBe(-1);
+        list.ActiveIndex.ShouldBe(-1);
+        closed.ShouldBe(1);
+
+        palette.Resolver = static (_, _) =>
+            ValueTask.FromResult<IReadOnlyList<object?>>(["Replacement"]);
+
+        palette.IsOpen.ShouldBeFalse();
+        closed.ShouldBe(1);
     }
 
     /// <summary>Verifies owner unavailability cancels an open result-navigation session and
@@ -318,6 +426,8 @@ public sealed class CommandPaletteSurfaceTests
             Width = Length.Cells(18),
             Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["One", "Two", "Three"])
         };
+        var closed = 0;
+        palette.Closed += (_, _) => closed++;
         await using var surface = await ComponentSurface.MountAsync(
             palette,
             new Size(24, 8),
@@ -333,6 +443,16 @@ public sealed class CommandPaletteSurfaceTests
         list.SelectedIndex.ShouldBe(-1);
         list.ActiveIndex.ShouldBe(-1);
         surface.Application.Modality.Active.ShouldBeNull();
+        closed.ShouldBe(1);
+
+        await surface.UpdateAsync(() => palette.IsEnabled = true, "make command palette available again");
+        await surface.UpdateAsync(
+            () => palette.Resolver = static (_, _) =>
+                ValueTask.FromResult<IReadOnlyList<object?>>(["Replacement"]),
+            "replace resolver after unavailable close");
+
+        palette.IsOpen.ShouldBeFalse();
+        closed.ShouldBe(1);
     }
 
     /// <summary>Verifies cancellation restores a nonzero selection accepted by the prior session,

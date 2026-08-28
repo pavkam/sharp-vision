@@ -14,7 +14,7 @@ internal sealed class PopupListInputProbe: InputBase
         Content = new ProbeContainer();
         Item = new ProbeControl { IsFocusable = true };
         Content.Children.Add(Item);
-        Popup = EnablePopup(Content, focusOnOpen: false, acceptSession: () => AcceptSessionCount++);
+        Popup = EnablePopup(Content, focusOnOpen: false);
         EnablePressActivation();
     }
 
@@ -35,9 +35,6 @@ internal sealed class PopupListInputProbe: InputBase
 
     /// <summary>Gets the number of times the popup closed.</summary>
     internal int DropDownClosedCount { get; private set; }
-
-    /// <summary>Gets the number of popup sessions accepted through the protected seam.</summary>
-    internal int AcceptSessionCount { get; private set; }
 
     /// <summary>Gets or sets whether the owned popup is open.</summary>
     internal new bool IsOpen

@@ -39,6 +39,9 @@ public sealed class DateInput: InputBase
     private DateOnly? _value;
     private DateOnly _openingActiveDate;
     private DateInterval? _openingCalendarSelection;
+    private long _openingBoundsVersion;
+    private long _openingValueVersion;
+    private long _boundsVersion;
     private long _valueVersion;
     private bool _seeded;
     private CultureInfo _culture;
@@ -63,7 +66,7 @@ public sealed class DateInput: InputBase
             SelectionMode = CalendarSelectionMode.Select
         };
         SyncCalendar();
-        _popup = EnablePopup(
+        _popup = EnablePopupNavigationSession(
             _calendar,
             placement: PopupPlacement.Below,
             focusOnOpen: true,
@@ -604,6 +607,8 @@ public sealed class DateInput: InputBase
     {
         _openingActiveDate = _calendar.ActiveDate;
         _openingCalendarSelection = _calendar.Selection;
+        _openingBoundsVersion = _boundsVersion;
+        _openingValueVersion = _valueVersion;
     }
 
     private bool HandlePopupNavigationKey(KeyEventArgs eventArgs)
@@ -647,7 +652,18 @@ public sealed class DateInput: InputBase
         return _calendar.HandleNavigationKey(eventArgs) || accepts;
     }
 
-    private void CancelCalendarSession() => RestoreOpeningCalendarState();
+    private void CancelCalendarSession()
+    {
+        if (_boundsVersion == _openingBoundsVersion &&
+            _valueVersion == _openingValueVersion &&
+            IsOpeningCalendarStateValid())
+        {
+            RestoreOpeningCalendarState();
+            return;
+        }
+
+        SyncCalendar();
+    }
 
     private void AcceptCalendarSession() => Value = _calendar.ActiveDate;
 
@@ -665,6 +681,13 @@ public sealed class DateInput: InputBase
             _calendar.Selection = _openingCalendarSelection;
         }
     }
+
+    private bool IsOpeningCalendarStateValid() =>
+        IsDateWithinBounds(_openingActiveDate) &&
+        (_openingCalendarSelection is not { } selection ||
+         (IsDateWithinBounds(selection.Start) && IsDateWithinBounds(selection.End)));
+
+    private bool IsDateWithinBounds(DateOnly date) => date >= Minimum && date <= Maximum;
 
     /// <inheritdoc/>
     protected override void OnDropDownOpened() => DropDownOpened?.Invoke(this, EventArgs.Empty);
@@ -985,6 +1008,7 @@ public sealed class DateInput: InputBase
 
     private void SynchronizeBoundsAndRepairValue()
     {
+        _boundsVersion++;
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(() => _calendar.MinimumDate = Minimum, ref failure);
         ExceptionAggregation.Capture(() => _calendar.MaximumDate = Maximum, ref failure);
