@@ -54,7 +54,8 @@ public abstract class Dialog<TResult>: Window
     /// <summary>Raised when a semantic action selects a typed result.</summary>
     /// <remarks>
     /// Modal callers normally observe the returned task. A directly mounted modeless dialog remains
-    /// open and publishes this event instead, so its buttons never consume input without an outcome.
+    /// open and publishes this event instead, so its buttons and unmodified Escape never consume
+    /// input without an outcome.
     /// External cancellation, forced detachment, and disposal do not represent result selection.
     /// </remarks>
     public event EventHandler? ResultSelected;
@@ -498,9 +499,15 @@ public abstract class Dialog<TResult>: Window
         if (eventArgs is KeyEventArgs
             {
                 IsInitialKeyDown: true,
-                Stroke.Code: Code.Escape
+                Stroke.Code: Code.Escape,
+                Stroke.Modifiers: var modifiers
             } && IsModeless())
         {
+            if (modifiers.IsActivationEligible())
+            {
+                eventArgs.IsHandled = Cancel();
+            }
+
             return;
         }
 

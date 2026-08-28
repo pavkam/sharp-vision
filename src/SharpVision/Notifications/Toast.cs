@@ -150,7 +150,10 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
     } = TimeSpan.FromMilliseconds(200);
 
     /// <summary>Gets or sets the visible lifetime after entrance completes.</summary>
-    /// <remarks><see cref="Timeout.InfiniteTimeSpan"/> keeps the Toast open until dismissed.</remarks>
+    /// <remarks>
+    /// <see cref="Timeout.InfiniteTimeSpan"/> keeps the Toast open until dismissed. Cancelling a
+    /// timeout-driven close request leaves this interval active for a later retry.
+    /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is neither infinite nor a valid positive timer interval.</exception>
     /// <exception cref="InvalidOperationException">The Toast is open or is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The Toast is disposed.</exception>
@@ -798,8 +801,6 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
     {
         _ = sender;
         _ = eventArgs;
-        _displayTimer?.Dispose();
-        _displayTimer = null;
         Dismiss();
     }
 

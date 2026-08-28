@@ -411,6 +411,42 @@ public sealed class ToastSurfaceTests
         toast.Parent.ShouldBeNull();
     }
 
+    /// <summary>Verifies a vetoed display timeout leaves the automatic lifetime active so a
+    /// later timeout can dismiss once the veto is removed.</summary>
+    [Fact]
+    public async Task AdvanceAsync_WhenDisplayTimeoutIsVetoed_RetriesAutomaticDismissalAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var root = new Overlay();
+        using var toast = CreateToast("one", ToastPosition.TopRight);
+        toast.AnimationDuration = TimeSpan.Zero;
+        toast.DisplayDuration = TimeSpan.FromMilliseconds(50);
+        var veto = true;
+        toast.CloseRequested += (_, eventArgs) => eventArgs.Cancel = veto;
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => toast.Show(root), "show timed Toast");
+
+        // Act
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "reach vetoed display timeout");
+
+        // Assert
+        toast.IsOpen.ShouldBeTrue();
+        toast.Parent.ShouldBeSameAs(root);
+
+        // Act
+        veto = false;
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "reach retry display timeout");
+
+        // Assert
+        toast.IsOpen.ShouldBeFalse();
+        toast.Parent.ShouldBeNull();
+    }
+
     /// <summary>Verifies a descendant owner resolves the Screen's private presentation Overlay.</summary>
     [Fact]
     public async Task Show_WhenOwnerBelongsToScreen_UsesPrivatePresentationPlaneAsync()

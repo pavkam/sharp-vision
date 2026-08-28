@@ -59,11 +59,11 @@ surface. In that mode a semantic action leaves the dialog mounted and raises
 `ResultSelected` instead of closing it, and `HasSelectedResult` and
 `SelectedResult` keep the latest selection. Result publication is versioned: if
 a property observer synchronously selects a newer result, only that current
-transition reaches `ResultSelected`; the superseded outer publication stops. A
-modeless file dialog leaves Escape to its routed ancestors rather than silently
-consuming it as a cancellation result; a modeless MessageBox is the exception —
-its own routed handler consumes Escape as a `Cancel` selection. Dialogs do not
-introduce a second layout, input, or rendering framework.
+transition reaches `ResultSelected`; the superseded outer publication stops.
+Unmodified Escape commits the dialog's typed cancellation result, marks the key
+handled, and leaves the modeless surface mounted; command-modified Escape
+remains available to routed ancestors. Dialogs do not introduce a second layout,
+input, or rendering framework.
 
 A presented dialog detached while completion is queued cannot attach to another
 dispatcher until the original completion transaction finishes. Attachment

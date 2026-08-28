@@ -8,6 +8,32 @@ using System.Reflection;
 /// <summary>Defines retained composition and asynchronous state behavior for SaveFileDialog.</summary>
 public sealed class SaveFileDialogTests
 {
+    /// <summary>Verifies Escape commits the cancellation sentinel for a directly mounted,
+    /// modeless save-file dialog.</summary>
+    [Fact]
+    public async Task Escape_WhenDialogIsModeless_PublishesCancelledResultAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "save-modeless-escape"));
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory);
+        var dialog = new SaveFileDialog(new SaveFileOptions { InitialDirectory = directory }, source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(76, 33),
+            TestContext.Current.CancellationToken);
+        await DialogWait.UntilAsync(surface, dialog, () => !dialog.IsLoading);
+        var input = OwnedTree.Find<TextInput>(dialog).ShouldNotBeNull();
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(input).ShouldBeTrue(), "focus save-file dialog");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        // Assert
+        dialog.HasSelectedResult.ShouldBeTrue();
+        dialog.SelectedResult.ShouldBeSameAs(SaveFileResult.Cancelled);
+    }
+
     /// <summary>Verifies caller formatter failures become deterministic dialog status instead of
     /// escaping the accept interaction through async void.</summary>
     [Theory]

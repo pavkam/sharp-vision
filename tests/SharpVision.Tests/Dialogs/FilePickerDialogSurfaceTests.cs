@@ -6,6 +6,32 @@ namespace SharpVision.Tests.Dialogs;
 /// <summary>Proves the public file-picker presentation through a mounted application surface.</summary>
 public sealed class FilePickerDialogSurfaceTests
 {
+    /// <summary>Verifies Escape commits the cancellation sentinel for a directly mounted,
+    /// modeless file picker.</summary>
+    [Fact]
+    public async Task Escape_WhenDialogIsModeless_PublishesCancelledResultAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-modeless-escape"));
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory);
+        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(76, 33),
+            TestContext.Current.CancellationToken);
+        await DialogWait.UntilAsync(surface, dialog, () => !dialog.IsLoading);
+        var input = OwnedTree.Find<TextInput>(dialog).ShouldNotBeNull();
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(input).ShouldBeTrue(), "focus file picker");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        // Assert
+        dialog.HasSelectedResult.ShouldBeTrue();
+        dialog.SelectedResult.ShouldBeSameAs(FilePickerResult.Cancelled);
+    }
+
     /// <summary>Verifies the compact dialog aligns full-width content, metadata, options, and trailing actions.</summary>
     [Fact]
     public async Task Render_WhenShowcaseSized_DisplaysCompleteFieldsAndActionsWithoutClippingAsync()

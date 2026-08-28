@@ -76,6 +76,10 @@ publishes `Closing`, exits modality, makes the content unavailable, clears
 from visible performs the same common cleanup directly but publishes neither
 lifecycle event.
 
+Veto also preserves source-specific lifetime machinery. In particular, a Toast
+display timeout remains scheduled after cancellation and may request dismissal
+again on its next interval.
+
 `Closed` runs only after the unavailable-state commit, bounds clearing,
 presentation-version advance, and close-guard release. A handler can therefore
 open the same reusable surface as a distinct presentation without reentering or

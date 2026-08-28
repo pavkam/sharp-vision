@@ -301,7 +301,9 @@ The behavior above is verified end to end, so callers can rely on it:
 - Asynchronous loads replace each other cleanly, missing and denied directories
   stay recoverable, and detach, disposal, and cancellation tear the dialog down
   safely.
-- Save, Cancel, Escape, and frame close each complete the dialog, and overwrite
+- Save, Cancel, Escape, and frame close each complete a presented dialog;
+  unmodified Escape on a directly mounted modeless dialog publishes
+  `SaveFileResult.Cancelled` without removing the surface. Overwrite
   confirmation honors Yes, No, and the disabled setting through nested modality.
 - Focus is restored and the host is cleaned up on every completion path.
 - Layout holds across tiny, normal, and wide hosts with semantic rendering, and

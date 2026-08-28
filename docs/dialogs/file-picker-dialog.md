@@ -375,9 +375,11 @@ The behavior above is verified end to end, so callers can rely on it:
   wins over that default. Submitting a location-input path that names an
   existing directory selects it in `Directories` and `FilesAndDirectories` mode
   instead of navigating, while every other submitted path still navigates.
-- Open, Cancel, Escape, and frame close each complete the dialog. Modality
-  isolates the background, Tab stays confined, focus is restored, and the host
-  is cleaned up.
+- Open, Cancel, Escape, and frame close each complete a presented dialog.
+  Unmodified Escape on a directly mounted modeless picker publishes
+  `FilePickerResult.Cancelled` without removing the surface. Modality isolates
+  the background, Tab stays confined, focus is restored, and the host is cleaned
+  up.
 - Layout holds across tiny, normal, and wide resizes and captured top-border
   dragging, with the default and configured visible-row caps and the exact
   compact-control geometry.
