@@ -542,6 +542,13 @@ public abstract class InputBase: ControlBase
     /// </param>
     /// <param name="beforeOpen">Optional work run before the popup opens, such as seeding a value or syncing a calendar.</param>
     /// <param name="beforeCloseFocusRestore">Optional work run before the closing focus-restore check, such as discarding type-ahead state.</param>
+    /// <param name="beginSession">Optional work that snapshots committed owner state and seeds
+    /// provisional popup state for each opening.</param>
+    /// <param name="handleNavigationKey">Optional canonical popup-navigation handler invoked from
+    /// the owner's preview route while a session remains current.</param>
+    /// <param name="cancelSession">Optional work that restores the opening state after a close
+    /// without acceptance.</param>
+    /// <param name="acceptSession">Optional work that commits provisional state before an accepted close.</param>
     /// <returns>The newly constructed, owned popup.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="content"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The popup capability is already enabled.</exception>
@@ -551,7 +558,11 @@ public abstract class InputBase: ControlBase
         bool focusOnOpen = false,
         TabNavigation popupTabNavigation = TabNavigation.None,
         Action? beforeOpen = null,
-        Action? beforeCloseFocusRestore = null)
+        Action? beforeCloseFocusRestore = null,
+        Action? beginSession = null,
+        Func<KeyEventArgs, bool>? handleNavigationKey = null,
+        Action? cancelSession = null,
+        Action? acceptSession = null)
     {
         ArgumentNullException.ThrowIfNull(content);
         VerifyMutable();
@@ -594,8 +605,29 @@ public abstract class InputBase: ControlBase
             OnDropDownOpened,
             OnDropDownClosed,
             beforeOpen,
-            beforeCloseFocusRestore);
+            beforeCloseFocusRestore,
+            beginSession: beginSession,
+            handleNavigationKey: handleNavigationKey,
+            cancelSession: cancelSession,
+            acceptSession: acceptSession);
         return popup;
+    }
+
+    /// <summary>Commits the active popup session's provisional state and closes the owned popup.</summary>
+    /// <remarks>Concrete drop-down owners call this only after target-owned keyboard or pointer
+    /// activation has accepted the provisional item.</remarks>
+    /// <exception cref="InvalidOperationException">The popup capability is not enabled, the
+    /// control is mutated off-dispatcher, or the coordinator is detached.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    /// <exception cref="Exception">An acceptance or close callback fails after close cleanup completes.</exception>
+    protected void AcceptPopupAndClose()
+    {
+        if (_popupCoordinator is not { } coordinator)
+        {
+            throw new InvalidOperationException("The popup capability is not enabled.");
+        }
+
+        coordinator.AcceptAndClose();
     }
 
     /// <summary>Gets or sets whether the owned popup is open.</summary>

@@ -587,6 +587,126 @@ public sealed class ComboBoxTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies every initial and repeated list-navigation key uses current-only browsing
+    /// while the committed ComboBox selection remains unchanged.</summary>
+    [Theory]
+    [InlineData(Code.Up, KeyAction.Press, 2)]
+    [InlineData(Code.Down, KeyAction.Press, 4)]
+    [InlineData(Code.Left, KeyAction.Repeat, 2)]
+    [InlineData(Code.Right, KeyAction.Repeat, 4)]
+    [InlineData(Code.Home, KeyAction.Press, 0)]
+    [InlineData(Code.End, KeyAction.Repeat, 6)]
+    [InlineData(Code.PageUp, KeyAction.Press, 0)]
+    [InlineData(Code.PageDown, KeyAction.Repeat, 6)]
+    public void Dispatch_WhenOpenNavigationKeyIsRouted_MovesOnlyCurrent(
+        Code code,
+        KeyAction action,
+        int expectedCurrent)
+    {
+        var box = new ComboBox
+        {
+            Items = ["Zero", "One", "Two", "Three", "Four", "Five", "Six"],
+            SelectedIndex = 3,
+            DropDownHeight = 3,
+            RowHeight = 1,
+            IsOpen = true
+        };
+        new LayoutEngine().Layout(box, new Size(16, 8));
+        var key = Key(code, action);
+
+        var result = Router.Route(box, Events.Key, key);
+
+        result.IsHandled.ShouldBeTrue();
+        box.SelectedIndex.ShouldBe(3);
+        box.GetDropDownList().SelectedIndex.ShouldBe(3);
+        box.GetDropDownList().ActiveIndex.ShouldBe(expectedCurrent);
+    }
+
+    /// <summary>Verifies owner preview routing intercepts a popup-focused navigation key exactly
+    /// once, preventing the ListView's ordinary selecting route from committing it a second time.</summary>
+    [Fact]
+    public void Dispatch_WhenNavigationTargetsOpenPopupList_MovesCurrentExactlyOnceWithoutSelecting()
+    {
+        var box = new ComboBox
+        {
+            Items = ["Zero", "One", "Two", "Three"],
+            SelectedIndex = 1,
+            DropDownHeight = 4,
+            IsOpen = true
+        };
+        new LayoutEngine().Layout(box, new Size(16, 8));
+        var list = box.GetDropDownList();
+        var key = Key(Code.Down, KeyAction.Repeat);
+
+        var result = Router.Route(list, Events.Key, key);
+
+        result.IsHandled.ShouldBeTrue();
+        box.SelectedIndex.ShouldBe(1);
+        list.SelectedIndex.ShouldBe(1);
+        list.ActiveIndex.ShouldBe(2);
+    }
+
+    /// <summary>Verifies every owner-initiated cancelled close restores the current item seeded
+    /// from the opening committed selection.</summary>
+    [Theory]
+    [InlineData("escape")]
+    [InlineData("programmatic")]
+    [InlineData("direct")]
+    public void Close_WhenOpenBrowsingIsCancelled_RestoresOpeningCurrentAndSelection(string closePath)
+    {
+        var box = new ComboBox
+        {
+            Items = ["Zero", "One", "Two", "Three"],
+            SelectedIndex = 1,
+            DropDownHeight = 4,
+            IsOpen = true
+        };
+        new LayoutEngine().Layout(box, new Size(16, 8));
+        var list = box.GetDropDownList();
+        _ = Router.Route(box, Events.Key, Key(Code.Down));
+        list.ActiveIndex.ShouldBe(2);
+
+        switch (closePath)
+        {
+            case "escape":
+                _ = Router.Route(box, Events.Key, Key(Code.Escape));
+                break;
+            case "programmatic":
+                box.IsOpen = false;
+                break;
+            case "direct":
+                OwnedTree.Find<Popup>(box).ShouldNotBeNull().IsOpen = false;
+                break;
+            default:
+                throw new UnreachableException();
+        }
+
+        box.IsOpen.ShouldBeFalse();
+        box.SelectedIndex.ShouldBe(1);
+        list.SelectedIndex.ShouldBe(1);
+        list.ActiveIndex.ShouldBe(1);
+    }
+
+    /// <summary>Verifies an empty session recognizes neither navigation nor Enter acceptance and
+    /// remains available for a later explicit cancellation.</summary>
+    [Fact]
+    public void Dispatch_WhenOpenListIsEmpty_LeavesSessionAndSelectionUnchanged()
+    {
+        var box = new ComboBox { IsOpen = true };
+        var down = Key(Code.Down);
+        var enter = Key(Code.Enter);
+
+        var downResult = Router.Route(box, Events.Key, down);
+        var enterResult = Router.Route(box, Events.Key, enter);
+
+        downResult.IsHandled.ShouldBeFalse();
+        enterResult.IsHandled.ShouldBeTrue();
+        box.IsOpen.ShouldBeTrue();
+        box.SelectedIndex.ShouldBe(-1);
+        box.GetDropDownList().SelectedIndex.ShouldBe(-1);
+        box.GetDropDownList().ActiveIndex.ShouldBe(-1);
+    }
+
     /// <summary>Verifies an incidental Control modifier on Enter does not commit the highlighted
     /// row - the drop-down stays open and the selection is unchanged.</summary>
     [Fact]

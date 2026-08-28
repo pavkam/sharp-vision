@@ -33,6 +33,8 @@ public sealed class ComboBox: InputBase
     private long _selectionVersion;
     private bool _synchronizingSelection;
     private bool _listSelectionChangedFired;
+    private int _openingSelectedIndex = -1;
+    private int _openingCurrentIndex = -1;
 
     #region Construction and properties
 
@@ -50,7 +52,11 @@ public sealed class ComboBox: InputBase
         _popup = EnablePopup(
             _list,
             focusOnOpen: false,
-            beforeCloseFocusRestore: () => _typeAhead = string.Empty);
+            beforeCloseFocusRestore: () => _typeAhead = string.Empty,
+            beginSession: BeginNavigationSession,
+            handleNavigationKey: HandleNavigationKey,
+            cancelSession: CancelNavigationSession,
+            acceptSession: AcceptNavigationSession);
         EnablePressActivation();
         _scrollBarStyle = InitializePartStyle(
             ScrollBarStyle.ForwardingDefinition,
@@ -408,21 +414,6 @@ public sealed class ComboBox: InputBase
         {
             var stroke = keyEventArgs.Stroke;
 
-            if (keyEventArgs.IsInitialKeyDown &&
-                stroke.Code == Code.Escape &&
-                stroke.Modifiers.IsActivationEligible())
-            {
-                IsOpen = false;
-                eventArgs.IsHandled = true;
-                return;
-            }
-
-            if (keyEventArgs.IsInitialKeyDown && stroke.Code == Code.Enter)
-            {
-                eventArgs.IsHandled = _list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, stroke.Modifiers);
-                return;
-            }
-
             if (keyEventArgs.IsKeyDown && stroke.Code is Code.Delete or Code.Backspace)
             {
                 eventArgs.IsHandled = ClearSelection();
@@ -435,12 +426,6 @@ public sealed class ComboBox: InputBase
                 KeyboardModifierPolicy.IsTextEntryEligible(stroke.Modifiers))
             {
                 eventArgs.IsHandled = SelectTypeAhead(character);
-                return;
-            }
-
-            if (keyEventArgs.IsKeyDown && stroke.Code != Code.Tab && _list.MoveCurrent(stroke.Code))
-            {
-                eventArgs.IsHandled = true;
                 return;
             }
 
@@ -495,37 +480,103 @@ public sealed class ComboBox: InputBase
     /// <inheritdoc/>
     protected override void OnDropDownClosed() => DropDownClosed?.Invoke(this, EventArgs.Empty);
 
+    private void BeginNavigationSession()
+    {
+        _openingSelectedIndex = _selectedIndex;
+        _openingCurrentIndex = _list.ActiveIndex;
+        SynchronizeListSelection(_selectedIndex);
+    }
+
+    private bool HandleNavigationKey(KeyEventArgs eventArgs)
+    {
+        var stroke = eventArgs.Stroke;
+
+        if (eventArgs.IsInitialKeyDown &&
+            stroke.Code == Code.Escape &&
+            stroke.Modifiers.IsActivationEligible())
+        {
+            eventArgs.IsHandled = true;
+            IsOpen = false;
+            return true;
+        }
+
+        if (eventArgs.IsInitialKeyDown && stroke.Code == Code.Enter)
+        {
+            // Enter belongs to the open session even when no item is available. Consuming it here
+            // prevents the field's ordinary press activation from toggling the popup closed.
+            eventArgs.IsHandled = true;
+            var accepted = _list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, stroke.Modifiers);
+            return accepted;
+        }
+
+        return _list.HandleCurrentNavigationKey(eventArgs);
+    }
+
+    private void CancelNavigationSession()
+    {
+        if (_selectedIndex != _openingSelectedIndex)
+        {
+            SetSelectedIndex(_openingSelectedIndex);
+        }
+        else
+        {
+            SynchronizeListSelection(_openingSelectedIndex);
+        }
+
+        if (_openingSelectedIndex < 0 && _openingCurrentIndex >= 0)
+        {
+            SynchronizeListSelection(_openingCurrentIndex);
+            SynchronizeListSelection(-1);
+        }
+    }
+
+    private void AcceptNavigationSession()
+    {
+        var acceptedIndex = _list.ActiveIndex;
+
+        if (acceptedIndex < 0)
+        {
+            return;
+        }
+
+        var popupVersion = PopupTransitionVersion;
+        SetSelectedIndex(acceptedIndex);
+
+        // Selection callbacks own a newer selection decision. Reopening establishes a new session
+        // so the accepted session's close continuation cannot dismiss that newer state.
+        if (!IsDisposed &&
+            IsOpen &&
+            PopupTransitionVersion == popupVersion &&
+            _selectedIndex != acceptedIndex)
+        {
+            IsOpen = false;
+            IsOpen = true;
+        }
+    }
+
     private void OnItemInvoked(object? sender, ItemInvokedEventArgs eventArgs)
     {
         _ = sender;
-        var popupVersion = PopupTransitionVersion;
-        _list.SelectedIndex = eventArgs.Index;
-
-        if (!IsDisposed &&
-            PopupTransitionVersion == popupVersion &&
-            _selectedIndex == eventArgs.Index &&
-            _list.SelectedIndex == eventArgs.Index)
-        {
-            IsOpen = false;
-        }
+        _ = eventArgs;
+        AcceptPopupAndClose();
     }
 
     private void OnSelectionChanged(object? sender, ListSelectionChangedEventArgs eventArgs)
     {
         _ = sender;
+        _listSelectionChangedFired = true;
+
+        if (_synchronizingSelection)
+        {
+            return;
+        }
+
         var selectedIndex = _list.SelectedIndex;
 
         if (_selectedIndex != selectedIndex)
         {
             _selectedIndex = selectedIndex;
             _selectionVersion++;
-        }
-
-        _listSelectionChangedFired = true;
-
-        if (_synchronizingSelection)
-        {
-            return;
         }
 
         if ((selectedIndex >= 0 && !eventArgs.AddedIndexes.Span.Contains(selectedIndex)) ||
@@ -552,7 +603,9 @@ public sealed class ComboBox: InputBase
     {
         _ = sender;
 
-        if (eventArgs.PropertyName != nameof(ListView.SelectedIndex) || _list.SelectedIndex == _selectedIndex)
+        if (_synchronizingSelection ||
+            eventArgs.PropertyName != nameof(ListView.SelectedIndex) ||
+            _list.SelectedIndex == _selectedIndex)
         {
             return;
         }
@@ -577,6 +630,20 @@ public sealed class ComboBox: InputBase
 
     private string ItemText(object? item) =>
         TextSelector?.Invoke(item) ?? Convert.ToString(item, CultureInfo.InvariantCulture) ?? string.Empty;
+
+    private void SynchronizeListSelection(int value)
+    {
+        _synchronizingSelection = true;
+
+        try
+        {
+            _list.SelectedIndex = value;
+        }
+        finally
+        {
+            _synchronizingSelection = false;
+        }
+    }
 
     private void SetSelectedIndex(int value)
     {
