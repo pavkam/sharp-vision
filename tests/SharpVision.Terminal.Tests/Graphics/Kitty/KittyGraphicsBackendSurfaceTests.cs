@@ -99,9 +99,9 @@ public sealed class KittyGraphicsBackendSurfaceTests
         _ = await renderer.RenderAsync(failed, transport, KittyCapabilities, CancellationToken.None);
         var reused = transport.Writes.ShouldHaveSingleItem();
 
-        recovery.AsSpan().IndexOf("\u001b_Ga=d,d=I,I=2,q=2\u001b\\"u8).ShouldBeGreaterThanOrEqualTo(0);
+        recovery.AsSpan().IndexOf("\u001b_Ga=d,d=N,I=2,q=2\u001b\\"u8).ShouldBeGreaterThanOrEqualTo(0);
         recovery.AsSpan().IndexOf("d=i,I=2,p=2"u8).ShouldBe(-1);
-        reused.AsSpan().IndexOf("a=t,f=32,t=d,s=1,v=1,I=2,q=2"u8).ShouldBeGreaterThanOrEqualTo(0);
+        reused.AsSpan().IndexOf("a=t,f=32,t=d,s=1,v=1,I=2;"u8).ShouldBeGreaterThanOrEqualTo(0);
         reused.AsSpan().IndexOf("a=p,I=2,p=2"u8).ShouldBeGreaterThanOrEqualTo(0);
     }
 
@@ -132,7 +132,7 @@ public sealed class KittyGraphicsBackendSurfaceTests
         _ = await renderer.RenderAsync(failed, transport, KittyCapabilities, CancellationToken.None);
         var reused = transport.Writes.ShouldHaveSingleItem();
 
-        recovery.AsSpan().IndexOf("\u001b_Ga=d,d=i,I=1,p=2,q=2\u001b\\"u8).ShouldBeGreaterThanOrEqualTo(0);
+        recovery.AsSpan().IndexOf("\u001b_Ga=d,d=n,I=1,p=2,q=2\u001b\\"u8).ShouldBeGreaterThanOrEqualTo(0);
         recovery.AsSpan().IndexOf("d=I,I=1"u8).ShouldBe(-1);
         reused.AsSpan().IndexOf("a=p,I=1,p=2"u8).ShouldBeGreaterThanOrEqualTo(0);
     }
@@ -161,7 +161,7 @@ public sealed class KittyGraphicsBackendSurfaceTests
         var bytes = transport.Writes.ShouldHaveSingleItem();
         var clear = bytes.AsSpan().IndexOf("\u001b[2J"u8);
         var cells = bytes.AsSpan().IndexOf("next"u8);
-        var removal = bytes.AsSpan().IndexOf("\u001b_Ga=d,d=I,I=1,q=2\u001b\\"u8);
+        var removal = bytes.AsSpan().IndexOf("\u001b_Ga=d,d=N,I=1,q=2\u001b\\"u8);
         result.Full.ShouldBeTrue();
         clear.ShouldBeGreaterThanOrEqualTo(0);
         cells.ShouldBeGreaterThan(clear);
@@ -207,7 +207,7 @@ public sealed class KittyGraphicsBackendSurfaceTests
         await renderer.ShutdownAsync(transport, CancellationToken.None);
 
         transport.Writes.ShouldHaveSingleItem().ShouldBe(
-            "\u001b_Ga=d,d=I,I=1,q=2\u001b\\\u001b_Ga=d,d=I,I=2,q=2\u001b\\"u8.ToArray());
+            "\u001b_Ga=d,d=N,I=1,q=2\u001b\\\u001b_Ga=d,d=N,I=2,q=2\u001b\\"u8.ToArray());
     }
 
     /// <summary>Verifies tmux wraps each shutdown delete independently.</summary>
@@ -233,8 +233,8 @@ public sealed class KittyGraphicsBackendSurfaceTests
 
         transport.Writes.ShouldHaveSingleItem().ShouldBe(
             [
-                .. Tmux("\u001b_Ga=d,d=I,I=1,q=2\u001b\\"),
-                .. Tmux("\u001b_Ga=d,d=I,I=2,q=2\u001b\\")
+                .. Tmux("\u001b_Ga=d,d=N,I=1,q=2\u001b\\"),
+                .. Tmux("\u001b_Ga=d,d=N,I=2,q=2\u001b\\")
             ]);
     }
 
@@ -263,7 +263,7 @@ public sealed class KittyGraphicsBackendSurfaceTests
         await renderer.ShutdownAsync(transport, CancellationToken.None);
 
         transport.Writes.ShouldHaveSingleItem().ShouldBe(
-            "\u001b_Ga=d,d=I,I=1,q=2\u001b\\\u001b_Ga=d,d=I,I=2,q=2\u001b\\"u8.ToArray());
+            "\u001b_Ga=d,d=N,I=1,q=2\u001b\\\u001b_Ga=d,d=N,I=2,q=2\u001b\\"u8.ToArray());
     }
 
     /// <summary>Verifies shutdown hard deletion covers an uncertain placement of a committed image.</summary>
@@ -290,7 +290,7 @@ public sealed class KittyGraphicsBackendSurfaceTests
         await renderer.ShutdownAsync(transport, CancellationToken.None);
 
         transport.Writes.ShouldHaveSingleItem().ShouldBe(
-            "\u001b_Ga=d,d=I,I=1,q=2\u001b\\"u8.ToArray());
+            "\u001b_Ga=d,d=N,I=1,q=2\u001b\\"u8.ToArray());
     }
 
     /// <summary>Verifies valid cleanup commit releases IDs without allocation.</summary>
@@ -322,9 +322,9 @@ public sealed class KittyGraphicsBackendSurfaceTests
         allocated.ShouldBe(0);
         cleanupCount.ShouldBe(2);
         cleanup.WrittenSpan.ToArray().ShouldBe(
-            "\u001b_Ga=d,d=I,I=1,q=2\u001b\\\u001b_Ga=d,d=I,I=2,q=2\u001b\\"u8.ToArray());
+            "\u001b_Ga=d,d=N,I=1,q=2\u001b\\\u001b_Ga=d,d=N,I=2,q=2\u001b\\"u8.ToArray());
         result.Uploads.ShouldBe(1);
-        Encoding.ASCII.GetString(bytes.Uploads).ShouldContain("I=2,q=2");
+        Encoding.ASCII.GetString(bytes.Uploads).ShouldContain("I=2;");
     }
 
     /// <summary>

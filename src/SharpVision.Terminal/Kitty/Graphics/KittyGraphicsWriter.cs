@@ -396,7 +396,9 @@ public static class KittyGraphicsWriter
             destination,
             position,
             (byte) 'd',
-            command.DeleteData ? (byte) 'I' : (byte) 'i');
+            command.UsesImageNumber
+                ? (command.DeleteData ? (byte) 'N' : (byte) 'n')
+                : (command.DeleteData ? (byte) 'I' : (byte) 'i'));
         position = AppendField(destination, position, command.UsesImageNumber ? (byte) 'I' : (byte) 'i', command.ImageId);
 
         if (!command.DeleteData)

@@ -674,7 +674,11 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         var format = state.Image.Format == ImageFormat.Rgba ? KittyGraphicsFormat.Rgba : KittyGraphicsFormat.Png;
         KittyGraphicsWriter.WriteTransmission(
             UseImageReference(
-                KittyGraphicsCommand.Transmit(state.Reference, state.Image.Size, format),
+                KittyGraphicsCommand.Transmit(
+                    state.Reference,
+                    state.Image.Size,
+                    format,
+                    quiet: state.UsesImageNumber ? 0 : 2),
                 state.UsesImageNumber),
             state.Image.Source,
             destination,

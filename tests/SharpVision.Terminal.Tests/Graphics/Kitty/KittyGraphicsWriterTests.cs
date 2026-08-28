@@ -260,6 +260,51 @@ public sealed class KittyGraphicsWriterTests
             "\u001b_Ga=d,d=i,i=7,p=9,q=2\u001b\\"u8.ToArray());
     }
 
+    /// <summary>Verifies a number-addressed hard image deletion emits the spec-mandated 'N' value
+    /// (paired with the 'I' number key), not the id-addressed 'I' value.</summary>
+    [Fact]
+    public void Write_WhenNumberAddressedImageIsDeleted_EmitsNumberAddressedHardDelete()
+    {
+        var output = new ArrayBufferWriter<byte>();
+
+        KittyGraphicsWriter.Write(KittyGraphicsCommand.DeleteImage(7).WithImageNumber(), [], output);
+
+        output.WrittenSpan.ToArray().ShouldBe(
+            "\u001b_Ga=d,d=N,I=7,q=2\u001b\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies a number-addressed soft placement deletion emits the spec-mandated 'n' value
+    /// (paired with the 'I' number key), not the id-addressed 'i' value.</summary>
+    [Fact]
+    public void Write_WhenNumberAddressedPlacementIsDeleted_EmitsNumberAddressedSoftDelete()
+    {
+        var output = new ArrayBufferWriter<byte>();
+
+        KittyGraphicsWriter.Write(KittyGraphicsCommand.DeletePlacement(7, 9).WithImageNumber(), [], output);
+
+        output.WrittenSpan.ToArray().ShouldBe(
+            "\u001b_Ga=d,d=n,I=7,p=9,q=2\u001b\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies a number-addressed transmission can be written with quiet=0 so the terminal's
+    /// OK response - the only way the caller learns the terminal-assigned id for that number - is not
+    /// suppressed.</summary>
+    [Fact]
+    public void WriteTransmission_WhenNumberAddressedWithQuietZero_EmitsUnsuppressedResponse()
+    {
+        var output = new ArrayBufferWriter<byte>();
+        var command = KittyGraphicsCommand.Transmit(
+            7,
+            new Size(1, 1),
+            KittyGraphicsFormat.Rgba,
+            quiet: 0).WithImageNumber();
+
+        KittyGraphicsWriter.WriteTransmission(command, [1, 2, 3, 255], output, maxPayloadBytes: 64);
+
+        output.WrittenSpan.ToArray().ShouldBe(
+            "\u001b_Ga=t,f=32,t=d,s=1,v=1,I=7;AQID/w==\u001b\\"u8.ToArray());
+    }
+
     /// <summary>Verifies direct-only policy rejects file, temporary-file, and shared-memory media.</summary>
     [Theory]
     [InlineData(KittyGraphicsMedium.File)]

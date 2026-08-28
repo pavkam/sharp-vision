@@ -36,7 +36,7 @@ public sealed class KittyGraphicsBackendTests
         var cleanup = WritePrepared(backend);
         backend.Commit();
 
-        Encoding.ASCII.GetString(initial.Uploads).ShouldContain(",I=1,");
+        Encoding.ASCII.GetString(initial.Uploads).ShouldContain(",I=1;");
         Encoding.ASCII.GetString(initial.Placements).ShouldContain("a=p,I=1,p=1");
         Encoding.ASCII.GetString(movement.Placements).ShouldContain("a=p,i=99,p=1");
         Encoding.ASCII.GetString(cleanup.Removals).ShouldBe("\u001b_Ga=d,d=I,i=99,q=2\u001b\\");
@@ -102,8 +102,8 @@ public sealed class KittyGraphicsBackendTests
         _ = backend.Prepare(frameB, frameBMoved, full: false);
         var moved = WritePrepared(backend);
 
-        Encoding.ASCII.GetString(aBytes.Uploads).ShouldContain(",I=1,");
-        Encoding.ASCII.GetString(bBytes.Uploads).ShouldContain(",I=2,");
+        Encoding.ASCII.GetString(aBytes.Uploads).ShouldContain(",I=1;");
+        Encoding.ASCII.GetString(bBytes.Uploads).ShouldContain(",I=2;");
         Encoding.ASCII.GetString(moved.Placements).ShouldContain("I=2");
         Encoding.ASCII.GetString(moved.Placements).ShouldNotContain("i=77");
     }
@@ -129,7 +129,7 @@ public sealed class KittyGraphicsBackendTests
         backend.Commit();
 
         initial.ShouldBe(new GraphicsBackendResult(changed: true, uploads: 1, placements: 1, removals: 0));
-        Encoding.ASCII.GetString(initialBytes.Uploads).ShouldContain("a=t,f=32,t=d,s=1,v=1,I=1,q=2;AQID/w==");
+        Encoding.ASCII.GetString(initialBytes.Uploads).ShouldContain("a=t,f=32,t=d,s=1,v=1,I=1;AQID/w==");
         Encoding.ASCII.GetString(initialBytes.Placements).ShouldBe(
             "\u001b[1;2H\u001b_Ga=p,I=1,p=1,x=0,y=0,w=1,h=1,c=2,r=1,q=2,C=1\u001b\\" +
             "\u001b[1;1H");
@@ -144,7 +144,7 @@ public sealed class KittyGraphicsBackendTests
             placements: 0,
             removals: 1,
             fullCellRedraw: true));
-        Encoding.ASCII.GetString(removalBytes.Removals).ShouldBe("\u001b_Ga=d,d=I,I=1,q=2\u001b\\");
+        Encoding.ASCII.GetString(removalBytes.Removals).ShouldBe("\u001b_Ga=d,d=N,I=1,q=2\u001b\\");
     }
 
     /// <summary>Verifies a logical image replacement can reuse the retiring image's own identifier
@@ -169,7 +169,7 @@ public sealed class KittyGraphicsBackendTests
 
         replacement.ShouldBe(new GraphicsBackendResult(changed: true, uploads: 1, placements: 1, removals: 0));
         var upload = Encoding.ASCII.GetString(bytes.Uploads);
-        upload.ShouldContain(",I=1,");
+        upload.ShouldContain(",I=1;");
         upload.ShouldContain("BAUG/w==");
         bytes.Removals.ShouldBeEmpty();
 
@@ -250,7 +250,7 @@ public sealed class KittyGraphicsBackendTests
         var bytes = WritePrepared(backend);
 
         result.Removals.ShouldBe(1);
-        Encoding.ASCII.GetString(bytes.Removals).ShouldContain("a=d,d=i,I=1,p=2");
+        Encoding.ASCII.GetString(bytes.Removals).ShouldContain("a=d,d=n,I=1,p=2");
     }
 
     /// <summary>Verifies removing one shared placement preserves image data through a soft delete.</summary>
@@ -272,7 +272,7 @@ public sealed class KittyGraphicsBackendTests
 
         result.Removals.ShouldBe(1);
         Encoding.ASCII.GetString(bytes.Removals).ShouldBe(
-            "\u001b_Ga=d,d=i,I=1,p=2,q=2\u001b\\");
+            "\u001b_Ga=d,d=n,I=1,p=2,q=2\u001b\\");
     }
 
     /// <summary>Verifies invalidation reconstructs all committed remote images and placements.</summary>
@@ -455,7 +455,7 @@ public sealed class KittyGraphicsBackendTests
 
         hidden.Placements.ShouldBe(0);
         hidden.Removals.ShouldBe(1);
-        Encoding.ASCII.GetString(hiddenBytes.Removals).ShouldContain("a=d,d=I,I=1");
+        Encoding.ASCII.GetString(hiddenBytes.Removals).ShouldContain("a=d,d=N,I=1");
         shown.Uploads.ShouldBe(1);
         shown.Placements.ShouldBe(1);
     }
