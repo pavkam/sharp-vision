@@ -199,7 +199,10 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     }
 
     /// <summary>Gets or sets whether the window can be dragged by its title bar.</summary>
-    /// <remarks>Dragging keeps the window's border box inside its parent's committed content area.</remarks>
+    /// <remarks>
+    /// Dragging keeps the window's border box inside its parent's committed content area. Setting
+    /// this property to <see langword="false"/> ends an active move gesture on its next pointer event.
+    /// </remarks>
     /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
     public bool CanMove
@@ -214,6 +217,8 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// <see cref="ControlBase.Height"/> within <see cref="ControlBase.MinWidth"/>/<see cref="ControlBase.MaxWidth"/>,
     /// <see cref="ControlBase.MinHeight"/>/<see cref="ControlBase.MaxHeight"/>, and the parent's committed
     /// content area. Off by default.
+    /// Setting this property to <see langword="false"/> ends an active resize gesture on its next
+    /// pointer event.
     /// </remarks>
     /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
@@ -924,6 +929,15 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             return;
         }
 
+        if ((_resizing && !CanResize) || (_dragging && !CanMove))
+        {
+            _dragging = false;
+            _resizing = false;
+            ReleasePointerCapture();
+            eventArgs.IsHandled = true;
+            return;
+        }
+
         if (_resizing)
         {
             var gestureParent = Parent;
@@ -1008,16 +1022,36 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         }
         else if (_dragging)
         {
+            var gestureParent = Parent;
             var deltaX = cells.X - _dragPointerOrigin.X;
             var deltaY = cells.Y - _dragPointerOrigin.Y;
             var clientBounds = Parent?.ContentBounds ?? default;
             var maximumLeft = Math.Max(0, clientBounds.Width - LocalBounds.Width);
             var maximumTop = Math.Max(0, clientBounds.Height - LocalBounds.Height);
 
-            // Resize neutralizes a stale trailing anchor by fixing Width/Height up front; drag
-            // owns no dimension to fix, so it neutralizes the same trap by clearing whichever
-            // trailing anchor Left/Top are about to coexist with - otherwise Overlay.Outer keeps
-            // treating an Auto/Star-sized window's untouched Right/Bottom as a hard stretch inset.
+            // A move owns resolved geometry, not flexible sizing semantics. Snapshot Auto/Star
+            // dimensions before replacing trailing anchors with leading anchors; otherwise the
+            // next arrange resolves a different width or height and turns a move into a resize.
+            if (Width.Kind is LengthKind.Auto or LengthKind.Star)
+            {
+                Width = Length.Cells(LocalBounds.Width);
+
+                if (!CanContinueDrag(gestureParent))
+                {
+                    return;
+                }
+            }
+
+            if (Height.Kind is LengthKind.Auto or LengthKind.Star)
+            {
+                Height = Length.Cells(LocalBounds.Height);
+
+                if (!CanContinueDrag(gestureParent))
+                {
+                    return;
+                }
+            }
+
             Overlay.SetRight(this, null);
             Overlay.SetBottom(this, null);
             Overlay.SetLeft(this, Length.Cells(Math.Clamp(_dragWindowOrigin.X + deltaX, 0, maximumLeft)));
@@ -1044,6 +1078,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         Length? expectedRight,
         Length? expectedBottom) =>
         !IsDisposed &&
+        CanResize &&
         _resizing &&
         HasPointerCapture &&
         ReferenceEquals(Parent, gestureParent) &&
@@ -1053,6 +1088,14 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         Overlay.GetTop(this) == expectedTop &&
         Overlay.GetRight(this) == expectedRight &&
         Overlay.GetBottom(this) == expectedBottom;
+
+    [Pure]
+    private bool CanContinueDrag(ControlBase? gestureParent) =>
+        !IsDisposed &&
+        CanMove &&
+        _dragging &&
+        HasPointerCapture &&
+        ReferenceEquals(Parent, gestureParent);
 
     // The resize gesture must never collapse the window past a size the user cannot see or grab
     // again: enough cells for the border sides that are actually enabled, plus one content cell.

@@ -721,6 +721,94 @@ public sealed class WindowSurfaceTests
         surface.Cell(new Point(19, 4)).Text.ShouldBe("│");
     }
 
+    /// <summary>Verifies moving a dual-anchored flexible Window preserves its resolved extent when
+    /// the drag converts trailing-anchor placement into leading-anchor placement.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Drag_WhenFlexibleWindowHasBothAnchors_PreservesResolvedSizeAsync(bool isStar)
+    {
+        // Arrange
+        var window = new Window
+        {
+            Header = "Move",
+            Width = isStar ? Length.Star(1) : Length.Auto,
+            Height = isStar ? Length.Star(1) : Length.Auto,
+            Shadow = AppearanceTestValues.Shadow(visible: false),
+        };
+        Overlay.SetLeft(window, Length.Cells(5));
+        Overlay.SetTop(window, Length.Cells(1));
+        Overlay.SetRight(window, Length.Cells(5));
+        Overlay.SetBottom(window, Length.Cells(2));
+        var stage = new Overlay
+        {
+            Width = Length.Cells(50),
+            Height = Length.Cells(15),
+            Children = { window }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            stage,
+            new Size(50, 15),
+            TestContext.Current.CancellationToken);
+        var boundsBeforeDrag = window.Bounds;
+
+        // Act
+        await surface.Pointer.MoveToAsync(window, new Point(2, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(
+            stage,
+            new Point(boundsBeforeDrag.X + 5, boundsBeforeDrag.Y + 2));
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        window.Bounds.Width.ShouldBe(boundsBeforeDrag.Width);
+        window.Bounds.Height.ShouldBe(boundsBeforeDrag.Height);
+        window.Bounds.X.ShouldBe(boundsBeforeDrag.X + 3);
+        window.Bounds.Y.ShouldBe(boundsBeforeDrag.Y + 2);
+        Overlay.GetRight(window).ShouldBeNull();
+        Overlay.GetBottom(window).ShouldBeNull();
+    }
+
+    /// <summary>Verifies revoking move permission during a captured title drag prevents every
+    /// later move in that gesture from changing the Window position.</summary>
+    [Fact]
+    public async Task Drag_WhenCanMoveBecomesFalseMidGesture_StopsMovingAsync()
+    {
+        // Arrange
+        var window = new Window
+        {
+            Header = "Move",
+            Width = Length.Cells(10),
+            Height = Length.Cells(4),
+            Shadow = AppearanceTestValues.Shadow(visible: false),
+        };
+        Overlay.SetLeft(window, Length.Cells(2));
+        Overlay.SetTop(window, Length.Cells(1));
+        var stage = new Overlay
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(15),
+            Children = { window }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            stage,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(window, new Point(2, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(stage, new Point(8, 4));
+        var boundsAfterFirstMove = window.Bounds;
+        await surface.UpdateAsync(() => window.CanMove = false, "lock position mid-gesture");
+        await surface.Pointer.MovePressedToAsync(stage, new Point(15, 8));
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        window.Bounds.ShouldBe(boundsAfterFirstMove);
+        surface.ShouldHaveCapture(null);
+    }
+
     /// <summary>Verifies a terminal pointer-leave mid-drag ends the gesture and releases capture,
     /// so a later bare-cursor move does not keep dragging the Window.</summary>
     [Fact]
@@ -1072,6 +1160,47 @@ public sealed class WindowSurfaceTests
         // Assert
         window.Bounds.Width.ShouldBe(10);
         window.Bounds.Height.ShouldBe(4);
+    }
+
+    /// <summary>Verifies revoking resize permission during a captured corner drag prevents every
+    /// later move in that gesture from changing the Window extent.</summary>
+    [Fact]
+    public async Task Resize_WhenCanResizeBecomesFalseMidGesture_StopsGrowingAsync()
+    {
+        // Arrange
+        var window = new Window
+        {
+            Header = "Resize",
+            CanResize = true,
+            Width = Length.Cells(10),
+            Height = Length.Cells(4),
+            Shadow = AppearanceTestValues.Shadow(visible: false),
+        };
+        Overlay.SetLeft(window, Length.Cells(2));
+        Overlay.SetTop(window, Length.Cells(1));
+        var stage = new Overlay
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(15),
+            Children = { window }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            stage,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(window, new Point(9, 3));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(stage, new Point(15, 7));
+        var boundsAfterFirstGrow = window.Bounds;
+        await surface.UpdateAsync(() => window.CanResize = false, "lock size mid-gesture");
+        await surface.Pointer.MovePressedToAsync(stage, new Point(22, 12));
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        window.Bounds.ShouldBe(boundsAfterFirstGrow);
+        surface.ShouldHaveCapture(null);
     }
 
     /// <summary>Verifies losing pointer capture mid-resize cancels the gesture cleanly.</summary>

@@ -73,11 +73,12 @@ leading edge and clips normally.
 When `CanMove` is true, a drag whose button mask includes Primary on unoccupied
 title-bar chrome captures the pointer and writes Overlay `Left` and `Top`
 offsets from the absolute pointer movement, clearing any existing
-`Right`/`Bottom` offsets in the same move — otherwise an `Auto`/`Star`-sized
-window with a surviving trailing anchor would stretch between the fresh leading
-offset and the stale trailing one instead of moving. The border box stays inside
-the parent content bounds, and release, pointer leave, capture loss, disable,
-hide, detach, or disposal all end the drag.
+`Right`/`Bottom` offsets in the same move. Before changing those anchors, an
+`Auto`/`Star` dimension is fixed to its currently resolved cell extent, so a
+position gesture never changes the border-box size. The border box stays inside
+the parent content bounds. Setting `CanMove` to false during a gesture ends it;
+release, pointer leave, capture loss, disable, hide, detach, or disposal do the
+same.
 
 When `CanResize` is true, a drag whose button mask includes Primary from the
 single bottom-right corner cell captures the pointer and writes `Width` and
@@ -90,14 +91,14 @@ the window to an explicitly positioned one, regardless of whatever alignment or
 The corner hit is checked before the title-bar hit, so a minimum-height window
 resizes rather than drags when the two targets coincide. Only the bottom-right
 corner is an interactive target; the other three corners and the four edges are
-not resize handles. Release, pointer leave, capture loss, disable, hide, detach,
-or disposal ends a resize the same way as a drag. Width, height, and origin
-commits revalidate the active capture, parent, dimensions, and four overlay
-anchors after each observable setter. A callback that ends the gesture or makes
-a newer sizing or anchoring decision therefore stops the remaining stale resize
-writes. Resize arithmetic widens accepted pointer coordinates before addition,
-so an extreme outward cell clamps to the authored and parent maximum instead of
-wrapping inward.
+not resize handles. Setting `CanResize` to false during a gesture ends it;
+release, pointer leave, capture loss, disable, hide, detach, or disposal do the
+same. Width, height, and origin commits revalidate permission, active capture,
+parent, dimensions, and four overlay anchors after each observable setter. A
+callback that ends the gesture or makes a newer sizing or anchoring decision
+therefore stops the remaining stale resize writes. Resize arithmetic widens
+accepted pointer coordinates before addition, so an extreme outward cell clamps
+to the authored and parent maximum instead of wrapping inward.
 
 ## Chrome and interaction
 

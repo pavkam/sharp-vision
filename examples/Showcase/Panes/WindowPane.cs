@@ -282,7 +282,7 @@ internal sealed class WindowPane: CompositeControlBase
             new DocSection(
                 "↔",
                 "Move, close, and reopen",
-                "Click either modeless Window to switch the Application's active Window. Drag the settings Window by unoccupied title chrome; its close target responds on pointer-up.",
+                "Click either modeless Window to switch the Application's active Window. Dragging unoccupied title chrome preserves its resolved size; disabling movement ends the gesture.",
                 new DocExample(
                     "Active modeless Windows",
                     "Click either title to switch the active border without stealing focus, then drag, close, and reopen the retained settings Window.",
