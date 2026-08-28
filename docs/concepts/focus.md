@@ -7,6 +7,15 @@ A control is focusable when it is attached, visible, enabled, and has `CanFocus`
 set. When a [modal plane](modality.md#modal-focus) is active, it narrows which
 controls are eligible for focus, but it does not create a second focus manager.
 
+Surface autofocus and modal entry share one descendant-first initial-target
+resolver. It walks every retained ownership slot in deterministic order, uses
+`CanFocus` rather than tab-stop eligibility, skips hidden, disabled, detached,
+disposed, excluded, or already-attempted identities, and respects the active
+modal plane. The supplied root is an optional final fallback after its
+descendants. Resolution selects only a candidate; the caller supplies the focus
+reason and cancellability, and the normal focus transaction revalidates that
+candidate immediately before commit. Tab traversal remains a separate policy.
+
 Focus changes happen on the dispatcher thread and are transactional. Preview
 handlers may cancel a requested change. Once a change commits, the manager
 updates its state before the lost and gained notifications fire, so handlers

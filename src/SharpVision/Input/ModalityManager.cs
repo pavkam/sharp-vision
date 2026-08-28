@@ -1095,73 +1095,21 @@ public sealed class ModalityManager: IDisposable
         ControlBase root,
         IReadOnlyList<ControlBase>? excludedSubtrees = null,
         HashSet<ControlBase?>? attempted = null) =>
-        IsExcluded(root, excludedSubtrees)
-            ? null
-            : FindEligibleDescendant(root, excludedSubtrees, attempted) ??
-                (attempted?.Contains(root) is not true &&
-                    IsEligibleFocusTarget(root, excludedSubtrees)
-                        ? root
-                        : null);
-
-    private ControlBase? FindEligibleDescendant(
-        ControlBase owner,
-        IReadOnlyList<ControlBase>? excludedSubtrees,
-        HashSet<ControlBase?>? attempted)
-    {
-        for (var index = 0; index < owner.OwnedControlCount; index++)
-        {
-            var child = owner.OwnedControlAt(index);
-            if (IsExcluded(child, excludedSubtrees))
-            {
-                continue;
-            }
-
-            if (attempted?.Contains(child) is not true &&
-                IsEligibleFocusTarget(child, excludedSubtrees))
-            {
-                return child;
-            }
-
-            if (FindEligibleDescendant(child, excludedSubtrees, attempted) is { } descendant)
-            {
-                return descendant;
-            }
-        }
-
-        return null;
-    }
+        InitialFocusResolver.FindFirstEligibleFocusTarget(
+            root,
+            includeRoot: true,
+            this,
+            excludedSubtrees,
+            attempted);
 
     private bool IsEligibleFocusTarget(
         ControlBase control,
         IReadOnlyList<ControlBase>? excludedSubtrees = null) =>
-        !IsExcluded(control, excludedSubtrees) &&
-        IsMember(control) && !control.IsDisposed && control.Dispatcher is not null &&
-        control.CanFocus && control.EffectiveIsVisible && control.EffectiveIsEnabled;
-
-    private bool IsExcluded(
-        ControlBase control,
-        IReadOnlyList<ControlBase>? excludedSubtrees)
-    {
-        if (IsUnavailable(control))
-        {
-            return true;
-        }
-
-        if (excludedSubtrees is null)
-        {
-            return false;
-        }
-
-        foreach (var subtree in excludedSubtrees)
-        {
-            if (IsWithin(control, subtree))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+        InitialFocusResolver.IsEligibleFocusTarget(
+            control,
+            this,
+            excludedSubtrees,
+            respectActivePlane: false);
 
     private void ValidateInitialFocus(ControlBase control, ControlBase planeRoot, string parameterName)
     {

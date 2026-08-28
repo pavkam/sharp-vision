@@ -40,10 +40,12 @@ public sealed class ExampleDialog : Dialog<bool>
 It resolves the owner's presentation host, attaches the dialog, and presents it
 — the internal presentation-host type never appears in the signature. A subclass
 typically calls this from its own asynchronous factory method, after
-constructing itself, mirroring how the built-in dialogs' own `ShowAsync` helpers
-already resolve their host and roll back on failure. Calling `Window.ShowModal`
-directly instead bypasses this typed result plumbing and the framework's
-rollback and cancellation handling, and is not a supported alternative.
+constructing itself. Every built-in `ShowAsync` helper calls this same
+owner-facing transaction, so owner validation, host resolution, attachment,
+synchronous rollback, disposal, and the one-shot guard cannot drift by dialog
+family. Calling `Window.ShowModal` directly instead bypasses this typed result
+plumbing and the framework's rollback and cancellation handling, and is not a
+supported alternative.
 
 > [!WARNING]
 >

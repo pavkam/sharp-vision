@@ -218,21 +218,8 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
         var dispatcher = owner.Dispatcher ??
             throw new ArgumentException("The file-picker owner must be attached.", nameof(owner));
         dispatcher.VerifyAccess();
-        var host = FindHost(owner) ??
-            throw new ArgumentException("The file-picker owner must have a presentation host.", nameof(owner));
         var dialog = new FilePickerDialog(options);
-        host.Add(dialog);
-
-        try
-        {
-            return dialog.PresentAsync(host, dialog.GetModalFocusTarget(), cancellationToken);
-        }
-        catch
-        {
-            _ = host.Remove(dialog);
-            dialog.Dispose();
-            throw;
-        }
+        return dialog.PresentAsync(owner, dialog.GetModalFocusTarget(), cancellationToken);
     }
 
     #endregion

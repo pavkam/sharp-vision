@@ -1188,8 +1188,11 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// differ only in when they run and what state they re-validate first.</remarks>
     private void ApplyVisibleFocusFallback()
     {
-        var first = FindFirstFocusable(this);
-        _ = first is not null ? FocusOwner?.Focus(first) : FocusOwner?.Focus(this);
+        var target = InitialFocusResolver.FindFirstEligibleFocusTarget(
+            this,
+            includeRoot: true,
+            ModalityOwner);
+        _ = target is not null && FocusOwner?.Focus(target) == true;
     }
 
     private ModalScope ShowModalCore(
@@ -1287,29 +1290,6 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             scope.DismissRequested -= OnModalDismissRequested;
             scope.Exited -= OnWindowModalExited;
         }
-    }
-
-    [Pure]
-    private static ControlBase? FindFirstFocusable(ControlBase root)
-    {
-        var count = root.OwnedControlCount;
-
-        for (var i = 0; i < count; i++)
-        {
-            var child = root.OwnedControlAt(i);
-
-            if (child is { CanFocus: true, EffectiveIsVisible: true, EffectiveIsEnabled: true })
-            {
-                return child;
-            }
-
-            if (FindFirstFocusable(child) is { } found)
-            {
-                return found;
-            }
-        }
-
-        return null;
     }
 
     [Pure]

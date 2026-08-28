@@ -103,10 +103,11 @@ host; any other owner uses its owning Screen's private presentation slot.
 Outside a hosted Screen, the outermost `Overlay` ancestor serves as the fallback
 host; with neither, `ShowAsync` throws.
 
-The helper attaches one temporary dialog directly to that host, presents the
-same object through `ShowModal(OutsideInteraction.Ignore, fileNameInput)`, and
-returns a `Task<SaveFileResult>`. Save completes the task with a canonical path.
-Cancel, Escape, and frame close complete it with `SaveFileResult.Cancelled`, and
+The helper passes one configured temporary dialog and `fileNameInput` through
+Dialog's shared owner-facing presentation transaction, which attaches it to that
+host, enters `ShowModal(OutsideInteraction.Ignore, fileNameInput)`, and returns
+a `Task<SaveFileResult>`. Save completes the task with a canonical path. Cancel,
+Escape, and frame close complete it with `SaveFileResult.Cancelled`, and
 external cancellation cancels the task itself. Whichever way the dialog
 completes, it exits modality, restores focus, removes the temporary dialog from
 its host, and disposes it exactly once. If attachment or modal entry fails, the

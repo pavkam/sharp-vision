@@ -197,8 +197,8 @@ public abstract class Dialog<TResult>: Window
     /// This is the reachable entry point for a dialog type defined outside this assembly — the
     /// presentation host itself is an internal implementation detail, so this overload takes the
     /// owning <see cref="ControlBase"/> directly instead. A dialog subclass typically calls this from
-    /// its own static asynchronous factory, after constructing itself, mirroring how the built-in
-    /// dialogs already resolve their host and roll back on failure.
+    /// its own static asynchronous factory after constructing itself. Built-in dialogs use this same
+    /// transaction so validation, attachment, rollback, and disposal cannot drift by family.
     /// </remarks>
     /// <param name="owner">The non-null, attached, undisposed control whose presentation host will
     /// own this dialog.</param>

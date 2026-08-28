@@ -1382,6 +1382,29 @@ public sealed class PopupTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies Popup autofocus shares the modal resolver's deterministic descendant-first
+    /// policy when both the content root and one of its retained parts can focus.</summary>
+    [Fact]
+    public async Task IsOpen_WhenContentAndOwnedPartAreFocusable_MovesFocusToOwnedPartAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var content = new TraversalOwner { IsFocusable = true };
+            var child = new ProbeControl { IsFocusable = true };
+            content.AddNormal(child);
+            var popup = new Popup { Content = content, ModalBehavior = PopupModalBehavior.None };
+            var root = new Overlay { Children = { popup } };
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+
+            popup.IsOpen = true;
+
+            focus.Focused.ShouldBeSameAs(child);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies SuppressCloseOtherPopups prevents sibling popup close on open.</summary>
     [Fact]
     public void SuppressCloseOtherPopups_WhenTrue_DoesNotCloseOtherPopups()

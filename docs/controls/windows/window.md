@@ -207,7 +207,9 @@ An attached, visible Window is a presented surface. Changing `Visibility` to
 visible opens it, updates `SurfaceBounds`, raises `Shown`, and modelessly
 focuses the first eligible descendant, or the Window itself. Changing visibility
 away from visible exits any active surface scope and performs the common focus,
-capture, bounds, and lifecycle cleanup.
+capture, bounds, and lifecycle cleanup. The fallback uses the shared
+descendant-first initial-focus resolver, including retained framework parts,
+active-plane membership, and focusable controls that are not tab stops.
 
 Removing an ancestor releases this Window's mounted bounds and modal scope even
 though the Window itself did not receive the root unavailable notification.

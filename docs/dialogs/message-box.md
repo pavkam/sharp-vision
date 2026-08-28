@@ -106,9 +106,11 @@ card, pane, or showcase stage can identify ownership without constraining the
 modal surface or exposing framework children. Outside a Screen, an explicit or
 outermost `Overlay` is still a supported host; any other owner without an
 `Overlay` ancestor fails to resolve and `ShowAsync` throws. The helper enters a
-Window modal presentation with outside interaction ignored. On normal completion
-it publishes `Closing` and `Closed`, removes and disposes the MessageBox, and
-then settles the returned task. Calls are dispatcher-affine.
+Window modal presentation through Dialog's shared owner-facing transaction with
+outside interaction ignored. On normal completion it publishes `Closing` and
+`Closed`, removes and disposes the MessageBox, and then settles the returned
+task. Calls are dispatcher-affine; disposed owners are rejected before host
+resolution.
 
 A directly mounted MessageBox is modeless. Activating a button with the keyboard
 or pointer updates `SelectedResult`, sets `HasSelectedResult`, and raises

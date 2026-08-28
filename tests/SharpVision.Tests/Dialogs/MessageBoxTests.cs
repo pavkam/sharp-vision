@@ -1007,10 +1007,8 @@ public sealed class MessageBoxTests
             () => MessageBox.ShowAsync(opener, null!, "Title", MessageBoxButtons.Ok));
     }
 
-    /// <summary>Verifies ShowAsync rejects an owner with no attached presentation host instead of
-    /// constructing or attaching a dialog - this exact "messageBox" resolution path
-    /// (<c>ShowCoreAsync</c>) duplicates, rather than reuses, <c>Dialog{TResult}.PresentAsync</c>'s
-    /// own host-resolution check, so it was never exercised by that shared base's own coverage.</summary>
+    /// <summary>Verifies ShowAsync rejects an owner with no attached presentation host through the
+    /// shared Dialog presentation transaction without attaching a temporary MessageBox.</summary>
     [Fact]
     public async Task ShowAsync_WhenOwnerHasNoPresentationHost_ThrowsArgumentExceptionAsync()
     {
@@ -1027,6 +1025,17 @@ public sealed class MessageBoxTests
             exception.ParamName.ShouldBe("owner");
             owner.Parent.ShouldBeNull();
         }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies MessageBox shares the built-in dialog contract that rejects a disposed
+    /// owner before attempting host resolution or attaching a temporary dialog.</summary>
+    [Fact]
+    public void ShowAsync_WhenOwnerIsDisposed_ThrowsObjectDisposedException()
+    {
+        var owner = new Button { Text = "Disposed" };
+        owner.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => MessageBox.ShowAsync(owner, "Message"));
     }
 
     /// <summary>Verifies ShowAsync called from a thread other than the owner's dispatcher throws

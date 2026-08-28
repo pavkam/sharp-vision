@@ -186,8 +186,9 @@ host; any other owner uses its owning Screen's private presentation slot.
 Outside a hosted Screen, the outermost `Overlay` ancestor serves as the fallback
 host — with neither a Screen nor an Overlay ancestor, `ShowAsync` throws — so
 inserting a hosted dialog never rearranges a nested form layout. The helper
-attaches one temporary picker directly to that host, presents the same object
-through `ShowModal(OutsideInteraction.Ignore, initialFocus)`, and returns a
+passes the configured picker and its initial focus target through Dialog's
+shared owner-facing presentation transaction, which attaches it directly to that
+host, enters `ShowModal(OutsideInteraction.Ignore, initialFocus)`, and returns a
 `Task<FilePickerResult>`.
 
 Open completes the task with the selected paths. Cancel, Escape, and the frame

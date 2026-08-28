@@ -1095,7 +1095,10 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         if (!suppressFocusOnOpen &&
             FocusOnOpen &&
             Content is { } focusableChild &&
-            FindFocusable(focusableChild) is { } target)
+            InitialFocusResolver.FindFirstEligibleFocusTarget(
+                focusableChild,
+                includeRoot: true,
+                ModalityOwner) is { } target)
         {
             ExceptionAggregation.Capture(() => _ = FocusOwner?.Focus(target), ref failure);
         }
@@ -1419,27 +1422,6 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                     styles.Right);
             }
         }
-    }
-
-    [Pure]
-    private static ControlBase? FindFocusable(ControlBase control)
-    {
-        if (control is { CanFocus: true, EffectiveIsEnabled: true, EffectiveIsVisible: true })
-        {
-            return control;
-        }
-
-        var count = control.OwnedControlCount;
-
-        for (var index = 0; index < count; index++)
-        {
-            if (FindFocusable(control.OwnedControlAt(index)) is { } result)
-            {
-                return result;
-            }
-        }
-
-        return null;
     }
 
     [Pure]

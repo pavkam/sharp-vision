@@ -136,7 +136,10 @@ reconciled when the Popup later attaches. Opening an attached Popup under
 unhandled in-plane wheel closes the popup without replaying that input.
 `OpenModal(outsideInteraction, initialFocus)` opens a closed surface and returns
 its disposable `ModalScope`, for callers that need a non-default policy or focus
-target. One popup cannot own two live modal presentations.
+target. One popup cannot own two live modal presentations. When `FocusOnOpen` is
+true, the shared initial-focus resolver searches retained parts
+descendant-first, then considers the content root; focusable controls do not
+need to be tab stops.
 
 Owner-managed composite fields preserve an open Popup when only an ancestor
 becomes unavailable. Their owner-rooted modal scope exits for the unavailable

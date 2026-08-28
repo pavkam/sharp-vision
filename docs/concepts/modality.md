@@ -118,9 +118,11 @@ they keep their normal ordering while a scope is active.
 Entering a scope snapshots the current focus, then focuses the validated
 `initialFocus`, or the first eligible descendant of the primary root, or the
 primary root itself when it can focus. A plane with no focusable member is still
-valid. Explicit, pointer-driven, and traversal focus requests outside the active
-plane return false. Cleanup caused by detach, disable, hide, collapse, or
-disposal remains non-cancellable.
+valid. This is the same descendant-first resolver Popup and Window use for
+surface autofocus; modal entry adds active-plane, excluded-subtree, and
+already-attempted identity constraints. Explicit, pointer-driven, and traversal
+focus requests outside the active plane return false. Cleanup caused by detach,
+disable, hide, collapse, or disposal remains non-cancellable.
 
 Exiting restores the saved target with `FocusReason.Restore` when that target is
 still eligible in the newly active parent plane. Otherwise a surviving parent

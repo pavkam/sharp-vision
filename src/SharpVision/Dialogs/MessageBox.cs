@@ -294,7 +294,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(message);
         var messageBox = new MessageBox(message, title, buttons) { ButtonStyle = buttonStyle };
-        return ShowCoreAsync(owner, messageBox);
+        return messageBox.PresentAsync(owner, messageBox._buttons[0], CancellationToken.None);
     }
 
     /// <summary>Shows a message box configured through a reusable options carrier, without exposing
@@ -328,28 +328,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
             YesText = options.YesText,
             NoText = options.NoText
         };
-        return ShowCoreAsync(owner, messageBox);
-    }
-
-    private static Task<MessageBoxResult> ShowCoreAsync(ControlBase owner, MessageBox messageBox)
-    {
-        ArgumentNullException.ThrowIfNull(owner);
-        owner.Dispatcher?.VerifyAccess();
-
-        var host = PresentationHost.Resolve(owner) ??
-            throw new ArgumentException("The owner must be attached beneath a presentation host.", nameof(owner));
-        host.Add(messageBox);
-
-        try
-        {
-            return messageBox.PresentAsync(host, messageBox._buttons[0], CancellationToken.None);
-        }
-        catch
-        {
-            _ = host.Remove(messageBox);
-            messageBox.Dispose();
-            throw;
-        }
+        return messageBox.PresentAsync(owner, messageBox._buttons[0], CancellationToken.None);
     }
 
     #endregion
@@ -526,7 +505,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
 
     // Container.OnEvent only calls Handle(KeyEventArgs) when the Container itself sits on the
     // routed event's path (an ancestor of, or equal to, the focused control). Initial focus lands
-    // on an action Button (see ShowCoreAsync/PresentAsync) and stays there by design, and
+    // on an action Button through PresentAsync and stays there by design, and
     // _messageHost is a sibling of the action bar rather than an ancestor of any Button, so it is
     // never on that path and Container's own key handling never reaches it. This forwards the
     // same navigation keys directly into _messageHost, computing the identical delta
