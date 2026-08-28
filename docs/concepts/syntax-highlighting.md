@@ -58,6 +58,13 @@ and the reader accepts format versions through 6.22; a missing, malformed, or
 newer value fails before a directory catalog can publish the definition. This
 keeps ignored future attributes from masquerading as compatible syntax.
 
+Language catalog metadata follows upstream Kate's tolerant local-file rules:
+`section` and `extensions` may be omitted and then remain empty, while missing
+or malformed `version` and `priority` values become zero. Legacy floating-point
+revision text such as `1.0` is accepted and projected to the integral
+`SyntaxDefinition.Version` model. These defaults do not weaken structural XML,
+context, rule, or required `kateversion` validation.
+
 The reader enforces the schema's root envelope: one `highlighting` section,
 followed by at most one `general` section, with only the declared root and
 `highlighting` attributes and children. Unknown content, duplicate singleton

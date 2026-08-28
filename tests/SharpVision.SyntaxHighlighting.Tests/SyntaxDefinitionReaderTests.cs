@@ -56,6 +56,46 @@ public sealed class SyntaxDefinitionReaderTests
         _ = Should.Throw<FormatException>(() => SyntaxDefinitionReader.Read(xml));
     }
 
+    /// <summary>Verifies optional upstream language metadata defaults when omitted.</summary>
+    [Fact]
+    public void Read_WhenOptionalLanguageMetadataIsMissing_UsesUpstreamDefaults()
+    {
+        var xml = _minimal.Replace(
+            " section=\"Sources\" extensions=\"*.mini\" version=\"1\"",
+            string.Empty,
+            StringComparison.Ordinal);
+
+        var definition = SyntaxDefinitionReader.Read(xml);
+
+        definition.Section.ShouldBeEmpty();
+        definition.Extensions.ShouldBeEmpty();
+        definition.Version.ShouldBe(0);
+        definition.Priority.ShouldBe(0);
+    }
+
+    /// <summary>Verifies malformed numeric metadata uses the same silent-zero defaults as upstream.</summary>
+    [Fact]
+    public void Read_WhenOptionalNumericMetadataIsMalformed_UsesUpstreamDefaults()
+    {
+        var xml = _minimal
+            .Replace("version=\"1\"", "version=\"current\"", StringComparison.Ordinal)
+            .Replace("kateversion=\"5.0\"", "kateversion=\"5.0\" priority=\"high\"", StringComparison.Ordinal);
+
+        var definition = SyntaxDefinitionReader.Read(xml);
+
+        definition.Version.ShouldBe(0);
+        definition.Priority.ShouldBe(0);
+    }
+
+    /// <summary>Verifies legacy floating-point revision syntax remains compatible with Kate files.</summary>
+    [Fact]
+    public void Read_WhenVersionUsesLegacyDecimalSyntax_ParsesIntegralRevision()
+    {
+        var xml = _minimal.Replace("version=\"1\"", "version=\"1.0\"", StringComparison.Ordinal);
+
+        SyntaxDefinitionReader.Read(xml).Version.ShouldBe(1);
+    }
+
     /// <summary>Verifies names used as context, list, and item-data keys cannot be empty.</summary>
     [Theory]
     [InlineData("<context name=\"Normal\"", "<context name=\"\"")]

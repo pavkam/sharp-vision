@@ -89,12 +89,12 @@ public static class SyntaxDefinitionReader
                 : new SyntaxDefinition(
                     name: RequiredNonWhitespaceAttribute(language, "name"),
                     alternativeNames: SplitList(Attribute(language, "alternativeNames")),
-                    section: RequiredAttribute(language, "section"),
-                    extensions: SplitList(RequiredAttribute(language, "extensions")),
+                    section: Attribute(language, "section") ?? string.Empty,
+                    extensions: SplitList(Attribute(language, "extensions")),
                     mimeTypes: SplitList(Attribute(language, "mimetype")),
-                    version: ParseRequiredNonNegativeInt(language, "version"),
+                    version: ParseLanguageVersion(language),
                     kateVersion: kateVersion,
-                    priority: TryParseInt(Attribute(language, "priority")),
+                    priority: ParseLanguagePriority(language),
                     author: Attribute(language, "author") ?? string.Empty,
                     license: Attribute(language, "license") ?? string.Empty,
                     indenter: Attribute(language, "indenter"),
@@ -699,20 +699,30 @@ public static class SyntaxDefinitionReader
 
     private static bool? TryParseBool(string? value) => value is null ? null : ParseBool(value);
 
-    private static int ParseRequiredInt(XElement element, string name)
+    // KSyntaxHighlighting reads definition revisions through QStringView::toFloat for compatibility
+    // with old Kate files. Its conversion defaults missing and malformed text to zero. The public
+    // SharpVision model deliberately keeps an integral revision, so a representable non-negative
+    // legacy decimal is truncated after parsing while values outside that model remain structural
+    // format errors.
+    private static int ParseLanguageVersion(XElement language)
     {
-        var value = RequiredAttribute(element, name);
-        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
-            ? parsed
-            : throw new FormatException($"'{element.Name.LocalName}' attribute '{name}' is not a valid integer: '{value}'.");
+        var value = Attribute(language, "version");
+        var parsed = value is not null &&
+            double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var candidate) &&
+            double.IsFinite(candidate)
+                ? candidate
+                : 0;
+
+        return parsed is >= 0 and <= int.MaxValue
+            ? (int) parsed
+            : throw new FormatException($"'language' attribute 'version' must be between 0 and {int.MaxValue}.");
     }
 
-    private static int ParseRequiredNonNegativeInt(XElement element, string name)
+    // Upstream QStringView::toInt treats both absent and malformed priority metadata as zero.
+    private static int ParseLanguagePriority(XElement language)
     {
-        var value = ParseRequiredInt(element, name);
-        return value >= 0
-            ? value
-            : throw new FormatException($"'{element.Name.LocalName}' attribute '{name}' must not be negative.");
+        var value = Attribute(language, "priority");
+        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : 0;
     }
 
     private static int? TryParseInt(string? value) =>
