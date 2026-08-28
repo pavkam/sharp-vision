@@ -113,7 +113,7 @@ its host, and disposes it exactly once. If attachment or modal entry fails, the
 temporary ownership edge is rolled back.
 
 A dialog you construct directly starts its initial directory load when it is
-attached. Detaching or disposing it cancels the active load generation, and
+attached. Detaching or disposing it revokes the active opaque load lease, and
 reattaching it starts a fresh load from the last committed directory.
 
 ## Layout and appearance
@@ -202,7 +202,8 @@ shows concise text while the last successful directory and rows stay committed.
 An overwrite-message formatter that throws or returns null, and a failure while
 constructing the confirmation dialog, follow the same recoverable path. The
 error updates `Status` only for the exact current acceptance request and
-dispatcher attachment; it never escapes the asynchronous Save action.
+dispatcher attachment; an away-and-back attachment to the same dispatcher is
+also stale, and the error never escapes the asynchronous Save action.
 
 A confirmed path does not prove that the caller can later create or replace the
 file. Filesystem races, permissions, sharing, and the final write remain the

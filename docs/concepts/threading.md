@@ -14,6 +14,22 @@ fire-and-observe work with diagnostic failure handling. `InvokeAsync` returns a
 completion that represents execution, cancellation, or an exception on the
 dispatcher.
 
+Framework continuations retain an opaque attachment identity rather than a
+dispatcher plus a numeric generation. It names one exact control, dispatcher,
+and attachment lifetime; detach, same-dispatcher reattach, cross-dispatcher
+reattach, and disposal all make it stale. Guarded post and invoke operations
+recheck the identity on the dispatcher and can also require a domain-current
+predicate. Fire-and-observe callers explicitly select whether synchronous queue
+rejection throws, drops, reports through dispatcher failure handling, or runs
+caller cleanup.
+
+Latest-wins asynchronous controls separately own opaque operation leases.
+Replacement revokes and cancels the previous lease, authority clears before
+cancellation callbacks run, and only the matching current lease may commit or
+retire its cancellation source. Attachment identity answers where a continuation
+may run; operation identity answers whether its result still owns the component
+state.
+
 ```mermaid
 sequenceDiagram
     participant Source as Transport or worker

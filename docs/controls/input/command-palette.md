@@ -59,14 +59,15 @@ only when the failing request is still current.
 
 ## Resolution and interaction
 
-1. A text change cancels the previous request, increments the current
-   generation, sets `IsResolving`, and invokes `Resolver`.
+1. A text change revokes and cancels the previous opaque operation lease, sets
+   `IsResolving`, and invokes `Resolver` with a new current lease.
 2. A current successful completion copies and publishes `Items`, raises
    `ResultsChanged`, and opens the popup when results are non-empty.
-3. A cancelled or stale completion has no observable effect.
+3. A cancelled or stale lease has no observable effect and cannot retire the
+   newer lease that replaced it.
 4. Disabling or hiding the palette suppresses interaction without canceling its
    live request; a completion for the still-current text may commit while the
-   control is transiently unavailable. Detachment increments the generation,
+   control is transiently unavailable. Detachment revokes the current lease,
    cancels the request, and clears `IsResolving`; a resolver that ignores
    cancellation still cannot mutate or publish into the detached palette.
 5. Opening non-empty results selects the first available row and makes that same

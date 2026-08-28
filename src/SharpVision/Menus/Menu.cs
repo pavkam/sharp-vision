@@ -1606,14 +1606,13 @@ public sealed class Menu: ItemsControl
         var owner = FindSessionOwner();
         var selected = ItemAt(index) is MenuItem item ? item : null;
         var dispatcher = Dispatcher;
-        var attachmentVersion = AttachmentVersion;
+        var attachment = dispatcher is null ? null : CaptureAttachment();
         switchSubmenu &= HasOpenSubmenu() || owner.IsSessionArmed;
         Select(index, focus);
 
         if (!switchSubmenu ||
             selected is null ||
-            !ReferenceEquals(Dispatcher, dispatcher) ||
-            AttachmentVersion != attachmentVersion ||
+            !IsCurrentAttachmentOrDetached(attachment) ||
             !ReferenceEquals(_selectedEntry, selected) ||
             IndexOfItem(selected) < 0 ||
             !ReferenceEquals(FindSessionOwner(), owner))
@@ -1623,8 +1622,7 @@ public sealed class Menu: ItemsControl
 
         owner.ExecuteSubmenuTransition(() =>
         {
-            if (ReferenceEquals(Dispatcher, dispatcher) &&
-                AttachmentVersion == attachmentVersion &&
+            if (IsCurrentAttachmentOrDetached(attachment) &&
                 ReferenceEquals(_selectedEntry, selected) &&
                 IndexOfItem(selected) >= 0 &&
                 ReferenceEquals(FindSessionOwner(), owner))
@@ -1633,6 +1631,9 @@ public sealed class Menu: ItemsControl
             }
         });
     }
+
+    private bool IsCurrentAttachmentOrDetached(ControlAttachmentToken? attachment) =>
+        attachment is { } token ? IsCurrent(token) : Dispatcher is null;
 
     private void UpdateItemSizing()
     {

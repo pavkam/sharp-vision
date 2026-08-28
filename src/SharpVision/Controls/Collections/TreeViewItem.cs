@@ -36,10 +36,9 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
     private bool? _isChecked = false;
 #pragma warning restore IDE0032
 
-    private CancellationTokenSource? _loadCancellation;
+    private readonly LatestControlOperation _loadOperation = new();
     private long _expandedVersion;
     private long _childStateVersion;
-    private long _loadGeneration;
     private TreeViewChildState _priorChildStateBeforeLoad;
     private TreeViewStatusRow? _statusRow;
     private TaskCompletionSource? _slotWait;
@@ -778,22 +777,14 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         // reenter. Posting defers it to the next dispatcher turn, after that transaction closes.
         if (IsExpanded && ChildState == TreeViewChildState.Unloaded)
         {
-            var dispatcher = Dispatcher!;
-            var attachmentVersion = AttachmentVersion;
+            var attachment = CaptureAttachment();
 
             try
             {
-                dispatcher.Post(() =>
-                {
-                    if (!IsDisposed &&
-                        ReferenceEquals(Dispatcher, dispatcher) &&
-                        AttachmentVersion == attachmentVersion &&
-                        IsExpanded &&
-                        ChildState == TreeViewChildState.Unloaded)
-                    {
-                        _ = BeginLoad();
-                    }
-                });
+                PostForCurrentAttachment(
+                    attachment,
+                    () => _ = BeginLoad(),
+                    () => IsExpanded && ChildState == TreeViewChildState.Unloaded);
             }
             catch (ObjectDisposedException)
             {
@@ -1265,13 +1256,17 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
     /// failure originating off the dispatcher thread is reported exactly like one thrown by a
     /// callback already running on it. A second full queue on that retry, or a disposed dispatcher
     /// at either attempt, is dropped silently.</summary>
-    /// <param name="dispatcher">The target dispatcher.</param>
+    /// <param name="attachment">The exact attachment allowed to receive the callback.</param>
     /// <param name="action">The callback to post.</param>
-    private void PostOrReportFault(Dispatcher dispatcher, Action action)
+    /// <param name="isOperationCurrent">An optional additional load-current predicate.</param>
+    private void PostOrReportFault(
+        ControlAttachmentToken attachment,
+        Action action,
+        Func<bool>? isOperationCurrent = null)
     {
         try
         {
-            dispatcher.Post(action);
+            PostForCurrentAttachment(attachment, action, isOperationCurrent);
         }
         catch (ObjectDisposedException)
         {
@@ -1282,7 +1277,7 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
 
             try
             {
-                dispatcher.Post(() => throw exception);
+                attachment.Dispatcher.Post(() => throw exception);
             }
             catch (ObjectDisposedException)
             {
@@ -1354,26 +1349,28 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         // Cancel only this item's own previous in-flight request, if any. Descendant requests are
         // independent: a reused child keeps its own pending load running, and an evicted child's
         // load is cancelled by its own disposal.
-        _loadCancellation?.Cancel();
-        _loadCancellation?.Dispose();
-
-        var generation = ++_loadGeneration;
-        var cancellation = new CancellationTokenSource();
-        _loadCancellation = cancellation;
+        var lease = _loadOperation.Begin();
+        var attachment = CaptureAttachment();
         _priorChildStateBeforeLoad = ChildState;
 
         var tree = FindTreeView();
         var context = new TreeViewChildContext(RemoteKey, Header);
         var source = ChildSource ?? throw new InvalidOperationException(
             "BeginLoad requires a non-null ChildSource.");
-        var cancellationToken = cancellation.Token;
+        var cancellationToken = lease.CancellationToken;
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(() => SetChildState(TreeViewChildState.Loading), ref failure);
         Task? observation = null;
 
-        if (IsCurrentLoad(dispatcher, source, generation, cancellation))
+        if (IsCurrentLoad(attachment, source, lease))
         {
-            observation = RunLoadAsync(dispatcher, tree, context, source, generation, cancellationToken);
+            observation = RunLoadAsync(
+                attachment,
+                tree,
+                context,
+                source,
+                lease,
+                cancellationToken);
             LastChildLoadObservation = observation;
         }
 
@@ -1388,15 +1385,13 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         !IsDisposed && _childStateVersion == version && ChildState == value;
 
     private bool IsCurrentLoad(
-        Dispatcher dispatcher,
+        ControlAttachmentToken attachment,
         ITreeViewChildSource source,
-        long generation,
-        CancellationTokenSource cancellation) =>
+        LatestControlOperationLease lease) =>
         !IsDisposed &&
-        ReferenceEquals(Dispatcher, dispatcher) &&
+        IsCurrent(attachment) &&
         ReferenceEquals(ChildSource, source) &&
-        _loadGeneration == generation &&
-        ReferenceEquals(_loadCancellation, cancellation) &&
+        _loadOperation.IsCurrent(lease) &&
         ChildState == TreeViewChildState.Loading;
 
     private void ApplyExpandedState()
@@ -1412,11 +1407,11 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
     }
 
     private async Task RunLoadAsync(
-        Dispatcher dispatcher,
+        ControlAttachmentToken attachment,
         TreeView? tree,
         TreeViewChildContext context,
         ITreeViewChildSource source,
-        long generation,
+        LatestControlOperationLease lease,
         CancellationToken cancellationToken)
     {
         var slotAcquired = false;
@@ -1441,14 +1436,20 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
 
             var result = await source.GetChildrenAsync(context, cancellationToken).ConfigureAwait(false);
 
-            PostOrReportFault(dispatcher, () => CommitChildLoad(dispatcher, source, generation, result));
+            PostOrReportFault(
+                attachment,
+                () => CommitChildLoad(attachment, source, lease, result),
+                () => IsCurrentLoad(attachment, source, lease));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception exception)
         {
-            PostOrReportFault(dispatcher, () => CommitChildLoadFailure(dispatcher, source, generation, exception));
+            PostOrReportFault(
+                attachment,
+                () => CommitChildLoadFailure(attachment, source, lease, exception),
+                () => IsCurrentLoad(attachment, source, lease));
         }
         finally
         {
@@ -1458,15 +1459,14 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
             // and ReleaseLoadSlot mutates the owning tree's unsynchronized admission bookkeeping
             // (and, transitively, another item's _slotWait via GrantQueuedLoadSlot), so both must
             // be posted back rather than touched inline here.
-            PostOrReportFault(dispatcher, () =>
+            PostOrReportFault(attachment, () =>
             {
                 // Only clear the field if it still refers to this call's own wait handle. A
                 // collapse followed immediately by a re-expand, before this posted cleanup
                 // runs, can already have overwritten _slotWait with a newer generation's live
                 // handle; unconditionally nulling it here would strand that generation
                 // awaiting a TaskCompletionSource nobody will ever complete.
-                if (ReferenceEquals(Dispatcher, dispatcher) &&
-                    wait is not null &&
+                if (wait is not null &&
                     ReferenceEquals(_slotWait, wait))
                 {
                     _slotWait = null;
@@ -1490,22 +1490,19 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
     }
 
     private void CommitChildLoad(
-        Dispatcher dispatcher,
+        ControlAttachmentToken attachment,
         ITreeViewChildSource source,
-        long generation,
+        LatestControlOperationLease lease,
         IReadOnlyList<TreeViewChildDescription>? result)
     {
-        if (generation != _loadGeneration ||
-            IsDisposed ||
-            !ReferenceEquals(Dispatcher, dispatcher) ||
-            !ReferenceEquals(ChildSource, source))
+        if (!IsCurrentLoad(attachment, source, lease))
         {
             return;
         }
 
         if (!TryValidate(result, out var failure))
         {
-            CommitChildLoadFailure(dispatcher, source, generation, failure);
+            CommitChildLoadFailure(attachment, source, lease, failure);
             return;
         }
 
@@ -1519,20 +1516,17 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         ExceptionAggregation.Capture(
             () => PublishChildMembershipCheckStateChange(checkStateChange),
             ref callbackFailure);
-        ExceptionAggregation.Capture(ReleaseCompletedLoad, ref callbackFailure);
+        ExceptionAggregation.Capture(() => _loadOperation.TryComplete(lease), ref callbackFailure);
         callbackFailure?.Throw();
     }
 
     private void CommitChildLoadFailure(
-        Dispatcher dispatcher,
+        ControlAttachmentToken attachment,
         ITreeViewChildSource source,
-        long generation,
+        LatestControlOperationLease lease,
         Exception exception)
     {
-        if (generation != _loadGeneration ||
-            IsDisposed ||
-            !ReferenceEquals(Dispatcher, dispatcher) ||
-            !ReferenceEquals(ChildSource, source))
+        if (!IsCurrentLoad(attachment, source, lease))
         {
             return;
         }
@@ -1543,7 +1537,7 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         // own ordering, so a ChildStateChanged observer reacting to LoadFailed already sees it.
         LastChildLoadError = exception;
         SetChildState(TreeViewChildState.LoadFailed);
-        ReleaseCompletedLoad();
+        _ = _loadOperation.TryComplete(lease);
     }
 
     private bool TryValidate(
@@ -1717,11 +1711,7 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
 
     private void CancelOwnLoadAndRestorePriorState(bool notifyTree = true)
     {
-        _loadGeneration++;
-        var cancellation = _loadCancellation;
-        _loadCancellation = null;
-        cancellation?.Cancel();
-        cancellation?.Dispose();
+        _loadOperation.Cancel();
         SetChildState(_priorChildStateBeforeLoad, notifyTree);
     }
 
@@ -1755,12 +1745,6 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
                 pending.Add(child);
             }
         }
-    }
-
-    private void ReleaseCompletedLoad()
-    {
-        _loadCancellation?.Dispose();
-        _loadCancellation = null;
     }
 
     /// <summary>Gets the cached synthetic row standing in for this item's children, or null when

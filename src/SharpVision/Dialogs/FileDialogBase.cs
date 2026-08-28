@@ -33,8 +33,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     private readonly StyleSlot<ScrollBarStyle> _filterScrollBarStyle;
 
     private FilePickerEntry[] _entries = [];
-    private CancellationTokenSource? _loadCancellation;
-    private long _loadGeneration;
+    private readonly LatestControlOperation _loadOperation = new();
     private bool _initialFocusPending = true;
     private Grid? _rootContent;
 
@@ -731,23 +730,21 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     {
         Debug.Assert(Dispatcher is not null, "An attached dialog owns a dispatcher.");
         CancelLoad();
-        var generation = ++_loadGeneration;
-        var cancellation = new CancellationTokenSource();
-        _loadCancellation = cancellation;
-        var dispatcher = Dispatcher;
+        var lease = _loadOperation.Begin();
+        var attachment = CaptureAttachment();
 
         try
         {
             SetLoading(true);
 
-            if (!IsCurrentLoad(generation, cancellation, dispatcher))
+            if (!IsCurrentLoad(lease, attachment))
             {
                 return;
             }
 
             SetStatus(LoadingText);
 
-            if (!IsCurrentLoad(generation, cancellation, dispatcher))
+            if (!IsCurrentLoad(lease, attachment))
             {
                 return;
             }
@@ -756,12 +753,12 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
                 directory,
                 _filters[FilterIndex],
                 ShowHidden,
-                cancellation.Token);
-            LastLoadObservation = ObserveLoadAsync(task, dispatcher, directory, generation, cancellation.Token);
+                lease.CancellationToken);
+            LastLoadObservation = ObserveLoadAsync(task, attachment, directory, lease);
         }
         catch
         {
-            AbortStartingLoad(generation, cancellation);
+            AbortStartingLoad(lease);
             throw;
         }
     }
@@ -790,13 +787,17 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     /// failure originating off the dispatcher thread is reported exactly like one thrown by a
     /// callback already running on it. A second full queue on that retry, or a disposed dispatcher
     /// at either attempt, is dropped silently.</summary>
-    /// <param name="dispatcher">The target dispatcher.</param>
+    /// <param name="attachment">The exact attachment allowed to receive the callback.</param>
+    /// <param name="lease">The latest-load authority required by the callback.</param>
     /// <param name="action">The callback to post.</param>
-    private void PostOrReportFault(Dispatcher dispatcher, Action action)
+    private void PostOrReportFault(
+        ControlAttachmentToken attachment,
+        LatestControlOperationLease lease,
+        Action action)
     {
         try
         {
-            dispatcher.Post(action);
+            PostForCurrentAttachment(attachment, action, () => IsCurrentLoad(lease, attachment));
         }
         catch (ObjectDisposedException)
         {
@@ -807,7 +808,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
 
             try
             {
-                dispatcher.Post(() => throw exception);
+                attachment.Dispatcher.Post(() => throw exception);
             }
             catch (ObjectDisposedException)
             {
@@ -831,31 +832,34 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
 
     private async Task ObserveLoadAsync(
         Task<IReadOnlyList<FilePickerEntry>> task,
-        Dispatcher dispatcher,
+        ControlAttachmentToken attachment,
         string directory,
-        long generation,
-        CancellationToken cancellationToken)
+        LatestControlOperationLease lease)
     {
         try
         {
             var entries = await task.ConfigureAwait(false);
-            PostOrReportFault(dispatcher, () => CommitLoad(directory, entries, generation));
+            PostOrReportFault(attachment, lease, () => CommitLoad(directory, entries, lease, attachment));
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (lease.CancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
         {
-            PostOrReportFault(dispatcher, () => CommitLoadFailure(exception, generation));
+            PostOrReportFault(attachment, lease, () => CommitLoadFailure(exception, lease, attachment));
         }
         catch (ObjectDisposedException)
         {
         }
     }
 
-    private void CommitLoad(string directory, IReadOnlyList<FilePickerEntry> entries, long generation)
+    private void CommitLoad(
+        string directory,
+        IReadOnlyList<FilePickerEntry> entries,
+        LatestControlOperationLease lease,
+        ControlAttachmentToken attachment)
     {
-        if (generation != _loadGeneration || IsDisposed || Dispatcher is null)
+        if (!IsCurrentLoad(lease, attachment))
         {
             return;
         }
@@ -882,15 +886,14 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         _upButton.IsEnabled = FileSystem.GetParent(directory) is not null;
         OnLoadCommitted(_entries);
 
-        if (!IsCurrentLoad(generation, _loadCancellation, Dispatcher))
+        if (!IsCurrentLoad(lease, attachment))
         {
             return;
         }
 
-        ReleaseCompletedLoad();
         SetLoading(false);
 
-        if (generation != _loadGeneration || IsDisposed || Dispatcher is null)
+        if (!IsCurrentLoad(lease, attachment))
         {
             return;
         }
@@ -898,14 +901,14 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         SnapshotStatus = CountStatus(_entries);
         SetStatus(pathDisplayed ? SnapshotStatus : "Cannot display this directory's name. " + SnapshotStatus);
 
-        if (generation != _loadGeneration || IsDisposed || Dispatcher is null)
+        if (!IsCurrentLoad(lease, attachment))
         {
             return;
         }
 
         NotifyPropertyChanged(nameof(CurrentDirectory), InvalidationImpact.None);
 
-        if (generation != _loadGeneration || IsDisposed || Dispatcher is null)
+        if (!IsCurrentLoad(lease, attachment))
         {
             return;
         }
@@ -919,71 +922,49 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
                 _ = FocusOwner?.Focus(GetInitialLoadFocusTarget());
             }
         }
+
+        _ = _loadOperation.TryComplete(lease);
     }
 
-    private void CommitLoadFailure(Exception exception, long generation)
+    private void CommitLoadFailure(
+        Exception exception,
+        LatestControlOperationLease lease,
+        ControlAttachmentToken attachment)
     {
-        if (generation != _loadGeneration || IsDisposed || Dispatcher is null)
+        if (!IsCurrentLoad(lease, attachment))
         {
             return;
         }
 
-        ReleaseCompletedLoad();
         SetLoading(false);
 
-        if (generation != _loadGeneration || IsDisposed || Dispatcher is null)
+        if (!IsCurrentLoad(lease, attachment))
         {
             return;
         }
 
         SetStatus($"Cannot open directory: {exception.Message}");
+        _ = _loadOperation.TryComplete(lease);
     }
 
     private bool IsCurrentLoad(
-        long generation,
-        CancellationTokenSource? cancellation,
-        Dispatcher? dispatcher) =>
-        generation == _loadGeneration &&
-        cancellation is not null &&
-        ReferenceEquals(_loadCancellation, cancellation) &&
+        LatestControlOperationLease lease,
+        ControlAttachmentToken attachment) =>
         !IsDisposed &&
-        dispatcher is not null &&
-        ReferenceEquals(Dispatcher, dispatcher);
+        _loadOperation.IsCurrent(lease) &&
+        IsCurrent(attachment);
 
-    private void AbortStartingLoad(long generation, CancellationTokenSource cancellation)
+    private void AbortStartingLoad(LatestControlOperationLease lease)
     {
-        if (generation != _loadGeneration || !ReferenceEquals(_loadCancellation, cancellation))
+        if (!_loadOperation.TryAbort(lease))
         {
             return;
         }
 
-        _loadGeneration++;
-        _loadCancellation = null;
         IsLoading = false;
-        cancellation.Cancel();
-        cancellation.Dispose();
     }
 
-    private void CancelLoad()
-    {
-        _loadGeneration++;
-        var cancellation = _loadCancellation;
-        _loadCancellation = null;
-
-        if (cancellation is null)
-        {
-            return;
-        }
-
-        cancellation.Cancel();
-        cancellation.Dispose();
-    }
-
-    private void ReleaseCompletedLoad()
-    {
-        _loadCancellation?.Dispose();
-        _loadCancellation = null;
-    }
+    private void CancelLoad() => _loadOperation.Cancel();
 
     private void SetLoading(bool value)
     {

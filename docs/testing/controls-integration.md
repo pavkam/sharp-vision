@@ -455,6 +455,14 @@ reference-identity commitment, exact notification and invalidation, edit-buffer
 refresh, rendered separators and names, and synchronization into retained owned
 controls; reassigning the identical instance remains silent.
 
+Attachment-affinity tests queue work across same-dispatcher and cross-dispatcher
+reattachment, disposal, optional domain predicates, and explicit queue-rejection
+cleanup. Latest-operation tests prove first ownership, replacement,
+cancellation, stale completion, matching retirement, startup abort, and
+reentrant cancellation callbacks. Binding, table, tree, command-palette, window,
+and dialog fixtures preserve their domain behavior while using those shared
+identities.
+
 ## Required evidence
 
 | Layer           | Observation                                                                   |

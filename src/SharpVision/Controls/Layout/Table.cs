@@ -1141,8 +1141,6 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
 
     /// <summary>Gets the attachment generation used to reject progressive callbacks queued by a
     /// dispatcher that no longer owns this table.</summary>
-    internal long ProgressiveAttachmentVersion => AttachmentVersion;
-
     /// <summary>Runs the ordinary progressive sort transaction for tests that must initiate a
     /// newer request synchronously from the public sort callback.</summary>
     /// <param name="columnIndex">The validated progressive column index.</param>

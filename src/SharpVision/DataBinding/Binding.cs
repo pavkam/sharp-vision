@@ -28,8 +28,8 @@ public sealed class Binding: IDisposable
     private bool _sourceScheduled;
     private long _observedSourcePathRevision = -1;
     private long _sourcePathRevision;
-    private Dispatcher? _scheduledDispatcher;
-    private long _scheduledAttachmentVersion;
+    private ControlAttachmentToken? _scheduledAttachment;
+    private bool _hasObservedAttachment;
     private CollectionObserver? _collectionObserver;
     private PropertyPathObserver? _sourceObserver;
     private PropertyChangedEventHandler? _targetHandler;
@@ -70,6 +70,7 @@ public sealed class Binding: IDisposable
         _coordinatesItems = coordinatesItems;
         _refreshAfterItems = refreshAfterItems;
         _applyIncrementalChange = applyIncrementalChange;
+        _hasObservedAttachment = target.Dispatcher is not null;
     }
 
     /// <summary>Gets the control whose property is synchronized by this binding.</summary>
@@ -149,7 +150,11 @@ public sealed class Binding: IDisposable
     }
 
     /// <summary>Schedules any source notification retained while the target was detached.</summary>
-    internal void OnTargetAttached() => ScheduleSourceUpdate(deferInline: _tracksCollection);
+    internal void OnTargetAttached()
+    {
+        _hasObservedAttachment = true;
+        ScheduleSourceUpdate(deferInline: _tracksCollection);
+    }
 
     /// <summary>Invalidates scheduling state owned by the target's former dispatcher attachment.</summary>
     internal void OnTargetDetached()
@@ -157,7 +162,7 @@ public sealed class Binding: IDisposable
         lock (_gate)
         {
             _sourceScheduled = false;
-            _scheduledDispatcher = null;
+            _scheduledAttachment = null;
         }
     }
 
@@ -409,14 +414,14 @@ public sealed class Binding: IDisposable
         }
     }
 
-    private void DrainSourceUpdates(Dispatcher dispatcher, long attachmentVersion)
+    private void DrainSourceUpdates(ControlAttachmentToken attachment)
     {
+        var dispatcher = attachment.Dispatcher;
         Debug.Assert(dispatcher.CheckAccess(), "A posted binding update runs on its target dispatcher.");
 
-        if (!ReferenceEquals(Target.Dispatcher, dispatcher) ||
-            Target.BindingAttachmentVersion != attachmentVersion)
+        if (!Target.IsCurrent(attachment))
         {
-            ClearScheduled(dispatcher, attachmentVersion);
+            ClearScheduled(attachment);
             ScheduleSourceUpdate();
             return;
         }
@@ -438,10 +443,9 @@ public sealed class Binding: IDisposable
 
                 ApplySourceToTarget();
 
-                if (!ReferenceEquals(Target.Dispatcher, dispatcher) ||
-                    Target.BindingAttachmentVersion != attachmentVersion)
+                if (!Target.IsCurrent(attachment))
                 {
-                    ClearScheduled(dispatcher, attachmentVersion);
+                    ClearScheduled(attachment);
                     ScheduleSourceUpdate();
                     return;
                 }
@@ -458,7 +462,7 @@ public sealed class Binding: IDisposable
         }
         catch
         {
-            ClearScheduled(dispatcher, attachmentVersion);
+            ClearScheduled(attachment);
             throw;
         }
 
@@ -473,15 +477,18 @@ public sealed class Binding: IDisposable
         // source change is not left believing a drain is already pending forever.
         try
         {
-            dispatcher.Post(() => DrainSourceUpdates(dispatcher, attachmentVersion));
+            Target.PostForCurrentAttachment(
+                attachment,
+                () => DrainSourceUpdates(attachment),
+                onDiscarded: () => ClearScheduled(attachment));
         }
         catch (ObjectDisposedException)
         {
-            ClearScheduled(dispatcher, attachmentVersion);
+            ClearScheduled(attachment);
         }
         catch (InvalidOperationException)
         {
-            ClearScheduled(dispatcher, attachmentVersion);
+            ClearScheduled(attachment);
             throw;
         }
     }
@@ -507,7 +514,7 @@ public sealed class Binding: IDisposable
             _sourceDirty = true;
         }
 
-        if (Target.Dispatcher is null && Target.BindingAttachmentVersion == 0)
+        if (Target.Dispatcher is null && !_hasObservedAttachment)
         {
             lock (_gate)
             {
@@ -530,7 +537,10 @@ public sealed class Binding: IDisposable
             return;
         }
 
-        var attachmentVersion = Target.BindingAttachmentVersion;
+        if (!Target.TryCaptureAttachment(out var attachment))
+        {
+            return;
+        }
 
         lock (_gate)
         {
@@ -540,13 +550,13 @@ public sealed class Binding: IDisposable
             }
 
             _sourceScheduled = true;
-            _scheduledDispatcher = dispatcher;
-            _scheduledAttachmentVersion = attachmentVersion;
+            _scheduledAttachment = attachment;
+            _hasObservedAttachment = true;
         }
 
         if (dispatcher.CheckAccess() && !deferInline)
         {
-            DrainSourceUpdates(dispatcher, attachmentVersion);
+            DrainSourceUpdates(attachment);
             return;
         }
 
@@ -562,17 +572,16 @@ public sealed class Binding: IDisposable
         // TreeViewItem.RunLoadAsync, FileDialogBase.ObserveLoadAsync, and
         // Application.ObserveRenderAsync/ObserveOutOfBandAsync already bridge.
         PostOrReportFault(
-            dispatcher,
-            () => DrainSourceUpdates(dispatcher, attachmentVersion),
-            () => ClearScheduled(dispatcher, attachmentVersion));
+            attachment,
+            () => DrainSourceUpdates(attachment),
+            () => ClearScheduled(attachment));
     }
 
-    private void ClearScheduled(Dispatcher dispatcher, long attachmentVersion)
+    private void ClearScheduled(ControlAttachmentToken attachment)
     {
         lock (_gate)
         {
-            if (ReferenceEquals(_scheduledDispatcher, dispatcher) &&
-                _scheduledAttachmentVersion == attachmentVersion)
+            if (ReferenceEquals(_scheduledAttachment, attachment))
             {
                 ClearScheduledCore();
             }
@@ -582,7 +591,7 @@ public sealed class Binding: IDisposable
     private void ClearScheduledCore()
     {
         _sourceScheduled = false;
-        _scheduledDispatcher = null;
+        _scheduledAttachment = null;
     }
 
     /// <summary>Posts <paramref name="action"/> as the source-to-target drain reached from a
@@ -600,14 +609,20 @@ public sealed class Binding: IDisposable
     /// ever queues the rethrow rather than the real drain - so a caller can release bookkeeping
     /// (such as <see cref="_sourceScheduled"/>) that would otherwise wrongly believe a drain is
     /// still pending forever.</summary>
-    /// <param name="dispatcher">The target dispatcher.</param>
+    /// <param name="attachment">The exact target attachment.</param>
     /// <param name="action">The drain callback to post.</param>
     /// <param name="onNotScheduled">Runs when <paramref name="action"/> will never run.</param>
-    private void PostOrReportFault(Dispatcher dispatcher, Action action, Action onNotScheduled)
+    private void PostOrReportFault(
+        ControlAttachmentToken attachment,
+        Action action,
+        Action onNotScheduled)
     {
         try
         {
-            dispatcher.Post(action);
+            Target.PostForCurrentAttachment(
+                attachment,
+                action,
+                onDiscarded: onNotScheduled);
             return;
         }
         catch (ObjectDisposedException)
@@ -619,7 +634,7 @@ public sealed class Binding: IDisposable
 
             try
             {
-                dispatcher.Post(() => throw exception);
+                attachment.Dispatcher.Post(() => throw exception);
             }
             catch (ObjectDisposedException)
             {

@@ -76,20 +76,160 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <summary>Gets the owning dispatcher while attached.</summary>
     public Dispatcher? Dispatcher { get; private set; }
 
-    /// <summary>Gets the lifecycle generation of the current dispatcher attachment.</summary>
-    /// <remarks>
-    /// Derived controls capture this value when queuing dispatcher work whose validity ends at
-    /// detachment. It advances for every attach and detach commit, including a later reattachment
-    /// to the same dispatcher instance.
-    /// </remarks>
-    private protected long AttachmentVersion { get; private set; }
+    /// <summary>Gets the private lifecycle generation backing opaque attachment identities.</summary>
+    private long AttachmentVersion { get; set; }
 
-    /// <summary>Gets the committed dispatcher-attachment generation used by bindings to reject
-    /// queued source work captured under an earlier owner.</summary>
-    internal long BindingAttachmentVersion => AttachmentVersion;
+    /// <summary>Captures the exact current dispatcher attachment.</summary>
+    /// <returns>An opaque identity invalidated by detach, reattach, or disposal.</returns>
+    /// <exception cref="InvalidOperationException">The control is detached.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    internal ControlAttachmentToken CaptureAttachment()
+    {
+        ThrowIfDisposed();
+        var dispatcher = Dispatcher ?? throw new InvalidOperationException(
+            "An attachment can be captured only while the control is attached.");
+        return new ControlAttachmentToken(this, dispatcher, AttachmentVersion);
+    }
 
-    /// <summary>Gets the dispatcher-attachment generation used to reject stale focus-layout work.</summary>
-    internal long FocusAttachmentVersion => AttachmentVersion;
+    /// <summary>Attempts to capture one exact live attachment without throwing when a concurrent
+    /// detach wins the observation race.</summary>
+    /// <param name="token">The exact captured identity, or null when detached or disposed.</param>
+    /// <returns>True only when a live identity was captured and revalidated.</returns>
+    internal bool TryCaptureAttachment([NotNullWhen(true)] out ControlAttachmentToken? token)
+    {
+        token = null;
+        var dispatcher = Dispatcher;
+
+        if (IsDisposed || dispatcher is null)
+        {
+            return false;
+        }
+
+        var captured = new ControlAttachmentToken(this, dispatcher, AttachmentVersion);
+
+        if (!IsCurrent(captured))
+        {
+            return false;
+        }
+
+        token = captured;
+        return true;
+    }
+
+    /// <summary>Checks whether an opaque identity still names this exact live attachment.</summary>
+    /// <param name="token">The captured identity.</param>
+    /// <returns>True only while this control remains on that attachment.</returns>
+    internal bool IsCurrent(ControlAttachmentToken token)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        return !IsDisposed && token.Matches(this, Dispatcher, AttachmentVersion);
+    }
+
+    /// <summary>Posts one callback that runs only while its captured attachment and optional
+    /// operation predicate remain current.</summary>
+    /// <param name="token">The exact captured attachment.</param>
+    /// <param name="action">The callback to run on its dispatcher.</param>
+    /// <param name="isOperationCurrent">An optional additional domain-current predicate.</param>
+    /// <param name="onDiscarded">Optional cleanup when queued work is cancelled or becomes stale.</param>
+    /// <param name="rejectionPolicy">How synchronous full or disposed queue rejection is handled.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="rejectionPolicy"/> requires cleanup,
+    /// but <paramref name="onDiscarded"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The captured dispatcher's queue is full.</exception>
+    /// <exception cref="ObjectDisposedException">The captured dispatcher is disposed.</exception>
+    internal void PostForCurrentAttachment(
+        ControlAttachmentToken token,
+        Action action,
+        Func<bool>? isOperationCurrent = null,
+        Action? onDiscarded = null,
+        ControlAttachmentQueueRejectionPolicy rejectionPolicy =
+            ControlAttachmentQueueRejectionPolicy.Throw)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        ArgumentNullException.ThrowIfNull(action);
+
+        if (rejectionPolicy == ControlAttachmentQueueRejectionPolicy.RunCleanup && onDiscarded is null)
+        {
+            throw new ArgumentException(
+                "RunCleanup requires a discard callback.",
+                nameof(onDiscarded));
+        }
+
+        void InvokeOrDiscard()
+        {
+            if (IsCurrent(token) && (isOperationCurrent?.Invoke() ?? true))
+            {
+                action();
+                return;
+            }
+
+            onDiscarded?.Invoke();
+        }
+
+        try
+        {
+            if (onDiscarded is null)
+            {
+                token.Dispatcher.Post(InvokeOrDiscard);
+            }
+            else
+            {
+                token.Dispatcher.Post(InvokeOrDiscard, onDiscarded);
+            }
+        }
+        catch (Exception exception) when (
+            exception is ObjectDisposedException or InvalidOperationException)
+        {
+            switch (rejectionPolicy)
+            {
+                case ControlAttachmentQueueRejectionPolicy.Throw:
+                    throw;
+                case ControlAttachmentQueueRejectionPolicy.Drop:
+                    return;
+                case ControlAttachmentQueueRejectionPolicy.RunCleanup:
+                    onDiscarded!();
+                    return;
+                case ControlAttachmentQueueRejectionPolicy.Report:
+                    try
+                    {
+                        token.Dispatcher.Post(() => throw exception);
+                    }
+                    catch (Exception reportFailure) when (
+                        reportFailure is ObjectDisposedException or InvalidOperationException)
+                    {
+                    }
+
+                    return;
+                default:
+                    throw new UnreachableException();
+            }
+        }
+    }
+
+    /// <summary>Invokes one callback only while its captured attachment and optional operation
+    /// predicate remain current, observing queue rejection through the returned task.</summary>
+    /// <param name="token">The exact captured attachment.</param>
+    /// <param name="action">The callback to run on its dispatcher.</param>
+    /// <param name="isOperationCurrent">An optional additional domain-current predicate.</param>
+    /// <returns>Observable completion of the guarded invocation.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The captured dispatcher's queue is full.</exception>
+    /// <exception cref="ObjectDisposedException">The captured dispatcher is disposed.</exception>
+    internal ValueTask InvokeForCurrentAttachmentAsync(
+        ControlAttachmentToken token,
+        Action action,
+        Func<bool>? isOperationCurrent = null)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        ArgumentNullException.ThrowIfNull(action);
+        return token.Dispatcher.InvokeAsync(() =>
+        {
+            if (IsCurrent(token) && (isOperationCurrent?.Invoke() ?? true))
+            {
+                action();
+            }
+        });
+    }
 
     /// <summary>Gets the attached dispatcher's clock, or the system clock while detached.</summary>
     private protected TimeProvider TimeProvider => Dispatcher?.TimeProvider ?? TimeProvider.System;

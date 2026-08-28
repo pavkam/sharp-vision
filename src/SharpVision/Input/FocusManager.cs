@@ -70,9 +70,7 @@ public sealed class FocusManager: IDisposable
 
     private ControlBase? PendingKeyboardReveal { get; set; }
 
-    private Dispatcher? PendingKeyboardRevealDispatcher { get; set; }
-
-    private long PendingKeyboardRevealAttachmentVersion { get; set; }
+    private ControlAttachmentToken? PendingKeyboardRevealAttachment { get; set; }
 
     private ModalScope? PendingKeyboardRevealScope { get; set; }
 
@@ -790,8 +788,7 @@ public sealed class FocusManager: IDisposable
         }
 
         PendingKeyboardReveal = target;
-        PendingKeyboardRevealDispatcher = target.Dispatcher;
-        PendingKeyboardRevealAttachmentVersion = target.FocusAttachmentVersion;
+        PendingKeyboardRevealAttachment = target.CaptureAttachment();
         PendingKeyboardRevealScope = Root.ModalityOwner?.Active;
     }
 
@@ -800,8 +797,8 @@ public sealed class FocusManager: IDisposable
         !target.IsDisposed &&
         ReferenceEquals(Focused, target) &&
         ReferenceEquals(target.FocusOwner, this) &&
-        ReferenceEquals(target.Dispatcher, PendingKeyboardRevealDispatcher) &&
-        target.FocusAttachmentVersion == PendingKeyboardRevealAttachmentVersion &&
+        PendingKeyboardRevealAttachment is { } attachment &&
+        target.IsCurrent(attachment) &&
         ReferenceEquals(Root.ModalityOwner?.Active, PendingKeyboardRevealScope) &&
         IsMember(target) &&
         IsAllowed(target) &&
@@ -810,8 +807,7 @@ public sealed class FocusManager: IDisposable
     private void ClearPendingKeyboardReveal()
     {
         PendingKeyboardReveal = null;
-        PendingKeyboardRevealDispatcher = null;
-        PendingKeyboardRevealAttachmentVersion = 0;
+        PendingKeyboardRevealAttachment = null;
         PendingKeyboardRevealScope = null;
     }
 

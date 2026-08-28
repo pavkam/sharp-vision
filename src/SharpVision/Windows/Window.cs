@@ -1147,8 +1147,8 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 
             if (dispatcher is not null && CanContinueShownPresentation(presentationVersion))
             {
-                var attachmentVersion = AttachmentVersion;
-                dispatcher.Post(() => RunAttachFocusFallback(dispatcher, attachmentVersion));
+                var attachment = CaptureAttachment();
+                PostForCurrentAttachment(attachment, RunAttachFocusFallback);
             }
 
             failure?.Throw();
@@ -1177,11 +1177,9 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// fallback exists to close.
     /// </para>
     /// </remarks>
-    private void RunAttachFocusFallback(Dispatcher dispatcher, long attachmentVersion)
+    private void RunAttachFocusFallback()
     {
-        if (!ReferenceEquals(Dispatcher, dispatcher) ||
-            AttachmentVersion != attachmentVersion ||
-            Visibility != Visibility.Visible ||
+        if (Visibility != Visibility.Visible ||
             HasActiveSurfaceModal)
         {
             return;

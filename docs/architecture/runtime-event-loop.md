@@ -152,6 +152,13 @@ focus loss cancels pointer interaction. Each input drain processes the resulting
 layout and render invalidation before idleness. Resize preserves the exact
 managers, the active scope, and an eligible focused target.
 
+Control-owned continuations post through opaque attachment identities. The
+dispatcher callback revalidates exact control, dispatcher, and attachment
+lifetime before mutation, so work captured before detach cannot revive after an
+away-and-back attachment. Latest-wins component operations add an independent
+reference-identity lease; stale or cancelled work cannot retire the newer
+operation that replaced it.
+
 ## Out-of-band protocol writes
 
 The implemented output protocols — described bell, proven `SetTitle`, and

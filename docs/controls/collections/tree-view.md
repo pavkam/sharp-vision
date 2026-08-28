@@ -301,7 +301,8 @@ all later flattening and request work; the superseded transaction cannot start a
 request or reuse its disposed cancellation token. A throwing observer does not
 skip the still-current structural or request work, and its first failure is
 re-thrown only after those invariants are established. Deferred starts and
-in-flight results belong to the exact dispatcher attachment that created them.
+in-flight results require both the opaque operation lease and exact dispatcher
+attachment that created them. A stale lease cannot retire its replacement.
 Detaching cancels and restores a pending load; reattaching may begin a new load,
 while callbacks from the previous attachment cannot mutate the item or consume
 the new attachment's concurrency slot. Every child request is validated before

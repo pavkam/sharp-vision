@@ -394,7 +394,10 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
             return;
         }
 
-        var attachmentVersion = AttachmentVersion;
+        if (!TryCaptureAttachment(out var attachment))
+        {
+            return;
+        }
 
         if (!dispatcher.CheckAccess())
         {
@@ -406,15 +409,7 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
                 // change notification; propagating InvalidOperationException would fault whatever
                 // third-party code raised the event and could break delivery to its other
                 // subscribers, which is worse than one stale render.
-                dispatcher.Post(() =>
-                {
-                    if (!IsDisposed &&
-                        ReferenceEquals(Dispatcher, dispatcher) &&
-                        AttachmentVersion == attachmentVersion)
-                    {
-                        Invalidate(Invalidation.Render);
-                    }
-                });
+                PostForCurrentAttachment(attachment, () => Invalidate(Invalidation.Render));
             }
             catch (Exception exception) when (exception is ObjectDisposedException or InvalidOperationException)
             {

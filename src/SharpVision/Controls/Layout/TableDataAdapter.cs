@@ -114,7 +114,6 @@ internal sealed class TableDataAdapter<T>: TableDataAdapter
     private void OnSourceChanged(object? sender, EventArgs eventArgs)
     {
         var dispatcher = _owner.Dispatcher;
-        var attachmentVersion = _owner.ProgressiveAttachmentVersion;
 
         if (dispatcher is null)
         {
@@ -136,14 +135,14 @@ internal sealed class TableDataAdapter<T>: TableDataAdapter
         // TableDataController.OnRetryElapsed already uses for its own off-thread timer callback.
         try
         {
-            dispatcher.Post(() =>
+            if (!_owner.TryCaptureAttachment(out var attachment))
             {
-                if (ReferenceEquals(_owner.Dispatcher, dispatcher) &&
-                    _owner.ProgressiveAttachmentVersion == attachmentVersion)
-                {
-                    _changed?.Invoke(this, EventArgs.Empty);
-                }
-            });
+                return;
+            }
+
+            _owner.PostForCurrentAttachment(
+                attachment,
+                () => _changed?.Invoke(this, EventArgs.Empty));
         }
         catch (ObjectDisposedException)
         {

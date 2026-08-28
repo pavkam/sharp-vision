@@ -198,8 +198,10 @@ temporary picker from its host, and disposes it exactly once. If attachment or
 modal entry fails, the temporary ownership edge is rolled back.
 
 A picker you construct directly starts its initial load when it is attached.
-Detaching or disposing it cancels the current load generation, and reattaching
-it starts a fresh load from the last committed directory.
+Detaching or disposing it revokes the current opaque load lease, and reattaching
+it starts a fresh load from the last committed directory. Completion also
+requires the exact attachment identity captured at start, including across an
+away-and-back attachment to the same dispatcher.
 
 ## Layout and appearance
 
@@ -240,10 +242,10 @@ no RGB colors and emits no terminal bytes.
 ## Enumeration and ordering
 
 Enumeration runs away from the UI dispatcher and returns only the directory's
-immediate children. Each request owns a cancellation token and an increasing
-generation number. When a request completes, it posts an immutable entry
-snapshot to the dispatcher; completions that are cancelled, stale, detached, or
-disposed can no longer touch any control.
+immediate children. Each request owns an opaque lease and cancellation token.
+When a request completes, it posts an immutable entry snapshot to the
+dispatcher; completions that are cancelled, stale, detached, or disposed can no
+longer touch any control.
 
 Loading-state publication is a transaction boundary. A start observer that
 throws releases the unstarted request and restores `IsLoading`; an observer that

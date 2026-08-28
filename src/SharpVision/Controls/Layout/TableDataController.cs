@@ -611,21 +611,18 @@ internal sealed class TableDataController: IDisposable
         try
         {
             var dispatcher = _owner.Dispatcher;
-            var attachmentVersion = _owner.ProgressiveAttachmentVersion;
 
             if (dispatcher is null)
             {
                 return;
             }
 
-            await dispatcher.InvokeAsync(() =>
+            if (!_owner.TryCaptureAttachment(out var attachment))
             {
-                if (ReferenceEquals(_owner.Dispatcher, dispatcher) &&
-                    _owner.ProgressiveAttachmentVersion == attachmentVersion)
-                {
-                    action();
-                }
-            }).ConfigureAwait(false);
+                return;
+            }
+
+            await _owner.InvokeForCurrentAttachmentAsync(attachment, action).ConfigureAwait(false);
         }
         catch (ObjectDisposedException)
         {

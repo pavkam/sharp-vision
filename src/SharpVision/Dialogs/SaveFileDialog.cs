@@ -428,22 +428,21 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
     {
         var acceptanceVersion = ++_acceptanceVersion;
         var dispatcher = Dispatcher;
-        var attachmentVersion = AttachmentVersion;
+        var attachment = dispatcher is null ? null : CaptureAttachment();
 
         try
         {
-            await CompleteAcceptedCoreAsync(acceptanceVersion, dispatcher, attachmentVersion);
+            await CompleteAcceptedCoreAsync(acceptanceVersion, attachment);
         }
         catch (Exception exception)
         {
-            ReportAcceptanceFailure(dispatcher, attachmentVersion, acceptanceVersion, exception);
+            ReportAcceptanceFailure(attachment, acceptanceVersion, exception);
         }
     }
 
     private async Task CompleteAcceptedCoreAsync(
         long acceptanceVersion,
-        Dispatcher? dispatcher,
-        long attachmentVersion)
+        ControlAttachmentToken? attachment)
     {
         var fileName = _fileNameInput.Text.Trim();
 
@@ -475,7 +474,7 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
 
         if (_confirmOverwrite && FileSystem.FileExists(fullPath))
         {
-            if (dispatcher is null)
+            if (attachment is null)
             {
                 return;
             }
@@ -507,16 +506,11 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
 
             try
             {
-                dispatcher.Post(() =>
-                {
-                    if (confirmation == MessageBoxResult.Yes &&
-                        ReferenceEquals(Dispatcher, dispatcher) &&
-                        AttachmentVersion == attachmentVersion &&
-                        _acceptanceVersion == acceptanceVersion)
-                    {
-                        _ = Complete(SaveFileResult.FromPath(fullPath));
-                    }
-                });
+                PostForCurrentAttachment(
+                    attachment,
+                    () => _ = Complete(SaveFileResult.FromPath(fullPath)),
+                    () => confirmation == MessageBoxResult.Yes &&
+                          _acceptanceVersion == acceptanceVersion);
             }
             catch (Exception exception) when (exception is ObjectDisposedException or InvalidOperationException)
             {
@@ -529,27 +523,24 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
     }
 
     private void ReportAcceptanceFailure(
-        Dispatcher? dispatcher,
-        long attachmentVersion,
+        ControlAttachmentToken? attachment,
         long acceptanceVersion,
         Exception exception)
     {
-        if (dispatcher is null)
+        if (attachment is null)
         {
             return;
         }
 
         void CommitFailure()
         {
-            if (ReferenceEquals(Dispatcher, dispatcher) &&
-                AttachmentVersion == attachmentVersion &&
-                _acceptanceVersion == acceptanceVersion)
+            if (IsCurrent(attachment) && _acceptanceVersion == acceptanceVersion)
             {
                 SetStatus($"Cannot confirm overwrite: {exception.Message}");
             }
         }
 
-        if (dispatcher.CheckAccess())
+        if (attachment.Dispatcher.CheckAccess())
         {
             CommitFailure();
             return;
@@ -557,7 +548,10 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
 
         try
         {
-            dispatcher.Post(CommitFailure);
+            PostForCurrentAttachment(
+                attachment,
+                CommitFailure,
+                () => _acceptanceVersion == acceptanceVersion);
         }
         catch (Exception postException) when (postException is ObjectDisposedException or InvalidOperationException)
         {

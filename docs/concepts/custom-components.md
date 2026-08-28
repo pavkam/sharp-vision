@@ -27,6 +27,13 @@ tree in its constructor and then hands over exactly one detached root with
 to the component, and participates in the normal dispatcher, theme, Unicode,
 lifecycle, rendering, hit-testing, focus, capture, and disposal paths.
 
+Async component work composes two independent identities. Capture the owning
+control's opaque attachment before leaving the dispatcher, and retain an opaque
+latest-operation lease when newer work supersedes older work. A completion may
+mutate retained state only when both remain current. Do not expose attachment
+generation numbers, reuse cancellation sources, or treat returning to the same
+dispatcher as the same attachment.
+
 ### Choosing a role
 
 | Need                                                                                                                      | Base role                                         | Public ownership surface                                                         |
