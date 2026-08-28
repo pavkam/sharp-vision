@@ -9,6 +9,11 @@ the bottom edge of a primary screen with
 bar, and it must not be the only place an application communicates an error or
 an action that requires attention.
 
+`Spacing` intentionally remains an owner-authored synchronization transaction
+rather than a retained-part forwarding bridge: it invalidates measure and
+updates the private host before the still-current owner notification, while the
+host never originates an independent spacing change.
+
 The design follows the established desktop status-bar model: a horizontal area
 split into multiple status parts, showing concise current-window and contextual
 information. The

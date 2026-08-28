@@ -1948,6 +1948,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         VerifyAccess();
         IsDisposing = true;
         ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(DisposeRetainedPartRegistrations, ref failure);
         ExceptionAggregation.Capture(DisposeBindings, ref failure);
         ExceptionAggregation.Capture(DisposeStyleBindings, ref failure);
         ExceptionAggregation.Capture(DisposeAttachmentParticipants, ref failure);
@@ -2123,6 +2124,99 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <exception cref="ArgumentNullException"><paramref name="partKey"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="partKey"/> is empty or whitespace.</exception>
     internal OwnedControlSlot? FindOwnedSlot(string partKey) => OwnedControls.FindPart(partKey);
+
+    /// <summary>Registers one typed property bridge to a retained presentation part.</summary>
+    /// <typeparam name="T">The forwarded property value type.</typeparam>
+    /// <param name="source">The retained source control.</param>
+    /// <param name="sourcePropertyName">The non-empty source property name.</param>
+    /// <param name="ownerPropertyName">The non-empty owner property name.</param>
+    /// <param name="get">Reads the current source value.</param>
+    /// <param name="set">Optionally writes the source value.</param>
+    /// <param name="comparer">The optional equality policy.</param>
+    /// <returns>The lifecycle-owned typed property bridge.</returns>
+    internal RetainedPartProperty<T> RegisterRetainedPartProperty<T>(
+        ControlBase source,
+        string sourcePropertyName,
+        string ownerPropertyName,
+        Func<T> get,
+        Action<T>? set = null,
+        IEqualityComparer<T>? comparer = null)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePropertyName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerPropertyName);
+        ArgumentNullException.ThrowIfNull(get);
+        VerifyMutable();
+
+        if (!IsRetainedDescendant(source))
+        {
+            throw new InvalidOperationException("A retained-part bridge requires an owned descendant.");
+        }
+
+        var registration = new RetainedPartProperty<T>(
+            this,
+            source,
+            sourcePropertyName,
+            ownerPropertyName,
+            get,
+            set,
+            comparer);
+        _retainedPartRegistrations ??= [];
+        _retainedPartRegistrations.Add(registration);
+        return registration;
+    }
+
+    /// <summary>Registers one forwarding bridge to a retained scrolling presentation part.</summary>
+    /// <param name="source">The retained scrolling container.</param>
+    /// <param name="forwardsScrollEvent">Whether the bridge directly forwards ScrollChanged.</param>
+    /// <returns>The lifecycle-owned forwarding bridge.</returns>
+    internal RetainedScrollPart RegisterRetainedScrollPart(
+        Container source,
+        bool forwardsScrollEvent = true)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        VerifyMutable();
+
+        if (!IsRetainedDescendant(source))
+        {
+            throw new InvalidOperationException("A retained-part bridge requires an owned descendant.");
+        }
+
+        var registration = new RetainedScrollPart(this, source, forwardsScrollEvent);
+        _retainedPartRegistrations ??= [];
+        _retainedPartRegistrations.Add(registration);
+        return registration;
+    }
+
+    /// <summary>Publishes one current value forwarded from a retained presentation part.</summary>
+    /// <param name="propertyName">The non-empty owner property name.</param>
+    internal void NotifyRetainedPartPropertyChanged(string propertyName)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(propertyName);
+        VerifyMutable();
+        _synchronizedPropertyVersions ??= [];
+        _ = _synchronizedPropertyVersions.TryGetValue(propertyName, out var version);
+        version++;
+        _synchronizedPropertyVersions[propertyName] = version;
+        var handlers = PropertyChanged;
+
+        if (handlers is null)
+        {
+            return;
+        }
+
+        var eventArgs = new PropertyChangedEventArgs(propertyName);
+
+        foreach (var subscriber in handlers.GetInvocationList())
+        {
+            if (_synchronizedPropertyVersions[propertyName] != version)
+            {
+                break;
+            }
+
+            ((PropertyChangedEventHandler) subscriber)(this, eventArgs);
+        }
+    }
 
     /// <summary>Commits an ownership edge without invoking user callbacks.</summary>
     /// <param name="parent">The committed owner, or null.</param>
@@ -4693,6 +4787,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     #region Bindings
 
     private ControlBindingRegistry? _bindingRegistry;
+    private List<IDisposable>? _retainedPartRegistrations;
 
     /// <summary>Gets or creates the private registry that owns this control's bindings.</summary>
     internal ControlBindingRegistry GetBindingRegistry() =>
@@ -4700,6 +4795,23 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
     /// <summary>Releases every binding before derived disposal begins.</summary>
     private void DisposeBindings() => _bindingRegistry?.DisposeAll();
+
+    private void DisposeRetainedPartRegistrations()
+    {
+        ExceptionDispatchInfo? failure = null;
+
+        if (_retainedPartRegistrations is not null)
+        {
+            for (var index = _retainedPartRegistrations.Count - 1; index >= 0; index--)
+            {
+                ExceptionAggregation.Capture(_retainedPartRegistrations[index].Dispose, ref failure);
+            }
+
+            _retainedPartRegistrations.Clear();
+        }
+
+        failure?.Throw();
+    }
 
     private void DisposeStyleBindings()
     {

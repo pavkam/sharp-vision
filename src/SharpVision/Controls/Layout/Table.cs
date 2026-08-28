@@ -16,6 +16,7 @@ using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 public sealed class Table: ItemsControl, IStyled<TableStyle>
 {
     private readonly TablePresenter _presenter;
+    private readonly RetainedScrollPart _scrollPart;
     private readonly StyleSlot<TableStyle> _style;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly List<TableRow> _sourceRows = [];
@@ -49,6 +50,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         Rows = new TableRowCollection(this);
         _presenter = new TablePresenter(this);
         InitializeItemsHost(_presenter);
+        _scrollPart = RegisterRetainedScrollPart(_presenter);
         _style = InitializeStyle(TableStyle.Definition);
         _scrollBarStyle = InitializePartStyle(
             ScrollBarStyle.ForwardingDefinition,
@@ -225,16 +227,16 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     } = true;
 
     /// <summary>Gets the committed non-negative scrolling content extent.</summary>
-    public Size Extent => _presenter.Extent;
+    public Size Extent => _scrollPart.Extent;
 
     /// <summary>Gets the committed non-negative scrolling viewport extent.</summary>
-    public Size Viewport => _presenter.Viewport;
+    public Size Viewport => _scrollPart.Viewport;
 
     /// <summary>Raised after the private table viewport commits one or both offsets.</summary>
     public event EventHandler<ScrollChangedEventArgs> ScrollChanged
     {
-        add => _presenter.ScrollChanged += value;
-        remove => _presenter.ScrollChanged -= value;
+        add => _scrollPart.AddScrollChanged(value);
+        remove => _scrollPart.RemoveScrollChanged(value);
     }
 
     /// <summary>Gets or sets the scrollable axes of the private cell presenter.</summary>
@@ -243,17 +245,8 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
     public ScrollBars ScrollBars
     {
-        get => _presenter.ScrollBars;
-        set
-        {
-            var previous = _presenter.ScrollBars;
-            _presenter.ScrollBars = value;
-
-            if (previous != _presenter.ScrollBars)
-            {
-                NotifyPropertyChanged(nameof(ScrollBars), InvalidationImpact.None);
-            }
-        }
+        get => _scrollPart.ScrollBars;
+        set => _scrollPart.ScrollBars = value;
     }
 
     /// <summary>Gets or sets the common scrollbar reservation policy for the private cell presenter.</summary>
@@ -262,17 +255,8 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
     public ShowScrollBars ShowScrollBars
     {
-        get => _presenter.ShowScrollBars;
-        set
-        {
-            var previous = _presenter.ShowScrollBars;
-            _presenter.ShowScrollBars = value;
-
-            if (previous != _presenter.ShowScrollBars)
-            {
-                NotifyPropertyChanged(nameof(ShowScrollBars), InvalidationImpact.None);
-            }
-        }
+        get => _scrollPart.ShowScrollBars;
+        set => _scrollPart.ShowScrollBars = value;
     }
 
     /// <summary>Gets or sets the complete local style for both private scrollbars.</summary>
@@ -294,17 +278,8 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     [NonNegativeValue]
     public int LineSize
     {
-        get => _presenter.LineSize;
-        set
-        {
-            var previous = _presenter.LineSize;
-            _presenter.LineSize = value;
-
-            if (previous != _presenter.LineSize)
-            {
-                NotifyPropertyChanged(nameof(LineSize), InvalidationImpact.None);
-            }
-        }
+        get => _scrollPart.LineSize;
+        set => _scrollPart.LineSize = value;
     }
 
     /// <summary>Gets or sets non-negative cells retained between page commands.</summary>
@@ -314,17 +289,8 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     [NonNegativeValue]
     public int PageOverlap
     {
-        get => _presenter.PageOverlap;
-        set
-        {
-            var previous = _presenter.PageOverlap;
-            _presenter.PageOverlap = value;
-
-            if (previous != _presenter.PageOverlap)
-            {
-                NotifyPropertyChanged(nameof(PageOverlap), InvalidationImpact.None);
-            }
-        }
+        get => _scrollPart.PageOverlap;
+        set => _scrollPart.PageOverlap = value;
     }
 
     /// <summary>Gets or sets the valid horizontal content offset.</summary>
@@ -334,8 +300,8 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     [NonNegativeValue]
     public int HorizontalOffset
     {
-        get => _presenter.HorizontalOffset;
-        set => _presenter.HorizontalOffset = value;
+        get => _scrollPart.HorizontalOffset;
+        set => _scrollPart.HorizontalOffset = value;
     }
 
     /// <summary>Gets or sets the valid vertical content offset.</summary>
@@ -345,8 +311,8 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     [NonNegativeValue]
     public int VerticalOffset
     {
-        get => _presenter.VerticalOffset;
-        set => _presenter.VerticalOffset = value;
+        get => _scrollPart.VerticalOffset;
+        set => _scrollPart.VerticalOffset = value;
     }
 
     /// <summary>Adds signed scrolling deltas with endpoint clamping.</summary>

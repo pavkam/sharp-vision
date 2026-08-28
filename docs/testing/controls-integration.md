@@ -105,7 +105,11 @@ Permanent-root fixtures run the same incomplete attachment, pre-commit retry,
 post-commit consumption, direct-child disposal, and owner-disposal contract for
 both composite and item-owner bases. Projection controls additionally prove that
 owner-driven retained-descendant invalidation reaches final mounted output
-without allowing a foreign or detached surface through the seam.
+without allowing a foreign or detached surface through the seam. Retained-part
+forwarding fixtures separately cover owner and source-originated changes,
+equivalent-value silence, reentrant supersession, failures before and after
+source commit, direct versus coalesced events, and subscription release when
+either endpoint or the ownership edge ends.
 
 Control-render tests inspect the final `Frame` cells and the copied grapheme
 bytes. They cover nested clips, later-child overwrite, padding, hidden and

@@ -1620,7 +1620,9 @@ public sealed class ListViewTests
         };
         new LayoutEngine().Layout(control, new Size(10, 4));
         List<ScrollChangedEventArgs> changes = [];
+        List<string?> notifications = [];
         control.ScrollChanged += (_, eventArgs) => changes.Add(eventArgs);
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
 
         control.Extent.Height.ShouldBeGreaterThan(control.Viewport.Height);
         var moved = control.ScrollBy(0, 3);
@@ -1631,6 +1633,68 @@ public sealed class ListViewTests
         change.PreviousOffset.ShouldBe(new Point(0, 0));
         change.Offset.ShouldBe(new Point(0, 3));
         change.Cause.ShouldBe(ScrollCause.Programmatic);
+        notifications.Count(name => name == nameof(UiListView.VerticalOffset)).ShouldBe(1);
+        notifications.ShouldNotContain(nameof(UiListView.HorizontalOffset));
+        notifications.ShouldNotContain(nameof(UiListView.Extent));
+        notifications.ShouldNotContain(nameof(UiListView.Viewport));
+    }
+
+    /// <summary>Verifies a newer retained-part value committed by a reentrant owner observer is
+    /// authoritative and the outer setter publishes no stale follow-up notification.</summary>
+    [Fact]
+    public void LineSize_WhenOwnerObserverReenters_PublishesEachCurrentValueOnce()
+    {
+        var control = new UiListView();
+        List<int> observed = [];
+        List<int> laterObserved = [];
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName != nameof(UiListView.LineSize))
+            {
+                return;
+            }
+
+            observed.Add(control.LineSize);
+
+            if (control.LineSize == 2)
+            {
+                control.LineSize = 3;
+            }
+        };
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiListView.LineSize))
+            {
+                laterObserved.Add(control.LineSize);
+            }
+        };
+
+        control.LineSize = 2;
+
+        control.LineSize.ShouldBe(3);
+        observed.ShouldBe([2, 3]);
+        laterObserved.ShouldBe([3]);
+    }
+
+    /// <summary>Verifies child-originated retained-part changes forward once and structural
+    /// detachment releases both property and event registrations.</summary>
+    [Fact]
+    public void RetainedScrollPart_WhenChangedThenDetached_ForwardsOnlyWhileOwned()
+    {
+        var control = new UiListView();
+        var host = OwnedTree.Find<ListViewHost>(control).ShouldNotBeNull();
+        List<string?> notifications = [];
+        var scrollEvents = 0;
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+        control.ScrollChanged += (_, _) => scrollEvents++;
+
+        host.LineSize = 2;
+        _ = host.OwningSlot.ShouldNotBeNull().Remove(host);
+        host.LineSize = 3;
+        _ = host.ScrollBy(0, 1);
+
+        notifications.Count(name => name == nameof(UiListView.LineSize)).ShouldBe(1);
+        scrollEvents.ShouldBe(0);
     }
 
     /// <summary>Verifies ScrollBy reports no movement, and raises no ScrollChanged, once the

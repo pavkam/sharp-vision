@@ -35,6 +35,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     public TreeViewStyle ActualStyle => _style.Actual;
 
     private readonly LayoutStack _itemsStack;
+    private readonly RetainedScrollPart _scrollPart;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly CurrentItemNavigator _navigator;
     private readonly HashSet<TreeViewItem> _selectedItems = [];
@@ -97,15 +98,15 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     /// </remarks>
     public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
     {
-        add => _itemsStack.ScrollChanged += value;
-        remove => _itemsStack.ScrollChanged -= value;
+        add => _scrollPart.AddScrollChanged(value);
+        remove => _scrollPart.RemoveScrollChanged(value);
     }
 
     /// <summary>Gets the committed non-negative content extent of the generated scroll container.</summary>
-    public Size Extent => _itemsStack.Extent;
+    public Size Extent => _scrollPart.Extent;
 
     /// <summary>Gets the committed non-negative visible extent of the generated scroll container.</summary>
-    public Size Viewport => _itemsStack.Viewport;
+    public Size Viewport => _scrollPart.Viewport;
 
     /// <summary>Gets or sets the valid horizontal content offset of the generated scroll container.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
@@ -114,8 +115,8 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     [NonNegativeValue]
     public int HorizontalOffset
     {
-        get => _itemsStack.HorizontalOffset;
-        set => _itemsStack.HorizontalOffset = value;
+        get => _scrollPart.HorizontalOffset;
+        set => _scrollPart.HorizontalOffset = value;
     }
 
     /// <summary>Gets or sets the valid vertical content offset of the generated scroll container.</summary>
@@ -125,8 +126,8 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     [NonNegativeValue]
     public int VerticalOffset
     {
-        get => _itemsStack.VerticalOffset;
-        set => _itemsStack.VerticalOffset = value;
+        get => _scrollPart.VerticalOffset;
+        set => _scrollPart.VerticalOffset = value;
     }
 
     /// <summary>Gets or sets the non-negative wheel-scroll increment in cells forwarded to the
@@ -141,17 +142,8 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     [NonNegativeValue]
     public int LineSize
     {
-        get => _itemsStack.LineSize;
-        set
-        {
-            var previous = _itemsStack.LineSize;
-            _itemsStack.LineSize = value;
-
-            if (previous != _itemsStack.LineSize)
-            {
-                NotifyPropertyChanged(nameof(LineSize), InvalidationImpact.None);
-            }
-        }
+        get => _scrollPart.LineSize;
+        set => _scrollPart.LineSize = value;
     }
 
     /// <summary>Gets or sets the non-negative cells of context retained between page commands.</summary>
@@ -161,17 +153,8 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     [NonNegativeValue]
     public int PageOverlap
     {
-        get => _itemsStack.PageOverlap;
-        set
-        {
-            var previous = _itemsStack.PageOverlap;
-            _itemsStack.PageOverlap = value;
-
-            if (previous != _itemsStack.PageOverlap)
-            {
-                NotifyPropertyChanged(nameof(PageOverlap), InvalidationImpact.None);
-            }
-        }
+        get => _scrollPart.PageOverlap;
+        set => _scrollPart.PageOverlap = value;
     }
 
     /// <summary>Scrolls the generated scroll container by signed cell deltas with saturation and
@@ -215,6 +198,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
         root.Children.Add(_itemsStack);
 
         InitializeContent(root);
+        _scrollPart = RegisterRetainedScrollPart(_itemsStack);
         _style = InitializeStyle(TreeViewStyle.Definition);
         _scrollBarStyle = InitializePartStyle(
             ScrollBarStyle.ForwardingDefinition,

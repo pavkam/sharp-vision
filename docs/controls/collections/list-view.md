@@ -11,6 +11,10 @@ into windowed realization instead: only items inside the current viewport plus a
 bounded overscan margin are ever realized, so cost and memory scale with the
 viewport instead — see [Virtualization](#virtualization) below.
 
+The public scrolling shell stays behind the semantic owner. One lifecycle-owned
+bridge forwards programmatic and child-driven scroll properties exactly once and
+preserves direct `ScrollChanged` transitions.
+
 Each template result is wrapped in one ordinary pressable `ListItem`. The
 ListView owns focus and current-item navigation; the wrapper owns activation,
 the selected and current visual facts, and exactly one template control through

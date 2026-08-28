@@ -12,6 +12,10 @@ semantic mutation surfaces: a private scrolling table presenter owns the
 realized cell controls, so `Table` intentionally exposes no general `Children`
 collection.
 
+The private cell presenter participates through the shared retained scrolling
+bridge: presenter-originated geometry changes notify the matching Table property
+once, while the public event forwards current scroll transitions.
+
 The private presenter registers its transparent Normal appearance overlay once
 at construction. The base appearance pipeline composes it identically for live
 rendering and prospective Theme comparison, preserving the table's owner-painted

@@ -18,6 +18,11 @@ owner seam, which verifies ancestry and propagates the exact phase. The only
 local invalidation occurs while width reconciliation is already inside the
 layout pass, avoiding a redundant scheduled frame.
 
+Scrolling properties use the shared retained-part bridge, including
+child-originated extent, viewport, and offset updates. `ScrollChanged` remains
+the specialized coalescing adapter, so width reconciliation may settle several
+internal offsets while subscribers receive only the final transition.
+
 ## Inheritance
 
 ```mermaid

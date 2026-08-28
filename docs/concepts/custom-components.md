@@ -36,6 +36,15 @@ the owner validates retained ancestry before requesting the required phase. A
 local `InvalidateSelf` is appropriate only during synchronous layout
 reconciliation that already owns the containing pass.
 
+When several explicit public properties delegate to one private retained part,
+framework controls register typed property and event bridges after ownership
+commits. The bridge preserves the part setter's validation, forwards
+source-originated changes through the owner, suppresses equivalent values and
+superseded reentrant notifications, and releases subscriptions when the edge,
+part, or owner ends. Specialized public event semantics remain specialized;
+JsonView coalesces layout scroll transitions instead of registering a direct
+event forward.
+
 Async component work composes two independent identities. Capture the owning
 control's opaque attachment before leaving the dispatcher, and retain an opaque
 latest-operation lease when newer work supersedes older work. A completion may

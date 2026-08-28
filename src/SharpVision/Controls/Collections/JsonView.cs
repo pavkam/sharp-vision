@@ -33,6 +33,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     private List<JsonViewLine> _lines = [];
     private readonly JsonViewContent _content;
     private readonly LayoutStack _stack;
+    private readonly RetainedScrollPart _scrollPart;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly StyleSlot<JsonViewStyle> _style;
     private JsonViewNode? _selectedNode;
@@ -58,8 +59,9 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
             ShowScrollBars = ShowScrollBars.WhenNeeded,
             Children = { _content }
         };
-        _stack.ScrollChanged += OnStackScrollChanged;
         InitializeContent(_stack);
+        _scrollPart = RegisterRetainedScrollPart(_stack, forwardsScrollEvent: false);
+        _stack.ScrollChanged += OnStackScrollChanged;
         _scrollBarStyle = InitializePartStyle(
             ScrollBarStyle.ForwardingDefinition,
             nameof(ScrollBarStyle));
@@ -162,19 +164,8 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public ScrollBars ScrollBars
     {
-        get => _stack.ScrollBars;
-        set
-        {
-            VerifyMutable();
-
-            if (_stack.ScrollBars == value)
-            {
-                return;
-            }
-
-            _stack.ScrollBars = value;
-            NotifyPropertyChanged(nameof(ScrollBars), InvalidationImpact.None);
-        }
+        get => _scrollPart.ScrollBars;
+        set => _scrollPart.ScrollBars = value;
     }
 
     /// <summary>Gets or sets when generated scrollbars are visible.</summary>
@@ -183,19 +174,8 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public ShowScrollBars ShowScrollBars
     {
-        get => _stack.ShowScrollBars;
-        set
-        {
-            VerifyMutable();
-
-            if (_stack.ShowScrollBars == value)
-            {
-                return;
-            }
-
-            _stack.ShowScrollBars = value;
-            NotifyPropertyChanged(nameof(ShowScrollBars), InvalidationImpact.None);
-        }
+        get => _scrollPart.ShowScrollBars;
+        set => _scrollPart.ShowScrollBars = value;
     }
 
     /// <summary>Gets or sets the complete local style for generated scrollbars.</summary>
@@ -224,10 +204,10 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     public event EventHandler<ScrollChangedEventArgs>? ScrollChanged;
 
     /// <summary>Gets the committed content extent.</summary>
-    public Size Extent => _stack.Extent;
+    public Size Extent => _scrollPart.Extent;
 
     /// <summary>Gets the committed visible viewport extent.</summary>
-    public Size Viewport => _stack.Viewport;
+    public Size Viewport => _scrollPart.Viewport;
 
     /// <summary>Gets or sets the valid horizontal content offset.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
@@ -236,8 +216,8 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     [NonNegativeValue]
     public int HorizontalOffset
     {
-        get => _stack.HorizontalOffset;
-        set => _stack.HorizontalOffset = value;
+        get => _scrollPart.HorizontalOffset;
+        set => _scrollPart.HorizontalOffset = value;
     }
 
     /// <summary>Gets or sets the valid vertical content offset.</summary>
@@ -247,8 +227,8 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     [NonNegativeValue]
     public int VerticalOffset
     {
-        get => _stack.VerticalOffset;
-        set => _stack.VerticalOffset = value;
+        get => _scrollPart.VerticalOffset;
+        set => _scrollPart.VerticalOffset = value;
     }
 
     /// <summary>Gets or sets the non-negative wheel-scroll increment in cells.</summary>
@@ -262,19 +242,8 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     [NonNegativeValue]
     public int LineSize
     {
-        get => _stack.LineSize;
-        set
-        {
-            VerifyMutable();
-
-            if (_stack.LineSize == value)
-            {
-                return;
-            }
-
-            _stack.LineSize = value;
-            NotifyPropertyChanged(nameof(LineSize), InvalidationImpact.None);
-        }
+        get => _scrollPart.LineSize;
+        set => _scrollPart.LineSize = value;
     }
 
     /// <summary>Gets or sets the non-negative cells of context retained between page commands.</summary>
@@ -284,19 +253,8 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     [NonNegativeValue]
     public int PageOverlap
     {
-        get => _stack.PageOverlap;
-        set
-        {
-            VerifyMutable();
-
-            if (_stack.PageOverlap == value)
-            {
-                return;
-            }
-
-            _stack.PageOverlap = value;
-            NotifyPropertyChanged(nameof(PageOverlap), InvalidationImpact.None);
-        }
+        get => _scrollPart.PageOverlap;
+        set => _scrollPart.PageOverlap = value;
     }
 
     /// <summary>Scrolls by signed cell deltas with saturation and endpoint clamping.</summary>

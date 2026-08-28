@@ -6,6 +6,11 @@
 navigation, configurable single or multiple selection, and optional checkable
 items.
 
+Public offsets, extent, viewport, line increment, page overlap, and scroll
+events use the shared retained-part bridge to the private item container. A
+source-originated change is observable on TreeView without exposing its
+presentation tree.
+
 ## Inheritance
 
 ```mermaid

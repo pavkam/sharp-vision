@@ -25,6 +25,7 @@ using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 public sealed class ListView: ItemsControl
 {
     private readonly ListViewHost _stack;
+    private readonly RetainedScrollPart _scrollPart;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly GenericList _items = [];
     private readonly ReadOnlyCollection<object?> _itemsView;
@@ -55,6 +56,7 @@ public sealed class ListView: ItemsControl
         };
         _stack.ScrollChanged += OnHostScrollChanged;
         InitializeItemsHost(_stack);
+        _scrollPart = RegisterRetainedScrollPart(_stack);
         _scrollBarStyle = InitializePartStyle(
             ScrollBarStyle.ForwardingDefinition,
             nameof(ScrollBarStyle));
@@ -325,15 +327,15 @@ public sealed class ListView: ItemsControl
     /// </remarks>
     public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
     {
-        add => _stack.ScrollChanged += value;
-        remove => _stack.ScrollChanged -= value;
+        add => _scrollPart.AddScrollChanged(value);
+        remove => _scrollPart.RemoveScrollChanged(value);
     }
 
     /// <summary>Gets the committed non-negative content extent of the composed scroll container.</summary>
-    public Size Extent => _stack.Extent;
+    public Size Extent => _scrollPart.Extent;
 
     /// <summary>Gets the committed non-negative visible extent of the composed scroll container.</summary>
-    public Size Viewport => _stack.Viewport;
+    public Size Viewport => _scrollPart.Viewport;
 
     /// <summary>Gets or sets the composed horizontal scroll offset.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
@@ -342,8 +344,8 @@ public sealed class ListView: ItemsControl
     [NonNegativeValue]
     public int HorizontalOffset
     {
-        get => _stack.HorizontalOffset;
-        set => _stack.HorizontalOffset = value;
+        get => _scrollPart.HorizontalOffset;
+        set => _scrollPart.HorizontalOffset = value;
     }
 
     /// <summary>Gets or sets the composed vertical scroll offset.</summary>
@@ -353,8 +355,8 @@ public sealed class ListView: ItemsControl
     [NonNegativeValue]
     public int VerticalOffset
     {
-        get => _stack.VerticalOffset;
-        set => _stack.VerticalOffset = value;
+        get => _scrollPart.VerticalOffset;
+        set => _scrollPart.VerticalOffset = value;
     }
 
     /// <summary>Gets or sets the non-negative wheel-scroll increment in cells forwarded to the
@@ -371,17 +373,8 @@ public sealed class ListView: ItemsControl
     [NonNegativeValue]
     public int LineSize
     {
-        get => _stack.LineSize;
-        set
-        {
-            var previous = _stack.LineSize;
-            _stack.LineSize = value;
-
-            if (previous != _stack.LineSize)
-            {
-                NotifyPropertyChanged(nameof(LineSize), InvalidationImpact.None);
-            }
-        }
+        get => _scrollPart.LineSize;
+        set => _scrollPart.LineSize = value;
     }
 
     /// <summary>Gets or sets the non-negative cells of context retained between page commands.</summary>
@@ -391,17 +384,8 @@ public sealed class ListView: ItemsControl
     [NonNegativeValue]
     public int PageOverlap
     {
-        get => _stack.PageOverlap;
-        set
-        {
-            var previous = _stack.PageOverlap;
-            _stack.PageOverlap = value;
-
-            if (previous != _stack.PageOverlap)
-            {
-                NotifyPropertyChanged(nameof(PageOverlap), InvalidationImpact.None);
-            }
-        }
+        get => _scrollPart.PageOverlap;
+        set => _scrollPart.PageOverlap = value;
     }
 
     /// <summary>Scrolls the composed scroll container by signed cell deltas with saturation and
@@ -445,19 +429,8 @@ public sealed class ListView: ItemsControl
     /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
     public ScrollBars ScrollBars
     {
-        get => _stack.ScrollBars;
-        set
-        {
-            VerifyMutable();
-
-            if (_stack.ScrollBars == value)
-            {
-                return;
-            }
-
-            _stack.ScrollBars = value;
-            NotifyPropertyChanged(nameof(ScrollBars), InvalidationImpact.None);
-        }
+        get => _scrollPart.ScrollBars;
+        set => _scrollPart.ScrollBars = value;
     }
 
     /// <summary>Gets or sets the common scrollbar reservation policy for enabled axes.</summary>
@@ -466,19 +439,8 @@ public sealed class ListView: ItemsControl
     /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
     public ShowScrollBars ShowScrollBars
     {
-        get => _stack.ShowScrollBars;
-        set
-        {
-            VerifyMutable();
-
-            if (_stack.ShowScrollBars == value)
-            {
-                return;
-            }
-
-            _stack.ShowScrollBars = value;
-            NotifyPropertyChanged(nameof(ShowScrollBars), InvalidationImpact.None);
-        }
+        get => _scrollPart.ShowScrollBars;
+        set => _scrollPart.ShowScrollBars = value;
     }
 
     /// <summary>Gets or sets the complete local style for generated scrollbars.</summary>

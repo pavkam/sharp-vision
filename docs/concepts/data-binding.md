@@ -50,6 +50,14 @@ properties therefore remains current when its source subtree is added, removed,
 or moved through a framework ownership transaction; no polling or manual refresh
 is required.
 
+Framework composites use a separate internal retained-part bridge when a public
+owner property is implemented by a private presentation control. The bridge
+names both properties, compares typed current values, forwards child-originated
+changes, and cuts off superseded notifications after reentry. It is owned by the
+control rather than exposed as application data binding: detaching or disposing
+the part releases its subscriptions, and disposing the owner releases every
+bridge before the retained tree.
+
 ## Modes and natural values
 
 | Mode             | Initial value    | Source changes | Target changes |

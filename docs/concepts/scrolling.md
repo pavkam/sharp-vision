@@ -33,6 +33,14 @@ a committed change came from the programmatic API, keyboard, pointer, wheel,
 bring-into-view, content mutation, or resize. Controls carry that typed cause in
 their change events instead of inferring intent from the resulting value.
 
+Composite scrolling controls expose their private container through one
+lifecycle-owned forwarding bridge. Explicit public properties retain their own
+validation documentation while typed source getters and setters preserve the
+container's validation order. Source-driven extent, viewport, offset, line,
+page, and policy changes publish the matching owner property once; direct event
+bridges preserve `ScrollChanged`, while JsonView retains its coalescing adapter
+so intermediate layout offsets never become public scroll events.
+
 ## Automatic scrollbar algorithm
 
 1. Begin with always-visible bars and no automatic bars.
