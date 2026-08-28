@@ -57,6 +57,7 @@ classDiagram
 | `GetSelectableTextSnapshot()`                                | `SelectableTextSnapshot` | —        | Override; includes the owned caption in the semantic text and visible grapheme geometry it returns as an owned snapshot.                                                                                                                                                                                              |
 | `HandlePressActivation(RoutedEventArgs)`                     | `void`                   | —        | Routes one event through the press-activation state machine; a no-op before `EnablePressActivation` runs.                                                                                                                                                                                                             |
 | `Activate(ActivationCause)`                                  | `void`                   | —        | Protected virtual; a control that enables press activation overrides it to commit its action.                                                                                                                                                                                                                         |
+| `TryActivate(ActivationCause)`                               | `bool`                   | —        | Protected; validates the cause and mutation context, rejects effectively disabled or hidden controls, then invokes `Activate` and reports whether the attempt was admitted.                                                                                                                                           |
 | `EnableCaption()`                                            | `void`                   | —        | Opts into the single-text-caption authoring role: a lazily materialized owned caption child, ambient appearance tracking, and contract-based shared access-key ownership.                                                                                                                                             |
 | `Text`                                                       | `string`                 | `""`     | The non-null caption string. The getter never throws; the setter throws `InvalidOperationException` before `EnableCaption` runs.                                                                                                                                                                                      |
 | `TextControl`                                                | `Display.Text?`          | `null`   | Protected, read-only; the lazily materialized owned caption child, or null before `Text` is first assigned.                                                                                                                                                                                                           |
@@ -83,6 +84,14 @@ property callback or event accessor is latest-wins; a superseded candidate is
 detached, and a failed add or remove remains retryable without duplicating the
 winning subscription. Assigning the identical healthy command reference is
 silent and does not touch its event accessors.
+
+Public programmatic activation methods on concrete inputs call
+`TryActivate(ActivationCause.Programmatic)`. The shared boundary verifies
+dispatcher affinity and disposal, rejects unknown causes, and admits activation
+only while the complete ancestor chain is effectively enabled and visible. The
+concrete `Activate` override still owns state, event, and command ordering; the
+base does not continue after that override returns, so callbacks may hide,
+disable, detach, or dispose the control without a stale framework action.
 
 `EnablePopup` accepts the popup's content control, its preferred
 `PopupPlacement` (default `Below`), whether opening transfers focus to the first
@@ -133,7 +142,7 @@ public sealed class TagField : InputBase
 
 | Scope                 | Observable evidence                                                                                                                                                                      |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public API            | Every `Enable*` method is idempotence-guarded, and each capability's state exists only after its own `Enable*` call runs.                                                                |
+| Public API            | Every `Enable*` method is idempotence-guarded; `TryActivate` validates and gates semantic activation; capability state exists only after its own `Enable*` call.                         |
 | Integrated behavior   | Composed capabilities (press activation driving an owned popup, segment editing alongside a popup) operate without collision, matching the concrete controls that ship with the library. |
 | Complete runtime path | Attachment, focus restoration on popup close, and disposal complete without leaked subscriptions, whether zero, one, or every capability is enabled.                                     |
 

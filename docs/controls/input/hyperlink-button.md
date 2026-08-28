@@ -18,19 +18,19 @@ classDiagram
 
 ## API
 
-| Member                         | Type                                | Default        | Description                                                                                        |
-| ------------------------------ | ----------------------------------- | -------------- | -------------------------------------------------------------------------------------------------- |
-| `HyperlinkButton()`            | —                                   | —              | Initializes an empty focusable HyperlinkButton.                                                    |
-| `HyperlinkButton(string text)` | —                                   | —              | Initializes a HyperlinkButton with the given caption; rejects `null`.                              |
-| Inherited `Text`               | `string`                            | `""`           | The link's caption.                                                                                |
-| Inherited `Command`            | `ICommand?`                         | `null`         | Runs after `Click`, when bound and `CanExecute` allows it.                                         |
-| Inherited `CommandParameter`   | `object?`                           | `null`         | The borrowed parameter passed to `Command` queries and execution.                                  |
-| `StartAffix`                   | `Affix?`                            | `null`         | Optional leading edge-pinned decoration, reserved inside the content box and outside the caption.  |
-| `EndAffix`                     | `Affix?`                            | `null`         | Optional trailing edge-pinned decoration, reserved inside the content box and outside the caption. |
-| `Style`                        | `HyperlinkButtonStyle?`             | `null`         | Optional complete developer-authored presentation.                                                 |
-| `ActualStyle`                  | `HyperlinkButtonStyle`              | Resolved       | Read-only; the complete local, theme-owned, or code-owned presentation.                            |
-| `PerformClick()`               | `void`                              | —              | Activates an available, visible, enabled HyperlinkButton through its public API.                   |
-| `Click`                        | `EventHandler<ActivationEventArgs>` | No subscribers | Raised after the released state commits and before command execution.                              |
+| Member                         | Type                                | Default        | Description                                                                                                        |
+| ------------------------------ | ----------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `HyperlinkButton()`            | —                                   | —              | Initializes an empty focusable HyperlinkButton.                                                                    |
+| `HyperlinkButton(string text)` | —                                   | —              | Initializes a HyperlinkButton with the given caption; rejects `null`.                                              |
+| Inherited `Text`               | `string`                            | `""`           | The link's caption.                                                                                                |
+| Inherited `Command`            | `ICommand?`                         | `null`         | Runs after `Click`, when bound and `CanExecute` allows it.                                                         |
+| Inherited `CommandParameter`   | `object?`                           | `null`         | The borrowed parameter passed to `Command` queries and execution.                                                  |
+| `StartAffix`                   | `Affix?`                            | `null`         | Optional leading edge-pinned decoration, reserved inside the content box and outside the caption.                  |
+| `EndAffix`                     | `Affix?`                            | `null`         | Optional trailing edge-pinned decoration, reserved inside the content box and outside the caption.                 |
+| `Style`                        | `HyperlinkButtonStyle?`             | `null`         | Optional complete developer-authored presentation.                                                                 |
+| `ActualStyle`                  | `HyperlinkButtonStyle`              | Resolved       | Read-only; the complete local, theme-owned, or code-owned presentation.                                            |
+| `PerformClick()`               | `void`                              | —              | Enters the shared `InputBase.TryActivate` gate, then activates an effectively enabled and visible HyperlinkButton. |
+| `Click`                        | `EventHandler<ActivationEventArgs>` | No subscribers | Raised after the released state commits and before command execution.                                              |
 
 `HyperlinkButtonStyle : ControlStyle` is a complete immutable presentation: it
 declares no `styles.*` theme key of its own and falls back to the standard
@@ -73,3 +73,5 @@ link.Click += (_, _) => OpenUrl("https://example.com");
   correctly, Unicode text lays out, and tiny bounds clip safely.
 - Space, Enter, pointer capture, the access key, and programmatic activation
   behave identically.
+- Programmatic activation shares `InputBase` mutation and effective-availability
+  validation while HyperlinkButton retains command-gated `Click` ordering.

@@ -124,15 +124,7 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
     /// <summary>Activates an available CheckBox through its public API.</summary>
     /// <exception cref="InvalidOperationException">The attached CheckBox is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The CheckBox is disposed.</exception>
-    public void PerformClick()
-    {
-        VerifyMutable();
-
-        if (EffectiveIsEnabled && EffectiveIsVisible)
-        {
-            Activate(ActivationCause.Programmatic);
-        }
-    }
+    public void PerformClick() => _ = TryActivate(ActivationCause.Programmatic);
 
     /// <summary>Activates an available CheckBox through its public API.</summary>
     /// <exception cref="InvalidOperationException">The attached CheckBox is accessed off-dispatcher.</exception>

@@ -103,15 +103,7 @@ public sealed partial class Button: InputBase, IStyled<ButtonStyle>
     /// <summary>Activates an available executable Button through its public API.</summary>
     /// <exception cref="InvalidOperationException">The attached Button is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The Button is disposed.</exception>
-    public void PerformClick()
-    {
-        VerifyMutable();
-
-        if (EffectiveIsEnabled && EffectiveIsVisible)
-        {
-            Activate(ActivationCause.Programmatic);
-        }
-    }
+    public void PerformClick() => _ = TryActivate(ActivationCause.Programmatic);
 
     /// <inheritdoc/>
     protected override void Activate(ActivationCause cause)

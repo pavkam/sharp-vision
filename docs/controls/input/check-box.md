@@ -41,12 +41,13 @@ first; the bound command, if any and if `CanExecute` allows it, runs last. A
 command that cannot execute never suppresses the toggle itself. The command and
 parameter are captured at activation entry, so state callbacks may rebind or
 dispose the control without changing which binding completes that activation.
-Assigning `null` to `IsChecked` while `ThreeState` is `false` throws
-`ArgumentException`. Turning three-state mode off while the value is
-indeterminate commits `false` before any notifications are published. A
-state-specific handler may commit another state; that newer transition publishes
-normally, while the superseded outer transition does not subsequently raise a
-stale `StateChanged` event.
+`PerformClick()` enters through the shared `InputBase.TryActivate` mutation and
+effective-availability gate before this control-owned ordering begins. Assigning
+`null` to `IsChecked` while `ThreeState` is `false` throws `ArgumentException`.
+Turning three-state mode off while the value is indeterminate commits `false`
+before any notifications are published. A state-specific handler may commit
+another state; that newer transition publishes normally, while the superseded
+outer transition does not subsequently raise a stale `StateChanged` event.
 
 `CheckBoxStyle : InputStyle` is a complete immutable presentation: it bundles a
 `CheckBoxMarkStyle`, a complete `CheckBoxGlyphs` triple (unchecked, checked, and

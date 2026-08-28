@@ -466,7 +466,12 @@ InputBase command tests use counting, throwing, and synchronously reentrant
 `ICommand` event accessors. They prove nested property and accessor replacement
 settles on one final subscription, superseded candidates are removed, failed
 add/remove operations remain retryable, same-reference assignment does not
-churn, and disposal exhaustively releases every known handler.
+churn, and disposal exhaustively releases every known handler. InputBase
+semantic-activation tests prove the shared protected gate admits an available
+detached control, rejects direct and inherited disabled/hidden state, validates
+the cause, and preserves disposed and off-dispatcher failures. The Button,
+HyperlinkButton, CheckBox, RadioButton, MenuItem, and NavigationViewItem
+fixtures retain their control-specific state, event, and command ordering.
 
 ## Data-binding proof
 

@@ -77,6 +77,10 @@ matching key up. Enter activates immediately. A primary pointer press focuses
 the button and captures the pointer; releasing inside the bounds activates once.
 Disabling, detaching, losing focus, or having capture cancelled clears the press
 without activating. `PerformClick()` runs the same programmatic activation path.
+It enters through [`InputBase.TryActivate`](../input-base.md#api), so direct or
+ancestor-disabled/hidden state is a no-op while disposal and off-dispatcher
+access retain their documented failures. Button still owns command gating and
+raises `Click` before executing the captured command.
 
 While pressed with a visible whole-cell shadow, the button paints its entire
 face translated by the shadow offset instead of at its untranslated `Bounds`.

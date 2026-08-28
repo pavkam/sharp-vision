@@ -420,15 +420,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     /// <summary>Activates this item through the programmatic path when it is available.</summary>
     /// <exception cref="InvalidOperationException">The attached item is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
-    public void PerformInvoke()
-    {
-        VerifyMutable();
-
-        if (EffectiveIsEnabled && EffectiveIsVisible)
-        {
-            Activate(ActivationCause.Programmatic);
-        }
-    }
+    public void PerformInvoke() => _ = TryActivate(ActivationCause.Programmatic);
 
     /// <inheritdoc/>
     protected override void Activate(ActivationCause cause)

@@ -113,15 +113,7 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
     /// <summary>Activates an available RadioButton through its public API.</summary>
     /// <exception cref="InvalidOperationException">The attached member is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The member is disposed.</exception>
-    public void PerformClick()
-    {
-        VerifyMutable();
-
-        if (EffectiveIsEnabled && EffectiveIsVisible)
-        {
-            Activate(ActivationCause.Programmatic);
-        }
-    }
+    public void PerformClick() => _ = TryActivate(ActivationCause.Programmatic);
 
     /// <summary>Selects an available member through the programmatic path.</summary>
     /// <exception cref="InvalidOperationException">The attached member is accessed off-dispatcher.</exception>

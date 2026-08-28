@@ -99,6 +99,28 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     {
     }
 
+    /// <summary>Attempts one semantic activation after validating the source, mutation context,
+    /// and effective availability shared by every programmatic activation entry point.</summary>
+    /// <param name="cause">The semantic source of the activation attempt.</param>
+    /// <returns><see langword="true"/> when activation was admitted and dispatched to
+    /// <see cref="Activate"/>; otherwise <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected bool TryActivate(ActivationCause cause)
+    {
+        VerifyMutable();
+        ArgumentOutOfRangeException.ThrowIfNotDefined(cause);
+
+        if (!EffectiveIsEnabled || !EffectiveIsVisible)
+        {
+            return false;
+        }
+
+        Activate(cause);
+        return true;
+    }
+
     #endregion
 
     #region Caption

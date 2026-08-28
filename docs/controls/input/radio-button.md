@@ -42,6 +42,8 @@ no-op when this member is already the sole checked one in its group — the
 command runs on every activation, including re-selecting the current member. The
 command and parameter are captured at activation entry, so selection callbacks
 may rebind or dispose the control without changing that activation.
+`PerformClick()` enters through the shared `InputBase.TryActivate` mutation and
+effective-availability gate before group selection or command execution begins.
 
 Group fields are staged before notifications begin. Each later publication is
 revalidated against lifetime, group name, and the original owning slot or group

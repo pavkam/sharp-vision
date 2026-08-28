@@ -14,11 +14,23 @@ internal sealed class PressOnlyInputProbe: InputBase
     /// <summary>Gets completed activation causes in commit order.</summary>
     internal List<ActivationCause> Activations { get; } = [];
 
+    /// <summary>Gets or sets an optional callback invoked after an activation is recorded.</summary>
+    internal Action? ActivationCallback { get; set; }
+
     /// <summary>Attempts to enable press activation a second time.</summary>
     internal void EnablePressActivationAgain() => EnablePressActivation();
 
+    /// <summary>Routes one semantic activation through the shared availability gate.</summary>
+    /// <param name="cause">The activation source to validate and attempt.</param>
+    /// <returns><see langword="true"/> when activation was admitted; otherwise <see langword="false"/>.</returns>
+    internal bool TryActivateFromTest(ActivationCause cause) => TryActivate(cause);
+
     /// <inheritdoc/>
-    protected override void Activate(ActivationCause cause) => Activations.Add(cause);
+    protected override void Activate(ActivationCause cause)
+    {
+        Activations.Add(cause);
+        ActivationCallback?.Invoke();
+    }
 
     /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)

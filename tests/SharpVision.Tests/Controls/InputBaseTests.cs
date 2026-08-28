@@ -88,6 +88,131 @@ public sealed class InputBaseTests
 
     #region Press activation
 
+    /// <summary>Verifies the shared semantic gate admits an available detached control and reports
+    /// the exact activation cause to its virtual implementation.</summary>
+    [Fact]
+    public void TryActivate_WhenAvailable_ActivatesAndReturnsTrue()
+    {
+        var probe = new PressOnlyInputProbe();
+
+        var activated = probe.TryActivateFromTest(ActivationCause.Programmatic);
+
+        activated.ShouldBeTrue();
+        probe.Activations.ShouldBe([ActivationCause.Programmatic]);
+    }
+
+    /// <summary>Verifies an admitted activation may make its control unavailable without a stale
+    /// base-layer continuation after the concrete activation callback returns.</summary>
+    [Theory]
+    [InlineData("disable")]
+    [InlineData("hide")]
+    [InlineData("detach")]
+    [InlineData("dispose")]
+    public void TryActivate_WhenActivationMakesControlUnavailable_ReturnsCommittedAdmission(string mutation)
+    {
+        var root = new ProbeContainer();
+        var probe = new PressOnlyInputProbe();
+        root.Children.Add(probe);
+        probe.ActivationCallback = () =>
+        {
+            if (mutation == "disable")
+            {
+                probe.IsEnabled = false;
+            }
+            else if (mutation == "hide")
+            {
+                probe.Visibility = Visibility.Hidden;
+            }
+            else if (mutation == "detach")
+            {
+                _ = root.Children.Remove(probe);
+            }
+            else
+            {
+                probe.Dispose();
+            }
+        };
+
+        var activated = probe.TryActivateFromTest(ActivationCause.Programmatic);
+
+        activated.ShouldBeTrue();
+        probe.Activations.ShouldBe([ActivationCause.Programmatic]);
+        (probe.IsDisposed || !probe.EffectiveIsEnabled || !probe.EffectiveIsVisible || probe.Parent is null).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies direct and inherited availability both reject semantic activation before
+    /// the virtual implementation runs.</summary>
+    [Theory]
+    [InlineData("disabled")]
+    [InlineData("hidden")]
+    [InlineData("ancestor-disabled")]
+    [InlineData("ancestor-hidden")]
+    public void TryActivate_WhenUnavailable_DoesNotActivateAndReturnsFalse(string state)
+    {
+        var root = new ProbeContainer();
+        var probe = new PressOnlyInputProbe();
+        root.Children.Add(probe);
+
+        if (state == "disabled")
+        {
+            probe.IsEnabled = false;
+        }
+        else if (state == "hidden")
+        {
+            probe.Visibility = Visibility.Hidden;
+        }
+        else if (state == "ancestor-disabled")
+        {
+            root.IsEnabled = false;
+        }
+        else
+        {
+            root.Visibility = Visibility.Hidden;
+        }
+
+        var activated = probe.TryActivateFromTest(ActivationCause.Programmatic);
+
+        activated.ShouldBeFalse();
+        probe.Activations.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies the protected semantic boundary rejects an unknown activation source
+    /// before invoking the concrete control.</summary>
+    [Fact]
+    public void TryActivate_WhenCauseIsUnknown_ThrowsBeforeActivation()
+    {
+        var probe = new PressOnlyInputProbe();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => probe.TryActivateFromTest((ActivationCause) 999));
+
+        probe.Activations.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies disposed controls retain the shared public-mutation failure contract.</summary>
+    [Fact]
+    public void TryActivate_WhenDisposed_ThrowsBeforeActivation()
+    {
+        var probe = new PressOnlyInputProbe();
+        probe.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => probe.TryActivateFromTest(ActivationCause.Programmatic));
+
+        probe.Activations.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies an attached control rejects semantic activation away from its dispatcher.</summary>
+    [Fact]
+    public async Task TryActivate_WhenAttachedAndCalledOffDispatcher_ThrowsBeforeActivationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var probe = new PressOnlyInputProbe();
+        await dispatcher.InvokeAsync(() => probe.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => probe.TryActivateFromTest(ActivationCause.Programmatic));
+
+        probe.Activations.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies press activation composes on its own, independent of the caption
     /// capability's single-caption authoring role.</summary>
     [Fact]

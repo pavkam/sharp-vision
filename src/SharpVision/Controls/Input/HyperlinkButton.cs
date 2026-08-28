@@ -45,15 +45,7 @@ public sealed class HyperlinkButton: InputBase, IStyled<HyperlinkButtonStyle>
     /// <summary>Activates an available executable HyperlinkButton through its public API.</summary>
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public void PerformClick()
-    {
-        VerifyMutable();
-
-        if (EffectiveIsEnabled && EffectiveIsVisible)
-        {
-            Activate(ActivationCause.Programmatic);
-        }
-    }
+    public void PerformClick() => _ = TryActivate(ActivationCause.Programmatic);
 
     /// <inheritdoc/>
     protected override void Activate(ActivationCause cause)

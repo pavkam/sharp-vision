@@ -560,6 +560,7 @@ namespace SharpVision.Controls
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         protected System.Text.Rune ResolveDropDownGlyph(System.Text.Rune fallback) { }
+        protected bool TryActivate(SharpVision.Input.ActivationCause cause) { }
         protected new void VerifyMutable() { }
         protected static bool TryGetStepDelta(SharpVision.Input.KeyEventArgs eventArgs, out int delta) { }
     }
