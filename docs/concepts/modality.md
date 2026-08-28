@@ -33,7 +33,10 @@ var scope = application.Modality.Enter(
 policy, and `IsActive`. `DismissRequested` reports qualifying outside input,
 `Exited` runs once after the scope commits inactive, and `Include(ControlBase)`
 adds another root to the plane. `ModalityManager.Active` exposes only the
-youngest scope, not a mutable stack.
+youngest scope, not a mutable stack. Entry revalidates manager lifetime after
+pointer reconfinement and focus publication; callback-driven manager disposal
+throws `ObjectDisposedException` instead of returning an already-ended scope as
+a successful entry.
 
 `Enter` and `Include` reject null, detached, disposed, foreign, hidden,
 collapsed, and disabled roots before any observable mutation.

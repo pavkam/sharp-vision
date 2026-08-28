@@ -153,7 +153,7 @@ public sealed class PointerManager: IDisposable
             }
         }
 
-        if (!IsEligibleInteraction(control))
+        if (!IsOperational || !IsEligibleInteraction(control))
         {
             failure?.Throw();
             return false;
@@ -302,11 +302,12 @@ public sealed class PointerManager: IDisposable
                     () => activationBoundary = _activationTarget?.Invoke(target),
                     ref failure);
 
-                if (failure is not null)
+                if (failure is not null || !IsInteractionSnapshotValid(targets))
                 {
                     EndPress(pointer.Buttons);
 
-                    failure.Throw();
+                    failure?.Throw();
+                    return null;
                 }
 
                 var focusTarget = FindFocusTarget(target, activationBoundary ?? targets.DeliveryBoundary);
@@ -341,6 +342,12 @@ public sealed class PointerManager: IDisposable
                     Events.Pointer,
                     routedEvent),
                 ref failure);
+
+            if (!IsOperational)
+            {
+                failure?.Throw();
+                return null;
+            }
         }
         else
         {
@@ -780,6 +787,11 @@ public sealed class PointerManager: IDisposable
 
     private bool IsInteractionSnapshotValid(in InteractionTargets targets)
     {
+        if (!IsOperational)
+        {
+            return false;
+        }
+
         var modality = Root.ModalityOwner;
 
         if (!ReferenceEquals(modality, targets.Modality) ||
@@ -792,6 +804,9 @@ public sealed class PointerManager: IDisposable
         return target is null ||
             (IsEligible(target) && modality?.Allows(target) is not false);
     }
+
+    private bool IsOperational =>
+        !IsDisposed && ReferenceEquals(Root.CaptureOwner, this);
 
     private bool IsMember(ControlBase control)
     {

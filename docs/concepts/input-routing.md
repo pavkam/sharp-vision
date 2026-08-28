@@ -231,6 +231,10 @@ selection, move/resize, and popup interactions. Detach, disable, close,
 terminal-focus loss where configured, or an explicit release ends capture and
 raises cancellation when required. Entering or leaving a modal scope applies the
 additional [capture confinement rules](modality.md#modal-pointer-and-capture).
+Disposing `PointerManager` is terminal for every in-flight transition: capture
+transfer, hover publication, application activation, and focus callbacks cannot
+install later state or route the pending pointer record after manager ownership
+has been released.
 
 `PointerDragThreshold.Cells` is the shared click-to-drag boundary. Its value is
 one cell because terminal coordinates are integral: movement by one cell in

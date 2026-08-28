@@ -116,6 +116,61 @@ public sealed partial class ModalityManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies manager disposal from pointer reconfinement ends modal entry observably
+    /// instead of returning an already-inactive scope as a successful transaction.</summary>
+    [Fact]
+    public async Task Enter_WhenCaptureLossDisposesManager_DoesNotReturnInactiveScopeAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            // Arrange
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 24, 8) };
+            var background = new ProbeControl { Bounds = new Rect(0, 0, 8, 6) };
+            var plane = new ProbeControl { Bounds = new Rect(12, 0, 8, 6) };
+            root.Children.Add(background);
+            root.Children.Add(plane);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            var modality = new ModalityManager(root, focus, pointer);
+            pointer.Capture(background).ShouldBeTrue();
+            background.LostPointerCapture += (_, _) => modality.Dispose();
+
+            // Act and assert
+            _ = Should.Throw<ObjectDisposedException>(() => modality.Enter(plane));
+            modality.Active.ShouldBeNull();
+            root.ModalityOwner.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies manager disposal from focus-changing publication ends modal entry
+    /// observably instead of returning the inactive scope cleared by that callback.</summary>
+    [Fact]
+    public async Task Enter_WhenFocusChangingDisposesManager_DoesNotReturnInactiveScopeAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            // Arrange
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 24, 8) };
+            var plane = new ProbeControl { Bounds = new Rect(12, 0, 8, 6), IsFocusable = true };
+            root.Children.Add(plane);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            var modality = new ModalityManager(root, focus, pointer);
+            focus.Changing += (_, _) => modality.Dispose();
+
+            // Act and assert
+            _ = Should.Throw<ObjectDisposedException>(() => modality.Enter(plane, initialFocus: plane));
+            modality.Active.ShouldBeNull();
+            root.ModalityOwner.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a nested scope may root inside a suspended outer plane and restores outer focus.</summary>
     [Fact]
     public async Task Enter_WhenRootIsInsideOlderPlane_AllowsNestedScopeAndRestoresOuterFocusAsync()

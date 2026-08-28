@@ -1107,6 +1107,153 @@ public sealed class PointerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies disposal from the former owner's capture-loss callback remains terminal
+    /// and cannot let the outer transfer install a contradictory ghost capture.</summary>
+    [Fact]
+    public async Task Capture_WhenFormerOwnerDisposesManager_DoesNotResurrectCaptureAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            // Arrange
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var first = new ProbeControl { Bounds = new Rect(0, 0, 8, 8) };
+            var second = new ProbeControl { Bounds = new Rect(10, 0, 8, 8) };
+            root.Children.Add(first);
+            root.Children.Add(second);
+            root.Attach(dispatcher);
+            var manager = new PointerManager(root);
+            manager.Capture(first).ShouldBeTrue();
+            first.LostPointerCapture += (_, _) => manager.Dispose();
+
+            // Act
+            var captured = manager.Capture(second);
+
+            // Assert
+            captured.ShouldBeFalse();
+            manager.Captured.ShouldBeNull();
+            root.CaptureOwner.ShouldBeNull();
+            second.ProbeHasPointerCapture.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies disposal from hover-entry publication aborts the in-flight dispatch before
+    /// routed pointer delivery and does not report the now-ownerless target.</summary>
+    [Fact]
+    public async Task Dispatch_WhenPointerEntryDisposesManager_DoesNotRoutePointerAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            // Arrange
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl { Bounds = new Rect(0, 0, 8, 8) };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            var manager = new PointerManager(root);
+            var routed = 0;
+            child.PointerEntered += (_, _) => manager.Dispose();
+            _ = child.AddHandler(Events.Pointer, (_, eventArgs) =>
+            {
+                if (eventArgs.Phase == RoutingPhase.Bubble)
+                {
+                    routed++;
+                }
+            });
+
+            // Act
+            var target = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Move));
+
+            // Assert
+            target.ShouldBeNull();
+            routed.ShouldBe(0);
+            root.CaptureOwner.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies disposal from the application activation callback stops a primary press
+    /// before focus and routed pointer delivery continue against the released manager.</summary>
+    [Fact]
+    public async Task Dispatch_WhenActivationCallbackDisposesManager_DoesNotFocusOrRouteAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            // Arrange
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl { Bounds = new Rect(0, 0, 8, 8), IsFocusable = true };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            PointerManager manager = null!;
+            manager = new PointerManager(
+                root,
+                timeProvider: null,
+                activationTarget: target =>
+                {
+                    manager.Dispose();
+                    return target;
+                });
+            var routed = 0;
+            _ = child.AddHandler(Events.Pointer, (_, eventArgs) =>
+            {
+                if (eventArgs.Phase == RoutingPhase.Bubble)
+                {
+                    routed++;
+                }
+            });
+
+            // Act
+            var target = manager.Dispatch(
+                CreatePointer(new Point(2, 2), Buttons.Primary, PointerAction.Press));
+
+            // Assert
+            target.ShouldBeNull();
+            focus.Focused.ShouldBeNull();
+            routed.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies disposal from pointer-driven focus publication stops the primary press
+    /// before routed pointer delivery continues against the released manager.</summary>
+    [Fact]
+    public async Task Dispatch_WhenFocusChangingDisposesManager_DoesNotRouteAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            // Arrange
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl { Bounds = new Rect(0, 0, 8, 8), IsFocusable = true };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            var manager = new PointerManager(root);
+            var routed = 0;
+            focus.Changing += (_, _) => manager.Dispose();
+            _ = child.AddHandler(Events.Pointer, (_, eventArgs) =>
+            {
+                if (eventArgs.Phase == RoutingPhase.Bubble)
+                {
+                    routed++;
+                }
+            });
+
+            // Act
+            var target = manager.Dispatch(
+                CreatePointer(new Point(2, 2), Buttons.Primary, PointerAction.Press));
+
+            // Assert
+            target.ShouldBeNull();
+            routed.ShouldBe(0);
+            root.CaptureOwner.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies sibling movement does not publish a spurious exit and re-entry on their shared ancestor.</summary>
     [Fact]
     public async Task Dispatch_WhenPointerMovesBetweenSiblings_PreservesSharedAncestorPointerStateAsync()

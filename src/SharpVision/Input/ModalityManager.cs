@@ -151,6 +151,7 @@ public sealed class ModalityManager: IDisposable
         try
         {
             _pointer.ModalScopeChanged(scope);
+            ObjectDisposedException.ThrowIf(_isDisposed, this);
 
             var target = initialFocus ?? FindInitialFocus(root);
             CommitFocus(
@@ -160,6 +161,7 @@ public sealed class ModalityManager: IDisposable
                 scope,
                 previousFocus);
 
+            ObjectDisposedException.ThrowIf(_isDisposed, this);
             return scope;
         }
         catch (Exception exception)
