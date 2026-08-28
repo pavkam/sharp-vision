@@ -222,6 +222,61 @@ public sealed class TerminalCanvasTests
     }
 
     /// <summary>
+    /// Verifies a wide edge cluster wraps relative to the canvas's own clip, not the frame,
+    /// when the clip is narrower than the frame.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenClipIsNarrowerThanFrameAndPolicyIsWrap_WrapsInsideClip()
+    {
+        using Frame frame = new(new Size(6, 2));
+        var canvas = frame.Canvas.Clip(new Rect(0, 0, 2, 2));
+
+        var result = canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Wrap);
+
+        result.Clipped.ShouldBe(0);
+        result.Final.ShouldBe(new Point(2, 1));
+        FrameTests.GetText(frame, new Point(0, 1)).ShouldBe("界");
+        frame.GetCell(new Point(1, 1)).Continuation.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies a wide edge cluster is replaced inside the canvas's own clip, not silently
+    /// dropped, when the clip is narrower than the frame.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenClipIsNarrowerThanFrameAndPolicyIsReplace_ReplacesInsideClip()
+    {
+        using Frame frame = new(new Size(6, 1));
+        var canvas = frame.Canvas.Clip(new Rect(0, 0, 2, 1));
+
+        var result = canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Replace);
+
+        result.Replaced.ShouldBe(1);
+        result.Clipped.ShouldBe(0);
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("�");
+        frame.GetCell(new Point(1, 0)).Width.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies <see cref="Edge.Wrap"/> targets the canvas's own clip left edge, not frame-absolute
+    /// column zero, when the clip's right edge coincides with the frame's right edge but starts at
+    /// a nonzero column.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenClipHasNonzeroXAndPolicyIsWrap_WrapsToClipLeftEdge()
+    {
+        using Frame frame = new(new Size(6, 2));
+        var canvas = frame.Canvas.Clip(new Rect(2, 0, 4, 2));
+
+        var result = canvas.Draw("界".AsSpan(), new Point(5, 0), edge: Edge.Wrap);
+
+        result.Clipped.ShouldBe(0);
+        result.Final.ShouldBe(new Point(4, 1));
+        FrameTests.GetText(frame, new Point(2, 1)).ShouldBe("界");
+        frame.GetCell(new Point(3, 1)).Continuation.ShouldBeTrue();
+    }
+
+    /// <summary>
     /// Verifies combining and ZWJ text is stored once as complete UTF-8.
     /// </summary>
     [Fact]

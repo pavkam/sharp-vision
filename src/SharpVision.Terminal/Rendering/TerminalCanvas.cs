@@ -1035,7 +1035,7 @@ public readonly struct TerminalCanvas
                 replaced = checked(replaced + 1);
             }
 
-            if (cellWidth == 2 && x + cellWidth > _frame.Size.Width)
+            if (cellWidth == 2 && x + cellWidth > _clip.Right)
             {
                 switch (edge)
                 {
@@ -1046,7 +1046,7 @@ public readonly struct TerminalCanvas
                         continue;
 
                     case Edge.Wrap:
-                        x = 0;
+                        x = _clip.X;
                         y = checked(y + 1);
                         break;
 
