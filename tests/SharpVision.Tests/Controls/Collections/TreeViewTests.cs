@@ -142,6 +142,32 @@ public sealed partial class TreeViewTests
         _ = Should.Throw<ArgumentException>(() => tree.SelectedItem = foreign);
     }
 
+    /// <summary>Verifies assigning either current SelectedItem value from outside an attached
+    /// tree's dispatcher rejects the mutation before the equality no-op.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SelectedItem_WhenAttachedAndAssignedCurrentValueOffDispatcher_ThrowsAsync(bool selected)
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var item = new TreeViewItem("Item");
+        var tree = new TreeView { Items = { item } };
+
+        if (selected)
+        {
+            tree.SelectedItem = item;
+        }
+
+        await dispatcher.InvokeAsync(
+            () => tree.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+        var current = tree.SelectedItem;
+
+        // Act and assert
+        _ = Should.Throw<InvalidOperationException>(() => tree.SelectedItem = current);
+    }
+
     /// <summary>Verifies a tree view starts as a framed surface with a visible border and semantic background.</summary>
     [Fact]
     public void Constructor_WhenCreated_UsesFramedBackgroundDefaults()
@@ -967,6 +993,38 @@ public sealed partial class TreeViewTests
         var item = new TreeViewItem { Header = "Leaf" };
 
         _ = Should.Throw<InvalidOperationException>(() => item.IsChecked = true);
+    }
+
+    /// <summary>Verifies a disposed checkable item rejects check-state mutation before changing
+    /// its effective state.</summary>
+    [Fact]
+    public void IsChecked_WhenItemIsDisposed_ThrowsBeforeMutation()
+    {
+        // Arrange
+        var item = new TreeViewItem { Header = "Leaf", IsCheckable = true };
+        item.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(() => item.IsChecked = true);
+        item.IsChecked.ShouldBe(false);
+    }
+
+    /// <summary>Verifies a check-state mutation from outside the owning dispatcher is rejected
+    /// before the attached item or its hierarchy can change.</summary>
+    [Fact]
+    public async Task IsChecked_WhenAttachedAndSetOffDispatcher_ThrowsBeforeMutationAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var item = new TreeViewItem { Header = "Leaf", IsCheckable = true };
+        var tree = new TreeView { Items = { item } };
+        await dispatcher.InvokeAsync(
+            () => tree.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+
+        // Act and assert
+        _ = Should.Throw<InvalidOperationException>(() => item.IsChecked = true);
+        item.IsChecked.ShouldBe(false);
     }
 
     /// <summary>Verifies expanding every node in the tree.</summary>

@@ -96,6 +96,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
         set
         {
             ArgumentNullException.ThrowIfNull(value);
+            VerifyMutable();
 
             if (field == value)
             {
@@ -105,7 +106,6 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
             var root = Parse(value);
             var visibleNodes = CollectVisibleNodes(root);
 
-            VerifyMutable();
             var previousPath = SelectedPath;
             field = value;
             _root = root;

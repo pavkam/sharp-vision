@@ -10,6 +10,20 @@ using ReflectionBindingFlags = System.Reflection.BindingFlags;
 /// <summary>Verifies JsonView parsing, validation, selection, and disclosure behavior.</summary>
 public sealed class JsonViewTests
 {
+    /// <summary>Verifies assigning the current JSON text still enforces the disposed-owner
+    /// mutation contract instead of returning early as an unvalidated no-op.</summary>
+    [Fact]
+    public void Json_WhenDisposedAndAssignedCurrentValue_Throws()
+    {
+        // Arrange
+        var view = new JsonView { Json = /*lang=json,strict*/ "{\"value\":1}" };
+        var current = view.Json;
+        view.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(() => view.Json = current);
+    }
+
     /// <summary>Verifies malformed replacement text cannot partially replace the current document or selection.</summary>
     [Fact]
     public void Json_WhenMalformed_PreservesPreviousState()

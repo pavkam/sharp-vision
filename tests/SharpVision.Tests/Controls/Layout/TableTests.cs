@@ -336,6 +336,7 @@ public sealed class TableTests
 
         table.Dispose();
 
+        _ = Should.Throw<ObjectDisposedException>(() => table.SelectionMode = TableSelectionMode.Row);
         _ = Should.Throw<ObjectDisposedException>(() => table.SelectionMode = TableSelectionMode.MultipleRows);
         _ = Should.Throw<ObjectDisposedException>(() => table.ShowHeader = false);
         _ = Should.Throw<ObjectDisposedException>(() => table.Style = TableStyle.Default);
@@ -361,6 +362,7 @@ public sealed class TableTests
             () => table.Attach(dispatcher),
             TestContext.Current.CancellationToken);
 
+        _ = Should.Throw<InvalidOperationException>(() => table.SelectionMode = TableSelectionMode.Row);
         _ = Should.Throw<InvalidOperationException>(() => table.SelectionMode = TableSelectionMode.MultipleRows);
         _ = Should.Throw<InvalidOperationException>(() => table.ShowHeader = false);
         _ = Should.Throw<InvalidOperationException>(() => table.Style = TableStyle.Default);

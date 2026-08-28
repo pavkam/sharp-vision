@@ -74,6 +74,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         set
         {
             ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The enum value is unknown.");
+            VerifyMutable();
 
             if (field == value)
             {

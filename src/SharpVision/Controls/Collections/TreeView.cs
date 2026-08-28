@@ -253,11 +253,20 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     /// rather than a raw field write.
     /// </remarks>
     /// <exception cref="ArgumentException">The assigned item is not owned by this tree view.</exception>
+    /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
     public TreeViewItem? SelectedItem
     {
         get => _selectedItem;
         set
         {
+            if (value is not null && !ReferenceEquals(value.FindTreeView(), this))
+            {
+                throw new ArgumentException("The item is not owned by this tree view.", nameof(value));
+            }
+
+            VerifyMutable();
+
             if (ReferenceEquals(_selectedItem, value))
             {
                 return;

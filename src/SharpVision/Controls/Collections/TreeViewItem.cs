@@ -223,12 +223,15 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
     }
 
     /// <summary>Gets or sets the checked, unchecked, or indeterminate state.</summary>
-    /// <exception cref="InvalidOperationException">The item is not checkable.</exception>
+    /// <exception cref="InvalidOperationException">The item is not checkable, or the attached item is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
     public bool? IsChecked
     {
         get => GetEffectiveCheckState();
         set
         {
+            VerifyMutable();
+
             if (!IsCheckable)
             {
                 throw new InvalidOperationException("Only checkable tree items have a check state.");
