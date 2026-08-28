@@ -187,7 +187,7 @@ internal sealed class ListViewPane: CompositeControlBase
             new DocSection(
                 "🔄",
                 "Snapshot replacement",
-                "Replacing Items copies a new snapshot and normalizes selection after layout completes.",
+                "Replacing Items copies a new snapshot, normalizes selection, and publishes the same index delta in eager and windowed modes.",
                 new DocExample(
                     "Replace the data set",
                     "Activate the button to swap eight rows for three without reusing owned template controls.",
@@ -195,7 +195,7 @@ internal sealed class ListViewPane: CompositeControlBase
             new DocSection(
                 "🚫",
                 "Unavailable and empty",
-                "Unavailable rows remain visible while focus, selection, and invocation are suppressed; an empty snapshot has no phantom row.",
+                "Unavailable rows remain visible while focus, selection, and invocation are suppressed; dynamic disable or hide transitions repair committed selection.",
                 new DocExample(
                     "Disabled item and empty list",
                     "Beta is disabled inside an otherwise enabled list. The second specimen renders an empty Items snapshot.",

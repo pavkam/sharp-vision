@@ -239,11 +239,13 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
     {
         base.OnContentChanged(previous, current);
 
-        previous?.VisibilityChanged -= OnContentVisibilityChanged;
-        current?.VisibilityChanged += OnContentVisibilityChanged;
+        previous?.VisibilityChanged -= OnContentAvailabilityChanged;
+        previous?.EnabledChanged -= OnContentAvailabilityChanged;
+        current?.VisibilityChanged += OnContentAvailabilityChanged;
+        current?.EnabledChanged += OnContentAvailabilityChanged;
     }
 
-    private void OnContentVisibilityChanged(object? sender, EventArgs eventArgs)
+    private void OnContentAvailabilityChanged(object? sender, EventArgs eventArgs)
     {
         _ = sender;
         _ = eventArgs;
