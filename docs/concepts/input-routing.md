@@ -121,6 +121,26 @@ dispatcher-affine. Setting `IsHandled` skips later ordinary handlers and the
 remaining default behaviors; passing `handledEventsToo: true` opts a handler
 into observing handled routes.
 
+### Popup navigation delegation
+
+During a live
+[popup navigation session](floating-surfaces.md#popup-navigation-sessions), the
+popup owner delegates recognized navigation strokes from its preview route to
+the popup target's canonical key behavior. The same interception point is on the
+captured route whether focus remains on the owner or retained editor, or is
+moved into the popup content. Focus therefore does not select a different
+navigation implementation.
+
+The preview registration observes handled events so an earlier descendant or
+ancestor verdict cannot silently select a second path. It delegates each initial
+or repeated stroke at most once. When the target recognizes the stroke, the
+owner marks it handled; the route still completes, but the focused popup
+content's ordinary default is suppressed and cannot apply the same movement a
+second time. An unrecognized stroke keeps its existing handled state and remains
+available to normal routing. Closing, superseding, detaching, or disposing the
+session removes its authority immediately, so a stale route continuation cannot
+navigate or activate a later opening.
+
 `Router.Route` snapshots both the ancestry and the registration-order cutoff
 before preview begins. Reparenting a control or adding new handlers therefore
 affects the next route, never the bubble already in flight. IsDisposed

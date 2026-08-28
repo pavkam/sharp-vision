@@ -125,6 +125,39 @@ after a callback failure and rethrows the earliest failure once state is
 coherent. Detachment and disposal release modal, focus, and capture state even
 when no normal close path was requested.
 
+## Popup navigation sessions
+
+A popup-backed input can treat one opening as a provisional navigation session.
+The opening snapshots the owner's accepted value and the popup target's current
+state, then seeds the target from that snapshot. Initial and repeated navigation
+strokes change only the provisional state until an explicit activation accepts
+it. The target control owns the meaning of each navigation and activation key;
+the floating-surface lifetime owns when that provisional state begins, commits,
+rolls back, and becomes unavailable.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Closed
+    Closed --> Provisional: Open and snapshot accepted state
+    Provisional --> Provisional: Navigate initial or repeated key
+    Provisional --> Closed: Accept, commit, then close
+    Provisional --> Closed: Cancel, restore snapshot, then close
+```
+
+Acceptance is explicit. A supported Enter or Space activation, or semantic
+primary-pointer activation of a popup item, commits the provisional target
+before the surface closes. Merely moving a current item or active date is never
+acceptance. Each control page identifies its own accepted keys and the value it
+commits.
+
+Every other close cancels the session. Escape, traversal dismissal, light
+dismissal, direct popup closure, an owner API that closes the popup,
+unavailability, detachment, and disposal restore the opening target state and
+leave the owner's accepted value unchanged. Restoration runs once even when a
+close path reenters another lifecycle callback. If a callback closes and reopens
+the popup, the reopening creates a distinct session; completion or rollback from
+the older session cannot close or overwrite the newer one.
+
 ## Ownership, elevation, and modality
 
 Elevation changes the render and hit-test order without reparenting the surface
@@ -169,5 +202,5 @@ rules hold, including detached-staged Popup opening. Lifecycle order and
 rollback, detach and disposal cleanup, the single live modal scope, focus
 restoration, capture release, elevated render and hit-test order, logical
 ancestry, direct dialog host identity, Popup placement, Flyout light dismiss,
-Tooltip delay and passivity, and the final semantic cells all behave as
-described above.
+Tooltip delay and passivity, provisional popup navigation acceptance and
+rollback, and the final semantic cells all behave as described above.

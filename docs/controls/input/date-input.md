@@ -78,6 +78,33 @@ layout shrinks first, then the end affix drops whole, then the start affix -
 never a partial cluster - re-evaluated against the control's actual bounds on
 every render.
 
+## Popup navigation session
+
+Opening snapshots the committed `Value`, `Calendar.ActiveDate`, and Calendar
+selection, then seeds the Calendar from the accepted value. Calendar browsing is
+provisional: it changes `ActiveDate` without changing `Value` until an explicit
+activation accepts the session.
+
+| Input                                     | Open-session behavior                                                             |
+| ----------------------------------------- | --------------------------------------------------------------------------------- |
+| Left or Right, initial or repeat          | Moves `ActiveDate` backward or forward by one day.                                |
+| Up or Down, initial or repeat             | Moves `ActiveDate` backward or forward by one week.                               |
+| Home or End, initial or repeat            | Moves `ActiveDate` to the first or last day of its week.                          |
+| Page Up or Page Down, initial or repeat   | Moves `ActiveDate` backward or forward by one month.                              |
+| Enter or Space, initial activation press  | Accepts `ActiveDate` into `Value` and closes the popup.                           |
+| Primary pointer activation on a date      | Accepts that date, including the already-active date, and closes the popup.       |
+| Escape, initial activation-eligible press | Cancels and closes the popup.                                                     |
+| Plain Tab or Shift+Tab                    | Cancels the popup and continues application traversal.                            |
+| Repeated Alt+Down                         | Is consumed by the already-open session without reopening or moving the Calendar. |
+
+The navigation and acceptance keys use the
+[shared focus-independent delegation rule](../../concepts/input-routing.md#popup-navigation-delegation),
+so owner focus and Calendar focus produce one movement or acceptance. Escape,
+plain Tab, `IsOpen = false`, direct popup closure, light dismissal, and owner
+unavailability restore the opening Calendar state without changing `Value`.
+Rollback runs exactly once, and a close callback that reopens the popup creates
+a replacement session that the older acceptance or rollback cannot disturb.
+
 ## Example
 
 ![The DateInput control rendered in the live showcase](../../images/controls/date-input.png)
@@ -97,5 +124,8 @@ var dateInput = new DateInput();
 - Direct digit entry follows the shared
   [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy),
   leaving command-modified characters unhandled without changing a segment.
+- Initial and repeated Calendar navigation is delivered once from either focus
+  route, remains provisional until Enter, Space, or pointer acceptance, and
+  restores the opening active date on cancellation.
 - Reading `Value` after disposal always throws, including every read after a
   failed attempt to seed the lazy default.

@@ -184,6 +184,20 @@ Action timeouts report the action and the latest screen. Snapshot mismatches
 retain row boundaries and cell differences. Tests isolate held-pointer scenarios
 or release capture before reuse, so state cannot leak between surfaces.
 
+Popup-backed input conformance mounts the owner and its private target under one
+real `Application`, opens one
+[provisional navigation session](../concepts/floating-surfaces.md#popup-navigation-sessions),
+and repeats the same stroke with focus on both sides of the ownership boundary.
+For each owner/editor-focused and popup-content-focused route, initial and
+repeat navigation must move the target exactly once and leave accepted owner
+state unchanged. The mounted fixture then proves accepted Enter, Space where the
+target supports it, and primary-pointer activation commit before close, while
+Escape, owner-driven or direct close, light dismissal, and unavailability
+restore the opening target state. A close callback that reopens the popup must
+leave the replacement session active and immune to stale acceptance or rollback.
+These cross-focus checks supplement, rather than replace, the target control's
+own detached navigation tests.
+
 `ComponentCompositionSurfaceTests` places heterogeneous controls on one root and
 drives forward and reverse Tab, local arrow behavior, hover transfer, and press
 activation. A deep Overlay-to-Window-to-GroupBox-to-Expander-to-CheckBox tree
