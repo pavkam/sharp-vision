@@ -80,6 +80,63 @@ public sealed class DocumentBlockControlTests
         document.ActiveLink.ShouldBeSameAs(last);
     }
 
+    /// <summary>Verifies document-owned Tab traversal reveals an embedded control below the
+    /// viewport through the same keyboard-focus contract as ordinary control trees.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Keyboard_WhenTabReachesEmbeddedControlBelowViewport_ScrollsToRevealItAsync(
+        bool inline)
+    {
+        var first = new CheckBox("first");
+        var last = new CheckBox("last");
+        var document = new Document();
+
+        if (inline)
+        {
+            document.Blocks.Add(new DocumentParagraph
+            {
+                Inlines = { new DocumentInlineControl(first) }
+            });
+        }
+        else
+        {
+            document.Blocks.Add(new DocumentBlockControl(first));
+        }
+
+        document.Blocks.Add(new DocumentParagraph("one"));
+        document.Blocks.Add(new DocumentParagraph("two"));
+        document.Blocks.Add(new DocumentParagraph("three"));
+        document.Blocks.Add(new DocumentParagraph("four"));
+
+        if (inline)
+        {
+            document.Blocks.Add(new DocumentParagraph
+            {
+                Inlines = { new DocumentInlineControl(last) }
+            });
+        }
+        else
+        {
+            document.Blocks.Add(new DocumentBlockControl(last));
+        }
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(20, 5),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => document.Focus().ShouldBeTrue(), "focus document");
+
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(first);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        surface.ShouldHaveFocus(last);
+        document.VerticalOffset.ShouldBeGreaterThan(0);
+        last.Bounds.Y.ShouldBeGreaterThanOrEqualTo(0);
+        last.Bounds.Bottom.ShouldBeLessThanOrEqualTo(5);
+        surface.Cell(new Point(last.Bounds.X, last.Bounds.Y)).Text.ShouldBe("[");
+    }
+
     /// <summary>Verifies a one-line control is one atomic token in the surrounding inline flow.</summary>
     [Fact]
     public void Layout_WhenInlineControlIsBetweenText_MountsAndPositionsTheControlInTheFlow()

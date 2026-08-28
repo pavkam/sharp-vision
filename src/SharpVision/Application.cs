@@ -40,6 +40,7 @@ public sealed class Application:
     IAsyncDisposable
 {
     private const int _inputCapacity = 4096;
+    private const int _keyboardRevealLayoutPassLimit = 3;
     private readonly Lock _gate = new();
     private readonly Queue<Record> _input = new();
     private readonly ITransport _transport;
@@ -2296,9 +2297,35 @@ public sealed class Application:
             return;
         }
 
-        if ((Root.Pending & (Invalidation.Measure | Invalidation.Arrange)) != 0)
+        var keyboardRevealPass = 0;
+
+        while (true)
         {
-            PerformLayout();
+            if ((Root.Pending & (Invalidation.Measure | Invalidation.Arrange)) != 0)
+            {
+                PerformLayout();
+            }
+
+            if (FocusValue?.ProcessPendingKeyboardReveal() != true)
+            {
+                break;
+            }
+
+            keyboardRevealPass++;
+
+            if (keyboardRevealPass < _keyboardRevealLayoutPassLimit)
+            {
+                continue;
+            }
+
+            FocusValue.CancelPendingKeyboardReveal();
+
+            if ((Root.Pending & (Invalidation.Measure | Invalidation.Arrange)) != 0)
+            {
+                PerformLayout();
+            }
+
+            break;
         }
 
         if ((Root.Pending & Invalidation.Render) != 0)

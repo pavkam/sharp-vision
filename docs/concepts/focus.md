@@ -36,6 +36,16 @@ continuing their pointer, keyboard, access-key, selection, or edit action.
 hook: both callbacks run, and the first failure is rethrown after focus-state
 cleanup has completed.
 
+Tab, Shift+Tab, and access-key focus register a latest-wins reveal intent rather
+than reading arranged bounds inside the focus transaction. The application
+consumes that intent only after `IsFocused`, `FocusEntered`, `GotFocus`, and
+`FocusManager.Gained` callbacks have completed and pending measure/arrange work
+has settled. A reveal that changes nested scroll offsets receives a bounded
+follow-up arrange before rendering. A newer focus commit replaces the intent;
+focus loss, detach or reattach, disposal, ineligibility, or modal-plane
+replacement cancels it. Pointer and ordinary programmatic focus never register
+automatic reveal work.
+
 ```mermaid
 sequenceDiagram
     participant Caller
@@ -60,6 +70,7 @@ sequenceDiagram
         FocusManager->>New: FocusEntered (self)
         FocusManager->>New: GotFocus
         FocusManager->>FocusManager: Gained?.Invoke(changed)
+        FocusManager->>FocusManager: retain latest keyboard reveal intent
         FocusManager-->>Caller: true while the target stays valid after callbacks
     end
 ```

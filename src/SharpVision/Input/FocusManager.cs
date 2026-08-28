@@ -68,6 +68,14 @@ public sealed class FocusManager: IDisposable
 
     private long ChangingPublicationVersion { get; set; }
 
+    private ControlBase? PendingKeyboardReveal { get; set; }
+
+    private Dispatcher? PendingKeyboardRevealDispatcher { get; set; }
+
+    private long PendingKeyboardRevealAttachmentVersion { get; set; }
+
+    private ModalScope? PendingKeyboardRevealScope { get; set; }
+
     private List<ControlBase>? EligibilityNotificationsPending { get; set; }
 
     private Queue<(
@@ -466,6 +474,7 @@ public sealed class FocusManager: IDisposable
         ExceptionDispatchInfo? failure = null;
         var previous = Focused;
         Focused = null;
+        ClearPendingKeyboardReveal();
 
         if (previous is { IsDisposed: false, Dispatcher: not null })
         {
@@ -579,6 +588,7 @@ public sealed class FocusManager: IDisposable
                     var currentPath = GetPath(control);
                     var commonLength = GetCommonLength(previousPath, currentPath);
                     Focused = control;
+                    RegisterKeyboardReveal(control, reason);
                     previous?.SetFocused(false);
 
                     if (!IsDisposed)
@@ -620,15 +630,6 @@ public sealed class FocusManager: IDisposable
                         }
 
                         committed = IsCommittedTargetValid(control);
-
-                        // Only Tab/Shift+Tab traversal and access-key-driven focus move a target
-                        // the caller never directly interacted with, so only those two reveal it.
-                        // A pointer press already proved the target was visible, and a
-                        // programmatic ControlBase.Focus() call leaves that choice to the caller.
-                        if (IsCommittedTargetValid(control) && reason == FocusReason.Keyboard)
-                        {
-                            control.RevealForKeyboardFocus();
-                        }
 
                         if (IsCommittedTargetValid(control))
                         {
@@ -731,6 +732,88 @@ public sealed class FocusManager: IDisposable
               IsMember(control) &&
               IsAllowed(control) &&
               IsEligible(control));
+
+    /// <summary>Consumes the current keyboard-focus reveal only after layout has settled.</summary>
+    /// <returns>True when current layout work or a committed scroll requires another arrange pass.</returns>
+    internal bool ProcessPendingKeyboardReveal()
+    {
+        VerifyAccess();
+
+        if (PendingKeyboardReveal is not { } target)
+        {
+            return false;
+        }
+
+        if (!IsPendingKeyboardRevealCurrent(target))
+        {
+            ClearPendingKeyboardReveal();
+            return false;
+        }
+
+        if ((Root.Pending & (Invalidation.Measure | Invalidation.Arrange)) != 0)
+        {
+            return true;
+        }
+
+        target.RevealForKeyboardFocus();
+
+        if (!IsPendingKeyboardRevealCurrent(target))
+        {
+            ClearPendingKeyboardReveal();
+            return false;
+        }
+
+        if ((Root.Pending & (Invalidation.Measure | Invalidation.Arrange)) != 0)
+        {
+            return true;
+        }
+
+        ClearPendingKeyboardReveal();
+        return false;
+    }
+
+    /// <summary>Cancels reveal work that did not converge within the application's bounded layout
+    /// retry window.</summary>
+    internal void CancelPendingKeyboardReveal()
+    {
+        VerifyAccess();
+        ClearPendingKeyboardReveal();
+    }
+
+    private void RegisterKeyboardReveal(ControlBase? target, FocusReason reason)
+    {
+        ClearPendingKeyboardReveal();
+
+        if (reason != FocusReason.Keyboard || target is null)
+        {
+            return;
+        }
+
+        PendingKeyboardReveal = target;
+        PendingKeyboardRevealDispatcher = target.Dispatcher;
+        PendingKeyboardRevealAttachmentVersion = target.FocusAttachmentVersion;
+        PendingKeyboardRevealScope = Root.ModalityOwner?.Active;
+    }
+
+    private bool IsPendingKeyboardRevealCurrent(ControlBase target) =>
+        !IsDisposed &&
+        !target.IsDisposed &&
+        ReferenceEquals(Focused, target) &&
+        ReferenceEquals(target.FocusOwner, this) &&
+        ReferenceEquals(target.Dispatcher, PendingKeyboardRevealDispatcher) &&
+        target.FocusAttachmentVersion == PendingKeyboardRevealAttachmentVersion &&
+        ReferenceEquals(Root.ModalityOwner?.Active, PendingKeyboardRevealScope) &&
+        IsMember(target) &&
+        IsAllowed(target) &&
+        IsEligible(target);
+
+    private void ClearPendingKeyboardReveal()
+    {
+        PendingKeyboardReveal = null;
+        PendingKeyboardRevealDispatcher = null;
+        PendingKeyboardRevealAttachmentVersion = 0;
+        PendingKeyboardRevealScope = null;
+    }
 
     private void PumpPendingRequests()
     {

@@ -804,6 +804,11 @@ public sealed class ContainerTests
         // target is 40 cells tall, far larger than the 10-cell viewport, so no offset can ever
         // fully contain it.
         container.BringIntoView(target).ShouldBeFalse();
+        var revealedOffset = container.VerticalOffset;
+        new LayoutEngine().Layout(container, new Size(4, 10));
+
+        container.BringIntoView(target).ShouldBeFalse();
+        container.VerticalOffset.ShouldBe(revealedOffset);
     }
 
     /// <summary>Verifies BringIntoView rejects a control that is not a descendant of this container.</summary>

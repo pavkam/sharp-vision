@@ -1194,7 +1194,8 @@ public sealed class Document:
 
                 ActiveLink = link;
             }
-            else if (candidates[index].Item is ControlBase control && !control.Focus())
+            else if (candidates[index].Item is ControlBase control &&
+                     FocusOwner?.Focus(control, FocusReason.Keyboard, cancellable: true) != true)
             {
                 continue;
             }

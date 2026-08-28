@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Input;
 
+using DisplayText = ControlText;
+
 /// <summary>Verifies transactional focus, navigation, and invalid-state cleanup.</summary>
 public sealed class FocusManagerTests
 {
@@ -1139,11 +1141,230 @@ public sealed class FocusManagerTests
 
     #region Keyboard focus reveals its target
 
+    /// <summary>Verifies keyboard reveal waits for focus callbacks to finish reflowing the tree,
+    /// then uses the newly arranged target bounds and commits the corresponding frame.</summary>
+    [Fact]
+    public async Task MoveNext_WhenGotFocusReflowsEarlierSibling_RevealsSettledTargetAsync()
+    {
+        var before = new DisplayText("before") { IsFocusable = true };
+        var target = new DisplayText("TARGET") { IsFocusable = true };
+        var root = new Stack
+        {
+            AutoScroll = true,
+            ShowScrollBars = ShowScrollBars.Never,
+            Children = { before, target }
+        };
+        target.GotFocus += (_, _) => before.Height = Length.Cells(6);
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(10, 3),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => before.Focus().ShouldBeTrue(), "focus first item");
+
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        surface.ShouldHaveFocus(target);
+        root.VerticalOffset.ShouldBeGreaterThan(0);
+        target.Bounds.Y.ShouldBeGreaterThanOrEqualTo(0);
+        target.Bounds.Bottom.ShouldBeLessThanOrEqualTo(3);
+        surface.ShouldRender("\n\nTARGET");
+    }
+
+    /// <summary>Verifies every focus publication that can legally reflow layout runs before the
+    /// pending keyboard reveal consumes target geometry.</summary>
+    [Theory]
+    [InlineData("FocusEntered")]
+    [InlineData("PropertyChanged")]
+    [InlineData("Gained")]
+    public async Task MoveNext_WhenFocusPublicationReflowsEarlierSibling_RevealsSettledTargetAsync(
+        string publication)
+    {
+        var before = new DisplayText("before") { IsFocusable = true };
+        var target = new DisplayText("TARGET") { IsFocusable = true };
+        var root = new Stack
+        {
+            AutoScroll = true,
+            ShowScrollBars = ShowScrollBars.Never,
+            Children = { before, target }
+        };
+
+        if (publication == "FocusEntered")
+        {
+            target.FocusEntered += (_, _) => before.Height = Length.Cells(6);
+        }
+        else if (publication == "PropertyChanged")
+        {
+            target.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(ControlBase.IsFocused) && target.IsFocused)
+                {
+                    before.Height = Length.Cells(6);
+                }
+            };
+        }
+
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(10, 3),
+            TestContext.Current.CancellationToken);
+
+        if (publication == "Gained")
+        {
+            surface.Application.Focus.Gained += (_, eventArgs) =>
+            {
+                if (ReferenceEquals(eventArgs.Current, target))
+                {
+                    before.Height = Length.Cells(6);
+                }
+            };
+        }
+
+        await surface.UpdateAsync(() => before.Focus().ShouldBeTrue(), "focus first item");
+
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        surface.ShouldHaveFocus(target);
+        root.VerticalOffset.ShouldBeGreaterThan(0);
+        target.Bounds.Bottom.ShouldBeLessThanOrEqualTo(3);
+        surface.ShouldRender("\n\nTARGET");
+    }
+
+    /// <summary>Verifies a newer keyboard focus request replaces an older target's pending reveal
+    /// before arranged geometry is consumed.</summary>
+    [Fact]
+    public async Task Focus_WhenKeyboardTargetIsSupersededBeforeLayout_RevealsNewestTargetAsync()
+    {
+        var before = new DisplayText("before") { IsFocusable = true };
+        var superseded = new DisplayText("old") { IsFocusable = true };
+        var newest = new DisplayText("NEW") { IsFocusable = true };
+        var root = new Stack
+        {
+            AutoScroll = true,
+            ShowScrollBars = ShowScrollBars.Never,
+            Children = { before, superseded, newest }
+        };
+        superseded.GotFocus += (_, _) =>
+        {
+            before.Height = Length.Cells(6);
+            _ = superseded.FocusOwner!.Focus(newest, FocusReason.Keyboard, cancellable: true);
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(10, 3),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => before.Focus().ShouldBeTrue(), "focus first item");
+
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        surface.ShouldHaveFocus(newest);
+        newest.Bounds.Bottom.ShouldBeLessThanOrEqualTo(3);
+        surface.ShouldRender("\nold\nNEW");
+    }
+
+    /// <summary>Verifies a handled focus-callback failure cannot discard layout invalidation or
+    /// the already-committed keyboard reveal intent.</summary>
+    [Fact]
+    public async Task MoveNext_WhenGotFocusReflowsThenThrows_RevealsCommittedTargetAsync()
+    {
+        var before = new DisplayText("before") { IsFocusable = true };
+        var target = new DisplayText("TARGET") { IsFocusable = true };
+        var root = new Stack
+        {
+            AutoScroll = true,
+            ShowScrollBars = ShowScrollBars.Never,
+            Children = { before, target }
+        };
+        target.GotFocus += (_, _) =>
+        {
+            before.Height = Length.Cells(6);
+            throw new InvalidOperationException("focus observer failed");
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(10, 3),
+            TestContext.Current.CancellationToken);
+        surface.Application.UnhandledException += (_, eventArgs) => eventArgs.IsHandled = true;
+        await surface.UpdateAsync(() => before.Focus().ShouldBeTrue(), "focus first item");
+
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        surface.ShouldHaveFocus(target);
+        root.VerticalOffset.ShouldBeGreaterThan(0);
+        target.Bounds.Bottom.ShouldBeLessThanOrEqualTo(3);
+        surface.ShouldRender("\n\nTARGET");
+    }
+
+    /// <summary>Verifies detaching and reattaching a pending target to the same dispatcher changes
+    /// its attachment identity and prevents stale reveal work from scrolling.</summary>
+    [Fact]
+    public async Task ProcessPendingKeyboardReveal_WhenTargetReattachesToSameDispatcher_CancelsIntentAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var before = new DisplayText("before") { IsFocusable = true };
+            var filler = new DisplayText("filler") { Height = Length.Cells(6) };
+            var target = new DisplayText("target") { IsFocusable = true };
+            var root = new Stack
+            {
+                AutoScroll = true,
+                ShowScrollBars = ShowScrollBars.Never,
+                Children = { before, filler, target }
+            };
+            root.Attach(dispatcher);
+            new LayoutEngine().Layout(root, new Size(10, 3));
+            using var manager = new FocusManager(root);
+            manager.Focus(before).ShouldBeTrue();
+            manager.MoveNext().ShouldBeTrue();
+
+            _ = root.Children.Remove(target);
+            root.Children.Add(target);
+
+            manager.ProcessPendingKeyboardReveal().ShouldBeFalse();
+            root.VerticalOffset.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an oversized keyboard target converges after one scroll correction and
+    /// renders once even though full containment is impossible.</summary>
+    [Fact]
+    public async Task MoveNext_WhenTargetIsTallerThanViewport_RevealsVisibleEdgeWithoutLoopAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var before = new DisplayText("before") { IsFocusable = true };
+            var filler = new DisplayText("filler") { Height = Length.Cells(4) };
+            var target = new Button("TARGET") { Height = Length.Cells(6) };
+            var root = new Stack
+            {
+                AutoScroll = true,
+                ShowScrollBars = ShowScrollBars.Never,
+                Children = { before, filler, target }
+            };
+            root.Attach(dispatcher);
+            new LayoutEngine().Layout(root, new Size(10, 3));
+            using var manager = new FocusManager(root);
+            manager.Focus(before).ShouldBeTrue();
+
+            manager.MoveNext().ShouldBeTrue();
+            manager.ProcessPendingKeyboardReveal().ShouldBeTrue();
+            new LayoutEngine().Layout(root, new Size(10, 3));
+
+            manager.ProcessPendingKeyboardReveal().ShouldBeFalse();
+            manager.Focused.ShouldBeSameAs(target);
+            root.VerticalOffset.ShouldBeGreaterThan(0);
+            target.Bounds.Bottom.ShouldBeGreaterThan(3);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies Tab traversal onto a target below an armed ancestor's viewport scrolls
     /// that ancestor so the newly focused control becomes visible, matching every other keyboard
     /// UI convention where the user never has to already see a target to Tab onto it.</summary>
     [Fact]
-    public async Task MoveNext_WhenTargetIsBelowArmedAncestorViewport_ScrollsToRevealItAsync()
+    public async Task MoveNext_WhenTargetIsBelowArmedAncestorViewport_RevealsAfterSettledLayoutAsync()
     {
         await using var dispatcher = Dispatcher.Start();
 
@@ -1165,6 +1386,10 @@ public sealed class FocusManagerTests
             manager.MoveNext().ShouldBeTrue();
 
             manager.Focused.ShouldBeSameAs(target);
+            root.VerticalOffset.ShouldBe(0);
+            manager.ProcessPendingKeyboardReveal().ShouldBeTrue();
+            new LayoutEngine().Layout(root, new Size(4, 10));
+            manager.ProcessPendingKeyboardReveal().ShouldBeFalse();
             root.VerticalOffset.ShouldBeGreaterThan(0);
         }, TestContext.Current.CancellationToken);
     }

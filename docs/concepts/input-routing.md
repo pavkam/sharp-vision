@@ -155,6 +155,12 @@ key before this fallback runs. Exceptions propagate after route state and pooled
 storage are cleaned up. Under modality, the fallback traverses and wraps only
 within the [active plane](modality.md#keyboard-text-and-paste).
 
+Successful Tab and access-key focus does not synchronously scroll against bounds
+captured during routing. It records a current target/attachment/modal-plane
+intent; after focus callbacks and their layout invalidation settle, the
+application reveals that target through enclosing armed containers and performs
+any required follow-up arrange before the resulting frame.
+
 An unhandled pressed Alt character then enters the application
 [access-key fallback](access-keys.md#dispatch-precedence). Access-key discovery
 never preempts preview, bubble, or a control default. When that fallback accepts

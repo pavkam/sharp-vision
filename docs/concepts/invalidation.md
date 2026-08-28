@@ -196,6 +196,12 @@ work.
 | Deterministic ordering   | Layout commits before semantic rendering, and frame state commits only after terminal flush.                           |
 | Failure recovery         | A failed phase remains pending; uncertain terminal state forces a complete redraw.                                     |
 
+Keyboard-focus reveal is layout-dependent follow-up work. The application first
+settles callback-requested measure/arrange, applies the current reveal intent,
+and arranges committed scroll offsets again before rendering. Retries are
+bounded; superseded or attachment-invalid intents are discarded rather than
+keeping the frame pump alive.
+
 Control, layout, application, and renderer verification covers exact phase
 selection, ancestor propagation, request coalescing, reentry rejection, failure
 retry, resize, in-flight writes, and full-redraw recovery, including

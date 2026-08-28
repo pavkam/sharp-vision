@@ -633,6 +633,8 @@ public abstract class Container: ControlBase
     /// container's viewport; false when clamping at an extent boundary - here or in an
     /// intervening armed container - leaves any part of it still outside.
     /// </returns>
+    /// <remarks>An oversized descendant exposes the nearest edge when wholly outside, then keeps
+    /// an already-visible slice stable across later arranged passes.</remarks>
     /// <exception cref="ArgumentNullException"><paramref name="descendant"/> is null.</exception>
     /// <exception cref="ArgumentException">The control is not a descendant of this container.</exception>
     /// <exception cref="InvalidOperationException">The attached container is accessed off-dispatcher.</exception>
@@ -1165,13 +1167,22 @@ public abstract class Container: ControlBase
         Debug.Assert(current >= 0 && viewport >= 0, "Reveal uses a non-negative viewport.");
         Debug.Assert(start >= 0 && length >= 0, "Reveal uses non-negative content geometry.");
 
-        if (start < current)
-        {
-            return start;
-        }
-
         var end = start.Add(length);
-        return end > current.Add(viewport) ? Math.Max(0, end - viewport) : current;
+
+        // A target larger than the viewport cannot be fully contained. Preserve any visible
+        // slice instead of alternating between top- and bottom-edge alignment on consecutive
+        // arranged passes; when it is wholly outside, expose the nearest edge once.
+        return length > viewport
+            ? end <= current
+                ? Math.Max(0, end - viewport)
+                : start >= current.Add(viewport)
+                    ? start
+                    : current
+            : start < current
+                ? start
+                : end > current.Add(viewport)
+                    ? Math.Max(0, end - viewport)
+                    : current;
     }
 
     [Pure]

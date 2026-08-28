@@ -532,8 +532,8 @@ behavior. At either end, the unhandled Tab leaves the whole document subtree.
 
 | Input                                  | Result                                                                        |
 | -------------------------------------- | ----------------------------------------------------------------------------- |
-| Tab                                    | Moves to the next enabled link and scrolls it into view.                      |
-| Shift+Tab                              | Moves to the previous enabled link and scrolls it into view.                  |
+| Tab                                    | Moves to the next enabled link or embedded control and scrolls it into view.  |
+| Shift+Tab                              | Moves to the previous enabled link or embedded control and reveals it.        |
 | Enter / Space                          | Activates the focused link once on the initial activation-eligible press.     |
 | Up / Down                              | Scrolls by `LineSize` lines.                                                  |
 | Page Up / Page Down                    | Scrolls by the viewport height minus `PageOverlap`, and by at least one line. |
@@ -550,10 +550,16 @@ behavior. At either end, the unhandled Tab leaves the whole document subtree.
 | Eligible primary release on a link     | Activates the same enabled link where the primary press began.                |
 
 Tab and Shift+Tab consume the keystroke only while it actually reaches another
-link. At either end of the document the keystroke is left unhandled, so the
-framework's own Tab default moves focus out — the same browser-like convention
-that stops a page of links from trapping the caret. Disabled links are skipped
-during the walk, and a document with no enabled links never consumes Tab at all.
+interactive item. At either end of the document the keystroke is left unhandled,
+so the framework's own Tab default moves focus out — the same browser-like
+convention that stops a page of links and controls from trapping the caret.
+Disabled links and ineligible controls are skipped; a document with no eligible
+interactive item never consumes Tab.
+
+Embedded inline and block controls request keyboard-reason focus from that same
+walk. Their reveal therefore waits for focus callbacks and settled layout, then
+uses the shared enclosing-container contract instead of a Document-only stale
+placement snapshot.
 
 Activating a link raises that link's own `Clicked` first, then the document's
 `LinkClicked` with the same link. A keyboard activation and a pointer activation

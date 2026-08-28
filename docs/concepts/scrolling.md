@@ -155,6 +155,12 @@ changes clamp offsets before the typed `ScrollChanged` event is raised (carrying
 the previous and committed offsets, `Extent`, `Viewport`, and the typed
 `ScrollCause`) and before the translated arrangement runs.
 
+When a descendant is larger than the viewport, full containment is impossible.
+`BringIntoView` exposes the nearest edge when the target is wholly outside, then
+preserves any already-visible slice on later arranged passes. It does not
+alternate between top/bottom or left/right alignment, and still returns `false`
+to report that the complete bounds cannot fit.
+
 Horizontal clipping is grapheme-safe. Hit testing uses viewport coordinates
 after the offset is applied and never targets clipped content.
 

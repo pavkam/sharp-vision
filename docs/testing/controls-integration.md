@@ -143,6 +143,13 @@ never call `Router.Route`, mutate hover directly, call `SetPressed`, or call
 consumed its bytes and the application has reached idle after routed work,
 layout, rendering, and output.
 
+Keyboard-focus reveal fixtures reflow earlier siblings from `IsFocused`,
+`FocusEntered`, `GotFocus`, and manager `Gained` callbacks, then assert the
+final focused bounds and modeled terminal screen after layout settles. They also
+cover latest-focus supersession, attachment and modal lifetime cancellation,
+nested scroll offsets, oversized targets, and bounded arrange/reveal
+convergence.
+
 ```csharp
 await using var surface = await ComponentSurface.MountAsync(
     button,

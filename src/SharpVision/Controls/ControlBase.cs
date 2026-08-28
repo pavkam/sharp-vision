@@ -82,6 +82,9 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// queued source work captured under an earlier owner.</summary>
     internal long BindingAttachmentVersion => AttachmentVersion;
 
+    /// <summary>Gets the dispatcher-attachment generation used to reject stale focus-layout work.</summary>
+    internal long FocusAttachmentVersion => AttachmentVersion;
+
     /// <summary>Gets the attached dispatcher's clock, or the system clock while detached.</summary>
     private protected TimeProvider TimeProvider => Dispatcher?.TimeProvider ?? TimeProvider.System;
 
@@ -2114,15 +2117,14 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <summary>Publishes one already-committed direct focus gain.</summary>
     internal void PublishGotFocus() => GotFocus?.Invoke(this, EventArgs.Empty);
 
-    /// <summary>Scrolls every enclosing armed <see cref="Container"/> so this control's own
-    /// arranged bounds become visible, after keyboard traversal or an access key committed
-    /// keyboard focus onto it.</summary>
+    /// <summary>Scrolls every enclosing armed <see cref="Container"/> so this control's current
+    /// arranged bounds become visible after settled layout.</summary>
     /// <remarks>
     /// <para>
-    /// FocusManager calls this only for <see cref="FocusReason.Keyboard"/> - Tab and Shift+Tab
-    /// traversal, and access-key-driven focus, both of which move focus to a target the caller
-    /// never directly interacted with and therefore cannot already be looking at. A pointer press
-    /// already proves the target was visible and clickable, and a programmatic
+    /// FocusManager retains this work only for <see cref="FocusReason.Keyboard"/> - Tab and
+    /// Shift+Tab traversal, and access-key-driven focus - and the Application invokes it only
+    /// after focus callbacks and pending layout have settled. A pointer press already proves the
+    /// target was visible and clickable, and a programmatic
     /// <see cref="Focus()"/> call leaves the deliberate choice of whether to reveal its
     /// target to the caller, who can already call <see cref="Container.BringIntoView"/> directly;
     /// neither reason invokes this method.
