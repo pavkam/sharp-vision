@@ -68,4 +68,6 @@ input, or rendering framework.
 A presented dialog detached while completion is queued cannot attach to another
 dispatcher until the original completion transaction finishes. Attachment
 validation rejects that ownership change before the new tree mutates; the old
-presentation then settles and disposes on its original dispatcher.
+presentation then settles and disposes on its original dispatcher. Structural
+descendant detachment clears the common mounted presentation and modal lifetime
+without publishing a user-requested `Closing` or `Closed` event.

@@ -86,7 +86,9 @@ its timer active, so the Toast retries after another `DisplayDuration` instead
 of becoming permanently manual-only. Before `Closed` runs, the Toast has left
 its coordinator and presentation host and the shared close guard has released. A
 handler may therefore show the same Toast again as a distinct presentation; the
-completed dismissal does not remove that replacement.
+completed dismissal does not remove that replacement. Removing an ancestor
+subtree clears the mounted bounds through the shared floating-surface detach
+path without publishing a requested-close lifecycle.
 
 ## Example
 

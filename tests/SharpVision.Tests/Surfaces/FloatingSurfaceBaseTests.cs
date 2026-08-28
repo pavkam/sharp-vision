@@ -234,6 +234,43 @@ public sealed class FloatingSurfaceBaseTests
         probe.SurfaceBounds.ShouldBe(new Rect(5, 1, 6, 2));
     }
 
+    /// <summary>Verifies a post-Closing family commit can retain the current presentation without
+    /// common cleanup or a Closed notification.</summary>
+    [Fact]
+    public async Task CloseAfterClosing_WhenFamilyRetainsPresentation_LeavesSurfaceOpenAsync()
+    {
+        var order = new List<string>();
+        using var probe = new FloatingSurfaceProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 6),
+            TestContext.Current.CancellationToken);
+        var closed = 0;
+        probe.Closing += (_, _) => order.Add("closing");
+        probe.Closed += (_, _) => closed++;
+        var result = true;
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                probe.PublishBounds(new Rect(1, 2, 3, 4));
+                result = probe.CloseAfterClosingForTest(
+                    () => order.Add("prepare"),
+                    () =>
+                    {
+                        order.Add("commit");
+                        return false;
+                    });
+            },
+            "retain a floating surface from the post-Closing family commit");
+
+        result.ShouldBeFalse();
+        order.ShouldBe(["prepare", "closing", "commit"]);
+        probe.IsPresented.ShouldBeTrue();
+        probe.SurfaceBounds.ShouldBe(new Rect(1, 2, 3, 4));
+        closed.ShouldBe(0);
+    }
+
     /// <summary>Verifies a closing callback cannot recursively enter the same transition.</summary>
     [Fact]
     public async Task Close_WhenClosingCallbackReenters_RejectsReentryAfterCompletingCleanupAsync()
@@ -481,9 +518,11 @@ public sealed class FloatingSurfaceBaseTests
             () =>
             {
                 probe.PublishBounds(new Rect(1, 2, 3, 4));
+                var presentationVersion = probe.PresentationVersion;
                 host.Children.Remove(probe).ShouldBeTrue();
                 probe.IsPresented.ShouldBeFalse();
                 probe.SurfaceBounds.ShouldBe(default);
+                probe.PresentationVersion.ShouldBe(presentationVersion + 1);
                 host.Children.Add(probe);
                 probe.PublishBounds(new Rect(5, 1, 6, 2));
             },

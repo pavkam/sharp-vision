@@ -3004,6 +3004,50 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies descendant detachment releases presentation and modality so reattachment
+    /// presents the same still-visible Window again without inventing close lifecycle events.</summary>
+    [Fact]
+    public async Task Detach_WhenAncestorOfModalWindowIsRemoved_ReleasesPresentationAndReopensOnReattachAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            using var window = new Window { Width = Length.Cells(12), Height = Length.Cells(5) };
+            using var holder = new Overlay { Children = { window } };
+            using var root = new Overlay { Children = { holder } };
+            new LayoutEngine().Layout(root, new Size(24, 10));
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            var closing = 0;
+            var closed = 0;
+            var shown = 0;
+            window.Closing += (_, _) => closing++;
+            window.Closed += (_, _) => closed++;
+            window.Shown += (_, _) => shown++;
+            var scope = window.ShowModal();
+
+            root.Children.Remove(holder).ShouldBeTrue();
+
+            scope.IsActive.ShouldBeFalse();
+            modality.Active.ShouldBeNull();
+            window.Dispatcher.ShouldBeNull();
+            window.SurfaceBounds.ShouldBe(default);
+            closing.ShouldBe(0);
+            closed.ShouldBe(0);
+
+            root.Children.Add(holder);
+
+            window.Dispatcher.ShouldBeSameAs(dispatcher);
+            window.SurfaceBounds.ShouldNotBe(default);
+            shown.ShouldBe(1);
+            closing.ShouldBe(0);
+            closed.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies forced disposal silently clears Window presentation and modality.</summary>
     [Fact]
     public async Task Dispose_WhenModalWindowIsDisposed_DoesNotPublishCloseLifecycleAsync()

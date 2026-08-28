@@ -642,7 +642,6 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     protected override void OnDetached()
     {
         var wasOpen = IsOpen;
-        var presentationVersion = SurfacePresentationVersion;
         ulong? committedCloseVersion = null;
         ClearAvailabilityAncestor();
         ExceptionDispatchInfo? failure = null;
@@ -668,15 +667,6 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
             {
                 ExceptionAggregation.Capture(CollapseContent, ref failure);
             }
-        }
-
-        // A descendant of a removed subtree root receives OnDetached but never its own OnUnavailable
-        // call (OwnedControlRegistry.Commit notifies unavailability only on removed roots), so the base
-        // Detached release never runs for it. Release presentation here too so a reattached descendant
-        // surface can reopen instead of permanently failing FloatingSurfaceBase's already-open guard.
-        if (SurfacePresentationVersion == presentationVersion)
-        {
-            ExceptionAggregation.Capture(ReleasePresentation, ref failure);
         }
 
         if (wasOpen && committedCloseVersion is { } closeVersion)

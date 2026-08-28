@@ -143,6 +143,11 @@ becomes unavailable. Their owner-rooted modal scope exits for the unavailable
 interval and is replaced once after the ancestor recovers; the public open state
 and retained presentation remain one continuous lifetime.
 
+Structural removal is different: removing an ancestor releases the mounted
+presentation and modal scope through the shared floating-surface detach path,
+then Popup commits `IsOpen` to false. Reattachment does not invent public close
+events; a later explicit open creates a fresh presentation.
+
 An ordinary close raises `Closing` while its modal scope and content are still
 available, then exits the scope before content becomes unavailable. Disposing
 the returned or application-visible scope closes the Popup, so an attached

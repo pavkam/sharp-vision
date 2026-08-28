@@ -51,6 +51,14 @@ concrete family owns its public open state and chrome:
 - `Tooltip` fixes passive, delayed, non-modal behavior.
 - `Toast` uses `Show(owner)` and `Dismiss()` with a timed, non-modal lifetime.
 
+The base also owns logical-open identity independently from mounted
+presentation. That distinction lets a never-attached visible Window close
+exactly once and lets structural detachment release bounds and modality without
+pretending the family requested closure. Every detached descendant receives the
+same presentation release even when only the removed subtree root received the
+unavailable event; reattachment may therefore create one fresh presentation
+without `Closing` or `Closed` being invented for the detach.
+
 Popup-family infrastructure owns two callback-sensitive lifetimes centrally. An
 optional light-dismiss policy becomes one root registration only after the
 surface presentation commits, and close, hide, detach, or disposal releases it
@@ -94,36 +102,15 @@ open the same reusable surface as a distinct presentation without reentering or
 being removed by the completed close.
 
 `CloseRequested` fires wherever the shared `CloseSurface` engine runs — the
-whole Popup family, and `Dialog<TResult>`'s own typed-completion path — and also
-from Window's close affordance, `CloseOnEscape`, and modal dismiss. The
-hand-rolled path still raises `CloseRequested` first via the same
-`FloatingSurfaceBase.RaiseCloseRequested` helper the engine uses and is guarded
-so repeated closure after committed cleanup raises nothing, honoring the same
-idempotency and veto contract the engine already guarantees. Repeating the same
-close request synchronously from `CloseRequested` is a no-op; the outer request
-remains authoritative, while reentry from the later `Closing` transaction
-remains invalid.
+whole Popup family, Window, and `Dialog<TResult>`'s own typed-completion path.
+Repeating the same close request synchronously from `CloseRequested` is a no-op;
+the outer request remains authoritative, while reentry from the later `Closing`
+transaction remains invalid.
 
 Toast raises the same vetoable request before manual, keyboard, pointer, or
 timer dismissal. Showing does not enter modality or transfer focus. Its display
 timer starts only after entrance completes, and detach or disposal releases the
 timer and stack registration.
-
-> [!IMPORTANT]
->
-> **Implementation gap:** Window's close affordance, `CloseOnEscape`, and modal
-> dismiss all funnel into one hand-rolled close sequence instead of routing
-> through the shared `CloseSurface` engine the rest of the Popup family and
-> `Dialog<TResult>` use. Window now exposes a public read-only `IsOpen`, but it
-> is a computed query over existing state, not a settable driver like
-> `Popup.IsOpen` - Window's actual open/close transition is still driven by
-> `Visibility` and the hand-rolled sequence below, because a `Closing` handler
-> may retain the Window by touching `Visibility`, which the engine's own
-> `commitClosingState` does not support. A never-attached, still-visible Window
-> has no presentation to tear down and so no `IsSurfacePresented` transition a
-> repeat could be detected from; Window's `RequestClose` keeps a private latch,
-> cleared whenever `Visibility` next becomes visible, as the substitute bit for
-> exactly that case.
 
 An ordinary Window close affordance, Escape action, or modal dismiss request
 first raises `CloseRequested`; an uncancelled request then publishes `Closing`,

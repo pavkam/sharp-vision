@@ -23,7 +23,9 @@ public abstract class FloatingSurfaceBase: ContentControl
     private bool _isRequestingClose;
     private bool _isEnteringModal;
     private bool _isOpening;
+    private bool _allowsOpeningDuringClosing;
     private bool _openingInvalidated;
+    private bool _presentationReleasedForPendingDetach;
 
     #region Surface lifecycle
 
@@ -54,6 +56,9 @@ public abstract class FloatingSurfaceBase: ContentControl
 
     /// <summary>Gets whether the common lifecycle currently represents a presented surface.</summary>
     protected bool IsSurfacePresented { get; private set; }
+
+    /// <summary>Gets whether the common lifecycle still represents a logically open surface.</summary>
+    private protected bool IsSurfaceOpen { get; private set; }
 
     /// <summary>Gets whether this surface currently owns one active application modality scope.</summary>
     protected bool HasActiveSurfaceModal => _modalScope is { IsActive: true };
@@ -91,6 +96,9 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// </summary>
     protected EventHandler? CaptureClosedHandlers() => Closed;
 
+    /// <summary>Begins a fresh logical surface lifetime before presentation is available.</summary>
+    private protected void BeginSurfaceOpenLifetime() => IsSurfaceOpen = true;
+
     /// <summary>Atomically commits family-specific open state and marks the surface as presented.</summary>
     /// <param name="commitOpenState">The non-null family-specific state commit.</param>
     /// <remarks>
@@ -120,7 +128,7 @@ public abstract class FloatingSurfaceBase: ContentControl
             throw new InvalidOperationException("Floating surface opening cannot be reentered.");
         }
 
-        if (_isClosing)
+        if (_isClosing && !_allowsOpeningDuringClosing)
         {
             throw new InvalidOperationException("A floating surface cannot open while it is closing.");
         }
@@ -144,6 +152,7 @@ public abstract class FloatingSurfaceBase: ContentControl
             }
 
             IsSurfacePresented = true;
+            IsSurfaceOpen = true;
             IncrementPresentationVersion();
         }
         catch
@@ -177,12 +186,46 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <exception cref="Exception">A state callback, lifecycle subscriber, or modal cleanup callback fails.</exception>
     protected bool CloseSurface(
         [InstantHandle] Action commitClosingState,
-        [InstantHandle] Action commitUnavailableState) =>
-        CloseSurfaceCore(
+        [InstantHandle] Action commitUnavailableState)
+    {
+        ArgumentNullException.ThrowIfNull(commitClosingState);
+        ArgumentNullException.ThrowIfNull(commitUnavailableState);
+        return CloseSurfaceCore(
+            commitClosingState,
+            prepareClosingState: null,
+            commitClosingStateAfterClosing: null,
+            commitUnavailableState,
+            publishCloseRequested: true,
+            publishClosing: true,
+            allowUnpresentedOpen: false);
+    }
+
+    /// <summary>Closes one logical surface whose family state commits after Closing observers run.</summary>
+    /// <param name="prepareClosingState">Begins family observation immediately before Closing.</param>
+    /// <param name="commitClosingState">Commits family state and reports whether closure completed.</param>
+    /// <param name="commitUnavailableState">Makes family-specific content unavailable.</param>
+    /// <returns>True when closure completed; false when the surface was closed already, vetoed, or retained.</returns>
+    /// <exception cref="ArgumentNullException">A callback is null.</exception>
+    /// <exception cref="InvalidOperationException">Opening or closure is reentered.</exception>
+    /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
+    /// <exception cref="Exception">A state callback, lifecycle subscriber, or modal cleanup callback fails.</exception>
+    private protected bool CloseSurfaceAfterClosing(
+        [InstantHandle] Action prepareClosingState,
+        [InstantHandle] Func<bool> commitClosingState,
+        [InstantHandle] Action commitUnavailableState)
+    {
+        ArgumentNullException.ThrowIfNull(prepareClosingState);
+        ArgumentNullException.ThrowIfNull(commitClosingState);
+        ArgumentNullException.ThrowIfNull(commitUnavailableState);
+        return CloseSurfaceCore(
+            commitClosingStateBeforeClosing: null,
+            prepareClosingState,
             commitClosingState,
             commitUnavailableState,
             publishCloseRequested: true,
-            publishClosing: true);
+            publishClosing: true,
+            allowUnpresentedOpen: true);
+    }
 
     /// <summary>Completes closure after the concrete surface has already published its closing request.</summary>
     /// <param name="commitClosingState">Commits family state that makes the surface ineligible.</param>
@@ -202,21 +245,35 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <exception cref="Exception">A state callback, lifecycle subscriber, or modal cleanup callback fails.</exception>
     private protected bool CloseSurfaceAfterClosingRequest(
         [InstantHandle] Action commitClosingState,
-        [InstantHandle] Action commitUnavailableState) =>
-        CloseSurfaceCore(
-            commitClosingState,
-            commitUnavailableState,
-            publishCloseRequested: false,
-            publishClosing: false);
-
-    private bool CloseSurfaceCore(
-        [InstantHandle] Action commitClosingState,
-        [InstantHandle] Action commitUnavailableState,
-        bool publishCloseRequested,
-        bool publishClosing)
+        [InstantHandle] Action commitUnavailableState)
     {
         ArgumentNullException.ThrowIfNull(commitClosingState);
         ArgumentNullException.ThrowIfNull(commitUnavailableState);
+        return CloseSurfaceCore(
+            commitClosingState,
+            prepareClosingState: null,
+            commitClosingStateAfterClosing: null,
+            commitUnavailableState,
+            publishCloseRequested: false,
+            publishClosing: false,
+            allowUnpresentedOpen: false);
+    }
+
+    private bool CloseSurfaceCore(
+        [InstantHandle] Action? commitClosingStateBeforeClosing,
+        [InstantHandle] Action? prepareClosingState,
+        [InstantHandle] Func<bool>? commitClosingStateAfterClosing,
+        [InstantHandle] Action commitUnavailableState,
+        bool publishCloseRequested,
+        bool publishClosing,
+        bool allowUnpresentedOpen)
+    {
+        Debug.Assert(commitUnavailableState is not null, "A close transaction requires unavailable-state cleanup.");
+        Debug.Assert(
+            commitClosingStateBeforeClosing is not null ||
+            (prepareClosingState is not null && commitClosingStateAfterClosing is not null),
+            "A close transaction requires one complete family commit shape.");
+
         VerifyMutable();
 
         if (_isOpening)
@@ -229,7 +286,7 @@ public abstract class FloatingSurfaceBase: ContentControl
             throw new InvalidOperationException("Floating surface closure cannot be reentered.");
         }
 
-        if (!IsSurfacePresented)
+        if (!IsSurfacePresented && (!allowUnpresentedOpen || !IsSurfaceOpen))
         {
             return false;
         }
@@ -256,21 +313,55 @@ public abstract class FloatingSurfaceBase: ContentControl
         _isClosing = true;
         ExceptionDispatchInfo? failure = null;
         var closedHandlers = CaptureClosedHandlers();
+        var wasPresented = IsSurfacePresented;
+        var closureCompleted = true;
 
         try
         {
-            ExceptionAggregation.Capture(commitClosingState, ref failure);
+            if (commitClosingStateBeforeClosing is { } commitBeforeClosing)
+            {
+                ExceptionAggregation.Capture(commitBeforeClosing, ref failure);
+            }
+
+            if (prepareClosingState is { } prepare)
+            {
+                ExceptionAggregation.Capture(prepare, ref failure);
+            }
 
             if (publishClosing)
             {
-                ExceptionAggregation.Capture(RaiseSurfaceClosing, ref failure);
+                _allowsOpeningDuringClosing = commitClosingStateAfterClosing is not null;
+
+                try
+                {
+                    ExceptionAggregation.Capture(RaiseSurfaceClosing, ref failure);
+                }
+                finally
+                {
+                    _allowsOpeningDuringClosing = false;
+                }
             }
 
-            ExceptionAggregation.Capture(ExitSurfaceModal, ref failure);
-            ExceptionAggregation.Capture(commitUnavailableState, ref failure);
-            SurfaceBounds = default;
-            IsSurfacePresented = false;
-            IncrementPresentationVersion();
+            if (commitClosingStateAfterClosing is { } commitAfterClosing)
+            {
+                ExceptionAggregation.Capture(
+                    () => closureCompleted = commitAfterClosing(),
+                    ref failure);
+            }
+
+            if (closureCompleted)
+            {
+                IsSurfaceOpen = false;
+                ExceptionAggregation.Capture(ExitSurfaceModal, ref failure);
+                ExceptionAggregation.Capture(commitUnavailableState, ref failure);
+
+                if (IsSurfacePresented)
+                {
+                    SurfaceBounds = default;
+                    IsSurfacePresented = false;
+                    IncrementPresentationVersion();
+                }
+            }
         }
         finally
         {
@@ -279,13 +370,13 @@ public abstract class FloatingSurfaceBase: ContentControl
 
         // Closed describes a fully completed transition. Publishing after the guard is released
         // lets a handler begin a distinct presentation without reentering the transition above.
-        if (closedHandlers is { } capturedClosed)
+        if (closureCompleted && wasPresented && closedHandlers is { } capturedClosed)
         {
             ExceptionAggregation.Capture(() => capturedClosed.Invoke(this, EventArgs.Empty), ref failure);
         }
 
         failure?.Throw();
-        return true;
+        return closureCompleted;
     }
 
     #endregion
@@ -393,6 +484,12 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
+        _presentationReleasedForPendingDetach = reason == ReleaseReason.Detached;
+
+        if (reason is ReleaseReason.Hidden or ReleaseReason.Disposed)
+        {
+            IsSurfaceOpen = false;
+        }
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(ExitSurfaceModal, ref failure);
         ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
@@ -408,6 +505,23 @@ public abstract class FloatingSurfaceBase: ContentControl
             CloseRequested = null;
             Closing = null;
             Closed = null;
+        }
+
+        failure?.Throw();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnDetached()
+    {
+        var presentationAlreadyReleased = _presentationReleasedForPendingDetach;
+        _presentationReleasedForPendingDetach = false;
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(ExitSurfaceModal, ref failure);
+        ExceptionAggregation.Capture(base.OnDetached, ref failure);
+
+        if (!presentationAlreadyReleased)
+        {
+            ExceptionAggregation.Capture(ReleasePresentation, ref failure);
         }
 
         failure?.Throw();

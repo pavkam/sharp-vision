@@ -33,17 +33,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     private Point _resizeWindowPosition;
     private bool _closePointerOver;
     private bool _closePressed;
-    private bool _isRequestingClose;
     private bool _isShowingModal;
-
-    /// <summary>Whether a completed <see cref="RequestClose"/> has run since Visibility last
-    /// became <see cref="Visibility.Visible"/>. An unattached Window has no
-    /// <see cref="FloatingSurfaceBase.IsSurfacePresented"/> transition to detect a repeated
-    /// close from, since it was never presented in the first place and closing it does not
-    /// collapse it - this latch is the substitute open/closed bit for exactly that case, cleared
-    /// whenever <see cref="OnWindowPropertyChanged"/> observes Visibility return to Visible.
-    /// </summary>
-    private bool _closedSinceVisible;
 
     #region Construction and properties
 
@@ -68,6 +58,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             SetClosePressed,
             _ => RequestClose(),
             () => Capabilities.KeyReleaseEvents.Authoritative);
+        BeginSurfaceOpenLifetime();
         PropertyChanged += OnWindowPropertyChanged;
         EnableChromeAuthoring();
     }
@@ -127,7 +118,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// <see cref="Close"/> since is also considered open. This is precisely the logical negation of
     /// the closed-guard <see cref="Close"/> checks before running its veto/collapse sequence.
     /// </remarks>
-    public bool IsOpen => IsSurfacePresented || (Visibility == Visibility.Visible && !_closedSinceVisible);
+    public bool IsOpen => IsSurfaceOpen;
 
     /// <summary>Makes this Window visible and enters one application-owned modal presentation rooted at it.</summary>
     /// <param name="outsideInteraction">
@@ -723,15 +714,6 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         {
             PropertyChanged -= OnWindowPropertyChanged;
             Shown = null;
-
-            // A Window disposed directly (for example `using var window = new Window(...)`)
-            // without a prior Close() never runs RequestClose's own latch-setting sequence:
-            // base.OnUnavailable above already released presentation, but Visibility and this
-            // latch are untouched, so a still-Visible Window's IsOpen would otherwise keep
-            // reading true after Dispose. Set the substitute bit directly here, mirroring what
-            // a completed RequestClose already does, without touching Visibility itself -
-            // Visibility is the authored input, _closedSinceVisible is the derived bit.
-            _closedSinceVisible = true;
         }
 
         failure?.Throw();
@@ -757,83 +739,45 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 
     private void RequestClose()
     {
-        // Every other public mutator verifies dispatcher affinity and disposal first; Close()
-        // was the sole outlier, silently succeeding on a disposed Window and running the
-        // handlers below on the calling thread before anything threw for an off-dispatcher call.
-        VerifyMutable();
+        var visibilityTouchedByHandler = false;
 
-        if (_isRequestingClose)
+        void OnVisibilityChangedDuringClosing(object? sender, EventArgs eventArgs)
         {
-            return;
+            _ = sender;
+            _ = eventArgs;
+            visibilityTouchedByHandler = true;
         }
 
-        // An unattached Window is Visible but never presented, and Escape/affordance closure is
-        // still expected to raise Closing for it - so the guard cannot be the plain
-        // !IsSurfacePresented check CloseSurfaceCore uses. A Window that is neither presented
-        // nor still Visible (already closed, or detached after being collapsed) has nothing left
-        // to close, and closing it again must raise nothing. That is not sufficient by
-        // itself: a never-attached, still-Visible Window is neither presented nor collapsed by a
-        // completed close (there is no presentation to tear down), so Visibility alone cannot
-        // distinguish "legitimately still open" from "already closed once already" for it -
-        // _closedSinceVisible is the substitute bit for exactly that case.
-        if (!(IsSurfacePresented || (Visibility == Visibility.Visible && !_closedSinceVisible)))
-        {
-            return;
-        }
+        void PrepareClosingState() => VisibilityChanged += OnVisibilityChangedDuringClosing;
 
-        // Set before raising CloseRequested, not after: a handler that calls Close()/RequestClose()
-        // synchronously from inside CloseRequested must see the guard already armed, the same way
-        // a Closing handler already does (guarded below), or the reentrant call re-enters
-        // RaiseCloseRequested and invokes the same handler again with no bound on the recursion.
-        _isRequestingClose = true;
-        ExceptionDispatchInfo? failure = null;
+        bool CommitClosingState()
+        {
+            VisibilityChanged -= OnVisibilityChangedDuringClosing;
+
+            if (visibilityTouchedByHandler)
+            {
+                return !IsSurfacePresented;
+            }
+
+            if (IsSurfacePresented)
+            {
+                Visibility = Visibility.Collapsed;
+            }
+
+            return true;
+        }
 
         try
         {
-            if (!RaiseCloseRequested())
-            {
-                return;
-            }
-
-            var wasPresented = IsSurfacePresented;
-            var closedHandlers = CaptureClosedHandlers();
-            var visibilityTouchedByHandler = false;
-            void OnVisibilityChangedDuringClosing(object? sender, EventArgs eventArgs) => visibilityTouchedByHandler = true;
-            VisibilityChanged += OnVisibilityChangedDuringClosing;
-
-            try
-            {
-                ExceptionAggregation.Capture(RaiseSurfaceClosing, ref failure);
-            }
-            finally
-            {
-                VisibilityChanged -= OnVisibilityChangedDuringClosing;
-            }
-
-            // Close by default: only skip when a Closing handler already took responsibility for
-            // visibility itself (hid it, restored it, or disposed the Window), whether or not that
-            // left Visibility back at its original value.
-            if (wasPresented && IsSurfacePresented && !visibilityTouchedByHandler)
-            {
-                ExceptionAggregation.Capture(() => Visibility = Visibility.Collapsed, ref failure);
-            }
-
-            if (wasPresented && !IsSurfacePresented)
-            {
-                ExceptionAggregation.Capture(() => closedHandlers?.Invoke(this, EventArgs.Empty), ref failure);
-            }
-
-            // Marks a never-attached Window closed even though nothing above could collapse it -
-            // OnWindowPropertyChanged clears this the moment Visibility next becomes Visible, so
-            // a handler that reopens it during Closing is unaffected.
-            _closedSinceVisible = true;
+            _ = CloseSurfaceAfterClosing(
+                PrepareClosingState,
+                CommitClosingState,
+                static () => { });
         }
         finally
         {
-            _isRequestingClose = false;
+            VisibilityChanged -= OnVisibilityChangedDuringClosing;
         }
-
-        failure?.Throw();
     }
 
     private void SetClosePressed(bool value)
@@ -1198,10 +1142,7 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             return;
         }
 
-        // A fresh Visible state is a fresh open, regardless of how many times this Window
-        // closed before - clear the never-attached substitute open/closed bit here so the next
-        // RequestClose is not rejected as a repeat of an already-completed close.
-        _closedSinceVisible = false;
+        BeginSurfaceOpenLifetime();
 
         ExceptionDispatchInfo? failure = null;
 

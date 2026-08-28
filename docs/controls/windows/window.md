@@ -137,7 +137,11 @@ or disposing the Window — takes responsibility for the outcome instead of the
 default collapse. `Close()` runs the identical sequence programmatically,
 regardless of `CanClose`, matching Escape and modal outside-dismissal. A failing
 `CloseRequested` observer propagates its exception without poisoning the
-reentrancy guard, so a later close request can retry normally.
+reentrancy guard, so a later close request can retry normally. The shared
+floating-surface close engine owns that guard, the logical-open state used by
+never-attached Windows, callback failure aggregation, retention, common cleanup,
+and final `Closed` publication; Window supplies only its visibility-specific
+post-`Closing` commit.
 
 Pointer ancestry does not restyle the Window face, frame, or shadow. The close
 mark can still react independently while its target is hovered or pressed. Its
@@ -204,6 +208,11 @@ visible opens it, updates `SurfaceBounds`, raises `Shown`, and modelessly
 focuses the first eligible descendant, or the Window itself. Changing visibility
 away from visible exits any active surface scope and performs the common focus,
 capture, bounds, and lifecycle cleanup.
+
+Removing an ancestor releases this Window's mounted bounds and modal scope even
+though the Window itself did not receive the root unavailable notification.
+Reattaching that still-visible subtree presents the Window again and raises
+`Shown`, without publishing `Closing` or `Closed` for structural detachment.
 
 An `Opened` observer that hides, detaches, or disposes the Window invalidates
 that presentation and suppresses its later `Shown` and focus work. When `Opened`

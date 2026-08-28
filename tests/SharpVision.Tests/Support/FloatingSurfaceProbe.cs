@@ -11,6 +11,9 @@ internal sealed class FloatingSurfaceProbe: FloatingSurfaceBase
     /// <summary>Gets whether the common surface lifecycle is currently presented.</summary>
     internal bool IsPresented => IsSurfacePresented;
 
+    /// <summary>Gets the committed presentation generation for detach-identity assertions.</summary>
+    internal long PresentationVersion => SurfacePresentationVersion;
+
     /// <summary>Commits a presented surface with the supplied visible bounds.</summary>
     /// <param name="bounds">The committed surface rectangle.</param>
     internal void PublishBounds(Rect bounds) => OpenSurface(() => SurfaceBounds = bounds);
@@ -38,6 +41,20 @@ internal sealed class FloatingSurfaceProbe: FloatingSurfaceBase
         Action? commitUnavailableState = null) =>
         CloseSurface(
             commitClosingState ?? (static () => { }),
+            commitUnavailableState ?? (static () => { }));
+
+    /// <summary>Closes through the post-Closing family commit seam used by retained surfaces.</summary>
+    /// <param name="prepareClosingState">Begins family-specific observation before Closing.</param>
+    /// <param name="commitClosingState">Commits closure after Closing and reports whether it completed.</param>
+    /// <param name="commitUnavailableState">Makes family-specific content unavailable.</param>
+    /// <returns><see langword="true"/> when closure completed; otherwise false.</returns>
+    internal bool CloseAfterClosingForTest(
+        Action prepareClosingState,
+        Func<bool> commitClosingState,
+        Action? commitUnavailableState = null) =>
+        CloseSurfaceAfterClosing(
+            prepareClosingState,
+            commitClosingState,
             commitUnavailableState ?? (static () => { }));
 
     /// <summary>Enters an application-owned modal presentation rooted at this surface.</summary>
