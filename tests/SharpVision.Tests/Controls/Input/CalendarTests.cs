@@ -214,6 +214,84 @@ public sealed class CalendarTests
         calendar.DisplayMonth.ShouldBe(new DateOnly(2025, 2, 1));
     }
 
+    /// <summary>Verifies delegated initial and repeated movement has the same modifier and
+    /// navigation behavior as the Calendar's ordinarily routed key path.</summary>
+    [Fact]
+    public void HandleNavigationKey_WhenDelegated_MatchesOrdinarilyRoutedMovement()
+    {
+        var initial = new DateOnly(2026, 7, 19);
+        using var ordinary = CreateNavigationCalendar(initial);
+        using var delegated = CreateNavigationCalendar(initial);
+        var ordinaryInitial = Key(ordinary, Code.Right, KeyAction.Press);
+        var delegatedInitial = NavigationKey(Code.Right, KeyAction.Press, Modifiers.None);
+        var ordinaryRepeated = Key(ordinary, Code.Right, KeyAction.Repeat);
+        var delegatedRepeated = NavigationKey(Code.Right, KeyAction.Repeat, Modifiers.None);
+        var ordinaryRejected = Key(ordinary, Code.Right, KeyAction.Press, Modifiers.Control);
+        var delegatedRejected = NavigationKey(Code.Right, KeyAction.Press, Modifiers.Control);
+
+        var initialHandled = delegated.HandleNavigationKey(delegatedInitial);
+        var repeatedHandled = delegated.HandleNavigationKey(delegatedRepeated);
+        var rejectedHandled = delegated.HandleNavigationKey(delegatedRejected);
+
+        initialHandled.ShouldBe(ordinaryInitial.IsHandled);
+        repeatedHandled.ShouldBe(ordinaryRepeated.IsHandled);
+        rejectedHandled.ShouldBe(ordinaryRejected.IsHandled);
+        delegatedInitial.IsHandled.ShouldBeFalse();
+        delegatedRepeated.IsHandled.ShouldBeFalse();
+        delegatedRejected.IsHandled.ShouldBeFalse();
+        delegated.ActiveDate.ShouldBe(ordinary.ActiveDate);
+        delegated.DisplayMonth.ShouldBe(ordinary.DisplayMonth);
+        delegated.Selection.ShouldBe(ordinary.Selection);
+    }
+
+    /// <summary>Verifies delegated activation preserves ordinary routed initial, repeat, and
+    /// modifier behavior for both Calendar activation keys.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HandleNavigationKey_WhenActivationIsDelegated_MatchesOrdinarilyRoutedCalendar(
+        bool useSpace)
+    {
+        var initial = new DateOnly(2026, 7, 19);
+        using var ordinary = CreateNavigationCalendar(initial);
+        using var delegated = CreateNavigationCalendar(initial);
+        List<DateInterval?> ordinaryChanges = [];
+        List<DateInterval?> delegatedChanges = [];
+        ordinary.SelectionChanged += (_, eventArgs) => ordinaryChanges.Add(eventArgs.Selection);
+        delegated.SelectionChanged += (_, eventArgs) => delegatedChanges.Add(eventArgs.Selection);
+        var ordinaryInitial = RoutedActivationKey(ordinary, useSpace, KeyAction.Press, Modifiers.None);
+        var delegatedInitial = NavigationActivationKey(useSpace, KeyAction.Press, Modifiers.None);
+        var ordinaryRepeated = RoutedActivationKey(ordinary, useSpace, KeyAction.Repeat, Modifiers.None);
+        var delegatedRepeated = NavigationActivationKey(useSpace, KeyAction.Repeat, Modifiers.None);
+        var ordinaryRejected = RoutedActivationKey(ordinary, useSpace, KeyAction.Press, Modifiers.Control);
+        var delegatedRejected = NavigationActivationKey(useSpace, KeyAction.Press, Modifiers.Control);
+
+        var initialHandled = delegated.HandleNavigationKey(delegatedInitial);
+        var repeatedHandled = delegated.HandleNavigationKey(delegatedRepeated);
+        var rejectedHandled = delegated.HandleNavigationKey(delegatedRejected);
+
+        initialHandled.ShouldBe(ordinaryInitial.IsHandled);
+        repeatedHandled.ShouldBe(ordinaryRepeated.IsHandled);
+        rejectedHandled.ShouldBe(ordinaryRejected.IsHandled);
+        delegated.Selection.ShouldBe(ordinary.Selection);
+        delegated.ActiveDate.ShouldBe(ordinary.ActiveDate);
+        delegatedChanges.ShouldBe(ordinaryChanges);
+
+        ordinary.Selection = null;
+        delegated.Selection = null;
+        ordinaryChanges.Clear();
+        delegatedChanges.Clear();
+        var ordinaryShift = RoutedActivationKey(ordinary, useSpace, KeyAction.Press, Modifiers.Shift);
+        var delegatedShift = NavigationActivationKey(useSpace, KeyAction.Press, Modifiers.Shift);
+
+        var shiftHandled = delegated.HandleNavigationKey(delegatedShift);
+
+        shiftHandled.ShouldBe(ordinaryShift.IsHandled);
+        delegated.Selection.ShouldBe(ordinary.Selection);
+        delegated.ActiveDate.ShouldBe(ordinary.ActiveDate);
+        delegatedChanges.ShouldBe(ordinaryChanges);
+    }
+
     /// <summary>Verifies header and wheel month navigation share bounded month arithmetic.</summary>
     [Fact]
     public void Dispatch_WhenHeaderAndWheelNavigate_ChangesDisplayedMonthOnly()
@@ -899,6 +977,29 @@ public sealed class CalendarTests
         changes.ShouldBe(1);
     }
 
+    /// <summary>Verifies semantic activation is observable even when the selected date is already
+    /// committed and the selection assignment is consequently a no-op.</summary>
+    [Fact]
+    public void ActivateDate_WhenSelectedDateIsActivated_RaisesDateActivatedOnce()
+    {
+        // Arrange
+        var date = new DateOnly(2026, 7, 19);
+        using var calendar = new UiCalendar
+        {
+            SelectionMode = CalendarSelectionMode.Select,
+            Selection = new DateInterval(date, date)
+        };
+        List<DateOnly> activations = [];
+        calendar.DateActivated += activations.Add;
+
+        // Act
+        var changed = calendar.ActivateDate(date);
+
+        // Assert
+        changed.ShouldBeFalse();
+        activations.ShouldBe([date]);
+    }
+
     /// <summary>Verifies held navigation repeats while Enter and Space establish an interval
     /// anchor only once for one physical key hold.</summary>
     [Theory]
@@ -1518,6 +1619,35 @@ public sealed class CalendarTests
             nativeCode: 0,
             modifiers,
             action));
+        _ = Router.Route(calendar, Events.Key, eventArgs);
+        return eventArgs;
+    }
+
+    private static UiCalendar CreateNavigationCalendar(DateOnly initial)
+    {
+        var calendar = new UiCalendar { Selection = new DateInterval(initial, initial) };
+        calendar.Selection = null;
+        return calendar;
+    }
+
+    private static KeyEventArgs NavigationKey(Code code, KeyAction action, Modifiers modifiers) =>
+        new(new Stroke(code, character: null, nativeCode: 0, modifiers, action));
+
+    private static KeyEventArgs NavigationActivationKey(bool useSpace, KeyAction action, Modifiers modifiers) =>
+        new(new Stroke(
+            useSpace ? Code.Character : Code.Enter,
+            useSpace ? new Rune(' ') : null,
+            nativeCode: 0,
+            modifiers,
+            action));
+
+    private static KeyEventArgs RoutedActivationKey(
+        UiCalendar calendar,
+        bool useSpace,
+        KeyAction action,
+        Modifiers modifiers)
+    {
+        var eventArgs = NavigationActivationKey(useSpace, action, modifiers);
         _ = Router.Route(calendar, Events.Key, eventArgs);
         return eventArgs;
     }

@@ -33,6 +33,12 @@ public sealed class ComboBox: InputBase
     private long _selectionVersion;
     private bool _synchronizingSelection;
     private bool _listSelectionChangedFired;
+    private int _openingSelectedIndex = -1;
+    private int _openingCurrentIndex = -1;
+    private long _openingItemsVersion;
+    private long _openingSelectionVersion;
+    private long _itemsVersion;
+    private PopupItemActivationIdentity? _pointerActivation;
 
     #region Construction and properties
 
@@ -44,13 +50,18 @@ public sealed class ComboBox: InputBase
             SelectionMode = ListSelectionMode.Single,
             IsTabStop = false
         };
+        _list.ItemActivationStarting += OnItemActivationStarting;
         _list.ItemInvoked += OnItemInvoked;
         _list.SelectionChanged += OnSelectionChanged;
         _list.PropertyChanged += OnListPropertyChanged;
-        _popup = EnablePopup(
+        _popup = EnablePopupNavigationSession(
             _list,
             focusOnOpen: false,
-            beforeCloseFocusRestore: () => _typeAhead = string.Empty);
+            beforeCloseFocusRestore: () => _typeAhead = string.Empty,
+            beginSession: BeginNavigationSession,
+            handleNavigationKey: HandleNavigationKey,
+            cancelSession: CancelNavigationSession,
+            acceptSession: AcceptNavigationSession);
         EnablePressActivation();
         _scrollBarStyle = InitializePartStyle(
             ScrollBarStyle.ForwardingDefinition,
@@ -404,21 +415,6 @@ public sealed class ComboBox: InputBase
         {
             var stroke = keyEventArgs.Stroke;
 
-            if (keyEventArgs.IsInitialKeyDown &&
-                stroke.Code == Code.Escape &&
-                stroke.Modifiers.IsActivationEligible())
-            {
-                IsOpen = false;
-                eventArgs.IsHandled = true;
-                return;
-            }
-
-            if (keyEventArgs.IsInitialKeyDown && stroke.Code == Code.Enter)
-            {
-                eventArgs.IsHandled = _list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, stroke.Modifiers);
-                return;
-            }
-
             if (keyEventArgs.IsKeyDown && stroke.Code is Code.Delete or Code.Backspace)
             {
                 eventArgs.IsHandled = ClearSelection();
@@ -431,12 +427,6 @@ public sealed class ComboBox: InputBase
                 KeyboardModifierPolicy.IsTextEntryEligible(stroke.Modifiers))
             {
                 eventArgs.IsHandled = SelectTypeAhead(character);
-                return;
-            }
-
-            if (keyEventArgs.IsKeyDown && stroke.Code != Code.Tab && _list.MoveCurrent(stroke.Code))
-            {
-                eventArgs.IsHandled = true;
                 return;
             }
 
@@ -465,6 +455,7 @@ public sealed class ComboBox: InputBase
 
         if (reason == ReleaseReason.Disposed)
         {
+            _list.ItemActivationStarting -= OnItemActivationStarting;
             _list.ItemInvoked -= OnItemInvoked;
             _list.SelectionChanged -= OnSelectionChanged;
             _list.PropertyChanged -= OnListPropertyChanged;
@@ -486,42 +477,168 @@ public sealed class ComboBox: InputBase
     }
 
     /// <inheritdoc/>
-    protected override void OnDropDownOpened() => DropDownOpened?.Invoke(this, EventArgs.Empty);
+    protected override void OnDropDownOpened()
+    {
+        SynchronizeListSelection(_selectedIndex);
+        _list.SetProvisionalCurrentIndex(_list.ActiveIndex);
+        DropDownOpened?.Invoke(this, EventArgs.Empty);
+    }
 
     /// <inheritdoc/>
     protected override void OnDropDownClosed() => DropDownClosed?.Invoke(this, EventArgs.Empty);
 
+    private void BeginNavigationSession()
+    {
+        _openingSelectedIndex = _selectedIndex;
+        _openingCurrentIndex = _selectedIndex >= 0 ? _selectedIndex : _list.ActiveIndex;
+        _openingItemsVersion = _itemsVersion;
+        _openingSelectionVersion = _selectionVersion;
+        _list.SetProvisionalCurrentIndex(_selectedIndex);
+    }
+
+    private bool HandleNavigationKey(KeyEventArgs eventArgs)
+    {
+        var stroke = eventArgs.Stroke;
+
+        if (eventArgs.IsInitialKeyDown &&
+            stroke.Code == Code.Escape &&
+            stroke.Modifiers.IsActivationEligible())
+        {
+            eventArgs.IsHandled = true;
+            IsOpen = false;
+            return true;
+        }
+
+        if (eventArgs.IsInitialKeyDown && stroke.Code == Code.Enter)
+        {
+            // Enter belongs to the open session even when no item is available. Consuming it here
+            // prevents the field's ordinary press activation from toggling the popup closed.
+            eventArgs.IsHandled = true;
+            var accepted = _list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, stroke.Modifiers);
+            return accepted;
+        }
+
+        return _list.HandleCurrentNavigationKey(eventArgs);
+    }
+
+    private void CancelNavigationSession()
+    {
+        var openingSnapshotIsCurrent =
+            _itemsVersion == _openingItemsVersion &&
+            _selectionVersion == _openingSelectionVersion &&
+            IsValidNavigationIndex(_openingSelectedIndex) &&
+            IsValidNavigationIndex(_openingCurrentIndex);
+
+        if (!openingSnapshotIsCurrent)
+        {
+            SynchronizeListSelection(_selectedIndex);
+            _list.SetProvisionalCurrentIndex(_selectedIndex);
+            return;
+        }
+
+        if (_selectedIndex != _openingSelectedIndex)
+        {
+            SetSelectedIndex(_openingSelectedIndex);
+        }
+        else
+        {
+            SynchronizeListSelection(_openingSelectedIndex);
+        }
+
+        _list.SetProvisionalCurrentIndex(_openingCurrentIndex);
+    }
+
+    private bool IsValidNavigationIndex(int index) =>
+        index == -1 || (uint) index < (uint) Items.Count;
+
+    private void AcceptNavigationSession()
+    {
+        var acceptedIndex = _list.ActiveIndex;
+
+        if (acceptedIndex < 0)
+        {
+            return;
+        }
+
+        var popupVersion = PopupTransitionVersion;
+
+        if (_selectedIndex == acceptedIndex)
+        {
+            SynchronizeListSelection(acceptedIndex);
+        }
+        else
+        {
+            SetSelectedIndex(acceptedIndex);
+        }
+
+        // Selection callbacks own a newer selection decision. Reopening establishes a new session
+        // so the accepted session's close continuation cannot dismiss that newer state.
+        if (!IsDisposed &&
+            IsOpen &&
+            PopupTransitionVersion == popupVersion &&
+            _selectedIndex != acceptedIndex)
+        {
+            IsOpen = false;
+            IsOpen = true;
+        }
+    }
+
     private void OnItemInvoked(object? sender, ItemInvokedEventArgs eventArgs)
     {
         _ = sender;
-        var popupVersion = PopupTransitionVersion;
-        _list.SelectedIndex = eventArgs.Index;
 
-        if (!IsDisposed &&
-            PopupTransitionVersion == popupVersion &&
-            _selectedIndex == eventArgs.Index &&
-            _list.SelectedIndex == eventArgs.Index)
+        if (eventArgs.Cause == ActivationCause.Pointer)
         {
-            IsOpen = false;
+            var activation = _pointerActivation;
+            _pointerActivation = null;
+            var isCurrentInvocation =
+                activation is { } identity &&
+                !IsDisposed &&
+                IsOpen &&
+                eventArgs.ActivationGeneration == identity.ItemGeneration &&
+                eventArgs.Index == identity.ItemIndex &&
+                eventArgs.Index == _selectedIndex &&
+                eventArgs.Index == _list.SelectedIndex &&
+                PopupTransitionVersion == identity.PopupTransitionVersion &&
+                PopupSessionGeneration == identity.PopupSessionGeneration;
+
+            if (!isCurrentInvocation)
+            {
+                return;
+            }
         }
+
+        AcceptPopupAndClose();
+    }
+
+    private void OnItemActivationStarting(object? sender, ItemInvokedEventArgs eventArgs)
+    {
+        _ = sender;
+        _pointerActivation = eventArgs.Cause == ActivationCause.Pointer && !IsDisposed && IsOpen
+            ? new PopupItemActivationIdentity(
+                eventArgs.ActivationGeneration,
+                eventArgs.Index,
+                PopupTransitionVersion,
+                PopupSessionGeneration)
+            : null;
     }
 
     private void OnSelectionChanged(object? sender, ListSelectionChangedEventArgs eventArgs)
     {
         _ = sender;
+        _listSelectionChangedFired = true;
+
+        if (_synchronizingSelection)
+        {
+            return;
+        }
+
         var selectedIndex = _list.SelectedIndex;
 
         if (_selectedIndex != selectedIndex)
         {
             _selectedIndex = selectedIndex;
             _selectionVersion++;
-        }
-
-        _listSelectionChangedFired = true;
-
-        if (_synchronizingSelection)
-        {
-            return;
         }
 
         if ((selectedIndex >= 0 && !eventArgs.AddedIndexes.Span.Contains(selectedIndex)) ||
@@ -548,7 +665,15 @@ public sealed class ComboBox: InputBase
     {
         _ = sender;
 
-        if (eventArgs.PropertyName != nameof(ListView.SelectedIndex) || _list.SelectedIndex == _selectedIndex)
+        if (eventArgs.PropertyName == nameof(ListView.Items))
+        {
+            _itemsVersion++;
+            return;
+        }
+
+        if (_synchronizingSelection ||
+            eventArgs.PropertyName != nameof(ListView.SelectedIndex) ||
+            _list.SelectedIndex == _selectedIndex)
         {
             return;
         }
@@ -573,6 +698,20 @@ public sealed class ComboBox: InputBase
 
     private string ItemText(object? item) =>
         TextSelector?.Invoke(item) ?? Convert.ToString(item, CultureInfo.InvariantCulture) ?? string.Empty;
+
+    private void SynchronizeListSelection(int value)
+    {
+        _synchronizingSelection = true;
+
+        try
+        {
+            _list.SelectedIndex = value;
+        }
+        finally
+        {
+            _synchronizingSelection = false;
+        }
+    }
 
     private void SetSelectedIndex(int value)
     {
@@ -601,6 +740,7 @@ public sealed class ComboBox: InputBase
         {
             _selectedIndex = previous;
             _selectionVersion++;
+
             throw;
         }
 

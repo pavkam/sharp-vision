@@ -539,6 +539,7 @@ namespace SharpVision.Controls
         public bool IsOpen { get; set; }
         public virtual string Text { get; set; }
         protected SharpVision.Controls.Display.Text? TextControl { get; }
+        protected void AcceptPopupAndClose() { }
         protected virtual void Activate(SharpVision.Input.ActivationCause cause) { }
         protected void ArrangeCaption(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected void DrawDropDownIndicator(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect content, SharpVision.Terminal.Rendering.CellStyle style) { }

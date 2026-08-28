@@ -617,6 +617,107 @@ public sealed class ListViewTests
         control.ActiveIndex.ShouldBe(4);
     }
 
+    /// <summary>Verifies delegated current-only navigation has the same initial, repeated,
+    /// modifier, and bring-into-view behavior as an ordinarily routed non-selecting ListView.</summary>
+    [Fact]
+    public void HandleCurrentNavigationKey_WhenDelegated_MatchesOrdinarilyRoutedNonSelectingList()
+    {
+        var ordinary = CreateNavigationList(ListSelectionMode.None);
+        var delegated = CreateNavigationList(ListSelectionMode.None);
+        var ordinaryInitial = RoutedNavigationKey(ordinary, Code.PageDown, KeyAction.Press, Modifiers.None);
+        var delegatedInitial = NavigationKey(Code.PageDown, KeyAction.Press, Modifiers.None);
+        var ordinaryRepeated = RoutedNavigationKey(ordinary, Code.Down, KeyAction.Repeat, Modifiers.Control);
+        var delegatedRepeated = NavigationKey(Code.Down, KeyAction.Repeat, Modifiers.Control);
+
+        var initialHandled = delegated.HandleCurrentNavigationKey(delegatedInitial);
+        var repeatedHandled = delegated.HandleCurrentNavigationKey(delegatedRepeated);
+
+        initialHandled.ShouldBe(ordinaryInitial.IsHandled);
+        repeatedHandled.ShouldBe(ordinaryRepeated.IsHandled);
+        delegatedInitial.IsHandled.ShouldBeFalse();
+        delegatedRepeated.IsHandled.ShouldBeFalse();
+        delegated.ActiveIndex.ShouldBe(ordinary.ActiveIndex);
+        delegated.SelectedIndex.ShouldBe(ordinary.SelectedIndex);
+        delegated.VerticalOffset.ShouldBe(ordinary.VerticalOffset);
+        delegated.VerticalOffset.ShouldBeGreaterThan(0);
+    }
+
+    /// <summary>Verifies owner-controlled popup session state can seed and restore current without
+    /// changing public selection, and scrolls only once the list is available.</summary>
+    [Fact]
+    public void SetProvisionalCurrentIndex_WhenListIsUnavailable_ChangesOnlyCurrent()
+    {
+        var control = CreateNavigationList(ListSelectionMode.Single);
+        control.SelectedIndex = 1;
+        control.IsEnabled = false;
+        var offset = control.VerticalOffset;
+
+        control.SetProvisionalCurrentIndex(4);
+
+        control.ActiveIndex.ShouldBe(4);
+        control.SelectedIndex.ShouldBe(1);
+        control.VerticalOffset.ShouldBe(offset);
+
+        control.IsEnabled = true;
+        control.SetProvisionalCurrentIndex(8);
+
+        control.ActiveIndex.ShouldBe(8);
+        control.SelectedIndex.ShouldBe(1);
+        control.VerticalOffset.ShouldBeGreaterThan(offset);
+    }
+
+    /// <summary>Verifies provisional current rejects an invalid negative index and clamps a stale
+    /// high opening index after collection shrinkage.</summary>
+    [Fact]
+    public void SetProvisionalCurrentIndex_WhenIndexIsStale_ValidatesAndClampsSafely()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectedIndex = 1;
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.SetProvisionalCurrentIndex(-2));
+        control.ActiveIndex.ShouldBe(1);
+
+        control.SetProvisionalCurrentIndex(99);
+
+        control.ActiveIndex.ShouldBe(2);
+        control.SelectedIndex.ShouldBe(1);
+    }
+
+    /// <summary>Verifies delegated selection navigation has the same initial, repeated,
+    /// modifier, selection event, and bring-into-view behavior as ordinary routed ListView input.</summary>
+    [Fact]
+    public void HandleSelectionNavigationKey_WhenDelegated_MatchesOrdinarilyRoutedSelectingList()
+    {
+        var ordinary = CreateNavigationList(ListSelectionMode.Single);
+        var delegated = CreateNavigationList(ListSelectionMode.Single);
+        ordinary.SelectedIndex = 0;
+        delegated.SelectedIndex = 0;
+        List<string> ordinaryChanges = [];
+        List<string> delegatedChanges = [];
+        ordinary.SelectionChanged += (_, eventArgs) =>
+            ordinaryChanges.Add($"{Join(eventArgs.AddedIndexes)}/{Join(eventArgs.RemovedIndexes)}");
+        delegated.SelectionChanged += (_, eventArgs) =>
+            delegatedChanges.Add($"{Join(eventArgs.AddedIndexes)}/{Join(eventArgs.RemovedIndexes)}");
+        var ordinaryInitial = RoutedNavigationKey(ordinary, Code.PageDown, KeyAction.Press, Modifiers.None);
+        var delegatedInitial = NavigationKey(Code.PageDown, KeyAction.Press, Modifiers.None);
+        var ordinaryRepeated = RoutedNavigationKey(ordinary, Code.Down, KeyAction.Repeat, Modifiers.Control);
+        var delegatedRepeated = NavigationKey(Code.Down, KeyAction.Repeat, Modifiers.Control);
+
+        var initialHandled = delegated.HandleSelectionNavigationKey(delegatedInitial);
+        var repeatedHandled = delegated.HandleSelectionNavigationKey(delegatedRepeated);
+
+        initialHandled.ShouldBe(ordinaryInitial.IsHandled);
+        repeatedHandled.ShouldBe(ordinaryRepeated.IsHandled);
+        delegatedInitial.IsHandled.ShouldBeFalse();
+        delegatedRepeated.IsHandled.ShouldBeFalse();
+        delegated.ActiveIndex.ShouldBe(ordinary.ActiveIndex);
+        delegated.SelectedIndex.ShouldBe(ordinary.SelectedIndex);
+        delegated.SelectedItems.ShouldBe(ordinary.SelectedItems);
+        delegated.VerticalOffset.ShouldBe(ordinary.VerticalOffset);
+        delegated.VerticalOffset.ShouldBeGreaterThan(0);
+        delegatedChanges.ShouldBe(ordinaryChanges);
+    }
+
     /// <summary>Verifies active fallback chooses a closer available higher row over a farther lower row.</summary>
     [Fact]
     public void Items_WhenHigherAvailableRowIsCloser_ChoosesHigherRow()
@@ -807,6 +908,34 @@ public sealed class ListViewTests
         }, TestContext.Current.CancellationToken);
 
         invoked.ShouldBe([2]);
+    }
+
+    /// <summary>Verifies a pointer activation's immutable identity is captured before selection
+    /// publication and the same identity reaches the eventual invocation.</summary>
+    [Fact]
+    public async Task Dispatch_WhenPointerInvokes_CarriesStartingIdentityAcrossSelectionCallbacksAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = new UiListView { Items = ["A", "B"] };
+        ItemInvokedEventArgs? starting = null;
+        ItemInvokedEventArgs? invoked = null;
+        var selectionSawStartingIdentity = false;
+        control.ItemActivationStarting += (_, eventArgs) => starting = eventArgs;
+        control.SelectionChanged += (_, _) => selectionSawStartingIdentity = starting is not null;
+        control.ItemInvoked += (_, eventArgs) => invoked = eventArgs;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            control.Attach(dispatcher);
+            new LayoutEngine().Layout(control, new Size(10, 4));
+            using PointerManager pointer = new(control);
+            Click(pointer, new Point(0, 1), Modifiers.None);
+        }, TestContext.Current.CancellationToken);
+
+        selectionSawStartingIdentity.ShouldBeTrue();
+        _ = starting.ShouldNotBeNull();
+        starting.ActivationGeneration.ShouldBeGreaterThan(0UL);
+        invoked.ShouldBeSameAs(starting);
     }
 
     /// <summary>Verifies pointer invocation stops when selection callbacks replace the exact
@@ -1327,6 +1456,20 @@ public sealed class ListViewTests
 
     private static UiListView Create(params object?[] items) => new() { Items = items };
 
+    private static UiListView CreateNavigationList(ListSelectionMode selectionMode)
+    {
+        var control = new UiListView
+        {
+            ItemTemplate = item => new ControlText((string) item!),
+            Items = Enumerable.Range(0, 12).Select(index => (object?) $"Item {index}").ToArray(),
+            RowHeight = 1,
+            Height = Length.Cells(3),
+            SelectionMode = selectionMode
+        };
+        new LayoutEngine().Layout(control, new Size(12, 3));
+        return control;
+    }
+
     private static ControlText Add(List<ControlText> controls, ControlText control)
     {
         controls.Add(control);
@@ -1349,6 +1492,20 @@ public sealed class ListViewTests
                 nativeCode: 0,
                 Modifiers.None,
                 action)));
+
+    private static KeyEventArgs NavigationKey(Code code, KeyAction action, Modifiers modifiers) =>
+        new(new Stroke(code, character: null, nativeCode: 0, modifiers, action));
+
+    private static KeyEventArgs RoutedNavigationKey(
+        ControlBase target,
+        Code code,
+        KeyAction action,
+        Modifiers modifiers)
+    {
+        var eventArgs = NavigationKey(code, action, modifiers);
+        _ = Router.Route(target, Events.Key, eventArgs);
+        return eventArgs;
+    }
 
     private static KeyEventArgs KeyWithModifiers(ControlBase target, Code code, Modifiers modifiers)
     {

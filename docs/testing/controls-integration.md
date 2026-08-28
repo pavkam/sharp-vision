@@ -145,12 +145,12 @@ focus into the mounted component without calling `FocusManager` directly.
 
 Tests drive `surface.Pointer` with `MoveToAsync`, `PressAsync`, `ReleaseAsync`,
 `ClickAsync`, `LeaveAsync`, or captured drag operations, and drive
-`surface.Keyboard` with supported typed key codes, Shift+Tab, and distinct Kitty
-character press and release actions. These helpers emit terminal bytes; they
-never call `Router.Route`, mutate hover directly, call `SetPressed`, or call
-`FocusManager.Focus` on the component. Each action waits until the transport has
-consumed its bytes and the application has reached idle after routed work,
-layout, rendering, and output.
+`surface.Keyboard` with supported typed key codes, key-repeat actions,
+Shift+Tab, and distinct Kitty character press and release actions. These helpers
+emit terminal bytes; they never call `Router.Route`, mutate hover directly, call
+`SetPressed`, or call `FocusManager.Focus` on the component. Each action waits
+until the transport has consumed its bytes and the application has reached idle
+after routed work, layout, rendering, and output.
 
 Keyboard-focus reveal fixtures reflow earlier siblings from `IsFocused`,
 `FocusEntered`, `GotFocus`, and manager `Gained` callbacks, then assert the
@@ -199,6 +199,28 @@ acceptable oracle.
 Action timeouts report the action and the latest screen. Snapshot mismatches
 retain row boundaries and cell differences. Tests isolate held-pointer scenarios
 or release capture before reuse, so state cannot leak between surfaces.
+
+Popup-backed input conformance mounts each owner and private target under one
+real `Application`, then drives a
+[provisional navigation session](../concepts/floating-surfaces.md#popup-navigation-sessions)
+through terminal keyboard and pointer reports. `ComboBoxSurfaceTests` proves
+initial and repeat movement exactly once while focus remains on the owner,
+Escape and light-dismiss rollback, unavailability rollback, Enter and pointer
+acceptance and replacement-session survival. ComboBox binding fixtures also
+prove cancellation after incremental bound-item domain replacement. Popup
+lifecycle fixtures prove that forced-close and failed-open cleanup cannot mutate
+a synchronously reopened presentation or modal session.
+`CommandPaletteSurfaceTests` proves every initial and repeated list-navigation
+key exactly once while focus remains in the editor, plus Escape, `Close()`,
+`IsOpen = false`, light-dismiss, and unavailability rollback.
+`DateInputSurfaceTests` proves Calendar-focused initial and repeat movement,
+Enter, Space, and pointer acceptance, and Escape, direct-close, light-dismiss,
+and owner-unavailability rollback. `DateTimeInputSurfaceTests` proves the same
+Calendar-focused movement and acceptance while preserving time ticks and kind,
+plus Escape, direct-close, light-dismiss, and owner-unavailability rollback.
+Both date fixtures also prove replacement-session survival. The detached target
+fixtures supplement this mounted matrix with exhaustive key semantics and
+focus-independent delegation.
 
 `ComponentCompositionSurfaceTests` places heterogeneous controls on one root and
 drives forward and reverse Tab, local arrow behavior, hover transfer, and press

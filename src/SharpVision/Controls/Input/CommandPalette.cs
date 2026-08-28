@@ -26,6 +26,12 @@ public sealed class CommandPalette: CompositeControlBase
     private readonly PopupDropDownCoordinator _popupCoordinator;
     private CancellationTokenSource? _resolutionCancellation;
     private int _resolutionGeneration;
+    private int _openingSelectedIndex = -1;
+    private int _openingCurrentIndex = -1;
+    private int? _pendingFirstSelectionResolutionGeneration;
+    private ulong _pendingFirstSelectionSessionGeneration;
+    private Dispatcher? _pendingFirstSelectionDispatcher;
+    private PopupItemActivationIdentity? _itemActivation;
     private bool _wantsOpen;
 
     #region Construction and events
@@ -41,6 +47,7 @@ public sealed class CommandPalette: CompositeControlBase
             MaxHeight = _defaultDropDownHeight,
             SelectionMode = ListSelectionMode.Single
         };
+        _list.ItemActivationStarting += OnItemActivationStarting;
         _list.ItemInvoked += OnItemInvoked;
         _popup = new Popup
         {
@@ -71,9 +78,11 @@ public sealed class CommandPalette: CompositeControlBase
             _input.Focus,
             () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None),
             OnOpened,
-            () => Closed?.Invoke(this, EventArgs.Empty),
-            ownerInitialFocus: _input);
-        _ = AddHandler(Events.Key, OnKeyRouted, handledEventsToo: true);
+            OnClosed,
+            ownerInitialFocus: _input,
+            beginSession: BeginNavigationSession,
+            handleNavigationKey: HandleNavigationKey,
+            cancelSession: CancelNavigationSession);
         InitializeContent(_input);
     }
 
@@ -143,6 +152,11 @@ public sealed class CommandPalette: CompositeControlBase
 
     /// <summary>Gets whether the current resolver request has not completed.</summary>
     public bool IsResolving { get; private set; }
+
+    /// <summary>Gets whether detached or pre-arrange result selection remains queued. Tests use
+    /// this seam to prove every popup close path releases deferred session work.</summary>
+    internal bool HasPendingFirstResultSelection =>
+        _pendingFirstSelectionResolutionGeneration is not null;
 
     /// <summary>Gets or sets the detached-control factory used to realize each result row.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
@@ -457,12 +471,15 @@ public sealed class CommandPalette: CompositeControlBase
     {
         base.OnAttached();
         _popupCoordinator.OnOwnerAttached();
+        SchedulePendingFirstResultSelection();
     }
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
+        ClearPendingFirstResultSelection();
+        _popupCoordinator.OnOwnerUnavailable(reason);
         ExceptionDispatchInfo? failure = null;
 
         if (reason is ReleaseReason.Detached or ReleaseReason.Disposed)
@@ -475,6 +492,7 @@ public sealed class CommandPalette: CompositeControlBase
         if (reason == ReleaseReason.Disposed)
         {
             _input.TextChanged -= OnTextChanged;
+            _list.ItemActivationStarting -= OnItemActivationStarting;
             _list.ItemInvoked -= OnItemInvoked;
             _popupCoordinator.Detach();
             Opened = null;
@@ -487,39 +505,54 @@ public sealed class CommandPalette: CompositeControlBase
         failure?.Throw();
     }
 
-    private void OnKeyRouted(object? sender, KeyEventArgs eventArgs)
+    private void BeginNavigationSession()
     {
-        _ = sender;
+        _openingSelectedIndex = _list.SelectedIndex;
+        _openingCurrentIndex = _list.ActiveIndex;
+        _itemActivation = null;
+    }
 
-        if (eventArgs.Phase != RoutingPhase.Preview || eventArgs.IsHandled || !IsOpen)
-        {
-            return;
-        }
+    private bool HandleNavigationKey(KeyEventArgs eventArgs)
+    {
+        var stroke = eventArgs.Stroke;
 
         if (eventArgs.IsInitialKeyDown &&
-            eventArgs.Stroke.Code == Code.Escape &&
-            eventArgs.Stroke.Modifiers.IsActivationEligible())
+            stroke.Code == Code.Escape &&
+            stroke.Modifiers.IsActivationEligible())
         {
-            Close();
             eventArgs.IsHandled = true;
-            return;
+            _popupCoordinator.SetOpen(false);
+            return true;
         }
 
-        if (eventArgs.IsInitialKeyDown && eventArgs.Stroke.Code == Code.Enter)
+        if (eventArgs.IsInitialKeyDown && stroke.Code == Code.Enter)
         {
-            eventArgs.IsHandled = IsResolving ||
-                _list.ActivateCurrent(
-                    ActivationCause.Keyboard,
-                    eventArgs.Stroke.Code,
-                    eventArgs.Stroke.Modifiers);
-            return;
+            if (IsResolving)
+            {
+                eventArgs.IsHandled = true;
+                return true;
+            }
+
+            var handled = _list.ActivateCurrent(
+                ActivationCause.Keyboard,
+                stroke.Code,
+                stroke.Modifiers);
+            eventArgs.IsHandled |= handled;
+            return handled;
         }
 
-        if (eventArgs.IsKeyDown &&
-            eventArgs.Stroke.Code is Code.Up or Code.Down)
-        {
-            eventArgs.IsHandled = _list.MoveSelection(eventArgs.Stroke.Code);
-        }
+        var navigated = _list.HandleSelectionNavigationKey(eventArgs);
+        eventArgs.IsHandled |= navigated;
+        return navigated;
+    }
+
+    private void CancelNavigationSession()
+    {
+        _itemActivation = null;
+        var selectedIndex = IsCurrentResultIndex(_openingSelectedIndex) ? _openingSelectedIndex : -1;
+        var currentIndex = IsCurrentResultIndex(_openingCurrentIndex) ? _openingCurrentIndex : -1;
+        _list.SelectedIndex = selectedIndex;
+        _list.SetProvisionalCurrentIndex(currentIndex);
     }
 
     /// <summary>Unifies the first available result's selection and current state after the popup
@@ -532,6 +565,13 @@ public sealed class CommandPalette: CompositeControlBase
         }
 
         Opened?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnClosed()
+    {
+        _wantsOpen = false;
+        ClearPendingFirstResultSelection();
+        Closed?.Invoke(this, EventArgs.Empty);
     }
 
     #endregion
@@ -559,6 +599,7 @@ public sealed class CommandPalette: CompositeControlBase
 
     private void BeginResolution()
     {
+        ClearPendingFirstResultSelection();
         CancelResolution();
         var generation = ++_resolutionGeneration;
         var resolver = Resolver;
@@ -686,9 +727,76 @@ public sealed class CommandPalette: CompositeControlBase
             _popupCoordinator.IsOpen &&
             _list.SelectedIndex < 0)
         {
+            RequestFirstResultSelection(generation);
+        }
+    }
+
+    /// <summary>Retains refreshed-result selection intent until an attached dispatcher can run it
+    /// after the frame requested by Items has arranged the replacement rows.</summary>
+    private void RequestFirstResultSelection(int resolutionGeneration)
+    {
+        _pendingFirstSelectionResolutionGeneration = resolutionGeneration;
+        _pendingFirstSelectionSessionGeneration = _popupCoordinator.SessionGeneration;
+        SchedulePendingFirstResultSelection();
+    }
+
+    private void SchedulePendingFirstResultSelection()
+    {
+        if (_pendingFirstSelectionResolutionGeneration is null ||
+            Dispatcher is not { } dispatcher ||
+            ReferenceEquals(_pendingFirstSelectionDispatcher, dispatcher))
+        {
+            return;
+        }
+
+        if (_pendingFirstSelectionDispatcher is { } previousDispatcher)
+        {
+            previousDispatcher.Idle -= OnPendingFirstSelectionIdle;
+        }
+
+        _pendingFirstSelectionDispatcher = dispatcher;
+        dispatcher.Idle += OnPendingFirstSelectionIdle;
+        dispatcher.RequestIdle();
+    }
+
+    private void OnPendingFirstSelectionIdle(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+
+        if (_pendingFirstSelectionResolutionGeneration is not { } resolutionGeneration)
+        {
+            ClearPendingFirstResultSelection();
+
+            return;
+        }
+
+        var sessionGeneration = _pendingFirstSelectionSessionGeneration;
+        ClearPendingFirstResultSelection();
+
+        if (IsCurrentResolution(resolutionGeneration) &&
+            _popupCoordinator.IsOpen &&
+            _popupCoordinator.SessionGeneration == sessionGeneration &&
+            _list.SelectedIndex < 0)
+        {
             _ = _list.MoveSelection(Code.Home);
         }
     }
+
+    private void ClearPendingFirstResultSelection()
+    {
+        if (_pendingFirstSelectionDispatcher is { } dispatcher)
+        {
+            _pendingFirstSelectionDispatcher = null;
+            dispatcher.Idle -= OnPendingFirstSelectionIdle;
+        }
+
+        _pendingFirstSelectionResolutionGeneration = null;
+        _pendingFirstSelectionSessionGeneration = 0;
+    }
+
+    [Pure]
+    private bool IsCurrentResultIndex(int index) => index == -1 || (index >= 0 && index < Items.Count);
 
     private void ApplyCompletion(
         int generation,
@@ -774,14 +882,40 @@ public sealed class CommandPalette: CompositeControlBase
     private void OnItemInvoked(object? sender, ItemInvokedEventArgs eventArgs)
     {
         _ = sender;
-        Invoke(eventArgs.Index, eventArgs.Cause);
+        var activation = _itemActivation;
+        _itemActivation = null;
+        var isCurrentInvocation =
+            activation is { } identity &&
+            !IsDisposed &&
+            IsOpen &&
+            eventArgs.ActivationGeneration == identity.ItemGeneration &&
+            eventArgs.Index == identity.ItemIndex &&
+            eventArgs.Index == _list.SelectedIndex &&
+            eventArgs.Index == _list.ActiveIndex &&
+            _popupCoordinator.TransitionVersion == identity.PopupTransitionVersion &&
+            _popupCoordinator.SessionGeneration == identity.PopupSessionGeneration;
+
+        if (!isCurrentInvocation)
+        {
+            return;
+        }
+
+        _popupCoordinator.AcceptAndClose();
+        ItemInvoked?.Invoke(
+            this,
+            new ItemInvokedEventArgs(eventArgs.Index, eventArgs.Item, eventArgs.Cause));
     }
 
-    private void Invoke(int index, ActivationCause cause)
+    private void OnItemActivationStarting(object? sender, ItemInvokedEventArgs eventArgs)
     {
-        var eventArgs = new ItemInvokedEventArgs(index, Items[index], cause);
-        Close();
-        ItemInvoked?.Invoke(this, eventArgs);
+        _ = sender;
+        _itemActivation = !IsDisposed && IsOpen
+            ? new PopupItemActivationIdentity(
+                eventArgs.ActivationGeneration,
+                eventArgs.Index,
+                _popupCoordinator.TransitionVersion,
+                _popupCoordinator.SessionGeneration)
+            : null;
     }
 
     #endregion

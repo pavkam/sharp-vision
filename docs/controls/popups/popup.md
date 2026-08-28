@@ -277,6 +277,10 @@ popup.IsOpen = true;
   the same instance can reopen. Later callback failures complete cleanup, the
   first failure is rethrown, and reentering `IsOpen` from a callback is
   rejected.
+- Availability-forced closure captures its committed state before publishing
+  `PropertyChanged(IsOpen)`. If that callback restores availability and reopens,
+  the old continuation still completes its own close notification but cannot
+  collapse or release the newer presentation.
 - Ownership rules hold, a root resize repositions the open surface, and closed
   layout clears stale geometry; final rendering is deterministic down to the
   exact cells.

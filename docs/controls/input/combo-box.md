@@ -88,7 +88,13 @@ ListView's selection, scrolling, and surface appearance inside the Popup.
   raises `SelectionChanged`. An items binding accepts incremental changes only
   from the current source identity and source-path revision; replacement while
   an old delta is queued or retained across detachment forces a complete
-  replacement snapshot instead.
+  replacement snapshot instead. Every direct or incremental item-domain change
+  invalidates an open navigation snapshot even when all numeric indexes remain
+  in range, so Escape cannot restore a cursor captured for different items.
+- Opening snapshots the accepted `SelectedIndex` and the popup list's current
+  row, then seeds provisional current-row navigation from the accepted item.
+  Directional, endpoint, and page browsing does not change `SelectedIndex` or
+  `SelectedItem` until an activation accepts the current row.
 - `SelectedIndex` is `-1` or an index within `Items`; a committed selection
   publishes `PropertyChanged(SelectedIndex)` before `SelectionChanged`.
   Publication is versioned under synchronous reentry: a `PropertyChanged`
@@ -141,14 +147,33 @@ set on each instance. Replacing the Theme repaints every affected field.
 
 ## Interaction
 
-Enter, Space, or a primary pointer click toggles the list. The ComboBox stays
-focused while the arrow keys move the private current item, Enter chooses it and
-closes the list, and Escape closes without changing the selection. Pointer
-clicks route through the Popup frame to the realized ListView item and use the
-same semantic invocation path as Enter. Closed list cells neither render nor hit
-test. When a close begins in the list, keyboard focus returns to the visible
-ComboBox field during [Popup closing](../popups/popup.md#api), before the list
-becomes unavailable.
+Enter, Space, or a primary pointer click toggles a closed list. During an open
+session, the following keys use the
+[shared focus-independent delegation rule](../../concepts/input-routing.md#popup-navigation-delegation):
+
+| Input                                     | Open-session behavior                                                                                        |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Up or Left, initial or repeat             | Moves the provisional current row to the previous available item.                                            |
+| Down or Right, initial or repeat          | Moves the provisional current row to the next available item.                                                |
+| Home or End, initial or repeat            | Moves the provisional current row to the first or last available item.                                       |
+| Page Up or Page Down, initial or repeat   | Moves by one visible page, bounded by the first or last available item.                                      |
+| Enter, initial activation-eligible press  | Accepts the current row, commits `SelectedIndex`, and closes the popup.                                      |
+| Space                                     | Remains field press activation rather than popup acceptance; it does not replace Enter's accept transaction. |
+| Escape, initial activation-eligible press | Cancels and closes the popup.                                                                                |
+
+The ComboBox normally keeps focus while the private list owns the delegated
+navigation semantics. Moving focus into the list does not double-apply a
+navigation stroke. A primary pointer click on a realized row accepts that row
+through the same session as Enter, including when the row was already selected.
+Closed list cells neither render nor hit test. When a close begins in the list,
+keyboard focus returns to the visible ComboBox field during
+[Popup closing](../popups/popup.md#api), before the list becomes unavailable.
+
+Escape, plain Tab traversal, `IsOpen = false`, direct popup closure, light
+dismissal, and owner unavailability close without acceptance. Each restores the
+opening selected and current rows exactly once. A callback that reopens or
+selects a replacement item owns that newer state; stale activation or rollback
+from the previous session cannot close or overwrite it.
 
 The private ListView receives wheel input first. A wheel that changes its scroll
 offset keeps the drop-down open. A wheel over the open drop-down that cannot
@@ -158,13 +183,13 @@ the ComboBox plane closes the drop-down and is consumed.
 ### Keyboard navigation inside the popup
 
 The popup and the inner ListView never enter sequential traversal. Plain Tab or
-Shift+Tab, with optional Caps Lock or Num Lock state, closes or commits the
-popup and then continues once through application traversal. A Tab carrying
-Control, Alt, Super, Hyper, or Meta remains unhandled and leaves the popup open.
-The arrow keys (Up/Down/Left/Right), Home, End, Page Up, and Page Down move
-between items through the ListView's own keyboard handler. Initial and repeated
-key-down input share that path, so holding a navigation key continues moving the
-current row and keeps it visible while the ComboBox retains focus.
+Shift+Tab, with optional Caps Lock or Num Lock state, cancels the popup and then
+continues once through application traversal. A Tab carrying Control, Alt,
+Super, Hyper, or Meta remains unhandled and leaves the popup open. The arrow
+keys (Up/Down/Left/Right), Home, End, Page Up, and Page Down move between items
+through the ListView's own keyboard handler. Initial and repeated key-down input
+share that path, so holding a navigation key continues moving the current row
+and keeps it visible while the ComboBox retains focus.
 
 Printable Unicode scalars provide basic case-insensitive type-to-select. The
 search starts after the current item, wraps around once, and falls back to the
@@ -199,6 +224,9 @@ var density = new ComboBox
 
 - Assigned items are copied, indices are validated, and the connected popup
   renders its exact cells in both below and above placement.
+- Initial and repeated list navigation is delivered exactly once regardless of
+  focus placement, remains provisional until Enter or pointer acceptance, and
+  restores the opening row on every cancelling close path.
 - The popup renders opaquely and hit tests only what is visible. Popup
   arrangement, Escape, and mouse selection through the Popup behave as
   documented, and keyboard focus, navigation, and activation follow the rules

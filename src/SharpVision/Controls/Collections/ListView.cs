@@ -40,6 +40,7 @@ public sealed class ListView: ItemsControl
     private int _pendingSelectionReveal = -1;
     private int _selectionVersion;
     private int _selectionAnchor = -1;
+    private ulong _activationGeneration;
 
     /// <summary>Initializes an empty single-selection ListView with a text template and continuous background.</summary>
     public ListView()
@@ -72,6 +73,10 @@ public sealed class ListView: ItemsControl
 
     /// <summary>Raised after semantic Enter or primary pointer invocation.</summary>
     public event EventHandler<ItemInvokedEventArgs>? ItemInvoked;
+
+    /// <summary>Raised with a ListView-owned immutable activation identity before any active-row
+    /// or selection publication can invoke external callbacks.</summary>
+    internal event EventHandler<ItemInvokedEventArgs>? ItemActivationStarting;
 
     /// <summary>Gets or atomically sets an owned snapshot of borrowed item values.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
@@ -574,6 +579,7 @@ public sealed class ListView: ItemsControl
         {
             SelectionChanging = null;
             SelectionChanged = null;
+            ItemActivationStarting = null;
             ItemInvoked = null;
         }
     }
@@ -1509,6 +1515,46 @@ public sealed class ListView: ItemsControl
         return true;
     }
 
+    /// <summary>Handles one delegated navigation stroke by moving only the current item.</summary>
+    /// <param name="eventArgs">The routed key record to interpret.</param>
+    /// <returns><see langword="true"/> when the stroke moved the current item; otherwise,
+    /// <see langword="false"/>.</returns>
+    /// <remarks>This seam lets a drop-down owner browse a retained list without committing the
+    /// list selection it maintains separately.</remarks>
+    internal bool HandleCurrentNavigationKey(KeyEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        return eventArgs.IsKeyDown && MoveCurrent(eventArgs.Stroke.Code);
+    }
+
+    /// <summary>Seeds or restores owner-controlled provisional current state without committing
+    /// public selection.</summary>
+    /// <param name="index">The requested current index, or -1 for no current item. A stale index
+    /// beyond the collection is clamped to its last item.</param>
+    /// <remarks>This seam intentionally bypasses effective item availability because popup owners
+    /// begin and cancel sessions while their retained list is collapsed or otherwise unavailable.
+    /// It scrolls only when the list has a visible, enabled viewport and the target is available.</remarks>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is less than -1.</exception>
+    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    internal void SetProvisionalCurrentIndex(int index)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(index, -1);
+        VerifyMutable();
+
+        var current = _items.Count == 0 ? -1 : Math.Min(index, _items.Count - 1);
+        SetActiveIndex(current);
+
+        if (current >= 0 &&
+            Viewport.Height > 0 &&
+            EffectiveIsVisible &&
+            EffectiveIsEnabled &&
+            IsIndexAvailable(current))
+        {
+            _ = BringIntoView(current);
+        }
+    }
+
     /// <summary>Activates the owned current item without transferring focus to that item.</summary>
     /// <param name="cause">The semantic activation source.</param>
     /// <param name="key">The activating key, or null for non-key activation.</param>
@@ -1533,12 +1579,25 @@ public sealed class ListView: ItemsControl
     {
         var item = (ListItem) sender!;
         var dispatcher = Dispatcher;
-        SetActiveIndex(item.Index);
 
         if (!IsActivatedItemCurrent(item, dispatcher))
         {
             return;
         }
+
+        var activation = new ItemInvokedEventArgs(
+            item.Index,
+            Items[item.Index],
+            eventArgs.Cause,
+            ++_activationGeneration);
+        ItemActivationStarting?.Invoke(this, activation);
+
+        if (!IsActivatedItemCurrent(item, dispatcher))
+        {
+            return;
+        }
+
+        SetActiveIndex(item.Index);
 
         if (item.LastKey == Code.Enter)
         {
@@ -1546,7 +1605,7 @@ public sealed class ListView: ItemsControl
             // commit an invocation the user did not intend.
             if (item.LastModifiers.IsActivationEligible())
             {
-                ItemInvoked?.Invoke(this, new ItemInvokedEventArgs(item.Index, Items[item.Index], eventArgs.Cause));
+                ItemInvoked?.Invoke(this, activation);
             }
 
             return;
@@ -1573,7 +1632,7 @@ public sealed class ListView: ItemsControl
             (ItemInvocation == ListItemInvocation.SingleClick ||
                 (item.LastClickCount >= 2 && isPlainPointerGesture)))
         {
-            ItemInvoked?.Invoke(this, new ItemInvokedEventArgs(item.Index, Items[item.Index], eventArgs.Cause));
+            ItemInvoked?.Invoke(this, activation);
         }
     }
 
@@ -1708,7 +1767,20 @@ public sealed class ListView: ItemsControl
             return;
         }
 
-        eventArgs.IsHandled = MoveSelection(eventArgs.Stroke.Code);
+        eventArgs.IsHandled = HandleSelectionNavigationKey(eventArgs);
+    }
+
+    /// <summary>Handles one delegated navigation stroke through ordinary ListView selection
+    /// semantics.</summary>
+    /// <param name="eventArgs">The routed key record to interpret.</param>
+    /// <returns><see langword="true"/> when the stroke resolved an eligible navigation target;
+    /// otherwise, <see langword="false"/>.</returns>
+    /// <remarks>This seam preserves the selection transaction used when a focused ListView owns
+    /// the same initial or repeated key itself.</remarks>
+    internal bool HandleSelectionNavigationKey(KeyEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        return eventArgs.IsKeyDown && MoveSelection(eventArgs.Stroke.Code);
     }
 
     /// <summary>Moves selection and current item through the shared keyboard-navigation transaction,

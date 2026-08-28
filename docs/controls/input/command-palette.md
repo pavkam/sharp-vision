@@ -70,13 +70,29 @@ only when the failing request is still current.
    cancels the request, and clears `IsResolving`; a resolver that ignores
    cancellation still cannot mutate or publish into the detached palette.
 5. Opening non-empty results selects the first available row and makes that same
-   row the list's current item while focus stays in the editor. Initial and
-   repeated Down or Up key-down input moves selection and current item through
-   the `ListView` navigation transaction, which scrolls the result viewport
-   minimally to keep the row visible. Enter invokes the selected current result
-   only when `IsResolving` is false; while a newer query is pending, Enter is
-   consumed without activating the older visible snapshot. Pointer activation
-   uses the same `ItemInvoked` contract. Escape closes results.
+   row the list's current item while focus stays in the editor. The opening also
+   snapshots the prior selected and current rows so a close without acceptance
+   can restore them.
+
+| Input                                     | Open-session behavior                                                                                                                           |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Up or Left, initial or repeat             | Moves selection and current state to the previous available result.                                                                             |
+| Down or Right, initial or repeat          | Moves selection and current state to the next available result.                                                                                 |
+| Home or End, initial or repeat            | Moves selection and current state to the first or last available result.                                                                        |
+| Page Up or Page Down, initial or repeat   | Moves selection and current state by one visible page and keeps the result visible.                                                             |
+| Enter, initial activation-eligible press  | Accepts the current result, closes the popup, then publishes `ItemInvoked`; while resolving, consumes the key without activating stale results. |
+| Space                                     | Remains editable query text while the retained editor has focus; it is not a palette acceptance shortcut.                                       |
+| Escape, initial activation-eligible press | Cancels and closes the popup.                                                                                                                   |
+
+The navigation rows above use the
+[shared focus-independent delegation rule](../../concepts/input-routing.md#popup-navigation-delegation).
+They run exactly once whether focus remains in the retained editor or is moved
+into the result list. Selection and current state are provisional until Enter or
+a primary pointer activation accepts a result. `Close()`, `IsOpen = false`,
+Escape, direct popup closure, light dismissal, and unavailability cancel instead
+and restore the opening rows. If refreshed results no longer contain an opening
+index, rollback uses the stable unselected state. A later session is not closed,
+invoked, or rolled back by a stale activation from an earlier one.
 
 Every public callback is a generation boundary. If `ResultsChanged`, popup
 lifecycle, or property notification code starts another query or disposes the
@@ -144,3 +160,6 @@ _ = palette.Open();
   while invoking a result closes the popup and preserves the query.
 - Result selection and current-item state identify the same row; holding Up or
   Down continues navigation and keeps the popup scrollbar synchronized.
+- Initial and repeated navigation is delivered once regardless of focus
+  placement; accepting invokes the current result, while cancellation restores
+  the opening list state.

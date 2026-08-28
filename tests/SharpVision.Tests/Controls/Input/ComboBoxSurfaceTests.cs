@@ -230,10 +230,8 @@ public sealed class ComboBoxSurfaceTests
             parent,
             new Size(16, 8),
             TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(
-            () => surface.Application.Focus.Focus(combo).ShouldBeTrue(),
-            "focus ComboBox");
-        await surface.UpdateAsync(() => combo.IsOpen = true, "open non-scrollable ComboBox");
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Enter);
         var scope = surface.Application.Modality.Active.ShouldNotBeNull();
         var list = OwnedTree.Find<UiListView>(combo).ShouldNotBeNull();
 
@@ -270,10 +268,8 @@ public sealed class ComboBoxSurfaceTests
             parent,
             new Size(16, 8),
             TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(
-            () => surface.Application.Focus.Focus(combo).ShouldBeTrue(),
-            "focus ComboBox");
-        await surface.UpdateAsync(() => combo.IsOpen = true, "open ComboBox");
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Enter);
         var scope = surface.Application.Modality.Active.ShouldNotBeNull();
 
         // Act
@@ -311,10 +307,8 @@ public sealed class ComboBoxSurfaceTests
             parent,
             new Size(16, 8),
             TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(
-            () => surface.Application.Focus.Focus(combo).ShouldBeTrue(),
-            "focus ComboBox");
-        await surface.UpdateAsync(() => combo.IsOpen = true, "open scrollable ComboBox");
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Enter);
         var list = OwnedTree.Find<UiListView>(combo).ShouldNotBeNull();
 
         // Act
@@ -478,6 +472,8 @@ public sealed class ComboBoxSurfaceTests
         await surface.Pointer.ReleaseAsync();
         combo.IsOpen.ShouldBeTrue();
         await surface.Keyboard.PressAsync(Code.Down);
+        combo.SelectedIndex.ShouldBe(0);
+        OwnedTree.Find<UiListView>(combo).ShouldNotBeNull().ActiveIndex.ShouldBe(1);
         await surface.Keyboard.PressAsync(Code.Enter);
 
         // Assert committed transient selection
@@ -521,6 +517,225 @@ public sealed class ComboBoxSurfaceTests
         // Assert normal interaction resumes
         surface.ShouldHaveFocus(combo);
         combo.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies owner-focused terminal press and repeat navigation is delivered exactly
+    /// once and Escape restores the opening current and committed selection.</summary>
+    [Fact]
+    public async Task Input_WhenOwnerHasFocus_NavigatesOnceAndEscapeRollsBackAsync()
+    {
+        var combo = new ComboBox
+        {
+            Items = ["Zero", "One", "Two", "Three"],
+            SelectedIndex = 1,
+            Width = Length.Cells(10),
+            Height = Length.Cells(3),
+            DropDownHeight = 4
+        };
+        var root = new Overlay { Children = { combo } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(12, 8),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(combo);
+        await surface.Keyboard.PressAsync(Code.Enter);
+        var list = OwnedTree.Find<UiListView>(combo).ShouldNotBeNull();
+
+        await surface.Keyboard.PressAsync(Code.Down);
+        await surface.Keyboard.RepeatAsync(Code.Down);
+
+        combo.SelectedIndex.ShouldBe(1);
+        list.SelectedIndex.ShouldBe(1);
+        list.ActiveIndex.ShouldBe(3);
+
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        combo.IsOpen.ShouldBeFalse();
+        combo.SelectedIndex.ShouldBe(1);
+        list.SelectedIndex.ShouldBe(1);
+        list.ActiveIndex.ShouldBe(1);
+    }
+
+    /// <summary>Verifies replacing the live item domain supersedes an opening snapshot whose
+    /// selected and current indexes no longer exist.</summary>
+    [Fact]
+    public async Task Input_WhenItemsShrinkDuringOpenSession_EscapePreservesRepairedSelectionAsync()
+    {
+        var combo = new ComboBox
+        {
+            Items = ["Zero", "One", "Two", "Three"],
+            SelectedIndex = 3,
+            Width = Length.Cells(10),
+            Height = Length.Cells(3),
+            DropDownHeight = 4
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            combo,
+            new Size(12, 8),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Enter);
+        var list = OwnedTree.Find<UiListView>(combo).ShouldNotBeNull();
+
+        await surface.UpdateAsync(() => combo.Items = ["Zero"], "shrink the open ComboBox item domain");
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        combo.IsOpen.ShouldBeFalse();
+        combo.SelectedIndex.ShouldBe(-1);
+        list.SelectedIndex.ShouldBe(-1);
+        list.ActiveIndex.ShouldBe(-1);
+    }
+
+    /// <summary>Verifies a committed selection mutation during browsing supersedes the opening
+    /// snapshot instead of being overwritten by later cancellation.</summary>
+    [Fact]
+    public async Task Input_WhenSelectionChangesExternallyDuringOpenSession_EscapePreservesNewSelectionAsync()
+    {
+        var combo = new ComboBox
+        {
+            Items = ["Zero", "One", "Two"],
+            SelectedIndex = 0,
+            Width = Length.Cells(10),
+            Height = Length.Cells(3),
+            DropDownHeight = 3
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            combo,
+            new Size(12, 7),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Enter);
+        await surface.Keyboard.PressAsync(Code.Down);
+        var list = OwnedTree.Find<UiListView>(combo).ShouldNotBeNull();
+
+        await surface.UpdateAsync(() => combo.SelectedIndex = 2, "replace the committed open-session selection");
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        combo.IsOpen.ShouldBeFalse();
+        combo.SelectedIndex.ShouldBe(2);
+        list.SelectedIndex.ShouldBe(2);
+        list.ActiveIndex.ShouldBe(2);
+    }
+
+    /// <summary>Verifies modal light dismissal cancels provisional browsing and restores the
+    /// opening current item without changing public selection.</summary>
+    [Fact]
+    public async Task Input_WhenLightDismissedAfterBrowsing_RestoresOpeningStateAsync()
+    {
+        var combo = new ComboBox
+        {
+            Items = ["Zero", "One", "Two", "Three"],
+            SelectedIndex = 1,
+            Width = Length.Cells(10),
+            Height = Length.Cells(3),
+            DropDownHeight = 2
+        };
+        var background = new ControlText("outside");
+        Overlay.SetTop(background, Length.Cells(7));
+        Overlay.SetLeft(background, Length.Cells(0));
+        var root = new Overlay { Children = { combo, background } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(14, 8),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Enter);
+        var list = OwnedTree.Find<UiListView>(combo).ShouldNotBeNull();
+        await surface.Keyboard.PressAsync(Code.Down);
+        list.ActiveIndex.ShouldBe(2);
+
+        await surface.Pointer.ClickAsync(background);
+
+        combo.IsOpen.ShouldBeFalse();
+        combo.SelectedIndex.ShouldBe(1);
+        list.SelectedIndex.ShouldBe(1);
+        list.ActiveIndex.ShouldBe(1);
+    }
+
+    /// <summary>Verifies owner unavailability cancels an open browsing session and restores its
+    /// opening current and selected item before releasing the modal popup.</summary>
+    [Fact]
+    public async Task Input_WhenOwnerBecomesUnavailableAfterBrowsing_RestoresOpeningStateAsync()
+    {
+        var combo = new ComboBox
+        {
+            Items = ["Zero", "One", "Two"],
+            SelectedIndex = 1,
+            Width = Length.Cells(10),
+            Height = Length.Cells(3),
+            DropDownHeight = 3
+        };
+        var closed = 0;
+        combo.DropDownClosed += (_, _) => closed++;
+        await using var surface = await ComponentSurface.MountAsync(
+            combo,
+            new Size(12, 7),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Enter);
+        var list = OwnedTree.Find<UiListView>(combo).ShouldNotBeNull();
+        await surface.Keyboard.PressAsync(Code.Down);
+        list.ActiveIndex.ShouldBe(2);
+
+        await surface.UpdateAsync(() => combo.IsEnabled = false, "disable open ComboBox");
+
+        combo.IsOpen.ShouldBeFalse();
+        combo.SelectedIndex.ShouldBe(1);
+        list.SelectedIndex.ShouldBe(1);
+        list.ActiveIndex.ShouldBe(1);
+        surface.Application.Modality.Active.ShouldBeNull();
+        closed.ShouldBe(1);
+
+        await surface.UpdateAsync(() => combo.IsEnabled = true, "re-enable ComboBox");
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Enter);
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        combo.IsOpen.ShouldBeFalse();
+        combo.SelectedIndex.ShouldBe(1);
+        list.SelectedIndex.ShouldBe(1);
+        list.ActiveIndex.ShouldBe(1);
+        closed.ShouldBe(2);
+    }
+
+    /// <summary>Verifies acceptance callbacks that reopen the owner establish a replacement
+    /// session which the completed activation cannot dismiss.</summary>
+    [Fact]
+    public async Task Input_WhenAcceptedCloseReopens_PreservesReplacementSessionAsync()
+    {
+        var combo = new ComboBox
+        {
+            Items = ["Zero", "One", "Two"],
+            SelectedIndex = 0,
+            Width = Length.Cells(10),
+            Height = Length.Cells(3),
+            DropDownHeight = 3
+        };
+        var closeCount = 0;
+        combo.DropDownClosed += (_, _) =>
+        {
+            closeCount++;
+
+            if (closeCount == 1)
+            {
+                combo.IsOpen = true;
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            combo,
+            new Size(12, 7),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Enter);
+        await surface.Keyboard.PressAsync(Code.Down);
+
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        combo.SelectedIndex.ShouldBe(1);
+        closeCount.ShouldBe(1);
+        combo.IsOpen.ShouldBeTrue();
+        surface.ShouldHaveFocus(combo);
     }
 
     /// <summary>Verifies a ComboBox inherits disabled state from an ancestor and keeps stable

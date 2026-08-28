@@ -46,6 +46,9 @@ internal sealed class PopupListInputProbe: InputBase
     /// <summary>Attempts to enable the popup capability a second time.</summary>
     internal void EnablePopupAgain() => _ = EnablePopup(Content);
 
+    /// <summary>Accepts and closes the active popup session through the protected seam.</summary>
+    internal void ProbeAcceptPopupAndClose() => AcceptPopupAndClose();
+
     /// <summary>Resolves the shared drop-down disclosure glyph through the protected seam.</summary>
     internal Rune ProbeResolveDropDownGlyph(Rune fallback) => ResolveDropDownGlyph(fallback);
 

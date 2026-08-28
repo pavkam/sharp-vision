@@ -6,6 +6,53 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies command-palette resolution, forwarding, validation, and stale-result handling.</summary>
 public sealed class CommandPaletteTests
 {
+    /// <summary>Verifies every initial and repeated ListView navigation key is delegated through
+    /// the canonical selection transaction while the retained editor owns the route.</summary>
+    [Theory]
+    [InlineData(Code.Up, KeyAction.Press, 2, 1)]
+    [InlineData(Code.Up, KeyAction.Repeat, 2, 1)]
+    [InlineData(Code.Down, KeyAction.Press, 2, 3)]
+    [InlineData(Code.Down, KeyAction.Repeat, 2, 3)]
+    [InlineData(Code.Left, KeyAction.Press, 2, 1)]
+    [InlineData(Code.Left, KeyAction.Repeat, 2, 1)]
+    [InlineData(Code.Right, KeyAction.Press, 2, 3)]
+    [InlineData(Code.Right, KeyAction.Repeat, 2, 3)]
+    [InlineData(Code.Home, KeyAction.Press, 5, 0)]
+    [InlineData(Code.Home, KeyAction.Repeat, 5, 0)]
+    [InlineData(Code.End, KeyAction.Press, 5, 9)]
+    [InlineData(Code.End, KeyAction.Repeat, 5, 9)]
+    [InlineData(Code.PageUp, KeyAction.Press, 5, 2)]
+    [InlineData(Code.PageUp, KeyAction.Repeat, 5, 2)]
+    [InlineData(Code.PageDown, KeyAction.Press, 5, 8)]
+    [InlineData(Code.PageDown, KeyAction.Repeat, 5, 8)]
+    public void Navigation_WhenPopupIsOpen_DelegatesEveryListKey(
+        Code code,
+        KeyAction action,
+        int startingIndex,
+        int expectedIndex)
+    {
+        // Arrange
+        var palette = new CommandPalette
+        {
+            DropDownHeight = 3,
+            IsOpen = true,
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(
+                Enumerable.Range(0, 10).Select(index => (object?) $"Item {index}").ToArray())
+        };
+        new LayoutEngine().Layout(palette, new Size(20, 8));
+        var list = OwnedTree.Find<UiListView>(palette).ShouldNotBeNull();
+        var editor = OwnedTree.Find<TextInput>(palette).ShouldNotBeNull();
+        list.SelectedIndex = startingIndex;
+
+        // Act
+        var routed = Router.Route(editor, Events.Key, Key(code, action));
+
+        // Assert
+        routed.IsHandled.ShouldBeTrue();
+        list.SelectedIndex.ShouldBe(expectedIndex);
+        list.ActiveIndex.ShouldBe(expectedIndex);
+    }
+
     /// <summary>Verifies a non-cooperative completion from an attachment that ended cannot mutate
     /// detached state or publish callbacks from its continuation thread.</summary>
     [Fact]
@@ -463,4 +510,11 @@ public sealed class CommandPaletteTests
         palette.IsResolving.ShouldBeFalse();
         palette.IsOpen.ShouldBeFalse();
     }
+
+    private static KeyEventArgs Key(Code code, KeyAction action) => new(new Stroke(
+        code,
+        default,
+        nativeCode: 0,
+        Modifiers.None,
+        action));
 }

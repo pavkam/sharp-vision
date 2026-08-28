@@ -33,9 +33,13 @@ public sealed class DateInput: InputBase
     private readonly Popup _popup;
     private readonly SegmentFieldBehavior _segments;
     private DateOnly? _value;
+    private DateOnly _openingActiveDate;
+    private DateInterval? _openingCalendarSelection;
+    private long _openingBoundsVersion;
+    private long _openingValueVersion;
+    private long _boundsVersion;
     private long _valueVersion;
     private bool _seeded;
-    private bool _synchronizingCalendar;
     private CultureInfo _culture;
 
     #region Construction and properties
@@ -58,20 +62,21 @@ public sealed class DateInput: InputBase
             SelectionMode = CalendarSelectionMode.Select
         };
         SyncCalendar();
-        _calendar.SelectionChanged += OnCalendarSelectionChanged;
-        _popup = EnablePopup(
+        _popup = EnablePopupNavigationSession(
             _calendar,
             placement: PopupPlacement.Below,
             focusOnOpen: true,
-            // DateInput forwards every navigation key straight into the calendar while the
-            // popup is open (see OnEvent below) instead of driving traversal itself, so - unlike
-            // ComboBox and DateTimeInput - the popup's own Tab scope stays at its default.
             popupTabNavigation: TabNavigation.Continue,
             beforeOpen: () =>
             {
                 EnsureSeeded();
                 SyncCalendar();
-            });
+            },
+            beginSession: BeginCalendarSession,
+            handleNavigationKey: HandlePopupNavigationKey,
+            cancelSession: CancelCalendarSession,
+            acceptSession: AcceptCalendarSession);
+        _calendar.DateActivated += OnCalendarDateActivated;
         EnablePressActivation();
         _segments = EnableSegmentEditing(
             BuildSegments,
@@ -431,50 +436,8 @@ public sealed class DateInput: InputBase
             return;
         }
 
-        if (IsOpen && eventArgs is KeyEventArgs openKey)
+        if (IsOpen)
         {
-            var stroke = openKey.Stroke;
-
-            if (openKey.IsInitialKeyDown &&
-                stroke.Code == Code.Escape &&
-                stroke.Modifiers.IsActivationEligible())
-            {
-                IsOpen = false;
-                eventArgs.IsHandled = true;
-                return;
-            }
-
-            if (openKey.IsInitialKeyDown &&
-                stroke.Code == Code.Tab &&
-                KeyboardModifierPolicy.IsTabTraversalEligible(stroke.Modifiers))
-            {
-                IsOpen = false;
-                return;
-            }
-
-            if (openKey.IsRepeat &&
-                stroke.Code == Code.Down &&
-                KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Alt))
-            {
-                eventArgs.IsHandled = true;
-                return;
-            }
-
-            if (openKey.IsKeyDown && stroke.Code is Code.Up or Code.Down or Code.Left or Code.Right
-                or Code.PageUp or Code.PageDown or Code.Home or Code.End)
-            {
-                _calendar.InvokeDefault(eventArgs);
-                return;
-            }
-
-            if (openKey.IsInitialKeyDown &&
-                (stroke.Code == Code.Enter ||
-                 (stroke.Code == Code.Character && stroke.Character == new Rune(' '))))
-            {
-                _calendar.InvokeDefault(eventArgs);
-                return;
-            }
-
             return;
         }
 
@@ -607,7 +570,7 @@ public sealed class DateInput: InputBase
 
         if (reason == ReleaseReason.Disposed)
         {
-            _calendar.SelectionChanged -= OnCalendarSelectionChanged;
+            _calendar.DateActivated -= OnCalendarDateActivated;
             ValueChanged = null;
             DropDownOpened = null;
             DropDownClosed = null;
@@ -629,22 +592,101 @@ public sealed class DateInput: InputBase
         IsOpen = !IsOpen;
     }
 
-    private void OnCalendarSelectionChanged(object? sender, CalendarSelectionChangedEventArgs eventArgs)
+    private void OnCalendarDateActivated(DateOnly date)
     {
-        _ = sender;
+        _ = date;
 
-        if (_synchronizingCalendar)
+        if (IsOpen)
         {
+            AcceptPopupAndClose();
+        }
+    }
+
+    private void BeginCalendarSession()
+    {
+        _openingActiveDate = _calendar.ActiveDate;
+        _openingCalendarSelection = _calendar.Selection;
+        _openingBoundsVersion = _boundsVersion;
+        _openingValueVersion = _valueVersion;
+    }
+
+    private bool HandlePopupNavigationKey(KeyEventArgs eventArgs)
+    {
+        var stroke = eventArgs.Stroke;
+
+        if (eventArgs.IsInitialKeyDown &&
+            stroke.Code == Code.Escape &&
+            stroke.Modifiers.IsActivationEligible())
+        {
+            eventArgs.IsHandled = true;
+            IsOpen = false;
+            return true;
+        }
+
+        if (eventArgs.IsInitialKeyDown &&
+            stroke.Code == Code.Tab &&
+            KeyboardModifierPolicy.IsTabTraversalEligible(stroke.Modifiers))
+        {
+            IsOpen = false;
+            return false;
+        }
+
+        if (eventArgs.IsRepeat &&
+            stroke.Code == Code.Down &&
+            KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Alt))
+        {
+            return true;
+        }
+
+        var accepts = eventArgs.IsInitialKeyDown &&
+            stroke.Modifiers.IsActivationEligible() &&
+            (stroke.Code == Code.Enter ||
+             (stroke.Code == Code.Character && stroke.Character == new Rune(' ')));
+
+        if (accepts)
+        {
+            eventArgs.IsHandled = true;
+        }
+
+        return _calendar.HandleNavigationKey(eventArgs) || accepts;
+    }
+
+    private void CancelCalendarSession()
+    {
+        if (_boundsVersion == _openingBoundsVersion &&
+            _valueVersion == _openingValueVersion &&
+            IsOpeningCalendarStateValid())
+        {
+            RestoreOpeningCalendarState();
             return;
         }
 
-        if (eventArgs.Selection is { } interval)
-        {
-            Value = interval.Start;
-        }
-
-        IsOpen = false;
+        SyncCalendar();
     }
+
+    private void AcceptCalendarSession() => Value = _calendar.ActiveDate;
+
+    private void RestoreOpeningCalendarState()
+    {
+        _calendar.Selection = null;
+        _calendar.Selection = new DateInterval(_openingActiveDate, _openingActiveDate);
+
+        if (_openingCalendarSelection is null)
+        {
+            _calendar.Selection = null;
+        }
+        else if (_openingCalendarSelection.Value.Start != _openingActiveDate)
+        {
+            _calendar.Selection = _openingCalendarSelection;
+        }
+    }
+
+    private bool IsOpeningCalendarStateValid() =>
+        IsDateWithinBounds(_openingActiveDate) &&
+        (_openingCalendarSelection is not { } selection ||
+         (IsDateWithinBounds(selection.Start) && IsDateWithinBounds(selection.End)));
+
+    private bool IsDateWithinBounds(DateOnly date) => date >= Minimum && date <= Maximum;
 
     /// <inheritdoc/>
     protected override void OnDropDownOpened() => DropDownOpened?.Invoke(this, EventArgs.Empty);
@@ -927,30 +969,17 @@ public sealed class DateInput: InputBase
 
     private void SyncCalendar()
     {
-        // Guards against OnCalendarSelectionChanged treating this programmatic resync as a user
-        // pick: without it, setting _calendar.Selection below re-enters through the
-        // SelectionChanged event and unconditionally closes the popup, even when the caller only
-        // meant to keep an already-open popup showing the field's current value.
-        _synchronizingCalendar = true;
+        _calendar.Culture = _culture;
+        _calendar.MinimumDate = Minimum;
+        _calendar.MaximumDate = Maximum;
 
-        try
+        if (_value is { } date)
         {
-            _calendar.Culture = _culture;
-            _calendar.MinimumDate = Minimum;
-            _calendar.MaximumDate = Maximum;
-
-            if (_value is { } date)
-            {
-                _calendar.Selection = new DateInterval(date, date);
-            }
-            else
-            {
-                _ = _calendar.ClearSelection();
-            }
+            _calendar.Selection = new DateInterval(date, date);
         }
-        finally
+        else
         {
-            _synchronizingCalendar = false;
+            _ = _calendar.ClearSelection();
         }
     }
 
@@ -978,6 +1007,7 @@ public sealed class DateInput: InputBase
 
     private void SynchronizeBoundsAndRepairValue()
     {
+        _boundsVersion++;
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(() => _calendar.MinimumDate = Minimum, ref failure);
         ExceptionAggregation.Capture(() => _calendar.MaximumDate = Maximum, ref failure);
