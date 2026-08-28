@@ -8,6 +8,42 @@ using System.Text.Json;
 /// <summary>Proves window focus and interaction through mounted terminal surfaces.</summary>
 public sealed class WindowSurfaceTests
 {
+    /// <summary>Verifies a modal Window with no focusable descendant still becomes the active
+    /// Window instead of clearing activation when modal entry commits null focus.</summary>
+    [Fact]
+    public async Task ShowModal_WhenWindowHasNoFocusableContent_ActivatesModalWindowAsync()
+    {
+        // Arrange
+        var backgroundInput = new Button { Text = "Background" };
+        var background = new Window { Content = backgroundInput };
+        var modal = new Window
+        {
+            Content = new ControlText("Please wait"),
+            Visibility = Visibility.Collapsed
+        };
+        var root = new Overlay { Children = { background, modal } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(32, 10),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(
+            () => surface.Application.Focus.Focus(backgroundInput).ShouldBeTrue(),
+            "activate background Window");
+        surface.Application.ActiveWindow.ShouldBeSameAs(background);
+        ModalScope? scope = null;
+
+        // Act
+        await surface.UpdateAsync(() => scope = modal.ShowModal(), "show passive modal Window");
+
+        // Assert
+        scope.ShouldNotBeNull().IsActive.ShouldBeTrue();
+        surface.Application.ActiveWindow.ShouldBeSameAs(modal);
+        modal.IsActive.ShouldBeTrue();
+        background.IsActive.ShouldBeFalse();
+
+        await surface.UpdateAsync(scope.Dispose, "close passive modal Window");
+    }
+
     /// <summary>Verifies ancestor availability and reparenting transitions clear retained close
     /// hover when the framework pointer path is retired without routing a raw Leave event.</summary>
     [Theory]

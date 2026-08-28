@@ -1707,7 +1707,11 @@ public sealed class Application:
                     FocusValue = new FocusManager(Root);
                     ActivationValue = new WindowActivationManager(Root);
                     CaptureValue = new PointerManager(Root, _timeProvider, ActivationValue.Activate);
-                    ModalityValue = new ModalityManager(Root, FocusValue, CaptureValue);
+                    ModalityValue = new ModalityManager(
+                        Root,
+                        FocusValue,
+                        CaptureValue,
+                        target => _ = ActivationValue.Activate(target));
                     _accessKeys = new AccessKeyManager(Root, FocusValue, ModalityValue);
                     _shortcuts = new ShortcutManager(Root, FocusValue, ModalityValue);
                     FocusValue.Lost += OnFocusChanged;

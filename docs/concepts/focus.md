@@ -135,9 +135,11 @@ Window activation is independent of this search, so such a press still updates
 Every committed focus transition updates `Application.ActiveWindow` from the
 nearest Window ancestor of the new focus target. Programmatic focus, pointer
 focus, Tab traversal, access keys, modal entry, and focus release all use this
-same activation rule. When the committed target lies outside every Window,
-including a null target, activation is cleared. Focus flags and a Window's
-`IsActive` remain separate pieces of state.
+same activation rule. Modal entry with no eligible focus target activates the
+Window containing its modal root directly; a passive modal Window therefore
+still becomes active. Outside that modal-root fallback, a committed target
+outside every Window, including a null target, clears activation. Focus flags
+and a Window's `IsActive` remain separate pieces of state.
 
 Detach, hide/collapse, disable, disposal, or disposal of the manager itself
 releases invalid focus deterministically.

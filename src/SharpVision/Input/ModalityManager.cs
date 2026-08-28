@@ -22,6 +22,7 @@ public sealed class ModalityManager: IDisposable
     private readonly List<LightDismiss> _lightDismissHandlers = [];
     private readonly FocusManager _focus;
     private readonly PointerManager _pointer;
+    private readonly Action<ControlBase?>? _activate;
     private ExceptionDispatchInfo? _unwindFailure;
     private ModalScope? _unwindRequested;
     private ModalScope? _pendingExit;
@@ -38,12 +39,18 @@ public sealed class ModalityManager: IDisposable
     /// <param name="root">The non-null attached application root.</param>
     /// <param name="focus">The non-null live focus manager for <paramref name="root"/>.</param>
     /// <param name="pointer">The non-null live pointer manager for <paramref name="root"/>.</param>
+    /// <param name="activate">Optional integration callback that activates the Window containing
+    /// a modal root when entry has no eligible focus target.</param>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
     /// <exception cref="ArgumentException">A dependency does not own the same attached tree.</exception>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The root is disposed.</exception>
     [MustDisposeResource]
-    internal ModalityManager(ControlBase root, FocusManager focus, PointerManager pointer)
+    internal ModalityManager(
+        ControlBase root,
+        FocusManager focus,
+        PointerManager pointer,
+        Action<ControlBase?>? activate = null)
     {
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(focus);
@@ -73,6 +80,7 @@ public sealed class ModalityManager: IDisposable
         Root = root;
         _focus = focus;
         _pointer = pointer;
+        _activate = activate;
         root.SetModalityOwner(this);
     }
 
@@ -160,6 +168,11 @@ public sealed class ModalityManager: IDisposable
                 excludedSubtrees: null,
                 scope,
                 previousFocus);
+
+            if (target is null)
+            {
+                _activate?.Invoke(root);
+            }
 
             ObjectDisposedException.ThrowIf(_isDisposed, this);
             return scope;

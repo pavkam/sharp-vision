@@ -338,6 +338,10 @@ Lifetime behavior guarantees youngest-first rollback publication,
 restore-before-`Exited` ordering, coherent focus facts after callback failure,
 and shutdown or subtree exclusions that strengthen deferred teardown.
 
+When entry finds no eligible focus target, the Application still activates the
+Window containing the modal root. This preserves a coherent active Window for a
+passive modal surface while keyboard focus remains null.
+
 End to end, raw UTF-8 text, bracketed paste, key, terminal-focus, SGR pointer,
 wheel, and resize records sent through `Application` produce in-plane routes,
 background isolation, dismissal without replay, the expected semantic cells, and

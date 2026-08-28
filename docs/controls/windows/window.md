@@ -166,6 +166,11 @@ programmatic, pointer, keyboard, or modal focus transition into a Window also
 activates its nearest Window ancestor. A qualifying press or a committed focus
 move outside all Windows clears activation.
 
+Entering modality activates the Window even when neither it nor its content can
+accept keyboard focus. In that case focus becomes null, while
+`Application.ActiveWindow` and `Window.IsActive` still identify the passive
+modal Window that owns the interaction plane.
+
 Activating another Window atomically deactivates the previous one and raises it
 above its sibling Windows in the owning `Overlay`'s z-order, reusing
 [`Overlay.SetZIndex`](../layout/overlay.md#api); non-Window overlay children and
@@ -264,8 +269,8 @@ var scope = window.ShowModal(
 - Application and Window activation identity behave as documented, including
   primary presses on chrome, background, content, and descendants, programmatic
   and keyboard focus activation, switching between Windows, clearing on outside
-  presses, modal rejection, focus independence, unavailable cleanup, shutdown,
-  and active-border rendering.
+  presses, passive modal activation, modal rejection, focus independence,
+  unavailable cleanup, shutdown, and active-border rendering.
 - Header clipping, placement, and Unicode measurement are correct; the close
   chrome and its pointer states render exactly, including zero and tiny bounds;
   content and collapsed geometry, the opaque surface and shadows, and ownership
