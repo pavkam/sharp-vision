@@ -796,4 +796,161 @@ public sealed class DateInputSurfaceTests
         // Assert - the day incremented, proving the click landed on the day segment, not month.
         input.Value.ShouldBe(new DateOnly(2026, 3, 16));
     }
+
+    /// <summary>Verifies owner- and Calendar-focused routes deliver each initial and repeated
+    /// navigation stroke exactly once, keep the public value provisional, and restore the opening
+    /// active date when Escape cancels the session.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Keyboard_WhenPopupNavigationUsesEitherFocusRoute_MovesOnceAndEscapeRollsBackAsync(
+        bool focusCalendar)
+    {
+        // Arrange
+        var openingDate = new DateOnly(2026, 3, 15);
+        var input = new DateInput
+        {
+            Value = openingDate,
+            Culture = CultureInfo.InvariantCulture
+        };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+        var calendar = OwnedTree.Find<UiCalendar>(input).ShouldNotBeNull();
+        await surface.UpdateAsync(() => input.IsOpen = true, "open DateInput popup");
+        var target = focusCalendar ? (ControlBase) calendar : input;
+        await surface.UpdateAsync(
+            () => surface.Application.Focus.Focus(target).ShouldBeTrue(),
+            "choose popup navigation focus route");
+
+        // Act
+        await surface.UpdateAsync(
+            () => _ = Router.Route(
+                target,
+                Events.Key,
+                new KeyEventArgs(new Stroke(Code.Right, default, 0, Modifiers.None, KeyAction.Press))),
+            "route initial popup navigation");
+        await surface.UpdateAsync(
+            () => _ = Router.Route(
+                target,
+                Events.Key,
+                new KeyEventArgs(new Stroke(Code.Right, default, 0, Modifiers.None, KeyAction.Repeat))),
+            "route repeated popup navigation");
+
+        // Assert provisional exact-once movement, then cancellation rollback.
+        calendar.ActiveDate.ShouldBe(openingDate.AddDays(2));
+        input.Value.ShouldBe(openingDate);
+        await surface.Keyboard.PressAsync(Code.Escape);
+        input.IsOpen.ShouldBeFalse();
+        input.Value.ShouldBe(openingDate);
+        calendar.ActiveDate.ShouldBe(openingDate);
+    }
+
+    /// <summary>Verifies Enter and Space accept an unchanged provisional date and close the
+    /// session from either the owner or Calendar focus route.</summary>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Keyboard_WhenEnterOrSpaceAcceptsOpeningDate_ClosesFromEitherFocusRouteAsync(
+        bool focusCalendar,
+        bool useSpace)
+    {
+        // Arrange
+        var openingDate = new DateOnly(2026, 3, 15);
+        var input = new DateInput
+        {
+            Value = openingDate,
+            Culture = CultureInfo.InvariantCulture
+        };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+        var calendar = OwnedTree.Find<UiCalendar>(input).ShouldNotBeNull();
+        await surface.UpdateAsync(() => input.IsOpen = true, "open DateInput popup");
+        var target = focusCalendar ? (ControlBase) calendar : input;
+        await surface.UpdateAsync(
+            () => surface.Application.Focus.Focus(target).ShouldBeTrue(),
+            "choose popup acceptance focus route");
+
+        // Act
+        if (useSpace)
+        {
+            await surface.Keyboard.CompleteCharacterAsync(new Rune(' '));
+        }
+        else
+        {
+            await surface.Keyboard.PressAsync(Code.Enter);
+        }
+
+        // Assert
+        input.IsOpen.ShouldBeFalse();
+        input.Value.ShouldBe(openingDate);
+    }
+
+    /// <summary>Verifies light dismissal restores the opening Calendar cursor without changing
+    /// the committed date.</summary>
+    [Fact]
+    public async Task Pointer_WhenPopupIsLightDismissedAfterBrowsing_RestoresOpeningDateAsync()
+    {
+        // Arrange
+        var openingDate = new DateOnly(2026, 3, 15);
+        var input = new DateInput
+        {
+            Value = openingDate,
+            Culture = CultureInfo.InvariantCulture
+        };
+        var outside = new ControlText("x");
+        Overlay.SetTop(outside, Length.Cells(19));
+        Overlay.SetLeft(outside, Length.Cells(29));
+        var root = new Overlay { Children = { input, outside } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 20),
+            TestContext.Current.CancellationToken);
+        var calendar = OwnedTree.Find<UiCalendar>(input).ShouldNotBeNull();
+        await surface.UpdateAsync(() => input.IsOpen = true, "open DateInput popup");
+        await surface.Keyboard.PressAsync(Code.Right);
+        calendar.ActiveDate.ShouldBe(openingDate.AddDays(1));
+
+        // Act
+        await surface.Pointer.ClickAsync(outside);
+
+        // Assert
+        input.IsOpen.ShouldBeFalse();
+        input.Value.ShouldBe(openingDate);
+        calendar.ActiveDate.ShouldBe(openingDate);
+    }
+
+    /// <summary>Verifies a Calendar pointer activation commits the clicked date before explicitly
+    /// accepting and closing the popup session.</summary>
+    [Fact]
+    public async Task Pointer_WhenCalendarDateIsClicked_AcceptsDateAndClosesAsync()
+    {
+        // Arrange
+        var input = new DateInput
+        {
+            Value = new DateOnly(2026, 3, 15),
+            Culture = CultureInfo.InvariantCulture
+        };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(32, 15),
+            TestContext.Current.CancellationToken);
+        var calendar = OwnedTree.Find<UiCalendar>(input).ShouldNotBeNull();
+        await surface.UpdateAsync(() => input.IsOpen = true, "open DateInput popup");
+
+        // Act - March 16 is the Monday cell on the third displayed week row.
+        await surface.Pointer.ClickAsync(calendar, new Point(6, 5));
+
+        // Assert
+        input.Value.ShouldBe(new DateOnly(2026, 3, 16));
+        input.IsOpen.ShouldBeFalse();
+    }
 }

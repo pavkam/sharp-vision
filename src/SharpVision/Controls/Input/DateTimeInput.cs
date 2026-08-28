@@ -52,6 +52,8 @@ public sealed class DateTimeInput: InputBase
     private readonly SegmentFieldBehavior _segments;
 
     private DateTime? _value;
+    private DateOnly _openingActiveDate;
+    private DateInterval? _openingCalendarSelection;
     private bool _seeded;
     private bool _synchronizingCalendar;
     private CultureInfo _culture;
@@ -87,7 +89,11 @@ public sealed class DateTimeInput: InputBase
                     _calendar.DisplayMonth = new DateOnly(date.Year, date.Month, 1);
                     PushCalendarSelection(date);
                 }
-            });
+            },
+            beginSession: BeginCalendarSession,
+            handleNavigationKey: HandlePopupNavigationKey,
+            cancelSession: CancelCalendarSession,
+            acceptSession: AcceptCalendarSession);
         EnablePressActivation();
 
         // Register event handler after _popup is created to avoid NullReferenceException
@@ -490,50 +496,8 @@ public sealed class DateTimeInput: InputBase
             return;
         }
 
-        if (IsOpen && eventArgs is KeyEventArgs openKey)
+        if (IsOpen)
         {
-            var stroke = openKey.Stroke;
-
-            if (openKey.IsInitialKeyDown &&
-                stroke.Code == Code.Escape &&
-                stroke.Modifiers.IsActivationEligible())
-            {
-                IsOpen = false;
-                eventArgs.IsHandled = true;
-                return;
-            }
-
-            if (openKey.IsInitialKeyDown &&
-                stroke.Code == Code.Tab &&
-                KeyboardModifierPolicy.IsTabTraversalEligible(stroke.Modifiers))
-            {
-                IsOpen = false;
-                return;
-            }
-
-            if (openKey.IsRepeat &&
-                stroke.Code == Code.Down &&
-                KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Alt))
-            {
-                eventArgs.IsHandled = true;
-                return;
-            }
-
-            if (openKey.IsKeyDown && stroke.Code is Code.Up or Code.Down or Code.Left or Code.Right
-                or Code.PageUp or Code.PageDown or Code.Home or Code.End)
-            {
-                _calendar.InvokeDefault(eventArgs);
-                return;
-            }
-
-            if (openKey.IsInitialKeyDown &&
-                (stroke.Code == Code.Enter ||
-                 (stroke.Code == Code.Character && stroke.Character == new Rune(' '))))
-            {
-                _calendar.InvokeDefault(eventArgs);
-                return;
-            }
-
             return;
         }
 
@@ -922,23 +886,106 @@ public sealed class DateTimeInput: InputBase
     private void OnCalendarSelectionChanged(object? sender, CalendarSelectionChangedEventArgs eventArgs)
     {
         _ = sender;
+        _ = eventArgs;
 
         if (_synchronizingCalendar)
         {
             return;
         }
 
-        if (eventArgs.Selection is not { } interval)
+        if (IsOpen)
         {
-            return;
+            AcceptPopupAndClose();
+        }
+    }
+
+    private void BeginCalendarSession()
+    {
+        _openingActiveDate = _calendar.ActiveDate;
+        _openingCalendarSelection = _calendar.Selection;
+    }
+
+    private bool HandlePopupNavigationKey(KeyEventArgs eventArgs)
+    {
+        var stroke = eventArgs.Stroke;
+
+        if (eventArgs.IsInitialKeyDown &&
+            stroke.Code == Code.Escape &&
+            stroke.Modifiers.IsActivationEligible())
+        {
+            eventArgs.IsHandled = true;
+            IsOpen = false;
+            return true;
         }
 
-        var selectedDate = interval.Start;
+        if (eventArgs.IsInitialKeyDown &&
+            stroke.Code == Code.Tab &&
+            KeyboardModifierPolicy.IsTabTraversalEligible(stroke.Modifiers))
+        {
+            IsOpen = false;
+            return false;
+        }
+
+        if (eventArgs.IsRepeat &&
+            stroke.Code == Code.Down &&
+            KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Alt))
+        {
+            return true;
+        }
+
+        var accepts = eventArgs.IsInitialKeyDown &&
+            stroke.Modifiers.IsActivationEligible() &&
+            (stroke.Code == Code.Enter ||
+             (stroke.Code == Code.Character && stroke.Character == new Rune(' ')));
+
+        if (accepts)
+        {
+            eventArgs.IsHandled = true;
+        }
+
+        var handled = _calendar.HandleNavigationKey(eventArgs);
+
+        if (accepts && IsOpen)
+        {
+            AcceptPopupAndClose();
+        }
+
+        return handled || accepts;
+    }
+
+    private void CancelCalendarSession() => RestoreOpeningCalendarState();
+
+    private void AcceptCalendarSession()
+    {
+        var selectedDate = _calendar.ActiveDate;
         var timePart = _value?.TimeOfDay ?? TimeSpan.Zero;
         var kind = _value?.Kind ?? DateTimeKind.Unspecified;
         var combined = selectedDate.ToDateTime(TimeOnly.FromTimeSpan(timePart), kind);
         _ = Commit(combined);
-        IsOpen = false;
+    }
+
+    private void RestoreOpeningCalendarState()
+    {
+        _synchronizingCalendar = true;
+
+        try
+        {
+            _calendar.Selection = null;
+            _calendar.Selection = new DateInterval(_openingActiveDate, _openingActiveDate);
+
+            if (_openingCalendarSelection is null)
+            {
+                _calendar.Selection = null;
+            }
+            else if (_openingCalendarSelection.Value.Start != _openingActiveDate)
+            {
+                _calendar.Selection = _openingCalendarSelection;
+            }
+        }
+        finally
+        {
+            _synchronizingCalendar = false;
+        }
     }
 
     /// <inheritdoc/>
