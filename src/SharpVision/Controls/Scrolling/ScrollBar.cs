@@ -479,11 +479,11 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
         var length = AxisLength(bounds);
         var buttons = ButtonCount(length);
         var position = Axis(cells) - AxisOrigin(bounds) - buttons;
-        var delta = Difference(position, _dragPointerStart);
+        var delta = position.SaturatingSubtract(_dragPointerStart);
 
         if (_dragPixelStart.HasValue && pointer.Pixels is { } pixels)
         {
-            var pixelDelta = Difference(Axis(pixels), _dragPixelStart.Value);
+            var pixelDelta = Axis(pixels).SaturatingSubtract(_dragPixelStart.Value);
             Debug.Assert(
                 delta == 0 || pixelDelta == 0 || Math.Sign(delta) == Math.Sign(pixelDelta),
                 "Inferred cell and pixel drag directions must agree.");
@@ -614,8 +614,5 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
     private Point PointAt(Rect bounds, int position) => Orientation == Orientation.Vertical
         ? new Point(bounds.X, bounds.Y.SaturatingAdd(position))
         : new Point(bounds.X.SaturatingAdd(position), bounds.Y);
-
-    private static int Difference(int left, int right) =>
-        (int) Math.Clamp((long) left - right, int.MinValue, int.MaxValue);
 
 }

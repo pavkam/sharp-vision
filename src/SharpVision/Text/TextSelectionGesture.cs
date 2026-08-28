@@ -291,8 +291,8 @@ internal sealed class TextSelectionGesture
         }
 
         var adjusted = new Point(
-            AddCoordinates(_latestCells.X, hitAdjustment.X),
-            AddCoordinates(_latestCells.Y, hitAdjustment.Y));
+            _latestCells.X.SaturatingAdd(hitAdjustment.X),
+            _latestCells.Y.SaturatingAdd(hitAdjustment.Y));
         _owner.CommitPointerTextSelection(_anchor, _owner.HitTestTextSelection(adjusted));
     }
 
@@ -326,7 +326,4 @@ internal sealed class TextSelectionGesture
         timer.Dispose();
     }
 
-    [Pure]
-    private static int AddCoordinates(int left, int right) =>
-        (int) Math.Clamp((long) left + right, int.MinValue, int.MaxValue);
 }

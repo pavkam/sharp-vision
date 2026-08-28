@@ -153,10 +153,10 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
             var hd = MeasureChild(header, new Constraint(null, _headerHeightCells));
             headerContentWidth = header.Visibility == Visibility.Collapsed
                 ? 0
-                : (int) Math.Min(int.MaxValue, (long) hd.Width + header.Margin.Horizontal);
+                : hd.Width.Add(header.Margin.Horizontal);
         }
 
-        var hw = (int) Math.Min(int.MaxValue, (long) HeaderChromeWidth + headerContentWidth);
+        var hw = HeaderChromeWidth.Add(headerContentWidth);
         if (!IsExpanded || Content is not { } child)
         {
             return new Size(hw, _headerHeightCells);
@@ -168,14 +168,14 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
                 constraint.Height.HasValue ? Math.Max(0, constraint.Height.Value - _headerHeightCells) : null));
         var cw = child.Visibility == Visibility.Collapsed
             ? 0
-            : (int) Math.Min(int.MaxValue, (long) d.Width + child.Margin.Horizontal);
+            : d.Width.Add(child.Margin.Horizontal);
         var ch = child.Visibility == Visibility.Collapsed
             ? 0
-            : (int) Math.Min(int.MaxValue, (long) d.Height + child.Margin.Vertical);
-        var indentedWidth = (int) Math.Min(int.MaxValue, (long) ActualStyle.ContentIndent + cw);
+            : d.Height.Add(child.Margin.Vertical);
+        var indentedWidth = ActualStyle.ContentIndent.Add(cw);
         return new Size(
             Math.Max(hw, indentedWidth),
-            (int) Math.Min(int.MaxValue, (long) _headerHeightCells + ch));
+            _headerHeightCells.Add(ch));
     }
 
     /// <inheritdoc/>

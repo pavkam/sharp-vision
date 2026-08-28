@@ -5,7 +5,7 @@ namespace SharpVision.Tests.Controls.Layout;
 
 
 /// <summary>Verifies attached offset validation, positioned layout, clipping, and targeting.</summary>
-public sealed class OverlayPositionTests
+public sealed class OverlayConsumerTests
 {
     /// <summary>Verifies optional offset defaults and accepted length kinds.</summary>
     [Fact]

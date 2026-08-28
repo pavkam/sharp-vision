@@ -549,8 +549,8 @@ public abstract partial class ControlBase: ISelectableTextSource
             var previousVertical = container.VerticalOffset;
             _ = container.ScrollBy(horizontal, vertical, ScrollCause.Keyboard);
             screenBounds = new Rect(
-                SaturatingCoordinateSum(screenBounds.X, previousHorizontal - container.HorizontalOffset),
-                SaturatingCoordinateSum(screenBounds.Y, previousVertical - container.VerticalOffset),
+                screenBounds.X.SaturatingAdd(previousHorizontal - container.HorizontalOffset),
+                screenBounds.Y.SaturatingAdd(previousVertical - container.VerticalOffset),
                 screenBounds.Width,
                 screenBounds.Height);
 
@@ -623,15 +623,15 @@ public abstract partial class ControlBase: ISelectableTextSource
     protected virtual int HitTestTextSelectionCore(Point cells)
     {
         var local = new Point(
-            SaturatingCoordinateDifference(cells.X, Bounds.X),
-            SaturatingCoordinateDifference(cells.Y, Bounds.Y));
+            cells.X.SaturatingSubtract(Bounds.X),
+            cells.Y.SaturatingSubtract(Bounds.Y));
         return GetTextSelectionMap().HitTest(local);
     }
 
     /// <summary>Maps one semantic glyph from projection coordinates into final screen cells.</summary>
     protected virtual Rect GetTextSelectionAdornmentBounds(Rect bounds) => new(
-        SaturatingCoordinateSum(Bounds.X, bounds.X),
-        SaturatingCoordinateSum(Bounds.Y, bounds.Y),
+        Bounds.X.SaturatingAdd(bounds.X),
+        Bounds.Y.SaturatingAdd(bounds.Y),
         bounds.Width,
         bounds.Height);
 
@@ -776,8 +776,8 @@ public abstract partial class ControlBase: ISelectableTextSource
         {
             var local = ownerViewport.SelectableTextViewport;
             var ownerBounds = new Rect(
-                SaturatingCoordinateSum(Bounds.X, local.X),
-                SaturatingCoordinateSum(Bounds.Y, local.Y),
+                Bounds.X.SaturatingAdd(local.X),
+                Bounds.Y.SaturatingAdd(local.Y),
                 local.Width,
                 local.Height);
             var (ownerHorizontal, ownerVertical) = hasPropagatedRequest
@@ -848,8 +848,8 @@ public abstract partial class ControlBase: ISelectableTextSource
             if (container.ScrollBy(horizontal, vertical, ScrollCause.Pointer))
             {
                 hitAdjustment = new Point(
-                    SaturatingCoordinateDifference(container.HorizontalOffset, previousHorizontal),
-                    SaturatingCoordinateDifference(container.VerticalOffset, previousVertical));
+                    container.HorizontalOffset.SaturatingSubtract(previousHorizontal),
+                    container.VerticalOffset.SaturatingSubtract(previousVertical));
                 return true;
             }
         }
@@ -898,8 +898,8 @@ public abstract partial class ControlBase: ISelectableTextSource
 
         var local = source.Viewport.SelectableTextViewport;
         var raw = new Rect(
-            SaturatingCoordinateSum(control.Bounds.X, local.X),
-            SaturatingCoordinateSum(control.Bounds.Y, local.Y),
+            control.Bounds.X.SaturatingAdd(local.X),
+            control.Bounds.Y.SaturatingAdd(local.Y),
             local.Width,
             local.Height);
         bounds = raw.Intersect(GetDescendantSelectableTextInheritedClip(control));
@@ -1181,11 +1181,4 @@ public abstract partial class ControlBase: ISelectableTextSource
         }
     }
 
-    [Pure]
-    private static int SaturatingCoordinateDifference(int left, int right) =>
-        (int) Math.Clamp((long) left - right, int.MinValue, int.MaxValue);
-
-    [Pure]
-    private static int SaturatingCoordinateSum(int left, int right) =>
-        (int) Math.Clamp((long) left + right, int.MinValue, int.MaxValue);
 }

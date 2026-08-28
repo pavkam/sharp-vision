@@ -45,7 +45,7 @@ internal sealed class StatusBarHost: Container
             count++;
         }
 
-        width = width.Add(SpacingExtent(count, int.MaxValue));
+        width = width.Add(LayoutMath.GapExtent(Spacing, count, int.MaxValue));
         return new Size(width, height);
     }
 
@@ -137,18 +137,4 @@ internal sealed class StatusBarHost: Container
     [Pure]
     private static int OuterWidth(ControlBase item) => item.DesiredSize.Width.Add(item.Margin.Horizontal);
 
-    [Pure]
-    private int SpacingExtent(int count, int limit)
-    {
-        Debug.Assert(count >= 0, "Status item count is non-negative.");
-        Debug.Assert(limit >= 0, "Status item spacing limit is non-negative.");
-
-        if (count <= 1)
-        {
-            return 0;
-        }
-
-        var requested = (long) Spacing * (count - 1);
-        return (int) Math.Min(limit, Math.Min(int.MaxValue, requested));
-    }
 }

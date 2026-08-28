@@ -45,6 +45,13 @@ small clip therefore remains ordered against a parent whose valid logical
 rectangle reaches either integer boundary; it cannot wrap into the opposite side
 of the coordinate space.
 
+`LayoutMath` owns this cell-arithmetic policy. Signed addition, subtraction,
+negation, and multiplication saturate at the nearest integer boundary. Sequence
+sums apply saturation after each value from left to right; callers must not
+assume saturated addition is associative. Gap extents use
+`spacing * (count - 1)`, return zero for zero or one item, saturate before
+overflow, and then honor an optional non-negative layout bound.
+
 ## Passes and rounding
 
 ```mermaid
@@ -186,6 +193,13 @@ its child ownership model.
 `SharpVision.Terminal.Rendering.TerminalCanvas` is a frame-owned drawing API,
 not a layout panel or a `Container`. Custom controls draw through it in
 `OnRenderContent`; it never owns child controls.
+
+Built-in panel attached properties share weak per-control storage. A changed
+value invalidates only a current parent of the panel type that consumes it;
+detached controls and controls under another panel retain the value without
+dirtying that unrelated owner. Reparenting changes the eligible invalidation
+target immediately. Validation and dispatcher-affine mutability checks finish
+before storage changes, and equivalent writes are silent.
 
 ## Grow and shrink
 

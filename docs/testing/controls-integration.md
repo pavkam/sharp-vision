@@ -95,21 +95,26 @@ shadow cells while the primary pointer remains held.
 
 Layout tests use recording controls to assert measure constraints, desired size,
 arranged slots, call order, cache invalidation, non-reentrancy, rounding, and
-clipping. Routed-input tests record the route, phase, source, handled state,
-local coordinates, mutation during dispatch, default behavior, and cleanup. The
-shared owner-pipeline fixtures also prove that visible-to-collapsed transitions
-clear stale bounds for representative container, retained-content, and
-framework-part ownership without panel-local cleanup or duplicate bounds
-notifications, and that a failed arrange defers cleanup to its retry.
-Permanent-root fixtures run the same incomplete attachment, pre-commit retry,
-post-commit consumption, direct-child disposal, and owner-disposal contract for
-both composite and item-owner bases. Projection controls additionally prove that
-owner-driven retained-descendant invalidation reaches final mounted output
-without allowing a foreign or detached surface through the seam. Retained-part
-forwarding fixtures separately cover owner and source-originated changes,
-equivalent-value silence, reentrant supersession, failures before and after
-source commit, direct versus coalesced events, and subscription release when
-either endpoint or the ownership edge ends.
+clipping. Shared attached-property tests additionally prove weak storage,
+validation before commit, same-value silence, exact eligible-parent
+invalidation, and reparenting. Fixed-seed arithmetic tests cover signed integer
+boundaries, sequential saturation, empty and singleton gap sets, maximum
+spacing/count products, and bounded gap extents without assuming associativity.
+Routed-input tests record the route, phase, source, handled state, local
+coordinates, mutation during dispatch, default behavior, and cleanup. The shared
+owner-pipeline fixtures also prove that visible-to-collapsed transitions clear
+stale bounds for representative container, retained-content, and framework-part
+ownership without panel-local cleanup or duplicate bounds notifications, and
+that a failed arrange defers cleanup to its retry. Permanent-root fixtures run
+the same incomplete attachment, pre-commit retry, post-commit consumption,
+direct-child disposal, and owner-disposal contract for both composite and
+item-owner bases. Projection controls additionally prove that owner-driven
+retained-descendant invalidation reaches final mounted output without allowing a
+foreign or detached surface through the seam. Retained-part forwarding fixtures
+separately cover owner and source-originated changes, equivalent-value silence,
+reentrant supersession, failures before and after source commit, direct versus
+coalesced events, and subscription release when either endpoint or the ownership
+edge ends.
 
 Control-render tests inspect the final `Frame` cells and the copied grapheme
 bytes. They cover nested clips, later-child overwrite, padding, hidden and

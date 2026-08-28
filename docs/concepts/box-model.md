@@ -18,6 +18,9 @@ separates that border from `ContentBounds`.
 Margin, border, and padding never collapse into each other. When opposing
 extents are combined, the arithmetic is checked or saturating at its documented
 boundary, and deflating a rectangle never produces a negative width or height.
+Shared layout addition and subtraction saturate at the nearest signed boundary;
+non-negative inset and gap totals saturate at `int.MaxValue`, and sequence
+totals apply that rule from left to right.
 
 ## API
 

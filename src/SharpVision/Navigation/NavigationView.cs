@@ -940,7 +940,7 @@ public sealed class NavigationView: CompositeControlBase
             return;
         }
 
-        var x = (int) Math.Clamp((long) eventArgs.Pointer.WheelX * LineSize, int.MinValue, int.MaxValue);
+        var x = eventArgs.Pointer.WheelX.Multiply(LineSize);
         var y = (int) Math.Clamp(-(long) eventArgs.Pointer.WheelY * LineSize, int.MinValue, int.MaxValue);
         eventArgs.IsHandled = _itemsStack.ScrollBy(x, y, ScrollCause.Wheel);
     }

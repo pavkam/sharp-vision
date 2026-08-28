@@ -9,7 +9,9 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 [PublicAPI]
 public sealed class Dock: Container
 {
-    private static readonly ConditionalWeakTable<ControlBase, DockPlacement> _placements = [];
+    private static readonly AttachedLayoutProperty<Dock, DockSide> _sides = new(
+        DockSide.Left,
+        InvalidationImpact.Measure);
 
     /// <summary>Initializes a dock that fills its parent layout slot.</summary>
     public Dock()
@@ -47,10 +49,7 @@ public sealed class Dock: Container
     /// <returns>The attached side, defaulting to left.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     public static DockSide GetSide(ControlBase control)
-    {
-        ArgumentNullException.ThrowIfNull(control);
-        return _placements.TryGetValue(control, out var placement) ? placement.Side : DockSide.Left;
-    }
+        => _sides.Get(control);
 
     /// <summary>Sets one control's attached physical side.</summary>
     /// <param name="control">The non-null mutable control.</param>
@@ -62,23 +61,8 @@ public sealed class Dock: Container
     public static void SetSide(ControlBase control, DockSide value)
     {
         ArgumentNullException.ThrowIfNull(control);
-
         ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The dock side is unknown.");
-
-        control.VerifyMutable();
-        var placement = _placements.GetOrCreateValue(control);
-
-        if (placement.Side == value)
-        {
-            return;
-        }
-
-        placement.Side = value;
-
-        if (control.Parent is Dock parent)
-        {
-            parent.Invalidate(Invalidation.Measure);
-        }
+        _sides.Set(control, value);
     }
 
     /// <inheritdoc/>

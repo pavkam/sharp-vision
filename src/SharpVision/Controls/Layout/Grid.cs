@@ -10,7 +10,22 @@ using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 [PublicAPI]
 public sealed class Grid: Container
 {
-    private static readonly ConditionalWeakTable<ControlBase, GridPlacement> _placements = [];
+    private static readonly AttachedLayoutProperty<Grid, int> _rows = new(
+        0,
+        InvalidationImpact.Measure,
+        ValidateRow);
+    private static readonly AttachedLayoutProperty<Grid, int> _columns = new(
+        0,
+        InvalidationImpact.Measure,
+        ValidateColumn);
+    private static readonly AttachedLayoutProperty<Grid, int> _rowSpans = new(
+        1,
+        InvalidationImpact.Measure,
+        ValidateRowSpan);
+    private static readonly AttachedLayoutProperty<Grid, int> _columnSpans = new(
+        1,
+        InvalidationImpact.Measure,
+        ValidateColumnSpan);
 
     private Constraint? _lastResolvedContentConstraint;
 
@@ -68,28 +83,28 @@ public sealed class Grid: Container
     /// <returns>The attached row, defaulting to zero.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     [NonNegativeValue]
-    public static int GetRow(ControlBase control) => GetPlacement(control)?.Row ?? 0;
+    public static int GetRow(ControlBase control) => _rows.Get(control);
 
     /// <summary>Gets a control's zero-based attached column.</summary>
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached column, defaulting to zero.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     [NonNegativeValue]
-    public static int GetColumn(ControlBase control) => GetPlacement(control)?.Column ?? 0;
+    public static int GetColumn(ControlBase control) => _columns.Get(control);
 
     /// <summary>Gets a control's positive attached row span.</summary>
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached row span, defaulting to one.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     [ValueRange(1, int.MaxValue)]
-    public static int GetRowSpan(ControlBase control) => GetPlacement(control)?.RowSpan ?? 1;
+    public static int GetRowSpan(ControlBase control) => _rowSpans.Get(control);
 
     /// <summary>Gets a control's positive attached column span.</summary>
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached column span, defaulting to one.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     [ValueRange(1, int.MaxValue)]
-    public static int GetColumnSpan(ControlBase control) => GetPlacement(control)?.ColumnSpan ?? 1;
+    public static int GetColumnSpan(ControlBase control) => _columnSpans.Get(control);
 
     /// <summary>Sets a control's zero-based attached row.</summary>
     /// <param name="control">The non-null mutable control.</param>
@@ -101,14 +116,7 @@ public sealed class Grid: Container
     public static void SetRow(ControlBase control, int value)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(value);
-        Validate(control, value, GetRowSpan(control), rows: true);
-        var placement = _placements.GetOrCreateValue(control);
-
-        if (placement.Row != value)
-        {
-            placement.Row = value;
-            InvalidateParent(control);
-        }
+        _rows.Set(control, value);
     }
 
     /// <summary>Sets a control's zero-based attached column.</summary>
@@ -121,14 +129,7 @@ public sealed class Grid: Container
     public static void SetColumn(ControlBase control, int value)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(value);
-        Validate(control, value, GetColumnSpan(control), rows: false);
-        var placement = _placements.GetOrCreateValue(control);
-
-        if (placement.Column != value)
-        {
-            placement.Column = value;
-            InvalidateParent(control);
-        }
+        _columns.Set(control, value);
     }
 
     /// <summary>Sets a control's positive attached row span.</summary>
@@ -141,14 +142,7 @@ public sealed class Grid: Container
     public static void SetRowSpan(ControlBase control, int value)
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value, 0);
-        Validate(control, GetRow(control), value, rows: true);
-        var placement = _placements.GetOrCreateValue(control);
-
-        if (placement.RowSpan != value)
-        {
-            placement.RowSpan = value;
-            InvalidateParent(control);
-        }
+        _rowSpans.Set(control, value);
     }
 
     /// <summary>Sets a control's positive attached column span.</summary>
@@ -161,14 +155,7 @@ public sealed class Grid: Container
     public static void SetColumnSpan(ControlBase control, int value)
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value, 0);
-        Validate(control, GetColumn(control), value, rows: false);
-        var placement = _placements.GetOrCreateValue(control);
-
-        if (placement.ColumnSpan != value)
-        {
-            placement.ColumnSpan = value;
-            InvalidateParent(control);
-        }
+        _columnSpans.Set(control, value);
     }
 
     /// <inheritdoc/>
@@ -205,8 +192,10 @@ public sealed class Grid: Container
         _lastResolvedContentConstraint = constraint;
 
         return new Size(
-            Sum(columnExtents).Add(Spacing(ColumnSpacing, columns.Length, constraint.Width)),
-            Sum(rowExtents).Add(Spacing(RowSpacing, rows.Length, constraint.Height)));
+            columnExtents.AsSpan().SaturatingSum().Add(
+                LayoutMath.GapExtent(ColumnSpacing, columns.Length, constraint.Width)),
+            rowExtents.AsSpan().SaturatingSum().Add(
+                LayoutMath.GapExtent(RowSpacing, rows.Length, constraint.Height)));
     }
 
     /// <inheritdoc/>
@@ -263,25 +252,8 @@ public sealed class Grid: Container
         ArrangeChildren(bounds, rowExtents, columnExtents);
     }
 
-    private static GridPlacement? GetPlacement(ControlBase control)
-    {
-        ArgumentNullException.ThrowIfNull(control);
-        return _placements.TryGetValue(control, out var placement) ? placement : null;
-    }
-
-    private static void InvalidateParent(ControlBase control)
-    {
-        if (control.Parent is Grid parent)
-        {
-            parent.Invalidate(Invalidation.Measure);
-        }
-    }
-
     private static void Validate(ControlBase control, int origin, int span, bool rows)
     {
-        ArgumentNullException.ThrowIfNull(control);
-        control.VerifyMutable();
-
         if (control.Parent is not Grid parent)
         {
             return;
@@ -298,21 +270,17 @@ public sealed class Grid: Container
         }
     }
 
-    [Pure]
-    private static int Offset(int origin, int extent)
-    {
-        // A scrolling parent translates the committed Grid origin into negative
-        // screen coordinates. Only the extent is intrinsically non-negative.
-        Debug.Assert(extent >= 0, "Grid coordinate offsets use non-negative extents.");
+    private static void ValidateRow(ControlBase control, int value) =>
+        Validate(control, value, GetRowSpan(control), rows: true);
 
-        var result = (long) origin + extent;
-        return result switch
-        {
-            > int.MaxValue => int.MaxValue,
-            < int.MinValue => int.MinValue,
-            _ => (int) result
-        };
-    }
+    private static void ValidateColumn(ControlBase control, int value) =>
+        Validate(control, value, GetColumnSpan(control), rows: false);
+
+    private static void ValidateRowSpan(ControlBase control, int value) =>
+        Validate(control, GetRow(control), value, rows: true);
+
+    private static void ValidateColumnSpan(ControlBase control, int value) =>
+        Validate(control, GetColumn(control), value, rows: false);
 
     [Pure]
     private static Track[] Definitions(TrackCollection source)
@@ -354,37 +322,9 @@ public sealed class Grid: Container
         }
 
         int? trackArea = available.HasValue
-            ? Math.Max(0, available.Value - Spacing(spacing, definitions.Length, available))
+            ? Math.Max(0, available.Value - LayoutMath.GapExtent(spacing, definitions.Length, available))
             : null;
         Tracks.Resolve(trackArea, lengths, requests, minimum, maximum, result, percentBase);
-
-        return result;
-    }
-
-    [Pure]
-    private static int Spacing(int value, int count, int? limit)
-    {
-        Debug.Assert(value >= 0, "Grid spacing value is non-negative.");
-        Debug.Assert(count >= 0, "Grid spacing count is non-negative.");
-
-        if (count <= 1)
-        {
-            return 0;
-        }
-
-        var requested = Math.Min(int.MaxValue, (long) value * (count - 1));
-        return limit.HasValue ? (int) Math.Min(limit.Value, requested) : (int) requested;
-    }
-
-    [Pure]
-    private static int Sum(ReadOnlySpan<int> values)
-    {
-        var result = 0;
-
-        foreach (var value in values)
-        {
-            result = result.Add(value);
-        }
 
         return result;
     }
@@ -452,17 +392,17 @@ public sealed class Grid: Container
 
         var result = new int[extents.Length];
         var position = origin;
-        var remainingSpacing = Spacing(spacing, extents.Length, available);
+        var remainingSpacing = LayoutMath.GapExtent(spacing, extents.Length, available);
 
         for (var index = 0; index < extents.Length; index++)
         {
             result[index] = position;
-            position = Offset(position, extents[index]);
+            position = position.Add(extents[index]);
 
             if (index < extents.Length - 1)
             {
                 var gap = Math.Min(spacing, remainingSpacing);
-                position = Offset(position, gap);
+                position = position.Add(gap);
                 remainingSpacing -= gap;
             }
         }
@@ -534,7 +474,7 @@ public sealed class Grid: Container
             var desired = rows
                 ? child.DesiredSize.Height.Add(child.Margin.Vertical)
                 : child.DesiredSize.Width.Add(child.Margin.Horizontal);
-            var internalSpacing = Spacing(spacing, span, desired);
+            var internalSpacing = LayoutMath.GapExtent(spacing, span, desired);
             var required = Math.Max(0, desired - internalSpacing);
 
             absorbing ??= new List<int>(count);
@@ -704,12 +644,12 @@ public sealed class Grid: Container
             result = result.Add(extents[index]);
         }
 
-        var totalSpacing = Spacing(spacing, extents.Length, available);
+        var totalSpacing = LayoutMath.GapExtent(spacing, extents.Length, available);
 
         for (var gap = origin; gap < origin + span - 1; gap++)
         {
-            var used = Math.Min(int.MaxValue, (long) gap * spacing);
-            result = result.Add((int) Math.Min(spacing, Math.Max(0, totalSpacing - used)));
+            var used = gap.Multiply(spacing);
+            result = result.Add(Math.Min(spacing, Math.Max(0, totalSpacing - used)));
         }
 
         return result;

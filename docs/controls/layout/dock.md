@@ -68,7 +68,9 @@ nominal share therefore produces the same split either way.
 
 Setting the attached side validates the enum value and dispatcher affinity
 before any state changes, and it invalidates measure only when the child
-currently belongs to a Dock.
+currently belongs to a Dock. The weak attached value remains available while
+detached or parented elsewhere without invalidating that other parent; moving
+the child into a Dock makes that Dock the eligible target.
 
 ## Example
 

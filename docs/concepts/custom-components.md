@@ -299,6 +299,14 @@ Render against the undeflated content box, not a cached deflated one:
 possibly-stale measure-time reservation never strands an affix that would still
 fit.
 
+## Attached layout values
+
+Panel attached values belong to the child but are consumed by a matching current
+parent. SharpVision stores the built-in Dock, Grid, and Overlay values weakly,
+validates the child before committing a change, and invalidates only the exact
+parent phase that consumes the value. A detached child may be configured before
+insertion, and moving it between panel kinds does not dirty the wrong owner.
+
 ## Expected behavior
 
 A custom component exposes only its public role: no leaked `Children` or private

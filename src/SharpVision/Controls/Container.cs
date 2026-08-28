@@ -677,8 +677,8 @@ public abstract class Container: ControlBase
 
             var beforeX = scrollable.HorizontalOffset;
             var beforeY = scrollable.VerticalOffset;
-            var scrollableLogicalX = Difference(bounds.X, scrollable.ViewportBounds.X).Add(beforeX);
-            var scrollableLogicalY = Difference(bounds.Y, scrollable.ViewportBounds.Y).Add(beforeY);
+            var scrollableLogicalX = bounds.X.SaturatingSubtract(scrollable.ViewportBounds.X).Add(beforeX);
+            var scrollableLogicalY = bounds.Y.SaturatingSubtract(scrollable.ViewportBounds.Y).Add(beforeY);
             var revealX = Reveal(beforeX, scrollable.Viewport.Width, scrollableLogicalX, bounds.Width);
             var revealY = Reveal(beforeY, scrollable.Viewport.Height, scrollableLogicalY, bounds.Height);
             _ = scrollable.Apply(revealX, revealY, ScrollCause.BringIntoView);
@@ -690,8 +690,8 @@ public abstract class Container: ControlBase
                 bounds.Height);
         }
 
-        var logicalX = Difference(bounds.X, _scroll.ViewportBounds.X).Add(HorizontalOffset);
-        var logicalY = Difference(bounds.Y, _scroll.ViewportBounds.Y).Add(VerticalOffset);
+        var logicalX = bounds.X.SaturatingSubtract(_scroll.ViewportBounds.X).Add(HorizontalOffset);
+        var logicalY = bounds.Y.SaturatingSubtract(_scroll.ViewportBounds.Y).Add(VerticalOffset);
         var x = Reveal(HorizontalOffset, Viewport.Width, logicalX, bounds.Width);
         var y = Reveal(VerticalOffset, Viewport.Height, logicalY, bounds.Height);
         _ = Apply(x, y, ScrollCause.BringIntoView);
@@ -813,8 +813,8 @@ public abstract class Container: ControlBase
 
         return code == Code.End
             ? pageAxisIsVertical
-                ? (0, Difference(MaximumY(), VerticalOffset))
-                : (Difference(MaximumX(), HorizontalOffset), 0)
+                ? (0, MaximumY().SaturatingSubtract(VerticalOffset))
+                : (MaximumX().SaturatingSubtract(HorizontalOffset), 0)
             : null;
     }
 
@@ -839,7 +839,7 @@ public abstract class Container: ControlBase
             return;
         }
 
-        var x = Multiply(pointer.WheelX, LineSize);
+        var x = pointer.WheelX.Multiply(LineSize);
         var y = MultiplyNegative(pointer.WheelY, LineSize);
 
         // A wheel record is this container's to keep only when it actually moved an offset -
@@ -940,8 +940,8 @@ public abstract class Container: ControlBase
         var scrollsVertically = (ScrollBars & ScrollBars.Vertical) != 0;
 
         return new Rect(
-            Difference(padded.X, HorizontalOffset),
-            Difference(padded.Y, VerticalOffset),
+            padded.X.SaturatingSubtract(HorizontalOffset),
+            padded.Y.SaturatingSubtract(VerticalOffset),
             scrollsHorizontally ? Math.Max(Extent.Width, viewport.Width) : viewport.Width,
             scrollsVertically ? Math.Max(Extent.Height, viewport.Height) : viewport.Height);
     }
@@ -1267,16 +1267,8 @@ public abstract class Container: ControlBase
     }
 
     [Pure]
-    private static int Difference(int left, int right) =>
-        (int) Math.Clamp((long) left - right, int.MinValue, int.MaxValue);
-
-    [Pure]
     private static int MultiplyNegative(int left, int right) =>
         (int) Math.Clamp(-(long) left * right, int.MinValue, int.MaxValue);
-
-    [Pure]
-    private static int Multiply(int left, int right) =>
-        (int) Math.Clamp((long) left * right, int.MinValue, int.MaxValue);
 
     #endregion
 }

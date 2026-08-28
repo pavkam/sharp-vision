@@ -192,8 +192,8 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
             return MeasureProgressive();
         }
 
-        var width = Sum(ColumnWidths).Add(GapWidth(_owner.Columns.Count));
-        var height = Sum(RowHeights).Add(GapHeight(_owner.Rows.Count));
+        var width = ColumnWidths.AsSpan().SaturatingSum().Add(GapWidth(_owner.Columns.Count));
+        var height = RowHeights.AsSpan().SaturatingSum().Add(GapHeight(_owner.Rows.Count));
 
         if (_owner is { ShowHeader: true, Columns.Count: > 0 })
         {
@@ -215,9 +215,9 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
     private Size MeasureProgressive()
     {
         var controller = _owner.ProgressiveController!;
-        var width = Sum(ColumnWidths).Add(GapWidth(_owner.Columns.Count));
+        var width = ColumnWidths.AsSpan().SaturatingSum().Add(GapWidth(_owner.Columns.Count));
         var logicalCount = controller.LogicalCount;
-        var height = Multiply(controller.RowHeight, logicalCount).Add(GapHeight(logicalCount));
+        var height = controller.RowHeight.Multiply(logicalCount).Add(GapHeight(logicalCount));
         height = height.Add(ProgressiveHeaderHeight);
         return new Size(width, height);
     }
@@ -549,24 +549,8 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
     }
 
     [Pure]
-    private int GapWidth(int count) => count < 2 ? 0 : Multiply(ColumnGap, count - 1);
+    private int GapWidth(int count) => LayoutMath.GapExtent(ColumnGap, count, limit: null);
 
     [Pure]
-    private int GapHeight(int count) => count < 2 ? 0 : Multiply(RowGap, count - 1);
-
-    [Pure]
-    private static int Sum(IEnumerable<int> values)
-    {
-        var total = 0;
-
-        foreach (var value in values)
-        {
-            total = total.Add(value);
-        }
-
-        return total;
-    }
-
-    [Pure]
-    private static int Multiply(int value, int count) => (int) Math.Min(int.MaxValue, (long) value * count);
+    private int GapHeight(int count) => LayoutMath.GapExtent(RowGap, count, limit: null);
 }

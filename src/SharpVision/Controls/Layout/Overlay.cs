@@ -7,8 +7,21 @@ namespace SharpVision.Controls.Layout;
 [PublicAPI]
 public sealed class Overlay: Container
 {
-    private static readonly ConditionalWeakTable<ControlBase, OverlayZIndex> _orders = [];
-    private static readonly ConditionalWeakTable<ControlBase, OverlayPosition> _positions = [];
+    private static readonly AttachedLayoutProperty<Overlay, Length?> _left = new(
+        null,
+        InvalidationImpact.Measure);
+    private static readonly AttachedLayoutProperty<Overlay, Length?> _top = new(
+        null,
+        InvalidationImpact.Measure);
+    private static readonly AttachedLayoutProperty<Overlay, Length?> _right = new(
+        null,
+        InvalidationImpact.Measure);
+    private static readonly AttachedLayoutProperty<Overlay, Length?> _bottom = new(
+        null,
+        InvalidationImpact.Measure);
+    private static readonly AttachedLayoutProperty<Overlay, int> _zIndices = new(
+        0,
+        InvalidationImpact.Render);
 
     /// <summary>Initializes an overlay that fills its parent shared box.</summary>
     public Overlay()
@@ -40,40 +53,28 @@ public sealed class Overlay: Container
     /// <returns>The attached offset, or null when unset.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     public static Length? GetLeft(ControlBase control)
-    {
-        ArgumentNullException.ThrowIfNull(control);
-        return _positions.TryGetValue(control, out var position) ? position.Left : null;
-    }
+        => _left.Get(control);
 
     /// <summary>Gets one control's attached leading vertical offset.</summary>
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached offset, or null when unset.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     public static Length? GetTop(ControlBase control)
-    {
-        ArgumentNullException.ThrowIfNull(control);
-        return _positions.TryGetValue(control, out var position) ? position.Top : null;
-    }
+        => _top.Get(control);
 
     /// <summary>Gets one control's attached trailing horizontal offset.</summary>
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached offset, or null when unset.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     public static Length? GetRight(ControlBase control)
-    {
-        ArgumentNullException.ThrowIfNull(control);
-        return _positions.TryGetValue(control, out var position) ? position.Right : null;
-    }
+        => _right.Get(control);
 
     /// <summary>Gets one control's attached trailing vertical offset.</summary>
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached offset, or null when unset.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     public static Length? GetBottom(ControlBase control)
-    {
-        ArgumentNullException.ThrowIfNull(control);
-        return _positions.TryGetValue(control, out var position) ? position.Bottom : null;
-    }
+        => _bottom.Get(control);
 
     /// <summary>Sets or clears one control's attached leading horizontal offset.</summary>
     /// <param name="control">The non-null mutable control.</param>
@@ -86,16 +87,7 @@ public sealed class Overlay: Container
     {
         ArgumentNullException.ThrowIfNull(control);
         ValidatePositionOffset(value);
-        control.VerifyMutable();
-        var position = _positions.GetOrCreateValue(control);
-
-        if (position.Left == value)
-        {
-            return;
-        }
-
-        position.Left = value;
-        InvalidateParent(control);
+        _left.Set(control, value);
     }
 
     /// <summary>Sets or clears one control's attached leading vertical offset.</summary>
@@ -109,16 +101,7 @@ public sealed class Overlay: Container
     {
         ArgumentNullException.ThrowIfNull(control);
         ValidatePositionOffset(value);
-        control.VerifyMutable();
-        var position = _positions.GetOrCreateValue(control);
-
-        if (position.Top == value)
-        {
-            return;
-        }
-
-        position.Top = value;
-        InvalidateParent(control);
+        _top.Set(control, value);
     }
 
     /// <summary>Sets or clears one control's attached trailing horizontal offset.</summary>
@@ -132,16 +115,7 @@ public sealed class Overlay: Container
     {
         ArgumentNullException.ThrowIfNull(control);
         ValidatePositionOffset(value);
-        control.VerifyMutable();
-        var position = _positions.GetOrCreateValue(control);
-
-        if (position.Right == value)
-        {
-            return;
-        }
-
-        position.Right = value;
-        InvalidateParent(control);
+        _right.Set(control, value);
     }
 
     /// <summary>Sets or clears one control's attached trailing vertical offset.</summary>
@@ -155,16 +129,7 @@ public sealed class Overlay: Container
     {
         ArgumentNullException.ThrowIfNull(control);
         ValidatePositionOffset(value);
-        control.VerifyMutable();
-        var position = _positions.GetOrCreateValue(control);
-
-        if (position.Bottom == value)
-        {
-            return;
-        }
-
-        position.Bottom = value;
-        InvalidateParent(control);
+        _bottom.Set(control, value);
     }
 
     private static void ValidatePositionOffset(Length? value)
@@ -175,23 +140,12 @@ public sealed class Overlay: Container
         }
     }
 
-    private static void InvalidateParent(ControlBase control)
-    {
-        if (control.Parent is Overlay parent)
-        {
-            parent.Invalidate(Invalidation.Measure);
-        }
-    }
-
     /// <summary>Gets one control's attached signed z-order.</summary>
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached value, or zero when unset.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     public static int GetZIndex(ControlBase control)
-    {
-        ArgumentNullException.ThrowIfNull(control);
-        return _orders.TryGetValue(control, out var order) ? order.Value : 0;
-    }
+        => _zIndices.Get(control);
 
     /// <summary>Sets one control's attached signed z-order.</summary>
     /// <param name="control">The non-null mutable control.</param>
@@ -200,23 +154,7 @@ public sealed class Overlay: Container
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public static void SetZIndex(ControlBase control, int value)
-    {
-        ArgumentNullException.ThrowIfNull(control);
-        control.VerifyMutable();
-        var order = _orders.GetOrCreateValue(control);
-
-        if (order.Value == value)
-        {
-            return;
-        }
-
-        order.Value = value;
-
-        if (control.Parent is Overlay parent)
-        {
-            parent.Invalidate(Invalidation.Render);
-        }
-    }
+        => _zIndices.Set(control, value);
 
     /// <inheritdoc/>
     internal override ControlBase? HitTest(Point point) =>

@@ -69,4 +69,62 @@ public sealed class LayoutMathTests
     [Fact]
     public void Negate_WhenMinValue_ReturnsMaxValue() =>
         int.MinValue.Negate().ShouldBe(int.MaxValue);
+
+    /// <summary>Verifies signed subtraction saturates symmetrically at both integer boundaries.</summary>
+    [Theory]
+    [InlineData(int.MinValue, 1, int.MinValue)]
+    [InlineData(int.MaxValue, -1, int.MaxValue)]
+    [InlineData(-5, -3, -2)]
+    public void Subtract_WhenSignedOperandsReachBoundaries_Saturates(
+        int left,
+        int right,
+        int expected) =>
+        left.SaturatingSubtract(right).ShouldBe(expected);
+
+    /// <summary>Verifies sequence sums apply the documented left-to-right saturation policy.</summary>
+    [Fact]
+    public void SaturatingSum_WhenIntermediateTotalSaturates_PreservesSequentialPolicy()
+    {
+        int[] values = [int.MaxValue, 1, -1];
+
+        values.AsSpan().SaturatingSum().ShouldBe(int.MaxValue - 1);
+    }
+
+    /// <summary>Verifies fixed-seed arbitrary values match a widened sequential reference without
+    /// assuming associativity after any intermediate saturation.</summary>
+    [Fact]
+    public void SaturatingSum_WhenValuesAreRandom_MatchesSequentialReference()
+    {
+        var random = new Random(803804);
+
+        for (var iteration = 0; iteration < 500; iteration++)
+        {
+            var values = Enumerable.Range(0, random.Next(0, 32))
+                .Select(_ => random.Next(int.MinValue, int.MaxValue))
+                .ToArray();
+            var expected = 0;
+
+            foreach (var value in values)
+            {
+                expected = (int) Math.Clamp((long) expected + value, int.MinValue, int.MaxValue);
+            }
+
+            values.AsSpan().SaturatingSum().ShouldBe(expected);
+        }
+    }
+
+    /// <summary>Verifies gap extent handles empty and singleton sequences, saturates multiplication,
+    /// and honors an optional non-negative bound.</summary>
+    [Theory]
+    [InlineData(5, 0, null, 0)]
+    [InlineData(5, 1, null, 0)]
+    [InlineData(int.MaxValue, int.MaxValue, null, int.MaxValue)]
+    [InlineData(10, 4, 12, 12)]
+    [InlineData(10, 4, 50, 30)]
+    public void GapExtent_WhenGivenSpacingCountAndLimit_ReturnsBoundedSaturatedExtent(
+        int spacing,
+        int count,
+        int? limit,
+        int expected) =>
+        LayoutMath.GapExtent(spacing, count, limit).ShouldBe(expected);
 }

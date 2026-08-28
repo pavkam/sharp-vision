@@ -42,7 +42,10 @@ definitions mean one implicit automatic track. The immutable `Track` type stores
 and `Star` factories. Limits must be non-negative, and a maximum cannot be below
 its minimum. The attached `Row`, `Column`, `RowSpan`, and `ColumnSpan`
 properties require in-range origins and positive spans once definitions are
-committed.
+committed. Their shared weak storage validates against the current Grid's live
+definitions before commit, suppresses equivalent writes, and invalidates only
+that Grid's measure phase. Detached and wrong-parent writes retain their values
+without dirtying an unrelated owner.
 
 Mutating a track collection or a child placement validates dispatcher affinity
 before any observable state changes, then invalidates measure once per real

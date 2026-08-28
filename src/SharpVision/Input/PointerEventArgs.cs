@@ -58,14 +58,8 @@ public sealed class PointerEventArgs: RoutedEventArgs
         ArgumentNullException.ThrowIfNull(control);
         LocalCells = Pointer.Cells is { } cells
             ? new Point(
-                Difference(cells.X, control.Bounds.X),
-                Difference(cells.Y, control.Bounds.Y))
+                cells.X.SaturatingSubtract(control.Bounds.X),
+                cells.Y.SaturatingSubtract(control.Bounds.Y))
             : null;
-    }
-
-    private static int Difference(int left, int right)
-    {
-        var result = (long) left - right;
-        return (int) Math.Clamp(result, int.MinValue, int.MaxValue);
     }
 }

@@ -100,8 +100,11 @@ content and shadow overflow.
 
 Attached values use weak ownership and validate dispatcher affinity before
 mutation. Changing a child's z-order invalidates only the owning Overlay's
-render phase. Ordering uses pooled child storage that is cleared afterward, so
-no controls are retained past the synchronous render or hit-test operation.
+render phase; changing a position offset invalidates only its measure phase.
+Detached and wrong-parent changes persist without invalidating unrelated
+controls, and equivalent writes are silent. Ordering uses pooled child storage
+that is cleared afterward, so no controls are retained past the synchronous
+render or hit-test operation.
 
 ## Example
 

@@ -135,8 +135,8 @@ internal static class SelectableTextAggregation
         foreach (var glyph in snapshot.Glyphs)
         {
             var absolute = new Rect(
-                SaturatingAdd(leaf.Bounds.X, glyph.Bounds.X),
-                SaturatingAdd(leaf.Bounds.Y, glyph.Bounds.Y),
+                leaf.Bounds.X.SaturatingAdd(glyph.Bounds.X),
+                leaf.Bounds.Y.SaturatingAdd(glyph.Bounds.Y),
                 glyph.Bounds.Width,
                 glyph.Bounds.Height);
 
@@ -147,11 +147,11 @@ internal static class SelectableTextAggregation
 
             glyphs.Add(new TextSelectionGlyph(
                 new Selection(
-                    SaturatingAdd(offset, glyph.Range.Start),
-                    SaturatingAdd(offset, glyph.Range.End)),
+                    offset.SaturatingAdd(glyph.Range.Start),
+                    offset.SaturatingAdd(glyph.Range.End)),
                 new Rect(
-                    SaturatingSubtract(absolute.X, owner.Bounds.X),
-                    SaturatingSubtract(absolute.Y, owner.Bounds.Y),
+                    absolute.X.SaturatingSubtract(owner.Bounds.X),
+                    absolute.Y.SaturatingSubtract(owner.Bounds.Y),
                     absolute.Width,
                     absolute.Height),
                 selectionSource));
@@ -173,11 +173,4 @@ internal static class SelectableTextAggregation
         return source.GetSelectableTextInheritedClip();
     }
 
-    /// <summary>Adds signed cell coordinates without overflowing project geometry.</summary>
-    private static int SaturatingAdd(int left, int right) =>
-        (int) Math.Clamp((long) left + right, int.MinValue, int.MaxValue);
-
-    /// <summary>Subtracts signed cell coordinates without overflowing project geometry.</summary>
-    private static int SaturatingSubtract(int left, int right) =>
-        (int) Math.Clamp((long) left - right, int.MinValue, int.MaxValue);
 }

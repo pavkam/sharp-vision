@@ -129,7 +129,7 @@ public sealed class Stack: Container
             count++;
         }
 
-        axis = axis.Add(SpacingExtent(count, int.MaxValue));
+        axis = axis.Add(LayoutMath.GapExtent(Spacing, count, int.MaxValue));
         return Orientation == Orientation.Vertical
             ? new Size(cross, axis)
             : new Size(axis, cross);
@@ -163,7 +163,7 @@ public sealed class Stack: Container
             Fill(children, lengths, automatic, minimum, maximum);
             var vertical = Orientation == Orientation.Vertical;
             var axis = vertical ? bounds.Height : bounds.Width;
-            var spacing = SpacingExtent(count, axis);
+            var spacing = LayoutMath.GapExtent(Spacing, count, axis);
             var margins = SumMargins(children);
 
             // A scrolling stacking axis has no real ceiling - Container.ResolveContentSlot sizes
@@ -343,18 +343,4 @@ public sealed class Stack: Container
         }
     }
 
-    [Pure]
-    private int SpacingExtent(int count, int limit)
-    {
-        Debug.Assert(count >= 0, "Participant count is non-negative.");
-        Debug.Assert(limit >= 0, "Spacing limit is non-negative.");
-
-        if (count <= 1)
-        {
-            return 0;
-        }
-
-        var requested = (long) Spacing * (count - 1);
-        return (int) Math.Min(limit, Math.Min(int.MaxValue, requested));
-    }
 }
