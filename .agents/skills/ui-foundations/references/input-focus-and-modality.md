@@ -36,6 +36,10 @@ directional navigation, access keys, modal planes, dismissal, or restoration.
 - Capture wins over hit testing but remains constrained by modality.
 - Focus receives keys; pointer coordinates remain in documented cell and pixel
   spaces.
+- Keep framework interaction cleanup in non-virtual notifiers. Component
+  `OnFocusChanged`, `OnLostPointerCapture`, and `OnUnavailable` hooks run only
+  after selection, focus, capture, and modality invariants have settled; a base
+  call is never the mechanism that protects those invariants.
 - A Window or Popup owns presentation; `ModalityManager` and `FocusManager` own
   cross-surface isolation and restoration policy.
 

@@ -33,8 +33,11 @@ obsolete, detached, hidden, disabled, or disposed target cannot receive a later
 notification. Input handlers that request focus apply the same rule before
 continuing their pointer, keyboard, access-key, selection, or edit action.
 `IsFocused` property observers cannot skip a control's mandatory focus-change
-hook: both callbacks run, and the first failure is rethrown after focus-state
-cleanup has completed.
+work: after property publication, a non-virtual notifier cancels any active
+framework text-selection gesture and releases its capture before the component
+`OnFocusChanged` hook runs. The hook may omit its base call or throw; all three
+steps still run, and the first failure is rethrown after focus-state cleanup has
+completed.
 
 Tab, Shift+Tab, and access-key focus register a latest-wins reveal intent rather
 than reading arranged bounds inside the focus transaction. The application

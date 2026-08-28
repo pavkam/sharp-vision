@@ -2116,6 +2116,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         ExceptionAggregation.Capture(
             () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFocused))),
             ref failure);
+        ExceptionAggregation.Capture(() => CancelTextSelectionForFocusChange(value), ref failure);
         ExceptionAggregation.Capture(() => OnFocusChanged(value), ref failure);
         failure?.Throw();
     }
@@ -2134,6 +2135,17 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         }
 
         InvalidateVisualStateCore();
+    }
+
+    /// <summary>Cancels one active selection gesture after direct focus loss commits and before
+    /// the component focus hook runs.</summary>
+    /// <param name="focused">The newly committed direct focus state.</param>
+    private void CancelTextSelectionForFocusChange(bool focused)
+    {
+        if (!focused && TextSelectionPhase == Text.TextSelectionGesturePhase.Selecting)
+        {
+            _textSelectionGesture?.Cancel(releaseCapture: true);
+        }
     }
 
     /// <summary>Publishes one already-committed direct focus loss.</summary>
@@ -2395,16 +2407,15 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         }
     }
 
-    /// <summary>Responds after this control's keyboard-focus state changes.</summary>
+    /// <summary>Responds after this control's keyboard-focus state and mandatory framework cleanup commit.</summary>
     /// <param name="focused">The newly committed focus state.</param>
+    /// <remarks>Losing focus cancels framework text-selection state and releases its capture before
+    /// this component hook runs. The base implementation only asserts framework invariants; a
+    /// derived override does not call it for cleanup.</remarks>
     protected virtual void OnFocusChanged(bool focused)
     {
+        _ = focused;
         Debug.Assert(!IsDisposed, "A disposed control cannot change focus state.");
-
-        if (!focused && TextSelectionPhase == Text.TextSelectionGesturePhase.Selecting)
-        {
-            _textSelectionGesture?.Cancel(releaseCapture: true);
-        }
     }
 
     /// <summary>Responds after this control's pressed visual state commits.</summary>
@@ -2444,11 +2455,11 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
 
     /// <summary>Responds after this control loses pointer capture or its associated press transaction.</summary>
     /// <param name="reason">The defined reason exclusive pointer ownership ended.</param>
-    protected virtual void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
+    /// <remarks>Framework text-selection state is cancelled before this component hook runs. The
+    /// base implementation only asserts framework invariants; a derived override does not call it
+    /// for cleanup.</remarks>
+    protected virtual void OnLostPointerCapture(PointerCaptureLossReason reason) =>
         Debug.Assert(Enum.IsDefined(reason), "Capture-loss reasons are validated internally.");
-        _textSelectionGesture?.Cancel(releaseCapture: false);
-    }
 
     /// <summary>Responds after this control's direct ownership changes.</summary>
     /// <param name="previous">The previous owner, or null.</param>
@@ -2461,13 +2472,13 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         ParentChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Releases derived transient state when this control becomes unavailable.</summary>
+    /// <summary>Releases component-owned transient state when this control becomes unavailable.</summary>
     /// <param name="reason">The precise unavailability reason.</param>
-    protected virtual void OnUnavailable(ReleaseReason reason)
-    {
+    /// <remarks>Focus, capture, modality, and framework text-selection cleanup complete before this
+    /// component hook runs. The base implementation only asserts framework invariants; a derived
+    /// override does not call it for cleanup.</remarks>
+    protected virtual void OnUnavailable(ReleaseReason reason) =>
         Debug.Assert(Enum.IsDefined(reason), "Unavailable reasons are validated internally.");
-        _textSelectionGesture?.Cancel(releaseCapture: false);
-    }
 
     /// <summary>Configures the framework-owned chrome surrounding this control's content.</summary>
     /// <returns>The narrow set of chrome adjustments required by a specialized frame.</returns>
@@ -4016,6 +4027,9 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         Handlers = null;
     }
 
+    /// <summary>Completes manager and framework interaction cleanup before invoking the component
+    /// unavailability hook, continuing every step after callback failure.</summary>
+    /// <param name="reason">The defined reason the control is unavailable.</param>
     internal void NotifyUnavailable(ReleaseReason reason)
     {
         var focus = FocusOwner;
@@ -4036,6 +4050,9 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                 () => modality?.Unavailable(
                     this,
                     restoreFocus: !ReferenceEquals(modality.Root, this)),
+                ref failure);
+            ExceptionAggregation.Capture(
+                () => _textSelectionGesture?.Cancel(releaseCapture: false),
                 ref failure);
             ExceptionAggregation.Capture(
                 () => OnUnavailable(reason),
@@ -4067,12 +4084,18 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         failure?.Throw();
     }
 
-    /// <summary>Invokes the derived pointer-capture-loss hook after manager state is clear.</summary>
+    /// <summary>Cancels framework selection state and invokes the component capture-loss hook after
+    /// manager state is clear, preserving the earliest failure after both steps.</summary>
     /// <param name="reason">The defined capture-loss reason.</param>
     internal void NotifyLostPointerCapture(PointerCaptureLossReason reason)
     {
         Debug.Assert(Enum.IsDefined(reason), "Capture-loss reasons are validated internally.");
-        OnLostPointerCapture(reason);
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(
+            () => _textSelectionGesture?.Cancel(releaseCapture: false),
+            ref failure);
+        ExceptionAggregation.Capture(() => OnLostPointerCapture(reason), ref failure);
+        failure?.Throw();
     }
 
     /// <summary>Publishes one already-committed direct pointer-capture loss.</summary>

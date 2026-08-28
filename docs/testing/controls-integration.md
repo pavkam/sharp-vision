@@ -311,7 +311,11 @@ The text-selection aspect of `ControlBaseTests` and its surface siblings freeze
 the default opt-out, cross-child semantic order, source-identity invalidation,
 Unicode-safe keyboard and pointer ranges, common multi-click and unmodified
 keyboard navigation, authoritative aggregate arbitration, final-cell styling,
-capture cleanup, and routed clipboard copy for ordinary controls.
+capture cleanup, and routed clipboard copy for ordinary controls. The mounted
+lifecycle probe deliberately omits base calls, throws, and reenters from focus,
+capture-loss, and unavailable hooks; focus loss, explicit capture release, hide,
+disable, detach, and disposal must still leave an idle gesture, cleared capture,
+retired auto-scroll timer, and a clean subsequent pointer selection.
 `DocumentSelectionTests` freezes the normalized semantic stream, directional
 API, grapheme validation, mutation/reflow reconciliation, source identity, and
 bounded row indexing. `DocumentSelectionSurfaceTests` mounts the real control

@@ -205,7 +205,8 @@ one range crosses retained-child boundaries. A primary press immediately
 collapses any existing range at its new caret; stationary input still reaches
 the child's click behavior. The final adornment paints only complete mapped
 graphemes, and disable, capture loss, unavailability, or terminal-focus loss
-cancels retained gesture state.
+cancels retained gesture state through non-virtual framework cleanup before any
+component lifecycle hook runs.
 
 ## Keyboard modifier policy
 
@@ -337,7 +338,8 @@ press state belongs only to `PressBehavior`; raw pointer dispatch never marks a
 control pressed. An explicit `Release` is quiet; detach, disable, hide,
 disposal, and terminal-focus loss first clear capture plus any hover and press
 state owned by the unavailable subtree. If a capture target existed, its
-protected `OnLostPointerCapture` hook runs next, and the instance
+framework-owned selection gesture is cancelled after manager state clears, its
+protected `OnLostPointerCapture` component hook runs next, and the instance
 `LostPointerCapture` event then publishes the corresponding, coarser
 `PointerCaptureLossReason`: `PointerManager.Cancel` maps the four distinct
 `ReleaseReason.Detached`/`Disabled`/`Hidden`/`Disposed` values down to the
@@ -364,6 +366,12 @@ clears focus and capture, and only then publishes the property notification. A
 throwing focus, capture, unavailability, or property callback cannot skip the
 remaining cleanup or notification; the earliest failure is rethrown after the
 full transition completes.
+
+The same separation applies to direct focus loss and unavailability: non-virtual
+notifiers cancel selection capture, semantic anchors, source identity, and
+auto-scroll before invoking `OnFocusChanged`, `OnLostPointerCapture`, or
+`OnUnavailable`. Their base implementations own no cleanup, so an override may
+omit `base` or throw without retaining framework interaction state.
 
 An externally derived control uses `RequestFocus()` and `CapturePointer()`
 instead of holding manager references. Both return false while the control is

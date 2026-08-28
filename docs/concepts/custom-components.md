@@ -64,6 +64,12 @@ Use a real layout container as the root when the composition needs more than one
 visual child. Application-dependent work belongs in lifecycle hooks such as
 `OnAttached` and `OnStarted`, not in composition construction.
 
+Focus, capture-loss, and unavailability overrides own component policy only.
+Their non-virtual framework notifiers have already cancelled text-selection
+gestures, retired auto-scroll, and settled manager state before calling
+`OnFocusChanged`, `OnLostPointerCapture`, or `OnUnavailable`. An override does
+not call `base` to preserve those invariants, and throwing cannot skip them.
+
 ```csharp
 public sealed class LoginPanel : CompositeControlBase
 {

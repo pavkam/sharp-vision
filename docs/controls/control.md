@@ -139,6 +139,14 @@ transition stops publishing immediately. Later common-event subscribers
 therefore receive only the newest committed range and never an event payload
 that disagrees with live selection state.
 
+Focus loss, pointer-capture loss, disable, hide, detach, and disposal cancel an
+active selection gesture in non-virtual framework notifier steps. Those steps
+clear the semantic anchor and source identities, retire auto-scroll, and release
+selection capture before the corresponding `OnFocusChanged`,
+`OnLostPointerCapture`, or `OnUnavailable` component hook runs. An override may
+omit the base call or throw: framework cleanup still completes, later callbacks
+still run, and the earliest failure is rethrown afterward.
+
 Application Ctrl+C walks from focus toward the active route boundary, preferring
 the nearest enabled text-selection owner before another `IClipboardCopySource`.
 The chosen copy method runs exactly once; an empty result remains authoritative.
@@ -394,7 +402,10 @@ hooks and `OnParentChanged(Control?, Control?)` always observe committed
 ownership state. `OnUnavailable` is the guarded pre-commit exception described
 under [children and ownership](#children-and-ownership): manager state is
 already clear, while parent and inherited context still describe the coherent
-old tree.
+old tree. `OnFocusChanged`, `OnLostPointerCapture`, and `OnUnavailable` are
+component-policy hooks, not framework-cleanup extension points: their
+non-virtual callers settle mandatory selection and manager state first, and
+their base implementations are invariant assertions only.
 
 Focus and pointer capture are released synchronously when a control becomes
 unavailable or leaves the owned tree. Derived controls request those behaviors
