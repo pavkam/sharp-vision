@@ -1301,6 +1301,60 @@ public sealed class CalendarTests
         calendar.ActiveDate.ShouldBe(new DateOnly(2026, 7, 15));
     }
 
+    /// <summary>Verifies blocking the only selectable date is rejected before blocked, selection,
+    /// anchor, or active state changes.</summary>
+    [Fact]
+    public void Block_WhenOnlySelectableDateIsBlocked_RejectsBeforeMutation()
+    {
+        var date = new DateOnly(2026, 7, 12);
+        using var calendar = new UiCalendar
+        {
+            MinimumDate = date,
+            MaximumDate = date,
+            SelectionMode = CalendarSelectionMode.Interval
+        };
+        _ = calendar.ActivateDate(date);
+
+        _ = Should.Throw<InvalidOperationException>(() => calendar.BlockedDates.Block(date));
+
+        calendar.BlockedDates.ShouldBeEmpty();
+        calendar.ActiveDate.ShouldBe(date);
+        calendar.IntervalAnchor.ShouldBe(date);
+    }
+
+    /// <summary>Verifies narrowing bounds onto an already blocked date is rejected before the
+    /// candidate bound commits, leaving a selectable active date inside the prior domain.</summary>
+    [Fact]
+    public void MaximumDate_WhenNarrowedToOnlyBlockedDate_RejectsBeforeMutation()
+    {
+        var date = new DateOnly(2026, 7, 12);
+        using var calendar = new UiCalendar();
+        calendar.BlockedDates.Block(date);
+        calendar.MinimumDate = date;
+
+        _ = Should.Throw<InvalidOperationException>(() => calendar.MaximumDate = date);
+
+        calendar.MaximumDate.ShouldBe(DateOnly.MaxValue);
+        calendar.ActiveDate.ShouldBeGreaterThanOrEqualTo(calendar.MinimumDate);
+        calendar.ActiveDate.ShouldBeLessThanOrEqualTo(calendar.MaximumDate);
+        calendar.BlockedDates.Contains(calendar.ActiveDate).ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a multi-day blocked interval cannot consume the complete bounded domain.</summary>
+    [Fact]
+    public void Block_WhenRangeCoversEverySelectableDate_RejectsBeforeMutation()
+    {
+        var minimum = new DateOnly(2026, 7, 10);
+        var maximum = new DateOnly(2026, 7, 12);
+        using var calendar = new UiCalendar { MinimumDate = minimum, MaximumDate = maximum };
+        calendar.BlockedDates.Block(new DateInterval(minimum, maximum.AddDays(-1)));
+
+        _ = Should.Throw<InvalidOperationException>(() => calendar.BlockedDates.Block(maximum));
+
+        calendar.BlockedDates.ShouldBe([new DateInterval(minimum, maximum.AddDays(-1))]);
+        calendar.ActiveDate.ShouldBe(maximum);
+    }
+
     /// <summary>Verifies tightening either bound completes selection and active-date repair after
     /// the bound's property notification throws.</summary>
     [Theory]

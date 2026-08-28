@@ -920,14 +920,13 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// order the source applies next.</summary>
     public event EventHandler<TableSortChangedEventArgs>? SortRequested;
 
-    /// <summary>Gets the active progressive navigation index, or -1 while not progressive or when
-    /// nothing is active - the same neutral-default pattern <see cref="Rows"/> and
-    /// <see cref="SelectedRows"/> already follow rather than throwing on a mode mismatch.</summary>
+    /// <summary>Gets the active progressive navigation index, or -1 while not progressive, when
+    /// nothing is active, or while an unresolved <see cref="ActiveKey"/> awaits its row.</summary>
     [ValueRange(-1, int.MaxValue)]
     public int ActiveIndex => Progressive?.ActiveIndex ?? -1;
 
-    /// <summary>Gets the active progressive navigation key, or null while not progressive or when
-    /// nothing is active.</summary>
+    /// <summary>Gets the active progressive navigation key, or null while not progressive, when
+    /// nothing is active, or while an unloaded <see cref="ActiveIndex"/> awaits its row.</summary>
     public object? ActiveKey => Progressive?.ActiveKey;
 
     /// <summary>Gets an immutable snapshot of selected keys, independent of cache or window state,
@@ -1039,7 +1038,8 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         ProgressiveRewindow();
     }
 
-    /// <summary>Moves the active progressive index and applies a key-based selection gesture.</summary>
+    /// <summary>Moves the active progressive index, clears its key until an unloaded row resolves,
+    /// and applies a key-based selection gesture when the key is known.</summary>
     /// <param name="index">The non-negative candidate logical index.</param>
     /// <param name="modifiers">Optional control/shift selection modifiers.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is negative.</exception>
@@ -1052,7 +1052,8 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         Progressive!.SelectIndex(index, modifiers, SelectionMode);
     }
 
-    /// <summary>Applies a key-based selection gesture directly by stable key.</summary>
+    /// <summary>Applies a key-based selection gesture directly by stable key and clears its index
+    /// until an unresolved key's row loads.</summary>
     /// <param name="key">The non-null candidate key.</param>
     /// <param name="modifiers">Optional control/shift selection modifiers.</param>
     /// <exception cref="ArgumentNullException"><paramref name="key"/> is null.</exception>

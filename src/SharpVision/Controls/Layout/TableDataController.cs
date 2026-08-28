@@ -185,7 +185,7 @@ internal sealed class TableDataController: IDisposable
         UpdateLoadState();
     }
 
-    /// <summary>Updates key-based selection synchronously, independent of cache or window state.</summary>
+    /// <summary>Updates index-based selection synchronously and clears the key while unresolved.</summary>
     /// <param name="index">The candidate logical index.</param>
     /// <param name="modifiers">The selection modifiers.</param>
     /// <param name="selectionMode">The table's active selection mode.</param>
@@ -194,12 +194,12 @@ internal sealed class TableDataController: IDisposable
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         var (previousActiveIndex, previousActiveKey, previousSelectedKeys) = CaptureSelectionState();
         ActiveIndex = index;
-        ActiveKey = _cache.TryGetValue(index, out var entry) ? entry.Key : ActiveKey;
+        ActiveKey = _cache.TryGetValue(index, out var entry) ? entry.Key : null;
         ApplySelectionGesture(ResolveSelectionTarget(index), modifiers, selectionMode);
         NotifySelectionChanged(previousActiveIndex, previousActiveKey, previousSelectedKeys);
     }
 
-    /// <summary>Updates key-based selection synchronously by stable key.</summary>
+    /// <summary>Updates key-based selection synchronously and clears the index while unresolved.</summary>
     /// <param name="key">The candidate key.</param>
     /// <param name="modifiers">The selection modifiers.</param>
     /// <param name="selectionMode">The table's active selection mode.</param>
@@ -208,19 +208,15 @@ internal sealed class TableDataController: IDisposable
         ArgumentNullException.ThrowIfNull(key);
         var (previousActiveIndex, previousActiveKey, previousSelectedKeys) = CaptureSelectionState();
         ActiveKey = key;
-
-        if (_keyIndex.TryGetValue(key, out var index))
-        {
-            ActiveIndex = index;
-        }
+        ActiveIndex = _keyIndex.TryGetValue(key, out var index) ? index : -1;
 
         ApplySelectionGesture(key, modifiers, selectionMode);
         NotifySelectionChanged(previousActiveIndex, previousActiveKey, previousSelectedKeys);
     }
 
     /// <summary>Selects every row allowed by <paramref name="selectionMode"/> among currently loaded
-    /// keys: nothing for <see cref="TableSelectionMode.None"/>, the active key (or the first loaded
-    /// key when nothing is active) for <see cref="TableSelectionMode.Row"/>, and every loaded key
+    /// keys: nothing for <see cref="TableSelectionMode.None"/>, the loaded active key (or the first
+    /// loaded key only when no active location exists) for <see cref="TableSelectionMode.Row"/>, and every loaded key
     /// for <see cref="TableSelectionMode.MultipleRows"/> - the same branching
     /// <see cref="Table.SelectAll"/> already applies in eager mode.</summary>
     /// <param name="selectionMode">The table's active selection mode.</param>
@@ -233,7 +229,9 @@ internal sealed class TableDataController: IDisposable
         {
             var candidate = ActiveKey is { } activeKey && _keyIndex.ContainsKey(activeKey)
                 ? activeKey
-                : _cache.Count > 0 ? _cache[_cache.Keys.Min()].Key : null;
+                : ActiveIndex < 0 && ActiveKey is null && _cache.Count > 0
+                    ? _cache[_cache.Keys.Min()].Key
+                    : null;
 
             if (candidate is not null)
             {
@@ -888,6 +886,11 @@ internal sealed class TableDataController: IDisposable
     {
         _cache[entry.Index] = entry;
         _keyIndex[entry.Key] = entry.Index;
+
+        if (entry.Index == ActiveIndex)
+        {
+            ActiveKey = entry.Key;
+        }
 
         if (entry.Key.Equals(ActiveKey))
         {

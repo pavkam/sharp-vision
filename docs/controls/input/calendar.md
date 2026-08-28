@@ -108,12 +108,14 @@ current local date when today is inside the bounds and not blocked; it returns
 
 The bounds must stay ordered — `MinimumDate` rejects a value exceeding
 `MaximumDate`, and `MaximumDate` rejects a value preceding `MinimumDate`, each
-with `ArgumentException`. Tightening them clears a selection or anchor that no
-longer fits and moves `ActiveDate` to the nearest selectable value. Display and
-movement remain safe at `DateOnly.MinValue` and `DateOnly.MaxValue`. These
-dependent repairs complete before a throwing bound, selection, or anchor
-observer is rethrown, so callback failure cannot leave public calendar state
-outside the committed bounds.
+with `ArgumentException`. The bounded domain must retain at least one selectable
+date; a bound that would leave the complete interval blocked throws
+`InvalidOperationException` before the bound changes. Tightening valid bounds
+clears a selection or anchor that no longer fits and moves `ActiveDate` to the
+nearest selectable value. Display and movement remain safe at
+`DateOnly.MinValue` and `DateOnly.MaxValue`. These dependent repairs complete
+before a throwing bound, selection, or anchor observer is rethrown, so callback
+failure cannot leave public calendar state outside the committed bounds.
 
 ## Blocked dates
 
@@ -136,10 +138,12 @@ Blocked dates stay visible with the disabled theme state. Keyboard movement
 skips them, pointer activation on them is consumed without selecting, and a
 committed interval may not cross one. Blocking a date inside the current
 selection clears the selection and raises one ordered `SelectionChanged`;
-blocking a pending anchor clears the anchor. Mutations on an attached control
-are dispatcher-affine. Selection, anchor, active-date, and invalidation repair
-all complete before a callback failure from the blocked-date transaction is
-rethrown.
+blocking a pending anchor clears the anchor. A block that would cover every date
+inside the current bounds throws `InvalidOperationException` before the blocked
+ranges, selection, anchor, or active date change. Mutations on an attached
+control are dispatcher-affine. Selection, anchor, active-date, and invalidation
+repair all complete before a callback failure from an accepted blocked-date
+transaction is rethrown.
 
 ## Authored date faces
 

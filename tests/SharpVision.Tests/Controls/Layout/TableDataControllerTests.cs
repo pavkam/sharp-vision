@@ -792,6 +792,85 @@ public sealed class TableDataControllerTests
 
     #region Selection
 
+    /// <summary>Verifies selecting an unloaded index clears the previous key, avoids selecting an
+    /// unrelated cached fallback, and resolves the complementary key when that index loads.</summary>
+    [Fact]
+    public async Task SelectIndex_WhenTargetIsUnloaded_ClearsKeyThenResolvesAfterLoadAsync()
+    {
+        var table = CreateHost();
+        var source = CreateSource(500);
+        await using var surface = await ComponentSurface.MountAsync(
+            table, new Size(20, 3), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SelectIndex(0), "select loaded row");
+        List<(int Index, object? Key)> observations = [];
+        table.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName is nameof(Table.ActiveIndex) or nameof(Table.ActiveKey))
+            {
+                observations.Add((table.ActiveIndex, table.ActiveKey));
+            }
+        };
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                table.SelectIndex(400);
+                table.SelectAll();
+            },
+            "select unloaded row without cached fallback");
+
+        table.ActiveIndex.ShouldBe(400);
+        table.ActiveKey.ShouldBeNull();
+        table.SelectedKeys.ShouldBeEmpty();
+        observations.ShouldNotBeEmpty();
+        observations.ShouldAllBe(observation => observation.Index == 400 && observation.Key == null);
+
+        observations.Clear();
+        await surface.UpdateAsync(() => table.VerticalOffset = 400, "load active row");
+
+        table.ProgressiveController!.IsPlaceholder(400).ShouldBeFalse();
+        table.ActiveIndex.ShouldBe(400);
+        table.ActiveKey.ShouldBe(400);
+        observations.ShouldNotBeEmpty();
+        observations.ShouldAllBe(observation => observation.Index == 400 && Equals(observation.Key, 400));
+
+        await surface.UpdateAsync(() => table.VerticalOffset = 0, "evict active row");
+        table.ActiveIndex.ShouldBe(400);
+        table.ActiveKey.ShouldBe(400);
+    }
+
+    /// <summary>Verifies selecting an unresolved key clears the previous index and resolves the
+    /// complementary index when that key's row loads.</summary>
+    [Fact]
+    public async Task SelectKey_WhenTargetIsUnloaded_ClearsIndexThenResolvesAfterLoadAsync()
+    {
+        var table = CreateHost();
+        var source = CreateSource(500);
+        await using var surface = await ComponentSurface.MountAsync(
+            table, new Size(20, 3), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SelectIndex(0), "select loaded row");
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                table.SelectKey(400);
+                table.SelectAll();
+            },
+            "select unresolved key without cached fallback");
+
+        table.ActiveIndex.ShouldBe(-1);
+        table.ActiveKey.ShouldBe(400);
+        table.SelectedKeys.ShouldBeEmpty();
+
+        await surface.UpdateAsync(() => table.VerticalOffset = 400, "load active key");
+
+        table.ProgressiveController!.IsPlaceholder(400).ShouldBeFalse();
+        table.ActiveIndex.ShouldBe(400);
+        table.ActiveKey.ShouldBe(400);
+    }
+
     /// <summary>Verifies a stable key remains selected after its cached entry is evicted and later
     /// reloaded, since selection tracks keys independently of the cache.</summary>
     [Fact]

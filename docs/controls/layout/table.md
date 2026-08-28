@@ -230,18 +230,23 @@ the former dispatcher.
 A progressive table addresses rows by zero-based logical `int` index and by a
 caller-supplied stable key (`ITableDataSource<T>.GetKey`), independent of
 whatever range happens to be cached. `ActiveIndex`, `ActiveKey`, and
-`SelectedKeys` track that state; a selected key survives its backing range being
-evicted from cache and being scrolled back into view later, and every member
-reports the same neutral default (`-1`, `null`, empty) that
-`Rows`/`SelectedRows` already use while the table is not progressive, rather
-than throwing on a mode mismatch. `SelectIndex` and `SelectKey` move the active
-location and apply a selection gesture synchronously, by arithmetic alone, never
-blocking on a fetch — including `Home`, `End`, `PageUp`, and `PageDown`, which
-move the active index immediately even against a wholly unloaded target and let
-its fetch resolve asynchronously afterward. `SelectAll` branches by
-`SelectionMode` exactly like the eager path: nothing under `None`, the
-active-or-first loaded key under `Row`, and every currently loaded key under
-`MultipleRows` — it never reaches past what is already cached.
+`SelectedKeys` track that state as one coherent location. Selecting an unloaded
+index publishes that index with `ActiveKey == null`; selecting an unresolved key
+publishes that key with `ActiveIndex == -1`. The missing complement resolves and
+publishes when the matching row enters the cache, while eviction preserves the
+resolved pair. A selected key survives its backing range being evicted from
+cache and being scrolled back into view later, and every member reports the same
+neutral default (`-1`, `null`, empty) that `Rows`/`SelectedRows` already use
+while the table is not progressive, rather than throwing on a mode mismatch.
+`SelectIndex` and `SelectKey` move the active location and apply a selection
+gesture synchronously, by arithmetic alone, never blocking on a fetch —
+including `Home`, `End`, `PageUp`, and `PageDown`, which move the active index
+immediately even against a wholly unloaded target and let its fetch resolve
+asynchronously afterward. `SelectAll` branches by `SelectionMode` exactly like
+the eager path: nothing under `None`, the loaded active key under `Row`, the
+first loaded key only when no active location exists, and every currently loaded
+key under `MultipleRows` — it never reaches past what is already cached or
+substitutes another cached row for an unresolved active index.
 
 The resolved progressive row stride is the saturating sum of `rowHeight` and
 `RowSpacing`. Windowing, arrangement, hit testing, paging, prefetch margins, and

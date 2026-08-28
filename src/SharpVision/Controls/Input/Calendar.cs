@@ -226,7 +226,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
 
     /// <summary>Gets or sets the earliest selectable date.</summary>
     /// <exception cref="ArgumentException">The value exceeds <see cref="MaximumDate"/>.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="InvalidOperationException">The resulting bounds contain no selectable date, or the attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public DateOnly MinimumDate
     {
@@ -234,6 +234,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         set
         {
             ArgumentException.ThrowIfAboveMaximum(value, MaximumDate, nameof(value), "MinimumDate cannot exceed MaximumDate.");
+            ValidateSelectableDomain(value, MaximumDate, BlockedDates);
 
             _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Render, RepairState);
         }
@@ -241,7 +242,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
 
     /// <summary>Gets or sets the latest selectable date.</summary>
     /// <exception cref="ArgumentException">The value precedes <see cref="MinimumDate"/>.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="InvalidOperationException">The resulting bounds contain no selectable date, or the attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public DateOnly MaximumDate
     {
@@ -249,6 +250,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         set
         {
             ArgumentException.ThrowIfBelowMinimum(value, MinimumDate, nameof(value), "MaximumDate cannot precede MinimumDate.");
+            ValidateSelectableDomain(MinimumDate, value, BlockedDates);
 
             _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Render, RepairState);
         }
@@ -344,6 +346,33 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
 
     /// <summary>Verifies owner access before an owned calendar collection mutates.</summary>
     internal void VerifyCalendarMutable() => VerifyMutable();
+
+    /// <summary>Rejects bounds and normalized blocked ranges that contain no selectable date.</summary>
+    /// <param name="minimum">The inclusive candidate lower bound.</param>
+    /// <param name="maximum">The inclusive candidate upper bound.</param>
+    /// <param name="blockedRanges">The normalized candidate blocked ranges.</param>
+    /// <exception cref="InvalidOperationException">One blocked range covers the complete bounded domain.</exception>
+    internal static void ValidateSelectableDomain(
+        DateOnly minimum,
+        DateOnly maximum,
+        IEnumerable<DateInterval> blockedRanges)
+    {
+        ArgumentNullException.ThrowIfNull(blockedRanges);
+        Debug.Assert(minimum <= maximum, "Calendar bounds are ordered before domain validation.");
+
+        foreach (var blocked in blockedRanges)
+        {
+            if (blocked.Start > minimum)
+            {
+                return;
+            }
+
+            if (blocked.End >= maximum)
+            {
+                throw new InvalidOperationException("Calendar bounds must contain at least one selectable date.");
+            }
+        }
+    }
 
     /// <summary>Invalidates rendered date state after an owned blocked-range mutation.</summary>
     internal void OnBlockedDatesChanged()

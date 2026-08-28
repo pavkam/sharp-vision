@@ -100,8 +100,13 @@ validation before commit, same-value silence, exact eligible-parent
 invalidation, and reparenting. Fixed-seed arithmetic tests cover signed integer
 boundaries, sequential saturation, empty and singleton gap sets, maximum
 spacing/count products, and bounded gap extents without assuming associativity.
-Routed-input tests record the route, phase, source, handled state, local
-coordinates, mutation during dispatch, default behavior, and cleanup. The shared
+Progressive Table tests require unresolved index/key complements to publish a
+coherent neutral value, resolve on fetch, survive eviction, and never make
+single-row SelectAll choose an unrelated cached fallback. Calendar domain tests
+reject single- and multi-day mutations that would block every bounded date
+before selection, anchor, active-date, or collection state changes. Routed-input
+tests record the route, phase, source, handled state, local coordinates,
+mutation during dispatch, default behavior, and cleanup. The shared
 owner-pipeline fixtures also prove that visible-to-collapsed transitions clear
 stale bounds for representative container, retained-content, and framework-part
 ownership without panel-local cleanup or duplicate bounds notifications, and

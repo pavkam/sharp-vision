@@ -24,13 +24,13 @@ public sealed class CalendarBlockedDateCollection: IReadOnlyCollection<DateInter
 
     /// <summary>Blocks one date.</summary>
     /// <param name="date">The date to make unavailable.</param>
-    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="InvalidOperationException">The range would block the complete selectable domain, or the attached owner is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
     public void Block(DateOnly date) => Block(new DateInterval(date, date));
 
     /// <summary>Blocks one inclusive range and coalesces overlapping or adjacent ranges.</summary>
     /// <param name="interval">The inclusive range to make unavailable.</param>
-    /// <exception cref="InvalidOperationException">The attached owner is mutated off-dispatcher.</exception>
+    /// <exception cref="InvalidOperationException">The range would block the complete selectable domain, or the attached owner is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
     public void Block(DateInterval interval)
     {
@@ -196,6 +196,7 @@ public sealed class CalendarBlockedDateCollection: IReadOnlyCollection<DateInter
             return;
         }
 
+        Calendar.ValidateSelectableDomain(_owner.MinimumDate, _owner.MaximumDate, result);
         _ranges = result;
         _owner.OnBlockedDatesChanged();
     }
