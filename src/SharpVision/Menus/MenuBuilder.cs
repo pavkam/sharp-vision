@@ -44,9 +44,14 @@ public sealed class MenuBuilder
     /// <summary>Starts building a horizontal menu (typical for menu bars).</summary>
     /// <param name="spacing">The cell spacing between items. Defaults to 1.</param>
     /// <returns>A new builder configured for horizontal orientation.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="spacing"/> is negative.</exception>
     [Pure]
     [MustUseReturnValue]
-    public static MenuBuilder Horizontal(int spacing = 1) => new(Orientation.Horizontal, spacing);
+    public static MenuBuilder Horizontal(int spacing = 1)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(spacing);
+        return new MenuBuilder(Orientation.Horizontal, spacing);
+    }
 
     /// <summary>Adds a command menu item.</summary>
     /// <param name="label">The visible label text.</param>
@@ -109,6 +114,7 @@ public sealed class MenuBuilder
     /// <param name="onInvoke">An optional handler raised when the item is activated.</param>
     /// <returns>This builder for chaining.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="label"/> or <paramref name="groupName"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="groupName"/> is empty or contains only white-space characters.</exception>
     public MenuBuilder Radio(
         string label,
         string groupName,
@@ -116,7 +122,7 @@ public sealed class MenuBuilder
         Action? onInvoke = null)
     {
         ArgumentNullException.ThrowIfNull(label);
-        ArgumentNullException.ThrowIfNull(groupName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(groupName);
         _steps.Add(menu =>
         {
             var item = new MenuItem

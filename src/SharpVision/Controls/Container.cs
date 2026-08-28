@@ -431,7 +431,11 @@ public abstract class Container: ControlBase
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
     public ShowScrollBars ShowScrollBars
     {
-        get;
+        get
+        {
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
+            return field;
+        }
         set
         {
             ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The enum value is unknown.");
@@ -500,7 +504,11 @@ public abstract class Container: ControlBase
     [NonNegativeValue]
     public int LineSize
     {
-        get;
+        get
+        {
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
+            return field;
+        }
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
@@ -519,7 +527,11 @@ public abstract class Container: ControlBase
     [NonNegativeValue]
     public int PageOverlap
     {
-        get;
+        get
+        {
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
+            return field;
+        }
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
@@ -543,7 +555,11 @@ public abstract class Container: ControlBase
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
     public int HorizontalOffset
     {
-        get => _scroll.HorizontalOffset;
+        get
+        {
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
+            return _scroll.HorizontalOffset;
+        }
         set
         {
             ValidateOffset(value, MaximumX(), nameof(value));
@@ -557,7 +573,11 @@ public abstract class Container: ControlBase
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
     public int VerticalOffset
     {
-        get => _scroll.VerticalOffset;
+        get
+        {
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
+            return _scroll.VerticalOffset;
+        }
         set
         {
             ValidateOffset(value, MaximumY(), nameof(value));

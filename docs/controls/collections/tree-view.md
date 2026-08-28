@@ -323,11 +323,14 @@ A failed retry of a populated node leaves its stale-but-real children in place;
 the failed status row and its retry affordance appear only once `Children` is
 empty. `TreeView.LoadingText` and `LoadFailedText` configure the synthetic
 status row's inline text; `MaxConcurrentChildLoads` bounds how many requests run
-at once across the whole tree, queuing the rest. The status row itself is never
-a navigation, selection, or check target - `Up`/`Down`/`Home`/`End` skip it, and
-`TreeView.ExpandAll` skips an `Unloaded` branch rather than starting a remote
-load it never promised to trigger. Clicking a failed row, or pressing Enter
-while it is the current item, retries through `ReloadChildrenAsync`.
+at once across the whole tree, queuing the rest. Raising the limit immediately
+admits queued requests into the newly available slots; lowering it leaves
+already-running requests intact and delays further admissions until usage falls
+below the new limit. The status row itself is never a navigation, selection, or
+check target - `Up`/`Down`/`Home`/`End` skip it, and `TreeView.ExpandAll` skips
+an `Unloaded` branch rather than starting a remote load it never promised to
+trigger. Clicking a failed row, or pressing Enter while it is the current item,
+retries through `ReloadChildrenAsync`.
 
 ## Example
 

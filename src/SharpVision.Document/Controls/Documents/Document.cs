@@ -594,6 +594,12 @@ public sealed class Document:
         var movedHorizontal = ApplyHorizontal(
             AddCoordinates(_horizontalOffset, horizontal),
             ScrollCause.Pointer);
+
+        if (IsDisposed)
+        {
+            return movedHorizontal;
+        }
+
         var movedVertical = _stack.ScrollBy(0, vertical, ScrollCause.Pointer);
         return movedHorizontal || movedVertical;
     }
@@ -604,6 +610,13 @@ public sealed class Document:
         var previousHorizontal = _horizontalOffset;
         var previousVertical = VerticalOffset;
         var changed = ScrollSelectableTextViewport(horizontal, vertical);
+
+        if (IsDisposed)
+        {
+            hitAdjustment = default;
+            return changed;
+        }
+
         hitAdjustment = new Point(
             Difference(_horizontalOffset, previousHorizontal),
             Difference(VerticalOffset, previousVertical));

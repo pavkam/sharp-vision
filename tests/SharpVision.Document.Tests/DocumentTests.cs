@@ -206,6 +206,46 @@ public sealed class DocumentTests
         document.VerticalOffset.ShouldBe(0);
     }
 
+    /// <summary>Verifies document scrolling getters reject access after disposal instead of
+    /// forwarding stale values from the disposed retained projection.</summary>
+    [Fact]
+    public void ScrollingProperties_WhenDocumentIsDisposed_GettersThrow()
+    {
+        // Arrange
+        var document = new Document
+        {
+            LineSize = 2,
+            PageOverlap = 1,
+            ShowScrollBars = ShowScrollBars.Always
+        };
+        document.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(() => _ = document.VerticalOffset);
+        _ = Should.Throw<ObjectDisposedException>(() => _ = document.LineSize);
+        _ = Should.Throw<ObjectDisposedException>(() => _ = document.PageOverlap);
+        _ = Should.Throw<ObjectDisposedException>(() => _ = document.ShowScrollBars);
+    }
+
+    /// <summary>Verifies endpoint commands enforce disposal even when the document is already at
+    /// the requested endpoint and the scroll would otherwise be an equality no-op.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ScrollEndpoint_WhenDocumentIsDisposedAtTarget_Throws(bool end)
+    {
+        // Arrange
+        var document = Filled(1);
+        new LayoutEngine().Layout(document, new Size(40, 10));
+        document.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(() =>
+        {
+            _ = end ? document.ScrollToEnd() : document.ScrollToTop();
+        });
+    }
+
     /// <summary>Verifies the vertical offset is settable within the extent and rejected outside it.</summary>
     [Fact]
     public void VerticalOffset_WhenAssigned_AcceptsValidOffsetsAndRejectsOthers()

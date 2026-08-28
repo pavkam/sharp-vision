@@ -6,6 +6,28 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies intrinsic Container scrolling geometry, offsets, clipping, and chrome.</summary>
 public sealed class ContainerTests
 {
+    /// <summary>Verifies scrolling getters reject access after disposal instead of returning stale
+    /// retained values contrary to their documented lifetime contract.</summary>
+    [Fact]
+    public void ScrollingProperties_WhenContainerIsDisposed_GettersThrow()
+    {
+        // Arrange
+        var container = new LayoutProbe
+        {
+            LineSize = 2,
+            PageOverlap = 1,
+            ShowScrollBars = ShowScrollBars.Always
+        };
+        container.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(() => _ = container.HorizontalOffset);
+        _ = Should.Throw<ObjectDisposedException>(() => _ = container.VerticalOffset);
+        _ = Should.Throw<ObjectDisposedException>(() => _ = container.LineSize);
+        _ = Should.Throw<ObjectDisposedException>(() => _ = container.PageOverlap);
+        _ = Should.Throw<ObjectDisposedException>(() => _ = container.ShowScrollBars);
+    }
+
     /// <summary>Verifies reentrant AutoScroll policy wins both arming directions, including the
     /// generated scrollbar ownership transaction.</summary>
     [Theory]

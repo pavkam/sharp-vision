@@ -1657,7 +1657,18 @@ public sealed class DocumentSelectionSurfaceTests
             }
 
             await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "advance after document gesture cancellation");
-            document.VerticalOffset.ShouldBe(0, cancellation.ToString());
+
+            if (cancellation == AutoScrollCancellation.Dispose)
+            {
+                _ = Should.Throw<ObjectDisposedException>(() => _ = document.VerticalOffset);
+            }
+            else
+            {
+                document.VerticalOffset.ShouldBe(0, cancellation.ToString());
+            }
+
+            document.SelectionGesturePhase.ShouldBe(TextSelectionGesturePhase.Idle);
+            surface.ShouldHaveCapture(null);
         }
     }
 

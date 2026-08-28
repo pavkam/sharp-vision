@@ -1045,6 +1045,101 @@ public sealed partial class TreeViewTests
         tree.MaxConcurrentChildLoads.ShouldBe(4);
     }
 
+    /// <summary>Verifies a changed concurrency limit publishes once, while an equivalent
+    /// assignment remains notification-free.</summary>
+    [Fact]
+    public void MaxConcurrentChildLoads_WhenChanged_RaisesPropertyChangedOnce()
+    {
+        // Arrange
+        var tree = new TreeView();
+        List<string?> changed = [];
+        tree.PropertyChanged += (_, eventArgs) => changed.Add(eventArgs.PropertyName);
+
+        // Act
+        tree.MaxConcurrentChildLoads = 2;
+        tree.MaxConcurrentChildLoads = 2;
+
+        // Assert
+        changed.ShouldBe([nameof(TreeView.MaxConcurrentChildLoads)]);
+    }
+
+    /// <summary>Verifies even an equivalent concurrency-limit assignment enforces dispatcher
+    /// affinity before returning as a no-op.</summary>
+    [Fact]
+    public async Task MaxConcurrentChildLoads_WhenAttachedAndAssignedCurrentValueOffDispatcher_ThrowsAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var tree = new TreeView();
+        await dispatcher.InvokeAsync(() => tree.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        // Act and assert
+        _ = Should.Throw<InvalidOperationException>(() => tree.MaxConcurrentChildLoads = 4);
+        tree.MaxConcurrentChildLoads.ShouldBe(4);
+    }
+
+    /// <summary>Verifies a disposed tree rejects a concurrency-limit mutation before changing the
+    /// retained admission policy.</summary>
+    [Fact]
+    public void MaxConcurrentChildLoads_WhenOwnerIsDisposed_ThrowsBeforeMutation()
+    {
+        // Arrange
+        var tree = new TreeView();
+        tree.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(() => tree.MaxConcurrentChildLoads = 2);
+        tree.MaxConcurrentChildLoads.ShouldBe(4);
+    }
+
+    /// <summary>Verifies increasing the live concurrency limit immediately grants available slots
+    /// to already queued requests instead of leaving capacity idle until another load finishes.</summary>
+    [Fact]
+    public async Task MaxConcurrentChildLoads_WhenIncreased_AdmitsQueuedRequestImmediatelyAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var firstDeferred = source.DeferNext(null);
+        var secondDeferred = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem first = null!;
+        TreeViewItem second = null!;
+        await dispatcher.InvokeAsync(() =>
+        {
+            tree = new TreeView { MaxConcurrentChildLoads = 1 };
+            first = new TreeViewItem("First") { ChildSource = source, IsExpanded = false };
+            second = new TreeViewItem("Second") { ChildSource = source, IsExpanded = false };
+            tree.Items.Add(first);
+            tree.Items.Add(second);
+            tree.Attach(dispatcher);
+            first.IsExpanded = true;
+            second.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+        source.Requests.Count.ShouldBe(1);
+        second.IsAwaitingLoadSlot.ShouldBeTrue();
+
+        // Act
+        _ = await dispatcher.InvokeAsync(
+            () => tree.MaxConcurrentChildLoads = 2,
+            TestContext.Current.CancellationToken);
+        _ = secondDeferred.TrySetResult([]);
+
+        // Assert
+        await TreeViewChildLoadWait.UntilAsync(
+            second,
+            () => second.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+        source.Requests.Count.ShouldBe(2);
+        second.IsAwaitingLoadSlot.ShouldBeFalse();
+
+        _ = firstDeferred.TrySetResult([]);
+        await TreeViewChildLoadWait.UntilAsync(
+            first,
+            () => first.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a second concurrent load request beyond <see cref="TreeView.MaxConcurrentChildLoads"/>
     /// is admission-queued rather than issued immediately, and is granted its own slot once an
     /// earlier request releases one.</summary>

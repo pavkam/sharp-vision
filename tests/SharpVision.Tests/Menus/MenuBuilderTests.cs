@@ -27,6 +27,12 @@ public sealed class MenuBuilderTests
         menu.Spacing.ShouldBe(3);
     }
 
+    /// <summary>Verifies invalid horizontal spacing is rejected where it is supplied rather than
+    /// being captured until a later Build call.</summary>
+    [Fact]
+    public void Horizontal_WhenSpacingIsNegative_ThrowsAtCallSite() =>
+        Should.Throw<ArgumentOutOfRangeException>(() => _ = MenuBuilder.Horizontal(spacing: -1));
+
     /// <summary>Verifies Item adds a command menu item with label and shortcut text.</summary>
     [Fact]
     public void Item_WhenAdded_CreatesCommandItemWithLabelAndShortcut()
@@ -202,6 +208,12 @@ public sealed class MenuBuilderTests
     [Fact]
     public void Radio_WhenGroupNameIsNull_Throws() =>
         Should.Throw<ArgumentNullException>(() => _ = MenuBuilder.Vertical().Radio("Label", null!));
+
+    /// <summary>Verifies an invalid radio group is rejected where it is supplied rather than being
+    /// captured until a later Build call.</summary>
+    [Fact]
+    public void Radio_WhenGroupNameIsWhitespace_ThrowsAtCallSite() =>
+        Should.Throw<ArgumentException>(() => _ = MenuBuilder.Vertical().Radio("Label", "   "));
 
     /// <summary>Verifies null label on Submenu throws ArgumentNullException.</summary>
     [Fact]

@@ -455,6 +455,8 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     /// <summary>Gets or sets the maximum number of child-loading requests this tree runs at once
     /// across every item; additional requests queue until a running one completes.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
     [ValueRange(1, int.MaxValue)]
     public int MaxConcurrentChildLoads
     {
@@ -462,7 +464,11 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
-            field = value;
+            _ = SetPropertyAndContinue(
+                ref field,
+                value,
+                InvalidationImpact.None,
+                AdmitQueuedLoads);
         }
     } = 4;
 
@@ -486,8 +492,12 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     internal void ReleaseLoadSlot()
     {
         _activeChildLoads--;
+        AdmitQueuedLoads();
+    }
 
-        while (_pendingChildLoads.Count > 0)
+    private void AdmitQueuedLoads()
+    {
+        while (_activeChildLoads < MaxConcurrentChildLoads && _pendingChildLoads.Count > 0)
         {
             var next = _pendingChildLoads.Dequeue();
 
@@ -500,7 +510,6 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
 
             _activeChildLoads++;
             next.GrantQueuedLoadSlot();
-            return;
         }
     }
 
