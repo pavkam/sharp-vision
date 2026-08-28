@@ -17,7 +17,11 @@ public sealed class PopupDropDownCoordinatorTests
         Action? raiseDropDownOpened = null,
         Action? raiseDropDownClosed = null,
         Action? beforeOpen = null,
-        Action? beforeCloseFocusRestore = null) =>
+        Action? beforeCloseFocusRestore = null,
+        Action? beginSession = null,
+        Func<KeyEventArgs, bool>? handleNavigationKey = null,
+        Action? cancelSession = null,
+        Action? acceptSession = null) =>
         new(
             owner,
             popup,
@@ -27,7 +31,12 @@ public sealed class PopupDropDownCoordinatorTests
             raiseDropDownOpened ?? (static () => { }),
             raiseDropDownClosed ?? (static () => { }),
             beforeOpen,
-            beforeCloseFocusRestore);
+            beforeCloseFocusRestore,
+            ownerInitialFocus: null,
+            beginSession: beginSession,
+            handleNavigationKey: handleNavigationKey,
+            cancelSession: cancelSession,
+            acceptSession: acceptSession);
 
     /// <summary>Verifies opening invokes the optional pre-open hook before the popup's own IsOpen
     /// flips, matching DateInput's EnsureSeeded/SyncCalendar ordering requirement.</summary>
@@ -479,4 +488,257 @@ public sealed class PopupDropDownCoordinatorTests
 
         propertyChangedCalls.ShouldBe(0);
     }
+
+    /// <summary>Verifies one active navigation session routes initial and repeated navigation
+    /// strokes through its one owner-preview interception point exactly once, whether keyboard
+    /// focus remains on the owner or moves into the popup content.</summary>
+    [Fact]
+    public async Task Route_WhenNavigationSessionIsOpen_DeliversOwnerAndContentStrokesExactlyOnceAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var owner = new ProbeContainer { IsFocusable = true };
+            var content = new ProbeControl { IsFocusable = true };
+            using var popup = new Popup { Content = content };
+            owner.Children.Add(popup);
+            root.Children.Add(owner);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            var begins = 0;
+            var routed = new List<Stroke>();
+            var coordinator = Create(
+                owner,
+                popup,
+                content,
+                beginSession: () => begins++,
+                handleNavigationKey: key =>
+                {
+                    routed.Add(key.Stroke);
+                    return key.Stroke.Code == Code.Down;
+                });
+
+            coordinator.SetOpen(true);
+            var ownerKey = Key(Code.Down, KeyAction.Press);
+            var contentRepeat = Key(Code.Down, KeyAction.Repeat);
+
+            _ = Router.Route(owner, Events.Key, ownerKey);
+            _ = Router.Route(content, Events.Key, contentRepeat);
+
+            begins.ShouldBe(1);
+            routed.Count.ShouldBe(2);
+            routed[0].Action.ShouldBe(KeyAction.Press);
+            routed[1].Action.ShouldBe(KeyAction.Repeat);
+            ownerKey.IsHandled.ShouldBeTrue();
+            contentRepeat.IsHandled.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies each non-accepting close path cancels the active session exactly once,
+    /// including Escape, owner-driven close, direct popup close, and modal light dismissal.</summary>
+    [Fact]
+    public async Task Close_WhenSessionWasNotAccepted_CancelsExactlyOnceForEveryClosePathAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new Overlay();
+            var owner = new ProbeContainer { IsFocusable = true };
+            var content = new ProbeControl { IsFocusable = true };
+            using var popup = new Popup { Content = content };
+            owner.Children.Add(popup);
+            root.Children.Add(owner);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            var cancellations = 0;
+            var coordinator = Create(owner, popup, content, cancelSession: () => cancellations++);
+
+            coordinator.SetOpen(true);
+            _ = Router.Route(content, Events.Key, Key(Code.Escape, KeyAction.Press));
+            cancellations.ShouldBe(1);
+
+            coordinator.SetOpen(true);
+            coordinator.SetOpen(false);
+            cancellations.ShouldBe(2);
+
+            coordinator.SetOpen(true);
+            popup.IsOpen = false;
+            cancellations.ShouldBe(3);
+
+            coordinator.SetOpen(true);
+            _ = pointer.Dispatch(new Pointer(
+                new Point(100, 100),
+                pixels: null,
+                Buttons.Primary,
+                PointerAction.Press,
+                wheelX: 0,
+                wheelY: 0,
+                Modifiers.None,
+                isMotion: false,
+                isCellPositionInferred: false));
+            cancellations.ShouldBe(4);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies accepting a session runs its acceptance callback before closing and
+    /// suppresses cancellation for that completed session.</summary>
+    [Fact]
+    public void AcceptAndClose_WhenSessionIsOpen_AcceptsWithoutCancellation()
+    {
+        var owner = new ProbeControl();
+        var content = new ProbeControl();
+        using var popup = new Popup();
+        var accepted = 0;
+        var cancelled = 0;
+        var coordinator = Create(
+            owner,
+            popup,
+            content,
+            acceptSession: () => accepted++,
+            cancelSession: () => cancelled++);
+
+        coordinator.SetOpen(true);
+        coordinator.AcceptAndClose();
+
+        accepted.ShouldBe(1);
+        cancelled.ShouldBe(0);
+        popup.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a cancellation failure cannot prevent the close hook and focused-content
+    /// restoration attempt, and remains the failure rethrown after that cleanup completes.</summary>
+    [Fact]
+    public async Task SetOpen_WhenCancellationFails_CompletesFocusRestoreAndRethrowsEarliestFailureAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var owner = new ProbeControl();
+            var content = new ProbeControl { IsFocusable = true };
+            root.Children.Add(owner);
+            root.Children.Add(content);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var popup = new Popup();
+            var expected = new InvalidOperationException("cancel failed");
+            var events = new List<string>();
+            var coordinator = Create(
+                owner,
+                popup,
+                content,
+                requestFocus: () =>
+                {
+                    events.Add("RequestFocus");
+                    return true;
+                },
+                beforeCloseFocusRestore: () => events.Add("BeforeCloseFocusRestore"),
+                cancelSession: () => throw expected);
+
+            coordinator.SetOpen(true);
+            _ = focus.Focus(content);
+
+            var thrown = Should.Throw<InvalidOperationException>(() => coordinator.SetOpen(false));
+
+            thrown.ShouldBeSameAs(expected);
+            events.ShouldBe(["BeforeCloseFocusRestore", "RequestFocus"]);
+            popup.IsOpen.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an old close cannot close or cancel the distinct session opened from the
+    /// completed popup close notification, which is the reentrant presentation boundary where the
+    /// popup itself permits another open.</summary>
+    [Fact]
+    public async Task SetOpen_WhenClosedHandlerReopens_StartsOneDistinctSurvivingSessionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var owner = new ProbeContainer { IsFocusable = true };
+            var content = new ProbeControl();
+            using var popup = new Popup { Content = content };
+            owner.Children.Add(popup);
+            root.Children.Add(owner);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            var begins = 0;
+            var cancellations = 0;
+            var reopen = true;
+            PopupDropDownCoordinator coordinator = null!;
+            coordinator = Create(
+                owner,
+                popup,
+                content,
+                beginSession: () => begins++,
+                cancelSession: () => cancellations++,
+                raiseDropDownClosed: () =>
+                {
+                    if (reopen)
+                    {
+                        reopen = false;
+                        coordinator.SetOpen(true);
+                    }
+                });
+
+            coordinator.SetOpen(true);
+            coordinator.SetOpen(false);
+
+            popup.IsOpen.ShouldBeTrue();
+            begins.ShouldBe(2);
+            cancellations.ShouldBe(1);
+            coordinator.SessionGeneration.ShouldBe(3UL);
+
+            coordinator.SetOpen(false);
+            cancellations.ShouldBe(2);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies detaching the owner releases the preview registration, so later owner
+    /// routes cannot reach a session callback retained by an owner that no longer owns the popup.</summary>
+    [Fact]
+    public void Detach_AfterDetaching_StopsRoutingNavigationKeys()
+    {
+        var owner = new ProbeControl();
+        var content = new ProbeControl();
+        using var popup = new Popup();
+        var navigations = 0;
+        var coordinator = Create(
+            owner,
+            popup,
+            content,
+            handleNavigationKey: _ =>
+            {
+                navigations++;
+                return true;
+            });
+
+        coordinator.SetOpen(true);
+        coordinator.Detach();
+        var eventArgs = Key(Code.Down, KeyAction.Press);
+
+        _ = Router.Route(owner, Events.Key, eventArgs);
+
+        navigations.ShouldBe(0);
+        eventArgs.IsHandled.ShouldBeFalse();
+    }
+
+    private static KeyEventArgs Key(Code code, KeyAction action) => new(new Stroke(
+        code,
+        character: null,
+        nativeCode: 0,
+        Modifiers.None,
+        action));
 }

@@ -46,6 +46,13 @@ internal sealed class PopupDropDownCoordinator
     private readonly Action? _beforeCloseFocusRestore;
     private readonly ControlBase? _ownerInitialFocus;
     private readonly PopupModalTracker _modalTracker;
+    private readonly Action? _beginSession;
+    private readonly Func<KeyEventArgs, bool>? _handleNavigationKey;
+    private readonly Action? _cancelSession;
+    private readonly Action? _acceptSession;
+    private readonly IDisposable _ownerKeyRegistration;
+    private bool _hasActiveSession;
+    private bool _sessionAccepted;
 
     /// <summary>Initializes a coordinator for one owner's private popup.</summary>
     /// <param name="owner">The composite control that owns <paramref name="popup"/> and serves as the modal root.</param>
@@ -59,6 +66,15 @@ internal sealed class PopupDropDownCoordinator
     /// <param name="beforeCloseFocusRestore">Optional owner-specific work run before the closing focus-restore check, such as discarding type-ahead state.</param>
     /// <param name="ownerInitialFocus">Optional focusable retained descendant used when the
     /// public composite owner is not itself focusable.</param>
+    /// <param name="beginSession">Optional owner-specific callback that snapshots committed state
+    /// and seeds provisional popup state for each newly opened session.</param>
+    /// <param name="handleNavigationKey">Optional canonical navigation callback invoked once from
+    /// the owner's preview route for each key while the session remains current. It returns whether
+    /// the coordinator must consume the stroke.</param>
+    /// <param name="cancelSession">Optional owner-specific callback that restores the opening
+    /// state when the session closes without acceptance.</param>
+    /// <param name="acceptSession">Optional owner-specific callback that commits provisional
+    /// state before an accepted session closes.</param>
     /// <exception cref="ArgumentNullException">A required argument is null.</exception>
     public PopupDropDownCoordinator(
         ControlBase owner,
@@ -70,7 +86,11 @@ internal sealed class PopupDropDownCoordinator
         Action raiseDropDownClosed,
         Action? beforeOpen = null,
         Action? beforeCloseFocusRestore = null,
-        ControlBase? ownerInitialFocus = null)
+        ControlBase? ownerInitialFocus = null,
+        Action? beginSession = null,
+        Func<KeyEventArgs, bool>? handleNavigationKey = null,
+        Action? cancelSession = null,
+        Action? acceptSession = null)
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(popup);
@@ -90,11 +110,16 @@ internal sealed class PopupDropDownCoordinator
         _beforeOpen = beforeOpen;
         _beforeCloseFocusRestore = beforeCloseFocusRestore;
         _ownerInitialFocus = ownerInitialFocus;
+        _beginSession = beginSession;
+        _handleNavigationKey = handleNavigationKey;
+        _cancelSession = cancelSession;
+        _acceptSession = acceptSession;
 
         _popup.Opened += OnPopupOpened;
         _popup.Closing += OnPopupClosing;
         _popup.Closed += OnPopupClosed;
         _modalTracker = new PopupModalTracker(_popup, () => SetOpen(false));
+        _ownerKeyRegistration = _owner.AddHandler(Events.Key, OnOwnerPreviewKey, handledEventsToo: true);
     }
 
     /// <summary>Gets whether the owned popup is currently open.</summary>
@@ -102,6 +127,11 @@ internal sealed class PopupDropDownCoordinator
 
     /// <summary>Gets the monotonically increasing public or internal open-state request version.</summary>
     internal ulong TransitionVersion { get; private set; }
+
+    /// <summary>Gets the monotonically increasing identity of the current or most recently ended
+    /// navigation session. Tests use this seam to prove stale close callbacks cannot affect a newer
+    /// session.</summary>
+    internal ulong SessionGeneration { get; private set; }
 
     /// <summary>Opens or closes the owned popup, no-op when already at the requested state.</summary>
     /// <param name="value">True to open the popup; false to close it.</param>
@@ -126,6 +156,34 @@ internal sealed class PopupDropDownCoordinator
         }
     }
 
+    /// <summary>Commits the active session's provisional state and closes its owned popup.</summary>
+    /// <remarks>Acceptance is committed before close begins, so the closing transaction cannot
+    /// treat this session as cancelled even when it reenters through modal cleanup.</remarks>
+    /// <exception cref="InvalidOperationException">The owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
+    /// <exception cref="Exception">An acceptance or close callback fails after close cleanup completes.</exception>
+    public void AcceptAndClose()
+    {
+        _owner.VerifyMutable();
+
+        if (!_popup.IsOpen || !_hasActiveSession)
+        {
+            return;
+        }
+
+        var generation = SessionGeneration;
+        _sessionAccepted = true;
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(() => _acceptSession?.Invoke(), ref failure);
+
+        if (IsCurrentSession(generation))
+        {
+            ExceptionAggregation.Capture(() => SetOpen(false), ref failure);
+        }
+
+        failure?.Throw();
+    }
+
     /// <summary>Re-enters the modal scope for an already-open popup once the owner becomes attached.</summary>
     /// <remarks>An owner constructed and opened before attachment defers modal entry until a
     /// dispatcher and modality manager actually exist to enter.</remarks>
@@ -137,17 +195,23 @@ internal sealed class PopupDropDownCoordinator
         }
     }
 
-    /// <summary>Unsubscribes from the owned popup's lifecycle events. Called from the owner's disposal path.</summary>
+    /// <summary>Unsubscribes from the owned popup lifecycle and owner preview route. Called from
+    /// the owner's disposal path.</summary>
     public void Detach()
     {
         _popup.Opened -= OnPopupOpened;
         _popup.Closing -= OnPopupClosing;
         _popup.Closed -= OnPopupClosed;
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(_ownerKeyRegistration.Dispose, ref failure);
+        ExceptionAggregation.Capture(() => EndSession(restoreOpeningState: true), ref failure);
+        failure?.Throw();
     }
 
     private void Open()
     {
         _beforeOpen?.Invoke();
+        BeginSession();
         _popup.IsOpen = true;
         _modalTracker.Enter(_owner, _ownerInitialFocus);
         _raiseDropDownOpened();
@@ -157,8 +221,14 @@ internal sealed class PopupDropDownCoordinator
     {
         // See the type remarks: Exit() can synchronously close the popup before the explicit
         // assignment below runs, making that assignment a no-op. Do not reorder these statements.
+        var sessionGeneration = SessionGeneration;
         _modalTracker.Exit();
-        _popup.IsOpen = false;
+
+        if (IsCurrentSession(sessionGeneration))
+        {
+            _popup.IsOpen = false;
+        }
+
         _raiseDropDownClosed();
     }
 
@@ -173,12 +243,24 @@ internal sealed class PopupDropDownCoordinator
     {
         _ = sender;
         _ = eventArgs;
-        _beforeCloseFocusRestore?.Invoke();
+        var closingGeneration = SessionGeneration;
+        var hadActiveSession = _hasActiveSession;
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(() => EndSession(restoreOpeningState: true), ref failure);
 
-        if (ControlBase.ContainsFocused(_focusScopeContent))
+        // A cancellation callback can synchronously start another session from an outer lifecycle
+        // callback. That newer session owns its focus; an old close must not pull it back to owner.
+        if (!hadActiveSession || SessionGeneration == closingGeneration + 1)
         {
-            _ = _requestFocus();
+            ExceptionAggregation.Capture(() => _beforeCloseFocusRestore?.Invoke(), ref failure);
+
+            if (ControlBase.ContainsFocused(_focusScopeContent))
+            {
+                ExceptionAggregation.Capture(() => _ = _requestFocus(), ref failure);
+            }
         }
+
+        failure?.Throw();
     }
 
     private void OnPopupClosed(object? sender, EventArgs eventArgs)
@@ -186,5 +268,55 @@ internal sealed class PopupDropDownCoordinator
         _ = sender;
         _ = eventArgs;
         _raiseIsOpenPropertyChanged();
+    }
+
+    private void BeginSession()
+    {
+        SessionGeneration++;
+        _hasActiveSession = true;
+        _sessionAccepted = false;
+        _beginSession?.Invoke();
+    }
+
+    private void EndSession(bool restoreOpeningState)
+    {
+        if (!_hasActiveSession)
+        {
+            return;
+        }
+
+        var accepted = _sessionAccepted;
+        _hasActiveSession = false;
+        _sessionAccepted = false;
+        SessionGeneration++;
+
+        if (restoreOpeningState && !accepted)
+        {
+            _cancelSession?.Invoke();
+        }
+    }
+
+    private bool IsCurrentSession(ulong generation) =>
+        _hasActiveSession &&
+        SessionGeneration == generation &&
+        _popup.IsOpen;
+
+    private void OnOwnerPreviewKey(object? sender, KeyEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.Phase != RoutingPhase.Preview ||
+            _handleNavigationKey is null ||
+            !IsCurrentSession(SessionGeneration))
+        {
+            return;
+        }
+
+        var generation = SessionGeneration;
+
+        if (_handleNavigationKey(eventArgs) && IsCurrentSession(generation))
+        {
+            eventArgs.IsHandled = true;
+        }
     }
 }
