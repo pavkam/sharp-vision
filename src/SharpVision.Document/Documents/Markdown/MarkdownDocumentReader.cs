@@ -672,7 +672,10 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         var plain = new StringBuilder();
         var wikiCloserUnavailable = false;
         var codeSpanEnds = BuildCodeSpanEnds(source);
-        var labelCloses = BuildLabelCloses(source, codeSpanEnds);
+        var nextAngleClose = BuildNextAngleClose(source);
+        var labelCloses = BuildLabelCloses(source, codeSpanEnds, nextAngleClose);
+        var emphasisCloses = BuildEmphasisCloses(source);
+        var strikethroughCloses = BuildStrikethroughCloses(source);
 
         void Flush()
         {
@@ -726,7 +729,8 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             }
 
             if (!insideLink && source[index] == '<' &&
-                TryAngleAutolink(source, index, out var angleEnd, out var angleText, out var angleTarget))
+                TryAngleAutolink(
+                    source, index, nextAngleClose, out var angleEnd, out var angleText, out var angleTarget))
             {
                 Flush();
                 destination.Add(new DocumentLink(angleText, angleTarget));
@@ -759,69 +763,52 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 wikiCloserUnavailable = true;
             }
 
-            if (TryEmphasisDelimited(source, index, "***", out var combinedEnd))
+            if (source[index] is '*' or '_')
             {
-                Flush();
-                var strong = new DocumentStrong();
-                var emphasis = new DocumentEmphasis();
-                ParseInlines(source[(index + 3)..combinedEnd], emphasis.Inlines, insideLink);
-                strong.Inlines.Add(emphasis);
-                destination.Add(strong);
-                index = combinedEnd + 3;
-                continue;
-            }
+                var emphasisMarker = source[index];
+                var emphasisRunLength = CountRun(source, index, emphasisMarker);
+                var emphasisClose = GetEmphasisClose(emphasisCloses, emphasisMarker, emphasisRunLength, index);
 
-            if (TryEmphasisDelimited(source, index, "**", out var strongEnd))
-            {
-                Flush();
-                var strong = new DocumentStrong();
-                ParseInlines(source[(index + 2)..strongEnd], strong.Inlines, insideLink);
-                destination.Add(strong);
-                index = strongEnd + 2;
-                continue;
-            }
+                if (emphasisClose >= 0)
+                {
+                    Flush();
 
-            if (TryEmphasisDelimited(source, index, "___", out var combinedUnderscoreEnd))
-            {
-                Flush();
-                var strongUnderscore = new DocumentStrong();
-                var emphasisUnderscore = new DocumentEmphasis();
-                ParseInlines(source[(index + 3)..combinedUnderscoreEnd], emphasisUnderscore.Inlines, insideLink);
-                strongUnderscore.Inlines.Add(emphasisUnderscore);
-                destination.Add(strongUnderscore);
-                index = combinedUnderscoreEnd + 3;
-                continue;
-            }
+                    if (emphasisRunLength == 3)
+                    {
+                        var strong = new DocumentStrong();
+                        var emphasis = new DocumentEmphasis();
+                        ParseInlines(source[(index + 3)..emphasisClose], emphasis.Inlines, insideLink);
+                        strong.Inlines.Add(emphasis);
+                        destination.Add(strong);
+                        index = emphasisClose + 3;
+                    }
+                    else if (emphasisRunLength == 2)
+                    {
+                        var strong = new DocumentStrong();
+                        ParseInlines(source[(index + 2)..emphasisClose], strong.Inlines, insideLink);
+                        destination.Add(strong);
+                        index = emphasisClose + 2;
+                    }
+                    else
+                    {
+                        var emphasis = new DocumentEmphasis();
+                        ParseInlines(source[(index + 1)..emphasisClose], emphasis.Inlines, insideLink);
+                        destination.Add(emphasis);
+                        index = emphasisClose + 1;
+                    }
 
-            if (TryEmphasisDelimited(source, index, "__", out var strongUnderscoreEnd))
-            {
-                Flush();
-                var strongUnderscoreOnly = new DocumentStrong();
-                ParseInlines(source[(index + 2)..strongUnderscoreEnd], strongUnderscoreOnly.Inlines, insideLink);
-                destination.Add(strongUnderscoreOnly);
-                index = strongUnderscoreEnd + 2;
-                continue;
+                    continue;
+                }
             }
 
             if (Has(MarkdownExtension.Strikethrough) &&
-                TryStrikethrough(source, index, out var strikeEnd, out var strikeDelimiterLength))
+                TryStrikethrough(source, index, strikethroughCloses, out var strikeEnd, out var strikeDelimiterLength))
             {
                 Flush();
                 var strike = new DocumentStrikethrough();
                 ParseInlines(source[(index + strikeDelimiterLength)..strikeEnd], strike.Inlines, insideLink);
                 destination.Add(strike);
                 index = strikeEnd + strikeDelimiterLength;
-                continue;
-            }
-
-            if (source[index] is '*' or '_' &&
-                TryEmphasisDelimited(source, index, source[index].ToString(), out var emphasisEnd))
-            {
-                Flush();
-                var emphasis = new DocumentEmphasis();
-                ParseInlines(source[(index + 1)..emphasisEnd], emphasis.Inlines, insideLink);
-                destination.Add(emphasis);
-                index = emphasisEnd + 1;
                 continue;
             }
 
@@ -908,7 +895,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         return ends;
     }
 
-    private int[] BuildLabelCloses(string source, int[] codeSpanEnds)
+    private int[] BuildLabelCloses(string source, int[] codeSpanEnds, int[] nextAngleClose)
     {
         var closes = new int[source.Length];
         Array.Fill(closes, -1);
@@ -935,7 +922,7 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
                 continue;
             }
 
-            if (source[index] == '<' && TryAngleAutolink(source, index, out var angleEnd, out _, out _))
+            if (source[index] == '<' && TryAngleAutolink(source, index, nextAngleClose, out var angleEnd, out _, out _))
             {
                 InlineCandidateScanCount += angleEnd - index - 1;
                 index = angleEnd;
@@ -957,8 +944,81 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         return closes;
     }
 
+    /// <summary>Precomputes, for every position, the index of the next unconsumed <c>&gt;</c>
+    /// character at or after that position (or -1 if none remains). Angle-autolink candidates look up
+    /// their closing bracket in this array in O(1) instead of calling <c>string.IndexOf(char, int)</c>
+    /// at every <c>&lt;</c>, which made a long run of unmatched angle brackets quadratic.</summary>
+    private int[] BuildNextAngleClose(string source)
+    {
+        var next = new int[source.Length + 1];
+        next[source.Length] = -1;
+
+        for (var index = source.Length - 1; index >= 0; index--)
+        {
+            InlineCandidateScanCount++;
+            next[index] = source[index] == '>' ? index : next[index + 1];
+        }
+
+        return next;
+    }
+
+    /// <summary>Precomputes, per strikethrough delimiter length (1 or 2), the position where an active
+    /// opener of that exact length is closed - matched in a single forward pass instead of the old
+    /// per-candidate rescan, which made a long run of open-only strikethrough delimiters (for example
+    /// <c>"~a "</c> repeated many times) quadratic.</summary>
+    private Dictionary<int, int[]> BuildStrikethroughCloses(string source)
+    {
+        var closes = new Dictionary<int, int[]>
+        {
+            [1] = CreateUnresolvedIndex(source.Length),
+            [2] = CreateUnresolvedIndex(source.Length)
+        };
+        var openers = new Dictionary<int, Stack<int>> { [1] = new(), [2] = new() };
+        var index = 0;
+
+        while (index < source.Length)
+        {
+            InlineCandidateScanCount++;
+
+            if (source[index] == '\\' && index + 1 < source.Length)
+            {
+                index += 2;
+                continue;
+            }
+
+            if (source[index] != '~')
+            {
+                index++;
+                continue;
+            }
+
+            var runLength = CountRun(source, index, '~');
+
+            if (runLength is 1 or 2)
+            {
+                var canOpen = index + runLength < source.Length && !char.IsWhiteSpace(source[index + runLength]);
+                var canClose = index > 0 && !char.IsWhiteSpace(source[index - 1]);
+                var stack = openers[runLength];
+
+                if (canClose && stack.Count > 0)
+                {
+                    closes[runLength][stack.Pop()] = index;
+                }
+                else if (canOpen)
+                {
+                    stack.Push(index);
+                }
+            }
+
+            index += runLength;
+        }
+
+        return closes;
+    }
+
     [Pure]
-    private static bool TryStrikethrough(string source, int index, out int end, out int delimiterLength)
+    private static bool TryStrikethrough(
+        string source, int index, Dictionary<int, int[]> closes, out int end, out int delimiterLength)
     {
         delimiterLength = CountRun(source, index, '~');
 
@@ -970,82 +1030,93 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             return false;
         }
 
-        var cursor = index + delimiterLength;
-
-        while (cursor < source.Length)
-        {
-            if (source[cursor] == '\\' && cursor + 1 < source.Length)
-            {
-                cursor += 2;
-                continue;
-            }
-
-            if (source[cursor] != '~')
-            {
-                cursor++;
-                continue;
-            }
-
-            var candidateLength = CountRun(source, cursor, '~');
-
-            if (candidateLength == delimiterLength && cursor > index + delimiterLength &&
-                !char.IsWhiteSpace(source[cursor - 1]))
-            {
-                end = cursor;
-                return true;
-            }
-
-            cursor += candidateLength;
-        }
-
-        end = -1;
-        return false;
+        end = closes[delimiterLength][index];
+        return end >= 0;
     }
 
-    [Pure]
-    private static bool TryEmphasisDelimited(string source, int index, string delimiter, out int end)
+    /// <summary>Precomputes, per marker (<c>*</c>/<c>_</c>) and exact delimiter-run length (1 to 3),
+    /// the position where an active opener is closed. This implements CommonMark's delimiter-stack
+    /// algorithm in one forward pass over <paramref name="source"/>: each run is classified once with
+    /// <see cref="CanOpenEmphasisRun"/>/<see cref="CanCloseEmphasisRun"/>, and a closer always binds to
+    /// the nearest still-open opener of the same marker and length (last-in-first-out), so a nested
+    /// same-marker pair (for example the inner <c>_bar_</c> in <c>"_foo _bar_ baz_"</c>) resolves
+    /// before its enclosing pair instead of the outer opener capturing the inner closer. Replacing the
+    /// old per-candidate forward rescan with this single pass also removes the quadratic behavior on a
+    /// long run of open-only delimiters.</summary>
+    private Dictionary<(char Marker, int Length), int[]> BuildEmphasisCloses(string source)
     {
-        if (!source.AsSpan(index).StartsWith(delimiter, StringComparison.Ordinal))
+        var closes = new Dictionary<(char Marker, int Length), int[]>();
+        var openers = new Dictionary<(char Marker, int Length), Stack<int>>();
+
+        foreach (var marker in new[] { '*', '_' })
         {
-            end = -1;
-            return false;
-        }
-
-        var marker = delimiter[0];
-        var openingRunLength = CountRun(source, index, marker);
-
-        if (!CanOpenEmphasisRun(source, index, openingRunLength, marker))
-        {
-            end = -1;
-            return false;
-        }
-
-        var cursor = index + delimiter.Length;
-
-        while (cursor < source.Length)
-        {
-            var candidate = FindUnescaped(source, delimiter, cursor);
-
-            if (candidate < 0)
+            for (var length = 1; length <= 3; length++)
             {
-                end = -1;
-                return false;
+                closes[(marker, length)] = CreateUnresolvedIndex(source.Length);
+                openers[(marker, length)] = new Stack<int>();
+            }
+        }
+
+        var index = 0;
+
+        while (index < source.Length)
+        {
+            InlineCandidateScanCount++;
+
+            if (source[index] == '\\' && index + 1 < source.Length)
+            {
+                index += 2;
+                continue;
             }
 
-            var closingRunLength = CountRun(source, candidate, marker);
-
-            if (candidate > index + delimiter.Length &&
-                CanCloseEmphasisRun(source, candidate, closingRunLength, marker))
+            if (source[index] is not ('*' or '_'))
             {
-                end = candidate;
-                return true;
+                index++;
+                continue;
             }
 
-            cursor = candidate + Math.Max(closingRunLength, 1);
+            var marker = source[index];
+            var runLength = CountRun(source, index, marker);
+
+            if (runLength is >= 1 and <= 3)
+            {
+                var key = (marker, runLength);
+                var canOpen = CanOpenEmphasisRun(source, index, runLength, marker);
+                var canClose = CanCloseEmphasisRun(source, index, runLength, marker);
+                var stack = openers[key];
+
+                if (canClose && stack.Count > 0)
+                {
+                    closes[key][stack.Pop()] = index;
+                }
+                else if (canOpen)
+                {
+                    stack.Push(index);
+                }
+            }
+
+            index += runLength;
         }
 
-        end = -1;
-        return false;
+        return closes;
+    }
+
+    /// <summary>Looks up the position where the delimiter run of <paramref name="marker"/> and exact
+    /// <paramref name="runLength"/> starting at <paramref name="index"/> is closed, per the delimiter
+    /// stack built by <see cref="BuildEmphasisCloses"/>, or -1 if <paramref name="index"/> is not a
+    /// matched opener (including when <paramref name="runLength"/> is outside the 1-3 range this reader
+    /// resolves).</summary>
+    [Pure]
+    private static int GetEmphasisClose(
+        Dictionary<(char Marker, int Length), int[]> closes, char marker, int runLength, int index) =>
+        runLength is >= 1 and <= 3 ? closes[(marker, runLength)][index] : -1;
+
+    [Pure]
+    private static int[] CreateUnresolvedIndex(int length)
+    {
+        var index = new int[length];
+        Array.Fill(index, -1);
+        return index;
     }
 
     [Pure]
@@ -1596,11 +1667,12 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
     private static bool TryAngleAutolink(
         string source,
         int index,
+        int[] nextAngleClose,
         out int end,
         out string text,
         out string target)
     {
-        var close = source.IndexOf('>', index + 1);
+        var close = nextAngleClose[index + 1];
 
         if (close > index + 1)
         {
@@ -1699,6 +1771,16 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         return true;
     }
 
+    /// <summary>Reports whether <paramref name="value"/> could start the local part of an email
+    /// address per <see cref="IsCommonMarkEmailAutolink"/> - the exact character set that method's own
+    /// local-part loop accepts. Used only as a cheap, necessary-condition rejection before
+    /// <see cref="TryExtendedAutolink"/> pays for its full candidate scan.</summary>
+    [Pure]
+    private static bool IsEmailAutolinkLocalPartCharacter(char value) =>
+        char.IsAsciiLetterOrDigit(value) ||
+        value is '.' or '!' or '#' or '$' or '%' or '&' or '\'' or '*' or '+' or
+            '/' or '=' or '?' or '^' or '_' or '`' or '{' or '|' or '}' or '~' or '-';
+
     private bool TryExtendedAutolink(
         string source,
         int index,
@@ -1718,6 +1800,19 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         var isUrl = remainder.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
                     remainder.StartsWith("http://", StringComparison.OrdinalIgnoreCase);
         var isWww = remainder.StartsWith("www.", StringComparison.OrdinalIgnoreCase);
+
+        // Cheap shape check before the expensive scan below: a candidate that is neither a
+        // recognized URL/www prefix nor shaped like the start of an email local part can never
+        // succeed, so reject it in O(1) instead of paying for the token scan and bracket count. This
+        // is what keeps a long run of unmatched punctuation (for example many consecutive '(') from
+        // costing an O(remaining length) scan at every single position.
+        if (!isUrl && !isWww && !IsEmailAutolinkLocalPartCharacter(source[index]))
+        {
+            end = -1;
+            text = string.Empty;
+            target = string.Empty;
+            return false;
+        }
 
         var length = 0;
 

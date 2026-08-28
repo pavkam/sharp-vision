@@ -101,19 +101,28 @@ their container. A source line ending inside a code span instead normalizes to a
 single literal space, as required by the code-span grammar. Escaped delimiters
 remain literal across those boundaries.
 
-Inline parsing builds code-span and balanced link-label indexes in bounded
-passes before consuming candidates. Malformed repeated brackets and unmatched
-backtick runs therefore do not rescan the remaining suffix at every opener;
-extended-autolink delimiter balance is likewise counted once before trailing
-punctuation is removed.
+Inline parsing builds code-span, balanced link-label, angle-autolink, and
+strikethrough closer indexes in bounded passes before consuming candidates.
+Malformed repeated brackets, unmatched backtick runs, an unclosed run of angle
+brackets, and a long run of unmatched strikethrough openers therefore do not
+rescan the remaining suffix at every opener; an extended-autolink candidate
+that does not begin with a recognized URL, `www.`, or email-shaped prefix is
+rejected in constant time before the delimiter balance of a match is counted
+once and trailing punctuation is removed.
 
-Asterisk and underscore emphasis runs use the
-[CommonMark 0.31.2 left- and right-flanking rules](https://spec.commonmark.org/0.31.2/#emphasis-and-strong-emphasis)
-for opening and closing at every supported run length. Whitespace cannot sit
-inside a delimiter boundary; Unicode punctuation and symbol categories apply the
-specified adjacency exceptions; and an invalid candidate closer is skipped so a
-later valid run can close the container. Underscores additionally retain the
-intraword restrictions defined by those rules.
+Asterisk and underscore emphasis runs are matched with a CommonMark-style
+delimiter stack: every run in a paragraph is classified once, in one forward
+pass, using the
+[CommonMark 0.31.2 left- and right-flanking rules](https://spec.commonmark.org/0.31.2/#emphasis-and-strong-emphasis),
+and a closer always binds to the nearest still-open opener of the same marker
+and run length. Nested same-marker emphasis therefore resolves its inner pair
+before its enclosing pair - `_foo _bar_ baz_` nests an emphasized `bar` inside
+the outer emphasis rather than the outer opener capturing the inner closer.
+Whitespace cannot sit inside a delimiter boundary; Unicode punctuation and
+symbol categories apply the specified adjacency exceptions; and an invalid
+candidate closer is skipped so a later valid run can close the container.
+Underscores additionally retain the intraword restrictions defined by those
+rules.
 
 Ordered-list markers follow the
 [CommonMark 0.31.2 list-item grammar](https://spec.commonmark.org/0.31.2/#list-items):

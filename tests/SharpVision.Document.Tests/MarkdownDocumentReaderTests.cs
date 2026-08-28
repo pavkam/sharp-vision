@@ -1118,6 +1118,28 @@ public sealed class MarkdownDocumentReaderTests
         emphasis.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("foo_bar");
     }
 
+    /// <summary>Verifies same-marker nested emphasis resolves via CommonMark's delimiter-stack rules:
+    /// a closer always binds to the nearest still-open opener of the same marker, so the inner pair
+    /// resolves before its enclosing pair instead of the outer opener capturing the inner closer and
+    /// stranding the trailing text as an orphaned literal run.</summary>
+    [Theory]
+    [InlineData("_foo _bar_ baz_")]
+    [InlineData("*foo *bar* baz*")]
+    public void Read_WhenSameMarkerEmphasisIsNested_ClosesInnerPairBeforeOuterPair(string source)
+    {
+        // Arrange and act
+        var emphasis = new MarkdownDocumentReader().Read(source).Blocks.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentParagraph>().Inlines.ShouldHaveSingleItem()
+            .ShouldBeOfType<DocumentEmphasis>();
+
+        // Assert
+        emphasis.Inlines.Count.ShouldBe(3);
+        emphasis.Inlines[0].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("foo ");
+        var inner = emphasis.Inlines[1].ShouldBeOfType<DocumentEmphasis>();
+        inner.Inlines.ShouldHaveSingleItem().ShouldBeOfType<DocumentTextRun>().Text.ShouldBe("bar");
+        emphasis.Inlines[2].ShouldBeOfType<DocumentTextRun>().Text.ShouldBe(" baz");
+    }
+
     /// <summary>Verifies a code span may use a longer delimiter to contain a shorter backtick run.</summary>
     [Fact]
     public void Read_WhenCodeSpanUsesLongDelimiter_PreservesShortBackticks()
@@ -2137,8 +2159,9 @@ public sealed class MarkdownDocumentReaderTests
         }
     }
 
-    /// <summary>Verifies hostile link, code-span, and extended-autolink candidates use bounded
-    /// delimiter indexing instead of rescanning their remaining suffix at every opener.</summary>
+    /// <summary>Verifies hostile link, code-span, extended-autolink, angle-autolink, strikethrough, and
+    /// emphasis candidates use bounded delimiter indexing instead of rescanning their remaining suffix -
+    /// or, for emphasis, the remainder of the source - at every opener.</summary>
     [Fact]
     public void Read_WhenInlineCandidatesAreHostile_ExaminesBoundedCandidateWork()
     {
@@ -2148,7 +2171,11 @@ public sealed class MarkdownDocumentReaderTests
             (Source: new string('[', 10_000) + "](target)", Extensions: MarkdownExtension.None),
             (Source: string.Join('a', Enumerable.Range(1, 400).Select(static length => new string('`', length))),
                 Extensions: MarkdownExtension.None),
-            (Source: "https://example.com/" + new string(')', 10_000), Extensions: MarkdownExtension.Autolinks)
+            (Source: "https://example.com/" + new string(')', 10_000), Extensions: MarkdownExtension.Autolinks),
+            (Source: new string('(', 10_000), Extensions: MarkdownExtension.Autolinks),
+            (Source: new string('<', 10_000), Extensions: MarkdownExtension.None),
+            (Source: string.Concat(Enumerable.Repeat("~a ", 4_000)), Extensions: MarkdownExtension.Strikethrough),
+            (Source: string.Concat(Enumerable.Repeat(" *a", 4_000)), Extensions: MarkdownExtension.None)
         };
 
         foreach (var (source, extensions) in cases)
@@ -2158,9 +2185,12 @@ public sealed class MarkdownDocumentReaderTests
             // Act
             var result = reader.Read(source);
 
-            // Assert
+            // Assert - a generous linear multiplier: every added index now makes its own bounded pass
+            // over the source, so the constant factor is higher than a single pass, but it stays fixed
+            // regardless of source length. The old quadratic behavior this guards against would blow
+            // past this bound by orders of magnitude at this input size.
             result.Blocks.ShouldNotBeEmpty();
-            reader.InlineCandidateScanCount.ShouldBeLessThanOrEqualTo(source.Length * 6);
+            reader.InlineCandidateScanCount.ShouldBeLessThanOrEqualTo(source.Length * 12);
         }
     }
 
