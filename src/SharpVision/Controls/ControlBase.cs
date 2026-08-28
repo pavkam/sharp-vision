@@ -3177,13 +3177,42 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         ref T field,
         T value,
         InvalidationImpact impact,
+        [CallerMemberName] string? propertyName = null) =>
+        SetPropertyWithComparer(
+            ref field,
+            value,
+            impact,
+            EqualityComparer<T>.Default,
+            propertyName);
+
+    /// <summary>Commits one assembly-owned property using its explicit equality policy and requests
+    /// the earliest affected phase.</summary>
+    /// <typeparam name="T">The property value type.</typeparam>
+    /// <param name="field">The current backing field.</param>
+    /// <param name="value">The validated replacement value.</param>
+    /// <param name="impact">The validated earliest affected phase.</param>
+    /// <param name="comparer">The equality policy that determines whether the replacement is observable.</param>
+    /// <param name="propertyName">The non-empty property name supplied by the compiler.</param>
+    /// <returns>Whether a changed value was committed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="comparer"/> or <paramref name="propertyName"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="propertyName"/> is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NotifyPropertyChangedInvocator]
+    private protected bool SetPropertyWithComparer<T>(
+        ref T field,
+        T value,
+        InvalidationImpact impact,
+        IEqualityComparer<T> comparer,
         [CallerMemberName] string? propertyName = null)
     {
+        ArgumentNullException.ThrowIfNull(comparer);
         ValidateImpact(impact);
         ArgumentException.ThrowIfNullOrEmpty(propertyName);
         VerifyMutable();
 
-        if (EqualityComparer<T>.Default.Equals(field, value))
+        if (comparer.Equals(field, value))
         {
             return false;
         }

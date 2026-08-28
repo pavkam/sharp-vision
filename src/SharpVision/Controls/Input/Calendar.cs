@@ -271,7 +271,8 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
                 ref _culture,
                 value,
                 InvalidationImpact.Render,
-                () => FirstDayOfWeek = Culture.DateTimeFormat.FirstDayOfWeek);
+                () => FirstDayOfWeek = Culture.DateTimeFormat.FirstDayOfWeek,
+                ReferenceEqualityComparer.Instance);
         }
     }
 

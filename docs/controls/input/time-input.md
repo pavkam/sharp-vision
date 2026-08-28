@@ -13,6 +13,9 @@ editing options.
 each numeric segment's digit glyphs. It defaults to
 `CultureInfo.InvariantCulture`, so out-of-the-box rendering never depends on the
 host operating system's locale; set it explicitly to localize the field. The
+property treats the `CultureInfo` instance as mutable configuration identity, so
+a distinct same-name clone refreshes separators, designators, digit glyphs, and
+the active edit buffer; reassigning the identical instance is silent. The
 segment order itself - hour, minute, optionally second, optionally an AM/PM
 designator - defaults to `Use24HourFormat` and `ShowSeconds` rather than a
 culture's time pattern, since those two properties are the field's own explicit

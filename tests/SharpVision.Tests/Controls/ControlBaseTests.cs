@@ -71,6 +71,54 @@ public sealed partial class ControlBaseTests
         probe.Value.ShouldBe(3);
         probe.ForwardedValue.ShouldBe(3);
     }
+
+    /// <summary>Verifies a caller-selected reference comparer commits equal mutable instances but
+    /// keeps an identical instance silent.</summary>
+    [Fact]
+    public void SetPropertyAndSynchronize_WhenReferenceComparerReceivesEqualClone_UsesIdentity()
+    {
+        var baseline = new CultureInfo("en-US");
+        var clone = (CultureInfo) baseline.Clone();
+        var probe = new SynchronizedPropertyProbe { ReferenceValue = baseline };
+        var notifications = 0;
+        probe.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SynchronizedPropertyProbe.ReferenceValue))
+            {
+                notifications++;
+            }
+        };
+
+        probe.ReferenceValue = clone;
+        probe.ReferenceValue = clone;
+
+        probe.ReferenceValue.ShouldBeSameAs(clone);
+        probe.ForwardedReferenceValue.ShouldBeSameAs(clone);
+        notifications.ShouldBe(1);
+    }
+
+    /// <summary>Verifies identity comparison participates in generation ownership when dependent
+    /// synchronization reenters with another equal mutable instance.</summary>
+    [Fact]
+    public void SetPropertyAndSynchronize_WhenReferenceSynchronizationReenters_PreservesNewestIdentity()
+    {
+        var outer = new CultureInfo("en-US");
+        var nested = (CultureInfo) outer.Clone();
+        var probe = new SynchronizedPropertyProbe();
+        probe.SynchronizingReference = () =>
+        {
+            if (ReferenceEquals(probe.ReferenceValue, outer))
+            {
+                probe.ReferenceValue = nested;
+            }
+        };
+
+        probe.ReferenceValue = outer;
+
+        probe.ReferenceValue.ShouldBeSameAs(nested);
+        probe.ForwardedReferenceValue.ShouldBeSameAs(nested);
+    }
+
     /// <summary>Verifies control defaults are content-sized and initially dirty.</summary>
     [Fact]
     public void Constructor_WhenCreated_HasDocumentedDefaults()

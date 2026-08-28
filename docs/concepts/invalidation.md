@@ -179,9 +179,12 @@ Use the strongest row that applies to the complete observable change:
 
 Validation happens before state is mutated. Assigning an equivalent value
 changes no state, raises no property notification, and requests no phase work.
-For a real change, the new value is committed and invalidated before
-`PropertyChanged` is raised, so observers see the new state together with the
-correct pending work.
+Equivalence follows the property's declared policy: value-like properties use
+default equality, while mutable configuration objects such as `CultureInfo` use
+reference identity so a customized equal-named instance still commits. For a
+real change, the new value is committed and invalidated before `PropertyChanged`
+is raised, so observers see the new state together with the correct pending
+work.
 
 ## Expected behavior
 

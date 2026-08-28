@@ -375,7 +375,11 @@ notifications, stale observation generations, detached replacement, and old
 deltas queued before a newer source-path revision. A worker burst publishes
 10,000 changes while the dispatcher is occupied and must commit only the latest
 value in one target update. A warmed allocation test bounds scalar updates at
-256 managed bytes each and proves reverse updates cannot recurse.
+256 managed bytes each and proves reverse updates cannot recurse. Culture-aware
+control tests assign customized equal-named `CultureInfo` clones and prove
+reference-identity commitment, exact notification and invalidation, edit-buffer
+refresh, rendered separators and names, and synchronization into retained owned
+controls; reassigning the identical instance remains silent.
 
 ## Required evidence
 

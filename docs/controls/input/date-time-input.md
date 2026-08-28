@@ -29,8 +29,11 @@ own value type and clamping. `Culture` now drives both the popup calendar's
 month/day names _and_ the typed field's own date segment order, widths, and
 separators - the same way `DateInput.Culture` does, deriving the layout from
 `DateTimeFormatInfo.ShortDatePattern` - so a German culture, for example,
-renders day before month with a period separator. The time portion keeps the
-fixed hour/minute/[second]/[AM-PM] structure `Use24HourFormat` and `ShowSeconds`
+renders day before month with a period separator. A distinct customized
+same-name `CultureInfo` clone is a real transition: it refreshes the segments
+and synchronizes the retained Calendar before publication; only the identical
+instance is silent. The time portion keeps the fixed
+hour/minute/[second]/[AM-PM] structure `Use24HourFormat` and `ShowSeconds`
 already select, localizing only its separator, AM/PM designator text, and digit
 glyphs. Set `Format` to a custom combined pattern (for example
 `"yyyy/MM/dd hh:mm tt"`) to override that structure directly; pair a 12-hour

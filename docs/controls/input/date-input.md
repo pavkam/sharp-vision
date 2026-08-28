@@ -24,7 +24,11 @@ left unhandled while popup and clearing commands remain available.
 
 `Culture` accepts only cultures whose active calendar is Gregorian, keeping the
 typed field's formatted segments, Gregorian `DateOnly` arithmetic, and the owned
-Calendar popup on one calendar system.
+Calendar popup on one calendar system. Culture transitions use reference
+identity: assigning a distinct customized clone commits even when
+`CultureInfo.Equals` considers its culture name equal, while assigning the
+identical instance is silent. The committed instance is also forwarded to the
+owned Calendar before `PropertyChanged` is published.
 
 `DateInput` derives from [`InputBase`](../input-base.md#overview), enabling
 press activation, an owned Calendar popup, and segment editing. It shares its

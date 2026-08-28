@@ -87,7 +87,10 @@ midnight. `Culture` must use an active `GregorianCalendar` — assigning one tha
 does not throws `ArgumentException`, because mixing another calendar system's
 month labels with `DateOnly` day geometry would display false dates. Changing
 the culture rerenders the localized month and weekday text without changing the
-selection.
+selection. A distinct same-name `CultureInfo` clone is a real transition because
+its mutable date formatting can carry different names and first-day policy; the
+identical instance is silent. The derived `FirstDayOfWeek` is synchronized from
+the committed instance before `Culture` publication.
 
 Assigning `DisplayMonth` before `ActiveDate` is ever read, assigned, or
 established by a committed selection also seeds the active date to the first day

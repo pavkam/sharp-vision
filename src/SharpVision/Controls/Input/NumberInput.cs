@@ -258,7 +258,11 @@ public sealed class NumberInput: InputBase
         {
             ArgumentNullException.ThrowIfNull(value);
 
-            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
+            if (!SetPropertyWithComparer(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                ReferenceEqualityComparer.Instance))
             {
                 return;
             }

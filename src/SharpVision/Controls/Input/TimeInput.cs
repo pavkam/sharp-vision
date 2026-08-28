@@ -116,7 +116,11 @@ public sealed class TimeInput: InputBase
                     format, value, nameof(value), "TimeOnly", static (f, c) => TimeOnly.MinValue.ToString(f, c));
             }
 
-            if (SetProperty(ref _culture, value, InvalidationImpact.Measure))
+            if (SetPropertyWithComparer(
+                ref _culture,
+                value,
+                InvalidationImpact.Measure,
+                ReferenceEqualityComparer.Instance))
             {
                 _segments.ClampActiveSegment();
                 _segments.ResetDigitBuffer();

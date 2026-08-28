@@ -189,7 +189,8 @@ public sealed class DateTimeInput: InputBase
                     _calendar.Culture = Culture;
                     _segments.ClampActiveSegment();
                     _segments.ResetDigitBuffer();
-                });
+                },
+                ReferenceEqualityComparer.Instance);
         }
     }
 

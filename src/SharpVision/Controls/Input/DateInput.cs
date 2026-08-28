@@ -196,9 +196,12 @@ public sealed class DateInput: InputBase
             TemporalFormatValidation.Validate(
                 Format, value, nameof(value), "DateOnly", static (f, c) => _probeDate.ToString(f, c));
 
-            _culture = value;
-            _calendar.Culture = value;
-            NotifyPropertyChanged(nameof(Culture), InvalidationImpact.Measure);
+            _ = SetPropertyAndSynchronize(
+                ref _culture,
+                value,
+                InvalidationImpact.Measure,
+                () => _calendar.Culture = Culture,
+                ReferenceEqualityComparer.Instance);
         }
     }
 

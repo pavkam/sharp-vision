@@ -26,4 +26,26 @@ internal sealed class SynchronizedPropertyProbe: ControlBase
 
     /// <summary>Gets or sets optional work invoked from the dependent-state boundary.</summary>
     internal Action? Synchronizing { get; set; }
+
+    /// <summary>Gets or sets a mutable reference whose instance identity defines a transition.</summary>
+    internal CultureInfo ReferenceValue
+    {
+        get;
+        set => _ = SetPropertyAndSynchronize(
+            ref field,
+            value,
+            InvalidationImpact.Render,
+            () =>
+            {
+                ForwardedReferenceValue = ReferenceValue;
+                SynchronizingReference?.Invoke();
+            },
+            ReferenceEqualityComparer.Instance);
+    } = CultureInfo.InvariantCulture;
+
+    /// <summary>Gets the reference retained by the synchronized projection.</summary>
+    internal CultureInfo? ForwardedReferenceValue { get; private set; }
+
+    /// <summary>Gets or sets optional work invoked from reference synchronization.</summary>
+    internal Action? SynchronizingReference { get; set; }
 }

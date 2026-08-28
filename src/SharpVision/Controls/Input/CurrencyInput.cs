@@ -250,7 +250,11 @@ public sealed class CurrencyInput: InputBase
             ArgumentNullException.ThrowIfNull(value);
             _ = ResolveCurrencyText(DisplayMode, value, CurrencyOverride);
 
-            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
+            if (!SetPropertyWithComparer(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                ReferenceEqualityComparer.Instance))
             {
                 return;
             }

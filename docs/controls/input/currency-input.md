@@ -32,7 +32,10 @@ re-derives every time it is needed, so it automatically tracks a runtime
 `DecimalPlaces` rejects the decimal-separator keystroke outright once `Culture`
 is Japanese. `RoundingMode` is applied only at commit, through the
 three-argument `Math.Round(decimal, int, MidpointRounding)` overload, never the
-two-argument overload that silently rounds to even.
+two-argument overload that silently rounds to even. `Culture` uses reference
+identity, so assigning a distinct same-name clone refreshes customized currency
+symbols, patterns, separators, grouping, derived decimal places, and any active
+edit buffer; only the identical instance is a no-op.
 
 Dependent policy repair reads the live `AllowNull` state after
 `PropertyChanged`. If an observer restores nullable input synchronously, the

@@ -33,7 +33,10 @@ overload that silently rounds to even. `Culture` supplies the decimal separator,
 group separator, sign, and digit grouping used for both display and parsing;
 changing `Culture` or `Mode` while a buffer is mid-edit discards the transient
 text back to the committed value's formatting under the new settings, rather
-than migrating a half-parsed string across the switch.
+than migrating a half-parsed string across the switch. Culture changes use
+reference identity because `CultureInfo` is mutable configuration: a distinct
+same-name clone refreshes formatting and the edit buffer, while reassigning the
+identical instance raises no notification or invalidation.
 
 Dependent policy repair always reads the live policy after `PropertyChanged`. If
 an observer restores `AllowNull` or `Mode` synchronously, an obsolete outer
