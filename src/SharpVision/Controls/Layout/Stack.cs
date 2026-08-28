@@ -138,19 +138,6 @@ public sealed class Stack: Container
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        // A collapsed child never becomes one of the rented participant tracks below, so it must
-        // be arranged here instead - Arrange(default) is what actually clears a previously
-        // non-default Bounds left over from before the child collapsed. Without this, a child that
-        // collapses at runtime (rather than starting collapsed) would keep stale committed
-        // geometry indefinitely, since nothing else ever revisits it.
-        foreach (var child in Children)
-        {
-            if (child.Visibility == Visibility.Collapsed)
-            {
-                child.Arrange(default);
-            }
-        }
-
         var count = CountParticipants();
 
         if (count == 0)

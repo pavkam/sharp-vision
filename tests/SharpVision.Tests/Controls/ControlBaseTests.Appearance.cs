@@ -964,7 +964,7 @@ public sealed partial class ControlBaseTests
     }
 
     /// <summary>Verifies resetting a complete local shadow returns ownership to the semantic
-    /// appearance, render-invalidates, and raises both documented property notifications.</summary>
+    /// appearance, measure-invalidates a changed footprint, and raises both notifications.</summary>
     [Fact]
     public void ResetShadow_WhenLocalShadowIsSet_ReturnsOwnershipToThemeAndNotifies()
     {
@@ -993,7 +993,27 @@ public sealed partial class ControlBaseTests
         control.ActualShadow.ShouldBe(themeOwnedControl.ActualShadow);
         control.Shadow.IsVisible.ShouldBeFalse();
         notifications.ShouldBe([nameof(ControlBase.Shadow), nameof(ControlBase.ActualShadow)]);
-        control.Pending.ShouldBe(Invalidation.Render);
+        control.Pending.ShouldBe(Invalidation.All);
+    }
+
+    /// <summary>Verifies direct shadow assignment measure-invalidates when its footprint appears.</summary>
+    [Fact]
+    public void Shadow_WhenFootprintChanges_InvalidatesMeasure()
+    {
+        var control = new ProbeControl();
+        control.SetTheme(ThemeCatalog.Dark);
+        control.Clear(Invalidation.All);
+
+        control.Shadow = new Shadow(
+            isVisible: true,
+            ShadowMode.Composite,
+            new Point(1, 1),
+            new Rune('#'),
+            Color.Rgb(1, 2, 3),
+            Color.Transparent,
+            TerminalAttributes.None);
+
+        control.Pending.ShouldBe(Invalidation.All);
     }
 
     /// <summary>Verifies resetting an already-theme-owned shadow is a documented no-op: no

@@ -1179,6 +1179,8 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                 ArrangeChild(contextMenuPresentation, RootBounds(bounds), ResolvedAxes.Both);
             }
 
+            ClearCollapsedOwnedChildBounds();
+
             if (bounds != previousBounds)
             {
                 BoundsChanged?.Invoke(this, EventArgs.Empty);
@@ -1261,6 +1263,15 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             widthResolved: (resolvedAxes & ResolvedAxes.Width) != 0,
             heightResolved: (resolvedAxes & ResolvedAxes.Height) != 0);
     }
+
+    private void ClearCollapsedOwnedChildBounds() =>
+        VisitChildren(static child =>
+        {
+            if (child.Visibility == Visibility.Collapsed)
+            {
+                child.Arrange(default);
+            }
+        });
 
     /// <summary>Renders this control and owned descendants into a clipped semantic canvas.</summary>
     /// <param name="canvas">The frame-owned parent canvas.</param>
@@ -4697,9 +4708,10 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             return;
         }
 
+        var previous = Shadow;
         LocalShadowValue = null;
         InvalidateResolvedStyleCache();
-        Invalidate(Invalidation.Render);
+        Invalidate(HasSameShadowFootprint(previous, Shadow) ? Invalidation.Render : Invalidation.Measure);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Shadow)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActualShadow)));
     }
@@ -5329,12 +5341,19 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             return;
         }
 
+        var previous = Shadow;
         LocalShadowValue = value;
         InvalidateResolvedStyleCache();
-        Invalidate(Invalidation.Render);
+        Invalidate(HasSameShadowFootprint(previous, value) ? Invalidation.Render : Invalidation.Measure);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Shadow)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActualShadow)));
     }
+
+    [Pure]
+    private static bool HasSameShadowFootprint(Shadow left, Shadow right) =>
+        left.IsVisible == right.IsVisible &&
+        left.Offset == right.Offset &&
+        left.Mode == right.Mode;
 
     #endregion
 }

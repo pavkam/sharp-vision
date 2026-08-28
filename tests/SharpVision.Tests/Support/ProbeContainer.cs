@@ -23,6 +23,9 @@ internal sealed class ProbeContainer: Container
     /// <summary>Gets or sets work invoked from inside the next OnRenderAdornment pass.</summary>
     internal Action<ProbeContainer>? RenderingAdornment { get; set; }
 
+    /// <summary>Gets or sets work invoked from inside each arrange callback.</summary>
+    internal Action<ProbeContainer>? Arranging { get; set; }
+
     /// <inheritdoc/>
     protected override void OnRenderAdornment(TerminalCanvas canvas)
     {
@@ -64,7 +67,11 @@ internal sealed class ProbeContainer: Container
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds) => _ = bounds;
+    protected override void ArrangeOverride(Rect bounds)
+    {
+        _ = bounds;
+        Arranging?.Invoke(this);
+    }
 
     /// <summary>Measures one candidate through the protected direct-child seam.</summary>
     /// <param name="child">The candidate child.</param>

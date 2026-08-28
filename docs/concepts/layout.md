@@ -89,6 +89,13 @@ then deflating it by border and padding. Both extension points run only for
 hidden or visible controls; a collapsed control desires zero, commits empty
 bounds, and skips both callbacks.
 
+After an owner's arrange callback succeeds, the sealed framework pipeline also
+commits empty bounds for every directly owned collapsed child. An owner may
+therefore skip collapsed children while applying its placement policy; custom
+containers and retained-content controls must not duplicate that cleanup. A
+failed owner callback leaves the arrange phase pending and defers the cleanup to
+the successful retry.
+
 An externally derived owner drives child layout only through
 `MeasureChild(Control, Constraint)` and
 `ArrangeChild(Control, Rect, ResolvedAxes)`. Both reject a null argument, and

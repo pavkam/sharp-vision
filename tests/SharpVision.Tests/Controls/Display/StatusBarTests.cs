@@ -559,6 +559,7 @@ public sealed class StatusBarTests
         // Assert - "Last" closes the gap left by the collapsed "Middle" and the bar narrows by
         // exactly the collapsed item's outer width plus the one spacing cell it no longer needs.
         first.Bounds.ShouldBe(new Rect(0, 0, 5, 1));
+        middle.Bounds.ShouldBe(default);
         last.Bounds.ShouldBe(new Rect(6, 0, 4, 1));
         bar.DesiredSize.Width.ShouldBe(baselineWidth - baselineMiddleBounds.Width - 1);
         using Frame frame = new(size);

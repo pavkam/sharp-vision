@@ -602,6 +602,27 @@ public sealed class ContentControlTests
         content.Bounds.ShouldBe(default);
     }
 
+    /// <summary>Verifies the shared arrange completion step clears stale bounds even when the
+    /// content owner already visited the collapsed child, without publishing duplicate bounds
+    /// notifications.</summary>
+    [Fact]
+    public void Arrange_WhenPreviouslyArrangedContentCollapses_ClearsBoundsWithoutDuplicateNotification()
+    {
+        var content = new ProbeControl(new Size(4, 2));
+        var owner = new ProbeContentControl { Content = content };
+        var engine = new LayoutEngine();
+        engine.Layout(owner, new Size(8, 4));
+        content.Bounds.ShouldNotBe(default);
+        var boundsChanged = 0;
+        content.BoundsChanged += (_, _) => boundsChanged++;
+
+        content.Visibility = Visibility.Collapsed;
+        engine.Layout(owner, new Size(8, 4));
+
+        content.Bounds.ShouldBe(default);
+        boundsChanged.ShouldBe(0);
+    }
+
     /// <summary>Verifies hidden content retains its slot and margin contribution to the owner's
     /// desired size while still excluding rendering and hit-testing - the shared base contract
     /// concrete single-content hosts such as GroupBox and Expander compose their own chrome

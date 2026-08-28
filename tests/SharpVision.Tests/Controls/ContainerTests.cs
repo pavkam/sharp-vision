@@ -2559,6 +2559,55 @@ public sealed class ContainerTests
         FrameOracle.Get(afterFrame, new Point(3, 0)).ShouldNotBe("▲");
     }
 
+    /// <summary>Verifies the sealed owner pipeline clears skipped collapsed roots at multiple
+    /// ownership depths, so a custom container does not need a panel-local cleanup recipe.</summary>
+    [Fact]
+    public void Arrange_WhenSkippedChildrenCollapseAtNestedOwnershipDepths_ClearsEachRootBounds()
+    {
+        var root = new ProbeContainer();
+        var branch = new ProbeContainer();
+        var leaf = new ProbeControl();
+        root.Children.Add(branch);
+        branch.Children.Add(leaf);
+        root.ArrangeOwned(branch, new Rect(1, 1, 8, 4), ResolvedAxes.Both);
+        branch.ArrangeOwned(leaf, new Rect(2, 2, 3, 1), ResolvedAxes.Both);
+
+        leaf.Visibility = Visibility.Collapsed;
+        new LayoutEngine().Layout(branch, new Size(8, 4));
+
+        leaf.Bounds.ShouldBe(default);
+
+        branch.Visibility = Visibility.Collapsed;
+        new LayoutEngine().Layout(root, new Size(10, 6));
+
+        branch.Bounds.ShouldBe(default);
+    }
+
+    /// <summary>Verifies collapsed-child cleanup commits only after the owner's arrange callback
+    /// succeeds, while a failed transaction remains pending and clears the stale bounds on retry.</summary>
+    [Fact]
+    public void Arrange_WhenOwnerCallbackFails_PreservesCollapsedBoundsUntilSuccessfulRetry()
+    {
+        var owner = new ProbeContainer();
+        var child = new ProbeControl();
+        owner.Children.Add(child);
+        owner.ArrangeOwned(child, new Rect(1, 1, 3, 2), ResolvedAxes.Both);
+        child.Visibility = Visibility.Collapsed;
+        owner.Arranging = _ => throw new InvalidOperationException("Arrange failed.");
+        var engine = new LayoutEngine();
+
+        _ = Should.Throw<InvalidOperationException>(() => engine.Layout(owner, new Size(8, 4)));
+
+        child.Bounds.ShouldBe(new Rect(1, 1, 3, 2));
+        (owner.Pending & Invalidation.Arrange).ShouldBe(Invalidation.Arrange);
+
+        owner.Arranging = null;
+        engine.Layout(owner, new Size(8, 4));
+
+        child.Bounds.ShouldBe(default);
+        (owner.Pending & Invalidation.Arrange).ShouldBe(Invalidation.None);
+    }
+
     private static ScrollBarVisibility RandomScrollBarVisibility(Random random) =>
         (ScrollBarVisibility) random.Next(0, 3);
 

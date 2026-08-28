@@ -318,7 +318,6 @@ public sealed class Dock: Container
 
             if (child.Visibility == Visibility.Collapsed)
             {
-                child.Arrange(default);
                 continue;
             }
 

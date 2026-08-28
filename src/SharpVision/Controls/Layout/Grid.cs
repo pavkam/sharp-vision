@@ -404,7 +404,6 @@ public sealed class Grid: Container
         {
             if (child.Visibility == Visibility.Collapsed)
             {
-                child.Arrange(default);
                 continue;
             }
 
