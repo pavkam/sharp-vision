@@ -971,6 +971,106 @@ public sealed class TerminalServicesTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a superseded request's stale reply, arriving in receipt order ahead of
+    /// the live request's own genuine reply, is dropped silently instead of consuming the live
+    /// request's slot. Before the fix, the stale <c>Clipboard</c> reply completed whatever was
+    /// currently pending - labelling itself onto the live <c>Primary</c> request, disarming its
+    /// deadline, and leaving its own later, genuine reply with nothing pending to complete against,
+    /// so it was discarded forever with no event and no timeout.</summary>
+    [Fact]
+    public async Task Request_WhenStaleReplyArrivesAfterSupersession_StillDeliversTheLiveRequestsOwnReplyAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { Osc52 = supported }
+        };
+        List<KittyClipboardReplyEventArgs> replies = [];
+        var liveReply = new TaskCompletionSource<KittyClipboardReplyEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var clock = new ManualTimeProvider();
+        await using Application application = new(new ProbeControl(), terminal, terminal, options, timeProvider: clock);
+        application.Terminal.Clipboard.KittyClipboardReplyReceived += (_, args) =>
+        {
+            replies.Add(args);
+            _ = liveReply.TrySetResult(args);
+        };
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        // Request Clipboard first, then supersede it with Primary before either is answered.
+        application.Terminal.Clipboard.Request(ClipboardSelection.Clipboard);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        application.Terminal.Clipboard.Request(ClipboardSelection.Primary);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // The terminal answers the FIRST (now-superseded) query first - the ordinary outcome, since
+        // terminals answer OSC queries in receipt order. It must be dropped silently: no event.
+        terminal.QueueInput("]52;c;c3RhbGU=\\"u8); // "c3RhbGU=" == base64("stale")
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // The terminal's genuine, on-time answer to the LIVE (Primary) request arrives next, and
+        // must complete the live request with its own data.
+        terminal.QueueInput("]52;p;bGl2ZQ==\\"u8); // "bGl2ZQ==" == base64("live")
+        var live = await liveReply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        // The live request's own deadline was disarmed by completing normally, so advancing well
+        // past the ordinary query timeout must not raise a second, spurious timeout event.
+        clock.Advance(QueryLimits.Default.QueryTimeout * 2);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        replies.Count.ShouldBe(1, "the stale reply must be dropped silently, not raise its own event");
+        live.Selection.ShouldBe(ClipboardSelection.Primary);
+        Encoding.UTF8.GetString(live.Text!.Value.Span).ShouldBe("live");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a request that times out - the ordinary outcome for OSC 52 reads on stock
+    /// terminals - does not accrue reply debt: a later, unrelated request must still receive its
+    /// own genuine reply rather than have it silently dropped as if it were a stale answer owed by
+    /// the timed-out request.</summary>
+    [Fact]
+    public async Task Request_WhenAPriorRequestTimesOutThenAnotherIsMade_StillDeliversTheNewRequestsReplyAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { Osc52 = supported }
+        };
+        List<KittyClipboardReplyEventArgs> replies = [];
+        var firstReply = new TaskCompletionSource<KittyClipboardReplyEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondReply = new TaskCompletionSource<KittyClipboardReplyEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var clock = new ManualTimeProvider();
+        await using Application application = new(new ProbeControl(), terminal, terminal, options, timeProvider: clock);
+        application.Terminal.Clipboard.KittyClipboardReplyReceived += (_, args) =>
+        {
+            replies.Add(args);
+            _ = (replies.Count == 1 ? firstReply : secondReply).TrySetResult(args);
+        };
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.Clipboard.Request(ClipboardSelection.Clipboard);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        clock.Advance(QueryLimits.Default.QueryTimeout * 2);
+        var first = await firstReply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        first.IsSucceeded.ShouldBeFalse("the first request must time out on its own");
+
+        application.Terminal.Clipboard.Request(ClipboardSelection.Primary);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        terminal.QueueInput("]52;p;bGl2ZQ==\\"u8); // "bGl2ZQ==" == base64("live")
+        var second = await secondReply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        replies.Count.ShouldBe(2, "a timed-out request must not accrue debt that swallows a later reply");
+        second.Selection.ShouldBe(ClipboardSelection.Primary);
+        Encoding.UTF8.GetString(second.Text!.Value.Span).ShouldBe("live");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a relative timer callback that arrives before the transaction's UTC
     /// deadline reschedules the remainder instead of abandoning the live request.</summary>
     [Fact]

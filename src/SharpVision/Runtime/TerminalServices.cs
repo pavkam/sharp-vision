@@ -25,6 +25,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
     private DispatcherTimer? _osc52TimeoutTimer;
     private bool _pendingOsc52Request;
     private Selection _pendingOsc52Selection;
+    private int _osc52ReplyDebt;
 
     public TerminalServices(Application application)
     {
@@ -325,7 +326,24 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
 
         // A query-status reply is the terminal echoing a request shape, not an actual data or
         // error outcome, so it never completes a pending request.
-        if (!_pendingOsc52Request || reply.Status == ClipboardStatus.Query)
+        if (reply.Status == ClipboardStatus.Query)
+        {
+            return;
+        }
+
+        // OSC 52 carries no correlation id, so a superseded request's own stale reply cannot be
+        // told apart from the live request's reply by inspecting the reply alone. Replies arrive
+        // in receipt order (the same assumption the terminal-answers-in-order case relies on), so
+        // the next N non-Query replies after a supersession are exactly the stale answers owed by
+        // the N requests that were superseded before they were answered - drop them here without
+        // touching the pending state or its live deadline timer.
+        if (_osc52ReplyDebt > 0)
+        {
+            _osc52ReplyDebt--;
+            return;
+        }
+
+        if (!_pendingOsc52Request)
         {
             return;
         }
@@ -470,6 +488,16 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
     private void StartOsc52Request(Selection selection)
     {
         _application.Dispatcher.VerifyAccess();
+
+        // Only a real supersession - overwriting a request that is still outstanding - owes a
+        // stale reply. A timeout already cleared _pendingOsc52Request before this runs, so a fresh
+        // Request issued after the previous one gave up does not accrue phantom debt that could
+        // wrongly swallow a later, unrelated live reply.
+        if (_pendingOsc52Request)
+        {
+            _osc52ReplyDebt++;
+        }
+
         CancelPendingOsc52Request();
         _pendingOsc52Request = true;
         _pendingOsc52Selection = selection;
