@@ -81,9 +81,10 @@ throws. During such a callback, `Content` already returns the committed root. A
 callback failure never rolls back the edge or reopens initialization.
 
 An uninitialized composite cannot attach as a root or enter another ownership
-slot; this is validated before any dispatcher or parent context changes. The
-framework never calls a virtual factory from the base constructor, never builds
-lazily from layout, and never retries construction during rendering.
+slot; the shared permanent-slot policy validates this before any dispatcher or
+parent context changes. The framework never calls a virtual factory from the
+base constructor, never builds lazily from layout, and never retries
+construction during rendering.
 
 ## Layout and traversal
 

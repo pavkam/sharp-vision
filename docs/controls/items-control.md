@@ -10,10 +10,12 @@ scope and does not cascade through its private host to the realized items.
 A concrete constructor calls `InitializeItemsHost(Container)` exactly once. A
 rejected candidate does not consume the initialization, so the constructor can
 recover and try a valid host. Once a host commits, it remains the permanent
-presentation root even if a lifecycle callback throws. The host is an ordinary
-owned control, so it receives dispatcher, theme, cell-policy, enabled/visible,
-rendering, hit-testing, focus-navigation, popup, and disposal behavior through
-the shared ownership registry.
+presentation root even if a lifecycle callback throws. An incomplete owner is
+rejected before insertion or dispatcher attachment. Direct host disposal makes
+the owner permanently incomplete and never permits replacement. The host is an
+ordinary owned control, so it receives dispatcher, theme, cell-policy,
+enabled/visible, rendering, hit-testing, focus-navigation, popup, and disposal
+behavior through the shared ownership registry.
 
 The base class exposes no `Children`, no host, no mutable collection, and no
 data-item type. Derived controls define their own semantic collection and use
@@ -87,8 +89,8 @@ host or insert arbitrary presentation children.
 
 ## Expected behavior
 
-| Scope    | Observable evidence                                                                                        |
-| -------- | ---------------------------------------------------------------------------------------------------------- |
-| Unit     | One-time host initialization, ownership validation, atomic snapshots, callbacks, reentrancy, and disposal. |
-| Surface  | Host margin, measure/arrange delegation, rendering, hit testing, and popup traversal.                      |
-| Consumer | External derivation uses only the protected authoring surface without accessing the private host.          |
+| Scope    | Observable evidence                                                                                               |
+| -------- | ----------------------------------------------------------------------------------------------------------------- |
+| Unit     | Permanent host initialization, incomplete-owner rejection, atomic snapshots, callbacks, reentrancy, and disposal. |
+| Surface  | Host margin, measure/arrange delegation, rendering, hit testing, and popup traversal.                             |
+| Consumer | External derivation uses only the protected authoring surface without accessing the private host.                 |

@@ -6,6 +6,9 @@ namespace SharpVision.Controls;
 /// <summary>Stores one independently ordered set of controls owned through a shared registry.</summary>
 internal sealed class OwnedControlSlot
 {
+    private bool _permanentInitializationConsumed;
+    private string? _permanentControlDescription;
+
     /// <summary>Initializes one registered slot.</summary>
     /// <param name="registry">The non-null owning registry.</param>
     /// <param name="options">The validated role and traversal metadata.</param>
@@ -51,6 +54,9 @@ internal sealed class OwnedControlSlot
     /// <summary>Gets the finite or effectively unbounded slot capacity.</summary>
     public int Capacity { get; }
 
+    /// <summary>Gets whether this slot is a constructor-installed permanent ownership edge.</summary>
+    public bool IsPermanent { get; private set; }
+
     /// <summary>Adds one detached control at the end of this slot.</summary>
     /// <param name="control">The non-null detached control.</param>
     public void Add(ControlBase control) => Insert(Count, control);
@@ -95,6 +101,59 @@ internal sealed class OwnedControlSlot
     /// <param name="index">The insertion position from zero through <see cref="Count"/>.</param>
     /// <param name="control">The non-null detached control.</param>
     public void Insert(int index, ControlBase control) => Registry.Insert(this, index, control);
+
+    /// <summary>Commits the sole permanent control without allowing later replacement.</summary>
+    /// <param name="control">The non-null detached permanent control.</param>
+    /// <remarks>A rejection before commit leaves initialization available. Once the edge commits,
+    /// callback failure or direct child disposal cannot reopen the slot.</remarks>
+    public void InitializePermanent(ControlBase control)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        Registry.Owner.VerifyMutable();
+
+        if (!IsPermanent || _permanentInitializationConsumed || Count != 0)
+        {
+            throw new InvalidOperationException("The permanent owned-control slot can be initialized only once.");
+        }
+
+        try
+        {
+            Add(control);
+        }
+        finally
+        {
+            _permanentInitializationConsumed |= Count != 0;
+        }
+    }
+
+    /// <summary>Gets the committed permanent control.</summary>
+    /// <returns>The sole committed control.</returns>
+    /// <exception cref="InvalidOperationException">The permanent control is unavailable.</exception>
+    public ControlBase RequirePermanentControl() => IsPermanent && Count == 1
+        ? this[0]
+        : throw new InvalidOperationException(
+            $"A permanent owned-control slot requires one committed {_permanentControlDescription ?? "control"}.");
+
+    /// <summary>Marks a newly registered empty single-control slot as permanent.</summary>
+    /// <param name="controlDescription">The non-empty role shown by invariant failures.</param>
+    public void MarkPermanent(string controlDescription)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(controlDescription);
+        Debug.Assert(Capacity == 1, "A permanent ownership slot has exactly one position.");
+        Debug.Assert(Count == 0, "A permanent ownership slot is marked before initialization.");
+        _permanentControlDescription = controlDescription;
+        IsPermanent = true;
+    }
+
+    /// <summary>Rejects attachment while a permanent slot has no committed control.</summary>
+    public void ValidateAttachment()
+    {
+        if (IsPermanent && Count != 1)
+        {
+            throw new InvalidOperationException(
+                $"A permanent owned-control slot requires one committed {_permanentControlDescription}.");
+        }
+    }
 
     /// <summary>Removes one identical control without disposing it.</summary>
     /// <param name="control">The non-null candidate.</param>

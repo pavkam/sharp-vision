@@ -13,6 +13,11 @@ layout, and input mutation remain dispatcher-affine after attachment. Invalid
 replacement text is rejected before the current document, disclosure state,
 selection, or offsets change.
 
+Projection changes invalidate the private render surface through the retained
+owner seam, which verifies ancestry and propagates the exact phase. The only
+local invalidation occurs while width reconciliation is already inside the
+layout pass, avoiding a redundant scheduled frame.
+
 ## Inheritance
 
 ```mermaid

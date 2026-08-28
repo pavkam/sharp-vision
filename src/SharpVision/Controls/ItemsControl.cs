@@ -16,12 +16,11 @@ public abstract class ItemsControl: ControlBase
 {
     private readonly OwnedControlSlot _itemsHostSlot;
     private Container? _itemsHost;
-    private bool _itemsHostInitialized;
 
     /// <summary>Initializes an item owner whose derived constructor must install one presentation host.</summary>
     protected ItemsControl()
     {
-        _itemsHostSlot = RegisterOwnedSlot(
+        _itemsHostSlot = RegisterPermanentOwnedSlot(
             new OwnedControlOptions(
                 OwnedControlRole.ItemHost,
                 OwnedControlLayer.Normal,
@@ -29,7 +28,7 @@ public abstract class ItemsControl: ControlBase
                 participatesInNavigation: true,
                 partKey: null,
                 InvalidationImpact.Measure),
-            capacity: 1);
+            "item presentation host");
     }
 
     /// <summary>Gets the number of currently realized item controls.</summary>
@@ -58,25 +57,17 @@ public abstract class ItemsControl: ControlBase
     protected void InitializeItemsHost(Container host)
     {
         ArgumentNullException.ThrowIfNull(host);
-        VerifyMutable();
-
-        if (_itemsHostInitialized)
-        {
-            throw new InvalidOperationException("The item presentation host is already initialized.");
-        }
-
         host.Children.Changed += OnHostItemsChanged;
 
         try
         {
-            _itemsHostSlot.Add(host);
+            _itemsHostSlot.InitializePermanent(host);
         }
         finally
         {
-            if (_itemsHostSlot.Count == 1)
+            if (_itemsHostSlot.Count == 1 && ReferenceEquals(_itemsHostSlot[0], host))
             {
                 _itemsHost = host;
-                _itemsHostInitialized = true;
             }
             else
             {
@@ -244,9 +235,7 @@ public abstract class ItemsControl: ControlBase
     }
 
     [Pure]
-    private Container GetItemsHost() => _itemsHostSlot.Count == 1
-        ? (Container) _itemsHostSlot[0]
-        : throw new InvalidOperationException("The item presentation host is not available.");
+    private Container GetItemsHost() => (Container) _itemsHostSlot.RequirePermanentControl();
 
     private void OnHostItemsChanged() => OnItemControlsChanged();
 

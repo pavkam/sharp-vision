@@ -101,6 +101,11 @@ shared owner-pipeline fixtures also prove that visible-to-collapsed transitions
 clear stale bounds for representative container, retained-content, and
 framework-part ownership without panel-local cleanup or duplicate bounds
 notifications, and that a failed arrange defers cleanup to its retry.
+Permanent-root fixtures run the same incomplete attachment, pre-commit retry,
+post-commit consumption, direct-child disposal, and owner-disposal contract for
+both composite and item-owner bases. Projection controls additionally prove that
+owner-driven retained-descendant invalidation reaches final mounted output
+without allowing a foreign or detached surface through the seam.
 
 Control-render tests inspect the final `Frame` cells and the copied grapheme
 bytes. They cover nested clips, later-child overwrite, padding, hidden and

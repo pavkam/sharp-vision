@@ -132,6 +132,14 @@ of the protected seams — `SetProperty`, `NotifyPropertyChanged`,
 whether it is committing a CLR property, publishing a coordinated mutation,
 requesting phase work directly, or changing resolved visual state.
 
+A composite owner invalidates a private projection through
+`InvalidateRetainedDescendant(descendant, impact)`. The seam verifies that the
+target is still retained beneath the owner and applies the normal dispatcher,
+lifetime, phase-expansion, and ancestor-propagation rules. Direct
+`InvalidateSelf` is reserved for synchronous reconciliation inside a layout pass
+that is already responsible for consuming the resulting local work; using it for
+an ordinary state change would strand dirty work below a clean ancestor.
+
 ## Phase completion and retry
 
 A phase clears its own pending flag when it starts. Work requested while that

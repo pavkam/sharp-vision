@@ -1714,6 +1714,12 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>Requests the earliest UI phase on a retained descendant owned by this composite.</summary>
+    /// <remarks>
+    /// Use this owner seam for state-driven projection invalidation so ancestry, dispatcher, and
+    /// lifetime validation remain centralized. A synchronous layout reconciliation that has
+    /// already guaranteed a containing pass may use the internal <see cref="InvalidateSelf"/>
+    /// helper instead to avoid scheduling redundant ancestor work.
+    /// </remarks>
     /// <param name="descendant">The non-null retained descendant to invalidate.</param>
     /// <param name="impact">The validated earliest affected phase.</param>
     /// <exception cref="ArgumentNullException"><paramref name="descendant"/> is null.</exception>
@@ -2101,6 +2107,15 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <returns>The newly registered empty slot.</returns>
     internal OwnedControlSlot RegisterOwnedSlot(OwnedControlOptions options, int capacity) =>
         OwnedControls.Register(options, capacity);
+
+    /// <summary>Registers one constructor-installed permanent single-control ownership slot.</summary>
+    /// <param name="options">The validated structural and traversal metadata.</param>
+    /// <param name="controlDescription">The non-empty role shown by invariant failures.</param>
+    /// <returns>The newly registered empty permanent slot.</returns>
+    internal OwnedControlSlot RegisterPermanentOwnedSlot(
+        OwnedControlOptions options,
+        string controlDescription) =>
+        OwnedControls.RegisterPermanent(options, controlDescription);
 
     /// <summary>Finds one previously registered stable owned part by its non-empty key.</summary>
     /// <param name="partKey">The non-empty stable part key.</param>
@@ -2503,6 +2518,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     internal virtual void ValidateAttachment()
     {
         ThrowIfDisposed();
+        OwnedControls.ValidateAttachment();
 
         if (Dispatcher is not null)
         {

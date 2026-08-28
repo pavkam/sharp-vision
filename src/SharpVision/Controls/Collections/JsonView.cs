@@ -118,7 +118,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
             _stack.VerticalOffset = 0;
             CommitSelection(previousPath, visibleNodes.FirstOrDefault());
             NotifyPropertyChanged(nameof(Json), InvalidationImpact.Measure);
-            _content.Invalidate(Invalidation.Measure);
+            InvalidateRetainedDescendant(_content, InvalidationImpact.Measure);
         }
     } = "null";
 
@@ -145,7 +145,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
                     _lines = _sourceLines;
                     _projectionWidth = null;
                     _projectionVersion++;
-                    _content.Invalidate(Invalidation.Measure);
+                    InvalidateRetainedDescendant(_content, InvalidationImpact.Measure);
                 });
         }
     } = 2;
@@ -598,7 +598,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
             // forcing a mismatch here and invalidating Measure makes the next measure pass pick it
             // up.
             _projectionWidth = null;
-            _content.Invalidate(Invalidation.Measure);
+            InvalidateRetainedDescendant(_content, InvalidationImpact.Measure);
         }
 
         if (Bounds.Width > 0 && Bounds.Height > 0 && this.HasOpaqueFill(GetAppearanceState()))
@@ -966,7 +966,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
         _projectionWidth = null;
         _projectionVersion++;
         NormalizeSelection();
-        _content.Invalidate(Invalidation.Measure);
+        InvalidateRetainedDescendant(_content, InvalidationImpact.Measure);
         NotifyPropertyChanged(nameof(VisibleEntryCount), InvalidationImpact.Measure);
     }
 
@@ -1011,7 +1011,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
         }
 
         NotifyPropertyChanged(nameof(SelectedPath), InvalidationImpact.Render);
-        _content.Invalidate(Invalidation.Render);
+        InvalidateRetainedDescendant(_content, InvalidationImpact.Render);
         SelectionChanged?.Invoke(this, new JsonViewSelectionChangedEventArgs(previousPath, SelectedPath));
     }
 

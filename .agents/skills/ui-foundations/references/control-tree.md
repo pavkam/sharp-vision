@@ -39,6 +39,9 @@ disposal.
 - A composite constructor creates one permanent root and calls
   `InitializeContent` exactly once; `View` and measure-time `Build()` are
   retired.
+- Permanent capacity-one slots are enforced by the ownership registry for both
+  `CompositeControlBase` and `ItemsControl`. An incomplete owner cannot enter a
+  tree or attach, and direct root disposal never reopens initialization.
 - `ContentControl` is caller-replaceable content; `ItemsControl` exposes
   semantic items rather than its presentation host.
 - Sequential mutations of parallel private hosts expose half an item to

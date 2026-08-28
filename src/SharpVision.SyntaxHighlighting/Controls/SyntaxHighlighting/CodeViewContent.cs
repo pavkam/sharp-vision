@@ -18,13 +18,6 @@ internal sealed class CodeViewContent: ControlBase
         IsTabStop = false;
     }
 
-    /// <summary>Requests the invalidation phase an owning view's own state change requires.</summary>
-    /// <param name="impact">The earliest phase to re-run.</param>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
-    /// <exception cref="InvalidOperationException">This render surface is accessed off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">This render surface is disposed.</exception>
-    internal void RequestInvalidate(InvalidationImpact impact) => Invalidate(impact);
-
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint) => _owner.MeasureAndWrap(constraint.Width);
 

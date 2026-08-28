@@ -25,7 +25,16 @@ is never deferred to measure, arrange, or rendering: a component creates its
 tree in its constructor and then hands over exactly one detached root with
 `InitializeContent`. That root is immutable as an ownership edge, stays private
 to the component, and participates in the normal dispatcher, theme, Unicode,
-lifecycle, rendering, hit-testing, focus, capture, and disposal paths.
+lifecycle, rendering, hit-testing, focus, capture, and disposal paths. The
+ownership registry enforces this permanent capacity-one contract for both
+composite roots and item-presentation hosts: an incomplete owner cannot enter a
+tree or attach, and direct disposal of the committed private root never reopens
+constructor initialization.
+
+State-driven work on a private projection uses `InvalidateRetainedDescendant`;
+the owner validates retained ancestry before requesting the required phase. A
+local `InvalidateSelf` is appropriate only during synchronous layout
+reconciliation that already owns the containing pass.
 
 Async component work composes two independent identities. Capture the owning
 control's opaque attachment before leaving the dispatcher, and retain an opaque
@@ -137,6 +146,11 @@ helpers. The host's `Children` collection never becomes public API. `ListView`,
 `Menu`, and `Table` follow this pattern; `Table` keeps its scrolling cell
 presenter private and exposes only `Rows`, `Columns`, and delegated scroll
 state.
+
+The private host must commit before the item owner is inserted or attached.
+Candidate rejection before commit leaves initialization available; callback
+failure after commit consumes it. Disposing the host directly leaves the owner
+permanently incomplete rather than permitting a replacement host.
 
 When one semantic item spans several retained hosts, framework controls stage
 the complete proposed snapshot for every participating ownership slot. The

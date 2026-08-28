@@ -137,6 +137,27 @@ internal sealed class OwnedControlRegistry
         return slot;
     }
 
+    /// <summary>Registers one constructor-installed permanent single-control slot.</summary>
+    /// <param name="options">The validated role and traversal metadata.</param>
+    /// <param name="controlDescription">The non-empty role shown by invariant failures.</param>
+    /// <returns>The newly registered empty permanent slot.</returns>
+    public OwnedControlSlot RegisterPermanent(OwnedControlOptions options, string controlDescription)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(controlDescription);
+        var slot = Register(options, capacity: 1);
+        slot.MarkPermanent(controlDescription);
+        return slot;
+    }
+
+    /// <summary>Validates every required permanent edge before this owner enters a runtime tree.</summary>
+    public void ValidateAttachment()
+    {
+        foreach (var slot in _slots)
+        {
+            slot.ValidateAttachment();
+        }
+    }
+
     /// <summary>Finds a previously registered stable part by its non-empty key.</summary>
     /// <param name="partKey">The non-empty stable part key.</param>
     /// <returns>The registered slot, or null when the key is not registered.</returns>

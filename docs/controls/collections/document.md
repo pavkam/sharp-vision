@@ -817,6 +817,9 @@ document.Load(markdown, new MarkdownDocumentReader());
 
 - Embedded controls are explicit retained descendants. Inline controls are one
   atomic one-line token; block controls preserve their natural height.
+- Document projection changes invalidate retained presentation surfaces through
+  the owner seam, preserving ancestry, dispatcher, lifetime, and exact-phase
+  validation shared with other composite controls.
 - Adding an already-owned node throws `ArgumentException` before any state
   changes, and removing a node leaves it detached and immediately reusable in
   another tree.

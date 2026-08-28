@@ -288,7 +288,7 @@ public sealed class CodeView:
 
         if (e.PropertyName == nameof(ActualStyle))
         {
-            _content.RequestInvalidate(InvalidationImpact.Render);
+            InvalidateRetainedDescendant(_content, InvalidationImpact.Render);
         }
     }
 
@@ -487,7 +487,7 @@ public sealed class CodeView:
             RebuildVisibleLines();
             _pendingRevealOffset = offset;
             _pendingRevealProjection = _visibleLines;
-            _content.RequestInvalidate(InvalidationImpact.Measure);
+            InvalidateRetainedDescendant(_content, InvalidationImpact.Measure);
             return true;
         }
 
@@ -756,7 +756,7 @@ public sealed class CodeView:
                 () =>
                 {
                     RebuildVisibleLines();
-                    _content.RequestInvalidate(InvalidationImpact.Measure);
+                    InvalidateRetainedDescendant(_content, InvalidationImpact.Measure);
                 });
         }
     } = true;
@@ -800,7 +800,7 @@ public sealed class CodeView:
         if (changed)
         {
             RebuildVisibleLines();
-            _content.RequestInvalidate(InvalidationImpact.Measure);
+            InvalidateRetainedDescendant(_content, InvalidationImpact.Measure);
         }
 
         return changed;
@@ -832,7 +832,7 @@ public sealed class CodeView:
         }
 
         RebuildVisibleLines();
-        _content.RequestInvalidate(InvalidationImpact.Measure);
+        InvalidateRetainedDescendant(_content, InvalidationImpact.Measure);
     }
 
     /// <summary>Expands every fold range.</summary>
@@ -849,7 +849,7 @@ public sealed class CodeView:
 
         _foldedStartLines.Clear();
         RebuildVisibleLines();
-        _content.RequestInvalidate(InvalidationImpact.Measure);
+        InvalidateRetainedDescendant(_content, InvalidationImpact.Measure);
     }
 
     #endregion
@@ -908,7 +908,7 @@ public sealed class CodeView:
                 {
                     _rowsWidth = null;
                     _rows = BuildPassthroughRows(_visibleLines);
-                    _content.RequestInvalidate(InvalidationImpact.Measure);
+                    InvalidateRetainedDescendant(_content, InvalidationImpact.Measure);
                 });
         }
     } = Overflow.Visible;
@@ -1014,7 +1014,7 @@ public sealed class CodeView:
     {
         if (_pendingRevealOffset.HasValue)
         {
-            _content.RequestInvalidate(InvalidationImpact.Measure);
+            InvalidateRetainedDescendant(_content, InvalidationImpact.Measure);
         }
     }
 
@@ -1584,7 +1584,7 @@ public sealed class CodeView:
         _foldStartRanges = BuildFoldStartRanges(_result.FoldRanges);
         RebuildVisibleLines();
         _ = CommitTextSelection(default);
-        _content.RequestInvalidate(InvalidationImpact.Measure);
+        InvalidateRetainedDescendant(_content, InvalidationImpact.Measure);
     }
 
     [Pure]

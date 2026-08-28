@@ -345,6 +345,42 @@ public sealed class CompositeControlBaseTests
         replacement.Parent.ShouldBeNull();
     }
 
+    /// <summary>Verifies owner-driven projection invalidation applies the exact expanded phase to
+    /// both a retained descendant and its clean composite ancestor.</summary>
+    [Fact]
+    public void InvalidateRetainedDescendant_WhenTargetIsRetained_PropagatesExactPhase()
+    {
+        var content = new ProbeControl();
+        var owner = new ProbeCompositeControl(content);
+        owner.Clear(Invalidation.All);
+        content.Clear(Invalidation.All);
+
+        owner.InvalidateDescendant(content, InvalidationImpact.Arrange);
+
+        content.Pending.ShouldBe(Invalidation.Arrange | Invalidation.Render);
+        owner.Pending.ShouldBe(Invalidation.Arrange | Invalidation.Render);
+    }
+
+    /// <summary>Verifies the owner seam rejects foreign and detached surfaces before changing
+    /// either tree's pending work.</summary>
+    [Fact]
+    public void InvalidateRetainedDescendant_WhenTargetIsForeign_RejectsBeforeInvalidation()
+    {
+        var content = new ProbeControl();
+        var owner = new ProbeCompositeControl(content);
+        var foreign = new ProbeControl();
+        owner.Clear(Invalidation.All);
+        content.Clear(Invalidation.All);
+        foreign.Clear(Invalidation.All);
+
+        _ = Should.Throw<InvalidOperationException>(() =>
+            owner.InvalidateDescendant(foreign, InvalidationImpact.Measure));
+
+        owner.Pending.ShouldBe(Invalidation.None);
+        content.Pending.ShouldBe(Invalidation.None);
+        foreign.Pending.ShouldBe(Invalidation.None);
+    }
+
     /// <summary>Verifies owner disposal owns the retained root exactly once.</summary>
     [Fact]
     public void Dispose_WhenOwnerIsDisposed_DisposesRetainedRootExactlyOnce()

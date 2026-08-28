@@ -348,6 +348,7 @@ controls participate without exposing pending phase flags.
 | Private-protected `IsVersionedPropertyCurrent(field, value, version, observed)` | Test whether a captured commit still owns its property generation before raising a typed event.  |
 | `NotifyPropertyChanged(name, impact)`                                           | Publish a coordinated mutation after all related fields commit.                                  |
 | `Invalidate(InvalidationImpact)`                                                | Request phase work without a property notification.                                              |
+| `InvalidateRetainedDescendant(descendant, impact)`                              | Request phase work on a still-retained private projection through its owner.                     |
 | `InvalidateVisualState()`                                                       | Clear resolved appearance caches after semantic state changes.                                   |
 | `SetVisualStateProperty(ref field, value)`                                      | Commit a property that changes `GetAppearanceState()`.                                           |
 

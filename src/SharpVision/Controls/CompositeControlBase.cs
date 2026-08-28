@@ -15,12 +15,11 @@ using SharpVision.Text;
 public abstract class CompositeControlBase: ControlBase
 {
     private readonly OwnedControlSlot _contentSlot;
-    private bool _initializationConsumed;
 
     /// <summary>Initializes an empty component awaiting constructor-time content initialization.</summary>
     protected CompositeControlBase()
     {
-        _contentSlot = RegisterOwnedSlot(
+        _contentSlot = RegisterPermanentOwnedSlot(
             new OwnedControlOptions(
                 OwnedControlRole.CompositionRoot,
                 OwnedControlLayer.Normal,
@@ -28,7 +27,7 @@ public abstract class CompositeControlBase: ControlBase
                 participatesInNavigation: true,
                 partKey: null,
                 InvalidationImpact.Measure),
-            capacity: 1);
+            "composition root");
     }
 
     /// <summary>Gets the committed private implementation root.</summary>
@@ -73,36 +72,7 @@ public abstract class CompositeControlBase: ControlBase
     /// initialization was already committed.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The component or content is disposed.</exception>
-    protected void InitializeContent(ControlBase content)
-    {
-        ArgumentNullException.ThrowIfNull(content);
-        VerifyMutable();
-
-        if (_initializationConsumed || _contentSlot.Count != 0)
-        {
-            throw new InvalidOperationException(
-                "A composite control's composition root can be initialized only once.");
-        }
-
-        try
-        {
-            _contentSlot.Add(content);
-        }
-        finally
-        {
-            // The registry publishes callbacks after structural commit. A callback may throw even
-            // though this edge is now permanent, so the committed slot—not method completion—is
-            // authoritative for whether initialization has been consumed.
-            _initializationConsumed |= _contentSlot.Count != 0;
-        }
-    }
-
-    /// <inheritdoc/>
-    internal sealed override void ValidateAttachment()
-    {
-        _ = GetContent();
-        base.ValidateAttachment();
-    }
+    protected void InitializeContent(ControlBase content) => _contentSlot.InitializePermanent(content);
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
@@ -122,9 +92,6 @@ public abstract class CompositeControlBase: ControlBase
         ArrangeChild(GetContent(), bounds, ResolvedAxes.Both);
 
     [Pure]
-    private ControlBase GetContent() => _contentSlot.Count == 0
-        ? throw new InvalidOperationException(
-            "A composite control requires one committed composition root.")
-        : _contentSlot[0];
+    private ControlBase GetContent() => _contentSlot.RequirePermanentControl();
 
 }

@@ -21,6 +21,9 @@ reformats every line against the viewport's own width - see
 [Soft wrapping](#soft-wrapping). A tab is one semantic character and exactly one
 displayed cell regardless of `Overflow`. The control owns its normalized text
 and token projection; callers retain the assigned source string and catalog.
+Owner state changes invalidate the private code surface through the validated
+retained-descendant seam. Synchronous width reconciliation uses local
+invalidation only while the containing layout pass is already active.
 
 ## Inheritance
 

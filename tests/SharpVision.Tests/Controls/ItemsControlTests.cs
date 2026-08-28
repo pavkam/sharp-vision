@@ -16,9 +16,12 @@ public sealed class ItemsControlTests
 
         owner.Initialize(original);
         _ = Should.Throw<InvalidOperationException>(() => owner.Initialize(replacement));
+        replacement.Children.Add(new ProbeControl());
+        original.Children.Add(new ProbeControl());
 
         owner.Host.ShouldBeSameAs(original);
         owner.GetOwnedOrder().ShouldBe([original]);
+        owner.Changes.Count.ShouldBe(1);
         original.Parent.ShouldBeSameAs(owner);
         replacement.Parent.ShouldBeNull();
     }
@@ -61,6 +64,54 @@ public sealed class ItemsControlTests
         _ = Should.Throw<InvalidOperationException>(() => owner.ReplaceAll([control]));
 
         control.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies an item owner cannot enter a retained tree before its permanent private
+    /// presentation host has committed.</summary>
+    [Fact]
+    public void Add_WhenItemsHostWasNotInitialized_RejectsBeforeOwnershipMutation()
+    {
+        var parent = new ProbeContainer();
+        var owner = new ProbeItemsControl(initialize: false);
+
+        _ = Should.Throw<InvalidOperationException>(() => parent.Children.Add(owner));
+
+        parent.Children.ShouldBeEmpty();
+        owner.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies dispatcher attachment rejects an incomplete item owner before assigning
+    /// inherited runtime context.</summary>
+    [Fact]
+    public async Task Attach_WhenItemsHostWasNotInitialized_RejectsBeforeContextMutationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var owner = new ProbeItemsControl(initialize: false);
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            _ = Should.Throw<InvalidOperationException>(() => owner.Attach(dispatcher));
+
+            owner.Dispatcher.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies direct host disposal permanently empties rather than reopening the item
+    /// owner's constructor-only initialization slot.</summary>
+    [Fact]
+    public void Dispose_WhenItemsHostIsDisposedDirectly_PreventsReinitializationAndAttachment()
+    {
+        var owner = new ProbeItemsControl();
+        var host = owner.Host.ShouldNotBeNull();
+        var replacement = new Stack();
+
+        host.Dispose();
+
+        host.IsDisposed.ShouldBeTrue();
+        host.Parent.ShouldBeNull();
+        _ = Should.Throw<InvalidOperationException>(() => owner.Initialize(replacement));
+        _ = Should.Throw<InvalidOperationException>(owner.ValidateAttachment);
+        replacement.Parent.ShouldBeNull();
     }
 
     /// <summary>Verifies IndexOfItemControl reports the exact realized position, rejects a null
