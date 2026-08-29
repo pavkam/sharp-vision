@@ -192,7 +192,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         var contentOffset = Math.Min(_headerStripHeight, bounds.Height);
         base.ArrangeOverride(new Rect(
             bounds.X,
-            bounds.Y + contentOffset,
+            bounds.Y.Add(contentOffset),
             bounds.Width,
             Math.Max(0, bounds.Height - _headerStripHeight)));
     }

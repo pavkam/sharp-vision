@@ -57,7 +57,7 @@ internal sealed class ToastCoordinator
         {
             ToastPosition.TopLeft or ToastPosition.BottomLeft => contentBounds.X,
             ToastPosition.TopCenter or ToastPosition.BottomCenter =>
-                contentBounds.X + Math.Max(0, (contentBounds.Width - width) / 2),
+                contentBounds.X.SaturatingAdd(Math.Max(0, (contentBounds.Width - width) / 2)),
             ToastPosition.TopRight or ToastPosition.BottomRight => contentBounds.Right - width,
             _ => throw new UnreachableException()
         };

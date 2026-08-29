@@ -1875,6 +1875,21 @@ public sealed class TabControlTests
         second.Content.ShouldNotBeNull().Bounds.ShouldBe(new Rect(0, 2, 20, 3));
     }
 
+    /// <summary>Verifies the content offset below the header strip saturates the arranged content's
+    /// Y at int.MaxValue instead of wrapping negative when the panel's own bounds already sit near
+    /// the integer coordinate limit.</summary>
+    [Fact]
+    public void Arrange_WhenBoundsYIsNearIntMaxValue_SaturatesContentOffsetInsteadOfWrapping()
+    {
+        var first = Create("General", "General body");
+        var tabs = Create(first);
+
+        tabs.Measure(new Constraint(20, 5));
+        tabs.Arrange(new Rect(0, int.MaxValue - 1, 20, 5));
+
+        first.Content.ShouldNotBeNull().Bounds.Y.ShouldBe(int.MaxValue);
+    }
+
     private static TabControl Create(params TabItem[] items)
     {
         var result = new TabControl
