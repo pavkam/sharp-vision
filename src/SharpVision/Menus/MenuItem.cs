@@ -545,7 +545,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
             ArrangeChild(
                 content,
                 new Rect(
-                    bounds.X + rowLeading + startCells,
+                    bounds.X.Add(rowLeading).Add(startCells),
                     bounds.Y,
                     rowWidth - startCells - endCells,
                     bounds.Height),

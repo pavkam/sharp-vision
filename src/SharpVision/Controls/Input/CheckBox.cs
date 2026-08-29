@@ -179,7 +179,7 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
             var consumed = Math.Min(MarkWidth + 1, deflated.Width);
             ArrangeChild(
                 content,
-                new Rect(deflated.X + consumed, deflated.Y, deflated.Width - consumed, deflated.Height),
+                new Rect(deflated.X.Add(consumed), deflated.Y, deflated.Width - consumed, deflated.Height),
                 ResolvedAxes.Both);
         }
     }

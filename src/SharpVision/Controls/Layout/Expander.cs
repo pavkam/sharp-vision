@@ -170,7 +170,7 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
             var headerChromeWidth = HeaderChromeWidth;
             var headerSlot = bounds.Width > headerChromeWidth
                 ? new Rect(
-                    bounds.X + headerChromeWidth,
+                    bounds.X.Add(headerChromeWidth),
                     bounds.Y,
                     bounds.Width - headerChromeWidth,
                     Math.Min(_headerHeightCells, bounds.Height))
@@ -186,8 +186,8 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
         var indent = Math.Min(ActualStyle.ContentIndent, bounds.Width);
         var slot = IsExpanded && bounds.Height > _headerHeightCells
             ? new Rect(
-                bounds.X + indent,
-                bounds.Y + _headerHeightCells,
+                bounds.X.Add(indent),
+                bounds.Y.Add(_headerHeightCells),
                 bounds.Width - indent,
                 bounds.Height - _headerHeightCells)
             : default;

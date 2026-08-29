@@ -160,6 +160,46 @@ public sealed class DockTests
         fill.Bounds.X.ShouldBe(3);
     }
 
+    /// <summary>Verifies a Left-docked child's consumed extent saturates the remaining rectangle's
+    /// X at int.MaxValue instead of wrapping negative when the panel's own bounds already sit near
+    /// the integer coordinate limit.</summary>
+    [Fact]
+    public void Arrange_WhenBoundsXIsNearIntMaxValueAndLeftSideConsumes_SaturatesInsteadOfWrapping()
+    {
+        var panel = new Dock();
+        var left = WidthOnly(8);
+        var fill = new ProbeControl();
+        Dock.SetSide(left, DockSide.Left);
+        panel.Children.Add(left);
+        panel.Children.Add(fill);
+
+        panel.Measure(new Constraint(20, 3));
+        panel.Arrange(new Rect(int.MaxValue - 5, 0, 20, 3));
+
+        left.Bounds.X.ShouldBe(int.MaxValue - 5);
+        fill.Bounds.X.ShouldBe(int.MaxValue);
+    }
+
+    /// <summary>Verifies a Top-docked child's consumed extent saturates the remaining rectangle's
+    /// Y at int.MaxValue instead of wrapping negative when the panel's own bounds already sit near
+    /// the integer coordinate limit.</summary>
+    [Fact]
+    public void Arrange_WhenBoundsYIsNearIntMaxValueAndTopSideConsumes_SaturatesInsteadOfWrapping()
+    {
+        var panel = new Dock();
+        var top = HeightOnly(8);
+        var fill = new ProbeControl();
+        Dock.SetSide(top, DockSide.Top);
+        panel.Children.Add(top);
+        panel.Children.Add(fill);
+
+        panel.Measure(new Constraint(3, 20));
+        panel.Arrange(new Rect(0, int.MaxValue - 5, 3, 20));
+
+        top.Bounds.Y.ShouldBe(int.MaxValue - 5);
+        fill.Bounds.Y.ShouldBe(int.MaxValue);
+    }
+
     /// <summary>Verifies the attached side accessors reject a null control.</summary>
     [Fact]
     public void GetSideAndSetSide_WhenControlIsNull_ThrowsArgumentNullException()

@@ -359,8 +359,8 @@ public sealed class Dock: Container
 
         return side switch
         {
-            DockSide.Left => new Rect(value.X + extent, value.Y, value.Width - extent, value.Height),
-            DockSide.Top => new Rect(value.X, value.Y + extent, value.Width, value.Height - extent),
+            DockSide.Left => new Rect(value.X.Add(extent), value.Y, value.Width - extent, value.Height),
+            DockSide.Top => new Rect(value.X, value.Y.Add(extent), value.Width, value.Height - extent),
             DockSide.Right => new Rect(value.X, value.Y, value.Width - extent, value.Height),
             DockSide.Bottom => new Rect(value.X, value.Y, value.Width, value.Height - extent),
             _ => throw new UnreachableException()

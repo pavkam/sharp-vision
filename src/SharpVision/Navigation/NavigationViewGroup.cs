@@ -261,7 +261,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     {
         var indent = Math.Min(ActualStyle.ItemIndent, bounds.Width);
         var slot = IsExpanded && bounds.Height > 1
-            ? new Rect(bounds.X + indent, bounds.Y + 1, bounds.Width - indent, bounds.Height - 1)
+            ? new Rect(bounds.X.Add(indent), bounds.Y.Add(1), bounds.Width - indent, bounds.Height - 1)
             : default;
         ArrangeChild(_stack, slot, ResolvedAxes.Both);
     }
