@@ -399,7 +399,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
         // button styling at all: 10 rows leaves comfortable headroom under MaxHeight(20) for
         // border, RowSpacing, and even the most generous realistic action bar (separator, a
         // bordered button, and its shadow).
-        content.Rows.Add(Track.Auto(minimum: 3, maximum: 10));
+        content.Rows.Add(Track.Auto(minimum: Length.Cells(3), maximum: Length.Cells(10)));
         content.Rows.Add(Track.Auto());
         Grid.SetRow(messageHost, 0);
         Grid.SetRow(actionBar, 1);

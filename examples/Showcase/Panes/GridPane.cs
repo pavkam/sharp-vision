@@ -68,10 +68,19 @@ internal sealed class GridPane: CompositeControlBase
         spans.Children.Add(both);
         AddCell(spans, "1x1", 2, 0);
 
-        // Percentage and star tracks honor minimum and maximum cell constraints.
-        var percentage = new Grid { Width = Length.Cells(40), Height = Length.Cells(5), ColumnSpacing = 1 };
-        percentage.Columns.Add(Track.Percent(40, minimum: 10, maximum: 16));
-        percentage.Columns.Add(Track.Star(1, minimum: 8));
+        // Percentage and star tracks honor limits resolved from the current track area.
+        var percentage = new Grid
+        {
+            Width = Length.Percent(100),
+            MaxWidth = Length.Cells(40),
+            Height = Length.Cells(5),
+            ColumnSpacing = 1
+        };
+        percentage.Columns.Add(Track.Percent(
+            40,
+            minimum: Length.Percent(25),
+            maximum: Length.Percent(40)));
+        percentage.Columns.Add(Track.Star(1, minimum: Length.Percent(20)));
         percentage.Rows.Add(Track.Star(1));
         AddCell(percentage, "40%", 0, 0);
         AddCell(percentage, "Star", 0, 1);
@@ -83,7 +92,7 @@ internal sealed class GridPane: CompositeControlBase
         // Labels stay fixed while validation wraps beneath the star-width field column.
         var form = new Grid { Width = Length.Cells(42), RowSpacing = 1, ColumnSpacing = 1 };
         form.Columns.Add(Track.Cells(10));
-        form.Columns.Add(Track.Star(1, minimum: 12));
+        form.Columns.Add(Track.Star(1, minimum: Length.Cells(12)));
         form.Rows.Add(Track.Auto());
         form.Rows.Add(Track.Auto());
         form.Rows.Add(Track.Auto());
@@ -123,11 +132,12 @@ internal sealed class GridPane: CompositeControlBase
             new DocSection(
                 "📐",
                 "Percentage and limits",
-                "Percentage and star tracks honor enforced minimum and maximum cell constraints.",
+                "Percentage and star tracks honor fixed or relative minimum and maximum constraints.",
                 new DocExample(
                     "Bounded responsive tracks",
-                    "Resize the page: the percentage track stays between ten and sixteen cells while star absorbs the safe remainder.",
-                    percentage)),
+                    "Resize the page: both tracks recompute their percentage limits from the spacing-reduced Grid track area.",
+                    percentage,
+                    "grid.Columns.Add(Track.Percent(\n    40,\n    minimum: Length.Percent(25),\n    maximum: Length.Percent(40)));")),
             new DocSection(
                 "↔️",
                 "Spans",

@@ -99,8 +99,8 @@ public abstract class Dialog<TResult>: Window
         separator = new Separator();
         var actionHost = new DialogActionHost(actions, buttons);
         var actionBar = new Grid { HorizontalAlignment = HorizontalAlignment.Stretch };
-        actionBar.Columns.Add(Track.Star(1, minimum: 1));
-        actionBar.Rows.Add(Track.Auto(minimum: 1));
+        actionBar.Columns.Add(Track.Star(1, minimum: Length.Cells(1)));
+        actionBar.Rows.Add(Track.Auto(minimum: Length.Cells(1)));
         actionBar.Rows.Add(Track.Auto());
         Grid.SetRow(actionHost, 1);
         actionBar.Children.Add(separator);

@@ -102,6 +102,72 @@ public static class Tracks
         ResolveCore(available, lengths, automatic, minimum, maximum, destination, percentBase);
     }
 
+    /// <summary>Resolves tracks with fixed or percentage limits into caller-owned storage.</summary>
+    /// <param name="available">The bounded allocation axis, or null during intrinsic measure.</param>
+    /// <param name="lengths">The validated track definitions.</param>
+    /// <param name="automatic">The non-negative intrinsic request for each track.</param>
+    /// <param name="minimum">The fixed or percentage minimum for each track.</param>
+    /// <param name="maximum">The fixed or percentage maximum for each track, or null when unbounded.</param>
+    /// <param name="destination">Caller-owned output with one element per track.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="available"/> or an intrinsic request is negative.</exception>
+    /// <exception cref="ArgumentException">Input/output lengths differ, a limit kind is unsupported, or comparable limits are inverted.</exception>
+    public static void Resolve(
+        int? available,
+        ReadOnlySpan<Length> lengths,
+        ReadOnlySpan<int> automatic,
+        ReadOnlySpan<Length> minimum,
+        ReadOnlySpan<Length?> maximum,
+        Span<int> destination) =>
+        Resolve(available, lengths, automatic, minimum, maximum, destination, percentBase: null);
+
+    /// <summary>Resolves tracks with fixed or percentage limits against an explicit percentage base.</summary>
+    /// <param name="available">The bounded allocation axis, or null during intrinsic measure.</param>
+    /// <param name="lengths">The validated track definitions.</param>
+    /// <param name="automatic">The non-negative intrinsic request for each track.</param>
+    /// <param name="minimum">The fixed or percentage minimum for each track.</param>
+    /// <param name="maximum">The fixed or percentage maximum for each track, or null when unbounded.</param>
+    /// <param name="destination">Caller-owned output with one element per track.</param>
+    /// <param name="percentBase">The containing axis used by percentage requests and limits, or null to use <paramref name="available"/>.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="available"/>, <paramref name="percentBase"/>, or an intrinsic request is negative.</exception>
+    /// <exception cref="ArgumentException">Input/output lengths differ, a limit kind is unsupported, or comparable limits are inverted.</exception>
+    public static void Resolve(
+        int? available,
+        ReadOnlySpan<Length> lengths,
+        ReadOnlySpan<int> automatic,
+        ReadOnlySpan<Length> minimum,
+        ReadOnlySpan<Length?> maximum,
+        Span<int> destination,
+        int? percentBase)
+    {
+        ValidateRelative(available, lengths, automatic, minimum, maximum, destination.Length, percentBase);
+
+        var rentedMinimum = ArrayPool<int>.Shared.Rent(lengths.Length);
+        var rentedMaximum = ArrayPool<int>.Shared.Rent(lengths.Length);
+        var resolvedMinimum = rentedMinimum.AsSpan(0, lengths.Length);
+        var resolvedMaximum = rentedMaximum.AsSpan(0, lengths.Length);
+
+        try
+        {
+            var resolutionBase = percentBase ?? available;
+
+            for (var index = 0; index < lengths.Length; index++)
+            {
+                resolvedMinimum[index] = ResolveLimit(minimum[index], resolutionBase, unboundedFallback: 0);
+                resolvedMaximum[index] = maximum[index] is { } authoredMaximum
+                    ? ResolveLimit(authoredMaximum, resolutionBase, int.MaxValue)
+                    : int.MaxValue;
+                resolvedMaximum[index] = Math.Max(resolvedMinimum[index], resolvedMaximum[index]);
+            }
+
+            ResolveCore(available, lengths, automatic, resolvedMinimum, resolvedMaximum, destination, percentBase);
+        }
+        finally
+        {
+            ArrayPool<int>.Shared.Return(rentedMinimum);
+            ArrayPool<int>.Shared.Return(rentedMaximum);
+        }
+    }
+
     /// <summary>Expands a contiguous span of tracks to satisfy an intrinsic request.</summary>
     /// <param name="tracks">The caller-owned non-negative track extents.</param>
     /// <param name="start">The zero-based first track.</param>
@@ -376,6 +442,19 @@ public static class Tracks
         return requested;
     }
 
+    [Pure]
+    private static int ResolveLimit(Length limit, int? percentBase, int unboundedFallback) =>
+        limit.Kind switch
+        {
+            LengthKind.Auto => throw new UnreachableException(),
+            LengthKind.Cells => (int) limit.Value,
+            LengthKind.Percent => percentBase.HasValue
+                ? RoundPercent(percentBase.Value, limit.Value)
+                : unboundedFallback,
+            LengthKind.Star => throw new UnreachableException(),
+            _ => throw new UnreachableException()
+        };
+
     private static void Shrink(
         LengthKind kind,
         ReadOnlySpan<Length> lengths,
@@ -466,6 +545,58 @@ public static class Tracks
 
                 ArgumentException.ThrowIfBelowMinimum(maximum[index], minimum[index], nameof(maximum), "A track maximum cannot be below its minimum.");
             }
+        }
+    }
+
+    private static void ValidateRelative(
+        int? available,
+        ReadOnlySpan<Length> lengths,
+        ReadOnlySpan<int> automatic,
+        ReadOnlySpan<Length> minimum,
+        ReadOnlySpan<Length?> maximum,
+        int destinationLength,
+        int? percentBase)
+    {
+        if (available.HasValue)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(available.Value, nameof(available));
+        }
+
+        if (percentBase.HasValue)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(percentBase.Value, nameof(percentBase));
+        }
+
+        if (automatic.Length != lengths.Length || minimum.Length != lengths.Length ||
+            maximum.Length != lengths.Length || destinationLength != lengths.Length)
+        {
+            throw new ArgumentException("Every track input and output must have the same length.");
+        }
+
+        for (var index = 0; index < lengths.Length; index++)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(automatic[index], nameof(automatic));
+            ValidateLimit(minimum[index], nameof(minimum));
+
+            if (maximum[index] is not { } authoredMaximum)
+            {
+                continue;
+            }
+
+            ValidateLimit(authoredMaximum, nameof(maximum));
+
+            if (minimum[index].Kind == authoredMaximum.Kind && minimum[index].Value > authoredMaximum.Value)
+            {
+                throw new ArgumentException("A track maximum cannot be below its comparable minimum.", nameof(maximum));
+            }
+        }
+    }
+
+    private static void ValidateLimit(Length limit, string paramName)
+    {
+        if (limit.Kind is LengthKind.Auto or LengthKind.Star)
+        {
+            throw new ArgumentException("A track limit must use Cells or Percent.", paramName);
         }
     }
 

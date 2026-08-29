@@ -178,7 +178,7 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
-        root.Rows.Add(Track.Star(1, minimum: 4));
+        root.Rows.Add(Track.Star(1, minimum: Length.Cells(4)));
         root.Rows.Add(Track.Cells(1));
         root.Rows.Add(Track.Auto());
         root.Rows.Add(Track.Cells(1));

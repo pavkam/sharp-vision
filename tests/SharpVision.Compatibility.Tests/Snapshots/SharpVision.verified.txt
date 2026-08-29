@@ -3157,15 +3157,15 @@ namespace SharpVision.Layout
     public readonly struct Track : System.IEquatable<SharpVision.Layout.Track>
     {
         public Track() { }
-        public Track(SharpVision.Layout.Length length, int minimum = 0, int maximum = 2147483647) { }
+        public Track(SharpVision.Layout.Length length, SharpVision.Layout.Length? minimum = default, SharpVision.Layout.Length? maximum = default) { }
         public SharpVision.Layout.Length Length { get; }
-        public int Maximum { get; }
-        public int Minimum { get; }
+        public SharpVision.Layout.Length? Maximum { get; }
+        public SharpVision.Layout.Length Minimum { get; }
         public override string ToString() { }
-        public static SharpVision.Layout.Track Auto(int minimum = 0, int maximum = 2147483647) { }
-        public static SharpVision.Layout.Track Cells(int value, int minimum = 0, int maximum = 2147483647) { }
-        public static SharpVision.Layout.Track Percent(double value, int minimum = 0, int maximum = 2147483647) { }
-        public static SharpVision.Layout.Track Star(double value, int minimum = 0, int maximum = 2147483647) { }
+        public static SharpVision.Layout.Track Auto(SharpVision.Layout.Length? minimum = default, SharpVision.Layout.Length? maximum = default) { }
+        public static SharpVision.Layout.Track Cells(int value, SharpVision.Layout.Length? minimum = default, SharpVision.Layout.Length? maximum = default) { }
+        public static SharpVision.Layout.Track Percent(double value, SharpVision.Layout.Length? minimum = default, SharpVision.Layout.Length? maximum = default) { }
+        public static SharpVision.Layout.Track Star(double value, SharpVision.Layout.Length? minimum = default, SharpVision.Layout.Length? maximum = default) { }
     }
     public sealed class TrackCollection : System.Collections.Generic.ICollection<SharpVision.Layout.Track>, System.Collections.Generic.IEnumerable<SharpVision.Layout.Track>, System.Collections.Generic.IList<SharpVision.Layout.Track>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Layout.Track>, System.Collections.Generic.IReadOnlyList<SharpVision.Layout.Track>, System.Collections.IEnumerable
     {
@@ -3185,7 +3185,9 @@ namespace SharpVision.Layout
     public static class Tracks
     {
         public static int[] Resolve(int? available, System.ReadOnlySpan<SharpVision.Layout.Length> lengths, System.ReadOnlySpan<int> automatic) { }
+        public static void Resolve(int? available, System.ReadOnlySpan<SharpVision.Layout.Length> lengths, System.ReadOnlySpan<int> automatic, System.ReadOnlySpan<SharpVision.Layout.Length> minimum, System.ReadOnlySpan<SharpVision.Layout.Length?> maximum, System.Span<int> destination) { }
         public static void Resolve(int? available, System.ReadOnlySpan<SharpVision.Layout.Length> lengths, System.ReadOnlySpan<int> automatic, System.ReadOnlySpan<int> minimum, System.ReadOnlySpan<int> maximum, System.Span<int> destination) { }
+        public static void Resolve(int? available, System.ReadOnlySpan<SharpVision.Layout.Length> lengths, System.ReadOnlySpan<int> automatic, System.ReadOnlySpan<SharpVision.Layout.Length> minimum, System.ReadOnlySpan<SharpVision.Layout.Length?> maximum, System.Span<int> destination, int? percentBase) { }
         public static void Resolve(int? available, System.ReadOnlySpan<SharpVision.Layout.Length> lengths, System.ReadOnlySpan<int> automatic, System.ReadOnlySpan<int> minimum, System.ReadOnlySpan<int> maximum, System.Span<int> destination, int? percentBase) { }
         public static void Satisfy(System.Span<int> tracks, int start, int count, int required) { }
     }

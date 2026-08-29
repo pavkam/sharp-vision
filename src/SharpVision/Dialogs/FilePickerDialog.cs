@@ -246,10 +246,10 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
-        root.Columns.Add(Track.Star(1, minimum: 8));
-        root.Rows.Add(Track.Auto(minimum: 3));
-        root.Rows.Add(Track.Star(1, minimum: Math.Min(8, ((int) FileListSurface.MaxHeight!.Value.Value).Add(3))));
-        root.Rows.Add(Track.Auto(minimum: 1));
+        root.Columns.Add(Track.Star(1, minimum: Length.Cells(8)));
+        root.Rows.Add(Track.Auto(minimum: Length.Cells(3)));
+        root.Rows.Add(Track.Star(1, minimum: Length.Cells(Math.Min(8, ((int) FileListSurface.MaxHeight!.Value.Value).Add(3)))));
+        root.Rows.Add(Track.Auto(minimum: Length.Cells(1)));
         root.Rows.Add(Track.Auto());
         Grid.SetRow(listArea, 1);
         Grid.SetRow(hidden, 2);

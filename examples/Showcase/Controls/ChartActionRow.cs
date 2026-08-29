@@ -23,7 +23,7 @@ internal sealed class ChartActionRow: CompositeControlBase
             ColumnSpacing = 2
         };
         grid.Columns.Add(Track.Auto());
-        grid.Columns.Add(Track.Star(1, minimum: 1));
+        grid.Columns.Add(Track.Star(1, minimum: Length.Cells(1)));
         grid.Rows.Add(Track.Auto());
         Grid.SetColumn(action, 0);
         Grid.SetColumn(status, 1);

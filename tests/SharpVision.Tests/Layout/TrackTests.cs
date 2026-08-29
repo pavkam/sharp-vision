@@ -131,8 +131,8 @@ public sealed class TrackTests
 
         track.ShouldBe(Track.Auto());
         track.Length.ShouldBe(Length.Auto);
-        track.Minimum.ShouldBe(0);
-        track.Maximum.ShouldBe(int.MaxValue);
+        track.Minimum.ShouldBe(Length.Cells(0));
+        track.Maximum.ShouldBeNull();
     }
 
     /// <summary>
@@ -149,13 +149,14 @@ public sealed class TrackTests
         var defaultTrack = default(Track);
         var arraySlot = (new Track[1])[0];
 
-        defaultTrack.Minimum.ShouldBe(0);
-        defaultTrack.Maximum.ShouldBe(0);
-        arraySlot.Minimum.ShouldBe(0);
-        arraySlot.Maximum.ShouldBe(0);
+        defaultTrack.Minimum.ShouldBe(Length.Auto);
+        defaultTrack.Maximum.ShouldBeNull();
+        arraySlot.Minimum.ShouldBe(Length.Auto);
+        arraySlot.Maximum.ShouldBeNull();
 
         var result = new int[1];
-        Tracks.Resolve(10, [defaultTrack.Length], [0], [defaultTrack.Minimum], [defaultTrack.Maximum], result);
+        _ = Should.Throw<ArgumentException>(() =>
+            Tracks.Resolve(10, [defaultTrack.Length], [0], [defaultTrack.Minimum], [defaultTrack.Maximum], result));
 
         result.ShouldBe([0]);
     }
@@ -164,22 +165,62 @@ public sealed class TrackTests
     [Fact]
     public void Factory_WhenValuesAreValid_CreatesExactTrack()
     {
-        Track.Auto(minimum: 1, maximum: 8).ShouldBe(new Track(Length.Auto, 1, 8));
+        Track.Auto(minimum: Length.Percent(10), maximum: Length.Percent(80))
+            .ShouldBe(new Track(Length.Auto, Length.Percent(10), Length.Percent(80)));
         Track.Cells(3).Length.ShouldBe(Length.Cells(3));
         Track.Percent(25).Length.ShouldBe(Length.Percent(25));
         Track.Star(2).Length.ShouldBe(Length.Star(2));
+        Track.Percent(40, Length.Percent(25), Length.Cells(16)).ToString()
+            .ShouldBe("40% [25%..16cells]");
+        Track.Star(1, Length.Cells(3)).ToString().ShouldBe("1* [3cells..∞]");
     }
 
     /// <summary>Verifies invalid limits fail before constructing a usable definition.</summary>
     [Fact]
     public void Constructor_WhenLimitsAreInvalid_ThrowsDocumentedException()
     {
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => new Track(Length.Auto, -1));
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => new Track(Length.Auto, 0, -1));
-        _ = Should.Throw<ArgumentException>(() => new Track(Length.Auto, 3, 2));
+        _ = Should.Throw<ArgumentException>(() => new Track(Length.Auto, Length.Auto));
+        _ = Should.Throw<ArgumentException>(() => new Track(Length.Auto, Length.Star(1)));
+        _ = Should.Throw<ArgumentException>(() => new Track(Length.Auto, Length.Cells(3), Length.Cells(2)));
+        _ = Should.Throw<ArgumentException>(() => new Track(Length.Auto, Length.Percent(30), Length.Percent(20)));
         _ = Should.Throw<ArgumentOutOfRangeException>(() => Track.Cells(-1));
         _ = Should.Throw<ArgumentOutOfRangeException>(() => Track.Percent(101));
         _ = Should.Throw<ArgumentOutOfRangeException>(() => Track.Star(0));
+    }
+
+    /// <summary>Verifies relative limits resolve against the same explicit base as percentage requests.</summary>
+    [Fact]
+    public void Resolve_WhenLimitsAreRelative_UsesExplicitPercentageBase()
+    {
+        var result = new int[3];
+
+        Tracks.Resolve(
+            available: 30,
+            [Length.Auto, Length.Percent(80), Length.Star(1)],
+            [2, 0, 0],
+            [Length.Percent(20), Length.Cells(0), Length.Percent(10)],
+            [Length.Percent(40), Length.Percent(50), null],
+            result,
+            percentBase: 40);
+
+        result.ShouldBe([8, 18, 4]);
+    }
+
+    /// <summary>Verifies relative limits use safe fallbacks when no bounded percentage base exists.</summary>
+    [Fact]
+    public void Resolve_WhenRelativeLimitsAreUnbounded_UsesZeroAndInfiniteFallbacks()
+    {
+        var result = new int[2];
+
+        Tracks.Resolve(
+            available: null,
+            [Length.Auto, Length.Auto],
+            [7, 9],
+            [Length.Percent(80), Length.Cells(3)],
+            [null, Length.Percent(10)],
+            result);
+
+        result.ShouldBe([7, 9]);
     }
 
     /// <summary>Verifies 20,000 valid bounded sets are stable, exact, and clamped.</summary>
@@ -228,11 +269,82 @@ public sealed class TrackTests
         }
     }
 
+    /// <summary>Verifies 5,000 typed-limit sets repeat deterministically and remain contained.</summary>
+    [Fact]
+    public void Resolve_WhenRelativeLimitsAreRandomized_PreservesAllocationInvariants()
+    {
+        const int caseCount = 5_000;
+        var random = new Random(0x840);
+
+        for (var sample = 0; sample < caseCount; sample++)
+        {
+            var count = random.Next(1, 17);
+            var available = random.Next(0, 501);
+            var percentBase = random.Next(0, 501);
+            var lengths = new Length[count];
+            var automatic = new int[count];
+            var minimum = new Length[count];
+            var maximum = new Length?[count];
+            var first = new int[count];
+            var second = new int[count];
+
+            for (var index = 0; index < count; index++)
+            {
+                lengths[index] = index == count - 1 ? Length.Star(1) : NextLength(random);
+                automatic[index] = random.Next(0, 61);
+                minimum[index] = random.Next(0, 2) == 0
+                    ? Length.Cells(random.Next(0, 9))
+                    : Length.Percent(random.NextDouble() * 10);
+                maximum[index] = index == count - 1 || random.Next(0, 3) == 0
+                    ? null
+                    : NextMaximum(random, minimum[index]);
+            }
+
+            Tracks.Resolve(available, lengths, automatic, minimum, maximum, first, percentBase);
+            Tracks.Resolve(available, lengths, automatic, minimum, maximum, second, percentBase);
+
+            second.ShouldBe(first);
+            first.Sum().ShouldBe(available);
+            first.ShouldAllBe(extent => extent >= 0);
+
+            for (var index = 0; index < count; index++)
+            {
+                var resolvedMinimum = ResolveLimit(minimum[index], percentBase);
+                var resolvedMaximum = maximum[index] is { } authoredMaximum
+                    ? ResolveLimit(authoredMaximum, percentBase)
+                    : int.MaxValue;
+                first[index].ShouldBeLessThanOrEqualTo(Math.Max(resolvedMinimum, resolvedMaximum));
+            }
+        }
+    }
+
     private static Length NextLength(Random random) => random.Next(0, 4) switch
     {
         0 => Length.Auto,
         1 => Length.Cells(random.Next(0, 101)),
         2 => Length.Percent(random.NextDouble() * 100),
         _ => Length.Star((random.NextDouble() * 4) + 0.01)
+    };
+
+    private static Length NextMaximum(Random random, Length minimum) => minimum.Kind switch
+    {
+        LengthKind.Auto => throw new UnreachableException(),
+        LengthKind.Cells => random.Next(0, 2) == 0
+            ? Length.Cells(random.Next((int) minimum.Value, (int) minimum.Value + 81))
+            : Length.Percent(10 + (random.NextDouble() * 90)),
+        LengthKind.Percent => random.Next(0, 2) == 0
+            ? Length.Percent(minimum.Value + (random.NextDouble() * (100 - minimum.Value)))
+            : Length.Cells(random.Next(1, 81)),
+        LengthKind.Star => throw new UnreachableException(),
+        _ => throw new UnreachableException()
+    };
+
+    private static int ResolveLimit(Length limit, int percentBase) => limit.Kind switch
+    {
+        LengthKind.Auto => throw new UnreachableException(),
+        LengthKind.Cells => (int) limit.Value,
+        LengthKind.Percent => (int) Math.Round(percentBase * limit.Value / 100, MidpointRounding.AwayFromZero),
+        LengthKind.Star => throw new UnreachableException(),
+        _ => throw new UnreachableException()
     };
 }

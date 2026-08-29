@@ -50,6 +50,11 @@ and saturated spacing have reserved their cells. When the minimums cannot fit,
 containment wins and later tracks may shrink to zero; overflow follows the
 ancestor's clipping or scrolling policy.
 
+The children's `MinWidth`/`MinHeight` and nullable `MaxWidth`/`MaxHeight`
+constraints may use cells or percentages. Along the stacking axis, percentage
+limits use Stack's complete pre-spacing axis, matching percentage child lengths
+rather than Grid's spacing-reduced track area.
+
 When `AutoScroll` arms the stacking axis, that axis has no real ceiling to
 allocate within — the extent is however much the content needs, and scrolling
 covers the rest — so nothing competes for space along it: every child gets its

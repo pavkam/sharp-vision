@@ -65,6 +65,42 @@ public sealed class GridSurfaceTests
         surface.Cell(new Point(9, 0)).Continuation.ShouldBeTrue();
     }
 
+    /// <summary>Verifies mounted resize resolves percentage limits from the current track area.</summary>
+    [Fact]
+    public async Task ResizeAsync_WhenTrackHasRelativeLimits_RecomputesRenderedCellsAsync()
+    {
+        var limited = new ControlText("LLLLLLLLLLLL")
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Overflow = Overflow.Clip
+        };
+        var remainder = new ControlText("RRRRRRRRRRRRRRRRRRRR")
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Overflow = Overflow.Clip
+        };
+        Grid.SetColumn(remainder, 1);
+        var grid = new Grid { ColumnSpacing = 1, HorizontalAlignment = HorizontalAlignment.Stretch };
+        grid.Columns.Add(Track.Percent(60, maximum: Length.Percent(40)));
+        grid.Columns.Add(Track.Star(1));
+        grid.Children.Add(limited);
+        grid.Children.Add(remainder);
+        await using var surface = await ComponentSurface.MountAsync(
+            grid,
+            new Size(11, 1),
+            TestContext.Current.CancellationToken);
+
+        limited.Bounds.ShouldBe(new Rect(0, 0, 4, 1));
+        remainder.Bounds.ShouldBe(new Rect(5, 0, 6, 1));
+        surface.ShouldRender("LLLL RRRRRR");
+
+        await surface.ResizeAsync(new Size(21, 1));
+
+        limited.Bounds.ShouldBe(new Rect(0, 0, 8, 1));
+        remainder.Bounds.ShouldBe(new Rect(9, 0, 12, 1));
+        surface.ShouldRender("LLLLLLLL RRRRRRRRRRRR");
+    }
+
     /// <summary>Verifies spanning, padding, collapsed exclusion, and pointer routing use final arranged slots.</summary>
     [Fact]
     public async Task Pointer_WhenGridUsesSpanPaddingAndCollapsedChild_HitsCommittedCellAsync()

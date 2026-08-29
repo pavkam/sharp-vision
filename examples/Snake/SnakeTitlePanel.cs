@@ -53,8 +53,8 @@ internal sealed class SnakeTitlePanel: CompositeControlBase
             new Text("<accent><b>HIGH SCORES</b></accent>") { HorizontalAlignment = HorizontalAlignment.Center },
             _scores);
         var cards = new Grid { HorizontalAlignment = HorizontalAlignment.Stretch, ColumnSpacing = 2 };
-        cards.Columns.Add(Track.Star(1, minimum: 20));
-        cards.Columns.Add(Track.Star(1, minimum: 20));
+        cards.Columns.Add(Track.Star(1, minimum: Length.Cells(20)));
+        cards.Columns.Add(Track.Star(1, minimum: Length.Cells(20)));
         Grid.SetColumn(scoresCard, 1);
         cards.Children.Add(actionCard);
         cards.Children.Add(scoresCard);

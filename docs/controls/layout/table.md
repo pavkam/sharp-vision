@@ -377,11 +377,11 @@ ordinary caption text.
 ## Layout and ownership
 
 Columns resolve with the shared
-[track allocator](../../concepts/layout.md#overview): fixed widths reserve exact
-cells, percentage widths resolve from the final table width, automatic widths
-take the largest cell or header request, and fill columns receive the remaining
-cells. Headers and rows remeasure wrapping controls once their finite column
-widths are known.
+[track allocator](../../concepts/layout.md#track-allocation): fixed widths
+reserve exact cells, percentage widths resolve from the spacing-reduced final
+table track area, automatic widths take the largest cell or header request, and
+fill columns receive the remaining cells. Headers and rows remeasure wrapping
+controls once their finite column widths are known.
 
 Each resolved cell rectangle is an ordinary arrange slot, not a forced border
 box, so a cell's `HorizontalAlignment`, `VerticalAlignment`, explicit lengths,

@@ -147,11 +147,15 @@ receives the remainder.
 ## Track allocation
 
 `Tracks.Resolve` is the shared integer allocator for Grid rows and columns.
-Fixed and automatic tracks reserve their clamped requests first. Percentage
-tracks resolve against cumulative edges over the complete final axis, not
-against a shrinking remainder. Star tracks then divide the non-negative
-remainder by weight, redistributing cells when a maximum clips one track's
-share.
+Fixed and automatic tracks reserve their clamped requests first. Track minima
+and maxima accept `Length.Cells` or `Length.Percent`; a null maximum is
+unbounded. Relative limits resolve against the same percentage base as the track
+request. In an unbounded measure with no explicit base, a relative minimum
+resolves to zero and a relative maximum remains unbounded. If limits written in
+different units cross after resolution, the minimum wins. Percentage tracks
+resolve against cumulative edges over the complete final axis, not against a
+shrinking remainder. Star tracks then divide the non-negative remainder by
+weight, redistributing cells when a maximum clips one track's share.
 
 "The complete final axis" a Percent track resolves against is not the same axis
 for every caller, and this divergence is intentional rather than an oversight to
@@ -166,12 +170,13 @@ against the complete axis instead. A caller comparing the two panels with
 identical `Percent(50)` participants and non-zero spacing sees Grid's
 percentages come out slightly smaller than Stack's for this reason.
 
-The convenience overload returns an array. The full overload accepts
-`ReadOnlySpan<T>` inputs and writes into a caller-owned `Span<int>`, so it
-performs no managed allocation. It validates every length, intrinsic request,
-limit, and the destination size before writing any output. During an unbounded
-measure, percentage and star tracks fall back to their intrinsic automatic
-requests.
+The convenience overload returns an array. The full overloads accept
+`ReadOnlySpan<T>` inputs and write into a caller-owned `Span<int>`. Integer
+limit spans accept bounds already resolved by a caller such as `Stack`; typed
+`Length`/`Length?` limit spans resolve responsive track definitions. Both
+validate every length, intrinsic request, limit, percentage base, and the
+destination size before writing any output. During an unbounded measure,
+percentage and star tracks fall back to their intrinsic automatic requests.
 
 When the bounded requests exceed the axis, tracks shrink in a fixed order —
 percentage, automatic, fixed, then star — while respecting whatever minimums can

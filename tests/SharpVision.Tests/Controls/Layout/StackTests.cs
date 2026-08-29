@@ -69,6 +69,31 @@ public sealed class StackTests
         starChild.Bounds.ShouldBe(new Rect(12, 0, 8, 2));
     }
 
+    /// <summary>Verifies relative child limits use Stack's complete pre-spacing percentage base.</summary>
+    [Fact]
+    public void Layout_WhenChildMaximumIsRelative_UsesPreSpacingAxis()
+    {
+        var panel = new Panel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        var limited = new ProbeControl
+        {
+            Width = Length.Star(3),
+            MaxWidth = Length.Percent(50)
+        };
+        var remainder = new ProbeControl { Width = Length.Star(1) };
+        panel.Children.Add(limited);
+        panel.Children.Add(remainder);
+
+        new LayoutEngine().Layout(panel, new Size(20, 1));
+
+        limited.Bounds.Width.ShouldBe(10);
+        remainder.Bounds.Width.ShouldBe(6);
+    }
+
     /// <summary>Verifies collapsed children consume neither a track nor adjacent spacing.</summary>
     [Fact]
     public void Layout_WhenMiddleChildIsCollapsed_RemovesItsTrackAndSpacing()

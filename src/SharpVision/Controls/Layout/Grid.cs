@@ -310,8 +310,8 @@ public sealed class Grid: Container
         Debug.Assert(definitions.Length == requests.Length, "Every track definition must have one request.");
 
         var lengths = new Length[definitions.Length];
-        var minimum = new int[definitions.Length];
-        var maximum = new int[definitions.Length];
+        var minimum = new Length[definitions.Length];
+        var maximum = new Length?[definitions.Length];
         var result = new int[definitions.Length];
 
         for (var index = 0; index < definitions.Length; index++)
@@ -447,9 +447,7 @@ public sealed class Grid: Container
         // silently discarded rather than counted, and a non-Auto-only span degrades to a
         // fraction of the child's intrinsic size.
         var spacing = rows ? RowSpacing : ColumnSpacing;
-        var resolvedNonAbsorbing = available.HasValue
-            ? Resolve(available, spacing, definitions, result)
-            : null;
+        var resolvedNonAbsorbing = Resolve(available, spacing, definitions, result);
 
         // Spanning requests expand the span's absorbing tracks only by the cells still required
         // after their internal Grid gaps and the span's already-resolvable extent are accounted
@@ -493,12 +491,7 @@ public sealed class Grid: Container
                 }
                 else
                 {
-                    reserved += available.HasValue
-                        ? resolvedNonAbsorbing![index]
-                        : Math.Clamp(
-                            (int) definitions[index].Length.Value,
-                            definitions[index].Minimum,
-                            definitions[index].Maximum);
+                    reserved += resolvedNonAbsorbing[index];
                 }
             }
 

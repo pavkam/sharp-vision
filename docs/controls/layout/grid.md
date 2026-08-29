@@ -38,14 +38,18 @@ classDiagram
 
 `Rows` and `Columns` are permanent non-null `TrackCollection` values; empty
 definitions mean one implicit automatic track. The immutable `Track` type stores
-`Length`, `Minimum`, and `Maximum`, and provides the `Auto`, `Cells`, `Percent`,
-and `Star` factories. Limits must be non-negative, and a maximum cannot be below
-its minimum. The attached `Row`, `Column`, `RowSpan`, and `ColumnSpan`
-properties require in-range origins and positive spans once definitions are
-committed. Their shared weak storage validates against the current Grid's live
-definitions before commit, suppresses equivalent writes, and invalidates only
-that Grid's measure phase. Detached and wrong-parent writes retain their values
-without dirtying an unrelated owner.
+`Length`, `Minimum`, and nullable `Maximum`, and provides the `Auto`, `Cells`,
+`Percent`, and `Star` factories. A limit must use `Length.Cells` or
+`Length.Percent`; `Auto` and `Star` limits are rejected. Percentage limits use
+the same spacing-reduced track area as percentage requests. Comparable limits
+cannot be inverted; if differently expressed limits cross after resolution, the
+minimum wins. During unbounded measure, a relative minimum contributes zero and
+a relative maximum remains unbounded. The attached `Row`, `Column`, `RowSpan`,
+and `ColumnSpan` properties require in-range origins and positive spans once
+definitions are committed. Their shared weak storage validates against the
+current Grid's live definitions before commit, suppresses equivalent writes, and
+invalidates only that Grid's measure phase. Detached and wrong-parent writes
+retain their values without dirtying an unrelated owner.
 
 Mutating a track collection or a child placement validates dispatcher affinity
 before any observable state changes, then invalidates measure once per real
@@ -123,7 +127,11 @@ placement.
 ```csharp
 var grid = new Grid
 {
-    Columns = { Track.Cells(20), Track.Star(1) },
+    Columns =
+    {
+        Track.Percent(40, minimum: Length.Percent(25), maximum: Length.Cells(20)),
+        Track.Star(1),
+    },
     ColumnSpacing = 1,
 };
 ```
@@ -135,8 +143,9 @@ var grid = new Grid
 | Public API          | Validation, defaults, state changes, and deterministic output.            |
 | Integrated behavior | Cross-component behavior through the real ownership and routing boundary. |
 
-- Layout is deterministic across every track kind and mix, minimum and maximum
-  limits, spacing, spans, and competing intrinsic requirements.
+- Layout is deterministic across every track kind and mix, fixed and relative
+  minimum and maximum limits, spacing, spans, and competing intrinsic
+  requirements.
 - Rounding remainders are allocated deterministically, collapsed children are
   excluded, invalid attached values are rejected, and zero, tiny, and
   overflowing sizes never break containment.
@@ -151,6 +160,6 @@ var grid = new Grid
 Mounted cross-layer coverage in
 [`GridSurfaceTests`](../../../tests/SharpVision.Tests/Controls/Layout/GridSurfaceTests.cs)
 demonstrates mixed fixed, percentage, automatic, and proportional tracks,
-deterministic resize remainders, wide-cell ownership, padding, spanning,
-collapsed exclusion, exact bounds and cells, and pointer routing to a final
-arranged slot.
+relative-limit resize reflow, deterministic remainders, wide-cell ownership,
+padding, spanning, collapsed exclusion, exact bounds and cells, and pointer
+routing to a final arranged slot.

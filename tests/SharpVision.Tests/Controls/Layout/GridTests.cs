@@ -128,7 +128,7 @@ public sealed class GridTests
     public void Measure_WhenSpannedCellsTrackHasMinimumUnbounded_DoesNotInflateAutoColumn()
     {
         var grid = new Grid();
-        grid.Columns.Add(Track.Cells(2, minimum: 10));
+        grid.Columns.Add(Track.Cells(2, minimum: Length.Cells(10)));
         grid.Columns.Add(Track.Auto());
         var child = new ProbeControl(new Size(20, 1));
         Grid.SetColumnSpan(child, 2);
@@ -149,7 +149,7 @@ public sealed class GridTests
     public void Measure_WhenSpannedCellsTrackHasMaximumUnbounded_AutoColumnCompensates()
     {
         var grid = new Grid();
-        grid.Columns.Add(Track.Cells(50, maximum: 5));
+        grid.Columns.Add(Track.Cells(50, maximum: Length.Cells(5)));
         grid.Columns.Add(Track.Auto());
         var child = new ProbeControl(new Size(20, 1));
         Grid.SetColumnSpan(child, 2);
@@ -158,6 +158,22 @@ public sealed class GridTests
         grid.Measure(new Constraint(null, null));
 
         grid.DesiredSize.Width.ShouldBe(20);
+    }
+
+    /// <summary>Verifies a spanning request accounts for a relative limit before Auto absorbs its deficit.</summary>
+    [Fact]
+    public void Layout_WhenSpanCrossesRelativeMinimumAndAuto_SatisfiesExactWidth()
+    {
+        var grid = new Grid();
+        grid.Columns.Add(Track.Cells(2, minimum: Length.Percent(50)));
+        grid.Columns.Add(Track.Auto());
+        var child = new ProbeControl(new Size(20, 1));
+        Grid.SetColumnSpan(child, 2);
+        grid.Children.Add(child);
+
+        new LayoutEngine().Layout(grid, new Size(20, 1));
+
+        child.Bounds.Width.ShouldBe(20);
     }
 
     /// <summary>Verifies a child spanning a Percent track and an Auto track gets its full
@@ -257,7 +273,7 @@ public sealed class GridTests
     public void Layout_WhenStarTrackHasMaximum_RedistributesRemainder()
     {
         var grid = new Grid();
-        grid.Columns.Add(Track.Star(1, maximum: 2));
+        grid.Columns.Add(Track.Star(1, maximum: Length.Cells(2)));
         grid.Columns.Add(Track.Star(1));
         var first = Child(column: 0);
         var second = Child(column: 1);
@@ -375,7 +391,7 @@ public sealed class GridTests
         // Arrange
         var grid = new Grid { ColumnSpacing = 1 };
         grid.Columns.Add(Track.Auto());
-        grid.Columns.Add(Track.Star(1, minimum: 12));
+        grid.Columns.Add(Track.Star(1, minimum: Length.Cells(12)));
         grid.Columns.Add(Track.Auto());
         grid.Children.Add(new ProbeControl(new Size(8, 1)));
         var field = new ProbeControl(new Size(20, 1));
@@ -564,7 +580,7 @@ public sealed class GridTests
     public void Layout_WhenPercentTrackHasMinMax_ClampsToConstraints()
     {
         var grid = new Grid();
-        grid.Columns.Add(Track.Percent(80, minimum: 5, maximum: 10));
+        grid.Columns.Add(Track.Percent(80, minimum: Length.Cells(5), maximum: Length.Cells(10)));
         grid.Columns.Add(Track.Star(1));
         var percent = Child(column: 0);
         var star = Child(column: 1);
@@ -575,6 +591,30 @@ public sealed class GridTests
 
         percent.Bounds.Width.ShouldBeGreaterThanOrEqualTo(5);
         percent.Bounds.Width.ShouldBeLessThanOrEqualTo(10);
+    }
+
+    /// <summary>Verifies a relative minimum is recomputed from the current spacing-reduced track area.</summary>
+    [Fact]
+    public void Layout_WhenTrackMinimumIsRelative_RecomputesAcrossResize()
+    {
+        var grid = new Grid { ColumnSpacing = 2 };
+        grid.Columns.Add(Track.Cells(8, minimum: Length.Percent(25)));
+        grid.Columns.Add(Track.Star(1));
+        var limited = Child(column: 0);
+        var remainder = Child(column: 1);
+        grid.Children.Add(limited);
+        grid.Children.Add(remainder);
+        var engine = new LayoutEngine();
+
+        engine.Layout(grid, new Size(22, 1));
+
+        limited.Bounds.Width.ShouldBe(8);
+        remainder.Bounds.Width.ShouldBe(12);
+
+        engine.Layout(grid, new Size(42, 1));
+
+        limited.Bounds.Width.ShouldBe(10);
+        remainder.Bounds.Width.ShouldBe(30);
     }
 
     /// <summary>Verifies children with margins offset inside their cell.</summary>
@@ -925,10 +965,10 @@ public sealed class GridTests
             var maximum = random.Next(minimum, minimum + 10);
             var track = random.Next(0, 4) switch
             {
-                0 => Track.Auto(minimum, maximum),
-                1 => Track.Cells(random.Next(0, 13), minimum, maximum),
-                2 => Track.Percent(random.NextDouble() * 100, minimum, maximum),
-                _ => Track.Star(random.NextDouble() + 0.01, minimum, maximum)
+                0 => Track.Auto(Length.Cells(minimum), Length.Cells(maximum)),
+                1 => Track.Cells(random.Next(0, 13), Length.Cells(minimum), Length.Cells(maximum)),
+                2 => Track.Percent(random.NextDouble() * 100, Length.Cells(minimum), Length.Cells(maximum)),
+                _ => Track.Star(random.NextDouble() + 0.01, Length.Cells(minimum), Length.Cells(maximum))
             };
             collection.Add(track);
         }

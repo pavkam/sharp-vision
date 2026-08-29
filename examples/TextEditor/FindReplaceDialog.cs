@@ -67,7 +67,7 @@ internal sealed class FindReplaceDialog: IDisposable
             ColumnSpacing = 1
         };
         form.Columns.Add(Track.Auto());
-        form.Columns.Add(Track.Star(1, minimum: 12));
+        form.Columns.Add(Track.Star(1, minimum: Length.Cells(12)));
         form.Rows.Add(Track.Auto());
         form.Rows.Add(Track.Auto());
         Add(form, findLabel, row: 0, column: 0);

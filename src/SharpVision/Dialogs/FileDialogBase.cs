@@ -407,7 +407,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         location.Columns.Add(Track.Auto());
-        location.Columns.Add(Track.Star(1, minimum: 8));
+        location.Columns.Add(Track.Star(1, minimum: Length.Cells(8)));
         Grid.SetColumn(PathInput, 1);
         location.Children.Add(_upButton);
         location.Children.Add(PathInput);
@@ -423,8 +423,8 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
             ColumnSpacing = 1,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        metadata.Columns.Add(Track.Star(1, minimum: 8));
-        metadata.Columns.Add(Track.Star(1, minimum: 8));
+        metadata.Columns.Add(Track.Star(1, minimum: Length.Cells(8)));
+        metadata.Columns.Add(Track.Star(1, minimum: Length.Cells(8)));
         StatusText.HorizontalAlignment = HorizontalAlignment.Right;
         StatusText.VerticalAlignment = VerticalAlignment.Center;
         var statusHost = new Overlay
@@ -447,13 +447,13 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
-        listArea.Columns.Add(Track.Star(1, minimum: 8));
+        listArea.Columns.Add(Track.Star(1, minimum: Length.Cells(8)));
         var maximumListHeight = (int) FileListSurface.MaxHeight!.Value.Value;
         listArea.Rows.Add(Track.Star(
             1,
-            minimum: Math.Min(5, maximumListHeight),
-            maximum: maximumListHeight));
-        listArea.Rows.Add(Track.Auto(minimum: 3));
+            minimum: Length.Cells(Math.Min(5, maximumListHeight)),
+            maximum: Length.Cells(maximumListHeight)));
+        listArea.Rows.Add(Track.Auto(minimum: Length.Cells(3)));
         Grid.SetRow(metadata, 1);
         listArea.Children.Add(FileListSurface);
         listArea.Children.Add(metadata);
@@ -470,7 +470,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
             ColumnSpacing = 1,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        actions.Columns.Add(Track.Star(1, minimum: 1));
+        actions.Columns.Add(Track.Star(1, minimum: Length.Cells(1)));
         actions.Columns.Add(Track.Auto());
         actions.Columns.Add(Track.Auto());
         Grid.SetColumn(acceptButton, 1);

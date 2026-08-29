@@ -94,8 +94,8 @@ internal sealed class ImagePane: CompositeControlBase
     private Grid CreateGrid()
     {
         var grid = new Grid { ColumnSpacing = 1, RowSpacing = 1 };
-        grid.Columns.Add(Track.Star(1, minimum: 8));
-        grid.Columns.Add(Track.Star(1, minimum: 8));
+        grid.Columns.Add(Track.Star(1, minimum: Length.Cells(8)));
+        grid.Columns.Add(Track.Star(1, minimum: Length.Cells(8)));
         grid.Rows.Add(Track.Auto());
         grid.Rows.Add(Track.Auto());
 
