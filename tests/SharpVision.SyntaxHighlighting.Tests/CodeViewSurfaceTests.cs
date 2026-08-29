@@ -623,6 +623,55 @@ public sealed class CodeViewSurfaceTests
         changes.ShouldBe(1);
     }
 
+    /// <summary>Verifies keyboard focus recolors every physical border edge, not just the logical
+    /// value - CodeView falls back through Theme.GetFocusableContainerStyleSet() onto
+    /// ContainerStyle's Sunken baseline relief the same way TreeView and JsonView do, so it shares
+    /// their exposure to the border-relief-vs-authored-Foreground fix.</summary>
+    [Fact]
+    public async Task Keyboard_WhenCodeViewReceivesFocus_RecolorsItsOwnBorderAsync()
+    {
+        // Arrange
+        var view = new CodeView
+        {
+            Code = "fn main() {}\n",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 5),
+            TestContext.Current.CancellationToken);
+        var theme = view.Theme.ShouldNotBeNull();
+        view.ActualBorder.Foreground.Literal.ShouldBe(theme.ResolveColor(SemanticColor.ControlBorder));
+
+        // ContainerStyle's baseline Relief is Sunken and never changes by state, so the unfocused
+        // border still shows the two-tone highlight/shade bezel rather than a flat color.
+        var highlight = theme.ResolveColor(SemanticColor.ReliefHighlight);
+        var shade = theme.ResolveColor(SemanticColor.ReliefShade);
+        var normalStyles = view.ResolveBorderStyles(view.GetAppearanceState());
+        normalStyles.Top.Foreground.ShouldBe(shade);
+        normalStyles.Right.Foreground.ShouldBe(highlight);
+        normalStyles.Bottom.Foreground.ShouldBe(highlight);
+        normalStyles.Left.Foreground.ShouldBe(shade);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert
+        view.IsFocused.ShouldBeTrue();
+        var focusedBorder = theme.ResolveColor(SemanticColor.FocusedBorder);
+        view.ActualBorder.Foreground.Literal.ShouldBe(focusedBorder);
+
+        // Assert - every physical edge, not just the logical value, paints the authored focused
+        // color: ContainerStyle's Sunken baseline relief must not substitute highlight/shade over
+        // this state's explicitly authored border foreground.
+        var focusedStyles = view.ResolveBorderStyles(view.GetAppearanceState());
+        focusedStyles.Top.Foreground.ShouldBe(focusedBorder);
+        focusedStyles.Right.Foreground.ShouldBe(focusedBorder);
+        focusedStyles.Bottom.Foreground.ShouldBe(focusedBorder);
+        focusedStyles.Left.Foreground.ShouldBe(focusedBorder);
+    }
+
     private static SelectableTextSnapshot GetSelectableSnapshot<TSource>(TSource source)
         where TSource : ISelectableTextSource =>
         source.GetSelectableTextSnapshot();
