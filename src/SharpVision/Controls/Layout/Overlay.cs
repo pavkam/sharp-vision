@@ -314,7 +314,9 @@ public sealed class Overlay: Container
             child.Arrange(
                 slot,
                 widthResolved: positionsWidth,
-                heightResolved: positionsHeight);
+                heightResolved: positionsHeight,
+                widthLimitBase: positionsWidth ? bounds.Width : null,
+                heightLimitBase: positionsHeight ? bounds.Height : null);
         }
     }
 
@@ -337,8 +339,27 @@ public sealed class Overlay: Container
 
         var length = horizontal ? child.Width : child.Height;
         var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
-        var minimum = horizontal ? child.MinWidth : child.MinHeight;
-        var maximum = horizontal ? child.MaxWidth : child.MaxHeight;
+        if (horizontal)
+        {
+            child.ResolveWidthLimits(axis, out var minimum, out var maximum);
+            return ResolveAxis(child, length, margin, minimum, maximum, horizontal, axis, leading, trailing);
+        }
+
+        child.ResolveHeightLimits(axis, out var verticalMinimum, out var verticalMaximum);
+        return ResolveAxis(child, length, margin, verticalMinimum, verticalMaximum, horizontal, axis, leading, trailing);
+    }
+
+    private static int ResolveAxis(
+        ControlBase child,
+        Length length,
+        int margin,
+        int minimum,
+        int maximum,
+        bool horizontal,
+        int axis,
+        int leading,
+        int trailing)
+    {
 
         if (length.Kind is LengthKind.Auto or LengthKind.Star &&
             (horizontal ? GetLeft(child) : GetTop(child)) is not null &&

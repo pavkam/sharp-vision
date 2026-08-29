@@ -21,7 +21,7 @@ internal sealed class MenuItemPane: CompositeControlBase
 
         // A submenu owned by "More options" demonstrates the item's submenu affordance without
         // duplicating the application-menu-bar specimen the Menu page already captures.
-        var infoSubmenu = new Menu { Orientation = Orientation.Vertical, MinWidth = 12, MaxWidth = 18 };
+        var infoSubmenu = new Menu { Orientation = Orientation.Vertical, MinWidth = Length.Cells(12), MaxWidth = Length.Cells(18) };
         infoSubmenu.Items.Add(new MenuItem { Text = "&Details" });
         infoSubmenu.Items.Add(new MenuItem { Text = "&About" });
 

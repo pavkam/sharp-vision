@@ -204,8 +204,8 @@ public sealed class SaveFileDialogTests
         window.Header.ShouldBe("Export data");
         window.Width.ShouldBe(Length.Percent(80));
         window.Height.ShouldBe(Length.Percent(80));
-        window.MaxWidth.ShouldBe(96);
-        list.MaxHeight.ShouldBe(7);
+        window.MaxWidth.ShouldBe(Length.Cells(96));
+        list.MaxHeight.ShouldBe(Length.Cells(7));
         list.SelectionMode.ShouldBe(ListSelectionMode.Single);
         filter.SelectedIndex.ShouldBe(1);
         hidden.IsChecked.ShouldBe(true);

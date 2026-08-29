@@ -92,6 +92,13 @@ visible while open, or collapsed while closed.
 
 ## Placement
 
+Popup content is measured against the root space left after the resolved frame.
+Inherited percentage minimums and maximums use that finite interior extent.
+Placement carries the same extent into the resolved child arrange, so a limit is
+not applied recursively to the popup's already-clipped surface. A frame-side
+change after edge fallback triggers the corresponding finite remeasure before
+`SurfaceBounds` commits.
+
 `Anchor` and `Placement` define the position. `Below`, `Above`, `Right`, and
 `Left` use the anchored edge, and when the preferred side does not fit, the
 popup flips to the natural opposite side before clamping. Side-fit arithmetic is

@@ -106,7 +106,8 @@ public sealed class Dock: Container
                 axisBounded)
             {
                 var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
-                var minimum = horizontal ? child.MinWidth : child.MinHeight;
+                var containingExtent = horizontal ? remainingWidth!.Value : remainingHeight!.Value;
+                ResolveLimits(child, containingExtent, horizontal, out var minimum, out _);
 
                 (deferred ??= []).Add(new DeferredStar(
                     index,
@@ -293,8 +294,8 @@ public sealed class Dock: Container
         // axis's leftover space by weight, mirroring Tracks.AllocateStars for Grid/StackPanel.
         // Horizontal (Left/Right) and vertical (Top/Bottom) children never consume each other's
         // axis, so the two groups are resolved independently up front.
-        var horizontalBorders = ResolveAxisBorders(horizontal: true, bounds.Width, last);
-        var verticalBorders = ResolveAxisBorders(horizontal: false, bounds.Height, last);
+        var horizontalBorders = ResolveAxisBorders(horizontal: true, bounds.Width, last, out var horizontalLimitBases);
+        var verticalBorders = ResolveAxisBorders(horizontal: false, bounds.Height, last, out var verticalLimitBases);
 
         for (var index = 0; index < Children.Count; index++)
         {
@@ -307,7 +308,12 @@ public sealed class Dock: Container
 
             if (LastChildFills && index == last)
             {
-                child.Arrange(remaining, widthResolved: true, heightResolved: true);
+                child.Arrange(
+                    remaining,
+                    widthResolved: true,
+                    heightResolved: true,
+                    widthLimitBase: remaining.Width,
+                    heightLimitBase: remaining.Height);
                 continue;
             }
 
@@ -328,7 +334,12 @@ public sealed class Dock: Container
             };
             // Dock resolves both axes: one from the requested edge length and
             // the other from the perpendicular space owned by the dock.
-            child.Arrange(slot, widthResolved: true, heightResolved: true);
+            child.Arrange(
+                slot,
+                widthResolved: true,
+                heightResolved: true,
+                widthLimitBase: horizontal ? horizontalLimitBases[index] : remaining.Width,
+                heightLimitBase: horizontal ? remaining.Height : verticalLimitBases[index]);
             remaining = Consume(remaining, side, outer);
 
             if (index != last)
@@ -365,8 +376,7 @@ public sealed class Dock: Container
 
         var length = horizontal ? child.Width : child.Height;
         var desired = horizontal ? child.DesiredSize.Width : child.DesiredSize.Height;
-        var minimum = horizontal ? child.MinWidth : child.MinHeight;
-        var maximum = horizontal ? child.MaxWidth : child.MaxHeight;
+        ResolveLimits(child, available, horizontal, out var minimum, out var maximum);
         var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
 
         // Margins reserve their own cells outside the resolved edge request.
@@ -401,9 +411,10 @@ public sealed class Dock: Container
     // considered: a collapsed child, or the last child when LastChildFills, never reserves space
     // on either axis.
     [Pure]
-    private int[] ResolveAxisBorders(bool horizontal, int axisTotal, int last)
+    private int[] ResolveAxisBorders(bool horizontal, int axisTotal, int last, out int[] limitBases)
     {
         var borders = new int[Children.Count];
+        limitBases = new int[Children.Count];
         var remaining = axisTotal;
         List<int>? starIndices = null;
         var totalWeight = 0d;
@@ -436,6 +447,7 @@ public sealed class Dock: Container
             }
             else
             {
+                limitBases[index] = remaining;
                 var border = Resolve(child, remaining, horizontal);
                 borders[index] = border;
                 remaining -= Math.Min(remaining, border.Add(margin));
@@ -446,6 +458,11 @@ public sealed class Dock: Container
 
         if (starIndices is not null && totalWeight > 0)
         {
+            foreach (var index in starIndices)
+            {
+                limitBases[index] = remaining;
+            }
+
             DistributeStarShares(starIndices, remaining, horizontal, borders);
         }
 
@@ -466,7 +483,7 @@ public sealed class Dock: Container
         foreach (var index in starIndices)
         {
             var child = Children[index];
-            var minimum = horizontal ? child.MinWidth : child.MinHeight;
+            ResolveLimits(child, pool, horizontal, out var minimum, out _);
             borders[index] = minimum;
             reserved += minimum;
         }
@@ -504,7 +521,7 @@ public sealed class Dock: Container
 
                 var child = Children[index];
                 var length = horizontal ? child.Width : child.Height;
-                var maximum = horizontal ? child.MaxWidth : child.MaxHeight;
+                ResolveLimits(child, pool, horizontal, out _, out var maximum);
 
                 cumulativeWeight += length.Value;
                 var edge = (int) Math.Round(pass * cumulativeWeight / totalWeight, MidpointRounding.AwayFromZero);
@@ -536,6 +553,23 @@ public sealed class Dock: Container
                     _ = eligible.Remove(index);
                 }
             }
+        }
+    }
+
+    private static void ResolveLimits(
+        ControlBase child,
+        int containingExtent,
+        bool horizontal,
+        out int minimum,
+        out int maximum)
+    {
+        if (horizontal)
+        {
+            child.ResolveWidthLimits(containingExtent, out minimum, out maximum);
+        }
+        else
+        {
+            child.ResolveHeightLimits(containingExtent, out minimum, out maximum);
         }
     }
 

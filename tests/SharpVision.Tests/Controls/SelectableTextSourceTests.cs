@@ -463,8 +463,8 @@ public sealed class SelectableTextSourceTests
     [Fact]
     public async Task GetSelectableTextSnapshot_WhenAutoScrollClipsChildren_OmitsClippedGeometryAsync()
     {
-        var first = new ControlText("A") { Height = Length.Cells(1), MinHeight = 1 };
-        var outside = new ControlText("B") { Height = Length.Cells(1), MinHeight = 1 };
+        var first = new ControlText("A") { Height = Length.Cells(1), MinHeight = Length.Cells(1) };
+        var outside = new ControlText("B") { Height = Length.Cells(1), MinHeight = Length.Cells(1) };
         var vertical = new Stack
         {
             AutoScroll = true,
@@ -490,7 +490,7 @@ public sealed class SelectableTextSourceTests
         var wide = new ControlText("\u754c")
         {
             Width = Length.Cells(2),
-            MinWidth = 2,
+            MinWidth = Length.Cells(2),
             Height = Length.Cells(1)
         };
         var horizontal = new Stack
@@ -520,12 +520,12 @@ public sealed class SelectableTextSourceTests
     [Fact]
     public async Task GetSelectableTextSnapshot_WhenAggregateAncestorClips_OmitsDescendantOverflowGeometryAsync()
     {
-        var first = new ControlText("A") { Height = Length.Cells(1), MinHeight = 1 };
-        var outside = new ControlText("B") { Height = Length.Cells(1), MinHeight = 1 };
+        var first = new ControlText("A") { Height = Length.Cells(1), MinHeight = Length.Cells(1) };
+        var outside = new ControlText("B") { Height = Length.Cells(1), MinHeight = Length.Cells(1) };
         var inner = new Stack
         {
             Height = Length.Cells(2),
-            MinHeight = 2,
+            MinHeight = Length.Cells(2),
             Children = { first, outside }
         };
         var outer = new Stack
@@ -643,7 +643,7 @@ public sealed class SelectableTextSourceTests
     [Fact]
     public async Task GetSelectableTextSnapshot_WhenDirectTextIsOutsideAncestorViewport_OmitsGeometryAsync()
     {
-        var target = new ControlText("Off") { Height = Length.Cells(1), MinHeight = 1 };
+        var target = new ControlText("Off") { Height = Length.Cells(1), MinHeight = Length.Cells(1) };
         var root = new Stack
         {
             AutoScroll = true,
@@ -651,7 +651,7 @@ public sealed class SelectableTextSourceTests
             ShowScrollBars = ShowScrollBars.Never,
             Children =
             {
-                new ControlText("A") { Height = Length.Cells(1), MinHeight = 1 },
+                new ControlText("A") { Height = Length.Cells(1), MinHeight = Length.Cells(1) },
                 target
             }
         };
@@ -679,7 +679,7 @@ public sealed class SelectableTextSourceTests
         {
             Text = "Edit",
             Height = Length.Cells(1),
-            MinHeight = 1
+            MinHeight = Length.Cells(1)
         };
         var root = new Stack
         {
@@ -688,7 +688,7 @@ public sealed class SelectableTextSourceTests
             ShowScrollBars = ShowScrollBars.Never,
             Children =
             {
-                new ControlText("A") { Height = Length.Cells(1), MinHeight = 1 },
+                new ControlText("A") { Height = Length.Cells(1), MinHeight = Length.Cells(1) },
                 target
             }
         };
@@ -718,7 +718,7 @@ public sealed class SelectableTextSourceTests
         var target = new ControlText("\u754c")
         {
             Width = Length.Cells(2),
-            MinWidth = 2,
+            MinWidth = Length.Cells(2),
             Height = Length.Cells(1)
         };
         var root = new Stack

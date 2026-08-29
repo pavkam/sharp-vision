@@ -388,8 +388,8 @@ public sealed class GridTests
         {
             Content = grid,
             Width = Length.Percent(75),
-            MinWidth = 48,
-            MaxWidth = 72
+            MinWidth = Length.Cells(48),
+            MaxWidth = Length.Cells(72)
         };
         var canvas = new Overlay { Children = { window } };
         var engine = new LayoutEngine();
@@ -722,7 +722,7 @@ public sealed class GridTests
     {
         var child = new ProbeControl(new Size(2, 1))
         {
-            MaxWidth = 4,
+            MaxWidth = Length.Cells(4),
             HorizontalAlignment = HorizontalAlignment.Center
         };
         var grid = new Grid { Columns = { Track.Star(1) }, Children = { child } };
@@ -730,6 +730,26 @@ public sealed class GridTests
         new LayoutEngine().Layout(grid, new Size(20, 1));
 
         child.Bounds.ShouldBe(new Rect(8, 0, 4, 1));
+    }
+
+    /// <summary>Verifies a filled Grid child resolves its percentage ceiling from the complete
+    /// current cell and re-resolves it after parent resize.</summary>
+    [Fact]
+    public void Layout_WhenFilledChildMaximumIsRelative_ReflowsWithinCell()
+    {
+        var child = new ProbeControl(new Size(2, 1))
+        {
+            MaxWidth = Length.Percent(50),
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        var grid = new Grid { Columns = { Track.Star(1) }, Children = { child } };
+        var engine = new LayoutEngine();
+
+        engine.Layout(grid, new Size(20, 1));
+        child.Bounds.ShouldBe(new Rect(5, 0, 10, 1));
+
+        engine.Layout(grid, new Size(40, 1));
+        child.Bounds.ShouldBe(new Rect(10, 0, 20, 1));
     }
 
     /// <summary>Verifies a Percent row inside an AutoScroll Grid resolves against the viewport,
@@ -1103,8 +1123,8 @@ public sealed class GridTests
         {
             AutoSize = true,
             AutoScroll = true,
-            MaxWidth = 5,
-            MaxHeight = 4
+            MaxWidth = Length.Cells(5),
+            MaxHeight = Length.Cells(4)
         };
         container.Children.Add(new ProbeControl(new Size(5, 10)));
         var grid = new Grid { AutoSize = true };

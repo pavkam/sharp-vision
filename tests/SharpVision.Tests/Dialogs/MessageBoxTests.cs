@@ -33,6 +33,25 @@ public sealed class MessageBoxTests
         messageBox.Buttons.ShouldBe(MessageBoxButtons.YesNoCancel);
     }
 
+    /// <summary>Verifies a dialog honors a responsive inherited width ceiling across parent
+    /// resize while retaining its centered placement.</summary>
+    [Fact]
+    public void Layout_WhenMaximumWidthIsRelative_ReflowsDialogAcrossViewportSizes()
+    {
+        using var messageBox = new MessageBox(new string('x', 100))
+        {
+            MinWidth = Length.Cells(0),
+            MaxWidth = Length.Percent(50)
+        };
+        var engine = new LayoutEngine();
+
+        engine.Layout(messageBox, new Size(40, 20));
+        messageBox.Bounds.Width.ShouldBe(20);
+
+        engine.Layout(messageBox, new Size(80, 20));
+        messageBox.Bounds.Width.ShouldBe(40);
+    }
+
     /// <summary>Verifies direct and ancestor-inherited disablement both resolve through
     /// EffectiveIsEnabled without requiring a mounted surface, and re-enabling restores it -
     /// the detached counterpart to the mounted disabled-appearance evidence below.</summary>

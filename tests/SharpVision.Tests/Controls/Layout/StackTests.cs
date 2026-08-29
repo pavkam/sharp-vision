@@ -417,8 +417,8 @@ public sealed class StackTests
         var constrained = new ProbeControl(new Size(2, 1))
         {
             Height = Length.Star(1),
-            MinHeight = 3,
-            MaxHeight = 5
+            MinHeight = Length.Cells(3),
+            MaxHeight = Length.Cells(5)
         };
 
         var @fixed = new ProbeControl(new Size(2, 2));

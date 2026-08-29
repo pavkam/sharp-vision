@@ -42,7 +42,7 @@ public sealed class Menu: ItemsControl
     /// <summary>Initializes an empty horizontal menu with typed managed items and a 10-cell minimum width.</summary>
     public Menu()
     {
-        MinWidth = 10;
+        MinWidth = Length.Cells(10);
         _stack = new LayoutStack { Orientation = Orientation.Horizontal, Spacing = 0 };
         InitializeItemsHost(_stack);
         _propertyOverrides = new RetainedPropertyOverrideService(this, ItemControlsSlot);

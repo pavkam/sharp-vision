@@ -27,8 +27,8 @@ totals apply that rule from left to right.
 | Member                  | Type                  | Default              | Description                                                                              |
 | ----------------------- | --------------------- | -------------------- | ---------------------------------------------------------------------------------------- |
 | `Width`, `Height`       | `Length`              | `Length.Auto`        | Requested border-box dimensions.                                                         |
-| `MinWidth`, `MinHeight` | `int`                 | `0`                  | Non-negative border-box floors; each must not exceed its maximum.                        |
-| `MaxWidth`, `MaxHeight` | `int`                 | `int.MaxValue`       | Non-negative border-box ceilings; each must not be below its minimum.                    |
+| `MinWidth`, `MinHeight` | `Length`              | `Length.Cells(0)`    | Cell or percentage border-box floors.                                                    |
+| `MaxWidth`, `MaxHeight` | `Length?`             | `null`               | Cell or percentage border-box ceilings; null means unbounded.                            |
 | `HorizontalAlignment`   | `HorizontalAlignment` | `Left`               | Placement in the parent's final horizontal slot.                                         |
 | `VerticalAlignment`     | `VerticalAlignment`   | `Stretch`            | Placement in the parent's final vertical slot.                                           |
 | `Margin`                | `Thickness`           | all edges `0`        | External, non-collapsing cells reserved by the parent and never painted by this control. |
@@ -47,6 +47,16 @@ the constructor throws `OverflowException` before the value is created.
 `Length` and the complete measure/arrange algorithm are specified by
 [Layout](layout.md#overview). Border appearance and shadow overflow are
 specified by [Intrinsic chrome](intrinsic-chrome.md#overview).
+
+Limits accept only `Length.Cells(...)` and `Length.Percent(...)`; `Auto` and
+`Star` would depend on the size they constrain and are rejected before state
+changes. Percentage limits use the same containing border-box axis as the
+corresponding `Width` or `Height`, before margin deflation. A percentage minimum
+is zero and a percentage maximum is unbounded while that axis is unbounded
+during measure. Both resolve again from the final containing axis during
+arrange. If differently expressed limits cross only after resolution, the
+resolved minimum wins; the containing slot still wins over both so tiny
+viewports remain contained.
 
 ## Measure and arrange
 

@@ -90,7 +90,7 @@ public sealed class MenuSurfaceTests
         await surface.Pointer.ClickAsync(help);
 
         // Assert
-        submenu.MinWidth.ShouldBe(10);
+        submenu.MinWidth.ShouldBe(Length.Cells(10));
         submenu.Bounds.Width.ShouldBe(10);
         popup.SurfaceBounds.Width.ShouldBe(12);
         surface.ShouldRender("""
@@ -110,8 +110,8 @@ public sealed class MenuSurfaceTests
         var submenu = new Menu
         {
             Orientation = Orientation.Vertical,
-            MinWidth = 14,
-            MaxWidth = 18
+            MinWidth = Length.Cells(14),
+            MaxWidth = Length.Cells(18)
         };
         submenu.Items.Add(new MenuItem { Text = "About" });
         var help = new MenuItem { Text = "Help", Submenu = submenu };
@@ -139,8 +139,8 @@ public sealed class MenuSurfaceTests
         var submenu = new Menu
         {
             Orientation = Orientation.Vertical,
-            MinWidth = 0,
-            MaxWidth = 6
+            MinWidth = Length.Cells(0),
+            MaxWidth = Length.Cells(6)
         };
         submenu.Items.Add(new MenuItem { Text = "Documentation" });
         var help = new MenuItem { Text = "Help", Submenu = submenu };
@@ -158,6 +158,33 @@ public sealed class MenuSurfaceTests
         // Assert
         submenu.Bounds.Width.ShouldBe(6);
         popup.SurfaceBounds.Width.ShouldBe(8);
+    }
+
+    /// <summary>Verifies a submenu percentage ceiling resolves from the popup's available
+    /// interior width rather than recursively from its already-clipped arranged width.</summary>
+    [Fact]
+    public async Task Submenu_WhenMaximumWidthIsRelative_ClampsAgainstPopupAvailabilityAsync()
+    {
+        var submenu = new Menu
+        {
+            Orientation = Orientation.Vertical,
+            MinWidth = Length.Cells(0),
+            MaxWidth = Length.Percent(50)
+        };
+        submenu.Items.Add(new MenuItem { Text = "Documentation" });
+        var help = new MenuItem { Text = "Help", Submenu = submenu };
+        var menu = new Menu();
+        menu.Items.Add(help);
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(24, 5),
+            TestContext.Current.CancellationToken);
+        var popup = OwnedTree.Find<Popup>(help).ShouldNotBeNull();
+
+        await surface.Pointer.ClickAsync(help);
+
+        submenu.Bounds.Width.ShouldBe(11);
+        popup.SurfaceBounds.Width.ShouldBe(13);
     }
 
     /// <summary>Verifies changing the inherited minimum remeasures an already-open submenu surface.</summary>
@@ -179,7 +206,7 @@ public sealed class MenuSurfaceTests
         popup.SurfaceBounds.Width.ShouldBe(12);
 
         // Act
-        await surface.UpdateAsync(() => submenu.MinWidth = 14, "increase open submenu minimum width");
+        await surface.UpdateAsync(() => submenu.MinWidth = Length.Cells(14), "increase open submenu minimum width");
 
         // Assert
         submenu.Bounds.Width.ShouldBe(14);
@@ -922,7 +949,7 @@ public sealed class MenuSurfaceTests
         // Arrange
         var withAffix = new MenuItem { Text = "Go", StartAffix = new Affix(">") };
         var plain = new MenuItem { Text = "Stop" };
-        var menu = new Menu { Orientation = Orientation.Vertical, MinWidth = 10 };
+        var menu = new Menu { Orientation = Orientation.Vertical, MinWidth = Length.Cells(10) };
         menu.Items.Add(withAffix);
         menu.Items.Add(plain);
 

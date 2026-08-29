@@ -70,8 +70,8 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         CanMove = true;
         Width = Length.Percent(80);
         Height = Length.Percent(80);
-        MaxWidth = 96;
-        MaxHeight = maxVisibleRows.Add(nonListWindowRows);
+        MaxWidth = Length.Cells(96);
+        MaxHeight = Length.Cells(maxVisibleRows.Add(nonListWindowRows));
         HorizontalAlignment = HorizontalAlignment.Center;
         VerticalAlignment = VerticalAlignment.Center;
         CurrentDirectory = FileSystem.GetFullPath(initialDirectory);
@@ -96,7 +96,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
-            MaxHeight = maxVisibleRows,
+            MaxHeight = Length.Cells(maxVisibleRows),
             SelectionMode = selectionMode,
             ItemTemplate = CreateEntryContent,
             ItemInvocation = ListItemInvocation.DoubleClick
@@ -105,7 +105,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
-            MaxHeight = maxVisibleRows.Add(_listChromeRows),
+            MaxHeight = Length.Cells(maxVisibleRows.Add(_listChromeRows)),
             Children = { FileList }
         };
         _filterPicker = new ComboBox
@@ -448,10 +448,11 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
             VerticalAlignment = VerticalAlignment.Stretch
         };
         listArea.Columns.Add(Track.Star(1, minimum: 8));
+        var maximumListHeight = (int) FileListSurface.MaxHeight!.Value.Value;
         listArea.Rows.Add(Track.Star(
             1,
-            minimum: Math.Min(5, FileListSurface.MaxHeight),
-            maximum: FileListSurface.MaxHeight));
+            minimum: Math.Min(5, maximumListHeight),
+            maximum: maximumListHeight));
         listArea.Rows.Add(Track.Auto(minimum: 3));
         Grid.SetRow(metadata, 1);
         listArea.Children.Add(FileListSurface);

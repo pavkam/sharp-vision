@@ -187,10 +187,10 @@ public sealed class ControlBaseTests
 
         control.Width.ShouldBe(Length.Auto);
         control.Height.ShouldBe(Length.Auto);
-        control.MinWidth.ShouldBe(0);
-        control.MinHeight.ShouldBe(0);
-        control.MaxWidth.ShouldBe(int.MaxValue);
-        control.MaxHeight.ShouldBe(int.MaxValue);
+        control.MinWidth.ShouldBe(Length.Cells(0));
+        control.MinHeight.ShouldBe(Length.Cells(0));
+        control.MaxWidth.ShouldBeNull();
+        control.MaxHeight.ShouldBeNull();
         control.Margin.ShouldBe(default);
         control.Padding.ShouldBe(default);
         control.Face.Background.ShouldBe(SemanticColor.Control);
@@ -232,16 +232,114 @@ public sealed class ControlBaseTests
     [Fact]
     public void ConstraintSetter_WhenValueIsInvalid_ThrowsBeforeMutation()
     {
-        var control = new ProbeControl { MinWidth = 3, MaxHeight = 8 };
+        var control = new ProbeControl { MinWidth = Length.Cells(3), MaxHeight = Length.Cells(8) };
 
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.MinWidth = -1);
-        _ = Should.Throw<ArgumentException>(() => control.MaxWidth = 2);
-        _ = Should.Throw<ArgumentException>(() => control.MinHeight = 9);
+        _ = Should.Throw<ArgumentException>(() => control.MinWidth = Length.Auto);
+        _ = Should.Throw<ArgumentException>(() => control.MaxWidth = Length.Star(1));
+        _ = Should.Throw<ArgumentException>(() => control.MinHeight = Length.Cells(9));
 
-        control.MinWidth.ShouldBe(3);
-        control.MaxWidth.ShouldBe(int.MaxValue);
-        control.MinHeight.ShouldBe(0);
-        control.MaxHeight.ShouldBe(8);
+        control.MinWidth.ShouldBe(Length.Cells(3));
+        control.MaxWidth.ShouldBeNull();
+        control.MinHeight.ShouldBe(Length.Cells(0));
+        control.MaxHeight.ShouldBe(Length.Cells(8));
+    }
+
+    /// <summary>Verifies every limit rejects kinds whose intrinsic or proportional meaning would
+    /// depend on the very size the limit is trying to constrain.</summary>
+    [Fact]
+    public void ConstraintSetter_WhenKindIsAutoOrStar_RejectsEveryLimitBeforeMutation()
+    {
+        var control = new ProbeControl();
+
+        _ = Should.Throw<ArgumentException>(() => control.MinWidth = Length.Auto);
+        _ = Should.Throw<ArgumentException>(() => control.MinHeight = Length.Star(1));
+        _ = Should.Throw<ArgumentException>(() => control.MaxWidth = Length.Auto);
+        _ = Should.Throw<ArgumentException>(() => control.MaxHeight = Length.Star(1));
+
+        control.MinWidth.ShouldBe(Length.Cells(0));
+        control.MinHeight.ShouldBe(Length.Cells(0));
+        control.MaxWidth.ShouldBeNull();
+        control.MaxHeight.ShouldBeNull();
+    }
+
+    /// <summary>Verifies percentage limits re-resolve against each containing viewport and a
+    /// resolved minimum wins when unlike authored limits cross after resizing.</summary>
+    [Theory]
+    [InlineData(20, 16)]
+    [InlineData(40, 20)]
+    public void Layout_WhenLimitsAreRelative_ResolvesAgainstCurrentContainingExtent(
+        int viewportWidth,
+        int expectedWidth)
+    {
+        var control = new ProbeControl(new Size(100, 1))
+        {
+            MinWidth = Length.Percent(50),
+            MaxWidth = Length.Cells(16),
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
+
+        new LayoutEngine().Layout(control, new Size(viewportWidth, 3));
+
+        control.Bounds.Width.ShouldBe(expectedWidth);
+    }
+
+    /// <summary>Verifies an unbounded measurement does not turn a percentage maximum into a
+    /// fabricated cell ceiling before a containing extent exists.</summary>
+    [Fact]
+    public void Measure_WhenPercentageMaximumIsUnbounded_PreservesIntrinsicDesiredSize()
+    {
+        var control = new ProbeControl(new Size(30, 4))
+        {
+            MaxWidth = Length.Percent(50),
+            MaxHeight = Length.Percent(50)
+        };
+
+        control.Measure(new Constraint(null, null));
+
+        control.DesiredSize.ShouldBe(new Size(30, 4));
+    }
+
+    /// <summary>Verifies arrange resolves percentages from its final slot instead of retaining
+    /// the earlier measure constraint's result.</summary>
+    [Fact]
+    public void Arrange_WhenSlotChangesAfterMeasure_ReresolvesPercentageMaximum()
+    {
+        var control = new ProbeControl(new Size(100, 4))
+        {
+            MaxWidth = Length.Percent(50),
+            MaxHeight = Length.Percent(50)
+        };
+        control.Measure(new Constraint(80, 20));
+
+        control.Arrange(new Rect(0, 0, 20, 6));
+
+        control.Bounds.ShouldBe(new Rect(0, 0, 10, 3));
+    }
+
+    /// <summary>Verifies percentage constraints remain deterministic and contained across tiny
+    /// and ordinary bounds, including margin and inset geometry.</summary>
+    [Fact]
+    public void Layout_WhenPercentageLimitsMeetBoxGeometry_RemainsContainedAndDeterministic()
+    {
+        for (var viewportWidth = 0; viewportWidth <= 64; viewportWidth++)
+        {
+            var control = new ProbeControl(new Size(100, 1))
+            {
+                MinWidth = Length.Percent(25),
+                MaxWidth = Length.Percent(60),
+                Margin = new Thickness(1),
+                Padding = new Thickness(1),
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+
+            new LayoutEngine().Layout(control, new Size(viewportWidth, 5));
+            var first = control.Bounds;
+            new LayoutEngine().Layout(control, new Size(viewportWidth, 5));
+
+            control.Bounds.ShouldBe(first);
+            control.Bounds.X.ShouldBeGreaterThanOrEqualTo(0);
+            control.Bounds.Right.ShouldBeLessThanOrEqualTo(viewportWidth);
+        }
     }
 
     /// <summary>Verifies each property requests only its required phase closure.</summary>

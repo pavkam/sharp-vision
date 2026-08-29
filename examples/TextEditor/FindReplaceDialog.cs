@@ -101,8 +101,8 @@ internal sealed class FindReplaceDialog: IDisposable
                 Color.Transparent,
                 SemanticDecoration.Shadow),
             Width = Length.Percent(60),
-            MinWidth = 50,
-            MaxWidth = 58,
+            MinWidth = Length.Cells(50),
+            MaxWidth = Length.Cells(58),
             Height = Length.Auto,
             Visibility = Visibility.Collapsed,
             Content = content

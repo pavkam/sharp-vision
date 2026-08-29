@@ -91,7 +91,7 @@ internal sealed class ControlPane: CompositeControlBase
                     "Every length kind",
                     "Resize the showcase to watch intrinsic, fixed, percentage, and remaining-space requests resolve independently.",
                     lengths,
-                    "control.Width = Length.Percent(50);\ncontrol.MinWidth = 18;\ncontrol.MaxWidth = 30;")),
+                    "control.Width = Length.Percent(50);\ncontrol.MinWidth = Length.Percent(30);\ncontrol.MaxWidth = Length.Percent(70);")),
             new DocSection(
                 "↔️",
                 "Alignment",
@@ -156,8 +156,8 @@ internal sealed class ControlPane: CompositeControlBase
         var sample = new Dock
         {
             Width = Length.Percent(80),
-            MinWidth = 18,
-            MaxWidth = 30,
+            MinWidth = Length.Percent(30),
+            MaxWidth = Length.Percent(70),
             Height = Length.Cells(3),
             Border = new Border(
                 BorderSide.All,
@@ -166,9 +166,9 @@ internal sealed class ControlPane: CompositeControlBase
                 Color.Transparent,
                 SemanticDecoration.Border),
             Padding = new Thickness(1, 0),
-            Children = { new Text("Percent(80), clamped 18…30") }
+            Children = { new Text("Percent(80), clamped 30%…70%") }
         };
-        return new DocColumn(new Text("MinWidth and MaxWidth"), sample);
+        return new DocColumn(new Text("Relative MinWidth and MaxWidth"), sample);
     }
 
     private static Overlay CreateHorizontalAlignmentSample(HorizontalAlignment alignment)

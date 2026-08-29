@@ -427,7 +427,7 @@ public sealed class ContentControlTests
     [Fact]
     public void Measure_WhenMaxWidthAndMaxHeightAreSet_ClampsTheContentConstraint()
     {
-        var probe = new ProbeControl { MaxWidth = 10, MaxHeight = 3 };
+        var probe = new ProbeControl { MaxWidth = Length.Cells(10), MaxHeight = Length.Cells(3) };
 
         probe.Measure(new Constraint(40, 40));
 
@@ -445,8 +445,8 @@ public sealed class ContentControlTests
         {
             Width = Length.Cells(4),
             Height = Length.Cells(2),
-            MinWidth = 10,
-            MinHeight = 5
+            MinWidth = Length.Cells(10),
+            MinHeight = Length.Cells(5)
         };
 
         probe.Measure(new Constraint(40, 40));
@@ -467,7 +467,7 @@ public sealed class ContentControlTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
-        var content = new ProbeControl(new Size(30, 6)) { MaxWidth = 10, MaxHeight = 3 };
+        var content = new ProbeControl(new Size(30, 6)) { MaxWidth = Length.Cells(10), MaxHeight = Length.Cells(3) };
         owner.Content = content;
 
         new LayoutEngine().Layout(owner, new Size(40, 12));
@@ -487,7 +487,7 @@ public sealed class ContentControlTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
-        var content = new ProbeControl(new Size(2, 1)) { MinWidth = 15, MinHeight = 4 };
+        var content = new ProbeControl(new Size(2, 1)) { MinWidth = Length.Cells(15), MinHeight = Length.Cells(4) };
         owner.Content = content;
 
         new LayoutEngine().Layout(owner, new Size(6, 2));

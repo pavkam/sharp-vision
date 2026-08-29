@@ -135,7 +135,7 @@ internal sealed class DockPane: CompositeControlBase
 
         var reserving = Card("24 min + 8 share", BorderGlyphStyle.Light);
         reserving.Width = Length.Star(1);
-        reserving.MinWidth = 24;
+        reserving.MinWidth = Length.Cells(24);
         Dock.SetSide(reserving, DockSide.Left);
         starMinimum.Children.Add(reserving);
 

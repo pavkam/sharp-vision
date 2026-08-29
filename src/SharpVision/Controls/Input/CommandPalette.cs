@@ -44,7 +44,7 @@ public sealed class CommandPalette: CompositeControlBase
         _list = new ListView
         {
             IsTabStop = false,
-            MaxHeight = _defaultDropDownHeight,
+            MaxHeight = Length.Cells(_defaultDropDownHeight),
             SelectionMode = ListSelectionMode.Single
         };
         _list.ItemActivationStarting += OnItemActivationStarting;
@@ -382,18 +382,18 @@ public sealed class CommandPalette: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public int DropDownHeight
     {
-        get => _list.MaxHeight;
+        get => (int) _list.MaxHeight!.Value.Value;
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
             VerifyMutable();
 
-            if (_list.MaxHeight == value)
+            if (_list.MaxHeight == Length.Cells(value))
             {
                 return;
             }
 
-            _list.MaxHeight = value;
+            _list.MaxHeight = Length.Cells(value);
             NotifyPropertyChanged(nameof(DropDownHeight), InvalidationImpact.None);
         }
     }

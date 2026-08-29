@@ -88,17 +88,20 @@ corner's starting position — so, just as a title drag does, a resize converts
 the window to an explicitly positioned one, regardless of whatever alignment or
 `Right`/`Bottom` anchoring placed it beforehand. The result is clamped to
 `MinWidth`/`MaxWidth`, `MinHeight`/`MaxHeight`, and the parent content bounds.
-The corner hit is checked before the title-bar hit, so a minimum-height window
-resizes rather than drags when the two targets coincide. Only the bottom-right
-corner is an interactive target; the other three corners and the four edges are
-not resize handles. Setting `CanResize` to false during a gesture ends it;
-release, pointer leave, capture loss, disable, hide, detach, or disposal do the
-same. Width, height, and origin commits revalidate permission, active capture,
-parent, dimensions, and four overlay anchors after each observable setter. A
-callback that ends the gesture or makes a newer sizing or anchoring decision
-therefore stops the remaining stale resize writes. Resize arithmetic widens
-accepted pointer coordinates before addition, so an extreme outward cell clamps
-to the authored and parent maximum instead of wrapping inward.
+Cell and percentage limits share the ordinary layout contract; each pointer move
+resolves percentage limits from the current parent content extent, so a resized
+parent immediately changes the interactive floor or ceiling. The corner hit is
+checked before the title-bar hit, so a minimum-height window resizes rather than
+drags when the two targets coincide. Only the bottom-right corner is an
+interactive target; the other three corners and the four edges are not resize
+handles. Setting `CanResize` to false during a gesture ends it; release, pointer
+leave, capture loss, disable, hide, detach, or disposal do the same. Width,
+height, and origin commits revalidate permission, active capture, parent,
+dimensions, and four overlay anchors after each observable setter. A callback
+that ends the gesture or makes a newer sizing or anchoring decision therefore
+stops the remaining stale resize writes. Resize arithmetic widens accepted
+pointer coordinates before addition, so an extreme outward cell clamps to the
+authored and parent maximum instead of wrapping inward.
 
 ## Chrome and interaction
 

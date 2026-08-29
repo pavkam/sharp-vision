@@ -893,8 +893,10 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             var deltaY = (long) cells.Y - _resizePointerOrigin.Y;
             var clientBounds = Parent?.ContentBounds ?? default;
             var (floorWidth, floorHeight) = ChromeResizeFloor();
-            var minWidth = Math.Max(MinWidth, floorWidth);
-            var minHeight = Math.Max(MinHeight, floorHeight);
+            ResolveWidthLimits(clientBounds.Width, out var authoredMinimumWidth, out var authoredMaximumWidth);
+            ResolveHeightLimits(clientBounds.Height, out var authoredMinimumHeight, out var authoredMaximumHeight);
+            var minWidth = Math.Max(authoredMinimumWidth, floorWidth);
+            var minHeight = Math.Max(authoredMinimumHeight, floorHeight);
             var maximumWidth = Math.Max(minWidth, clientBounds.Width - _resizeWindowPosition.X);
             var maximumHeight = Math.Max(minHeight, clientBounds.Height - _resizeWindowPosition.Y);
             // MaxWidth/MaxHeight are validated only against MinWidth/MinHeight (which default to
@@ -906,11 +908,11 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             var width = (int) Math.Clamp(
                 _resizeWindowOrigin.Width + deltaX,
                 minWidth,
-                Math.Max(minWidth, Math.Min(MaxWidth, maximumWidth)));
+                Math.Max(minWidth, Math.Min(authoredMaximumWidth, maximumWidth)));
             var height = (int) Math.Clamp(
                 _resizeWindowOrigin.Height + deltaY,
                 minHeight,
-                Math.Max(minHeight, Math.Min(MaxHeight, maximumHeight)));
+                Math.Max(minHeight, Math.Min(authoredMaximumHeight, maximumHeight)));
             var targetWidth = Length.Cells(width);
             var targetHeight = Length.Cells(height);
             var targetLeft = Length.Cells(_resizeWindowPosition.X);

@@ -330,77 +330,77 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         }
     }
 
-    /// <summary>Gets or sets the non-negative minimum border-box width.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="ArgumentException">The value exceeds <see cref="MaxWidth"/>.</exception>
+    /// <summary>Gets or sets the minimum border-box width in cells or as a percentage of the containing width.</summary>
+    /// <remarks>When differently expressed limits cross after resolution, the minimum wins.</remarks>
+    /// <exception cref="ArgumentException">The value is Auto, Star, or exceeds a comparable <see cref="MaxWidth"/>.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    [NonNegativeValue]
-    public int MinWidth
+    public Length MinWidth
     {
         get;
         set
         {
-            ArgumentOutOfRangeException.ThrowIfNegative(value);
-            ArgumentException.ThrowIfAboveMaximum(value, MaxWidth, nameof(value), "Minimum width cannot exceed maximum width.");
+            ValidateLimit(value, nameof(value));
+            ValidateLimitOrder(value, MaxWidth, nameof(value), "Minimum width cannot exceed maximum width.");
+
+            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        }
+    } = Length.Cells(0);
+
+    /// <summary>Gets or sets the minimum border-box height in cells or as a percentage of the containing height.</summary>
+    /// <remarks>When differently expressed limits cross after resolution, the minimum wins.</remarks>
+    /// <exception cref="ArgumentException">The value is Auto, Star, or exceeds a comparable <see cref="MaxHeight"/>.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Length MinHeight
+    {
+        get;
+        set
+        {
+            ValidateLimit(value, nameof(value));
+            ValidateLimitOrder(value, MaxHeight, nameof(value), "Minimum height cannot exceed maximum height.");
+
+            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        }
+    } = Length.Cells(0);
+
+    /// <summary>Gets or sets the maximum border-box width, or null for no authored maximum.</summary>
+    /// <exception cref="ArgumentException">The value is Auto, Star, or is below a comparable <see cref="MinWidth"/>.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Length? MaxWidth
+    {
+        get;
+        set
+        {
+            if (value is { } limit)
+            {
+                ValidateLimit(limit, nameof(value));
+                ValidateLimitOrder(MinWidth, limit, nameof(value), "Maximum width cannot be below minimum width.");
+            }
 
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     }
 
-    /// <summary>Gets or sets the non-negative minimum border-box height.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="ArgumentException">The value exceeds <see cref="MaxHeight"/>.</exception>
+    /// <summary>Gets or sets the maximum border-box height, or null for no authored maximum.</summary>
+    /// <exception cref="ArgumentException">The value is Auto, Star, or is below a comparable <see cref="MinHeight"/>.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    [NonNegativeValue]
-    public int MinHeight
+    public Length? MaxHeight
     {
         get;
         set
         {
-            ArgumentOutOfRangeException.ThrowIfNegative(value);
-            ArgumentException.ThrowIfAboveMaximum(value, MaxHeight, nameof(value), "Minimum height cannot exceed maximum height.");
+            if (value is { } limit)
+            {
+                ValidateLimit(limit, nameof(value));
+                ValidateLimitOrder(MinHeight, limit, nameof(value), "Maximum height cannot be below minimum height.");
+            }
 
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     }
-
-    /// <summary>Gets or sets the maximum border-box width.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="ArgumentException">The value is below <see cref="MinWidth"/>.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    [NonNegativeValue]
-    public int MaxWidth
-    {
-        get;
-        set
-        {
-            ArgumentOutOfRangeException.ThrowIfNegative(value);
-            ArgumentException.ThrowIfBelowMinimum(value, MinWidth, nameof(value), "Maximum width cannot be below minimum width.");
-
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
-        }
-    } = int.MaxValue;
-
-    /// <summary>Gets or sets the maximum border-box height.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="ArgumentException">The value is below <see cref="MinHeight"/>.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    [NonNegativeValue]
-    public int MaxHeight
-    {
-        get;
-        set
-        {
-            ArgumentOutOfRangeException.ThrowIfNegative(value);
-            ArgumentException.ThrowIfBelowMinimum(value, MinHeight, nameof(value), "Maximum height cannot be below minimum height.");
-
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
-        }
-    } = int.MaxValue;
 
     /// <summary>Gets or sets horizontal placement within the arranged slot.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -931,13 +931,17 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     private bool LastHeightResolved { get; set; }
 
+    private int? LastWidthLimitBase { get; set; }
+
+    private int? LastHeightLimitBase { get; set; }
+
     private bool IsMeasuring { get; set; }
 
     private protected bool IsArranging { get; set; }
 
     /// <summary>
     /// Children whose upward Arrange propagation was swallowed while this control was arranging
-    /// them, recorded so <see cref="Arrange(Rect, bool, bool)"/> can re-run that propagation for
+    /// them, recorded so <see cref="Arrange(Rect, bool, bool, int?, int?)"/> can re-run that propagation for
     /// any child the transaction did not actually arrange. Lazily allocated - the overwhelming
     /// majority of arranges never swallow anything - and cleared at the end of every arrange.
     /// </summary>
@@ -1230,7 +1234,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             var contentConstraint = OnMeasuringContent(CreateContentConstraint(constraint));
             var content = MeasureOverride(contentConstraint);
             ContentExtent = content;
-            var desired = OnMeasuredDesired(ResolveDesiredSize(constraint, content));
+            var desired = OnMeasuredDesired(constraint, ResolveDesiredSize(constraint, content));
 
             DesiredSize = desired;
             LastMeasureConstraint = constraint;
@@ -1259,11 +1263,18 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="slot">The final non-negative outer rectangle including margin.</param>
     /// <param name="widthResolved">Whether the parent already resolved the border-box width.</param>
     /// <param name="heightResolved">Whether the parent already resolved the border-box height.</param>
+    /// <param name="widthLimitBase">The containing width used when the parent resolved relative limits.</param>
+    /// <param name="heightLimitBase">The containing height used when the parent resolved relative limits.</param>
     /// <exception cref="InvalidOperationException">
     /// The attached control is accessed off-dispatcher or arrange is reentered.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    internal void Arrange(Rect slot, bool widthResolved, bool heightResolved)
+    internal void Arrange(
+        Rect slot,
+        bool widthResolved,
+        bool heightResolved,
+        int? widthLimitBase = null,
+        int? heightLimitBase = null)
     {
         VerifyMutable();
 
@@ -1275,7 +1286,9 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         if ((Pending & Invalidation.Arrange) == 0 &&
             LastArrangeSlot == slot &&
             LastWidthResolved == widthResolved &&
-            LastHeightResolved == heightResolved)
+            LastHeightResolved == heightResolved &&
+            LastWidthLimitBase == widthLimitBase &&
+            LastHeightLimitBase == heightLimitBase)
         {
             return;
         }
@@ -1291,34 +1304,38 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 LastArrangeSlot = slot;
                 LastWidthResolved = widthResolved;
                 LastHeightResolved = heightResolved;
+                LastWidthLimitBase = widthLimitBase;
+                LastHeightLimitBase = heightLimitBase;
                 return;
             }
 
             var available = Margin.Deflate(slot);
+            ResolveWidthLimits(widthLimitBase ?? slot.Width, out var minimumWidth, out var maximumWidth);
+            ResolveHeightLimits(heightLimitBase ?? slot.Height, out var minimumHeight, out var maximumHeight);
             var width = widthResolved
-                ? Math.Min(available.Width, Math.Clamp(available.Width, MinWidth, MaxWidth))
+                ? Math.Min(available.Width, Math.Clamp(available.Width, minimumWidth, maximumWidth))
                 : ShrinkWrapsWidth
-                    ? Math.Min(available.Width, Math.Clamp(DesiredSize.Width, MinWidth, MaxWidth))
+                    ? Math.Min(available.Width, Math.Clamp(DesiredSize.Width, minimumWidth, maximumWidth))
                     : ResolveArrangeAxis(
                         Width,
                         HorizontalAlignment == HorizontalAlignment.Stretch,
                         slot.Width,
                         available.Width,
                         DesiredSize.Width,
-                        MinWidth,
-                        MaxWidth);
+                        minimumWidth,
+                        maximumWidth);
             var height = heightResolved
-                ? Math.Min(available.Height, Math.Clamp(available.Height, MinHeight, MaxHeight))
+                ? Math.Min(available.Height, Math.Clamp(available.Height, minimumHeight, maximumHeight))
                 : ShrinkWrapsHeight
-                    ? Math.Min(available.Height, Math.Clamp(DesiredSize.Height, MinHeight, MaxHeight))
+                    ? Math.Min(available.Height, Math.Clamp(DesiredSize.Height, minimumHeight, maximumHeight))
                     : ResolveArrangeAxis(
                         Height,
                         VerticalAlignment == VerticalAlignment.Stretch,
                         slot.Height,
                         available.Height,
                         DesiredSize.Height,
-                        MinHeight,
-                        MaxHeight);
+                        minimumHeight,
+                        maximumHeight);
             var x = Align(available.X, available.Width, width, HorizontalAlignment);
             var y = Align(available.Y, available.Height, height, VerticalAlignment);
             var bounds = new Rect(x, y, width, height);
@@ -1328,6 +1345,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             LastArrangeSlot = slot;
             LastWidthResolved = widthResolved;
             LastHeightResolved = heightResolved;
+            LastWidthLimitBase = widthLimitBase;
+            LastHeightLimitBase = heightLimitBase;
             var content = Padding.Deflate(BorderInset.Deflate(bounds));
             ArrangeOverride(ResolveContentSlot(content));
             ArrangeOverlays(content);
@@ -1671,7 +1690,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <see cref="SwallowedArrangeChildren"/>.</summary>
     /// <remarks>
     /// For a caller that already knows it is about to <see cref="Measure"/> and/or
-    /// <see cref="Arrange(Rect, bool, bool)"/> this exact control synchronously afterward, and only
+    /// <see cref="Arrange(Rect, bool, bool, int?, int?)"/> this exact control synchronously afterward, and only
     /// needs to bypass those methods' own unchanged-constraint/slot short-circuit rather than
     /// schedule a fresh ancestor layout pass. <see cref="Invalidate(Invalidation)"/> would do both:
     /// it walks up through <paramref name="value"/>'s dependents on <em>every</em> control from here
@@ -1686,7 +1705,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     ///
     /// The caller owns the contract this leaves unenforced: <see cref="Pending"/> is set exactly as
     /// if <see cref="Invalidate(Invalidation)"/> ran, so the very next <see cref="Measure"/>/
-    /// <see cref="Arrange(Rect, bool, bool)"/> call clears it in the ordinary way - but if the
+    /// <see cref="Arrange(Rect, bool, bool, int?, int?)"/> call clears it in the ordinary way - but if the
     /// caller never makes that call, the bits strand: nothing else clears them, and nothing else
     /// ever notified an ancestor a fresh layout pass is owed.
     /// </remarks>
@@ -2652,9 +2671,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     internal virtual Constraint OnMeasuringContent(Constraint content) => content;
 
     /// <summary>Adjusts the resolved desired size after content measurement. Default returns it unchanged.</summary>
+    /// <param name="constraint">The current containing border-box constraint.</param>
     /// <param name="desired">The border-box desired size.</param>
     /// <returns>The committed desired size.</returns>
-    internal virtual Size OnMeasuredDesired(Size desired) => desired;
+    internal virtual Size OnMeasuredDesired(Constraint constraint, Size desired) => desired;
 
     /// <summary>Adjusts the border-and-padding-deflated content box before arrangement. Default returns it unchanged.</summary>
     /// <param name="padded">The border-and-padding-deflated content-box rectangle.</param>
@@ -3449,9 +3469,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         int margin,
         int inset,
         int intrinsic,
-        int minimum,
-        int maximum)
+        Length minimum,
+        Length? maximum)
     {
+        ResolveLimits(minimum, maximum, slot, out var resolvedMinimum, out var resolvedMaximum);
         var requested = length.Kind switch
         {
             LengthKind.Auto => intrinsic.SaturatingAdd(inset),
@@ -3464,7 +3485,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 : intrinsic.SaturatingAdd(inset),
             _ => throw new UnreachableException()
         };
-        var clamped = Math.Clamp(requested, minimum, maximum);
+        var clamped = Math.Clamp(requested, resolvedMinimum, resolvedMaximum);
 
         return slot.HasValue
             ? Math.Min(Math.Max(0, slot.Value - margin), clamped)
@@ -3477,9 +3498,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         int? slot,
         int margin,
         int inset,
-        int minimum,
-        int maximum)
+        Length minimum,
+        Length? maximum)
     {
+        ResolveLimits(minimum, maximum, slot, out var resolvedMinimum, out var resolvedMaximum);
         int? border = length.Kind switch
         {
             LengthKind.Auto => slot.HasValue ? Math.Max(0, slot.Value - margin) : null,
@@ -3498,8 +3520,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         // without a slot to expand into, so they are left for ResolveDesiredSize to apply to
         // the reported size after measurement.
         border = border.HasValue
-            ? Math.Clamp(border.Value, minimum, maximum)
-            : maximum == int.MaxValue ? null : maximum;
+            ? Math.Clamp(border.Value, resolvedMinimum, resolvedMaximum)
+            : resolvedMaximum == int.MaxValue ? null : resolvedMaximum;
 
         if (!border.HasValue)
         {
@@ -3508,6 +3530,67 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
         var available = slot.HasValue ? Math.Max(0, slot.Value - margin) : int.MaxValue;
         return Math.Max(0, Math.Min(border.Value, available) - inset);
+    }
+
+    /// <summary>Resolves the authored width limits against one containing border-box width.</summary>
+    /// <param name="containingWidth">The current containing width, or null during unbounded measurement.</param>
+    /// <param name="minimum">The resolved minimum in cells.</param>
+    /// <param name="maximum">The resolved maximum in cells, or <see cref="int.MaxValue"/> when unbounded.</param>
+    internal void ResolveWidthLimits(int? containingWidth, out int minimum, out int maximum) =>
+        ResolveLimits(MinWidth, MaxWidth, containingWidth, out minimum, out maximum);
+
+    /// <summary>Resolves the authored height limits against one containing border-box height.</summary>
+    /// <param name="containingHeight">The current containing height, or null during unbounded measurement.</param>
+    /// <param name="minimum">The resolved minimum in cells.</param>
+    /// <param name="maximum">The resolved maximum in cells, or <see cref="int.MaxValue"/> when unbounded.</param>
+    internal void ResolveHeightLimits(int? containingHeight, out int minimum, out int maximum) =>
+        ResolveLimits(MinHeight, MaxHeight, containingHeight, out minimum, out maximum);
+
+    [Pure]
+    private static void ResolveLimits(
+        Length minimum,
+        Length? maximum,
+        int? containingExtent,
+        out int resolvedMinimum,
+        out int resolvedMaximum)
+    {
+        resolvedMinimum = ResolveLimit(minimum, containingExtent, unboundedFallback: 0);
+        resolvedMaximum = maximum is { } authoredMaximum
+            ? ResolveLimit(authoredMaximum, containingExtent, int.MaxValue)
+            : int.MaxValue;
+
+        resolvedMaximum = Math.Max(resolvedMinimum, resolvedMaximum);
+    }
+
+    [Pure]
+    private static int ResolveLimit(Length limit, int? containingExtent, int unboundedFallback) =>
+        limit.Kind switch
+        {
+            LengthKind.Auto => throw new UnreachableException(),
+            LengthKind.Cells => (int) limit.Value,
+            LengthKind.Percent => containingExtent.HasValue
+                ? ResolvePercent(containingExtent.Value, limit.Value)
+                : unboundedFallback,
+            LengthKind.Star => throw new UnreachableException(),
+            _ => throw new UnreachableException()
+        };
+
+    private static void ValidateLimit(Length value, string paramName)
+    {
+        if (value.Kind is LengthKind.Auto or LengthKind.Star)
+        {
+            throw new ArgumentException("A layout limit must use Cells or Percent.", paramName);
+        }
+    }
+
+    private static void ValidateLimitOrder(Length minimum, Length? maximum, string paramName, string message)
+    {
+        if (maximum is { } comparableMaximum &&
+            minimum.Kind == comparableMaximum.Kind &&
+            minimum.Value > comparableMaximum.Value)
+        {
+            throw new ArgumentException(message, paramName);
+        }
     }
 
     [Pure]

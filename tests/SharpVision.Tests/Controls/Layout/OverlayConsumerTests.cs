@@ -204,7 +204,7 @@ public sealed class OverlayConsumerTests
     public void Layout_WhenOpposingOffsetsAndStarSizeBelowMinWidth_ClampsToMinWidth()
     {
         var panel = new Overlay();
-        var child = new ProbeControl(new Size(1, 1)) { Width = Length.Star(1), MinWidth = 20 };
+        var child = new ProbeControl(new Size(1, 1)) { Width = Length.Star(1), MinWidth = Length.Cells(20) };
         Overlay.SetLeft(child, Length.Cells(5));
         Overlay.SetRight(child, Length.Cells(30));
         panel.Children.Add(child);
@@ -212,6 +212,29 @@ public sealed class OverlayConsumerTests
         new LayoutEngine().Layout(panel, new Size(40, 10));
 
         child.Bounds.ShouldBe(new Rect(5, 0, 20, 10));
+    }
+
+    /// <summary>Verifies a positioned child resolves a percentage ceiling from the Overlay's
+    /// complete content axis once, then re-resolves from the resized axis.</summary>
+    [Fact]
+    public void Layout_WhenPositionedChildMaximumIsRelative_UsesOverlayExtentWithoutDoubleClamping()
+    {
+        var panel = new Overlay();
+        var child = new ProbeControl(new Size(1, 1))
+        {
+            Width = Length.Star(1),
+            MaxWidth = Length.Percent(50)
+        };
+        Overlay.SetLeft(child, Length.Cells(5));
+        Overlay.SetRight(child, Length.Cells(5));
+        panel.Children.Add(child);
+        var engine = new LayoutEngine();
+
+        engine.Layout(panel, new Size(40, 2));
+        child.Bounds.ShouldBe(new Rect(5, 0, 20, 2));
+
+        engine.Layout(panel, new Size(80, 2));
+        child.Bounds.ShouldBe(new Rect(5, 0, 40, 2));
     }
 
     /// <summary>Verifies a margined child stretched below MinWidth clamps its content box to
@@ -224,7 +247,7 @@ public sealed class OverlayConsumerTests
         var child = new ProbeControl(new Size(1, 1))
         {
             Width = Length.Star(1),
-            MinWidth = 20,
+            MinWidth = Length.Cells(20),
             Margin = new Thickness(2, 0, 2, 0)
         };
         Overlay.SetLeft(child, Length.Cells(5));
@@ -266,7 +289,7 @@ public sealed class OverlayConsumerTests
     public void Layout_WhenOpposingOffsetsAndStarSizeAboveMaxWidth_ClampsToMaxWidth()
     {
         var panel = new Overlay();
-        var child = new ProbeControl(new Size(1, 1)) { Width = Length.Star(1), MaxWidth = 10 };
+        var child = new ProbeControl(new Size(1, 1)) { Width = Length.Star(1), MaxWidth = Length.Cells(10) };
         Overlay.SetLeft(child, Length.Cells(2));
         Overlay.SetRight(child, Length.Cells(2));
         panel.Children.Add(child);
@@ -281,7 +304,7 @@ public sealed class OverlayConsumerTests
     public void Layout_WhenOpposingOffsetsAndStarSizeBelowMinHeight_ClampsToMinHeight()
     {
         var panel = new Overlay();
-        var child = new ProbeControl(new Size(1, 1)) { Height = Length.Star(1), MinHeight = 20 };
+        var child = new ProbeControl(new Size(1, 1)) { Height = Length.Star(1), MinHeight = Length.Cells(20) };
         Overlay.SetTop(child, Length.Cells(5));
         Overlay.SetBottom(child, Length.Cells(30));
         panel.Children.Add(child);
@@ -296,7 +319,7 @@ public sealed class OverlayConsumerTests
     public void Layout_WhenOpposingOffsetsAndStarSizeAboveMaxHeight_ClampsToMaxHeight()
     {
         var panel = new Overlay();
-        var child = new ProbeControl(new Size(1, 1)) { Height = Length.Star(1), MaxHeight = 10 };
+        var child = new ProbeControl(new Size(1, 1)) { Height = Length.Star(1), MaxHeight = Length.Cells(10) };
         Overlay.SetTop(child, Length.Cells(2));
         Overlay.SetBottom(child, Length.Cells(2));
         panel.Children.Add(child);
@@ -311,7 +334,7 @@ public sealed class OverlayConsumerTests
     public void Layout_WhenOpposingOffsetsAndAutoSizeBelowMinWidth_ClampsToMinWidth()
     {
         var panel = new Overlay();
-        var child = new ProbeControl(new Size(1, 1)) { MinWidth = 20 };
+        var child = new ProbeControl(new Size(1, 1)) { MinWidth = Length.Cells(20) };
         Overlay.SetLeft(child, Length.Cells(5));
         Overlay.SetRight(child, Length.Cells(30));
         panel.Children.Add(child);
@@ -326,7 +349,7 @@ public sealed class OverlayConsumerTests
     public void Layout_WhenOpposingOffsetsAndAutoSizeAboveMaxWidth_ClampsToMaxWidth()
     {
         var panel = new Overlay();
-        var child = new ProbeControl(new Size(1, 1)) { MaxWidth = 10 };
+        var child = new ProbeControl(new Size(1, 1)) { MaxWidth = Length.Cells(10) };
         Overlay.SetLeft(child, Length.Cells(2));
         Overlay.SetRight(child, Length.Cells(2));
         panel.Children.Add(child);
@@ -341,7 +364,7 @@ public sealed class OverlayConsumerTests
     public void Layout_WhenOpposingOffsetsAndAutoSizeBelowMinHeight_ClampsToMinHeight()
     {
         var panel = new Overlay();
-        var child = new ProbeControl(new Size(1, 1)) { MinHeight = 20 };
+        var child = new ProbeControl(new Size(1, 1)) { MinHeight = Length.Cells(20) };
         Overlay.SetTop(child, Length.Cells(5));
         Overlay.SetBottom(child, Length.Cells(30));
         panel.Children.Add(child);
@@ -356,7 +379,7 @@ public sealed class OverlayConsumerTests
     public void Layout_WhenOpposingOffsetsAndAutoSizeAboveMaxHeight_ClampsToMaxHeight()
     {
         var panel = new Overlay();
-        var child = new ProbeControl(new Size(1, 1)) { MaxHeight = 10 };
+        var child = new ProbeControl(new Size(1, 1)) { MaxHeight = Length.Cells(10) };
         Overlay.SetTop(child, Length.Cells(2));
         Overlay.SetBottom(child, Length.Cells(2));
         panel.Children.Add(child);

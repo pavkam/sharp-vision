@@ -106,11 +106,11 @@ public sealed class FilePickerDialogTests
         window.Header.ShouldBe("Open source");
         window.Width.ShouldBe(Length.Percent(80));
         window.Height.ShouldBe(Length.Percent(80));
-        window.MinWidth.ShouldBe(0);
-        window.MaxWidth.ShouldBe(96);
-        window.MinHeight.ShouldBe(0);
-        window.MaxHeight.ShouldBe(26);
-        list.MaxHeight.ShouldBe(7);
+        window.MinWidth.ShouldBe(Length.Cells(0));
+        window.MaxWidth.ShouldBe(Length.Cells(96));
+        window.MinHeight.ShouldBe(Length.Cells(0));
+        window.MaxHeight.ShouldBe(Length.Cells(26));
+        list.MaxHeight.ShouldBe(Length.Cells(7));
         list.SelectionMode.ShouldBe(ListSelectionMode.Multiple);
         filter.SelectedIndex.ShouldBe(1);
         filter.ActualBorder.Sides.ShouldBe(BorderSide.All);

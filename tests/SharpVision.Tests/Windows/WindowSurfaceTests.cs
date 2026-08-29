@@ -999,8 +999,8 @@ public sealed class WindowSurfaceTests
             CanResize = true,
             Width = Length.Cells(10),
             Height = Length.Cells(4),
-            MinWidth = 6,
-            MinHeight = 3,
+            MinWidth = Length.Cells(6),
+            MinHeight = Length.Cells(3),
             Shadow = AppearanceTestValues.Shadow(visible: false),
         };
         Overlay.SetLeft(window, Length.Cells(2));
@@ -1024,6 +1024,43 @@ public sealed class WindowSurfaceTests
 
         // Assert
         window.Bounds.Width.ShouldBe(6);
+        window.Bounds.Height.ShouldBe(3);
+    }
+
+    /// <summary>Verifies interactive resize resolves percentage floors from the parent content
+    /// bounds rather than treating their numeric percentage values as cells.</summary>
+    [Fact]
+    public async Task Resize_WhenMinimumSizeIsRelative_ClampsAgainstParentExtentAsync()
+    {
+        var window = new Window
+        {
+            Header = "Resize",
+            CanResize = true,
+            Width = Length.Cells(20),
+            Height = Length.Cells(6),
+            MinWidth = Length.Percent(50),
+            MinHeight = Length.Percent(20),
+            Shadow = AppearanceTestValues.Shadow(visible: false),
+        };
+        Overlay.SetLeft(window, Length.Cells(2));
+        Overlay.SetTop(window, Length.Cells(1));
+        var stage = new Overlay
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(15),
+            Children = { window }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            stage,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+
+        await surface.Pointer.MoveToAsync(window, new Point(19, 5));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(stage, new Point(0, 0));
+        await surface.Pointer.ReleaseAsync();
+
+        window.Bounds.Width.ShouldBe(15);
         window.Bounds.Height.ShouldBe(3);
     }
 
@@ -1094,8 +1131,8 @@ public sealed class WindowSurfaceTests
             CanResize = true,
             Width = Length.Cells(10),
             Height = Length.Cells(4),
-            MaxWidth = 2,
-            MaxHeight = 2,
+            MaxWidth = Length.Cells(2),
+            MaxHeight = Length.Cells(2),
             Shadow = AppearanceTestValues.Shadow(visible: false),
         };
         Overlay.SetLeft(window, Length.Cells(2));

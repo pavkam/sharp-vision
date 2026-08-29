@@ -9,11 +9,12 @@ border-box size and position while preserving those ownership rules.
 
 ## Lengths
 
-A length is one of four requests: a fixed number of cells, a percentage, an
-automatic (content-sized) dimension, or a proportional share of the remaining
-space. Length values reject negative, NaN, and infinite inputs. Minimum and
-maximum constraints clamp the resolved border box, and setting them validates
-`min <= max`.
+A dimension length is one of four requests: a fixed number of cells, a
+percentage, an automatic (content-sized) dimension, or a proportional share of
+the remaining space. Length values reject negative, NaN, and infinite inputs.
+Control minimums accept `Cells` and `Percent`; nullable maximums accept those
+same two kinds, with null representing no authored ceiling. `Auto` and `Star`
+limits are rejected because their resolution would be circular.
 
 During an unbounded measure, a percentage dimension behaves like an automatic
 dimension: the control reports its intrinsic desired size. During arrange, the
@@ -21,6 +22,17 @@ percentage resolves against the final containing content box, after border,
 padding, and any reserved scrollbars are taken out. If that effective constraint
 differs from the one used during measure, content such as wrapped text is
 remeasured before it is finally arranged.
+
+Percentage limits resolve from that same containing axis on every pass. Under an
+unbounded measure axis, a percentage minimum contributes zero and a percentage
+maximum contributes no ceiling; the intrinsic result is preserved until a finite
+containing extent exists. Comparable limits written in the same kind are
+validated when assigned. Differently written limits cannot be compared until
+layout: if they resolve to minimum greater than maximum, the minimum wins
+deterministically, followed by the final slot containment clamp. A parent that
+pre-resolves a child's axis carries the original containing extent through
+arrange, so Dock, Stack, Overlay, Grid, and popup placement never apply a
+percentage a second time to the already-clipped child slot.
 
 ## Primitive API
 

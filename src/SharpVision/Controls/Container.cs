@@ -245,13 +245,15 @@ public abstract class Container: ControlBase
         reserve && bound.HasValue ? Math.Max(0, bound.Value - 1) : bound;
 
     /// <inheritdoc/>
-    internal override Size OnMeasuredDesired(Size desired)
+    internal override Size OnMeasuredDesired(Constraint constraint, Size desired)
     {
         var horizontalInset = Padding.Horizontal.Add(BorderInset.Horizontal);
         var verticalInset = Padding.Vertical.Add(BorderInset.Vertical);
+        ResolveWidthLimits(constraint.Width, out var minimumWidth, out var maximumWidth);
+        ResolveHeightLimits(constraint.Height, out var minimumHeight, out var maximumHeight);
         var result = !AutoSize
             ? desired
-            : ResolveAutoSizeDesired(horizontalInset, verticalInset);
+            : ResolveAutoSizeDesired(horizontalInset, verticalInset, minimumWidth, maximumWidth, minimumHeight, maximumHeight);
 
         if (!AutoScroll)
         {
@@ -299,8 +301,8 @@ public abstract class Container: ControlBase
         }
 
         return new Size(
-            needsVertical ? Math.Clamp(result.Width.Add(1), MinWidth, MaxWidth) : result.Width,
-            needsHorizontal ? Math.Clamp(result.Height.Add(1), MinHeight, MaxHeight) : result.Height);
+            needsVertical ? Math.Clamp(result.Width.Add(1), minimumWidth, maximumWidth) : result.Width,
+            needsHorizontal ? Math.Clamp(result.Height.Add(1), minimumHeight, maximumHeight) : result.Height);
     }
 
     /// <summary>Resolves the AutoSize border-box size, re-measuring content once at a clamped
@@ -326,11 +328,17 @@ public abstract class Container: ControlBase
     /// exactly the artificially small figure this fix exists to avoid; only the final reported
     /// border-box height, not the measured content, is capped by MaxHeight.
     /// </remarks>
-    private Size ResolveAutoSizeDesired(int horizontalInset, int verticalInset)
+    private Size ResolveAutoSizeDesired(
+        int horizontalInset,
+        int verticalInset,
+        int minimumWidth,
+        int maximumWidth,
+        int minimumHeight,
+        int maximumHeight)
     {
         var natural = ContentExtent;
-        var width = AutoSizeAxis(natural.Width, horizontalInset, Width, MinWidth, MaxWidth);
-        var height = AutoSizeAxis(natural.Height, verticalInset, Height, MinHeight, MaxHeight);
+        var width = AutoSizeAxis(natural.Width, horizontalInset, Width, minimumWidth, maximumWidth);
+        var height = AutoSizeAxis(natural.Height, verticalInset, Height, minimumHeight, maximumHeight);
         var clampedContentWidth = Math.Max(0, width - horizontalInset);
 
         if (clampedContentWidth >= natural.Width)
@@ -341,7 +349,7 @@ public abstract class Container: ControlBase
         var corrected = MeasureOverride(new Constraint(clampedContentWidth, null));
         _autoSizeCorrectedContentExtent = corrected;
 
-        return new Size(width, AutoSizeAxis(corrected.Height, verticalInset, Height, MinHeight, MaxHeight));
+        return new Size(width, AutoSizeAxis(corrected.Height, verticalInset, Height, minimumHeight, maximumHeight));
     }
 
     // GrowAndShrink fits content exactly; GrowOnly never shrinks below an explicit

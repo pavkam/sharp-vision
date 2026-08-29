@@ -280,7 +280,7 @@ public sealed class GroupBoxTests
     [Fact]
     public void GroupBox_WhenContentSetsMaxWidth_CapsTheFilledContentSlot()
     {
-        var content = new ProbeControl(new Size(2, 1)) { MaxWidth = 3 };
+        var content = new ProbeControl(new Size(2, 1)) { MaxWidth = Length.Cells(3) };
         var groupBox = new GroupBox
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,

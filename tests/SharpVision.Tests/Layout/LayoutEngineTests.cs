@@ -68,10 +68,10 @@ public sealed class LayoutEngineTests
     {
         var control = new ProbeControl(new Size(50, 50))
         {
-            MinWidth = 8,
-            MaxWidth = 12,
-            MinHeight = 7,
-            MaxHeight = 11,
+            MinWidth = Length.Cells(8),
+            MaxWidth = Length.Cells(12),
+            MinHeight = Length.Cells(7),
+            MaxHeight = Length.Cells(11),
             Margin = new Thickness(3),
             Padding = new Thickness(4)
         };

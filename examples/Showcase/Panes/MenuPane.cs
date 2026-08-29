@@ -26,8 +26,8 @@ internal sealed class MenuPane: CompositeControlBase
         var fileRecentSubmenu = new Menu
         {
             Orientation = Orientation.Vertical,
-            MinWidth = 14,
-            MaxWidth = 24
+            MinWidth = Length.Cells(14),
+            MaxWidth = Length.Percent(75)
         };
         fileRecentSubmenu.Items.Add(fileRecentToday);
         fileRecentSubmenu.Items.Add(fileRecentArchive);
@@ -234,7 +234,7 @@ internal sealed class MenuPane: CompositeControlBase
                     "Application menu bar",
                     "Click or press <reverse>Enter</reverse> on File, Edit, View, or Help, then hover another heading to switch without leaving the menu plane. <reverse>Tab</reverse> and arrows move selection; Open Recent extends the same plane to the right.",
                     new DocColumn(barFrame, barStatus),
-                    "var file = new MenuItem { Text = \"&File\" };\nvar openRecentMenu = new Menu\n{\n    Orientation = Orientation.Vertical,\n    MinWidth = 14,\n    MaxWidth = 24,\n};\nopenRecentMenu.Items.Add(new MenuItem { Text = \"&Today\" });\nvar openRecent = new MenuItem { Text = \"Open &Recent\", Submenu = openRecentMenu };\nvar fileMenu = new Menu { Orientation = Orientation.Vertical };\nfileMenu.Items.Add(new MenuItem { Text = \"&New\" });\nfileMenu.Items.Add(openRecent);\nfile.Submenu = fileMenu;")),
+                    "var file = new MenuItem { Text = \"&File\" };\nvar openRecentMenu = new Menu\n{\n    Orientation = Orientation.Vertical,\n    MinWidth = Length.Cells(14),\n    MaxWidth = Length.Percent(75),\n};\nopenRecentMenu.Items.Add(new MenuItem { Text = \"&Today\" });\nvar openRecent = new MenuItem { Text = \"Open &Recent\", Submenu = openRecentMenu };\nvar fileMenu = new Menu { Orientation = Orientation.Vertical };\nfileMenu.Items.Add(new MenuItem { Text = \"&New\" });\nfileMenu.Items.Add(openRecent);\nfile.Submenu = fileMenu;")),
             new DocSection(
                 "🧰",
                 "Building a menu with MenuBuilder",

@@ -64,9 +64,10 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
         Header = title;
         CanMove = true;
         CanClose = false;
-        MinWidth = _minimumWidth;
-        MinHeight = _minimumHeight;
-        MaxHeight = 20;
+        MinWidth = Length.Cells(_minimumWidth);
+        MinHeight = Length.Cells(_minimumHeight);
+        MaxWidth = Length.Percent(80);
+        MaxHeight = Length.Cells(20);
         HorizontalAlignment = HorizontalAlignment.Center;
         VerticalAlignment = VerticalAlignment.Center;
         Content = CreateContent(
@@ -227,12 +228,6 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
         _messageText.Face = style.MessageFace;
         _messageText.Margin = style.MessageMargin;
         _actionBar.Margin = style.ActionBarMargin;
-
-        if (constraint.Width is { } available)
-        {
-            var cap = Math.Max(MinWidth, (int) Math.Round(available * 0.8, MidpointRounding.AwayFromZero));
-            constraint = new Constraint(Math.Min(available, cap), constraint.Height);
-        }
 
         return base.MeasureOverride(constraint);
     }

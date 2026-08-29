@@ -401,7 +401,7 @@ public sealed class DockTests
     public void Layout_WhenStarSiblingIsClippedByMaxWidth_RedistributesRemainderToOtherStar()
     {
         var panel = new Dock { LastChildFills = false };
-        var clipped = new ProbeControl { Width = Length.Star(1), MaxWidth = 10 };
+        var clipped = new ProbeControl { Width = Length.Star(1), MaxWidth = Length.Cells(10) };
         var free = new ProbeControl { Width = Length.Star(1) };
         Dock.SetSide(clipped, DockSide.Left);
         Dock.SetSide(free, DockSide.Left);
@@ -414,13 +414,36 @@ public sealed class DockTests
         free.Bounds.Width.ShouldBe(90);
     }
 
+    /// <summary>Verifies a relative Star ceiling resolves from the current Dock pool and returns
+    /// the clipped share to its eligible sibling after resize.</summary>
+    [Fact]
+    public void Layout_WhenStarSiblingHasRelativeMaximum_ReflowsAndRedistributesRemainder()
+    {
+        var panel = new Dock { LastChildFills = false };
+        var clipped = new ProbeControl { Width = Length.Star(1), MaxWidth = Length.Percent(25) };
+        var free = new ProbeControl { Width = Length.Star(1) };
+        Dock.SetSide(clipped, DockSide.Left);
+        Dock.SetSide(free, DockSide.Left);
+        panel.Children.Add(clipped);
+        panel.Children.Add(free);
+        var engine = new LayoutEngine();
+
+        engine.Layout(panel, new Size(40, 1));
+        clipped.Bounds.Width.ShouldBe(10);
+        free.Bounds.Width.ShouldBe(30);
+
+        engine.Layout(panel, new Size(80, 1));
+        clipped.Bounds.Width.ShouldBe(20);
+        free.Bounds.Width.ShouldBe(60);
+    }
+
     /// <summary>Verifies the same MaxWidth-clipped remainder reaches the eligible Star sibling
     /// instead of the fill child when LastChildFills is enabled.</summary>
     [Fact]
     public void Layout_WhenStarSiblingIsClippedWithLastChildFillsEnabled_RedistributesToOtherStarNotFill()
     {
         var panel = new Dock { LastChildFills = true };
-        var clipped = new ProbeControl { Width = Length.Star(1), MaxWidth = 10 };
+        var clipped = new ProbeControl { Width = Length.Star(1), MaxWidth = Length.Cells(10) };
         var free = new ProbeControl { Width = Length.Star(1) };
         var fill = new ProbeControl();
         Dock.SetSide(clipped, DockSide.Left);
@@ -443,7 +466,7 @@ public sealed class DockTests
     public void Layout_WhenStarSiblingHasMinWidth_ReservesMinimumThenSplitsRemainderByWeight()
     {
         var panel = new Dock { LastChildFills = false };
-        var inflated = new ProbeControl { Width = Length.Star(1), MinWidth = 80 };
+        var inflated = new ProbeControl { Width = Length.Star(1), MinWidth = Length.Cells(80) };
         var free = new ProbeControl { Width = Length.Star(1) };
         Dock.SetSide(inflated, DockSide.Left);
         Dock.SetSide(free, DockSide.Left);
@@ -547,8 +570,8 @@ public sealed class DockTests
     public void Measure_WhenTwoStarSiblingsShareAnAxis_UnionsTheirDeclaredMinimums()
     {
         var panel = new Dock { LastChildFills = false };
-        var first = new ProbeControl(new Size(4, 0)) { Height = Length.Star(1), MinHeight = 6 };
-        var second = new ProbeControl(new Size(9, 0)) { Height = Length.Star(1), MinHeight = 8 };
+        var first = new ProbeControl(new Size(4, 0)) { Height = Length.Star(1), MinHeight = Length.Cells(6) };
+        var second = new ProbeControl(new Size(9, 0)) { Height = Length.Star(1), MinHeight = Length.Cells(8) };
         Dock.SetSide(first, DockSide.Top);
         Dock.SetSide(second, DockSide.Top);
         panel.Children.Add(first);
@@ -568,7 +591,7 @@ public sealed class DockTests
     public void Measure_WhenDeferredStarHasMarginOnVerticalAxis_CountsMarginOnce()
     {
         var panel = new Dock { LastChildFills = false };
-        var top = new ProbeControl { Height = Length.Star(1), MinHeight = 5, Margin = new Thickness(2) };
+        var top = new ProbeControl { Height = Length.Star(1), MinHeight = Length.Cells(5), Margin = new Thickness(2) };
         Dock.SetSide(top, DockSide.Top);
         panel.Children.Add(top);
 
@@ -583,7 +606,7 @@ public sealed class DockTests
     public void Measure_WhenDeferredStarHasMarginOnHorizontalAxis_CountsMarginOnce()
     {
         var panel = new Dock { LastChildFills = false };
-        var left = new ProbeControl { Width = Length.Star(1), MinWidth = 5, Margin = new Thickness(2) };
+        var left = new ProbeControl { Width = Length.Star(1), MinWidth = Length.Cells(5), Margin = new Thickness(2) };
         Dock.SetSide(left, DockSide.Left);
         panel.Children.Add(left);
 
@@ -599,8 +622,8 @@ public sealed class DockTests
     public void Measure_WhenTwoDeferredStarSiblingsHaveDistinctMargins_SumsMarginsAndMinimumsOnce()
     {
         var panel = new Dock { LastChildFills = false };
-        var first = new ProbeControl { Height = Length.Star(1), MinHeight = 5, Margin = new Thickness(0, 2) };
-        var second = new ProbeControl { Height = Length.Star(1), MinHeight = 3, Margin = new Thickness(0, 1) };
+        var first = new ProbeControl { Height = Length.Star(1), MinHeight = Length.Cells(5), Margin = new Thickness(0, 2) };
+        var second = new ProbeControl { Height = Length.Star(1), MinHeight = Length.Cells(3), Margin = new Thickness(0, 1) };
         Dock.SetSide(first, DockSide.Top);
         Dock.SetSide(second, DockSide.Top);
         panel.Children.Add(first);
@@ -617,7 +640,7 @@ public sealed class DockTests
     public void Measure_WhenDeferredStarHasTrailingSpacing_CountsSpacingOnce()
     {
         var panel = new Dock { LastChildFills = false, Spacing = 3 };
-        var star = new ProbeControl { Height = Length.Star(1), MinHeight = 5 };
+        var star = new ProbeControl { Height = Length.Star(1), MinHeight = Length.Cells(5) };
         var trailing = HeightOnly(2);
         Dock.SetSide(star, DockSide.Top);
         Dock.SetSide(trailing, DockSide.Top);

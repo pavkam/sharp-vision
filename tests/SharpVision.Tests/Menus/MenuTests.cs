@@ -46,16 +46,16 @@ public sealed class MenuTests
         var menu = new Menu();
 
         // Assert default and validation-before-mutation
-        menu.MinWidth.ShouldBe(10);
-        menu.MaxWidth.ShouldBe(int.MaxValue);
-        _ = Should.Throw<ArgumentException>(() => menu.MaxWidth = 9);
-        menu.MaxWidth.ShouldBe(int.MaxValue);
+        menu.MinWidth.ShouldBe(Length.Cells(10));
+        menu.MaxWidth.ShouldBeNull();
+        _ = Should.Throw<ArgumentException>(() => menu.MaxWidth = Length.Cells(9));
+        menu.MaxWidth.ShouldBeNull();
 
         // Act and assert direct inherited configuration
-        menu.MinWidth = 0;
-        menu.MaxWidth = 24;
-        menu.MinWidth.ShouldBe(0);
-        menu.MaxWidth.ShouldBe(24);
+        menu.MinWidth = Length.Cells(0);
+        menu.MaxWidth = Length.Cells(24);
+        menu.MinWidth.ShouldBe(Length.Cells(0));
+        menu.MaxWidth.ShouldBe(Length.Cells(24));
     }
 
     /// <summary>Verifies every Menu-declared property starts at its documented default.</summary>

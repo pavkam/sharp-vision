@@ -365,7 +365,7 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
         };
         root.Columns.Add(Track.Star(1, minimum: 8));
         root.Rows.Add(Track.Auto(minimum: 3));
-        root.Rows.Add(Track.Star(1, minimum: Math.Min(8, FileListSurface.MaxHeight.Add(3))));
+        root.Rows.Add(Track.Star(1, minimum: Math.Min(8, ((int) FileListSurface.MaxHeight!.Value.Value).Add(3))));
         root.Rows.Add(Track.Auto(minimum: 3));
         root.Rows.Add(Track.Auto(minimum: 1));
         root.Rows.Add(Track.Auto());

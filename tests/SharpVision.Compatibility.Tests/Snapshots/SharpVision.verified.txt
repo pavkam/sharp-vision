@@ -358,10 +358,10 @@ namespace SharpVision.Controls
         public bool IsTextSelectionEnabled { get; set; }
         public SharpVision.Terminal.Geometry.Rect LocalBounds { get; }
         public SharpVision.Layout.Thickness Margin { get; set; }
-        public int MaxHeight { get; set; }
-        public int MaxWidth { get; set; }
-        public int MinHeight { get; set; }
-        public int MinWidth { get; set; }
+        public SharpVision.Layout.Length? MaxHeight { get; set; }
+        public SharpVision.Layout.Length? MaxWidth { get; set; }
+        public SharpVision.Layout.Length MinHeight { get; set; }
+        public SharpVision.Layout.Length MinWidth { get; set; }
         public string? Name { get; set; }
         protected SharpVision.Terminal.Rendering.CellStyle NormalStyle { get; }
         public SharpVision.Layout.Thickness Padding { get; set; }

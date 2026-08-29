@@ -513,6 +513,14 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         var anchor = Anchor?.Bounds ?? bounds;
         var preferredFrame = SurfaceFrame(Placement);
         var anchorWidth = FixedOrigin is not null && Anchor is null ? 0 : anchor.Width;
+        if (HasRelativeLimit(child))
+        {
+            _ = MeasureChild(
+                child,
+                new Constraint(
+                    Math.Max(0, bounds.Width - preferredFrame.Horizontal),
+                    Math.Max(0, bounds.Height - preferredFrame.Vertical)));
+        }
         var desired = SurfaceSize(child, anchorWidth, bounds.Width, bounds.Height, preferredFrame);
         int x, y;
         Thickness resolvedFrame;
@@ -534,6 +542,14 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
             // preferred placement did (an asymmetric border plus ConnectsToAnchor zeroes a different
             // edge per side). Recompute against the frame that is actually used below, so the origin
             // math, SurfaceBounds, and the deflated arrange rect all agree on the same size.
+            if (HasRelativeLimit(child))
+            {
+                _ = MeasureChild(
+                    child,
+                    new Constraint(
+                        Math.Max(0, bounds.Width - resolvedFrame.Horizontal),
+                        Math.Max(0, bounds.Height - resolvedFrame.Vertical)));
+            }
             desired = SurfaceSize(child, anchorWidth, bounds.Width, bounds.Height, resolvedFrame);
 
             x = placement is PopupPlacement.Left
@@ -555,7 +571,12 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         }
 
         SurfaceBounds = new Rect(x, y, desired.Width, desired.Height);
-        ArrangeChild(child, resolvedFrame.Deflate(SurfaceBounds), ResolvedAxes.Both);
+        child.Arrange(
+            resolvedFrame.Deflate(SurfaceBounds),
+            widthResolved: true,
+            heightResolved: true,
+            widthLimitBase: Math.Max(0, bounds.Width - resolvedFrame.Horizontal),
+            heightLimitBase: Math.Max(0, bounds.Height - resolvedFrame.Vertical));
     }
 
     /// <inheritdoc/>
@@ -1288,6 +1309,13 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
             availableWidth.HasValue ? Math.Min(width, availableWidth.Value) : width,
             availableHeight.HasValue ? Math.Min(height, availableHeight.Value) : height);
     }
+
+    [Pure]
+    private static bool HasRelativeLimit(ControlBase child) =>
+        child.MinWidth.Kind == LengthKind.Percent ||
+        child.MinHeight.Kind == LengthKind.Percent ||
+        child.MaxWidth is { Kind: LengthKind.Percent } ||
+        child.MaxHeight is { Kind: LengthKind.Percent };
 
     [Pure]
     private PopupPlacement ResolvePlacement(Rect bounds, Rect anchor, Size desired)

@@ -12,6 +12,12 @@ extent, offsets, and independent horizontal and vertical policies: automatic,
 always, or hidden. Hidden suppresses the bar but does not by itself forbid
 programmatic scrolling.
 
+An auto-sized scrolling axis grows only to its resolved `MaxWidth` or
+`MaxHeight`, then exposes the remaining content through scrolling. A percentage
+maximum resolves from the current containing viewport on each measure and
+resize; under an unbounded discovery pass it remains unbounded so intrinsic or
+wrapped content is not truncated before the finite remeasure.
+
 `ScrollBars` selects which axes are eligible to scroll and defaults to
 `Vertical`. Eligible axes are measured unbounded so children can report their
 natural, intrinsic extent — the WinForms `DisplayRectangle` model — rather than

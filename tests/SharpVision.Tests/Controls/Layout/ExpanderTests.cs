@@ -436,7 +436,7 @@ public sealed class ExpanderTests
     [Fact]
     public void Expander_WhenContentSetsMaxWidth_CapsTheFilledContentSlot()
     {
-        var content = new ProbeControl(new Size(2, 1)) { MaxWidth = 3 };
+        var content = new ProbeControl(new Size(2, 1)) { MaxWidth = Length.Cells(3) };
         var expander = new Expander
         {
             IsExpanded = true,

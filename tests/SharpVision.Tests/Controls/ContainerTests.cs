@@ -2053,8 +2053,8 @@ public sealed class ContainerTests
             AutoSize = true,
             AutoScroll = true,
             ShowScrollBars = ShowScrollBars.Never,
-            MaxWidth = 12,
-            MaxHeight = 4,
+            MaxWidth = Length.Cells(12),
+            MaxHeight = Length.Cells(4),
             Children = { new ControlText(text) { Overflow = Overflow.Wrap } }
         };
         var determinate = new Stack
@@ -2075,6 +2075,30 @@ public sealed class ContainerTests
         autoSize.ScrollBy(0, 1).ShouldBe(determinate.ScrollBy(0, 1));
     }
 
+    /// <summary>Verifies a responsive maximum participates in the width-dependent remeasure and
+    /// scrolling transaction rather than clipping content measured at its natural width.</summary>
+    [Fact]
+    public void AutoSize_WhenPercentageMaximumClampsWrappingContent_RemeasuresAndScrolls()
+    {
+        var text = new string('x', 49);
+        var container = new Stack
+        {
+            AutoSize = true,
+            AutoScroll = true,
+            ShowScrollBars = ShowScrollBars.Never,
+            MaxWidth = Length.Percent(50),
+            MaxHeight = Length.Percent(20),
+            Children = { new ControlText(text) { Overflow = Overflow.Wrap } }
+        };
+
+        new LayoutEngine().Layout(container, new Size(24, 20));
+
+        container.Bounds.ShouldBe(new Rect(0, 0, 12, 4));
+        container.Extent.ShouldBe(new Size(12, 5));
+        container.Viewport.ShouldBe(new Size(12, 4));
+        container.ScrollBy(0, 1).ShouldBeTrue();
+    }
+
     /// <summary>Verifies a MaxWidth on an AutoSize container re-measures wrap-capable content at
     /// the clamped width - without any AutoScroll involved - matching the identical geometry
     /// expressed as the same MaxWidth on the leaf content directly instead of reporting the
@@ -2086,10 +2110,10 @@ public sealed class ContainerTests
         var maxOnContainer = new Stack
         {
             AutoSize = true,
-            MaxWidth = 12,
+            MaxWidth = Length.Cells(12),
             Children = { new ControlText(text) { Overflow = Overflow.Wrap } }
         };
-        var leafText = new ControlText(text) { Overflow = Overflow.Wrap, MaxWidth = 12 };
+        var leafText = new ControlText(text) { Overflow = Overflow.Wrap, MaxWidth = Length.Cells(12) };
         var maxOnLeaf = new Stack
         {
             AutoSize = true,
@@ -2108,7 +2132,7 @@ public sealed class ContainerTests
     [Fact]
     public void AutoSize_WhenContentIsSmallerThanMinWidth_GrowsToTheMinimum()
     {
-        var container = new LayoutProbe { AutoSize = true, MinWidth = 10 };
+        var container = new LayoutProbe { AutoSize = true, MinWidth = Length.Cells(10) };
         container.Children.Add(new ProbeControl(new Size(4, 2)));
 
         new LayoutEngine().Layout(container, new Size(40, 40));
@@ -2128,7 +2152,7 @@ public sealed class ContainerTests
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowOnly,
             Width = Length.Cells(10),
-            MaxWidth = 8
+            MaxWidth = Length.Cells(8)
         };
         container.Children.Add(new ProbeControl(new Size(4, 2)));
 
@@ -2149,8 +2173,8 @@ public sealed class ContainerTests
         {
             AutoSize = true,
             AutoScroll = true,
-            MaxWidth = 5,
-            MaxHeight = 4
+            MaxWidth = Length.Cells(5),
+            MaxHeight = Length.Cells(4)
         };
         container.Children.Add(new ProbeControl(new Size(5, 10)));
 
@@ -2170,8 +2194,8 @@ public sealed class ContainerTests
             AutoSize = true,
             AutoScroll = true,
             ScrollBars = ScrollBars.Horizontal,
-            MaxWidth = 4,
-            MaxHeight = 5
+            MaxWidth = Length.Cells(4),
+            MaxHeight = Length.Cells(5)
         };
         container.Children.Add(new ProbeControl(new Size(10, 5)));
 
@@ -2218,8 +2242,8 @@ public sealed class ContainerTests
         {
             AutoSize = true,
             AutoScroll = true,
-            MaxWidth = 5,
-            MaxHeight = 4
+            MaxWidth = Length.Cells(5),
+            MaxHeight = Length.Cells(4)
         };
         container.Children.Add(new ProbeControl(new Size(5, 10)));
         var stack = new Stack { AutoSize = true, Children = { container } };
@@ -2413,7 +2437,7 @@ public sealed class ContainerTests
             AutoSize = true,
             ScrollBars = ScrollBars.Vertical,
             Width = Length.Cells(99),
-            MaxHeight = 5
+            MaxHeight = Length.Cells(5)
         };
         container.Children.Add(new ProbeControl(new Size(4, 40)));
 

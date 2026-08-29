@@ -6,6 +6,38 @@ namespace SharpVision.Tests.Controls.Layout;
 /// <summary>Verifies Stack allocation, ordering, scrolling, resize, and hit targets through mounted surfaces.</summary>
 public sealed class StackSurfaceTests
 {
+    /// <summary>Verifies a mounted child re-resolves its percentage ceiling and final rendered
+    /// cells when the terminal viewport changes.</summary>
+    [Fact]
+    public async Task ResizeAsync_WhenChildMaximumIsRelative_ReflowsBoundsAndCellsAsync()
+    {
+        var child = new ControlText(new string('R', 40))
+        {
+            Width = Length.Star(1),
+            MaxWidth = Length.Percent(50),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Overflow = Overflow.Clip
+        };
+        var stack = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Children = { child }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            stack,
+            new Size(20, 1),
+            TestContext.Current.CancellationToken);
+
+        child.Bounds.ShouldBe(new Rect(0, 0, 10, 1));
+        surface.ShouldRender("RRRRRRRRRR          ");
+
+        await surface.ResizeAsync(new Size(40, 1));
+
+        child.Bounds.ShouldBe(new Rect(0, 0, 20, 1));
+        surface.ShouldRender("RRRRRRRRRRRRRRRRRRRR                    ");
+    }
+
     /// <summary>Verifies pointer ancestry does not apply hover chrome to the layout container.</summary>
     [Fact]
     public async Task Pointer_WhenChildIsHovered_KeepsStackFrameInactiveAsync()
@@ -267,14 +299,14 @@ public sealed class StackSurfaceTests
         var small = new ControlText("S")
         {
             Width = Length.Star(1),
-            MinWidth = 4,
+            MinWidth = Length.Cells(4),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Face = AppearanceTestValues.Face(background: ReferenceColors.Get(1)),
         };
         var large = new ControlText("L")
         {
             Width = Length.Star(3),
-            MaxWidth = 8,
+            MaxWidth = Length.Cells(8),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Face = AppearanceTestValues.Face(background: ReferenceColors.Get(2)),
         };

@@ -160,9 +160,12 @@ public sealed class Stack: Container
 
         try
         {
-            Fill(children, lengths, automatic, minimum, maximum);
             var vertical = Orientation == Orientation.Vertical;
             var axis = vertical ? bounds.Height : bounds.Width;
+            var scrolls = AutoScroll &&
+                (ScrollBars & (vertical ? ScrollBars.Vertical : ScrollBars.Horizontal)) != 0;
+            int? percentBase = scrolls ? (vertical ? Viewport.Height : Viewport.Width) : axis;
+            Fill(children, lengths, automatic, minimum, maximum, percentBase);
             var spacing = LayoutMath.GapExtent(Spacing, count, axis);
             var margins = SumMargins(children);
 
@@ -177,10 +180,7 @@ public sealed class Stack: Container
             // unbounded pool removes that false ceiling entirely: every track gets its own full,
             // non-competing request, with Percent still sized against the visible viewport
             // instead of falling back to its own unrelated intrinsic request.
-            var scrolls = AutoScroll &&
-                (ScrollBars & (vertical ? ScrollBars.Vertical : ScrollBars.Horizontal)) != 0;
             int? available = scrolls ? null : Math.Max(0, axis - spacing - margins);
-            int? percentBase = scrolls ? (vertical ? Viewport.Height : Viewport.Width) : axis;
 
             // Percentages otherwise resolve against the complete final content axis, not the
             // smaller area left after reserving spacing and margins - so the percentage base is
@@ -188,7 +188,7 @@ public sealed class Stack: Container
             // would hide them from Percent's shrink priority and lose their shared cumulative
             // rounding edges.
             Tracks.Resolve(available, lengths, automatic, minimum, maximum, extents, percentBase);
-            Arrange(children, extents, bounds, spacing);
+            Arrange(children, extents, bounds, spacing, percentBase);
         }
         finally
         {
@@ -261,7 +261,8 @@ public sealed class Stack: Container
         Span<Length> lengths,
         Span<int> automatic,
         Span<int> minimum,
-        Span<int> maximum)
+        Span<int> maximum,
+        int? percentBase)
     {
         var position = 0;
 
@@ -280,8 +281,14 @@ public sealed class Stack: Container
             automatic[position] = Orientation == Orientation.Vertical
                 ? child.DesiredSize.Height
                 : child.DesiredSize.Width;
-            minimum[position] = Orientation == Orientation.Vertical ? child.MinHeight : child.MinWidth;
-            maximum[position] = Orientation == Orientation.Vertical ? child.MaxHeight : child.MaxWidth;
+            if (Orientation == Orientation.Vertical)
+            {
+                child.ResolveHeightLimits(percentBase, out minimum[position], out maximum[position]);
+            }
+            else
+            {
+                child.ResolveWidthLimits(percentBase, out minimum[position], out maximum[position]);
+            }
             position++;
         }
 
@@ -309,7 +316,8 @@ public sealed class Stack: Container
         ReadOnlySpan<ControlBase> children,
         ReadOnlySpan<int> extents,
         Rect bounds,
-        int spacing)
+        int spacing,
+        int? limitBase)
     {
         Debug.Assert(children.Length == extents.Length, "Every arranged child must have one extent.");
         Debug.Assert(spacing >= 0, "Stack spacing is non-negative.");
@@ -331,7 +339,9 @@ public sealed class Stack: Container
             child.Arrange(
                 slot,
                 widthResolved: Orientation == Orientation.Horizontal,
-                heightResolved: Orientation == Orientation.Vertical);
+                heightResolved: Orientation == Orientation.Vertical,
+                widthLimitBase: Orientation == Orientation.Horizontal ? limitBase : null,
+                heightLimitBase: Orientation == Orientation.Vertical ? limitBase : null);
             origin = origin.Add(outer);
 
             if (index < children.Length - 1)
