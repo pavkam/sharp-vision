@@ -20,9 +20,10 @@ spans, and the full-redraw rate.
 
 Every measurement records its warm-up, iteration count, architecture, runtime,
 OS, and terminal size. Allocation budgets may gate deterministic tests on pull
-requests. Wall-clock timing is currently informational everywhere: no dedicated
-or scheduled benchmark environment exists yet, so no workflow gates on elapsed
-time or publishes comparative timing results.
+requests. Wall-clock values printed by individual tests remain informational on
+local and ordinary CI machines. A separate scheduled lane compares the elapsed
+time of the complete UI and terminal performance suites on a fixed runner class;
+it does not gate pull requests.
 
 An optimization is rejected when it breaks model equivalence, when it grows
 memory without bound, or when it improves one synthetic case while materially
@@ -98,9 +99,30 @@ retained-memory assertions are mandatory.
 | Bounds     | Hostile payload and geometry cases stay within configured memory/work limits. |
 | Timing     | Runtime, OS, architecture, iterations, and elapsed time are reported.         |
 
-Allocation and retained-memory assertions gate ordinary CI. Wall-clock
-thresholds would require a dedicated benchmark environment, which does not exist
-yet.
+Allocation and retained-memory assertions gate ordinary CI. The dedicated
+wall-clock lane runs every Monday and may also be dispatched manually. It uses
+`ubuntu-24.04`, builds once, gives each complete `*PerformanceTests` suite one
+warm-up process, and records the median of three measured processes. The
+repository configuration in
+[`benchmarks/wall-clock-thresholds.json`](../../benchmarks/wall-clock-thresholds.json)
+requires all 50 UI and 17 terminal performance tests to be discovered, so an
+empty or accidentally narrowed benchmark cannot pass.
+
+The lane restores the most recent baseline for the same operating system,
+architecture, runner class, and .NET SDK, then compares each suite's median as a
+ratio. A result above 1.20 times baseline records an unconfirmed regression but
+does not fail. The baseline stays fixed while that result awaits confirmation;
+the same suite must exceed the threshold on the next run before the workflow
+fails. A recovery clears the streak and refreshes the rolling baseline. A
+missing cache or changed environment initializes a new baseline without making a
+regression claim.
+
+Every run uploads the JSON report and baseline state for 30 days, including all
+samples, environment identity, ratios, thresholds, and confirmation status. The
+same behavior is available locally through `make benchmark`; its ignored
+baseline under `artifacts/benchmarks/` is intentionally local to that machine.
+The scheduled failure is the notification surface. It is not a required pull
+request check, because variance evidence has not yet justified promotion.
 
 Geometry bounds are the one wall-clock family that does gate ordinary CI,
 because its failure mode is a frozen render thread rather than a slow one.

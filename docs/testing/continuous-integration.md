@@ -13,6 +13,14 @@ job that needs both before it uploads anything to NuGet. These workflows
 reproduce the repository quality surface; they do not replace focused local
 testing while developing.
 
+The scheduled wall-clock workflow is deliberately separate from both. Every
+Monday, or on manual dispatch, it runs the complete UI and terminal performance
+test sets on `ubuntu-24.04`, restores their cached baseline, and publishes the
+comparative report as an artifact. One threshold breach records a warning; two
+consecutive breaches fail the scheduled run. It is an operational signal, not a
+pull-request gate. The measurement and baseline contract is specified in
+[performance testing](performance.md#required-evidence).
+
 Linting is a job, not a step. It inspects sources, Markdown, and links, none of
 which vary by operating system, so running it inside the composite action meant
 paying for it once per platform and paying for it serially ahead of the tests it
@@ -88,6 +96,7 @@ Use the Makefile as the local command surface:
 | Verify formatting, analyzers, Markdown, and links | `make lint`                                                                           |
 | Build in Release configuration                    | `make build`                                                                          |
 | Run the full test suite                           | `make test`                                                                           |
+| Run the scheduled wall-clock suites locally       | `make benchmark`                                                                      |
 | Run a focused test while iterating                | `dotnet test --project tests/SharpVision.Tests --filter-class "*Tests" --timeout 60s` |
 | Verify the current public API baselines           | `dotnet test --project tests/SharpVision.Compatibility.Tests --timeout 60s`           |
 

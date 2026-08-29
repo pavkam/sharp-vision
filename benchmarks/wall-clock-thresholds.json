@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "warmupRuns": 1,
+  "repetitions": 3,
+  "confirmationRuns": 2,
+  "maxRegressionRatio": 1.2,
+  "scenarios": [
+    {
+      "id": "sharpvision-ui",
+      "name": "SharpVision UI performance suite",
+      "project": "tests/SharpVision.Tests",
+      "filterClass": "*PerformanceTests",
+      "minimumExpectedTests": 50,
+      "timeout": "300s"
+    },
+    {
+      "id": "sharpvision-terminal",
+      "name": "SharpVision terminal performance suite",
+      "project": "tests/SharpVision.Terminal.Tests",
+      "filterClass": "*PerformanceTests",
+      "minimumExpectedTests": 17,
+      "timeout": "300s"
+    }
+  ]
+}

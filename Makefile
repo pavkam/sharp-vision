@@ -1,4 +1,4 @@
-.PHONY: bootstrap-packages build clean docs-samples format format-check help lint restore run test test-ci test-tty watch
+.PHONY: benchmark bootstrap-packages build clean docs-samples format format-check help lint restore run test test-ci test-tty watch
 
 .DEFAULT_GOAL := help
 
@@ -25,6 +25,7 @@ help:
 	@echo "  make restore       Restore .NET and Node.js dependencies"
 	@echo "  make build         Build all projects in Release mode"
 	@echo "  make test          Run all tests with timeout protection"
+	@echo "  make benchmark     Run and threshold the scheduled wall-clock suites"
 	@echo "  make test-ci       Run tests with CI reports"
 	@echo "  make test-tty      Run controlling-terminal-gated Unix console host tests (Linux/macOS only)"
 	@echo "  make run           Run the showcase in Release mode"
@@ -78,6 +79,9 @@ test-ci: build
 	@dotnet test --project tests/SharpVision.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 24 --timeout 300s --filter-query "/*/SharpVision.Tests.Performance/*/*"
 	@node scripts/validate-control-coverage.mjs --results tests/SharpVision.Tests/bin/$${CONFIGURATION:-Release}/net10.0/TestResults --minimum 0.85
 	@npm run test:docs
+
+benchmark: build
+	@node scripts/run-wall-clock-benchmarks.mjs --configuration $${CONFIGURATION:-Release}
 
 test-tty: build
 	@echo "🧪 Running controlling-terminal-gated Unix console host tests..."
