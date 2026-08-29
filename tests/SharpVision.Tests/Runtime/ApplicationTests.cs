@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Runtime;
 
+using System.Buffers;
+
 using SharpVision.Runtime;
 using SharpVision.Tests.Controls;
 
@@ -5233,6 +5235,101 @@ public sealed class ApplicationTests
         release.Set();
         await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
         await application.DisposeAsync();
+    }
+
+    /// <summary>Invokes the private, parameterless <c>FlushStrandedOutOfBandAsync</c> on
+    /// <paramref name="application"/> via reflection and awaits it.</summary>
+    private static Task InvokeFlushStrandedOutOfBandAsync(Application application) =>
+        (Task) typeof(Application)
+            .GetMethod("FlushStrandedOutOfBandAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(application, null)!;
+
+    /// <summary>Sets <paramref name="application"/>'s private <c>_stopping</c> field via
+    /// reflection - no public API commits a forced stop without itself posting through
+    /// <c>Enqueue</c>, and reliably forcing the abandonment fallback itself to run with
+    /// <c>_stopping</c> already true needs winning a race between an in-flight operation's own
+    /// cancellation-driven resumption and dispatcher-queue saturation that has no deterministic
+    /// public hook.</summary>
+    private static void SetStoppingDirectly(Application application, bool value) =>
+        typeof(Application)
+            .GetField("_stopping", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(application, value);
+
+    /// <summary>Buffers <paramref name="bytes"/> directly into <paramref name="application"/>'s
+    /// private <c>_outOfBand</c> writer, bypassing <see cref="Application.PostOutOfBand"/> - which
+    /// refuses to buffer anything once <c>_stopping</c> is set, exactly the state these tests need
+    /// bytes buffered under with nothing else racing to drain them first. <c>_outOfBand</c>'s
+    /// declared field type (<see cref="ArrayBufferWriter{T}"/>) is reflection-only
+    /// here, but the <see cref="IBufferWriter{T}"/> interface it implements - and the
+    /// <c>Write</c> extension method on it - are public, so the write itself is a normal,
+    /// non-reflected call.</summary>
+    private static void BufferOutOfBandBytesDirectly(Application application, byte[] bytes)
+    {
+        var outOfBand = (IBufferWriter<byte>) typeof(Application)
+            .GetField("_outOfBand", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(application)!;
+
+        outOfBand.Write(bytes);
+    }
+
+    /// <summary>Verifies <c>FlushStrandedOutOfBandAsync</c> - the fallback
+    /// <c>ObserveRenderAsync</c>'s and <c>ObserveOutOfBandAsync</c>'s own abandonment cleanup runs
+    /// when <c>Dispatcher.PostBackgroundCompletionAsync</c> cannot run the real completion - writes
+    /// out-of-band bytes still buffered at that point instead of silently stranding them. Before
+    /// this fix, that cleanup only retired <see cref="Application.IsRendering"/> and the
+    /// render/write's own resources, leaving anything <see cref="Application.PostOutOfBand"/> had
+    /// buffered behind the failed operation permanently lost - the same class of bug
+    /// <c>CompleteRender</c>'s and <c>PumpAfterWrite</c>'s own stopping branches were already fixed
+    /// for (see <see cref="CompleteRender_WhenStopCommitsWhileOutOfBandIsBuffered_FlushesBufferedOutOfBandBytesAsync"/>),
+    /// just reached through an abandoned background completion instead of a cancelled write.
+    /// </summary>
+    [Fact]
+    public async Task FlushStrandedOutOfBandAsync_WhenStoppingWithBytesBuffered_WritesThemAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        BufferOutOfBandBytesDirectly(application, [0x07]);
+        SetStoppingDirectly(application, true);
+
+        await InvokeFlushStrandedOutOfBandAsync(application);
+
+        terminal.Writes.ShouldContain(write => write.Length == 1 && write[0] == 0x07);
+        application.LastCleanupException.ShouldBeNull();
+
+        // Restore the field this test latched directly so the application's own real stop
+        // sequence - not this test's reflection shortcut - drives normal disposal below.
+        SetStoppingDirectly(application, false);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a write failure inside <c>FlushStrandedOutOfBandAsync</c> is folded into
+    /// <see cref="Application.LastCleanupException"/> - this codebase's convention for shutdown-path
+    /// diagnostics, since <c>Report</c> exists for a still running application and no longer applies
+    /// once <c>_stopping</c> is set - rather than silently discarded.</summary>
+    [Fact]
+    public async Task FlushStrandedOutOfBandAsync_WhenWriteFails_RecordsLastCleanupExceptionAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var failure = new InvalidOperationException("Injected out-of-band write failure.");
+        terminal.FailWriteNumber = terminal.Writes.Count + 1;
+        terminal.WriteFailure = failure;
+
+        BufferOutOfBandBytesDirectly(application, [0x07]);
+        SetStoppingDirectly(application, true);
+
+        await InvokeFlushStrandedOutOfBandAsync(application);
+
+        application.LastCleanupException.ShouldBeSameAs(failure);
+
+        SetStoppingDirectly(application, false);
+        await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies the out-of-band-completion post's bridging retry - the sibling site to

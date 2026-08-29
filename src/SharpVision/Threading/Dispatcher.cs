@@ -252,6 +252,67 @@ public sealed class Dispatcher: IAsyncDisposable
         onAbandoned?.Invoke();
     }
 
+    /// <summary>Variant of <see cref="PostBackgroundCompletion(Action, Action?)"/> for a caller
+    /// (currently only <see cref="Application"/>) whose abandonment cleanup is itself asynchronous
+    /// - e.g. it must flush buffered bytes before the completion it stands in for can be treated as
+    /// fully retired.</summary>
+    /// <param name="completion">The non-null dispatcher-affine completion.</param>
+    /// <param name="onAbandonedAsync">The non-null async cleanup invoked when completion cannot
+    /// run.</param>
+    /// <remarks>
+    /// When posting itself fails immediately (a full queue or a disposed dispatcher), this method
+    /// awaits <paramref name="onAbandonedAsync"/> directly before returning. When posting succeeds
+    /// but the queued work is later cancelled by dispatcher shutdown instead, nothing can await it
+    /// - <see cref="DisposeAsync"/>'s own cancellation loop is synchronous and has already returned
+    /// by the time cleanup would finish - so it runs fire-and-forget there, guarded against becoming
+    /// a process-wide <see cref="TaskScheduler.UnobservedTaskException"/> the same way
+    /// <c>Application.Observe(Task)</c> already guards its own equivalent shapes.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="completion"/> or
+    /// <paramref name="onAbandonedAsync"/> is null.</exception>
+    internal async Task PostBackgroundCompletionAsync(Action completion, Func<Task> onAbandonedAsync)
+    {
+        ArgumentNullException.ThrowIfNull(completion);
+        ArgumentNullException.ThrowIfNull(onAbandonedAsync);
+
+        try
+        {
+            Post(completion, () => Observe(onAbandonedAsync()));
+            return;
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        catch (InvalidOperationException exception)
+        {
+            ReportRejectedBackgroundCompletion(exception);
+        }
+
+        await onAbandonedAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>Observes a fire-and-forget task's eventual outcome so it never surfaces later as a
+    /// process-wide <see cref="TaskScheduler.UnobservedTaskException"/> unrelated to the real
+    /// failure.</summary>
+    private static void Observe(Task task)
+    {
+        if (task.IsCompleted)
+        {
+            _ = task.Exception;
+
+            return;
+        }
+
+        _ = task.ContinueWith(
+            static completed =>
+            {
+                _ = completed.Exception;
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
     /// <summary>Attempts once to report an already-rejected background completion through the
     /// dispatcher's callback-failure path.</summary>
     /// <param name="exception">The original non-null queue rejection.</param>

@@ -1161,31 +1161,71 @@ public sealed class Application:
         _ = ObserveOutOfBandOnStopAsync(payload, hold, completion);
     }
 
-    /// <summary>
-    /// Writes and observes a <see cref="FlushOutOfBandOnStop"/> payload, then retires it the same
-    /// way <see cref="ObserveOutOfBandAsync"/>/<see cref="CompleteOutOfBand"/> retire a normal
-    /// out-of-band write - except the write itself uses a fresh, <see
+    /// <summary>Writes and flushes <paramref name="payload"/> with a fresh, <see
     /// cref="TerminalOptions.CleanupTimeout"/>-bounded token (the same pattern
     /// <see cref="DisposeTerminalResourcesAsync"/> already uses for <c>renderer.ShutdownAsync</c>)
-    /// rather than the already-cancelled <c>_lifetime.Token</c>, and any failure is folded into
-    /// <see cref="LastCleanupException"/> - this codebase's convention for shutdown-path
-    /// diagnostics - rather than routed through <see cref="Report"/>, which exists for a still
-    /// running application and no longer applies once <c>_stopping</c> is set.
-    /// </summary>
-    private async Task ObserveOutOfBandOnStopAsync(byte[] payload, IDisposable hold, TaskCompletionSource completion)
+    /// rather than the already-cancelled <c>_lifetime.Token</c>, returning the failure instead of
+    /// throwing - this codebase's convention for shutdown-path writes. Shared by
+    /// <see cref="ObserveOutOfBandOnStopAsync"/> and the stranded-bytes fallback in
+    /// <see cref="FlushStrandedOutOfBandAsync"/> below.</summary>
+    private async Task<Exception?> WriteOutOfBandDuringStopAsync(byte[] payload)
     {
-        Exception? failure = null;
-
         try
         {
             using var timeout = new CancellationTokenSource(_options.CleanupTimeout, _timeProvider);
             await _transport.WriteAsync(payload, timeout.Token).ConfigureAwait(false);
             await _transport.FlushAsync(timeout.Token).ConfigureAwait(false);
+            return null;
         }
         catch (Exception exception)
         {
-            failure = exception;
+            return exception;
         }
+    }
+
+    /// <summary>
+    /// Writes out-of-band bytes still buffered when <see
+    /// cref="Dispatcher.PostBackgroundCompletionAsync"/>'s abandonment cleanup runs for a
+    /// render or out-of-band write - i.e. the dispatcher was too saturated or already disposed to
+    /// even run <see cref="CompleteRender"/>/<see cref="CompleteOutOfBand"/>, so neither ever
+    /// reached its own <see cref="FlushOutOfBandOnStop"/> call. Unlike
+    /// <see cref="FlushOutOfBandOnStop"/>, this never touches <see cref="IsRendering"/> or
+    /// <c>_renderTask</c> - the caller's own retirement already owns completing those - and it
+    /// writes directly rather than through another <see
+    /// cref="Dispatcher.PostBackgroundCompletionAsync"/> round: this fallback is reached
+    /// only when posting back to the dispatcher already failed, so routing its own completion
+    /// through the same dispatcher would only recreate the problem it exists to work around. Safe to
+    /// call off the dispatcher thread: <c>_outOfBand</c> is snapshotted and cleared under
+    /// <c>_gate</c>, the same lock <see cref="PostOutOfBand"/> checks <c>_stopping</c> under before
+    /// writing, so once <c>_stopping</c> is observed true here no further bytes can arrive.
+    /// </summary>
+    private async Task FlushStrandedOutOfBandAsync()
+    {
+        byte[] payload;
+
+        lock (_gate)
+        {
+            if (!_stopping || _outOfBand.WrittenCount == 0)
+            {
+                return;
+            }
+
+            payload = _outOfBand.WrittenSpan.ToArray();
+            _outOfBand.Clear();
+        }
+
+        LastCleanupException ??= await WriteOutOfBandDuringStopAsync(payload).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Writes and observes a <see cref="FlushOutOfBandOnStop"/> payload via <see
+    /// cref="WriteOutOfBandDuringStopAsync"/>, then retires it the same way <see
+    /// cref="ObserveOutOfBandAsync"/>/<see cref="CompleteOutOfBand"/> retire a normal out-of-band
+    /// write.
+    /// </summary>
+    private async Task ObserveOutOfBandOnStopAsync(byte[] payload, IDisposable hold, TaskCompletionSource completion)
+    {
+        var failure = await WriteOutOfBandDuringStopAsync(payload).ConfigureAwait(false);
 
         Dispatcher.PostBackgroundCompletion(
             () =>
@@ -2180,10 +2220,17 @@ public sealed class Application:
             failure = exception;
         }
 
-        Dispatcher.PostBackgroundCompletion(
+        await Dispatcher.PostBackgroundCompletionAsync(
             () => CompleteRender(frame, hold, completion, metrics, failure),
-            () =>
+            async () =>
             {
+                // CompleteRender never ran, so it never reached its own FlushOutOfBandOnStop call
+                // either - the same stranding CompleteRender's own stopping branch already flushes
+                // for a cancelled write, just reached here through an abandoned background
+                // completion instead. Nothing downstream of this method ever looks at _outOfBand
+                // again once stopping, so this is the last chance to write it.
+                await FlushStrandedOutOfBandAsync().ConfigureAwait(false);
+
                 // CompleteRender never ran, so its usual `IsRendering = false` never happened
                 // either. Leaving `IsRendering` true would wedge ObserveSessionAsync's shutdown
                 // drain loop (`do { await _renderTask; } while (IsRendering);`) in an infinite
@@ -2192,7 +2239,7 @@ public sealed class Application:
                 frame.Dispose();
                 hold.Dispose();
                 _ = completion.TrySetResult();
-            });
+            }).ConfigureAwait(false);
     }
 
 
@@ -2431,17 +2478,22 @@ public sealed class Application:
             failure = exception;
         }
 
-        Dispatcher.PostBackgroundCompletion(
+        await Dispatcher.PostBackgroundCompletionAsync(
             () => CompleteOutOfBand(hold, completion, failure),
-            () =>
+            async () =>
             {
+                // CompleteOutOfBand never ran, so it never reached its own PumpAfterWrite ->
+                // FlushOutOfBandOnStop call either - see the matching comment in ObserveRenderAsync's
+                // own retirement.
+                await FlushStrandedOutOfBandAsync().ConfigureAwait(false);
+
                 // CompleteOutOfBand never ran, so its usual `IsRendering = false` never happened
                 // either. Leaving `IsRendering` true would wedge ObserveSessionAsync's shutdown
                 // drain loop the same way an equivalent failure in ObserveRenderAsync would.
                 IsRendering = false;
                 hold.Dispose();
                 _ = completion.TrySetResult();
-            });
+            }).ConfigureAwait(false);
     }
 
     private void CompleteOutOfBand(IDisposable hold, TaskCompletionSource completion, Exception? failure)
