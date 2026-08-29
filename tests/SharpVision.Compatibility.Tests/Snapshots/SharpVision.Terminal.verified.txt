@@ -1158,6 +1158,7 @@ namespace SharpVision.Terminal.Protocols
         LateResponse = 10,
         QueryLimit = 11,
         Unsupported = 12,
+        Fallback = 13,
     }
     public enum EraseArea
     {
@@ -1437,9 +1438,12 @@ namespace SharpVision.Terminal.Rendering
     public readonly struct EncodeResult : System.IEquatable<SharpVision.Terminal.Rendering.EncodeResult>
     {
         public EncodeResult(int spans, bool full) { }
+        public EncodeResult(int spans, bool full, bool usedFallback) { }
         public bool Full { get; }
         public int Spans { get; }
+        public bool UsedFallback { get; }
         public void Deconstruct(out int spans, out bool full) { }
+        public void Deconstruct(out int spans, out bool full, out bool usedFallback) { }
     }
     public sealed class Frame : System.IDisposable
     {
@@ -1515,14 +1519,17 @@ namespace SharpVision.Terminal.Rendering
     {
         public RenderMetrics(int bytes, int writes, int spans, bool full, System.TimeSpan elapsed) { }
         public RenderMetrics(int bytes, int writes, int spans, bool full, System.TimeSpan elapsed, System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic> graphicsDiagnostics) { }
+        public RenderMetrics(int bytes, int writes, int spans, bool full, System.TimeSpan elapsed, bool usedFallback, System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic> graphicsDiagnostics) { }
         public int Bytes { get; }
         public System.TimeSpan Elapsed { get; }
         public bool Full { get; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic> GraphicsDiagnostics { get; }
         public int Spans { get; }
+        public bool UsedFallback { get; }
         public int Writes { get; }
         public void Deconstruct(out int bytes, out int writes, out int spans, out bool full, out System.TimeSpan elapsed) { }
         public void Deconstruct(out int bytes, out int writes, out int spans, out bool full, out System.TimeSpan elapsed, out System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic> graphicsDiagnostics) { }
+        public void Deconstruct(out int bytes, out int writes, out int spans, out bool full, out System.TimeSpan elapsed, out bool usedFallback, out System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic> graphicsDiagnostics) { }
     }
     public sealed class Renderer : System.IDisposable
     {
@@ -1625,6 +1632,16 @@ namespace SharpVision.Terminal.Runtime
         public System.Threading.Tasks.ValueTask<SharpVision.Terminal.Geometry.Dimensions> ReadAsync(System.Threading.CancellationToken cancellationToken) { }
         public bool TryReadCurrent(out SharpVision.Terminal.Geometry.Dimensions value) { }
     }
+    public enum DiagnosticPromotion
+    {
+        None = 0,
+        MalformedInput = 1,
+        UnsupportedFeature = 2,
+        InconsistentReply = 4,
+        Fallback = 8,
+        CleanupFailure = 16,
+        All = 31,
+    }
     public interface IConsoleHost
     {
         bool Interactive { get; }
@@ -1646,6 +1663,11 @@ namespace SharpVision.Terminal.Runtime
         public System.Threading.Tasks.ValueTask<int> ReadAsync(System.Memory<byte> destination, System.Threading.CancellationToken cancellationToken) { }
         public System.Threading.Tasks.ValueTask WriteAsync(System.ReadOnlyMemory<byte> source, System.Threading.CancellationToken cancellationToken) { }
     }
+    public sealed class TerminalDiagnosticException : System.Exception
+    {
+        public TerminalDiagnosticException(SharpVision.Terminal.Runtime.DiagnosticPromotion promotion, System.Exception? innerException = null) { }
+        public SharpVision.Terminal.Runtime.DiagnosticPromotion Promotion { get; }
+    }
     public sealed class TerminalOptions : System.IEquatable<SharpVision.Terminal.Runtime.TerminalOptions>
     {
         public TerminalOptions() { }
@@ -1654,6 +1676,7 @@ namespace SharpVision.Terminal.Runtime
         public System.TimeSpan CleanupTimeout { get; init; }
         public bool ClipboardPasteEvents { get; init; }
         public SharpVision.Terminal.Protocols.MouseCoordinates Coordinates { get; init; }
+        public SharpVision.Terminal.Runtime.DiagnosticPromotion DiagnosticPromotions { get; init; }
         public bool Focus { get; init; }
         public bool HideCursor { get; init; }
         public SharpVision.Terminal.Input.InputOptions Input { get; init; }

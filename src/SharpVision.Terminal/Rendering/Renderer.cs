@@ -464,6 +464,7 @@ public sealed class Renderer: IDisposable
                     encoded.Spans,
                     encoded.Full,
                     _timeProvider.GetElapsedTime(started),
+                    encoded.UsedFallback || LastGraphicsDiagnostics.Count != 0,
                     LastGraphicsDiagnostics));
             }
 
@@ -703,6 +704,7 @@ public sealed class Renderer: IDisposable
                 encoded.Spans,
                 encoded.Full,
                 _timeProvider.GetElapsedTime(started),
+                encoded.UsedFallback || !synchronized || LastGraphicsDiagnostics.Count != 0,
                 LastGraphicsDiagnostics);
 
             if (retiredBackend is not null)

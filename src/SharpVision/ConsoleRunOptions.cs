@@ -118,6 +118,22 @@ public sealed record ConsoleRunOptions
     /// <summary>Gets a negotiation override, or null for default startup negotiation.</summary>
     public NegotiationOptions? Negotiation { get; init; }
 
+    /// <summary>Gets diagnostic families promoted to exceptions at completed recovery boundaries.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown bits.</exception>
+    public DiagnosticPromotion DiagnosticPromotions
+    {
+        get;
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfUndefinedFlags(
+                value,
+                DiagnosticPromotion.All,
+                nameof(value),
+                "The diagnostic promotion selection contains unknown bits.");
+            field = value;
+        }
+    }
+
     /// <summary>Gets the positive finite reverse-cleanup timeout. Default is one second.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive and finite.</exception>
     public TimeSpan CleanupTimeout
@@ -250,6 +266,7 @@ public sealed record ConsoleRunOptions
             // Multiplexing policy must still reach graphics selection even when the rest of that
             // NegotiationOptions - the probing parts - is discarded.
             Multiplexing = resolvedNegotiation?.Multiplexing ?? Negotiation?.Multiplexing,
+            DiagnosticPromotions = DiagnosticPromotions,
             AlternateScreen = AlternateScreen,
             HideCursor = !ShowCursor,
             Focus = FocusReporting,

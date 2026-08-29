@@ -343,6 +343,19 @@ public sealed class ConsoleApplicationBuilderTests
         AssertRejected(fixture);
     }
 
+    /// <summary>Verifies a resolved ANSI fallback is promoted before Application construction.</summary>
+    [Fact]
+    public void Build_WhenDescriptionFallbackIsPromoted_ThrowsAndDisposesConnection()
+    {
+        var fixture = CreateFixture("ansi-fallback");
+        _ = fixture.Builder.PromoteDiagnostics(DiagnosticPromotion.Fallback);
+
+        var thrown = Should.Throw<TerminalDiagnosticException>(fixture.Builder.Build);
+
+        thrown.Promotion.ShouldBe(DiagnosticPromotion.Fallback);
+        AssertRejected(fixture);
+    }
+
     /// <summary>Verifies all unsupported result families map to UnsupportedTerminal without terminal output.</summary>
     /// <param name="resultKind">The deterministic description result.</param>
     [Theory]
@@ -515,6 +528,9 @@ public sealed class ConsoleApplicationBuilderTests
             ]),
         "missing" => DescriptionResult.MissingOrGeneric(
             [new DescriptionDiagnostic(DescriptionDiagnosticCode.MissingOrGeneric)]),
+        "ansi-fallback" => DescriptionResult.Loaded(
+            XtermProfile(),
+            [new DescriptionDiagnostic(DescriptionDiagnosticCode.AnsiFallback)]),
         _ => throw new ArgumentOutOfRangeException(nameof(resultKind))
     };
 

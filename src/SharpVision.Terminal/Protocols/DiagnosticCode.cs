@@ -47,5 +47,8 @@ public enum DiagnosticCode
     QueryLimit,
 
     /// <summary>A requested optional protocol is unavailable.</summary>
-    Unsupported
+    Unsupported,
+
+    /// <summary>A requested operation used a documented safe fallback.</summary>
+    Fallback
 }

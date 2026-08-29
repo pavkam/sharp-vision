@@ -20,7 +20,7 @@ public readonly record struct RenderMetrics
     /// <param name="elapsed">The non-negative elapsed time.</param>
     /// <exception cref="ArgumentOutOfRangeException">A count or elapsed time is negative.</exception>
     public RenderMetrics(int bytes, int writes, int spans, bool full, TimeSpan elapsed)
-        : this(bytes, writes, spans, full, elapsed, _noGraphicsDiagnostics)
+        : this(bytes, writes, spans, full, elapsed, usedFallback: false, _noGraphicsDiagnostics)
     {
     }
 
@@ -42,6 +42,34 @@ public readonly record struct RenderMetrics
         int spans,
         bool full,
         TimeSpan elapsed,
+        IReadOnlyList<GraphicsPlacementDiagnostic> graphicsDiagnostics) : this(
+        bytes,
+        writes,
+        spans,
+        full,
+        elapsed,
+        graphicsDiagnostics is { Count: > 0 },
+        graphicsDiagnostics)
+    {
+    }
+
+    /// <summary>Initializes validated frame-render metrics including fidelity fallback.</summary>
+    /// <param name="bytes">The non-negative transmitted byte count.</param>
+    /// <param name="writes">The non-negative transport-write count.</param>
+    /// <param name="spans">The non-negative damage-span count.</param>
+    /// <param name="full">Whether the operation encoded a full redraw.</param>
+    /// <param name="elapsed">The non-negative elapsed time.</param>
+    /// <param name="usedFallback">Whether this frame used a lower-fidelity presentation path.</param>
+    /// <param name="graphicsDiagnostics">The non-null graphics placements that fell back to cells.</param>
+    /// <exception cref="ArgumentOutOfRangeException">A count or elapsed time is negative.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="graphicsDiagnostics"/> is null.</exception>
+    public RenderMetrics(
+        int bytes,
+        int writes,
+        int spans,
+        bool full,
+        TimeSpan elapsed,
+        bool usedFallback,
         IReadOnlyList<GraphicsPlacementDiagnostic> graphicsDiagnostics)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(bytes);
@@ -59,6 +87,7 @@ public readonly record struct RenderMetrics
         Spans = spans;
         Full = full;
         Elapsed = elapsed;
+        UsedFallback = usedFallback;
         GraphicsDiagnosticsSnapshot = graphicsDiagnostics.Count == 0
             ? _noGraphicsDiagnostics
             : Array.AsReadOnly(graphicsDiagnostics.ToArray());
@@ -78,6 +107,9 @@ public readonly record struct RenderMetrics
 
     /// <summary>Gets the elapsed encode, write, flush, and commit time.</summary>
     public TimeSpan Elapsed { get; }
+
+    /// <summary>Gets whether this frame used a lower-fidelity presentation path.</summary>
+    public bool UsedFallback { get; }
 
     /// <summary>
     /// Gets the immutable snapshot of graphics placements that fell back to ordinary cells during
@@ -124,6 +156,32 @@ public readonly record struct RenderMetrics
         spans = Spans;
         full = Full;
         elapsed = Elapsed;
+        graphicsDiagnostics = GraphicsDiagnostics;
+    }
+
+    /// <summary>Deconstructs frame metrics including fidelity fallback and graphics diagnostics.</summary>
+    /// <param name="bytes">Receives the transmitted byte count.</param>
+    /// <param name="writes">Receives the transport-write count.</param>
+    /// <param name="spans">Receives the damage-span count.</param>
+    /// <param name="full">Receives whether the operation was a full redraw.</param>
+    /// <param name="elapsed">Receives the elapsed time.</param>
+    /// <param name="usedFallback">Receives whether the frame used lower-fidelity presentation.</param>
+    /// <param name="graphicsDiagnostics">Receives graphics placements that fell back to cells.</param>
+    public void Deconstruct(
+        out int bytes,
+        out int writes,
+        out int spans,
+        out bool full,
+        out TimeSpan elapsed,
+        out bool usedFallback,
+        out IReadOnlyList<GraphicsPlacementDiagnostic> graphicsDiagnostics)
+    {
+        bytes = Bytes;
+        writes = Writes;
+        spans = Spans;
+        full = Full;
+        elapsed = Elapsed;
+        usedFallback = UsedFallback;
         graphicsDiagnostics = GraphicsDiagnostics;
     }
 }

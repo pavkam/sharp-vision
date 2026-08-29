@@ -142,6 +142,7 @@ public static class FrameEncoder
         var spanCount = 0;
         var scroll = default(VerticalScrollDamage);
         var placeholderStyle = default(GraphicsCellOverlayValue);
+        var usedFallback = false;
         usedScrollRegion = false;
 
         if (redraw)
@@ -214,6 +215,7 @@ public static class FrameEncoder
                     interpreter,
                     ref semanticStyle,
                     ref style,
+                    ref usedFallback,
                     backOverlay))
             {
                 continue;
@@ -253,6 +255,7 @@ public static class FrameEncoder
                 var projected = cell.Style == semanticStyle
                     ? style
                     : Project(cell.Style, profile);
+                usedFallback |= UsesFallback(cell.Style, projected, profile);
                 style = ApplyStyle(destination, style, projected, profile, interpreter);
                 semanticStyle = cell.Style;
                 var grapheme = back.GetGrapheme(index);
@@ -310,7 +313,7 @@ public static class FrameEncoder
             }
         }
 
-        return new EncodeResult(spanCount, redraw);
+        return new EncodeResult(spanCount, redraw, usedFallback);
     }
 
     private static bool TryEraseTrailingBlanks(
@@ -322,6 +325,7 @@ public static class FrameEncoder
         Interpreter interpreter,
         ref CellStyle semanticStyle,
         ref CellStyle style,
+        ref bool usedFallback,
         GraphicsCellOverlay? overlay)
     {
         if (!profile.Description.BackColorErase ||
@@ -359,6 +363,7 @@ public static class FrameEncoder
         }
 
         var projected = Project(semantic.Value, profile);
+        usedFallback |= UsesFallback(semantic.Value, projected, profile);
 
         if (projected.Foreground != Color.Default ||
             projected.Attributes != TerminalAttributes.None ||
@@ -373,6 +378,14 @@ public static class FrameEncoder
         semanticStyle = semantic.Value;
         return profile.Programs.TryWrite("el", [], interpreter, destination);
     }
+
+    private static bool UsesFallback(
+        CellStyle semantic,
+        CellStyle projected,
+        TerminalProfile profile) =>
+        semantic != projected ||
+        (profile.RenderingColorDepth != ColorDepth.TrueColor &&
+         (semantic.Foreground.IsRgb || semantic.Background.IsRgb || semantic.UnderlineColor.IsRgb));
 
     private static bool PlaceholderStylesEqual(
         GraphicsCellOverlayValue left,

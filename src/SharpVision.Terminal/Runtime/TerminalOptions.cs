@@ -83,6 +83,22 @@ public sealed record TerminalOptions
     /// </remarks>
     public MultiplexingPolicy? Multiplexing { get; init; }
 
+    /// <summary>Gets diagnostic families promoted to exceptions at completed recovery boundaries.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown bits.</exception>
+    public DiagnosticPromotion DiagnosticPromotions
+    {
+        get;
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfUndefinedFlags(
+                value,
+                DiagnosticPromotion.All,
+                nameof(value),
+                "The diagnostic promotion selection contains unknown bits.");
+            field = value;
+        }
+    }
+
     /// <summary>Gets whether to enter the alternate screen.</summary>
     public bool AlternateScreen { get; init; } = true;
 

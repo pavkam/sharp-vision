@@ -144,6 +144,7 @@ public sealed class Session: IAsyncDisposable
     /// <returns>The complete session operation.</returns>
     /// <exception cref="InvalidOperationException">The session is already running.</exception>
     /// <exception cref="ObjectDisposedException">The session is disposed or disposal has begun.</exception>
+    /// <exception cref="TerminalDiagnosticException">A configured lease or cleanup diagnostic is promoted.</exception>
     public async ValueTask RunAsync(CancellationToken cancellationToken)
     {
         TaskCompletionSource completion;
@@ -230,9 +231,26 @@ public sealed class Session: IAsyncDisposable
             _ = completion.TrySetResult();
         }
 
+        var cleanupPromotion = LastCleanupException is not null &&
+                               (_options.DiagnosticPromotions & DiagnosticPromotion.CleanupFailure) != 0
+            ? new TerminalDiagnosticException(
+                DiagnosticPromotion.CleanupFailure,
+                LastCleanupException)
+            : null;
+
+        if (primary is not null && cleanupPromotion is not null)
+        {
+            throw new AggregateException(primary, cleanupPromotion);
+        }
+
         if (primary is not null)
         {
             ExceptionDispatchInfo.Capture(primary).Throw();
+        }
+
+        if (cleanupPromotion is not null)
+        {
+            throw cleanupPromotion;
         }
 
         if (LastCleanupException is not null)
@@ -414,11 +432,19 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(alternateScreen, cancellationToken).ConfigureAwait(false);
         }
+        else if (_options.AlternateScreen)
+        {
+            ReportAndPromote(DiagnosticPromotion.UnsupportedFeature, DiagnosticCode.Unsupported);
+        }
 
         if (_options.HideCursor &&
             TryCreateDescriptionLease(CapabilityNames.Civis, CapabilityNames.Cnorm, out var cursor))
         {
             await EnableAsync(cursor, cancellationToken).ConfigureAwait(false);
+        }
+        else if (_options.HideCursor)
+        {
+            ReportAndPromote(DiagnosticPromotion.UnsupportedFeature, DiagnosticCode.Unsupported);
         }
 
         if (_context.Profile.KeyMap.RequiresApplicationMode &&
@@ -438,10 +464,18 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(CreateFocusLease(), cancellationToken).ConfigureAwait(false);
         }
+        else if (_options.Focus)
+        {
+            ReportAndPromote(DiagnosticPromotion.UnsupportedFeature, DiagnosticCode.Unsupported);
+        }
 
         if (_options.Paste && IsPermitted(capabilities.BracketedPaste))
         {
             await EnableAsync(CreatePasteLease(), cancellationToken).ConfigureAwait(false);
+        }
+        else if (_options.Paste)
+        {
+            ReportAndPromote(DiagnosticPromotion.UnsupportedFeature, DiagnosticCode.Unsupported);
         }
 
         if (_options.ClipboardPasteEvents &&
@@ -449,6 +483,10 @@ public sealed class Session: IAsyncDisposable
             TryCreateClipboardPasteEventsLease(out var clipboardPasteEvents))
         {
             await EnableAsync(clipboardPasteEvents, cancellationToken).ConfigureAwait(false);
+        }
+        else if (_options.ClipboardPasteEvents)
+        {
+            ReportAndPromote(DiagnosticPromotion.UnsupportedFeature, DiagnosticCode.Unsupported);
         }
 
         var mouse = _options.Coordinates == MouseCoordinates.Pixel
@@ -459,6 +497,10 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(CreateMouseLease(), cancellationToken).ConfigureAwait(false);
         }
+        else if (_options.Tracking.HasValue)
+        {
+            ReportAndPromote(DiagnosticPromotion.UnsupportedFeature, DiagnosticCode.Unsupported);
+        }
 
         if (_options.Keyboard.HasValue && IsPermitted(capabilities.KittyKeyboard))
         {
@@ -466,8 +508,29 @@ public sealed class Session: IAsyncDisposable
         }
         else if (_options.ModifyOtherKeys.HasValue && IsPermitted(capabilities.XtermKeyboard))
         {
+            if (_options.Keyboard.HasValue)
+            {
+                ReportAndPromote(DiagnosticPromotion.Fallback, DiagnosticCode.Fallback);
+            }
+
             await EnableAsync(CreateModifyOtherKeysLease(), cancellationToken).ConfigureAwait(false);
         }
+        else if (_options.Keyboard.HasValue || _options.ModifyOtherKeys.HasValue)
+        {
+            ReportAndPromote(DiagnosticPromotion.UnsupportedFeature, DiagnosticCode.Unsupported);
+        }
+    }
+
+    private void ReportAndPromote(DiagnosticPromotion promotion, DiagnosticCode code)
+    {
+        if ((_options.DiagnosticPromotions & promotion) == 0)
+        {
+            return;
+        }
+
+        var diagnostic = new Diagnostic(code, SequenceKind.None, offset: 0, discardedBytes: 0);
+        _sink.Input(in diagnostic);
+        throw new TerminalDiagnosticException(promotion);
     }
 
     private async ValueTask EnableAsync(Lease lease, CancellationToken cancellationToken)

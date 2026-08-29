@@ -466,6 +466,7 @@ public sealed class Application:
     /// <param name="cancellationToken">Cancels the startup wait.</param>
     /// <exception cref="InvalidOperationException">The application was already started.</exception>
     /// <exception cref="ObjectDisposedException">The application is disposed.</exception>
+    /// <exception cref="TerminalDiagnosticException">A configured startup or initial-frame diagnostic is promoted.</exception>
     public async ValueTask StartAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposeState) != 0, this);
@@ -537,6 +538,7 @@ public sealed class Application:
     /// is raised, cleanup runs, <see cref="Completion"/> finishes, and owned resources are disposed.
     /// </remarks>
     /// <param name="cancellationToken">Cancels only the caller's wait.</param>
+    /// <exception cref="TerminalDiagnosticException">A configured cleanup diagnostic is promoted.</exception>
     public async ValueTask StopAsync(CancellationToken cancellationToken = default)
     {
         if (Volatile.Read(ref _startState) == 0)
@@ -1075,6 +1077,18 @@ public sealed class Application:
                 Report(enqueueFailure);
             }
 
+            if (metrics.Value.UsedFallback &&
+                metrics.Value.GraphicsDiagnostics.Count == 0 &&
+                (_options.DiagnosticPromotions & DiagnosticPromotion.Fallback) != 0)
+            {
+                var fallback = new TerminalDiagnostic(
+                    TerminalDiagnosticCode.Fallback,
+                    TerminalSequenceKind.None,
+                    offset: 0,
+                    discardedBytes: 0);
+                Input(in fallback);
+            }
+
             if (!_stopping)
             {
                 MarkStarted();
@@ -1326,6 +1340,9 @@ public sealed class Application:
                 break;
             case RecordKind.Diagnostic:
                 Diagnostic?.Invoke(this, new DiagnosticEventArgs(record.Diagnostic));
+                ApplicationDiagnosticPromotionClassifier.ThrowIfConfigured(
+                    _options.DiagnosticPromotions,
+                    ApplicationDiagnosticPromotionClassifier.Classify(record.Diagnostic.Code));
                 break;
             case RecordKind.Response:
                 ResponseReceived?.Invoke(this, new ProtocolResponseEventArgs(record.Response));
@@ -1361,6 +1378,9 @@ public sealed class Application:
                 break;
             case RecordKind.GraphicsDiagnostic:
                 GraphicsDiagnostic?.Invoke(this, new GraphicsDiagnosticEventArgs(record.GraphicsDiagnostics));
+                ApplicationDiagnosticPromotionClassifier.ThrowIfConfigured(
+                    _options.DiagnosticPromotions,
+                    DiagnosticPromotion.Fallback);
                 break;
             case RecordKind.Closed:
                 _ = BeginStopping(forced: true, exception: null);
@@ -2666,7 +2686,13 @@ public sealed class Application:
             _renderer?.LastCleanupException ??
             Session.LastCleanupException ??
             failure;
-        return failure;
+        var observed = LastCleanupException;
+
+        return observed is not null &&
+               (_options.DiagnosticPromotions & DiagnosticPromotion.CleanupFailure) != 0 &&
+               observed is not TerminalDiagnosticException
+            ? new TerminalDiagnosticException(DiagnosticPromotion.CleanupFailure, observed)
+            : failure;
     }
 
     /// <summary>The delay between successive queue-full retries in

@@ -26,6 +26,29 @@ public sealed class ConsoleRunOptionsTests
         options.FocusReporting.ShouldBeTrue();
         options.ClipboardPasteEvents.ShouldBeFalse();
         options.TreatControlCAsInput.ShouldBeFalse();
+        options.DiagnosticPromotions.ShouldBe(DiagnosticPromotion.None);
+    }
+
+    /// <summary>Verifies selected strict diagnostic families reach terminal session policy unchanged.</summary>
+    [Fact]
+    public void ToTerminalOptions_WhenDiagnosticFamiliesPromoted_PreservesSelection()
+    {
+        var promotions = DiagnosticPromotion.MalformedInput | DiagnosticPromotion.CleanupFailure;
+        var options = new ConsoleRunOptions { DiagnosticPromotions = promotions };
+
+        var terminal = options.ToTerminalOptions(Ansi());
+
+        terminal.DiagnosticPromotions.ShouldBe(promotions);
+    }
+
+    /// <summary>Verifies undefined promotion bits are rejected before a console is opened.</summary>
+    [Fact]
+    public void DiagnosticPromotions_WhenValueHasUnknownBits_ThrowsArgumentOutOfRangeException()
+    {
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new ConsoleRunOptions { DiagnosticPromotions = (DiagnosticPromotion) 32 });
+
+        exception.ParamName.ShouldBe("value");
     }
 
     /// <summary>Verifies an undefined enhancement bit is rejected at the option boundary instead of

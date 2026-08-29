@@ -76,6 +76,9 @@ internal sealed class RuntimeSink: ISink
     /// <summary>Gets reported runtime faults.</summary>
     internal List<Exception> Faults { get; } = [];
 
+    /// <summary>Gets redacted protocol diagnostics in delivery order.</summary>
+    internal List<Diagnostic> Diagnostics { get; } = [];
+
     /// <inheritdoc/>
     public void Input(in Stroke value)
     {
@@ -105,7 +108,7 @@ internal sealed class RuntimeSink: ISink
     public void Input(in TerminalFocus value) => _ = value;
 
     /// <inheritdoc/>
-    public void Input(in Diagnostic value) => _ = value;
+    public void Input(in Diagnostic value) => Diagnostics.Add(value);
 
     /// <inheritdoc/>
     public void Response(in XtermCapabilitiesResponse value)

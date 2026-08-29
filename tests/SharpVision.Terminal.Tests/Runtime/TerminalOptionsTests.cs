@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Tests.Runtime;
 
 using SharpVision.Terminal.Kitty.Keyboard;
 
-/// <summary>Verifies <see cref="TerminalOptions.Keyboard"/> validation at the option boundary.</summary>
+/// <summary>Verifies terminal session option validation at the public boundary.</summary>
 public sealed class TerminalOptionsTests
 {
     /// <summary>Verifies an undefined enhancement bit is rejected at construction instead of
@@ -48,5 +48,15 @@ public sealed class TerminalOptionsTests
         var options = Should.NotThrow(() => new TerminalOptions { Keyboard = null });
 
         options.Keyboard.ShouldBeNull();
+    }
+
+    /// <summary>Verifies undefined promotion bits are rejected at the terminal option boundary.</summary>
+    [Fact]
+    public void DiagnosticPromotions_WhenValueHasUnknownBits_ThrowsArgumentOutOfRangeException()
+    {
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new TerminalOptions { DiagnosticPromotions = (DiagnosticPromotion) 32 });
+
+        exception.ParamName.ShouldBe("value");
     }
 }

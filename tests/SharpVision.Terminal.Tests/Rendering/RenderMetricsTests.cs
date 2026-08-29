@@ -17,6 +17,7 @@ public sealed class RenderMetricsTests
         var diagnostics = metrics.GraphicsDiagnostics;
 
         diagnostics.ShouldBeEmpty();
+        metrics.UsedFallback.ShouldBeFalse();
     }
 
     /// <summary>Verifies later caller-list mutation cannot rewrite completed-frame diagnostics.</summary>
@@ -36,5 +37,6 @@ public sealed class RenderMetricsTests
         diagnostics.Clear();
 
         metrics.GraphicsDiagnostics.ShouldHaveSingleItem().ShouldBe(diagnostic);
+        metrics.UsedFallback.ShouldBeTrue();
     }
 }

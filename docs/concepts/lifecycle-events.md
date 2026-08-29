@@ -142,8 +142,10 @@ publishes the normal `OnDetached` lifecycle hook.
 
 Resize follows the ordering in the
 [runtime event loop](../architecture/runtime-event-loop.md#resize-ordering).
-`FrameRendered` reports only a completed transport write and its damage and byte
-metrics. Failed frames produce diagnostics and force invalidation instead.
+`FrameRendered` reports only a completed transport write and its damage, byte,
+and fallback metrics. Strict fallback promotion therefore happens after this
+event records the committed lower-fidelity frame. Failed frames produce
+diagnostics and force invalidation instead.
 
 `Idle` fires once per transition into a state with no ready or pending work,
 after input, timer callbacks, layout, and rendering, directly before the loop

@@ -44,9 +44,10 @@ public sealed class FrameEncoderTests
         var destination = new ArrayBufferWriter<byte>();
         var capabilities = TerminalCapabilities.Conservative with { ColorDepth = depth };
 
-        _ = FrameEncoder.Encode(null, back, destination, capabilities);
+        var result = FrameEncoder.Encode(null, back, destination, capabilities);
 
         destination.WrittenSpan.ToArray().ShouldBe(Encoding.ASCII.GetBytes(expected));
+        result.UsedFallback.ShouldBe(depth != ColorDepth.TrueColor);
     }
 
     /// <summary>Verifies RGB colors collapsing to one basic color emit one transition.</summary>

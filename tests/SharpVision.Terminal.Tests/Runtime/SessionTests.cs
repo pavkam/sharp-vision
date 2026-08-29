@@ -18,6 +18,52 @@ using SharpVision.Terminal.Multiplexing;
 /// </summary>
 public sealed class SessionTests
 {
+    /// <summary>Verifies an explicitly requested unsupported mode reports before strict promotion.</summary>
+    [Fact]
+    public async Task RunAsync_WhenRequestedFocusIsUnsupportedAndPromoted_ReportsThenThrowsAsync()
+    {
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var options = TerminalOptions.Minimal with
+        {
+            Focus = true,
+            DiagnosticPromotions = DiagnosticPromotion.UnsupportedFeature
+        };
+        await using Session session = new(transport, resize, sink, options);
+
+        var thrown = await Should.ThrowAsync<TerminalDiagnosticException>(async () =>
+            await session.RunAsync(TestContext.Current.CancellationToken));
+
+        thrown.Promotion.ShouldBe(DiagnosticPromotion.UnsupportedFeature);
+        sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Unsupported);
+        sink.Faults.ShouldHaveSingleItem().ShouldBeSameAs(thrown);
+        transport.JoinedWrites.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies cleanup promotion wraps the exact restoration failure after cleanup finishes.</summary>
+    [Fact]
+    public async Task RunAsync_WhenCleanupFailureIsPromoted_ThrowsTypedExceptionWithCauseAsync()
+    {
+        await using SessionTransport transport = new() { FailWriteAt = 7 };
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var options = new TerminalOptions
+        {
+            Capabilities = Supported(),
+            DiagnosticPromotions = DiagnosticPromotion.CleanupFailure
+        };
+        transport.Close();
+        await using Session session = new(transport, resize, sink, options);
+
+        var thrown = await Should.ThrowAsync<TerminalDiagnosticException>(async () =>
+            await session.RunAsync(TestContext.Current.CancellationToken));
+
+        thrown.Promotion.ShouldBe(DiagnosticPromotion.CleanupFailure);
+        thrown.InnerException.ShouldBeSameAs(transport.WriteFailure);
+        session.LastCleanupException.ShouldBeSameAs(transport.WriteFailure);
+    }
+
     /// <summary>Verifies negotiation refinement cannot replace the resolved terminal backend identity.</summary>
     [Fact]
     public async Task RunAsync_WhenNegotiationPublishesCapabilities_PreservesResolvedBackendAsync()

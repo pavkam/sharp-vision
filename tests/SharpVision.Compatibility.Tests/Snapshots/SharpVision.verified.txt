@@ -92,6 +92,7 @@
         public SharpVision.ConsoleRunOptions Options { get; }
         public SharpVision.Application Build() { }
         public SharpVision.ConsoleApplicationBuilder ConfigureOptions(System.Func<SharpVision.ConsoleRunOptions, SharpVision.ConsoleRunOptions> configure) { }
+        public SharpVision.ConsoleApplicationBuilder PromoteDiagnostics(SharpVision.Terminal.Runtime.DiagnosticPromotion promotions = 31) { }
         public System.Threading.Tasks.ValueTask<SharpVision.ConsoleRunStatus> RunAsync(System.Threading.CancellationToken cancellationToken = default) { }
         public SharpVision.ConsoleApplicationBuilder ShowCursor(bool visible = true) { }
         public SharpVision.ConsoleApplicationBuilder TreatControlCAsInput(bool enabled = true) { }
@@ -125,6 +126,7 @@
         public System.TimeSpan CleanupTimeout { get; init; }
         public bool ClipboardPasteEvents { get; init; }
         public SharpVision.Terminal.Capabilities.ColorDepth? ColorDepth { get; init; }
+        public SharpVision.Terminal.Runtime.DiagnosticPromotion DiagnosticPromotions { get; init; }
         public bool FocusReporting { get; init; }
         public SharpVision.Terminal.Kitty.Keyboard.KittyKeyboardEnhancement? KeyboardEnhancement { get; init; }
         public SharpVision.Terminal.Protocols.MouseCoordinates MouseCoordinates { get; init; }

@@ -1477,6 +1477,99 @@ public sealed partial class ApplicationTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies each protocol diagnostic family reports before configured promotion stops the application.</summary>
+    /// <param name="code">The representative protocol diagnostic code.</param>
+    /// <param name="promotion">The configured family expected to promote it.</param>
+    [Theory]
+    [InlineData(DiagnosticCode.Malformed, DiagnosticPromotion.MalformedInput)]
+    [InlineData(DiagnosticCode.UnexpectedPacket, DiagnosticPromotion.InconsistentReply)]
+    [InlineData(DiagnosticCode.Unsupported, DiagnosticPromotion.UnsupportedFeature)]
+    [InlineData(DiagnosticCode.Fallback, DiagnosticPromotion.Fallback)]
+    public async Task Input_WhenDiagnosticFamilyIsPromoted_ReportsThenStopsAsync(
+        DiagnosticCode code,
+        DiagnosticPromotion promotion)
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var options = TerminalOptions.Minimal with
+        {
+            DiagnosticPromotions = promotion
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        var reported = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.Diagnostic += (_, _) => reported.TrySetResult();
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var diagnostic = new Diagnostic(
+            code,
+            SequenceKind.Csi,
+            offset: 4,
+            discardedBytes: 2);
+
+        application.Input(in diagnostic);
+
+        await reported.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var thrown = await Should.ThrowAsync<TerminalDiagnosticException>(async () =>
+            await application.Completion.WaitAsync(TestContext.Current.CancellationToken));
+        thrown.Promotion.ShouldBe(promotion);
+        application.Failure.ShouldBeSameAs(thrown);
+    }
+
+    /// <summary>Verifies unavailable synchronized output is a frame fallback promoted after commit.</summary>
+    [Fact]
+    public async Task StartAsync_WhenSynchronizedOutputIsUnavailableAndFallbackPromoted_StopsAfterFrameAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var options = TerminalOptions.Minimal with
+        {
+            DiagnosticPromotions = DiagnosticPromotion.Fallback
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.FrameRendered += (_, eventArgs) =>
+        {
+            eventArgs.RenderMetrics.UsedFallback.ShouldBeTrue();
+            _ = rendered.TrySetResult();
+        };
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await rendered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var thrown = await Should.ThrowAsync<TerminalDiagnosticException>(async () =>
+            await application.Completion.WaitAsync(TestContext.Current.CancellationToken));
+
+        thrown.Promotion.ShouldBe(DiagnosticPromotion.Fallback);
+    }
+
+    /// <summary>Verifies lenient frame fallback stays in metrics without displacing protocol diagnostics.</summary>
+    [Fact]
+    public async Task StartAsync_WhenFrameFallbackIsLenient_ReportsMetricsWithoutDiagnosticEventAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        var diagnosticRaised = false;
+        application.Diagnostic += (_, _) => diagnosticRaised = true;
+        var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.FrameRendered += (_, eventArgs) =>
+        {
+            eventArgs.RenderMetrics.UsedFallback.ShouldBeTrue();
+            _ = rendered.TrySetResult();
+        };
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await rendered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+
+        diagnosticRaised.ShouldBeFalse();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     private static Stroke Alt(char value) =>
         new(Code.Character, new Rune(value), nativeCode: 0, Modifiers.Alt, KeyAction.Press);
 
@@ -1837,6 +1930,36 @@ public sealed partial class ApplicationTests
             received = eventArgs;
             _ = diagnosed.TrySetResult();
         }
+    }
+
+    /// <summary>Verifies cell fallback is reported before configured frame-boundary promotion.</summary>
+    [Fact]
+    public async Task StartAsync_WhenGraphicsFallbackIsPromoted_ReportsThenStopsAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(2, 1), new Size(5, 3)));
+        var image = new Image
+        {
+            Source = UndecodablePng(),
+            AlternateText = "PN",
+            Width = Length.Cells(2),
+            Height = Length.Cells(1)
+        };
+        var options = Options(sixel: true) with
+        {
+            DiagnosticPromotions = DiagnosticPromotion.Fallback
+        };
+        await using Application application = new(image, terminal, terminal, options);
+        var reported = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.GraphicsDiagnostic += (_, _) => reported.TrySetResult();
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await reported.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var thrown = await Should.ThrowAsync<TerminalDiagnosticException>(async () =>
+            await application.Completion.WaitAsync(TestContext.Current.CancellationToken));
+
+        thrown.Promotion.ShouldBe(DiagnosticPromotion.Fallback);
+        application.Failure.ShouldBeSameAs(thrown);
     }
 
     /// <summary>

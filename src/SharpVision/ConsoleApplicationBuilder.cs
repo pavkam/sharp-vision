@@ -238,6 +238,18 @@ public sealed class ConsoleApplicationBuilder
         return this;
     }
 
+    /// <summary>Selects diagnostic families that fail the run at completed recovery boundaries.</summary>
+    /// <param name="promotions">The diagnostic families to promote.</param>
+    /// <returns>This builder.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="promotions"/> contains unknown bits.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
+    public ConsoleApplicationBuilder PromoteDiagnostics(
+        DiagnosticPromotion promotions = DiagnosticPromotion.All)
+    {
+        Options = Options with { DiagnosticPromotions = promotions };
+        return this;
+    }
+
     /// <summary>Sets the reverse-cleanup timeout.</summary>
     /// <param name="timeout">The positive finite reverse-cleanup timeout.</param>
     /// <returns>This builder.</returns>
@@ -332,6 +344,7 @@ public sealed class ConsoleApplicationBuilder
     /// <returns>The application; the caller runs and disposes it.</returns>
     /// <exception cref="IOException">The console is not interactive or cannot enter raw mode.</exception>
     /// <exception cref="NotSupportedException">No usable terminal description is available.</exception>
+    /// <exception cref="TerminalDiagnosticException">A configured description diagnostic is promoted.</exception>
     /// <exception cref="ArgumentException">The screen is already attached to an application.</exception>
     /// <exception cref="ObjectDisposedException">The screen is disposed.</exception>
     [MustDisposeResource]
@@ -352,6 +365,14 @@ public sealed class ConsoleApplicationBuilder
                                       ? TerminalProfile.CreateAnsi(capabilities)
                                       : null);
             var resolution = connection.ResolveDescription(explicitProfile);
+
+            foreach (var diagnostic in resolution.Diagnostics)
+            {
+                ApplicationDiagnosticPromotionClassifier.ThrowIfConfigured(
+                    Options.DiagnosticPromotions,
+                    ApplicationDiagnosticPromotionClassifier.Classify(diagnostic.Code));
+            }
+
             var profile = resolution.Profile ??
                           throw new UnsupportedTerminalException(resolution);
 
@@ -415,6 +436,7 @@ public sealed class ConsoleApplicationBuilder
     /// <param name="cancellationToken">Requests shutdown, reported as <see cref="ConsoleRunStatus.Cancelled"/>.</param>
     /// <returns>The run status.</returns>
     /// <exception cref="IOException">The interactive console cannot enter raw mode.</exception>
+    /// <exception cref="TerminalDiagnosticException">A configured description diagnostic is promoted during preflight.</exception>
     public ValueTask<ConsoleRunStatus> RunAsync(CancellationToken cancellationToken = default) =>
         ConsoleApplication.RunCoreAsync(this, cancellationToken);
 

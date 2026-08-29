@@ -469,9 +469,11 @@ state with a clean full render of B. Random frame pairs and targeted wide-cell
 transitions use this same oracle.
 
 `Rendering.RenderMetrics` reports bytes, writes, damage spans, full/incremental
-classification, and elapsed time only for completed operations. An unchanged
-frame reports zero bytes and writes and follows a synchronous zero-allocation
-fast path.
+classification, elapsed time, and whether the completed frame used a
+lower-fidelity fallback. The fallback flag includes color or decoration
+projection, unavailable synchronized output, and graphics placements retained as
+cells. An unchanged frame reports zero bytes and writes and follows a
+synchronous zero-allocation fast path.
 
 ## Expected behavior
 

@@ -37,13 +37,27 @@ requested feature, an inconsistent terminal reply, fallback use, or a cleanup
 failure - to exceptions at safe boundaries. It does not change valid wire bytes,
 parser grammar, timeouts, or capability detection.
 
-> [!IMPORTANT]
->
-> **Implementation gap:** strict mode is not implemented. No option promotes any
-> diagnostic family to an exception today — every degradation event is reported
-> only through the redacted diagnostic channel, and an application cannot opt
-> into fail-fast behavior. The other pages that reference strict mode describe
-> this same intended, not-yet-available behavior.
+`DiagnosticPromotion` is a flags policy with one value for each family and
+`None` as its default. Set `ConsoleRunOptions.DiagnosticPromotions`, call the
+builder's `PromoteDiagnostics(...)`, or set
+`TerminalOptions.DiagnosticPromotions` directly. Passing no argument to the
+builder method selects `All`; selecting individual flags keeps unrelated
+diagnostics lenient.
+
+Promotion throws `TerminalDiagnosticException`, whose `Promotion` property
+identifies exactly one family without retaining terminal payload bytes. Protocol
+diagnostics are raised through `Application.Diagnostic` before promotion;
+graphics degradation is raised through `Application.GraphicsDiagnostic` first.
+Description diagnostics promote after profile resolution, requested optional
+modes promote before their lease writes, render fallback promotes after the
+frame commits, and cleanup promotes only after the bounded cleanup walk. When a
+primary failure already exists, cleanup promotion is secondary and both are
+preserved.
+
+`EncodeResult.UsedFallback` identifies color or decoration projection during
+encoding. `RenderMetrics.UsedFallback` additionally includes unavailable
+synchronized output and graphics placement fallback, so a completed
+`FrameRendered` event records the fidelity decision before strict promotion.
 
 ## Expected behavior
 
