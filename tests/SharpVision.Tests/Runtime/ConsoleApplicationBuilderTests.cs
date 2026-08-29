@@ -17,10 +17,12 @@ public sealed class ConsoleApplicationBuilderTests
         var builder = new ConsoleApplicationBuilder(new ProbeScreen())
             .UseAlternateScreen(false)
             .WithoutMouse()
+            .UseClipboardPasteEvents()
             .TreatControlCAsInput();
 
         builder.Options.AlternateScreen.ShouldBeFalse();
         builder.Options.MouseTracking.ShouldBeNull();
+        builder.Options.ClipboardPasteEvents.ShouldBeTrue();
         builder.Options.TreatControlCAsInput.ShouldBeTrue();
     }
 

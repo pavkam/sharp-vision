@@ -6,6 +6,7 @@ namespace SharpVision.Terminal.Tests.Multiplexing;
 using Capabilities;
 
 using SharpVision.Terminal.Capabilities;
+using SharpVision.Terminal.Kitty.Clipboard;
 using SharpVision.Terminal.Multiplexing;
 
 
@@ -166,6 +167,146 @@ public sealed class MultiplexerRouteTests
             "\u001bPtmux;\u001b\u001bPtmux;\u001b\u001b\u001b\u001b_Gx"u8.ToArray()
                 .Concat("\u001b\u001b\u001b\u001b\\\u001b\u001b\\\u001b\\"u8.ToArray())
                 .ToArray());
+    }
+
+    /// <summary>Verifies clipboard OSC strings use the same farthest-first tmux wrapping and ESC
+    /// doubling as every other explicitly authorized passthrough family.</summary>
+    [Fact]
+    public void TryWriteClipboard_WhenRouteHasNestedTmux_WritesExactEnvelopes()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux, MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var route = new MultiplexerRoute(policy);
+        var destination = new ArrayBufferWriter<byte>();
+
+        var written = route.TryWriteClipboard(destination, "\u001b]52;c;aGk=\u001b\\"u8);
+
+        written.ShouldBeTrue();
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001bPtmux;\u001b\u001bPtmux;\u001b\u001b\u001b\u001b]52;c;aGk="u8.ToArray()
+                .Concat("\u001b\u001b\u001b\u001b\\\u001b\u001b\\\u001b\\"u8.ToArray())
+                .ToArray());
+    }
+
+    /// <summary>Verifies a Screen-containing route cannot carry string-terminated clipboard
+    /// traffic and leaves the destination untouched.</summary>
+    [Fact]
+    public void TryWriteClipboard_WhenRouteContainsScreen_RejectsAtomically()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Screen],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var destination = new ArrayBufferWriter<byte>();
+
+        var written = new MultiplexerRoute(policy).TryWriteClipboard(
+            destination,
+            "\u001b]52;c;aGk=\u001b\\"u8);
+
+        written.ShouldBeFalse();
+        destination.WrittenCount.ShouldBe(0);
+    }
+
+    /// <summary>Verifies an authorized clipboard route unwraps one exact OSC 5522 packet for the
+    /// ordinary decoder rather than restricting inbound envelopes to capability replies.</summary>
+    [Fact]
+    public void TryUnwrapReply_WhenClipboardRouteCarriesKittyPacket_RestoresExactPacket()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var route = new MultiplexerRoute(policy);
+        var packet = "\u001b]5522;type=read:status=DONE:id=sv1\u001b\\"u8.ToArray();
+        var wrapped = new ArrayBufferWriter<byte>();
+        TmuxWriter.WritePassthrough(wrapped, packet);
+
+        route.TryUnwrapReply(wrapped.WrittenSpan, out var reply).ShouldBeTrue();
+        reply.ToArray().ShouldBe(packet);
+    }
+
+    /// <summary>Verifies an authorized clipboard route also admits one exact OSC 52 reply.</summary>
+    [Fact]
+    public void TryUnwrapReply_WhenClipboardRouteCarriesOsc52Reply_RestoresExactReply()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var route = new MultiplexerRoute(policy);
+        var reply = "\u001b]52;c;aGk=\u001b\\"u8.ToArray();
+        var wrapped = new ArrayBufferWriter<byte>();
+        TmuxWriter.WritePassthrough(wrapped, reply);
+
+        route.TryUnwrapReply(wrapped.WrittenSpan, out var owned).ShouldBeTrue();
+        owned.ToArray().ShouldBe(reply);
+    }
+
+    /// <summary>Verifies typed inbound replies cannot cross a route approved only for another
+    /// operation family.</summary>
+    /// <param name="approved">The sole approved operation family.</param>
+    /// <param name="reply">A typed reply belonging to the other family.</param>
+    [Theory]
+    [InlineData(MultiplexingOperation.Clipboard, "\u001b[?1;2c")]
+    [InlineData(MultiplexingOperation.CapabilityQueries, "\u001b]52;c;aGk=\u001b\\")]
+    public void TryUnwrapReply_WhenReplyFamilyIsNotApproved_Rejects(
+        MultiplexingOperation approved,
+        string reply)
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            approved);
+        var wrapped = new ArrayBufferWriter<byte>();
+        TmuxWriter.WritePassthrough(wrapped, Encoding.ASCII.GetBytes(reply));
+
+        new MultiplexerRoute(policy).TryUnwrapReply(wrapped.WrittenSpan, out _).ShouldBeFalse();
+    }
+
+    /// <summary>Verifies every transport split of a tmux-wrapped Kitty clipboard packet reaches
+    /// the typed decoder exactly once without leaking envelope bytes as input.</summary>
+    [Fact]
+    public void ProtocolRouter_WhenClipboardPacketIsWrappedByTmux_DecodesEveryTransportSplit()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var route = new MultiplexerRoute(policy);
+        var packet = "\u001b]5522;type=read:status=DATA:mime=Lg==:pw=c2VjcmV0;dGV4dC9wbGFpbg==\u001b\\"u8.ToArray();
+        var wrapped = new ArrayBufferWriter<byte>();
+        TmuxWriter.WritePassthrough(wrapped, packet);
+        var input = wrapped.WrittenSpan.ToArray();
+
+        for (var split = 0; split <= input.Length; split++)
+        {
+            var sink = new RecordingProtocolSink();
+            using var router = new ProtocolRouter(sink, route: route);
+
+            router.Route(input.AsSpan(0, split));
+            router.Route(input.AsSpan(split));
+
+            sink.KittyClipboardPackets.ShouldHaveSingleItem($"split {split}")
+                .ReplyStatus.ShouldBe(KittyClipboardReplyStatus.Data);
+            sink.Sequences.ShouldBeEmpty($"split {split}");
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+            sink.Strokes.ShouldBeEmpty($"split {split}");
+            sink.Text.ShouldBeEmpty($"split {split}");
+        }
     }
 
     /// <summary>Verifies GNU screen remains unavailable for non-CSI graphics passthrough.</summary>

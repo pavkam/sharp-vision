@@ -4,7 +4,7 @@
 
 Primary source:
 [Kitty clipboard protocol](https://sw.kovidgoyal.net/kitty/clipboard/), accessed
-2026-08-27. Plain-text OSC 52 and Kitty OSC 5522 are separate typed protocols.
+2026-08-29. Plain-text OSC 52 and Kitty OSC 5522 are separate typed protocols.
 
 OSC 52 transfers Base64 text to and from named selections when the terminal
 permits it. OSC 5522 uses `OSC 5522 ; metadata ; payload ST` for MIME-aware
@@ -25,10 +25,14 @@ skips malformed bytes to manufacture a successful correlation.
 ## Detection and state
 
 `CSI ? 5522 $ p` queries support; DECRPM values 0 or 4 mean unsupported and 1,
-2, or 3 mean supported. Private mode 5522 enables paste events. Transactions
-enforce documented ordering, total-size, metadata-size, timeout, and concurrency
-limits. Invalid Base64 or ordering aborts only that transaction and preserves
-outer parsing.
+2, or 3 mean supported. Private mode 5522 enables paste events. A host opts in
+with `ConsoleRunOptions.ClipboardPasteEvents` or
+`ConsoleApplicationBuilder.UseClipboardPasteEvents()`. The session acquires
+`CSI ? 5522 h` only after authoritative Kitty support and an authorized route
+are known, and restores it with `CSI ? 5522 l` during reverse cleanup.
+Transactions enforce documented ordering, total-size, metadata-size, timeout,
+and concurrency limits. Invalid Base64 or ordering aborts only that transaction
+and preserves outer parsing.
 
 `Kitty.Clipboard.KittyClipboardPacket` validates colon-separated metadata, all
 documented statuses, Base64 MIME/password/name values, optional primary
@@ -70,12 +74,12 @@ selection: `Write` and `Request` use Kitty OSC 5522 when it is authoritatively
 proven, fall back to OSC 52 text when only that is proven, and stay byte-quiet
 when neither is. Inbound OSC 52 and OSC 5522 replies route through the decoder
 into `TerminalServices`, which owns the `KittyClipboardTransaction` lifecycle
-(correlation, deadline, cancellation) and reports each completed, failed,
-timed-out, or cancelled operation through the single
-`IClipboard.KittyClipboardReplyReceived` event — for every `Request`, whichever
-protocol served it, and for a `Write` served by OSC 5522. An OSC 52 `Write` is
-fire-and-forget - the protocol defines no acknowledgement for a write, so no
-transaction is opened and no event is raised.
+(correlation, deadline, cancellation) and reports each completed, failed, or
+timed-out operation through the single `IClipboard.KittyClipboardReplyReceived`
+event — for every `Request`, whichever protocol served it, and for a `Write`
+served by OSC 5522. An OSC 52 `Write` is fire-and-forget - the protocol defines
+no acknowledgement for a write, so no transaction is opened and no event is
+raised.
 
 OSC 52 request state and its encoded query are posted as one dispatcher-owned
 operation. Concurrent callers therefore serialize in the same order on the wire
@@ -92,18 +96,25 @@ request whose reply or timeout can complete.
 > the fetched selection is lost.
 
 Mode 5522 also lets a terminal push clipboard changes without a request. When
-the application has enabled paste events, such a terminal-initiated notification
-should surface through the clipboard service as its own typed event, distinct
-from the reply to an application-issued operation.
+the application owns that mode lease, an id-less `OK -> DATA* -> DONE` read
+notification is assembled separately from application-issued transactions. Its
+single `mime=.` payload is a whitespace-separated inventory of available MIME
+types. `IClipboard.ClipboardPasteReceived` publishes an owned
+`ClipboardPasteEventArgs` containing that inventory, the source selection, and
+the one-time password supplied on every packet. A missing or inconsistent
+password, malformed UTF-8 inventory, terminal error, ordering violation, or
+deadline expiry discards only the notification and raises no partial event.
+Applications can therefore distinguish a terminal paste offer from completion of
+their own `Write` or `Request` through `KittyClipboardReplyReceived`.
 
-> [!IMPORTANT]
->
-> **Implementation gap:** terminal-initiated mode-5522 paste notifications are
-> parsed but never surfaced. A packet that does not correlate with an
-> application-issued `Write` or `Request` transaction is discarded inside the
-> clipboard service, so no event fires even after the application enables paste
-> events. Only application-issued operations currently raise
-> `KittyClipboardReplyReceived`.
+An approved tmux clipboard route wraps every complete OSC 52 or OSC 5522 string
+independently as `DCS tmux; ... ST`; the paste-mode lease crosses the same typed
+route. Each Kitty data chunk is budgeted against the route separately, so a
+valid multipart transfer need not fit the envelope limit as one aggregate
+buffer. The input route accepts only one typed clipboard packet per returned
+envelope. GNU screen is rejected for this OSC family, as are routes without
+explicit clipboard authorization; those configurations report the service
+unsupported and never lease paste events.
 
 ## Bounds and recovery
 
@@ -119,7 +130,7 @@ writer-to-parser-to-transaction integration are also covered.
 - [Kitty clipboard protocol](https://sw.kovidgoyal.net/kitty/clipboard/) defines
   OSC 52, OSC 5522, metadata, chunking, status, and private mode 5522.
 
-Source accessed 2026-07-28.
+Source accessed 2026-08-29. Paste notifications require Kitty 0.44.1 or later.
 
 ## Expected behavior
 

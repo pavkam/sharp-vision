@@ -43,7 +43,7 @@ public sealed class ProtocolRouter: IDisposable
     {
     }
 
-    /// <summary>Initializes a router with one explicit bounded multiplexer reply route.</summary>
+    /// <summary>Initializes a router with one explicit bounded multiplexer protocol route.</summary>
     /// <param name="sink">The non-null synchronous protocol sink.</param>
     /// <param name="route">The non-null explicit active multiplexer route.</param>
     /// <param name="options">Finite input policy, or null for defaults.</param>

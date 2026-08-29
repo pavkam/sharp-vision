@@ -273,6 +273,7 @@ replaces the accumulated options wholesale.
 | `MouseCoordinates`            | `MouseCoordinates`          | `MouseCoordinates.Sgr`                                                         |
 | `BracketedPaste`              | `bool`                      | `true`                                                                         |
 | `FocusReporting`              | `bool`                      | `true`                                                                         |
+| `ClipboardPasteEvents`        | `bool`                      | `false`                                                                        |
 | `KeyboardEnhancement`         | `KittyKeyboardEnhancement?` | `KittyKeyboardEnhancement.Disambiguate \| KittyKeyboardEnhancement.EventTypes` |
 | `Profile`                     | `TerminalProfile?`          | `null` (resolve from the platform connection)                                  |
 | `Capabilities`                | `Capabilities?`             | `null` (detect and negotiate at startup)                                       |
@@ -307,25 +308,26 @@ cancellation promptly never observe either delay.
 
 `ConsoleRunOptions.ToTerminalOptions(TerminalProfile)` maps these properties
 onto the Terminal-layer `Options` record consumed by `Session` (the complete
-profile, negotiation, alternate screen, cursor visibility, focus/paste, mouse
-tracking and coordinates, keyboard enhancement, cleanup timeout, and read buffer
-size). `ToHostOptions()` maps `ResizeInterval` and `TreatControlCAsInput` onto
-`ConsoleHostOptions` for `ConsoleHost.Open`. `UseEnvironmentSizeOverrides` is
-neither of those: `Build()` applies it by wrapping the connection's own resize
-source, so it reaches an application built through `ConsoleApplicationBuilder`
-or `ConsoleApplication` rather than one opening `ConsoleHost.Open` directly.
-Both `COLUMNS` and `LINES` must name a positive integer or nothing is
-overridden, pixel dimensions are dropped along with the measured cell size, and
-only the first observed size is replaced — a genuine resize afterwards always
-wins. `Profile` has the highest precedence and bypasses native discovery.
-Otherwise `Capabilities`, when set, is retained for compatibility by wrapping
-its exact value in `TerminalProfile.CreateAnsi`; platform discovery comes third.
-`ColorDepth` is the final semantic override: it records
-`ColorOrigin=Origin.Override` while keeping the selected description, programs,
-and key map. Either complete explicit form disables negotiation — except the
-multiplexer routing policy, which survives from `Negotiation.Multiplexing` so
-graphics still cross an approved passthrough; otherwise the resolved profile's
-capabilities are the negotiation baseline.
+profile, negotiation, alternate screen, cursor visibility, focus/bracketed
+paste, opt-in Kitty clipboard paste events, mouse tracking and coordinates,
+keyboard enhancement, cleanup timeout, and read buffer size). `ToHostOptions()`
+maps `ResizeInterval` and `TreatControlCAsInput` onto `ConsoleHostOptions` for
+`ConsoleHost.Open`. `UseEnvironmentSizeOverrides` is neither of those: `Build()`
+applies it by wrapping the connection's own resize source, so it reaches an
+application built through `ConsoleApplicationBuilder` or `ConsoleApplication`
+rather than one opening `ConsoleHost.Open` directly. Both `COLUMNS` and `LINES`
+must name a positive integer or nothing is overridden, pixel dimensions are
+dropped along with the measured cell size, and only the first observed size is
+replaced — a genuine resize afterwards always wins. `Profile` has the highest
+precedence and bypasses native discovery. Otherwise `Capabilities`, when set, is
+retained for compatibility by wrapping its exact value in
+`TerminalProfile.CreateAnsi`; platform discovery comes third. `ColorDepth` is
+the final semantic override: it records `ColorOrigin=Origin.Override` while
+keeping the selected description, programs, and key map. Either complete
+explicit form disables negotiation — except the multiplexer routing policy,
+which survives from `Negotiation.Multiplexing` so graphics still cross an
+approved passthrough; otherwise the resolved profile's capabilities are the
+negotiation baseline.
 
 The parameterless `ToTerminalOptions()` remains a public source-compatibility
 surface for low-level callers. It uses `Profile` first, otherwise wraps

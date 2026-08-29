@@ -62,6 +62,9 @@ public sealed record ConsoleRunOptions
     /// <summary>Gets whether focus reporting is enabled. Default is true.</summary>
     public bool FocusReporting { get; init; } = true;
 
+    /// <summary>Gets whether Kitty OSC 5522 clipboard paste notifications are enabled. Default is false.</summary>
+    public bool ClipboardPasteEvents { get; init; }
+
     /// <summary>Gets the Kitty keyboard flags to push when supported, or null to disable.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown bits.</exception>
     /// <exception cref="ArgumentException">Associated text is set without all-key reporting.</exception>
@@ -251,6 +254,7 @@ public sealed record ConsoleRunOptions
             HideCursor = !ShowCursor,
             Focus = FocusReporting,
             Paste = BracketedPaste,
+            ClipboardPasteEvents = ClipboardPasteEvents,
             Tracking = MouseTracking,
             Coordinates = MouseCoordinates,
             Keyboard = KeyboardEnhancement,

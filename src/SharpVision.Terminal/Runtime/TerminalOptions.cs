@@ -95,6 +95,9 @@ public sealed record TerminalOptions
     /// <summary>Gets whether to enable proven bracketed paste.</summary>
     public bool Paste { get; init; } = true;
 
+    /// <summary>Gets whether to enable proven Kitty OSC 5522 clipboard paste notifications.</summary>
+    public bool ClipboardPasteEvents { get; init; }
+
     /// <summary>Gets the optional proven mouse tracking level.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     public MouseTracking? Tracking

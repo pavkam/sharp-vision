@@ -14,6 +14,14 @@ namespace SharpVision;
 [PublicAPI]
 public interface IClipboard
 {
+    /// <summary>Raised for a terminal-initiated Kitty OSC 5522 paste notification while the
+    /// application owns the corresponding mode lease.</summary>
+    /// <remarks>
+    /// Raised on the application dispatcher after the complete bounded notification is validated.
+    /// Event arguments own their MIME inventory and one-time password.
+    /// </remarks>
+    public event EventHandler<ClipboardPasteEventArgs>? ClipboardPasteReceived;
+
     /// <summary>Gets whether the active terminal advertises clipboard access through Kitty OSC 5522
     /// or OSC 52.</summary>
     public bool IsSupported { get; }

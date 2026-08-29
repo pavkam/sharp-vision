@@ -6,6 +6,7 @@ namespace SharpVision.Runtime;
 using Terminal.Capabilities;
 using Terminal.Clipboard;
 using Terminal.Kitty.Clipboard;
+using Terminal.Multiplexing;
 
 using KittyClipboardWriter = Terminal.Kitty.Clipboard.KittyClipboardWriter;
 
@@ -16,8 +17,13 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
     // type cannot carry a ";charset=" parameter the way OSC 52 or HTTP would.
     private const string _textMime = "text/plain";
     private readonly Application _application;
+    private readonly MultiplexerRoute? _multiplexerRoute;
     private readonly Lock _programGate = new();
     private ProgramExpander? _expander;
+    private KittyClipboardTransaction? _kittyPasteTransaction;
+    private DispatcherTimer? _kittyPasteTimeoutTimer;
+    private byte[] _kittyPastePassword = [];
+    private Selection _kittyPasteSelection;
     private KittyClipboardTransaction? _kittyTransaction;
     private DispatcherTimer? _kittyTimeoutTimer;
     private Selection _kittyTransactionSelection;
@@ -27,11 +33,18 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
     private Selection _pendingOsc52Selection;
     private int _osc52ReplyDebt;
 
-    public TerminalServices(Application application)
+    /// <summary>Initializes terminal services against the application's immutable route.</summary>
+    /// <param name="application">The non-null owning application.</param>
+    /// <param name="multiplexerRoute">The explicit multiplexer route, or null.</param>
+    public TerminalServices(Application application, MultiplexerRoute? multiplexerRoute)
     {
         Debug.Assert(application is not null, "The owning application must be provided.");
         _application = application;
+        _multiplexerRoute = multiplexerRoute;
     }
+
+    /// <inheritdoc/>
+    public event EventHandler<ClipboardPasteEventArgs>? ClipboardPasteReceived;
 
     /// <inheritdoc/>
     public event EventHandler<KittyClipboardReplyEventArgs>? KittyClipboardReplyReceived;
@@ -71,8 +84,9 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
     /// Environment and default evidence never authorize clipboard output.
     /// </remarks>
     bool IClipboard.IsSupported =>
-        _application.Capabilities.KittyClipboard.Authoritative ||
-        _application.Capabilities.Osc52.Authoritative;
+        (_multiplexerRoute is null || _multiplexerRoute.CanRouteClipboard) &&
+        (_application.Capabilities.KittyClipboard.Authoritative ||
+         _application.Capabilities.Osc52.Authoritative);
 
     /// <inheritdoc/>
     bool IBell.IsSupported
@@ -280,7 +294,10 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
                 selection,
                 rented.AsSpan(0, written),
                 _application.TransferLimits.MaxClipboardBytes);
-            _application.PostOutOfBand(destination.WrittenMemory);
+            if (TryRouteClipboard(destination.WrittenMemory, out var routed))
+            {
+                _application.PostOutOfBand(routed);
+            }
         }
         finally
         {
@@ -380,16 +397,57 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
     {
         _application.Dispatcher.VerifyAccess();
 
-        if (_kittyTransaction is not { } transaction)
+        if (_kittyTransaction is { } transaction)
+        {
+            var result = transaction.Accept(packet);
+
+            if (result is KittyClipboardAcceptResult.Completed or KittyClipboardAcceptResult.Failed)
+            {
+                CompleteKittyTransaction(transaction);
+            }
+
+            if (result != KittyClipboardAcceptResult.Ignored)
+            {
+                return;
+            }
+        }
+
+        if (!_application.ClipboardPasteEventsEnabled ||
+            packet.Id is not null ||
+            packet.Operation != KittyClipboardOperation.Read)
         {
             return;
         }
 
-        var result = transaction.Accept(packet);
-
-        if (result is KittyClipboardAcceptResult.Completed or KittyClipboardAcceptResult.Failed)
+        if (packet.ReplyStatus == KittyClipboardReplyStatus.Ok && !packet.Password.IsEmpty)
         {
-            CompleteKittyTransaction(transaction);
+            CancelPendingKittyPasteTransaction();
+            _kittyPasteTransaction = KittyClipboardTransaction.Read(
+                limits: _application.TransferLimits,
+                listOnly: true,
+                timeProvider: _application.Dispatcher.TimeProvider,
+                queryLimits: _application.ClipboardQueryLimits);
+            _kittyPasteSelection = packet.Selection;
+            _kittyPastePassword = packet.Password.ToArray();
+            ScheduleKittyPasteTimeout(_kittyPasteTransaction);
+        }
+
+        if (_kittyPasteTransaction is not { } pasteTransaction ||
+            !_kittyPastePassword.AsSpan().SequenceEqual(packet.Password.Span))
+        {
+            CancelPendingKittyPasteTransaction();
+            return;
+        }
+
+        var pasteResult = pasteTransaction.Accept(packet);
+
+        if (pasteResult == KittyClipboardAcceptResult.Completed)
+        {
+            CompleteKittyPasteTransaction(pasteTransaction);
+        }
+        else if (pasteResult == KittyClipboardAcceptResult.Failed)
+        {
+            CancelPendingKittyPasteTransaction();
         }
     }
 
@@ -401,8 +459,6 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
             timeProvider: _application.Dispatcher.TimeProvider,
             limits: _application.TransferLimits,
             queryLimits: _application.ClipboardQueryLimits);
-        StartKittyTransaction(transaction, selection);
-
         var destination = new ArrayBufferWriter<byte>(text.Length + 64);
         var writer = new ProtocolWriter(destination);
         var idBytes = Encoding.ASCII.GetBytes(id);
@@ -413,7 +469,15 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
             text,
             _application.TransferLimits.MaxClipboardBytes);
         KittyClipboardWriter.WriteEnd(writer);
-        _application.PostOutOfBand(destination.WrittenMemory);
+
+        if (!TryRouteClipboard(destination.WrittenMemory, out var routed))
+        {
+            transaction.Dispose();
+            return;
+        }
+
+        StartKittyTransaction(transaction, selection);
+        _application.PostOutOfBand(routed);
     }
 
     private void PerformKittyRead(Selection selection)
@@ -424,13 +488,19 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
             timeProvider: _application.Dispatcher.TimeProvider,
             limits: _application.TransferLimits,
             queryLimits: _application.ClipboardQueryLimits);
-        StartKittyTransaction(transaction, selection);
-
         var destination = new ArrayBufferWriter<byte>(64);
         var writer = new ProtocolWriter(destination);
         var idBytes = Encoding.ASCII.GetBytes(id);
         KittyClipboardWriter.Read(writer, Encoding.ASCII.GetBytes(_textMime), selection, id: idBytes);
-        _application.PostOutOfBand(destination.WrittenMemory);
+
+        if (!TryRouteClipboard(destination.WrittenMemory, out var routed))
+        {
+            transaction.Dispose();
+            return;
+        }
+
+        StartKittyTransaction(transaction, selection);
+        _application.PostOutOfBand(routed);
     }
 
     private string NextKittyId()
@@ -473,6 +543,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
     public void Dispose()
     {
         DisposedOnDispatcherThreadForTests = _application.Dispatcher.CheckAccess();
+        CancelPendingKittyPasteTransaction();
         CancelPendingKittyTransaction();
         CancelPendingOsc52Request();
     }
@@ -482,6 +553,11 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
     /// touches this dispatcher-owned clipboard state from another thread; see the threading
     /// requirement documented on <see cref="Dispose"/>.</summary>
     internal bool DisposedOnDispatcherThreadForTests { get; private set; }
+
+    /// <summary>Gets whether an application-issued Kitty clipboard transaction retains its
+    /// deadline timer. This regression seam proves shutdown releases the timer without reflecting
+    /// over private runtime state.</summary>
+    internal bool HasPendingKittyTimeoutForTests => _kittyTimeoutTimer is not null;
 
     /// <summary>Arms one OSC 52 read and its deadline, superseding any request still outstanding.</summary>
     /// <param name="selection">The selection being queried.</param>
@@ -519,10 +595,16 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
     private void PerformOsc52Request(Selection selection)
     {
         _application.Dispatcher.VerifyAccess();
-        StartOsc52Request(selection);
         var destination = new ArrayBufferWriter<byte>(8);
         Osc52.Query(new ProtocolWriter(destination), selection);
-        _application.PostOutOfBand(destination.WrittenMemory);
+
+        if (!TryRouteClipboard(destination.WrittenMemory, out var routed))
+        {
+            return;
+        }
+
+        StartOsc52Request(selection);
+        _application.PostOutOfBand(routed);
     }
 
     private void OnOsc52Timeout()
@@ -656,5 +738,128 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
         }
 
         transaction.Dispose();
+    }
+
+    private void ScheduleKittyPasteTimeout(KittyClipboardTransaction transaction)
+    {
+        var remaining = transaction.Deadline - _application.Dispatcher.TimeProvider.GetUtcNow();
+
+        if (remaining < TimeSpan.FromMilliseconds(1))
+        {
+            remaining = TimeSpan.FromMilliseconds(1);
+        }
+
+        var timer = new DispatcherTimer(_application.Dispatcher, remaining);
+        timer.Tick += (_, _) => OnKittyPasteTimeout(transaction);
+        _kittyPasteTimeoutTimer = timer;
+        timer.Start();
+    }
+
+    private void OnKittyPasteTimeout(KittyClipboardTransaction transaction)
+    {
+        if (!ReferenceEquals(transaction, _kittyPasteTransaction))
+        {
+            return;
+        }
+
+        _kittyPasteTimeoutTimer?.Dispose();
+        _kittyPasteTimeoutTimer = null;
+
+        if (transaction.CheckTimeout())
+        {
+            CancelPendingKittyPasteTransaction();
+            return;
+        }
+
+        ScheduleKittyPasteTimeout(transaction);
+    }
+
+    private void CompleteKittyPasteTransaction(KittyClipboardTransaction transaction)
+    {
+        Debug.Assert(ReferenceEquals(transaction, _kittyPasteTransaction), "Only the active paste transaction completes.");
+        ClipboardPasteEventArgs? eventArgs = null;
+
+        try
+        {
+            var item = transaction.Result?.Items.Count == 1
+                ? transaction.Result.Items[0]
+                : null;
+
+            if (item?.Mime == ".")
+            {
+                var value = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
+                    .GetString(item.Data.Span);
+                var mimeTypes = value.Split((char[]?) null, StringSplitOptions.RemoveEmptyEntries);
+                eventArgs = new ClipboardPasteEventArgs(
+                    _kittyPasteSelection,
+                    mimeTypes,
+                    _kittyPastePassword);
+            }
+        }
+        catch (DecoderFallbackException)
+        {
+        }
+        finally
+        {
+            transaction.Result?.Dispose();
+            CancelPendingKittyPasteTransaction();
+        }
+
+        if (eventArgs is not null)
+        {
+            ClipboardPasteReceived?.Invoke(this, eventArgs);
+        }
+    }
+
+    private void CancelPendingKittyPasteTransaction()
+    {
+        _kittyPasteTimeoutTimer?.Dispose();
+        _kittyPasteTimeoutTimer = null;
+
+        if (_kittyPasteTransaction is { } transaction)
+        {
+            transaction.Cancel();
+            transaction.Dispose();
+        }
+
+        _kittyPasteTransaction = null;
+        _kittyPastePassword.AsSpan().Clear();
+        _kittyPastePassword = [];
+    }
+
+    private bool TryRouteClipboard(ReadOnlyMemory<byte> commands, out ReadOnlyMemory<byte> routed)
+    {
+        if (_multiplexerRoute is null)
+        {
+            routed = commands;
+            return true;
+        }
+
+        var destination = new ArrayBufferWriter<byte>(commands.Length + 16);
+        var remaining = commands.Span;
+
+        while (!remaining.IsEmpty)
+        {
+            var terminator = remaining.IndexOf("\u001b\\"u8);
+
+            if (terminator < 0)
+            {
+                routed = default;
+                return false;
+            }
+
+            var packetLength = terminator + 2;
+
+            if (!_multiplexerRoute.TryWriteClipboard(destination, remaining[..packetLength]))
+            {
+                routed = default;
+                return false;
+            }
+
+            remaining = remaining[packetLength..];
+        }
+
+        routed = destination.WrittenMemory.ToArray();
+        return true;
     }
 }

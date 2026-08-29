@@ -147,6 +147,16 @@ public sealed class ConsoleApplicationBuilder
         return this;
     }
 
+    /// <summary>Sets whether Kitty OSC 5522 clipboard paste notifications are enabled.</summary>
+    /// <param name="enabled">Whether paste notifications are enabled when authoritatively supported.</param>
+    /// <returns>This builder.</returns>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
+    public ConsoleApplicationBuilder UseClipboardPasteEvents(bool enabled = true)
+    {
+        Options = Options with { ClipboardPasteEvents = enabled };
+        return this;
+    }
+
     /// <summary>Sets the Kitty keyboard enhancement flags, or null to disable.</summary>
     /// <param name="enhancement">The enhancement flags, or null to disable.</param>
     /// <returns>This builder.</returns>

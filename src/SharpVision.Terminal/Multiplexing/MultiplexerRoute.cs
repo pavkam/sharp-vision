@@ -38,6 +38,9 @@ public sealed class MultiplexerRoute
     /// <summary>Gets whether bounded graphics strings can reach the explicit outer terminal.</summary>
     internal bool CanRouteGraphics => Policy.Allows(MultiplexingOperation.Graphics) && !Policy.ContainsScreen;
 
+    /// <summary>Gets whether bounded clipboard OSC strings can reach the explicit outer terminal.</summary>
+    public bool CanRouteClipboard => Policy.Allows(MultiplexingOperation.Clipboard) && !Policy.ContainsScreen;
+
     /// <summary>Gets the exact largest inner graphics frame for a known ESC count.</summary>
     /// <param name="escapeBytes">The non-negative ESC byte count in the complete inner frame.</param>
     /// <returns>A positive inner byte bound, or zero when graphics cannot be routed.</returns>
@@ -92,6 +95,20 @@ public sealed class MultiplexerRoute
         ArgumentNullException.ThrowIfNull(destination);
 
         return CanRouteGraphics &&
+               !commands.IsEmpty &&
+               commands.Length <= Policy.MaxEnvelopeBytes &&
+               TryWritePassthrough(destination, commands, allowScreen: false);
+    }
+
+    /// <summary>Writes one complete bounded clipboard-family command through authorized tmux layers.</summary>
+    /// <param name="destination">The non-null synchronous destination.</param>
+    /// <param name="commands">The complete OSC 52/5522 string or private-mode 5522 control.</param>
+    /// <returns>True on complete atomic encoding; otherwise false without destination mutation.</returns>
+    public bool TryWriteClipboard(IBufferWriter<byte> destination, ReadOnlySpan<byte> commands)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+
+        return CanRouteClipboard &&
                !commands.IsEmpty &&
                commands.Length <= Policy.MaxEnvelopeBytes &&
                TryWritePassthrough(destination, commands, allowScreen: false);
@@ -155,7 +172,7 @@ public sealed class MultiplexerRoute
         return true;
     }
 
-    /// <summary>Unwraps one complete authorized query reply through every configured layer.</summary>
+    /// <summary>Unwraps one complete authorized protocol reply through every configured layer.</summary>
     /// <param name="envelope">The complete bounded outer envelope.</param>
     /// <param name="reply">The newly owned inner reply on success.</param>
     /// <returns>True when every configured layer and the final reply are valid.</returns>
@@ -163,7 +180,7 @@ public sealed class MultiplexerRoute
     {
         reply = default;
 
-        if (!CanRouteCapabilityQueries ||
+        if ((!CanRouteCapabilityQueries && !CanRouteClipboard) ||
             envelope.IsEmpty ||
             envelope.Length > Policy.MaxEnvelopeBytes)
         {
@@ -193,7 +210,7 @@ public sealed class MultiplexerRoute
             return false;
         }
 
-        if (!IsCompleteQueryReply(current))
+        if (!IsCompleteAuthorizedReply(current))
         {
             return false;
         }
@@ -202,7 +219,7 @@ public sealed class MultiplexerRoute
         return true;
     }
 
-    /// <summary>Gets the exact outer prefix used to recognize routed query replies.</summary>
+    /// <summary>Gets the exact outer prefix used to recognize routed protocol replies.</summary>
     internal ReadOnlySpan<byte> ReplyPrefix => Policy.Kind switch
     {
         MultiplexerKind.None => [],
@@ -263,13 +280,19 @@ public sealed class MultiplexerRoute
     }
 
     [Pure]
-    private static bool IsCompleteQueryReply(ReadOnlySpan<byte> reply)
+    private bool IsCompleteAuthorizedReply(ReadOnlySpan<byte> reply)
     {
         var sink = new ReplyValidationSink();
         using var decoder = new InputDecoder(sink);
         decoder.Decode(reply);
         decoder.Complete();
-        return sink.Valid;
+        return sink.Valid && sink.Operation switch
+        {
+            MultiplexingOperation.CapabilityQueries => CanRouteCapabilityQueries,
+            MultiplexingOperation.Clipboard => CanRouteClipboard,
+            MultiplexingOperation.None or MultiplexingOperation.Graphics => false,
+            _ => throw new UnreachableException("Reply validation emits only defined operation families.")
+        };
     }
 
     [Pure]

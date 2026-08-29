@@ -1032,8 +1032,10 @@ namespace SharpVision.Terminal.Multiplexing
     public sealed class MultiplexerRoute
     {
         public MultiplexerRoute(SharpVision.Terminal.Multiplexing.MultiplexingPolicy policy) { }
+        public bool CanRouteClipboard { get; }
         public SharpVision.Terminal.Multiplexing.MultiplexingPolicy Policy { get; }
         public bool TryUnwrapReply(System.ReadOnlySpan<byte> envelope, out System.ReadOnlyMemory<byte> reply) { }
+        public bool TryWriteClipboard(System.Buffers.IBufferWriter<byte> destination, System.ReadOnlySpan<byte> commands) { }
     }
     public enum MultiplexingOperation
     {
@@ -1649,6 +1651,7 @@ namespace SharpVision.Terminal.Runtime
         public bool AlternateScreen { get; init; }
         public SharpVision.Terminal.Capabilities.TerminalCapabilities Capabilities { get; init; }
         public System.TimeSpan CleanupTimeout { get; init; }
+        public bool ClipboardPasteEvents { get; init; }
         public SharpVision.Terminal.Protocols.MouseCoordinates Coordinates { get; init; }
         public bool Focus { get; init; }
         public bool HideCursor { get; init; }

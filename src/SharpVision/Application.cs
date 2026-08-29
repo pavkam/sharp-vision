@@ -45,6 +45,7 @@ public sealed class Application:
     private readonly Queue<Record> _input = new();
     private readonly ITransport _transport;
     private readonly TerminalOptions _options;
+    private readonly MultiplexerRoute? _multiplexerRoute;
     private readonly IAsyncDisposable? _hostLease;
     private readonly TimeProvider _timeProvider;
     private Renderer? _renderer;
@@ -195,6 +196,10 @@ public sealed class Application:
         Root = root;
         _transport = transport;
         _options = resolvedOptions;
+        var multiplexing = _options.Multiplexing ?? _options.Negotiation?.Multiplexing;
+        _multiplexerRoute = multiplexing is { Layers.Count: > 0 }
+            ? new MultiplexerRoute(multiplexing)
+            : null;
         _hostLease = hostLease;
         _timeProvider = timeProvider ?? TimeProvider.System;
         TerminalProfile = _options.Profile;
@@ -202,7 +207,7 @@ public sealed class Application:
         CellPolicy = new UnicodePolicy(Capabilities.AmbiguousWidth);
         Dispatcher = Dispatcher.Start(name: "SharpVision.UI", timeProvider: _timeProvider);
         Pointer = new PointerDevice(() => CaptureValue);
-        _terminalServices = new TerminalServices(this);
+        _terminalServices = new TerminalServices(this, _multiplexerRoute);
         Terminal = _terminalServices;
         Session = new Session(
             transport,
@@ -425,6 +430,12 @@ public sealed class Application:
     /// hardcoded default a protocol encoder falls back to when no limit is threaded through.
     /// </remarks>
     internal TransferLimits TransferLimits => _options.Input.TransferLimits;
+
+    /// <summary>Gets whether this run requested and can authoritatively lease Kitty paste events.</summary>
+    internal bool ClipboardPasteEventsEnabled =>
+        _options.ClipboardPasteEvents &&
+        Capabilities.KittyClipboard.Authoritative &&
+        (_multiplexerRoute is null || _multiplexerRoute.CanRouteClipboard);
 
     /// <summary>Gets the first primary runtime failure.</summary>
     public Exception? Failure { get; private set; }
@@ -1850,9 +1861,7 @@ public sealed class Application:
             // false as a no-op instead of throwing. A race only defers selection to the next
             // capability republish; it does not lose it, and the pending invalidation flag below
             // still forces a full redraw at the next render boundary either way.
-            var policy = _options.Multiplexing ?? _options.Negotiation?.Multiplexing;
-            var route = policy is { Layers.Count: > 0 } ? new MultiplexerRoute(policy) : null;
-            _ = _renderer.UpdateGraphicsBackend(Capabilities, route);
+            _ = _renderer.UpdateGraphicsBackend(Capabilities, _multiplexerRoute);
             _rendererInvalidationPending = true;
         }
 
@@ -2584,13 +2593,9 @@ public sealed class Application:
 
     private Renderer CreateRenderer()
     {
-        var policy = _options.Multiplexing ?? _options.Negotiation?.Multiplexing;
-        var route = policy is { Layers.Count: > 0 }
-            ? new MultiplexerRoute(policy)
-            : null;
         return new Renderer(
             Capabilities,
-            route,
+            _multiplexerRoute,
             cleanupTimeout: _options.CleanupTimeout,
             timeProvider: _timeProvider);
     }

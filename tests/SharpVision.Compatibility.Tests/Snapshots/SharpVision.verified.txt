@@ -73,6 +73,13 @@
         public CapabilityResponseEventArgs(SharpVision.Terminal.Xterm.CapabilityResponse response) { }
         public SharpVision.Terminal.Xterm.CapabilityResponse Response { get; }
     }
+    public sealed class ClipboardPasteEventArgs : System.EventArgs
+    {
+        public ClipboardPasteEventArgs(SharpVision.Terminal.Clipboard.Selection selection, System.Collections.Generic.IReadOnlyList<string> mimeTypes, System.ReadOnlyMemory<byte> password) { }
+        public System.Collections.Generic.IReadOnlyList<string> MimeTypes { get; }
+        public System.ReadOnlyMemory<byte> Password { get; }
+        public SharpVision.Terminal.Clipboard.Selection Selection { get; }
+    }
     public static class ConsoleApplication
     {
         public static SharpVision.ConsoleApplicationBuilder CreateBuilder(SharpVision.Controls.Screen screen) { }
@@ -91,6 +98,7 @@
         public SharpVision.ConsoleApplicationBuilder UseAlternateScreen(bool enabled = true) { }
         public SharpVision.ConsoleApplicationBuilder UseBracketedPaste(bool enabled = true) { }
         public SharpVision.ConsoleApplicationBuilder UseCapabilities(SharpVision.Terminal.Capabilities.TerminalCapabilities capabilities) { }
+        public SharpVision.ConsoleApplicationBuilder UseClipboardPasteEvents(bool enabled = true) { }
         public SharpVision.ConsoleApplicationBuilder UseColorDepth(SharpVision.Terminal.Capabilities.ColorDepth depth) { }
         public SharpVision.ConsoleApplicationBuilder UseEnvironmentSizeOverrides(bool enabled = true) { }
         public SharpVision.ConsoleApplicationBuilder UseFocusReporting(bool enabled = true) { }
@@ -115,6 +123,7 @@
         public bool BracketedPaste { get; init; }
         public SharpVision.Terminal.Capabilities.TerminalCapabilities? Capabilities { get; init; }
         public System.TimeSpan CleanupTimeout { get; init; }
+        public bool ClipboardPasteEvents { get; init; }
         public SharpVision.Terminal.Capabilities.ColorDepth? ColorDepth { get; init; }
         public bool FocusReporting { get; init; }
         public SharpVision.Terminal.Kitty.Keyboard.KittyKeyboardEnhancement? KeyboardEnhancement { get; init; }
@@ -166,6 +175,7 @@
     public interface IClipboard
     {
         bool IsSupported { get; }
+        event System.EventHandler<SharpVision.ClipboardPasteEventArgs>? ClipboardPasteReceived;
         event System.EventHandler<SharpVision.KittyClipboardReplyEventArgs>? KittyClipboardReplyReceived;
         void Request(SharpVision.Terminal.Clipboard.Selection selection = 0);
         void Write(System.ReadOnlySpan<char> text, SharpVision.Terminal.Clipboard.Selection selection = 0);

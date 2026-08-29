@@ -135,19 +135,20 @@ the `FILE`/`FOCUS_REPORTING` code-collision rule. The
 `SharpVision.ITerminalServices` (`Application.Terminal`) exposes implemented
 output protocols behind small interfaces:
 
-| Service or member  | Availability rule                                                                                                    | Unsupported result |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| `Description`      | Always exposes the active immutable metadata.                                                                        | Not applicable.    |
-| `IBell.Ring()`     | Requires an exact, non-empty, zero-parameter `bel` program.                                                          | Emits no bytes.    |
-| `SetTitle(string)` | Requires a built-in OSC 2 profile or a complete parameterless `TS` and `fsl` pair.                                   | Emits no bytes.    |
-| `IClipboard`       | Requires authoritative Kitty OSC 5522 or OSC 52 evidence; for an OSC 52 database, a valid two-argument `Ms` program. | Emits no bytes.    |
+| Service or member  | Availability rule                                                                                                                           | Unsupported result |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| `Description`      | Always exposes the active immutable metadata.                                                                                               | Not applicable.    |
+| `IBell.Ring()`     | Requires an exact, non-empty, zero-parameter `bel` program.                                                                                 | Emits no bytes.    |
+| `SetTitle(string)` | Requires a built-in OSC 2 profile or a complete parameterless `TS` and `fsl` pair.                                                          | Emits no bytes.    |
+| `IClipboard`       | Requires authoritative Kitty OSC 5522 or OSC 52 evidence, a valid OSC 52 `Ms` program when database-backed, and an authorized active route. | Emits no bytes.    |
 
 A lone or parameterized terminfo `TS` status-line program is not treated as
 OSC 2. The typed Kitty OSC 5522 extension is wired through this facade: a
 Kitty-authoritative profile reports clipboard support and takes the 5522 path,
 falling back to OSC 52 otherwise. Its
 [protocol page](kitty-clipboard.md#supported-features) owns the packet, MIME,
-and permission detail. Bell, title, and clipboard bytes use the
+permission, terminal paste-event, and tmux-routing detail. Bell, title, and
+clipboard bytes use the
 [ordered out-of-band write path](../architecture/runtime-event-loop.md#out-of-band-protocol-writes)
 so they never interleave a frame. Kitty graphics is not exposed by this facade;
 semantic image placements flow through renderer-owned `IGraphicsBackend` and its

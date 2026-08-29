@@ -4,12 +4,12 @@
 namespace SharpVision.Tests.Runtime;
 
 using System.Buffers;
-using System.Reflection;
 
 using SharpVision.Runtime;
 
 using Terminal.Clipboard;
 using Terminal.Kitty.Clipboard;
+using Terminal.Multiplexing;
 
 // SharpVision.Input.Selection is in scope through the test global usings; the clipboard's own
 // Selection is a different type entirely.
@@ -415,6 +415,231 @@ public sealed class TerminalServicesTests
         var item = args.KittyResult.ShouldNotBeNull().Items.ShouldHaveSingleItem();
         Encoding.UTF8.GetString(item.Data.Span).ShouldBe("hello");
         args.KittyResult.Dispose();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an id-less Kitty paste notification publishes its owned MIME inventory
+    /// and one-time password separately from application-issued clipboard replies.</summary>
+    [Fact]
+    public async Task Clipboard_WhenPasteEventsAreLeased_RaisesTerminalInitiatedPasteAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported },
+            ClipboardPasteEvents = true
+        };
+        var paste = new TaskCompletionSource<ClipboardPasteEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var replies = 0;
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        application.Terminal.Clipboard.ClipboardPasteReceived += (_, args) => paste.TrySetResult(args);
+        application.Terminal.Clipboard.KittyClipboardReplyReceived += (_, _) => replies++;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        terminal.QueueInput("\u001b]5522;type=read:status=OK:pw=c2VjcmV0\u001b\\"u8);
+        terminal.QueueInput(
+            "\u001b]5522;type=read:status=DATA:mime=Lg==:pw=c2VjcmV0;dGV4dC9wbGFpbiBpbWFnZS9wbmcK\u001b\\"u8);
+        terminal.QueueInput("\u001b]5522;type=read:status=DONE:pw=c2VjcmV0\u001b\\"u8);
+
+        var args = await paste.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        args.Selection.ShouldBe(ClipboardSelection.Clipboard);
+        args.MimeTypes.ShouldBe(["text/plain", "image/png"]);
+        Encoding.UTF8.GetString(args.Password.Span).ShouldBe("secret");
+        replies.ShouldBe(0);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies id-less Kitty packets remain ignored when the application did not lease
+    /// mode 5522, even if clipboard transfer support itself is authoritative.</summary>
+    [Fact]
+    public async Task Clipboard_WhenPasteEventsAreNotLeased_IgnoresTerminalInitiatedPasteAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported }
+        };
+        var received = 0;
+        var doneRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.InputRead += bytes =>
+        {
+            if (bytes.Span.IndexOf("status=DONE"u8) >= 0)
+            {
+                _ = doneRead.TrySetResult();
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        application.Terminal.Clipboard.ClipboardPasteReceived += (_, _) => received++;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        terminal.QueueInput("\u001b]5522;type=read:status=OK:pw=c2VjcmV0\u001b\\"u8);
+        terminal.QueueInput(
+            "\u001b]5522;type=read:status=DATA:mime=Lg==:pw=c2VjcmV0;dGV4dC9wbGFpbg==\u001b\\"u8);
+        terminal.QueueInput("\u001b]5522;type=read:status=DONE:pw=c2VjcmV0\u001b\\"u8);
+        await doneRead.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        received.ShouldBe(0);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a paste notification without one consistent non-empty one-time password
+    /// is discarded instead of publishing an unauthenticated partial offer.</summary>
+    /// <param name="mismatched">Whether the DATA packet changes a present password.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Clipboard_WhenPastePasswordIsMissingOrChanges_DoesNotPublishAsync(bool mismatched)
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported },
+            ClipboardPasteEvents = true
+        };
+        var received = 0;
+        var doneRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.InputRead += bytes =>
+        {
+            if (bytes.Span.IndexOf("status=DONE"u8) >= 0)
+            {
+                _ = doneRead.TrySetResult();
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        application.Terminal.Clipboard.ClipboardPasteReceived += (_, _) => received++;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var okPassword = mismatched ? ":pw=c2VjcmV0" : string.Empty;
+        var dataPassword = mismatched ? ":pw=b3RoZXI=" : string.Empty;
+        var donePassword = mismatched ? ":pw=c2VjcmV0" : string.Empty;
+
+        terminal.QueueInput(Encoding.ASCII.GetBytes($"\u001b]5522;type=read:status=OK{okPassword}\u001b\\"));
+        terminal.QueueInput(Encoding.ASCII.GetBytes(
+            $"\u001b]5522;type=read:status=DATA:mime=Lg=={dataPassword};dGV4dC9wbGFpbg==\u001b\\"));
+        terminal.QueueInput(Encoding.ASCII.GetBytes($"\u001b]5522;type=read:status=DONE{donePassword}\u001b\\"));
+        await doneRead.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        received.ShouldBe(0);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an early relative timer callback replaces rather than duplicates its
+    /// underlying timer, then complete paste delivery releases the replacement.</summary>
+    [Fact]
+    public async Task Clipboard_WhenPasteTimerFiresBeforeUtcDeadline_ReplacesAndReleasesTimerAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported },
+            ClipboardPasteEvents = true
+        };
+        var clock = new ManualTimeProvider();
+        var okRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var paste = new TaskCompletionSource<ClipboardPasteEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.InputRead += bytes =>
+        {
+            if (bytes.Span.IndexOf("status=OK"u8) >= 0)
+            {
+                _ = okRead.TrySetResult();
+            }
+        };
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            options,
+            timeProvider: clock);
+        application.Terminal.Clipboard.ClipboardPasteReceived += (_, args) => paste.TrySetResult(args);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var baselineTimers = clock.ActiveTimerCount;
+
+        terminal.QueueInput("\u001b]5522;type=read:status=OK:pw=c2VjcmV0\u001b\\"u8);
+        await okRead.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        for (var attempt = 0; attempt < 1_000 && clock.ActiveTimerCount == baselineTimers; attempt++)
+        {
+            await Task.Delay(1, TestContext.Current.CancellationToken);
+            await FlushAsync(application);
+        }
+
+        clock.ActiveTimerCount.ShouldBe(baselineTimers + 1);
+
+        clock.AdjustUtc(TimeSpan.FromSeconds(-1));
+        clock.Advance(QueryLimits.Default.QueryTimeout);
+        await FlushAsync(application);
+        clock.ActiveTimerCount.ShouldBe(baselineTimers + 1);
+
+        terminal.QueueInput(
+            "\u001b]5522;type=read:status=DATA:mime=Lg==:pw=c2VjcmV0;dGV4dC9wbGFpbg==\u001b\\"u8);
+        terminal.QueueInput("\u001b]5522;type=read:status=DONE:pw=c2VjcmV0\u001b\\"u8);
+        _ = await paste.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await FlushAsync(application);
+
+        clock.ActiveTimerCount.ShouldBe(baselineTimers);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies requesting paste events cannot bypass an explicitly rejected clipboard
+    /// route: GNU screen receives neither the lease nor clipboard services, and raw id-less packets
+    /// cannot synthesize an event behind that gate.</summary>
+    [Fact]
+    public async Task Clipboard_WhenPasteRouteIsRejected_DoesNotLeaseOrPublishAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported };
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Screen],
+            TerminalProfile.CreateAnsi(capabilities),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = capabilities,
+            ClipboardPasteEvents = true,
+            Multiplexing = policy
+        };
+        var received = 0;
+        var doneRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.InputRead += bytes =>
+        {
+            if (bytes.Span.IndexOf("status=DONE"u8) >= 0)
+            {
+                _ = doneRead.TrySetResult();
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        application.Terminal.Clipboard.ClipboardPasteReceived += (_, _) => received++;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.Clipboard.IsSupported.ShouldBeFalse();
+        terminal.QueueInput("\u001b]5522;type=read:status=OK:pw=c2VjcmV0\u001b\\"u8);
+        terminal.QueueInput(
+            "\u001b]5522;type=read:status=DATA:mime=Lg==:pw=c2VjcmV0;dGV4dC9wbGFpbg==\u001b\\"u8);
+        terminal.QueueInput("\u001b]5522;type=read:status=DONE:pw=c2VjcmV0\u001b\\"u8);
+        await doneRead.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        received.ShouldBe(0);
+        terminal.Writes.SelectMany(static write => write.ToArray())
+            .ToArray()
+            .AsSpan()
+            .IndexOf("\u001b[?5522h"u8)
+            .ShouldBe(-1);
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
@@ -1208,6 +1433,137 @@ public sealed class TerminalServicesTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an explicitly authorized tmux clipboard route wraps every OSC 52 string
+    /// before the ordered out-of-band write reaches the transport.</summary>
+    [Fact]
+    public async Task Clipboard_WhenTmuxRouteApprovesFamily_WrapsOsc52BytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var capabilities = TerminalCapabilities.Conservative with { Osc52 = supported };
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(capabilities),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = capabilities,
+            Multiplexing = policy
+        };
+        var written = new TaskCompletionSource<ReadOnlyMemory<byte>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += bytes =>
+        {
+            if (bytes.Span.IndexOf("\u001bPtmux;"u8) >= 0)
+            {
+                _ = written.TrySetResult(bytes.ToArray());
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.Clipboard.Write("hi");
+
+        var bytes = await written.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        bytes.ToArray().ShouldBe(
+            "\u001bPtmux;\u001b\u001b]52;c;aGk=\u001b\u001b\\\u001b\\"u8.ToArray());
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a Kitty transfer is budgeted and wrapped one OSC packet at a time, so a
+    /// multi-packet command may exceed the route bound in aggregate while every independently
+    /// forwarded tmux envelope remains within it.</summary>
+    [Fact]
+    public async Task Clipboard_WhenKittyWriteSpansPackets_RoutesEachPacketWithinEnvelopeBudgetAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported };
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(capabilities),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard,
+            maxEnvelopeBytes: 6_000);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = capabilities,
+            Multiplexing = policy
+        };
+        List<byte[]> writes = [];
+        var complete = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += bytes =>
+        {
+            writes.Add(bytes.ToArray());
+            byte[] allBytes = [.. writes.SelectMany(static write => write)];
+            var joined = Encoding.UTF8.GetString(allBytes);
+
+            if (joined.Split("\u001bPtmux;", StringSplitOptions.None).Length - 1 >= 4)
+            {
+                _ = complete.TrySetResult(allBytes);
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.Clipboard.Write(new string('a', 5_000));
+
+        var allBytes = await complete.Task.WaitAsync(
+            TimeSpan.FromSeconds(5),
+            TestContext.Current.CancellationToken);
+        var envelopes = Encoding.UTF8.GetString(allBytes).Split("\u001bPtmux;", StringSplitOptions.None);
+        envelopes.Length.ShouldBeGreaterThanOrEqualTo(5);
+        allBytes.Length.ShouldBeGreaterThan(policy.MaxEnvelopeBytes);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the session unwraps a tmux-carried OSC 5522 reply under the clipboard
+    /// family even when capability-query routing is not approved.</summary>
+    [Fact]
+    public async Task Clipboard_WhenTmuxRouteCarriesKittyReply_UnwrapsAndCompletesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported };
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(capabilities),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = capabilities,
+            Multiplexing = policy
+        };
+        var reply = new TaskCompletionSource<KittyClipboardReplyEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var clock = new ManualTimeProvider();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            options,
+            timeProvider: clock);
+        application.Terminal.Clipboard.KittyClipboardReplyReceived += (_, args) => reply.TrySetResult(args);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        application.Terminal.Clipboard.Request();
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        terminal.QueueInput(
+            "\u001bPtmux;\u001b\u001b]5522;type=read:status=EIO:id=sv1\u001b\u001b\\\u001b\\"u8);
+
+        var args = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        args.Failure.ShouldBe(KittyClipboardReplyStatus.Io);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>
     /// Verifies a configured transfer limit wider than OSC 52's own hardcoded 1 MiB default is
     /// honored, so a write whose UTF-8 length sits between the old hardcoded default and the newly
@@ -1521,14 +1877,16 @@ public sealed class TerminalServicesTests
         // transaction is still outstanding when the application stops.
         application.Terminal.Clipboard.Write("hello");
         await FlushAsync(application);
-        _ = ArmedTimer(application).ShouldNotBeNull("the write must arm a deadline timer to test anything");
+        ((TerminalServices) application.Terminal).HasPendingKittyTimeoutForTests
+            .ShouldBeTrue("the write must arm a deadline timer to test anything");
 
         await application.StopAsync(TestContext.Current.CancellationToken);
 
         // Observed directly rather than through side effects: a leaked timer posts to the stopped
         // dispatcher and swallows the ObjectDisposedException, so it emits nothing an assertion on
         // writes or faults could see. Only the field itself shows whether it is still armed.
-        ArmedTimer(application).ShouldBeNull("a transaction outstanding at shutdown must not leave a timer armed");
+        ((TerminalServices) application.Terminal).HasPendingKittyTimeoutForTests
+            .ShouldBeFalse("a transaction outstanding at shutdown must not leave a timer armed");
     }
 
     /// <summary>Verifies the same for a read, which takes the other transaction entry point.</summary>
@@ -1542,11 +1900,11 @@ public sealed class TerminalServicesTests
 
         application.Terminal.Clipboard.Request();
         await FlushAsync(application);
-        _ = ArmedTimer(application).ShouldNotBeNull();
+        ((TerminalServices) application.Terminal).HasPendingKittyTimeoutForTests.ShouldBeTrue();
 
         await application.StopAsync(TestContext.Current.CancellationToken);
 
-        ArmedTimer(application).ShouldBeNull();
+        ((TerminalServices) application.Terminal).HasPendingKittyTimeoutForTests.ShouldBeFalse();
     }
 
     /// <summary>Verifies disposal without any clipboard traffic is still clean, so the teardown
@@ -1752,13 +2110,6 @@ public sealed class TerminalServicesTests
     // the calling thread; a round-trip is required before the field means anything.
     private static async Task FlushAsync(Application application) =>
         await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
-
-    // The timer is private state of an internal type; nothing public reports whether it is armed,
-    // and the leak is invisible from outside precisely because the leaked callback is silent.
-    private static object? ArmedTimer(Application application) =>
-        typeof(TerminalServices)
-            .GetField("_kittyTimeoutTimer", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .GetValue(application.Terminal);
 
     private static TerminalOptions KittyOptions()
     {

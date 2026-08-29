@@ -444,6 +444,13 @@ public sealed class Session: IAsyncDisposable
             await EnableAsync(CreatePasteLease(), cancellationToken).ConfigureAwait(false);
         }
 
+        if (_options.ClipboardPasteEvents &&
+            IsPermitted(capabilities.KittyClipboard) &&
+            TryCreateClipboardPasteEventsLease(out var clipboardPasteEvents))
+        {
+            await EnableAsync(clipboardPasteEvents, cancellationToken).ConfigureAwait(false);
+        }
+
         var mouse = _options.Coordinates == MouseCoordinates.Pixel
             ? capabilities.PixelMouse
             : capabilities.CellMouse;
@@ -517,6 +524,35 @@ public sealed class Session: IAsyncDisposable
         return new Lease(enable.WrittenSpan, disable.WrittenSpan);
     }
 
+    private bool TryCreateClipboardPasteEventsLease(out Lease lease)
+    {
+        var enable = new ArrayBufferWriter<byte>();
+        var disable = new ArrayBufferWriter<byte>();
+        ProtocolModes.ClipboardPasteEvents(new ProtocolWriter(enable), enabled: true);
+        ProtocolModes.ClipboardPasteEvents(new ProtocolWriter(disable), enabled: false);
+        var policy = _options.Multiplexing ?? _options.Negotiation?.Multiplexing;
+
+        if (policy is not { Layers.Count: > 0 })
+        {
+            lease = new Lease(enable.WrittenSpan, disable.WrittenSpan);
+            return true;
+        }
+
+        var route = new MultiplexerRoute(policy);
+        var routedEnable = new ArrayBufferWriter<byte>();
+        var routedDisable = new ArrayBufferWriter<byte>();
+
+        if (!route.TryWriteClipboard(routedEnable, enable.WrittenSpan) ||
+            !route.TryWriteClipboard(routedDisable, disable.WrittenSpan))
+        {
+            lease = default;
+            return false;
+        }
+
+        lease = new Lease(routedEnable.WrittenSpan, routedDisable.WrittenSpan);
+        return true;
+    }
+
     private Lease CreateMouseLease()
     {
         Debug.Assert(_options.Tracking.HasValue, "A mouse lease requires configured tracking.");
@@ -568,14 +604,18 @@ public sealed class Session: IAsyncDisposable
         }).WithKeyMap(
             _context.Profile.KeyMap,
             _context.Profile.UsesAnsiKeyGrammar);
-        var candidateRoute = _options.Negotiation?.Multiplexing.Allows(
-            MultiplexingOperation.CapabilityQueries) == true
-            ? new MultiplexerRoute(_options.Negotiation.Multiplexing)
+        var policy = _options.Multiplexing ?? _options.Negotiation?.Multiplexing;
+        var candidateRoute = policy is { Layers.Count: > 0 }
+            ? new MultiplexerRoute(policy)
             : null;
-        var multiplexerRoute = candidateRoute?.CanRouteCapabilityQueries == true
+        var queryRoute = candidateRoute?.CanRouteCapabilityQueries == true
             ? candidateRoute
             : null;
-        var negotiationBaseline = multiplexerRoute?.Policy.OuterProfile?.Capabilities ??
+        var inputRoute = candidateRoute is not null &&
+                         (candidateRoute.CanRouteCapabilityQueries || candidateRoute.CanRouteClipboard)
+            ? candidateRoute
+            : null;
+        var negotiationBaseline = queryRoute?.Policy.OuterProfile?.Capabilities ??
                                   _context.Profile.Capabilities;
         var negotiator = _options.Negotiation is null
             ? null
@@ -586,9 +626,9 @@ public sealed class Session: IAsyncDisposable
         IProtocolSink routeSink = negotiator is null
             ? _sink
             : new NegotiationSink(_sink, negotiator);
-        using var router = multiplexerRoute is null
+        using var router = inputRoute is null
             ? new ProtocolRouter(routeSink, inputOptions, _timeProvider)
-            : new ProtocolRouter(routeSink, multiplexerRoute, inputOptions, _timeProvider);
+            : new ProtocolRouter(routeSink, inputRoute, inputOptions, _timeProvider);
         Dimensions? localDimensions = null;
 
         if (_resize.TryReadCurrent(out var currentDimensions))
@@ -609,7 +649,7 @@ public sealed class Session: IAsyncDisposable
                 queries,
                 localDimensions?.Cells,
                 localDimensions?.Pixels,
-                multiplexerRoute,
+                queryRoute,
                 _context.Profile.Description.Name);
 
             if (started)

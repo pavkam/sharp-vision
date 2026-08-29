@@ -22,6 +22,18 @@ public sealed class ManualTimeProvider: TimeProvider
     public override DateTimeOffset GetUtcNow() =>
         DateTimeOffset.UnixEpoch + TimeSpan.FromTicks(checked(_timestamp + _utcOffsetTicks));
 
+    /// <summary>Gets the number of live timers retained by this deterministic provider.</summary>
+    public int ActiveTimerCount
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _timers.Count;
+            }
+        }
+    }
+
     /// <summary>Adjusts UTC wall time independently of the monotonic timer timestamp.</summary>
     /// <param name="value">The signed wall-clock adjustment.</param>
     public void AdjustUtc(TimeSpan value) => _utcOffsetTicks = checked(_utcOffsetTicks + value.Ticks);

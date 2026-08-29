@@ -25,12 +25,13 @@ protected override void OnStarted(Application application)
 }
 ```
 
-| Service                           | Protocol                                      | Unsupported behavior                                                           |
-| --------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------ |
-| `Terminal.Bell.Ring()`            | Executable zero-parameter described `bel`     | No-op when unsupported                                                         |
-| `Terminal.SetTitle(string)`       | Proven built-in OSC 2 or described `TS`/`fsl` | No-op when unsupported                                                         |
-| `Terminal.Clipboard.Write(...)`   | Kitty OSC 5522, else authoritative OSC 52     | No-op when neither is authoritative                                            |
-| `Terminal.Clipboard.Request(...)` | Kitty OSC 5522, else authoritative OSC 52     | No-op when neither is authoritative; replies use `KittyClipboardReplyReceived` |
+| Service                                     | Protocol                                      | Unsupported behavior                                                           |
+| ------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------ |
+| `Terminal.Bell.Ring()`                      | Executable zero-parameter described `bel`     | No-op when unsupported                                                         |
+| `Terminal.SetTitle(string)`                 | Proven built-in OSC 2 or described `TS`/`fsl` | No-op when unsupported                                                         |
+| `Terminal.Clipboard.Write(...)`             | Kitty OSC 5522, else authoritative OSC 52     | No-op when neither is authoritative                                            |
+| `Terminal.Clipboard.Request(...)`           | Kitty OSC 5522, else authoritative OSC 52     | No-op when neither is authoritative; replies use `KittyClipboardReplyReceived` |
+| `Terminal.Clipboard.ClipboardPasteReceived` | Opt-in Kitty OSC 5522 paste events            | No event without an authoritative leaseable route                              |
 
 Title support is proven in one of two ways: a library-owned built-in OSC 2
 profile, or a complete, parameterless described `TS` prefix and `fsl` suffix.
@@ -55,6 +56,16 @@ the stale one. A `Write` that fell back to OSC 52 raises nothing: that protocol
 defines no acknowledgement for a write, so there is no outcome to report. Check
 the Kitty clipboard capability before making a "copied" confirmation depend on
 the event.
+
+Terminal-initiated Kitty paste offers are a separate opt-in surface. Set
+`ConsoleRunOptions.ClipboardPasteEvents` or call `UseClipboardPasteEvents()` on
+the console builder. When authoritative mode 5522 support and the active route
+permit it, the session leases the mode and `ClipboardPasteReceived` publishes an
+owned MIME inventory, selection, and one-time password. Malformed, incomplete,
+expired, or credential-inconsistent notifications are ignored rather than
+exposed partially. An explicitly approved tmux route carries clipboard strings
+one packet at a time; GNU screen and routes without clipboard approval leave the
+service unsupported.
 
 Do not concatenate escape sequences in control or application code. The typed
 services validate their data, respect the active capability profile, and keep

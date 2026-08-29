@@ -183,6 +183,12 @@ dispatcher hold, byte ordering between UI frames and protocol bytes is
 deterministic, and a bell or title change requested mid-frame is guaranteed to
 land only after that frame's bytes are on the wire.
 
+An authorized tmux clipboard route preserves the same ordering while wrapping
+each OSC 52 or Kitty OSC 5522 string independently. Opt-in Kitty paste events
+lease mode 5522 through that route and restore it with the other session modes;
+their id-less replies re-enter through the typed input router and are published
+only after one complete bounded transaction.
+
 Render and out-of-band completions use the dispatcher's shared background
 completion bridge. If shutdown cancels accepted work, or posting cannot succeed,
 the abandonment callback retires the frame, hold, and completion source exactly

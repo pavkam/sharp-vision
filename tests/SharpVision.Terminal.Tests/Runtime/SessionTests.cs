@@ -282,6 +282,66 @@ public sealed class SessionTests
         transport.JoinedWrites.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies an explicitly requested and authoritatively supported Kitty paste-event
+    /// mode is leased for the session and restored during reverse cleanup.</summary>
+    [Fact]
+    public async Task RunAsync_WhenClipboardPasteEventsAreEnabled_LeasesAndRestoresMode5522Async()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported },
+            ClipboardPasteEvents = true
+        };
+        transport.Close();
+        await using Session session = new(transport, resize, sink, options);
+
+        // Act
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        transport.JoinedWrites.ShouldBe("\u001b[?5522h\u001b[?5522l");
+    }
+
+    /// <summary>Verifies the Kitty paste-event lease reaches the explicit outer terminal through
+    /// the approved tmux clipboard family in both acquisition and reverse cleanup.</summary>
+    [Fact]
+    public async Task RunAsync_WhenClipboardPasteEventsUseTmux_RoutesLeaseAndRestorationAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported };
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(capabilities),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = capabilities,
+            ClipboardPasteEvents = true,
+            Multiplexing = policy
+        };
+        transport.Close();
+        await using Session session = new(transport, resize, sink, options);
+
+        // Act
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        transport.JoinedWrites.ShouldBe(
+            "\u001bPtmux;\u001b\u001b[?5522h\u001b\\" +
+            "\u001bPtmux;\u001b\u001b[?5522l\u001b\\");
+    }
+
     /// <summary>Verifies the resolved profile key map reaches the real session protocol router.</summary>
     [Fact]
     public async Task RunAsync_WhenProfileDescribesKey_RoutesDescribedMeaningAsync()

@@ -9,7 +9,7 @@ using Protocols;
 
 using Xterm;
 
-/// <summary>Validates that an unwrapped envelope contains exactly one recognized typed reply.</summary>
+/// <summary>Validates that an unwrapped envelope contains exactly one authorized typed reply.</summary>
 internal sealed class ReplyValidationSink:
     IProtocolSink,
     IPaletteResponseSink,
@@ -17,13 +17,18 @@ internal sealed class ReplyValidationSink:
     IStatusResponseSink,
     ICapabilityResponseSink,
     IKittyGraphicsResponseSink,
-    IItermCapabilitiesResponseSink
+    IItermCapabilitiesResponseSink,
+    IClipboardReplySink,
+    IKittyClipboardPacketSink
 {
     private int _responses;
     private bool Invalid { get; set; }
 
     /// <summary>Gets whether decoding produced exactly one typed reply and no other event.</summary>
     public bool Valid => !Invalid && _responses == 1;
+
+    /// <summary>Gets the typed operation family produced by the decoded reply.</summary>
+    public MultiplexingOperation Operation { get; private set; } = MultiplexingOperation.None;
 
     /// <inheritdoc/>
     public void Input(in Stroke value) => Invalid = true;
@@ -53,6 +58,7 @@ internal sealed class ReplyValidationSink:
             ResponseKind.CursorPosition)
         {
             _responses++;
+            Operation = MultiplexingOperation.CapabilityQueries;
         }
         else
         {
@@ -61,19 +67,19 @@ internal sealed class ReplyValidationSink:
     }
 
     /// <inheritdoc/>
-    public void Response(in PaletteResponse value) => _responses++;
+    public void Response(in PaletteResponse value) => RecordCapabilityReply();
 
     /// <inheritdoc/>
-    public void Response(in MetricsResponse value) => _responses++;
+    public void Response(in MetricsResponse value) => RecordCapabilityReply();
 
     /// <inheritdoc/>
-    public void Response(in StatusResponse value) => _responses++;
+    public void Response(in StatusResponse value) => RecordCapabilityReply();
 
     /// <inheritdoc/>
-    public void Response(CapabilityResponse value) => _responses++;
+    public void Response(CapabilityResponse value) => RecordCapabilityReply();
 
     /// <inheritdoc/>
-    public void Response(ItermCapabilitiesResponse value) => _responses++;
+    public void Response(ItermCapabilitiesResponse value) => RecordCapabilityReply();
 
     /// <inheritdoc/>
     public void Response(Kitty.Graphics.KittyGraphicsResponse value)
@@ -82,7 +88,25 @@ internal sealed class ReplyValidationSink:
 
         if (value.Valid)
         {
-            _responses++;
+            RecordCapabilityReply();
+        }
+        else
+        {
+            Invalid = true;
+        }
+    }
+
+    /// <inheritdoc/>
+    public void Response(in Clipboard.ClipboardReply value) => RecordClipboardReply();
+
+    /// <inheritdoc/>
+    public void Response(Kitty.Clipboard.KittyClipboardPacket value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        if (value.Valid)
+        {
+            RecordClipboardReply();
         }
         else
         {
@@ -92,4 +116,16 @@ internal sealed class ReplyValidationSink:
 
     /// <inheritdoc/>
     public void Sequence(ProtocolSequence value) => Invalid = true;
+
+    private void RecordCapabilityReply()
+    {
+        _responses++;
+        Operation = MultiplexingOperation.CapabilityQueries;
+    }
+
+    private void RecordClipboardReply()
+    {
+        _responses++;
+        Operation = MultiplexingOperation.Clipboard;
+    }
 }

@@ -24,6 +24,7 @@ public sealed class ConsoleRunOptionsTests
         options.MouseCoordinates.ShouldBe(MouseCoordinates.Sgr);
         options.BracketedPaste.ShouldBeTrue();
         options.FocusReporting.ShouldBeTrue();
+        options.ClipboardPasteEvents.ShouldBeFalse();
         options.TreatControlCAsInput.ShouldBeFalse();
     }
 
@@ -92,6 +93,17 @@ public sealed class ConsoleRunOptionsTests
         var terminal = options.ToTerminalOptions(Ansi());
 
         terminal.Tracking.ShouldBeNull();
+    }
+
+    /// <summary>Verifies the explicit Kitty paste-event opt-in reaches session policy unchanged.</summary>
+    [Fact]
+    public void ToTerminalOptions_WhenClipboardPasteEventsEnabled_EnablesSessionLease()
+    {
+        var options = new ConsoleRunOptions { ClipboardPasteEvents = true };
+
+        var terminal = options.ToTerminalOptions(Ansi());
+
+        terminal.ClipboardPasteEvents.ShouldBeTrue();
     }
 
     /// <summary>Verifies opting into Ctrl+C as input maps to host control-key capture.</summary>

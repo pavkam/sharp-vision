@@ -4,11 +4,12 @@
 
 Primary source:
 [tmux 3.7a manual](https://man7.org/linux/man-pages/man1/tmux.1.html) and
-[tmux FAQ](https://github.com/tmux/tmux/wiki/FAQ), accessed 2026-07-20. With
+[tmux FAQ](https://github.com/tmux/tmux/wiki/FAQ), accessed 2026-08-29. With
 `allow-passthrough`, a pane can wrap data for the outer terminal as
 `DCS tmux ; escaped-data ST`. Embedded ESC bytes are doubled for the tmux layer.
 `allow-passthrough=on` admits visible panes only; `all` also admits hidden
-panes. The default is `off`.
+panes. The default is `off`; tmux 3.3 and later require the option to be
+enabled.
 
 `TERM` and `TMUX` indicate a multiplexer context, not outer-terminal features.
 Capabilities use conservative filtering unless explicit queries survive or the
@@ -19,9 +20,8 @@ Terminal replies normally return as ordinary raw input. A real tmux 3.7
 pseudoterminal corroborates this: tmux forwards a DCS-family reply (DECRQSS,
 XTGETTCAP, and similar) from the outer terminal to the requesting pane
 unwrapped, with no `tmux;` passthrough envelope, rather than re-wrapping it
-symmetrically to how the outgoing query was wrapped. This matches the forwarding
-behavior described in upstream
-[tmux/tmux#4386](https://github.com/tmux/tmux/issues/4386).
+symmetrically to how the outgoing query was wrapped. This matches tmux's
+observed forwarding behavior.
 
 ## Routing policy
 
@@ -39,21 +39,15 @@ envelope limit is 1 MiB with a hard maximum of 16 MiB. Construction rejects
 it has at least one layer, an explicit outer profile, an approved operation, and
 a visibility-compatible passthrough mode.
 
-The route's capability query batch and the Kitty/sixel/iTerm2 graphics backends
-are the currently connected typed output operations. A route wraps the farthest
-layer first, then works inward so the nearest multiplexer sees the outermost
-wire envelope. Each tmux layer doubles every ESC again. It prepares the complete
+The route's capability-query, clipboard, and Kitty/sixel/iTerm2 graphics
+families are connected typed output operations. A route wraps the farthest layer
+first, then works inward so the nearest multiplexer sees the outermost wire
+envelope. Each tmux layer doubles every ESC again. It prepares the complete
 bounded result before mutating the caller's destination. Each complete Kitty
-APC, sixel DCS, or iTerm2 multipart OSC is routed independently. No route
-operation accepts control strings or caller-supplied raw payloads.
-
-> [!IMPORTANT]
->
-> **Implementation gap:** the typed `Clipboard` policy family is reserved but
-> not wired. `MultiplexerRoute` implements capability-query and graphics routing
-> only, and the clipboard service emits OSC 52 and OSC 5522 bytes without
-> consulting the route, so an approved tmux route does not carry clipboard
-> operations yet.
+APC, sixel DCS, iTerm2 multipart OSC, OSC 52, or Kitty OSC 5522 string is routed
+independently. This includes the mode-5522 enable and cleanup strings used for
+terminal-initiated paste notifications. Controls receive no raw tunneling
+surface; only the protocol and runtime layers call the bounded route writers.
 
 A mixed route may contain at most one GNU screen layer, and that layer must be
 farthest. Screen therefore receives the original CSI query batch rather than a
@@ -85,24 +79,25 @@ capability evidence is not reinterpreted through inner `TERM`, `TMUX`, or
 The bounded input seam recognizes only the configured outer prefix, retains at
 most the envelope limit across arbitrary fragmentation, peels each configured
 layer, and accepts only one complete recognized DA, mode, Kitty keyboard, Kitty
-graphics, iTerm2 capability, cursor position, metrics, palette, status, or
-capability reply; a modifyOtherKeys report is refused. Trailing text, controls,
-raw strings, and concatenated replies reject the entire envelope before it
-reaches ordinary input. Accepted bytes are routed through `ProtocolRouter`
-before `QueryTracker` correlation. tmux routes admit typed CSI, OSC, and DCS
-replies. Screen-containing routes admit CSI only. Real tmux delivers these
-replies raw rather than through this wrapped seam: the wrapped-envelope
-candidate match fails partway through the fixed `tmux;` prefix, and
-`ProtocolRouter`'s ordinary decoder fallback recognizes the raw reply instead. A
-complete malformed route candidate produces one redacted diagnostic; oversized
-candidates discard through the full outer recovery boundary without leaking ST
-bytes as keys or text. Diagnostics and all later parser events retain raw
-transport byte offsets, including outer framing and repeated ESC expansion.
-Wrong-family replies remain typed and observable but cannot retire the
-originating query. If bounded route encoding fails atomically, negotiation
-publishes absent evidence immediately without a write, flush, active query,
-optional-mode lease, cleanup sequence, or deadline wait. Absent transmitted
-replies preserve conservative evidence at the original exclusive deadline.
+graphics, iTerm2 capability, cursor position, metrics, palette, status,
+capability, OSC 52, or OSC 5522 reply from an authorized family; a
+modifyOtherKeys report is refused. Trailing text, controls, raw strings, and
+concatenated replies reject the entire envelope before it reaches ordinary
+input. Accepted bytes are routed through `ProtocolRouter` before transaction or
+query correlation. tmux routes admit typed CSI, OSC, and DCS replies.
+Screen-containing routes admit CSI only. Real tmux delivers these replies raw
+rather than through this wrapped seam: the wrapped-envelope candidate match
+fails partway through the fixed `tmux;` prefix, and `ProtocolRouter`'s ordinary
+decoder fallback recognizes the raw reply instead. A complete malformed route
+candidate produces one redacted diagnostic; oversized candidates discard through
+the full outer recovery boundary without leaking ST bytes as keys or text.
+Diagnostics and all later parser events retain raw transport byte offsets,
+including outer framing and repeated ESC expansion. Wrong-family replies remain
+typed and observable but cannot retire the originating query. If bounded route
+encoding fails atomically, negotiation publishes absent evidence immediately
+without a write, flush, active query, optional-mode lease, cleanup sequence, or
+deadline wait. Absent transmitted replies preserve conservative evidence at the
+original exclusive deadline.
 
 [`TmuxWriter.WritePassthrough`](../../src/SharpVision.Terminal/Multiplexing/TmuxWriter.cs)
 implements the exact one-layer grammar. `TryUnwrap` validates parser-delivered
@@ -114,9 +109,11 @@ and ST boundary. Both reject malformed input before destination mutation.
 SharpVision provides typed passthrough wrapping for approved query, clipboard,
 and graphics operations, bounded unwrapping of replies, correct ESC doubling,
 nested-depth limits, and an explicit policy when passthrough is disabled.
-Capability queries and Kitty/sixel/iTerm2 graphics are implemented. Clipboard
-opts in only through its typed backend. Arbitrary payloads from controls are
-never tunneled.
+Capability queries, OSC 52 and Kitty OSC 5522 clipboard traffic, and
+Kitty/sixel/iTerm2 graphics are implemented. Clipboard output and matching
+inbound packets cross only a route explicitly approved for the `Clipboard`
+family; Screen routes are unavailable for that family. Arbitrary payloads from
+controls are never tunneled.
 
 ## Compatibility evidence
 
@@ -135,7 +132,7 @@ executable is an explicit platform skip.
 - [tmux 3.7a manual](https://man7.org/linux/man-pages/man1/tmux.1.html)
 - [tmux FAQ](https://github.com/tmux/tmux/wiki/FAQ)
 
-Sources accessed 2026-07-28.
+Sources accessed 2026-08-29.
 
 ## Expected behavior
 
