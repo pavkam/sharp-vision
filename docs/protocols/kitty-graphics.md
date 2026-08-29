@@ -148,6 +148,40 @@ reconstruction. Its standard clear-screen operation clears retained raster state
 before replacement cells are painted, while the exact hard deletes still release
 the corresponding stored image data.
 
+The following two sequences show the actor interplay for the mechanisms above:
+detecting support before any image is uploaded, and correlating a
+number-addressed upload to its terminal-assigned id.
+
+```mermaid
+sequenceDiagram
+    participant Application
+    participant Terminal
+
+    Note over Application,Terminal: One atomic query batch: the graphics probe<br/>precedes Primary Device Attributes in the same write
+    Application->>Terminal: APC graphics query i=31,s=1,v=1,a=q,t=d,f=24;AAAA
+    Application->>Terminal: CSI Primary Device Attributes (ordering barrier)
+    opt Terminal understands the graphics command
+        Terminal-->>Application: APC reply i=31,... (any strictly valid reply,<br/>even an error, proves support)
+    end
+    Terminal-->>Application: Primary DA reply
+    Note over Application: A graphics query still unanswered when the DA reply<br/>arrives is recorded as unsupported
+```
+
+```mermaid
+sequenceDiagram
+    participant KittyGraphicsBackend
+    participant Terminal
+    participant Application
+    participant Renderer
+
+    KittyGraphicsBackend->>Terminal: transmit, number-addressed (I=n, quiet=0)
+    Terminal-->>Application: APC reply i=<id>,I=n;OK
+    Application->>Renderer: AcceptKittyGraphicsResponse(response)
+    Renderer->>KittyGraphicsBackend: Accept(response)
+    Note over KittyGraphicsBackend: Queued; the next prepared frame correlates<br/>I=n to i=<id> and switches addressing to the id (quiet=2)
+    KittyGraphicsBackend->>Terminal: later placement/delete addressed by i (quiet=2)
+```
+
 ## Frame transmission and animation control (protocol surface only)
 
 `KittyGraphicsCommand.TransmitFrame` builds `a=f` frame data commands and

@@ -41,7 +41,7 @@ internal sealed class TabControlPane: CompositeControlBase
         });
         tabs.Items.Add(new TabItem
         {
-            HeaderText = "&About",
+            HeaderText = "A&bout",
             Content = new Text("SharpVision v1.0") { Padding = new Thickness(1) }
         });
         tabs.SelectionChanged += (_, _) =>
@@ -50,8 +50,8 @@ internal sealed class TabControlPane: CompositeControlBase
         var dynStatus = new Text("Tabs: 2");
         var dyn = new TabControl { Width = Length.Cells(46), Height = Length.Cells(6) };
         dyn.Items.Add(new TabItem { HeaderText = "&Tab 1", IsClosable = true, Content = new Text("First") { Padding = new Thickness(1) } });
-        dyn.Items.Add(new TabItem { HeaderText = "&Tab 2", Content = new Text("Second") { Padding = new Thickness(1) } });
-        var addBtn = new Button { Text = "&Add tab" };
+        dyn.Items.Add(new TabItem { HeaderText = "Tab &2", Content = new Text("Second") { Padding = new Thickness(1) } });
+        var addBtn = new Button { Text = "&Create tab" };
         var rmBtn = new Button { Text = "&Remove last" };
         var closeBtn = new Button { Text = "Close selected" };
         var counter = 2;

@@ -8,6 +8,8 @@ namespace SharpVision.Showcase.Panes;
 /// </summary>
 public sealed class ShowcasePanel: ControlBase
 {
+    private const string _bodyText = "Themed body";
+
     /// <summary>Initializes a compact themed panel specimen.</summary>
     public ShowcasePanel()
     {
@@ -59,7 +61,7 @@ public sealed class ShowcasePanel: ControlBase
         var style = ResolvedStyle;
         var clipped = canvas.Clip(content);
         _ = clipped.Draw(Caption.AsSpan(), ResolveCaptionPoint(content, Caption), style);
-        _ = clipped.Draw("Themed body".AsSpan(), ResolveBodyPoint(content, Caption), style);
+        _ = clipped.Draw(_bodyText.AsSpan(), ResolveBodyPoint(content, _bodyText), style);
     }
 
     private Point ResolveCaptionPoint(Rect content, string caption)
@@ -76,11 +78,15 @@ public sealed class ShowcasePanel: ControlBase
         {
             return new Point(content.X, content.Bottom - 1);
         }
+        else if (LabelPlacement == LabelPlacement.Left)
+        {
+            return new Point(content.X, content.Y);
+        }
 
         return new Point(content.X, content.Y);
     }
 
-    private Point ResolveBodyPoint(Rect content, string _)
+    private Point ResolveBodyPoint(Rect content, string body)
     {
         if (LabelPlacement == LabelPlacement.Right)
         {
@@ -93,6 +99,10 @@ public sealed class ShowcasePanel: ControlBase
         else if (LabelPlacement == LabelPlacement.Below)
         {
             return new Point(content.X, Math.Max(content.Y, content.Bottom - 2));
+        }
+        else if (LabelPlacement == LabelPlacement.Left)
+        {
+            return new Point(content.Right - body.Length, content.Y + 1);
         }
 
         return new Point(content.X, content.Y + 1);

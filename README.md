@@ -64,7 +64,7 @@ then browse the [control catalog](docs/controls/index.md#control-catalog).
 
 ## Packages
 
-SharpVision `1.2.0-beta.1` is a prerelease and may change before the stable API.
+SharpVision `1.3.0-beta.1` is a prerelease and may change before the stable API.
 
 `SharpVision` installs `SharpVision.Terminal` transitively. Reference the
 lower-level package directly only when building terminal infrastructure without
@@ -125,9 +125,7 @@ maps the commands to the public gate.
 
 Planned work not yet implemented:
 
-- File system views, with the save and open dialogs built on top of them.
 - Animations for opening floating surfaces.
-- A Turbo Vision theme.
 
 ## Contributing and support
 

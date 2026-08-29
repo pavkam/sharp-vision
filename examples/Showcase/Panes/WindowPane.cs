@@ -63,7 +63,7 @@ internal sealed class WindowPane: CompositeControlBase
         var windowStatus = new Text("Window: open");
         var activationStatus = new Text("Active Window: none");
         var reopenWindow = new Button { Text = "Reopen &window" };
-        var closeWindow = new Button { Text = "&Close via API" };
+        var closeWindow = new Button { Text = "C&lose via API" };
         draggable.Closing += (_, _) =>
         {
             draggable.Visibility = Visibility.Collapsed;

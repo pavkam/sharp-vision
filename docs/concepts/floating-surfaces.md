@@ -135,6 +135,18 @@ after a callback failure and rethrows the earliest failure once state is
 coherent. Detachment and disposal release modal, focus, and capture state even
 when no normal close path was requested.
 
+```mermaid
+stateDiagram-v2
+    [*] --> Presented
+    Presented --> RequestingClose: Close initiated
+    RequestingClose --> Presented: CloseRequested.Cancel = true (veto)
+    RequestingClose --> ClosingPublished: not cancelled
+    ClosingPublished --> Presented: family commit fails (closureCompleted = false) — rollback, no Closed
+    ClosingPublished --> Unavailable: family commit succeeds
+    Unavailable --> Closed: bounds cleared, IsSurfacePresented = false
+    Closed --> [*]
+```
+
 ## Popup navigation sessions
 
 A popup-backed input can treat one opening as a provisional navigation session.

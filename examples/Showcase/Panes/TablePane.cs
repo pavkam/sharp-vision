@@ -162,7 +162,7 @@ internal sealed class TablePane: CompositeControlBase
             behavior.ClearSelection();
             copyStatus.Content = "Clipboard: selection cleared.";
         };
-        var copyCells = new Button { Text = "&Copy selection" };
+        var copyCells = new Button { Text = "Copy &selection" };
         copyCells.Click += (_, _) => copyStatus.Content =
             $"Clipboard: {behavior.CopySelection().Length} characters ready.";
 
@@ -171,7 +171,7 @@ internal sealed class TablePane: CompositeControlBase
         dynamic.Columns.Add(TableColumn.Fill("State"));
         dynamic.Rows.Add(new TableRow([new Text("1.0"), new Text("Stable")]));
         var rowStatus = new Text("Rows: 1");
-        var addRow = new Button { Text = "&Add release row" };
+        var addRow = new Button { Text = "A&dd release row" };
         addRow.Click += (_, _) =>
         {
             dynamic.Rows.Add(new TableRow([new Text("1.1"), new Text("Preview")]));

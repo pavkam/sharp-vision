@@ -47,6 +47,37 @@ an owned `Kitty.Clipboard.KittyClipboardResult` whose immutable item collection
 cannot be rewritten by consumers and whose disposal clears every transferred
 data buffer.
 
+```mermaid
+stateDiagram-v2
+    [*] --> Created
+    Created --> Accepted : read OK
+    Created --> Completed : write DONE
+    Accepted --> Receiving : DATA
+    Accepted --> Completed : DONE
+    Receiving --> Receiving : DATA
+    Receiving --> Completed : DONE
+    Created --> Failed
+    Accepted --> Failed
+    Receiving --> Failed : unexpected/out-of-order packet
+    Created --> Cancelled
+    Accepted --> Cancelled
+    Receiving --> Cancelled : Cancel()
+    Created --> TimedOut
+    Accepted --> TimedOut
+    Receiving --> TimedOut : deadline expiry
+    Completed --> Disposed
+    Failed --> Disposed
+    Cancelled --> Disposed
+    TimedOut --> Disposed : Dispose()
+    Created --> Disposed : Dispose()
+    Accepted --> Disposed : Dispose()
+    Receiving --> Disposed : Dispose()
+```
+
+The id-less paste-push notification described under
+[Supported features](#supported-features) reuses this same `OK -> DATA* -> DONE`
+grammar without a request id.
+
 SSH environment markers do not narrow Kitty clipboard support: they locate the
 client process, not the terminal receiving the protocol. The standard mode-5522
 DECRQM probe remains enabled over SSH, while an explicitly detected multiplexer

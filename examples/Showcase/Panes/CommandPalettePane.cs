@@ -100,7 +100,7 @@ internal sealed class CommandPalettePane: CompositeControlBase
         };
         WireStatus(centered, presentationStatus, hideAfterInvoke: true);
         WireStatus(topCentered, presentationStatus, hideAfterInvoke: true);
-        var showCenter = new Button { Text = "Open &centered" };
+        var showCenter = new Button { Text = "Open ce&ntered" };
         var showTop = new Button { Text = "Open at &top" };
         showCenter.Click += (_, _) => Show(centered, topCentered, presentationStatus, "Centered palette");
         showTop.Click += (_, _) => Show(topCentered, centered, presentationStatus, "Top-centered palette");

@@ -32,7 +32,7 @@ internal sealed class DocumentPane: CompositeControlBase
         var link = new DocumentLink("browser-like link");
         var button = new Button("&Ship");
         var updates = new CheckBox("&Updates");
-        var stable = new RadioButton("&Stable") { GroupName = "selection-channel", IsChecked = true };
+        var stable = new RadioButton("St&able") { GroupName = "selection-channel", IsChecked = true };
         var preview = new RadioButton("&Preview") { GroupName = "selection-channel" };
         var code = new CodeView
         {

@@ -18,7 +18,6 @@ navigation entry, event log, responsive behavior, or visual capture.
 - Component panes: `examples/Showcase/Panes/`
 - Documentation composition: `DocPage`, `DocSection`, `DocExample`, `DocRow`,
   and `DocColumn` under the showcase project
-- Automated gallery evidence: `tests/SharpVision.Tests/Showcase/`
 - Real capture helper: `scripts/capture-showcase.sh`
 - Per-control document images: `npm run capture:controls` regenerates
   `docs/images/controls/` from `scripts/control-image-manifest.mjs`; run it

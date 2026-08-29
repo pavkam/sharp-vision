@@ -59,7 +59,7 @@ internal sealed class MessageBoxPane: CompositeControlBase
 
     private static Button CreateLocalizedLauncher(Text status)
     {
-        var launcher = new Button { Text = "Localized (&options)" };
+        var launcher = new Button { Text = "Localized (o&ptions)" };
         launcher.Click += async (_, _) =>
         {
             var options = new MessageBoxOptions

@@ -73,10 +73,21 @@ An edge-held drag offers scrolling from the innermost eligible
 `ISelectableTextViewport` outward through the selection owner and enabled
 ancestor `AutoScroll` containers. The interval is 50 milliseconds and the
 per-tick delta is bounded to eight cells. Modal boundaries stop ancestor
-propagation. Source mutation, capture loss, terminal-focus loss, unavailability,
-disable, detach, and disposal stop retained gesture work. A semantic projection
-change during an active drag cancels the gesture before another move or release
-can commit its obsolete anchor.
+propagation. Source mutation, capture loss, losing focus (both logical and
+terminal-focus loss), unavailability, disable, detach, and disposal stop
+retained gesture work. A semantic projection change during an active drag
+cancels the gesture before another move or release can commit its obsolete
+anchor.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Potential: primary press (collapse range, optional capture)
+    Potential --> Selecting: move crosses drag threshold AND fingerprint unchanged AND capture acquired
+    Potential --> Idle: release / leave / fingerprint changed / capture-acquire failed
+    Selecting --> Selecting: move (update range) / autoscroll tick (50ms, near viewport edge)
+    Selecting --> Idle: release (commit range) / leave / fingerprint changed / capture lost / focus lost / disable / detach / dispose
+```
 
 ## Rendering and clipboard
 
