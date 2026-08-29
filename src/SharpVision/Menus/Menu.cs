@@ -674,9 +674,6 @@ public sealed class Menu: ItemsControl
     // position-aware repair after the commit; the delta distinguishes those paths without a
     // component-local mutation flag.
     /// <inheritdoc/>
-    protected override void OnItemControlsChanged() => base.OnItemControlsChanged();
-
-    /// <inheritdoc/>
     private protected override void OnItemControlsChanged(OwnedControlChange change)
     {
         base.OnItemControlsChanged(change);

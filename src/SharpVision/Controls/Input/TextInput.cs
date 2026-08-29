@@ -280,7 +280,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
     public int CaretIndex
     {
         get => CommittedTextSelection.Caret;
-        set => SetSelection(new Selection(value, value));
+        set => SetTextSelection(new Selection(value, value));
     }
 
     /// <summary>Gets or sets the normalized selection start.</summary>
@@ -627,7 +627,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
         }
 
         _coalescing = false;
-        SetSelection(new Selection(start, (int) sum));
+        SetTextSelection(new Selection(start, (int) sum));
     }
 
     /// <summary>Copies selected text unless password policy suppresses source disclosure.</summary>
@@ -1184,8 +1184,6 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
         _ = caret;
         EnsureCaretVisible(_editorBounds, remeasure: false);
     }
-
-    private void SetSelection(Selection selection) => SetTextSelection(selection);
 
     /// <inheritdoc/>
     protected override void CommitTextSelectionNavigation(Selection selection) =>

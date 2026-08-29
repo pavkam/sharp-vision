@@ -568,8 +568,6 @@ namespace SharpVision.Controls
         protected override void OnAttached() { }
         protected virtual void OnDropDownClosed() { }
         protected virtual void OnDropDownOpened() { }
-        protected override void OnFocusChanged(bool focused) { }
-        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         protected System.Text.Rune ResolveDropDownGlyph(System.Text.Rune fallback) { }
         protected bool TryActivate(SharpVision.Input.ActivationCause cause) { }
@@ -1062,7 +1060,6 @@ namespace SharpVision.Controls.Collections
         public event System.EventHandler<SharpVision.Controls.Collections.TreeViewChildStateChangedEventArgs>? ChildStateChanged;
         public event System.EventHandler<SharpVision.Controls.Collections.ItemExpandedChangedEventArgs>? ExpandedChanged;
         public event System.EventHandler<SharpVision.Input.ActivationEventArgs>? Invoked;
-        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnAttached() { }
         protected override void OnDisposing() { }
@@ -1984,8 +1981,6 @@ namespace SharpVision.Controls.Layout
         protected override bool OnAccessKey(System.Text.Rune key) { }
         protected override void OnContentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnFocusChanged(bool focused) { }
-        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
@@ -3237,7 +3232,6 @@ namespace SharpVision.Menus
         public event System.EventHandler<SharpVision.Menus.MenuItemInvokedEventArgs>? ItemInvoked;
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnItemControlsChanged() { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
     public sealed class MenuBuilder
@@ -3414,7 +3408,6 @@ namespace SharpVision.Navigation
         public override string Text { get; set; }
         public event System.EventHandler<SharpVision.Input.ActivationEventArgs>? Invoked;
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
-        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
@@ -3482,8 +3475,6 @@ namespace SharpVision.Notifications
         protected override SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnFocusChanged(bool focused) { }
-        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnRenderAdornment(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }

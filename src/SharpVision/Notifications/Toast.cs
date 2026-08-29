@@ -526,13 +526,6 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
     }
 
     /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused) => base.OnFocusChanged(focused);
-
-    /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason) =>
-        base.OnLostPointerCapture(reason);
-
-    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         ExceptionDispatchInfo? failure = null;

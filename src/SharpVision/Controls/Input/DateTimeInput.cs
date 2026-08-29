@@ -492,7 +492,7 @@ public sealed class DateTimeInput: InputBase
 
         if (eventArgs is KeyEventArgs key && !IsOpen)
         {
-            HandleKey(key);
+            _segments.HandleKey(key, _segmentKeyOptions);
 
             if (key.IsHandled)
             {
@@ -552,9 +552,6 @@ public sealed class DateTimeInput: InputBase
 
     #region Keyboard input
 
-    private void HandleKey(KeyEventArgs eventArgs) =>
-        _segments.HandleKey(eventArgs, _segmentKeyOptions);
-
     private void HandlePointer(PointerEventArgs eventArgs)
     {
         var dispatcher = Dispatcher;
@@ -571,7 +568,7 @@ public sealed class DateTimeInput: InputBase
         TryGetStepDelta(eventArgs, out var delta) ? delta : null;
 
     private bool HandleCharacterCommand(Rune character) =>
-        IsAmPmToggle(character) && ToggleAmPm();
+        TemporalSegmentClassification.IsAmPmToggle(character) && ToggleAmPm();
 
     private bool? HandlePopupCommand(KeyEventArgs eventArgs)
     {
@@ -605,7 +602,7 @@ public sealed class DateTimeInput: InputBase
     {
         if (!_state.Value.HasValue)
         {
-            _ = Commit(ClampToRange(TimeProvider.GetLocalNow().DateTime));
+            _ = _state.SetValue(_state.Clamp(TimeProvider.GetLocalNow().DateTime));
 
             if (!_state.Value.HasValue)
             {
@@ -627,7 +624,9 @@ public sealed class DateTimeInput: InputBase
                 TemporalSegmentKind.Year => ReplaceYear(dt, Math.Clamp(value, 1, 9999)),
                 TemporalSegmentKind.Hour when hasAmPm =>
                     WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(
-                        To24Hour(TemporalClockArithmetic.ClampHour(value, hasAmPmDesignator: true), dt.Hour >= 12),
+                        TemporalSegmentClassification.To24Hour(
+                            TemporalClockArithmetic.ClampHour(value, hasAmPmDesignator: true),
+                            dt.Hour >= 12),
                         dt.Minute, dt.Second)), dt),
                 TemporalSegmentKind.Hour =>
                     WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(
@@ -642,7 +641,7 @@ public sealed class DateTimeInput: InputBase
             };
 #pragma warning restore IDE0072
 
-            return Commit(result);
+            return _state.SetValue(result);
         }
         catch (ArgumentOutOfRangeException)
         {
@@ -654,7 +653,7 @@ public sealed class DateTimeInput: InputBase
     {
         if (!_state.Value.HasValue)
         {
-            return Commit(ClampToRange(TimeProvider.GetLocalNow().DateTime));
+            return _state.SetValue(_state.Clamp(TimeProvider.GetLocalNow().DateTime));
         }
 
         var dt = _state.Value.Value;
@@ -676,7 +675,7 @@ public sealed class DateTimeInput: InputBase
         };
 #pragma warning restore IDE0072
 
-        return Commit(result);
+        return _state.SetValue(result);
     }
 
     private bool ClearSegmentValue(TemporalSegmentKind kind)
@@ -703,7 +702,7 @@ public sealed class DateTimeInput: InputBase
             };
 #pragma warning restore IDE0072
 
-            return Commit(result);
+            return _state.SetValue(result);
         }
         catch (ArgumentOutOfRangeException)
         {
@@ -712,17 +711,11 @@ public sealed class DateTimeInput: InputBase
     }
 
     private bool ClearValue() =>
-        AllowNull && _state.Value.HasValue && Commit(null);
-
-    [Pure]
-    private static bool IsAmPmToggle(Rune character) => TemporalSegmentClassification.IsAmPmToggle(character);
+        AllowNull && _state.Value.HasValue && _state.SetValue(null);
 
     #endregion
 
     #region Commit and validation
-
-    private bool Commit(DateTime? requested)
-        => _state.SetValue(requested);
 
     /// <summary>Latches Value to the current local date and time on first read, so a control
     /// mounted under a dispatcher observes that dispatcher's clock instead of the clock current
@@ -730,9 +723,6 @@ public sealed class DateTimeInput: InputBase
     /// already committed - including an explicit null under <see cref="AllowNull"/> - is left
     /// untouched.</summary>
     private void EnsureSeeded() => _ = _state.EnsureSeeded();
-
-    [Pure]
-    private DateTime ClampToRange(DateTime dateTime) => _state.Clamp(dateTime);
 
     private void SyncCalendarBounds() => _calendarDropDown.SyncBounds();
 
@@ -996,9 +986,6 @@ public sealed class DateTimeInput: InputBase
             return dateTime;
         }
     }
-
-    [Pure]
-    private static int To24Hour(int hour12, bool isPm) => TemporalSegmentClassification.To24Hour(hour12, isPm);
 
     #endregion
 

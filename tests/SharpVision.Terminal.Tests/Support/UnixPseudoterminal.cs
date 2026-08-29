@@ -3,9 +3,11 @@
 
 namespace SharpVision.Terminal.Tests.Support;
 
+#pragma warning disable SYSLIB1054 // Runtime-bound imports keep this test fixture non-partial and explicit.
+
 
 /// <summary>Owns one raw Unix pseudoterminal master/slave pair for integration tests.</summary>
-internal sealed partial class UnixPseudoterminal: IAsyncDisposable
+internal sealed class UnixPseudoterminal: IAsyncDisposable
 {
     private const int _openReadWrite = 2;
     private const int _signalWindowChange = 28;
@@ -309,27 +311,31 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
     private static IOException NativeFailure(string message) =>
         new(message, new Win32Exception(Marshal.GetLastPInvokeError()));
 
-    [LibraryImport("libc", EntryPoint = "posix_openpt", SetLastError = true)]
-    private static partial int PosixOpenPt(int flags);
+    [DllImport("libc", EntryPoint = "posix_openpt", ExactSpelling = true, SetLastError = true)]
+    private static extern int PosixOpenPt(int flags);
 
-    [LibraryImport("libc", EntryPoint = "grantpt", SetLastError = true)]
-    private static partial int GrantPt(int fileDescriptor);
+    [DllImport("libc", EntryPoint = "grantpt", ExactSpelling = true, SetLastError = true)]
+    private static extern int GrantPt(int fileDescriptor);
 
-    [LibraryImport("libc", EntryPoint = "unlockpt", SetLastError = true)]
-    private static partial int UnlockPt(int fileDescriptor);
+    [DllImport("libc", EntryPoint = "unlockpt", ExactSpelling = true, SetLastError = true)]
+    private static extern int UnlockPt(int fileDescriptor);
 
-    [LibraryImport("libc", EntryPoint = "ptsname", SetLastError = true)]
-    private static partial nint PtsName(int fileDescriptor);
+    [DllImport("libc", EntryPoint = "ptsname", ExactSpelling = true, SetLastError = true)]
+    private static extern nint PtsName(int fileDescriptor);
 
-    [LibraryImport(
+    [DllImport(
         "libc",
         EntryPoint = "open",
-        SetLastError = true,
-        StringMarshalling = StringMarshalling.Utf8)]
-    private static partial int NativeOpen(string path, int flags);
+        ExactSpelling = true,
+        SetLastError = true)]
+    [SuppressMessage(
+        "Globalization",
+        "CA2101:Specify marshaling for P/Invoke string arguments",
+        Justification = "The path parameter explicitly marshals as UTF-8 through LPUTF8Str.")]
+    private static extern int NativeOpen([MarshalAs(UnmanagedType.LPUTF8Str)] string path, int flags);
 
-    [LibraryImport("libc", EntryPoint = "openpty", SetLastError = true)]
-    private static unsafe partial int OpenPty(
+    [DllImport("libc", EntryPoint = "openpty", ExactSpelling = true, SetLastError = true)]
+    private static extern unsafe int OpenPty(
         int* master,
         int* slave,
         byte* name,
@@ -337,16 +343,14 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
         WindowSize* window);
 
     // ioctl is variadic, so the runtime marshaller is intentional here.
-    [SuppressMessage(
-        "Interoperability",
-        "SYSLIB1054:Use LibraryImportAttribute",
-        Justification = "The native ioctl function is variadic.")]
     [DllImport("libc", EntryPoint = "ioctl", SetLastError = true)]
     private static extern int Ioctl(int fileDescriptor, nuint request, nint value);
 
-    [LibraryImport("libc", EntryPoint = "kill", SetLastError = true)]
-    private static partial int Kill(int processId, int signal);
+    [DllImport("libc", EntryPoint = "kill", ExactSpelling = true, SetLastError = true)]
+    private static extern int Kill(int processId, int signal);
 
-    [LibraryImport("libc", EntryPoint = "getpid")]
-    private static partial int GetProcessId();
+    [DllImport("libc", EntryPoint = "getpid", ExactSpelling = true)]
+    private static extern int GetProcessId();
 }
+
+#pragma warning restore SYSLIB1054

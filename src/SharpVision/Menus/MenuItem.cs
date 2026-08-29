@@ -74,7 +74,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
                 return;
             }
 
-            if (FindMenu() is { } menu)
+            if (FindAncestor<Menu>() is { } menu)
             {
                 menu.ReplaceSubmenu(this, value);
             }
@@ -147,7 +147,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     {
         if (ReferenceEquals(sender, _submenuPopup) && ReferenceEquals(eventArgs.Content, _submenu))
         {
-            if (FindMenu() is { } menu)
+            if (FindAncestor<Menu>() is { } menu)
             {
                 menu.ReplaceSubmenu(this, null);
             }
@@ -289,7 +289,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     protected override bool OnAccessKey(Rune key)
     {
         _ = key;
-        return FindMenu()?.InvokeAccessKey(this) ?? base.OnAccessKey(key);
+        return FindAncestor<Menu>()?.InvokeAccessKey(this) ?? base.OnAccessKey(key);
     }
 
     /// <summary>Gets or sets the command, check, or radio behavior.</summary>
@@ -322,7 +322,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 
             ExceptionDispatchInfo? failure = null;
 
-            if (value == MenuItemKind.Radio && _isChecked && FindMenu() is { } menu)
+            if (value == MenuItemKind.Radio && _isChecked && FindAncestor<Menu>() is { } menu)
             {
                 ExceptionAggregation.Capture(() => menu.SelectRadio(this), ref failure);
             }
@@ -378,7 +378,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
             field = value;
             ExceptionDispatchInfo? failure = null;
 
-            if (Kind == MenuItemKind.Radio && _isChecked && FindMenu() is { } menu)
+            if (Kind == MenuItemKind.Radio && _isChecked && FindAncestor<Menu>() is { } menu)
             {
                 ExceptionAggregation.Capture(() => menu.SelectRadio(this), ref failure);
             }
@@ -407,7 +407,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 
             VerifyMutable();
 
-            if (Kind == MenuItemKind.Radio && value && FindMenu() is { } menu)
+            if (Kind == MenuItemKind.Radio && value && FindAncestor<Menu>() is { } menu)
             {
                 menu.SelectRadio(this);
                 return;
@@ -427,7 +427,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     {
         if (_submenuPopup is not null)
         {
-            if (FindMenu() is { } menu)
+            if (FindAncestor<Menu>() is { } menu)
             {
                 menu.ToggleSubmenu(this, cause);
             }
@@ -448,7 +448,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
                 _ = SetVisualStateProperty(ref _isChecked, !_isChecked, nameof(IsChecked));
                 break;
             case MenuItemKind.Radio:
-                if (FindMenu() is { } menu)
+                if (FindAncestor<Menu>() is { } menu)
                 {
                     menu.SelectRadio(this);
                 }
@@ -465,14 +465,14 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
         }
 
         var eventArgs = new MenuItemInvokedEventArgs(this, cause);
-        var owner = FindMenu();
+        var owner = FindAncestor<Menu>();
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(() => Invoked?.Invoke(this, eventArgs), ref failure);
 
         if (owner is not null &&
             !IsDisposed &&
             !owner.IsDisposed &&
-            ReferenceEquals(FindMenu(), owner))
+            ReferenceEquals(FindAncestor<Menu>(), owner))
         {
             ExceptionAggregation.Capture(() => owner.NotifyItemInvoked(eventArgs), ref failure);
         }
@@ -673,7 +673,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 
         if (focused)
         {
-            var menu = FindMenu();
+            var menu = FindAncestor<Menu>();
             Debug.Assert(menu is not null, "A focused MenuItem belongs to a Menu.");
             menu.NotifyItemFocused(this);
         }
@@ -690,7 +690,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         var sessionOwner = _submenuCloseOwner ??
-            (IsSubmenuOpen ? FindMenu()?.FindSessionOwner() : null);
+            (IsSubmenuOpen ? FindAncestor<Menu>()?.FindSessionOwner() : null);
         ExceptionDispatchInfo? failure = null;
 
         if (sessionOwner is not null)
@@ -724,7 +724,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     private void OnSubmenuItemInvoked(object? sender, MenuItemInvokedEventArgs eventArgs)
     {
         _ = sender;
-        FindMenu()?.NotifyItemInvoked(eventArgs);
+        FindAncestor<Menu>()?.NotifyItemInvoked(eventArgs);
     }
 
     /// <summary>Stages a checked state for a coordinated menu radio transaction.</summary>
@@ -826,7 +826,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
             return;
         }
 
-        if (FindMenu() is { } menu)
+        if (FindAncestor<Menu>() is { } menu)
         {
             menu.OpenSubmenu(this);
         }
@@ -914,7 +914,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     private void ConfigureSubmenuPlacement()
     {
         Debug.Assert(_submenuPopup is not null, "Submenu placement requires a retained popup.");
-        _submenuPopup.Placement = FindMenu()?.Orientation == Orientation.Vertical
+        _submenuPopup.Placement = FindAncestor<Menu>()?.Orientation == Orientation.Vertical
             ? PopupPlacement.Right
             : PopupPlacement.Below;
     }
@@ -923,7 +923,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     {
         _ = sender;
         _ = eventArgs;
-        if (FindMenu() is { } menu)
+        if (FindAncestor<Menu>() is { } menu)
         {
             Debug.Assert(_submenuCloseOwner is null, "A submenu popup owns one close bracket at a time.");
             _submenuCloseOwner = menu.BeginSubmenuSurfaceClose();
@@ -948,6 +948,4 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
         _submenuOpenedFromPointerSelection = false;
     }
 
-    [Pure]
-    private Menu? FindMenu() => FindAncestor<Menu>();
 }

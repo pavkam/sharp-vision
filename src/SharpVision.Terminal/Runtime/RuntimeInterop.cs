@@ -5,8 +5,10 @@ namespace SharpVision.Terminal.Runtime;
 
 using System.Buffers.Binary;
 
+#pragma warning disable SYSLIB1054 // Runtime-bound imports keep this native boundary non-partial and explicit.
+
 /// <summary>Provides the Unix terminal-size native boundary.</summary>
-internal static partial class RuntimeInterop
+internal static class RuntimeInterop
 {
     private const nuint _linuxGetSize = 0x5413;
     private const int _setAttributesFlush = 2;
@@ -44,11 +46,11 @@ internal static partial class RuntimeInterop
     // Darwin ARM64 gives variadic arguments a different ABI, so raw ioctl
     // cannot be declared as a fixed managed signature. The .NET runtime's
     // fixed native shim is the safe boundary on macOS.
-    [LibraryImport("libSystem.Native", EntryPoint = "SystemNative_GetWindowSize", SetLastError = true)]
-    private static partial int GetWindowSize(int fileDescriptor, out WindowSize value);
+    [DllImport("libSystem.Native", EntryPoint = "SystemNative_GetWindowSize", ExactSpelling = true, SetLastError = true)]
+    private static extern int GetWindowSize(int fileDescriptor, out WindowSize value);
 
-    [LibraryImport("libc", EntryPoint = "ioctl", SetLastError = true)]
-    private static partial int Ioctl(int fileDescriptor, nuint request, nint value);
+    [DllImport("libc", EntryPoint = "ioctl", ExactSpelling = true, SetLastError = true)]
+    private static extern int Ioctl(int fileDescriptor, nuint request, nint value);
 
     /// <summary>The POSIX standard-output file descriptor, used when no more specific terminal
     /// descriptor (such as an opened /dev/tty) is available for description resolution.</summary>
@@ -117,11 +119,11 @@ internal static partial class RuntimeInterop
         return destination.IndexOf((byte) 0);
     }
 
-    [LibraryImport("libc", EntryPoint = "ttyname_r")]
-    private static unsafe partial int TtyName(int fileDescriptor, byte* destination, nuint length);
+    [DllImport("libc", EntryPoint = "ttyname_r", ExactSpelling = true)]
+    private static extern unsafe int TtyName(int fileDescriptor, byte* destination, nuint length);
 
-    [LibraryImport("libc", EntryPoint = "tcgetsid")]
-    private static partial int GetTerminalSessionId(int fileDescriptor);
+    [DllImport("libc", EntryPoint = "tcgetsid", ExactSpelling = true)]
+    private static extern int GetTerminalSessionId(int fileDescriptor);
 
     // TCSANOW: apply attribute changes immediately (identical value on Linux and Darwin).
     private const int _setAttributesNow = 0;
@@ -234,14 +236,14 @@ internal static partial class RuntimeInterop
         }
     }
 
-    [LibraryImport("libc", EntryPoint = "tcgetattr", SetLastError = true)]
-    private static unsafe partial int TcGetAttr(int fileDescriptor, byte* termios);
+    [DllImport("libc", EntryPoint = "tcgetattr", ExactSpelling = true, SetLastError = true)]
+    private static extern unsafe int TcGetAttr(int fileDescriptor, byte* termios);
 
-    [LibraryImport("libc", EntryPoint = "tcsetattr", SetLastError = true)]
-    private static unsafe partial int TcSetAttr(int fileDescriptor, int optionalActions, byte* termios);
+    [DllImport("libc", EntryPoint = "tcsetattr", ExactSpelling = true, SetLastError = true)]
+    private static extern unsafe int TcSetAttr(int fileDescriptor, int optionalActions, byte* termios);
 
-    [LibraryImport("libc", EntryPoint = "cfmakeraw")]
-    private static unsafe partial void CfMakeRaw(byte* termios);
+    [DllImport("libc", EntryPoint = "cfmakeraw", ExactSpelling = true)]
+    private static extern unsafe void CfMakeRaw(byte* termios);
 
     // Windows console-mode boundary. Bit-math is factored out so it is unit
     // testable without a real console handle.
@@ -314,16 +316,16 @@ internal static partial class RuntimeInterop
     [SupportedOSPlatform("windows")]
     public static bool TrySetConsoleMode(nint handle, uint mode) => SetConsoleMode(handle, mode);
 
-    [LibraryImport("kernel32", EntryPoint = "GetStdHandle", SetLastError = true)]
-    private static partial nint GetStdHandle(int which);
+    [DllImport("kernel32", EntryPoint = "GetStdHandle", ExactSpelling = true, SetLastError = true)]
+    private static extern nint GetStdHandle(int which);
 
-    [LibraryImport("kernel32", EntryPoint = "GetConsoleMode", SetLastError = true)]
+    [DllImport("kernel32", EntryPoint = "GetConsoleMode", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool GetConsoleMode(nint handle, out uint mode);
+    private static extern bool GetConsoleMode(nint handle, out uint mode);
 
-    [LibraryImport("kernel32", EntryPoint = "SetConsoleMode", SetLastError = true)]
+    [DllImport("kernel32", EntryPoint = "SetConsoleMode", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool SetConsoleMode(nint handle, uint mode);
+    private static extern bool SetConsoleMode(nint handle, uint mode);
 
     /// <summary>Aborts every pending synchronous read or write issued against a handle, by any
     /// thread, so a blocking native call on that handle returns instead of waiting indefinitely.</summary>
@@ -332,7 +334,9 @@ internal static partial class RuntimeInterop
     [SupportedOSPlatform("windows")]
     public static bool TryCancelPendingIo(nint handle) => CancelIoEx(handle, nint.Zero);
 
-    [LibraryImport("kernel32", EntryPoint = "CancelIoEx", SetLastError = true)]
+    [DllImport("kernel32", EntryPoint = "CancelIoEx", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool CancelIoEx(nint handle, nint overlapped);
+    private static extern bool CancelIoEx(nint handle, nint overlapped);
 }
+
+#pragma warning restore SYSLIB1054

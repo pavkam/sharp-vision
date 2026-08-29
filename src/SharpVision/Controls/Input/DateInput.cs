@@ -548,7 +548,7 @@ public sealed class DateInput: InputBase
 
             var (replacedYear, replacedMonth, replacedDay) =
                 TemporalCalendarArithmetic.ReplaceYear(date.Month, date.Day, newYear);
-            return CommitSegmentValue(ClampDate(new DateOnly(replacedYear, replacedMonth, replacedDay)));
+            return CommitSegmentValue(_state.Clamp(new DateOnly(replacedYear, replacedMonth, replacedDay)));
         }
 
         try
@@ -562,7 +562,7 @@ public sealed class DateInput: InputBase
             };
 #pragma warning restore IDE0072
 
-            return CommitSegmentValue(ClampDate(adjusted));
+            return CommitSegmentValue(_state.Clamp(adjusted));
         }
         catch (ArgumentOutOfRangeException)
         {
@@ -593,7 +593,7 @@ public sealed class DateInput: InputBase
             };
 #pragma warning restore IDE0072
 
-            return CommitSegmentValue(ClampDate(new DateOnly(year, month, day)));
+            return CommitSegmentValue(_state.Clamp(new DateOnly(year, month, day)));
         }
         catch (ArgumentOutOfRangeException)
         {
@@ -620,7 +620,7 @@ public sealed class DateInput: InputBase
             };
 #pragma warning restore IDE0072
 
-            return CommitSegmentValue(ClampDate(new DateOnly(year, month, day)));
+            return CommitSegmentValue(_state.Clamp(new DateOnly(year, month, day)));
         }
         catch (ArgumentOutOfRangeException)
         {
@@ -757,9 +757,6 @@ public sealed class DateInput: InputBase
     /// committed - including an explicit null under <see cref="AllowNull"/> - is left
     /// untouched.</summary>
     private void EnsureSeeded() => _ = _state.EnsureSeeded();
-
-    [Pure]
-    private DateOnly ClampDate(DateOnly date) => _state.Clamp(date);
 
     private void SyncCalendarBounds() => _calendarDropDown.SyncBounds();
 

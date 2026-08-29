@@ -568,11 +568,6 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
-    {
-    }
-
-    /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
         var style = ResolvedStyle;

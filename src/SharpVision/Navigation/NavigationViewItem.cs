@@ -164,11 +164,6 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
-    {
-    }
-
-    /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
         var style = ResolvedStyle;

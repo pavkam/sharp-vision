@@ -63,16 +63,18 @@ public sealed class CurrencyInput: InputBase
             () => IsFocused,
             RefreshBuffer,
             (previous, candidate) => ValueChanged?.Invoke(this, new CurrencyInputValueChangedEventArgs(previous, candidate)));
+#pragma warning disable IDE0200 // A method group would capture the construction-time ContentBounds value.
         _editing = new NumericEditBehavior(
             _buffer,
             _coordinator,
             ConfigureBuffer,
             () => EffectiveDecimalPlaces,
             () => IsFocused,
-            ContainsContentPoint,
+            point => ContentBounds.Contains(point),
             RequestEditingFocus,
             ResolveCaretIndex,
             () => Invalidate(InvalidationImpact.Render));
+#pragma warning restore IDE0200
     }
 
     /// <summary>Raised after a committed value transition.</summary>
@@ -349,8 +351,6 @@ public sealed class CurrencyInput: InputBase
         _ = RequestFocus();
         return CanContinueAfterFocus(dispatcher);
     }
-
-    private bool ContainsContentPoint(Point point) => ContentBounds.Contains(point);
 
     private int ResolveCaretIndex(Point cells)
     {

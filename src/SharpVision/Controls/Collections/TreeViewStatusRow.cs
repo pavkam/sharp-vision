@@ -92,11 +92,6 @@ internal sealed class TreeViewStatusRow: ControlBase
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
-    {
-    }
-
-    /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
         var style = ResolvedStyle;

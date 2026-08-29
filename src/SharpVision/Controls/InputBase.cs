@@ -880,13 +880,6 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     #region Lifecycle
 
     /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused) => base.OnFocusChanged(focused);
-
-    /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason) =>
-        base.OnLostPointerCapture(reason);
-
-    /// <inheritdoc/>
     protected override void OnAttached()
     {
         base.OnAttached();

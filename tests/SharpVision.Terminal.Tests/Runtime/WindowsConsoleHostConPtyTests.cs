@@ -19,7 +19,7 @@ using System.Text.RegularExpressions;
 /// <c>Transport/PseudoterminalTests.cs</c>'s Unix convention.
 /// </remarks>
 [SupportedOSPlatform("windows")]
-public sealed partial class WindowsConsoleHostConPtyTests
+public sealed class WindowsConsoleHostConPtyTests
 {
     /// <summary>Verifies opening against a real ConPTY applies VT input and output modes.</summary>
     [Fact]
@@ -198,7 +198,7 @@ public sealed partial class WindowsConsoleHostConPtyTests
         string label)
     {
         var line = await ReadLineAsync(terminal, $"{label}-input=");
-        var match = ModeLinePattern().Match(line);
+        var match = _modeLinePattern.Match(line);
 
         return !match.Success
             ? throw new IOException($"The probe reported an unparseable modes line: '{line}'.")
@@ -207,6 +207,10 @@ public sealed partial class WindowsConsoleHostConPtyTests
             uint.Parse(match.Groups["output"].Value, NumberStyles.HexNumber, CultureInfo.InvariantCulture));
     }
 
-    [GeneratedRegex(@"-input=(?<input>[0-9A-Fa-f]{8}) .*-output=(?<output>[0-9A-Fa-f]{8})")]
-    private static partial Regex ModeLinePattern();
+#pragma warning disable SYSLIB1045 // A cached runtime regex keeps the containing fixture non-partial.
+    private static readonly Regex _modeLinePattern = new(
+        @"-input=(?<input>[0-9A-Fa-f]{8}) .*-output=(?<output>[0-9A-Fa-f]{8})",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant,
+        Regex.InfiniteMatchTimeout);
+#pragma warning restore SYSLIB1045
 }

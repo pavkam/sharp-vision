@@ -66,9 +66,6 @@ internal sealed class TabHeader: InputBase
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds) => _ = bounds;
-
-    /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0)

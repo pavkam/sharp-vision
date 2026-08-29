@@ -88,7 +88,7 @@ public sealed class FigletText: ControlBase
     {
         EnsureOutput();
         var bounds = ContentBounds;
-        var style = ResolveTextStyle();
+        var style = ResolvedStyle;
 
         for (var row = 0; row < _lines.Length && row < bounds.Height; row++)
         {
@@ -119,5 +119,4 @@ public sealed class FigletText: ControlBase
         _cachedOptions = Options;
     }
 
-    private TerminalStyle ResolveTextStyle() => ResolvedStyle;
 }

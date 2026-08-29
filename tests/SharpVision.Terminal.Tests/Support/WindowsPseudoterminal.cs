@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Tests.Support;
 
+#pragma warning disable SYSLIB1054 // Runtime-bound imports keep this test fixture non-partial and explicit.
+
 
 /// <summary>
 /// Owns one real Windows ConPTY (pseudo console) and the <c>SharpVision.Terminal.Probe</c>
@@ -22,7 +24,7 @@ namespace SharpVision.Terminal.Tests.Support;
 /// observe its plain-text and raw-byte reports.
 /// </remarks>
 [SupportedOSPlatform("windows")]
-internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
+internal sealed class WindowsPseudoterminal: IAsyncDisposable
 {
     private const int _procThreadAttributePseudoconsole = 0x00020016;
     private const uint _extendedStartupInfoPresent = 0x00080000;
@@ -413,39 +415,39 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
         public int dwThreadId;
     }
 
-    [LibraryImport("kernel32", EntryPoint = "CreatePipe", SetLastError = true)]
+    [DllImport("kernel32", EntryPoint = "CreatePipe", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool CreatePipe(
+    private static extern bool CreatePipe(
         out SafeFileHandle readHandle,
         out SafeFileHandle writeHandle,
         nint pipeAttributes,
         uint size);
 
-    [LibraryImport("kernel32", EntryPoint = "CreatePseudoConsole", SetLastError = true)]
-    private static partial int CreatePseudoConsole(
+    [DllImport("kernel32", EntryPoint = "CreatePseudoConsole", ExactSpelling = true, SetLastError = true)]
+    private static extern int CreatePseudoConsole(
         Coord size,
         SafeFileHandle input,
         SafeFileHandle output,
         uint dwFlags,
         out nint pseudoConsole);
 
-    [LibraryImport("kernel32", EntryPoint = "ResizePseudoConsole", SetLastError = true)]
-    private static partial int ResizePseudoConsole(nint pseudoConsole, Coord size);
+    [DllImport("kernel32", EntryPoint = "ResizePseudoConsole", ExactSpelling = true, SetLastError = true)]
+    private static extern int ResizePseudoConsole(nint pseudoConsole, Coord size);
 
-    [LibraryImport("kernel32", EntryPoint = "ClosePseudoConsole", SetLastError = true)]
-    private static partial void ClosePseudoConsole(nint pseudoConsole);
+    [DllImport("kernel32", EntryPoint = "ClosePseudoConsole", ExactSpelling = true, SetLastError = true)]
+    private static extern void ClosePseudoConsole(nint pseudoConsole);
 
-    [LibraryImport("kernel32", EntryPoint = "InitializeProcThreadAttributeList", SetLastError = true)]
+    [DllImport("kernel32", EntryPoint = "InitializeProcThreadAttributeList", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool InitializeProcThreadAttributeList(
+    private static extern bool InitializeProcThreadAttributeList(
         nint attributeList,
         int attributeCount,
         int flags,
         ref nint size);
 
-    [LibraryImport("kernel32", EntryPoint = "UpdateProcThreadAttribute", SetLastError = true)]
+    [DllImport("kernel32", EntryPoint = "UpdateProcThreadAttribute", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool UpdateProcThreadAttribute(
+    private static extern bool UpdateProcThreadAttribute(
         nint attributeList,
         uint flags,
         nint attribute,
@@ -454,12 +456,17 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
         nint previousValue,
         nint returnSize);
 
-    [LibraryImport("kernel32", EntryPoint = "DeleteProcThreadAttributeList")]
-    private static partial void DeleteProcThreadAttributeList(nint attributeList);
+    [DllImport("kernel32", EntryPoint = "DeleteProcThreadAttributeList", ExactSpelling = true)]
+    private static extern void DeleteProcThreadAttributeList(nint attributeList);
 
-    [LibraryImport("kernel32", EntryPoint = "CreateProcessW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    [DllImport(
+        "kernel32",
+        EntryPoint = "CreateProcessW",
+        ExactSpelling = true,
+        SetLastError = true,
+        CharSet = CharSet.Unicode)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static unsafe partial bool CreateProcessW(
+    private static extern unsafe bool CreateProcessW(
         string? applicationName,
         char* commandLine,
         nint processAttributes,
@@ -471,18 +478,20 @@ internal sealed partial class WindowsPseudoterminal: IAsyncDisposable
         ref StartupInfoEx startupInfo,
         out ProcessInformation processInformation);
 
-    [LibraryImport("kernel32", EntryPoint = "CloseHandle", SetLastError = true)]
+    [DllImport("kernel32", EntryPoint = "CloseHandle", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool CloseHandle(nint handle);
+    private static extern bool CloseHandle(nint handle);
 
-    [LibraryImport("kernel32", EntryPoint = "GetExitCodeProcess", SetLastError = true)]
+    [DllImport("kernel32", EntryPoint = "GetExitCodeProcess", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool GetExitCodeProcess(SafeHandle process, out int exitCode);
+    private static extern bool GetExitCodeProcess(SafeHandle process, out int exitCode);
 
-    [LibraryImport("kernel32", EntryPoint = "WaitForSingleObject", SetLastError = true)]
-    private static partial uint WaitForSingleObject(SafeHandle handle, uint milliseconds);
+    [DllImport("kernel32", EntryPoint = "WaitForSingleObject", ExactSpelling = true, SetLastError = true)]
+    private static extern uint WaitForSingleObject(SafeHandle handle, uint milliseconds);
 
-    [LibraryImport("kernel32", EntryPoint = "TerminateProcess", SetLastError = true)]
+    [DllImport("kernel32", EntryPoint = "TerminateProcess", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool TerminateProcess(SafeHandle process, uint exitCode);
+    private static extern bool TerminateProcess(SafeHandle process, uint exitCode);
 }
+
+#pragma warning restore SYSLIB1054

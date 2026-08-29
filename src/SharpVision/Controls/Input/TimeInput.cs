@@ -300,7 +300,7 @@ public sealed class TimeInput: InputBase
 
         if (eventArgs is KeyEventArgs key)
         {
-            HandleKey(key);
+            _segments.HandleKey(key, _segmentKeyOptions);
         }
         else if (eventArgs is PointerEventArgs pointer)
         {
@@ -312,9 +312,6 @@ public sealed class TimeInput: InputBase
             base.OnEvent(eventArgs);
         }
     }
-
-    private void HandleKey(KeyEventArgs eventArgs) =>
-        _segments.HandleKey(eventArgs, _segmentKeyOptions);
 
     private void HandlePointer(PointerEventArgs eventArgs)
     {
@@ -332,7 +329,7 @@ public sealed class TimeInput: InputBase
         TryGetStepDelta(eventArgs, out var delta) ? delta : null;
 
     private bool HandleCharacterCommand(Rune character) =>
-        IsAmPmToggle(character) && ToggleAmPm();
+        TemporalSegmentClassification.IsAmPmToggle(character) && ToggleAmPm();
 
     private bool ToggleAmPm() =>
         TemporalSegmentClassification.ToggleAmPm(BuildSegments, () => _state.Value.HasValue, _segments);
@@ -343,10 +340,7 @@ public sealed class TimeInput: InputBase
     private bool HasAmPmDesignator => TemporalSegmentClassification.HasAmPmDesignator(BuildSegments);
 
     private bool ClearValue() =>
-        AllowNull && _state.Value.HasValue && Commit(null);
-
-    [Pure]
-    private static bool IsAmPmToggle(Rune character) => TemporalSegmentClassification.IsAmPmToggle(character);
+        AllowNull && _state.Value.HasValue && _state.SetValue(null);
 
     #endregion
 
@@ -356,7 +350,7 @@ public sealed class TimeInput: InputBase
     {
         if (!_state.Value.HasValue)
         {
-            _ = Commit(ClampToRange(TimeOnly.MinValue));
+            _ = _state.SetValue(_state.Clamp(TimeOnly.MinValue));
 
             if (!_state.Value.HasValue)
             {
@@ -379,7 +373,10 @@ public sealed class TimeInput: InputBase
         var result = kind switch
         {
             TemporalSegmentKind.Hour when hasAmPm =>
-                new TimeOnly(To24Hour(clamped, time.Hour >= 12), time.Minute, time.Second),
+                new TimeOnly(
+                    TemporalSegmentClassification.To24Hour(clamped, time.Hour >= 12),
+                    time.Minute,
+                    time.Second),
             TemporalSegmentKind.Hour =>
                 new TimeOnly(clamped, time.Minute, time.Second),
             TemporalSegmentKind.Minute =>
@@ -390,14 +387,14 @@ public sealed class TimeInput: InputBase
         };
 #pragma warning restore IDE0072
 
-        return Commit(WithSubSecondTicksOf(result, time));
+        return _state.SetValue(WithSubSecondTicksOf(result, time));
     }
 
     private bool IncrementSegmentValue(TemporalSegmentKind kind, int delta)
     {
         if (!_state.Value.HasValue)
         {
-            return Commit(ClampToRange(TimeOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime)));
+            return _state.SetValue(_state.Clamp(TimeOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime)));
         }
 
         var time = _state.Value.Value;
@@ -416,7 +413,7 @@ public sealed class TimeInput: InputBase
         };
 #pragma warning restore IDE0072
 
-        return Commit(result);
+        return _state.SetValue(result);
     }
 
     private bool ClearSegmentValue(TemporalSegmentKind kind)
@@ -437,7 +434,7 @@ public sealed class TimeInput: InputBase
         };
 #pragma warning restore IDE0072
 
-        return Commit(WithSubSecondTicksOf(result, time));
+        return _state.SetValue(WithSubSecondTicksOf(result, time));
     }
 
     private static TimeOnly AddWithoutWrap(TimeOnly value, long ticks)
@@ -456,23 +453,15 @@ public sealed class TimeInput: InputBase
     private static TimeOnly WithSubSecondTicksOf(TimeOnly result, TimeOnly original) =>
         new(result.Ticks + (original.Ticks % TimeSpan.TicksPerSecond));
 
-    private static int To24Hour(int hour12, bool isPm) => TemporalSegmentClassification.To24Hour(hour12, isPm);
-
     #endregion
 
     #region Commit and validation
-
-    private bool Commit(TimeOnly? requested)
-        => _state.SetValue(requested);
 
     /// <summary>Latches Value to the current local time on first read, so a control mounted under
     /// a dispatcher observes that dispatcher's clock instead of the clock current at
     /// construction. A value already committed - including an explicit null under
     /// <see cref="AllowNull"/> - is left untouched.</summary>
     private void EnsureSeeded() => _ = _state.EnsureSeeded();
-
-    [Pure]
-    private TimeOnly ClampToRange(TimeOnly time) => _state.Clamp(time);
 
     #endregion
 
