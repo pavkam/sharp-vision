@@ -60,6 +60,7 @@ public sealed class CodeView:
     private readonly LayoutStack _stack;
     private readonly StyleSlot<CodeViewStyle> _style;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
+    private readonly WidthDependentViewportCoordinator _projectionCoordinator;
 
     private string[] _lines = [string.Empty];
     private int[] _lineStartOffsets = [0, 0];
@@ -70,7 +71,6 @@ public sealed class CodeView:
     private int _extentWidth;
     private List<PresentationRow> _rows = [];
     private int? _rowsWidth;
-    private Constraint _lastMeasureConstraint;
     private int? _pendingRevealOffset;
     private List<int>? _pendingRevealProjection;
     private Dispatcher? _pendingRevealDispatcher;
@@ -133,6 +133,13 @@ public sealed class CodeView:
             Children = { _content },
         };
         InitializeContent(_stack);
+        _projectionCoordinator = new WidthDependentViewportCoordinator(
+            this,
+            _stack,
+            _content,
+            () => Overflow != Overflow.Visible,
+            () => _rowsWidth,
+            Reproject);
         _scrollBarStyle = InitializePartStyle(ScrollBarStyle.ForwardingDefinition, nameof(ScrollBarStyle));
         BindStyle(_scrollBarStyle, _stack, nameof(ScrollBarStyle));
         IsFocusable = true;
@@ -374,8 +381,8 @@ public sealed class CodeView:
     /// <summary>Raised after one settled offset, extent, or viewport transition.</summary>
     public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
     {
-        add => _stack.ScrollChanged += value;
-        remove => _stack.ScrollChanged -= value;
+        add => _projectionCoordinator.ScrollChanged += value;
+        remove => _projectionCoordinator.ScrollChanged -= value;
     }
 
     #endregion
@@ -916,7 +923,7 @@ public sealed class CodeView:
     /// <summary>Measures the content extent from the current presentation-row projection.</summary>
     /// <returns>The width-and-height extent in terminal cells.</returns>
     /// <remarks>
-    /// Before <see cref="ReconcileProjectionWidth"/> has ever rewrapped against a real viewport
+    /// Before arrange-time reconciliation has ever rewrapped against a real viewport
     /// width (<see cref="_rowsWidth"/> is still <see langword="null"/> - fresh construction, or
     /// right after <see cref="Overflow"/> just reset it), this falls back to the natural
     /// <see cref="_extentWidth"/> instead of <c>0</c>. <see cref="MeasureAndWrap"/> is probed with
@@ -925,7 +932,7 @@ public sealed class CodeView:
     /// there would make this control itself arrange at zero width - since it is not
     /// <see cref="HorizontalAlignment.Stretch"/> by default, its own arranged width comes straight
     /// from this desired size - collapsing <see cref="Viewport"/> to zero before
-    /// <see cref="ArrangeOverride"/> even runs <see cref="ReconcileProjectionWidth"/>, whose own
+    /// <see cref="ArrangeOverride"/> even runs reconciliation, whose own
     /// <c>viewportWidth &lt;= 0</c> guard then bails out immediately and never gets a chance to
     /// rewrap. Mirrors how <c>JsonView.MeasureProjectedContent</c> always measures its actual
     /// current lines rather than trusting a last-wrapped-width-or-zero cache.
@@ -942,7 +949,7 @@ public sealed class CodeView:
     /// Mirrors <c>JsonView.MeasureAndWrap</c>: the composed viewport always measures its content
     /// unbounded on the horizontal axis (a scrollable axis is measured unbounded so it can report
     /// its natural extent), so a null width here is that routine per-child probe, not a signal that
-    /// this control's own host is genuinely unconstrained. <see cref="ReconcileProjectionWidth"/>
+    /// this control's own host is genuinely unconstrained. Arrange-time reconciliation
     /// is what actually keeps the projection matched to the real, scrollbar-reservation-aware width
     /// once arrange resolves it.
     /// </remarks>
@@ -962,22 +969,17 @@ public sealed class CodeView:
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        // Stashed for ReconcileProjectionWidth, which needs to remeasure the composed viewport
+        // Stashed for the coordinator, which needs to remeasure the composed viewport
         // with the exact same constraint this control itself received - see JsonView's identical
         // field for the full rationale.
-        _lastMeasureConstraint = constraint;
+        _projectionCoordinator.CaptureMeasureConstraint(constraint);
         return base.MeasureOverride(constraint);
     }
 
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        base.ArrangeOverride(bounds);
-
-        if (Overflow != Overflow.Visible)
-        {
-            ReconcileProjectionWidth(bounds);
-        }
+        _projectionCoordinator.Arrange(bounds, () => base.ArrangeOverride(bounds));
 
         if (!_pendingRevealOffset.HasValue)
         {
@@ -1018,42 +1020,13 @@ public sealed class CodeView:
         }
     }
 
-    /// <summary>Keeps the wrapped presentation-row projection matched to the composed viewport's
-    /// real, scrollbar-reservation-aware width, entirely within the current layout transaction.</summary>
-    /// <remarks>
-    /// Mirrors <c>JsonView.ReconcileProjectionWidth</c>: the composed viewport measures its content
-    /// unbounded on the horizontal axis (see <see cref="MeasureAndWrap"/>), so the only place the
-    /// real width - after a vertical scrollbar has claimed its column - becomes known is here, once
-    /// the arrange this override delegated to has resolved it. Rewrapping can itself change the
-    /// projected row count enough to flip whether a vertical scrollbar is needed at all, so this
-    /// reruns for as many rounds as it takes to settle, bounded defensively against runaway growth.
-    /// Unlike JsonView, this does not coalesce the composed viewport's own <see cref="ScrollChanged"/>
-    /// transitions raised by an internal re-arrange in this loop - <see cref="Overflow"/> wrapping
-    /// is opt-in, and a subscriber may observe more than one event for a single layout pass while a
-    /// wrap reflow is settling the vertical-scrollbar/row-count coupling. Never entered while
-    /// <see cref="Overflow"/> is <see cref="Overflow.Visible"/> (see
-    /// <see cref="ArrangeOverride"/>), so the default projection never pays for this loop.
-    /// </remarks>
-    /// <param name="bounds">The content-box bounds this control's own arrange resolved.</param>
-    private void ReconcileProjectionWidth(Rect bounds)
+    /// <summary>Rebuilds the syntax projection for the coordinator's positive settled width.</summary>
+    /// <param name="width">The positive scrollbar-aware viewport width in cells.</param>
+    private void Reproject(int width)
     {
-        for (var attempt = 0; attempt < 4; attempt++)
-        {
-            var viewportWidth = _stack.Viewport.Width;
-
-            if (viewportWidth <= 0 || _rowsWidth == viewportWidth)
-            {
-                return;
-            }
-
-            _rowsWidth = viewportWidth;
-            _rows = BuildWrappedRows(_visibleLines, viewportWidth);
-
-            _stack.InvalidateSelf(Invalidation.Measure);
-            _content.InvalidateSelf(Invalidation.Measure);
-            _stack.Measure(_lastMeasureConstraint);
-            _stack.Arrange(bounds, widthResolved: true, heightResolved: true);
-        }
+        Debug.Assert(width > 0, "Projection reconciliation requires a positive viewport width.");
+        _rowsWidth = width;
+        _rows = BuildWrappedRows(_visibleLines, width);
     }
 
     /// <summary>Draws every visible projected line intersecting the clipped content surface.</summary>
@@ -1666,7 +1639,7 @@ public sealed class CodeView:
         // Rebuilding always resets to the trivial one-row-per-line passthrough rather than
         // preserving a previously wrapped projection: it needs no width and is exactly correct for
         // the default Overflow.Visible, and for any other Overflow value it is a safe placeholder
-        // until the next ArrangeOverride's ReconcileProjectionWidth rewraps it against the real
+        // until the next ArrangeOverride's shared coordinator rewraps it against the real
         // viewport width - mirroring how JsonView resets _lines to _sourceLines on every rebuild.
         _rows = BuildPassthroughRows(_visibleLines);
         _rowsWidth = null;

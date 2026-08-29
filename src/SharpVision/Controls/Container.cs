@@ -32,6 +32,15 @@ public abstract class Container: ControlBase
         _scrollBarStyle = InitializePartStyle(
             ScrollBarStyle.PartDefinition,
             nameof(ScrollBarStyle));
+        _scroll = new ScrollBarPairController(
+            this,
+            "scroll-bars",
+            InvalidationImpact.Measure,
+            isFocusable: false,
+            horizontalIncludesCorner: true,
+            bar => BindStyle(_scrollBarStyle, bar));
+        _scroll.HorizontalValueChanged += OnHorizontalChanged;
+        _scroll.VerticalValueChanged += OnVerticalChanged;
     }
 
     /// <summary>Gets the owned ordered children.</summary>
@@ -106,9 +115,7 @@ public abstract class Container: ControlBase
 
         if (AutoScroll)
         {
-            var bar = _scroll.Bars is not null
-                ? _scroll.Vertical!.HitTest(point) ?? _scroll.Horizontal!.HitTest(point)
-                : null;
+            var bar = _scroll.HitTest(point);
 
             return bar ?? (_scroll.ViewportBounds.Contains(point) ? HitTestChildren(point) : null) ?? this;
         }
@@ -141,8 +148,7 @@ public abstract class Container: ControlBase
         var viewportCanvas = canvas.Clip(_scroll.ViewportBounds);
         var viewportClip = contentClip.Intersect(_scroll.ViewportBounds);
         RenderContent(viewportCanvas, viewportClip);
-        _scroll.Horizontal?.Render(canvas, contentClip);
-        _scroll.Vertical?.Render(canvas, contentClip);
+        _scroll.Render(canvas, contentClip);
     }
 
     /// <inheritdoc/>
@@ -357,7 +363,7 @@ public abstract class Container: ControlBase
 
     #region Scrolling
 
-    private readonly ContainerScrollController _scroll = new();
+    private readonly ScrollBarPairController _scroll;
     private ulong _scrollTransitionVersion;
 
     /// <summary>Gets the private generated scrollbar parts for specialized container layout.</summary>
@@ -390,7 +396,7 @@ public abstract class Container: ControlBase
         // settled layout.
         if (AutoScroll)
         {
-            EnsureBars();
+            _scroll.EnsureBars();
         }
         else
         {
@@ -400,11 +406,7 @@ public abstract class Container: ControlBase
             // silently miss this change, and the generated ScrollBar parts must not go stale.
             _ = Apply(0, 0, ScrollCause.Programmatic);
 
-            if (_scroll.Bars is not null)
-            {
-                SetVisibility(_scroll.Horizontal!, visible: false);
-                SetVisibility(_scroll.Vertical!, visible: false);
-            }
+            _scroll.Hide();
         }
     }
 
@@ -912,25 +914,31 @@ public abstract class Container: ControlBase
         if (HorizontalBarVisibility != ScrollBarVisibility.Hidden ||
             VerticalBarVisibility != ScrollBarVisibility.Hidden)
         {
-            EnsureBars();
+            _scroll.EnsureBars();
         }
 
         // Trust the AutoSize-corrected content extent over the stale first-pass ContentExtent
         // once a re-measure discovered one; otherwise wrapped content past a Max clamp is
         // unreachable regardless of ArrangeOverride, since the scroll extent itself never grew
         // to include it.
-        var extent = Resolve(
+        var resolved = _scroll.Resolve(
             new Size(padded.Width, padded.Height),
             _autoSizeCorrectedContentExtent ?? ContentExtent,
-            out var horizontal,
-            out var vertical,
-            out var viewport);
+            ScrollBars,
+            HorizontalBarVisibility,
+            VerticalBarVisibility,
+            (horizontal, vertical) => MeasureContent(
+                new Size(padded.Width, padded.Height),
+                horizontal,
+                vertical));
+        var extent = resolved.Extent;
+        var viewport = resolved.Viewport;
         _scroll.ViewportBounds = new Rect(padded.X, padded.Y, viewport.Width, viewport.Height);
         var extentChanged = _scroll.Extent != extent;
         _ = SetProperty(ref _scroll.Extent, extent, InvalidationImpact.None, nameof(Extent));
         _ = SetProperty(ref _scroll.Viewport, viewport, InvalidationImpact.None, nameof(Viewport));
-        _scroll.ReserveHorizontal = horizontal;
-        _scroll.ReserveVertical = vertical;
+        _scroll.ReserveHorizontal = resolved.Horizontal;
+        _scroll.ReserveVertical = resolved.Vertical;
         _ = Apply(
             Math.Min(HorizontalOffset, MaximumX()),
             Math.Min(VerticalOffset, MaximumY()),
@@ -954,129 +962,42 @@ public abstract class Container: ControlBase
             return;
         }
 
-        Debug.Assert(_scroll.Horizontal is not null && _scroll.Vertical is not null,
-            "Created scrollbar chrome owns both axes.");
-
-        SetVisibility(_scroll.Horizontal, _scroll.ReserveHorizontal);
-        SetVisibility(_scroll.Vertical, _scroll.ReserveVertical);
-        _scroll.Horizontal.Arrange(
-            new Rect(padded.X, padded.Y + _scroll.ViewportBounds.Height,
-                _scroll.ReserveVertical ? padded.Width : _scroll.ViewportBounds.Width,
-                _scroll.ReserveHorizontal ? 1 : 0),
-            widthResolved: true,
-            heightResolved: true);
-        _scroll.Vertical.Arrange(
-            new Rect(padded.X + _scroll.ViewportBounds.Width, padded.Y, _scroll.ReserveVertical ? 1 : 0,
-                _scroll.ViewportBounds.Height),
-            widthResolved: true,
-            heightResolved: true);
+        _scroll.Arrange(
+            padded,
+            _scroll.ViewportBounds,
+            _scroll.ReserveHorizontal,
+            _scroll.ReserveVertical);
         Synchronize();
-    }
-
-    private void EnsureBars()
-    {
-        if (_scroll.Bars is not null)
-        {
-            return;
-        }
-
-        _scroll.Horizontal = new ScrollBar
-        {
-            Orientation = Orientation.Horizontal,
-            IsFocusable = false,
-            IsTabStop = false
-        };
-        _scroll.Vertical = new ScrollBar
-        {
-            Orientation = Orientation.Vertical,
-            IsFocusable = false,
-            IsTabStop = false
-        };
-        _scroll.Horizontal.ValueChanged += OnHorizontalChanged;
-        _scroll.Vertical.ValueChanged += OnVerticalChanged;
-        _scroll.Bars = new ControlCollection(
-            this,
-            capacity: 2,
-            new OwnedControlOptions(
-                OwnedControlRole.FrameworkPart,
-                OwnedControlLayer.Normal,
-                participatesInHitTesting: true,
-                participatesInNavigation: false,
-                partKey: "scroll-bars",
-            InvalidationImpact.Measure)) { _scroll.Horizontal, _scroll.Vertical };
-
-        BindStyle(_scrollBarStyle, _scroll.Horizontal);
-        BindStyle(_scrollBarStyle, _scroll.Vertical);
-
-        Debug.Assert(_scroll.Bars.Count == 2, "Scrollbar chrome owns exactly one control per axis.");
     }
 
     private void Synchronize(int? maximumYOverride = null)
     {
-        if (_scroll.Synchronizing || _scroll.Bars is null)
-        {
-            return;
-        }
-
-        Debug.Assert(_scroll.Horizontal is not null && _scroll.Vertical is not null,
-            "Scrollbar synchronization requires both axes.");
-
-        _scroll.Synchronizing = true;
-
-        try
-        {
-            Configure(_scroll.Horizontal, MaximumX(), Viewport.Width, HorizontalOffset);
-            Configure(_scroll.Vertical, maximumYOverride ?? MaximumY(), Viewport.Height, VerticalOffset);
-        }
-        finally
-        {
-            _scroll.Synchronizing = false;
-        }
-    }
-
-    private void Configure(ScrollBar bar, int maximum, int viewport, int value)
-    {
-        Debug.Assert(bar is not null, "Scrollbar configuration requires an owned bar.");
-        Debug.Assert(maximum >= 0 && viewport >= 0, "Scrollbar geometry is non-negative.");
-        Debug.Assert(value >= 0 && value <= maximum, "Scrollbar value is clamped before synchronization.");
-
-        // ScrollBar's Maximum setter throws rather than mutate when shrinking would leave the
-        // current Value outside the range, so Value is pre-clamped into the incoming maximum
-        // here before Maximum itself is assigned below.
-        if (bar.Value > maximum)
-        {
-            bar.Value = maximum;
-        }
-
-        bar.Maximum = maximum;
-        bar.ViewportSize = viewport;
-        bar.SmallChange = LineSize;
-        bar.LargeChange = PageStep(viewport);
-        bar.Value = value;
+        _scroll.Synchronize(
+            MaximumX(),
+            maximumYOverride ?? MaximumY(),
+            Viewport.Width,
+            Viewport.Height,
+            HorizontalOffset,
+            VerticalOffset,
+            LineSize,
+            LineSize,
+            PageStep(Viewport.Width),
+            PageStep(Viewport.Height));
     }
 
     private void OnHorizontalChanged(object? sender, ScrollEventArgs eventArgs)
     {
         _ = sender;
 
-        if (!_scroll.Synchronizing)
-        {
-            _ = Apply(eventArgs.Value, VerticalOffset, eventArgs.Cause);
-        }
+        _ = Apply(eventArgs.Value, VerticalOffset, eventArgs.Cause);
     }
 
     private void OnVerticalChanged(object? sender, ScrollEventArgs eventArgs)
     {
         _ = sender;
 
-        if (!_scroll.Synchronizing)
-        {
-            _ = Apply(HorizontalOffset, eventArgs.Value, eventArgs.Cause);
-        }
+        _ = Apply(HorizontalOffset, eventArgs.Value, eventArgs.Cause);
     }
-
-    private static void SetVisibility(ControlBase control, bool visible) =>
-        control.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
 
     private bool Apply(int x, int y, ScrollCause cause, int? maximumYOverride = null)
     {
@@ -1194,59 +1115,6 @@ public abstract class Container: ControlBase
     private int MaximumY() => AutoScroll && (ScrollBars & ScrollBars.Vertical) != 0
         ? Math.Max(0, Extent.Height - Viewport.Height)
         : 0;
-
-    private Size Resolve(
-        Size available,
-        Size extent,
-        out bool horizontal,
-        out bool vertical,
-        out Size viewport)
-    {
-        Debug.Assert(available is { Width: >= 0, Height: >= 0 }, "Scrollbar resolution uses available cell extents.");
-        Debug.Assert(extent is { Width: >= 0, Height: >= 0 },
-            "Scrollbar resolution uses non-negative content extents.");
-
-        horizontal = (ScrollBars & ScrollBars.Horizontal) != 0 &&
-                     HorizontalBarVisibility == ScrollBarVisibility.Always;
-        vertical = (ScrollBars & ScrollBars.Vertical) != 0 &&
-                   VerticalBarVisibility == ScrollBarVisibility.Always;
-
-        // Automatic bars are added monotonically because one reserved axis can
-        // induce overflow on the other. Two additions are the finite maximum. Each addition
-        // claims a cell from the bounded cross axis, which can change how much width-dependent
-        // content (wrapped text) reflows, so content is re-measured at the narrower axis before
-        // the next probe reads its extent. OnMeasuredDesired runs the same two-probe shape at
-        // measure time, minus the re-measure step - see its own comment for why that step doesn't
-        // carry over.
-        for (var probe = 0; probe < 2; probe++)
-        {
-            viewport = new Size(
-                Math.Max(0, available.Width - (vertical ? 1 : 0)),
-                Math.Max(0, available.Height - (horizontal ? 1 : 0)));
-            var addHorizontal = (ScrollBars & ScrollBars.Horizontal) != 0 &&
-                                HorizontalBarVisibility == ScrollBarVisibility.Auto &&
-                                extent.Width > viewport.Width;
-            var addVertical = (ScrollBars & ScrollBars.Vertical) != 0 &&
-                              VerticalBarVisibility == ScrollBarVisibility.Auto &&
-                              extent.Height > viewport.Height;
-            var nextHorizontal = horizontal || addHorizontal;
-            var nextVertical = vertical || addVertical;
-
-            if (nextHorizontal == horizontal && nextVertical == vertical)
-            {
-                return extent;
-            }
-
-            horizontal = nextHorizontal;
-            vertical = nextVertical;
-            extent = MeasureContent(available, horizontal, vertical);
-        }
-
-        viewport = new Size(
-            Math.Max(0, available.Width - (vertical ? 1 : 0)),
-            Math.Max(0, available.Height - (horizontal ? 1 : 0)));
-        return extent;
-    }
 
     private Size MeasureContent(Size available, bool horizontal, bool vertical)
     {

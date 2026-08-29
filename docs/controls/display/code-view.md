@@ -23,7 +23,11 @@ displayed cell regardless of `Overflow`. The control owns its normalized text
 and token projection; callers retain the assigned source string and catalog.
 Owner state changes invalidate the private code surface through the validated
 retained-descendant seam. Synchronous width reconciliation uses local
-invalidation only while the containing layout pass is already active.
+invalidation only while the containing layout pass is already active. Wrapped,
+clipped, and ellipsized modes use the same bounded viewport coordinator as
+`JsonView`, so internal reflow passes publish at most one `ScrollChanged` with
+the final offset, extent, and viewport. `Overflow.Visible` bypasses that
+transaction and keeps its unwrapped fast path.
 
 ## Inheritance
 

@@ -19,9 +19,11 @@ local invalidation occurs while width reconciliation is already inside the
 layout pass, avoiding a redundant scheduled frame.
 
 Scrolling properties use the shared retained-part bridge, including
-child-originated extent, viewport, and offset updates. `ScrollChanged` remains
-the specialized coalescing adapter, so width reconciliation may settle several
-internal offsets while subscribers receive only the final transition.
+child-originated extent, viewport, and offset updates. The shared
+width-dependent viewport coordinator captures the exact measure constraint,
+settles reflow against the final scrollbar-aware width within the current layout
+transaction, and coalesces intermediate offsets so `ScrollChanged` subscribers
+receive at most one transition with final geometry.
 
 ## Inheritance
 

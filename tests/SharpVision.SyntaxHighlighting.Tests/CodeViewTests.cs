@@ -4,11 +4,83 @@
 namespace SharpVision.SyntaxHighlighting.Tests;
 
 using SharpVision.Controls;
+using SharpVision.Scrolling;
 using SharpVision.Threading;
 
 /// <summary>Verifies CodeView content, selection, and folding behavior.</summary>
 public sealed class CodeViewTests
 {
+    /// <summary>Verifies one width-dependent projection transaction publishes at most one scroll
+    /// transition carrying the final settled geometry rather than each internal reconcile pass.</summary>
+    [Fact]
+    public void Layout_WhenWrappedViewResizesWhileScrolled_RaisesOneSettledScrollChanged()
+    {
+        // Arrange
+        var random = new Random(20260829);
+
+        for (var trial = 0; trial < 100; trial++)
+        {
+            var view = new CodeView
+            {
+                Code = string.Join('\n', Enumerable.Repeat(new string('x', random.Next(20, 90)), random.Next(5, 40))),
+                Overflow = Overflow.WrapAnywhere,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                IsFoldingEnabled = false,
+            };
+            var engine = new LayoutEngine();
+            var from = new Size(random.Next(6, 35), random.Next(3, 18));
+            var to = new Size(random.Next(6, 50), random.Next(3, 18));
+            engine.Layout(view, from);
+            _ = view.ScrollBy(int.MaxValue, int.MaxValue);
+            List<ScrollChangedEventArgs> observed = [];
+            view.ScrollChanged += (_, eventArgs) => observed.Add(eventArgs);
+
+            // Act
+            engine.Layout(view, to);
+
+            // Assert
+            observed.Count.ShouldBeLessThanOrEqualTo(1, $"trial {trial}: {from} -> {to}");
+
+            foreach (var eventArgs in observed)
+            {
+                eventArgs.Extent.ShouldBe(view.Extent, $"trial {trial}: {from} -> {to}");
+                eventArgs.Viewport.ShouldBe(view.Viewport, $"trial {trial}: {from} -> {to}");
+                eventArgs.Offset.ShouldBe(
+                    new Point(view.HorizontalOffset, view.VerticalOffset),
+                    $"trial {trial}: {from} -> {to}");
+            }
+        }
+    }
+
+    /// <summary>Verifies a subscriber-triggered newer scroll supersedes delivery of the older
+    /// transition to later subscribers.</summary>
+    [Fact]
+    public void ScrollChanged_WhenSubscriberReenters_DeliversOnlyCurrentTransitionToLaterSubscriber()
+    {
+        // Arrange
+        var view = new CodeView
+        {
+            Code = string.Join('\n', Enumerable.Repeat("line", 20)),
+            Height = Length.Cells(3),
+        };
+        new LayoutEngine().Layout(view, new Size(10, 3));
+        List<int> observed = [];
+        view.ScrollChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.Offset.Y == 1)
+            {
+                _ = view.ScrollBy(0, 1);
+            }
+        };
+        view.ScrollChanged += (_, eventArgs) => observed.Add(eventArgs.Offset.Y);
+
+        // Act
+        _ = view.ScrollBy(0, 1);
+
+        // Assert
+        observed.ShouldBe([2]);
+    }
+
     /// <summary>Verifies a reveal deferred by fold expansion completes at the detached layout
     /// boundary even though no dispatcher exists to run a posted continuation.</summary>
     [Fact]

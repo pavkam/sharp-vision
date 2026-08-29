@@ -41,9 +41,10 @@ framework controls register typed property and event bridges after ownership
 commits. The bridge preserves the part setter's validation, forwards
 source-originated changes through the owner, suppresses equivalent values and
 superseded reentrant notifications, and releases subscriptions when the edge,
-part, or owner ends. Specialized public event semantics remain specialized;
-JsonView coalesces layout scroll transitions instead of registering a direct
-event forward.
+part, or owner ends. Specialized public event semantics remain specialized. A
+width-dependent composite can route its retained viewport through the shared
+reconciliation coordinator so subscribers receive one settled scroll transition
+instead of a direct event for each internal layout pass.
 
 Async component work composes two independent identities. Capture the owning
 control's opaque attachment before leaving the dispatcher, and retain an opaque

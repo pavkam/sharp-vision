@@ -440,6 +440,13 @@ Direct hook tests require committed callback state, exception-safe public exit
 delivery, and suppression of an outer exit after reentrant away-and-back
 reconciliation.
 
+Shared scrolling-foundation tests exercise automatic cross-axis rail feedback,
+zero-sized rail geometry, value-before-maximum range shrink, callback
+suppression, the four-attempt width-projection convergence bound, and cleanup
+after projection failure. Mounted `Container`, `TextInput`, `JsonView`, and
+`CodeView` fixtures retain final-cell evidence while proving that one
+width-dependent layout transaction exposes at most one settled scroll event.
+
 Floating-surface architecture proof treats public identity as observable
 behavior. The compatibility snapshot pins `Window` and `Popup` deriving from
 `FloatingSurfaceBase`, `Dialog<TResult>` from Window, file dialogs and

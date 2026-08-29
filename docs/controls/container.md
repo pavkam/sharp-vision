@@ -69,7 +69,11 @@ Private scrollbar parts use a separate framework slot and never appear in
 `Children`. Cross-cutting rendering, routed ancestry, inherited context,
 lifecycle, focus, capture, and disposal all traverse the central ownership
 registry described by the
-[base ownership rules](control.md#children-and-ownership).
+[base ownership rules](control.md#children-and-ownership). Their pair controller
+is shared with `TextInput`: it owns rail creation, style binding, two-axis
+reservation feedback, physical arrangement, guarded range synchronization, hit
+testing, and rendering. `Container` retains its own extent, offset, nested
+propagation, and `ScrollChanged` cause policy.
 
 A derived container overrides `OnChildrenChanged` to observe a mutation of its
 own `Children`, cache per-child metadata, or react to the change - the same

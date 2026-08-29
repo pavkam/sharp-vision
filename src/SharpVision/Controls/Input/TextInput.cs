@@ -34,9 +34,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
     private UnicodePolicy? _boundaryCacheCellPolicy;
     private int _contentWidth;
     private int _contentHeight = 1;
-    private readonly OwnedControlSlot _chrome;
-    private readonly ScrollBar _horizontal;
-    private readonly ScrollBar _vertical;
+    private readonly ScrollBarPairController _scroll;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly StyleSlot<TextInputStyle> _style;
     private Rect _editorBounds;
@@ -49,26 +47,19 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
     public TextInput()
     {
         _style = InitializeStyle(TextInputStyle.Definition);
-        _chrome = RegisterOwnedSlot(
-            new OwnedControlOptions(
-                OwnedControlRole.FrameworkPart,
-                OwnedControlLayer.Normal,
-                participatesInHitTesting: true,
-                participatesInNavigation: false,
-                partKey: "editor-scroll-bars",
-                InvalidationImpact.Arrange),
-            capacity: 2);
-        _horizontal = new ScrollBar { Orientation = Orientation.Horizontal };
-        _vertical = new ScrollBar { Orientation = Orientation.Vertical };
-        _horizontal.ValueChanged += OnHorizontalChanged;
-        _vertical.ValueChanged += OnVerticalChanged;
-        _chrome.Add(_horizontal);
-        _chrome.Add(_vertical);
         _scrollBarStyle = InitializePartStyle(
             ScrollBarStyle.ArrangePartDefinition,
             nameof(ScrollBarStyle));
-        BindStyle(_scrollBarStyle, _horizontal);
-        BindStyle(_scrollBarStyle, _vertical);
+        _scroll = new ScrollBarPairController(
+            this,
+            "editor-scroll-bars",
+            InvalidationImpact.Arrange,
+            isFocusable: true,
+            horizontalIncludesCorner: false,
+            bar => BindStyle(_scrollBarStyle, bar));
+        _scroll.HorizontalValueChanged += OnHorizontalChanged;
+        _scroll.VerticalValueChanged += OnVerticalChanged;
+        _scroll.EnsureBars();
         IsFocusable = true;
         IsTabStop = true;
         ContextMenu = new TextInputContextMenu(this);
@@ -763,19 +754,14 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
     }
 
     /// <inheritdoc/>
-    internal override ControlBase? HitTest(Point point)
-    {
-        return IsDisposed || !IsHitTestVisible || !EffectiveIsVisible || !EffectiveIsEnabled || !Bounds.Contains(point)
+    internal override ControlBase? HitTest(Point point) =>
+        IsDisposed || !IsHitTestVisible || !EffectiveIsVisible || !EffectiveIsEnabled || !Bounds.Contains(point)
             ? null
-            : _vertical.HitTest(point) ?? _horizontal.HitTest(point) ?? this;
-    }
+            : _scroll.HitTest(point) ?? this;
 
     /// <inheritdoc/>
-    internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip)
-    {
-        _horizontal.Render(canvas, contentClip);
-        _vertical.Render(canvas, contentClip);
-    }
+    internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip) =>
+        _scroll.Render(canvas, contentClip);
 
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
@@ -995,8 +981,8 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
 
         if (reason == ReleaseReason.Disposed)
         {
-            _horizontal.ValueChanged -= OnHorizontalChanged;
-            _vertical.ValueChanged -= OnVerticalChanged;
+            _scroll.HorizontalValueChanged -= OnHorizontalChanged;
+            _scroll.VerticalValueChanged -= OnVerticalChanged;
             TextChanging = null;
             TextChanged = null;
             SelectionChanged = null;
@@ -1745,80 +1731,62 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
             ContentBounds,
             MeasureAffixes(StartAffix, EndAffix, ActualStyle.AffixGap));
 
+        var visibility = ShowScrollBars switch
+        {
+            ShowScrollBars.Never => ScrollBarVisibility.Hidden,
+            ShowScrollBars.WhenNeeded => ScrollBarVisibility.Auto,
+            ShowScrollBars.Always => ScrollBarVisibility.Always,
+            _ => throw new UnreachableException(),
+        };
+        var axes = WordWrap ? ScrollBars & ScrollBars.Vertical : ScrollBars;
+        (Size Extent, Size Viewport, bool Horizontal, bool Vertical) resolved;
+
         if (WordWrap)
         {
-            // In word-wrap mode, first determine vertical scrollbar presence to get final viewport width.
-            var vertical = (ScrollBars & ScrollBars.Vertical) != 0 &&
-                           ShowScrollBars == ShowScrollBars.Always;
-            var viewport = new Rect(bounds.X, bounds.Y, Math.Max(0, bounds.Width - (vertical ? 1 : 0)),
-                bounds.Height);
-
-            BuildVisualLines(viewport.Width);
-            _contentHeight = _visualLines.Length;
-            _contentWidth = viewport.Width;
-
-            if (!vertical && ShowScrollBars == ShowScrollBars.WhenNeeded)
-            {
-                vertical = (ScrollBars & ScrollBars.Vertical) != 0 && _contentHeight > viewport.Height;
-                viewport = new Rect(bounds.X, bounds.Y, Math.Max(0, bounds.Width - (vertical ? 1 : 0)),
-                    bounds.Height);
-
-                // Rebuild with potentially narrower width after vertical scrollbar appeared.
-                BuildVisualLines(viewport.Width);
-                _contentHeight = _visualLines.Length;
-                _contentWidth = viewport.Width;
-            }
-
-            _editorBounds = viewport;
-            _horizontal.Visibility = Visibility.Collapsed;
-            _vertical.Visibility = vertical ? Visibility.Visible : Visibility.Collapsed;
-            ArrangeChild(
-                _horizontal,
-                new Rect(bounds.X, bounds.Y.Add(viewport.Height), viewport.Width, 0),
-                ResolvedAxes.Both);
-            ArrangeChild(
-                _vertical,
-                new Rect(bounds.X.Add(viewport.Width), bounds.Y, vertical ? 1 : 0, viewport.Height),
-                ResolvedAxes.Both);
+            resolved = _scroll.Resolve(
+                new Size(bounds.Width, bounds.Height),
+                default,
+                axes,
+                ScrollBarVisibility.Hidden,
+                visibility,
+                (_, vertical) =>
+                {
+                    var width = Math.Max(0, bounds.Width - (vertical ? 1 : 0));
+                    BuildVisualLines(width);
+                    _contentHeight = _visualLines.Length;
+                    _contentWidth = width;
+                    return new Size(width, _contentHeight);
+                },
+                remeasureInitial: true);
             HorizontalOffset = 0;
-            Configure(_horizontal, 0, viewport.Width, 0);
-            Configure(_vertical, Math.Max(0, _contentHeight - viewport.Height + 1), viewport.Height, VerticalOffset);
-            return;
         }
-
-        MeasureText(out _contentWidth, out _contentHeight);
-        var horizontal = (ScrollBars & ScrollBars.Horizontal) != 0 &&
-                         ShowScrollBars == ShowScrollBars.Always;
-        var vert = (ScrollBars & ScrollBars.Vertical) != 0 &&
-                   ShowScrollBars == ShowScrollBars.Always;
-        var vp = new Rect(bounds.X, bounds.Y, Math.Max(0, bounds.Width - (vert ? 1 : 0)),
-            Math.Max(0, bounds.Height - (horizontal ? 1 : 0)));
-
-        if (ShowScrollBars == ShowScrollBars.WhenNeeded)
+        else
         {
-            horizontal = (ScrollBars & ScrollBars.Horizontal) != 0 && _contentWidth > vp.Width;
-            vert = (ScrollBars & ScrollBars.Vertical) != 0 && _contentHeight > vp.Height;
-            vp = new Rect(bounds.X, bounds.Y, Math.Max(0, bounds.Width - (vert ? 1 : 0)),
-                Math.Max(0, bounds.Height - (horizontal ? 1 : 0)));
-            horizontal |= (ScrollBars & ScrollBars.Horizontal) != 0 && _contentWidth > vp.Width;
-            vert |= (ScrollBars & ScrollBars.Vertical) != 0 && _contentHeight > vp.Height;
-            vp = new Rect(bounds.X, bounds.Y, Math.Max(0, bounds.Width - (vert ? 1 : 0)),
-                Math.Max(0, bounds.Height - (horizontal ? 1 : 0)));
+            MeasureText(out _contentWidth, out _contentHeight);
+            resolved = _scroll.Resolve(
+                new Size(bounds.Width, bounds.Height),
+                new Size(_contentWidth, _contentHeight),
+                axes,
+                visibility,
+                visibility);
         }
 
-        _editorBounds = vp;
-        _horizontal.Visibility = horizontal ? Visibility.Visible : Visibility.Collapsed;
-        _vertical.Visibility = vert ? Visibility.Visible : Visibility.Collapsed;
-        ArrangeChild(
-            _horizontal,
-            new Rect(bounds.X, bounds.Y.Add(vp.Height), vp.Width, horizontal ? 1 : 0),
-            ResolvedAxes.Both);
-        ArrangeChild(
-            _vertical,
-            new Rect(bounds.X.Add(vp.Width), bounds.Y, vert ? 1 : 0, vp.Height),
-            ResolvedAxes.Both);
-        Configure(_horizontal, Math.Max(0, _contentWidth - vp.Width + 1), vp.Width, HorizontalOffset);
-        Configure(_vertical, Math.Max(0, _contentHeight - vp.Height + 1), vp.Height, VerticalOffset);
+        var viewport = new Rect(bounds.X, bounds.Y, resolved.Viewport.Width, resolved.Viewport.Height);
+        _editorBounds = viewport;
+        _scroll.Arrange(bounds, viewport, resolved.Horizontal, resolved.Vertical);
+        var horizontalMaximum = WordWrap ? 0 : Math.Max(0, _contentWidth - viewport.Width + 1);
+        var verticalMaximum = Math.Max(0, _contentHeight - viewport.Height + 1);
+        _scroll.Synchronize(
+            horizontalMaximum,
+            verticalMaximum,
+            viewport.Width,
+            viewport.Height,
+            Math.Min(HorizontalOffset, horizontalMaximum),
+            Math.Min(VerticalOffset, verticalMaximum),
+            horizontalSmallChange: 1,
+            verticalSmallChange: 1,
+            horizontalLargeChange: viewport.Width,
+            verticalLargeChange: viewport.Height);
     }
 
     private void OnHorizontalChanged(object? sender, ScrollEventArgs eventArgs)
@@ -1833,19 +1801,6 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
         _ = sender;
         VerticalOffset = eventArgs.Value;
         Invalidate(Invalidation.Render);
-    }
-
-    private static void Configure(ScrollBar bar, int maximum, int viewport, int value)
-    {
-        if (bar.Value > maximum)
-        {
-            bar.Value = maximum;
-        }
-
-        bar.Maximum = maximum;
-        bar.ViewportSize = viewport;
-        bar.LargeChange = viewport;
-        bar.Value = Math.Min(value, maximum);
     }
 
     private void Position(int index, out int x, out int y)

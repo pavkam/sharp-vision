@@ -138,7 +138,12 @@ target is still retained beneath the owner and applies the normal dispatcher,
 lifetime, phase-expansion, and ancestor-propagation rules. Direct
 `InvalidateSelf` is reserved for synchronous reconciliation inside a layout pass
 that is already responsible for consuming the resulting local work; using it for
-an ordinary state change would strand dirty work below a clean ancestor.
+an ordinary state change would strand dirty work below a clean ancestor. The
+width-dependent viewport coordinator is that narrow owner: after rebuilding a
+retained projection it marks only the projection and private viewport dirty,
+then consumes both immediately with the captured measure constraint and current
+arrange bounds. Its `finally` path clears event suppression after projection,
+measure, or arrange failure.
 
 ## Phase completion and retry
 

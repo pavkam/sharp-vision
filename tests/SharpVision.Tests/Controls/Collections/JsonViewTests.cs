@@ -581,7 +581,7 @@ public sealed class JsonViewTests
     }
 
     /// <summary>Verifies a resize while scrolled raises exactly one ScrollChanged with the final
-    /// settled Extent and Viewport, not one per internal arrange ReconcileProjectionWidth performs
+    /// settled Extent and Viewport, not one per internal reconciliation arrange
     /// while resettling the wrapped projection to the new width - a subscriber must never observe
     /// an intermediate offset clamped against a since-superseded wrap.</summary>
     [Fact]

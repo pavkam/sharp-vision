@@ -34,15 +34,13 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     private readonly JsonViewContent _content;
     private readonly LayoutStack _stack;
     private readonly RetainedScrollPart _scrollPart;
+    private readonly WidthDependentViewportCoordinator _projectionCoordinator;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly StyleSlot<JsonViewStyle> _style;
     private JsonViewNode? _selectedNode;
     private int? _projectionWidth;
     private ulong _projectionVersion;
     private (Rune Collapsed, Rune IsExpanded)? _builtWithGlyphs;
-    private Constraint _lastMeasureConstraint;
-    private bool _suppressScrollChangedPassthrough;
-    private ScrollChangedEventArgs? _pendingScrollChanged;
 
     /// <summary>Initializes an empty JSON view whose document is the JSON null value.</summary>
     public JsonView()
@@ -60,8 +58,14 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
             Children = { _content }
         };
         InitializeContent(_stack);
+        _projectionCoordinator = new WidthDependentViewportCoordinator(
+            this,
+            _stack,
+            _content,
+            static () => true,
+            () => _projectionWidth,
+            Reproject);
         _scrollPart = RegisterRetainedScrollPart(_stack, forwardsScrollEvent: false);
-        _stack.ScrollChanged += OnStackScrollChanged;
         _scrollBarStyle = InitializePartStyle(
             ScrollBarStyle.ForwardingDefinition,
             nameof(ScrollBarStyle));
@@ -193,15 +197,19 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     /// <summary>Raised after a generated scrolling viewport commits changed offsets.</summary>
     /// <remarks>
     /// This is not a direct forward of the composed viewport's own event: a layout pass that needs
-    /// more than one internal arrange to settle the wrapped projection's width -
-    /// <see cref="ReconcileProjectionWidth"/> - coalesces every intermediate change that occurs
+    /// more than one internal arrange to settle the wrapped projection's width, the shared
+    /// coordinator coalesces every intermediate change that occurs
     /// while it settles into the single event actually raised, so a subscriber only ever observes
     /// the final settled offset, extent, and viewport for one layout pass, never a transient value
     /// clamped against a since-superseded wrap. An offset change from any other cause - scrolling,
     /// programmatic <see cref="ScrollBy"/>, a resize that does not need reconciling - is forwarded
     /// exactly as it occurs, individually.
     /// </remarks>
-    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged;
+    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
+    {
+        add => _projectionCoordinator.ScrollChanged += value;
+        remove => _projectionCoordinator.ScrollChanged -= value;
+    }
 
     /// <summary>Gets the committed content extent.</summary>
     public Size Extent => _scrollPart.Extent;
@@ -339,7 +347,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     /// per-child probe of that mechanism, not a signal that this control's own host is genuinely
     /// unconstrained. Discarding the projection on every one of those probes would make word-wrap
     /// permanently unreachable for the default
-    /// <see cref="ScrollBars.Both"/> configuration; <see cref="ReconcileProjectionWidth"/> is what
+    /// <see cref="ScrollBars.Both"/> configuration; arrange-time reconciliation is what
     /// actually keeps the projection matched to the real, scrollbar-reservation-aware width in
     /// that configuration.
     /// </remarks>
@@ -407,128 +415,25 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        // Stashed for ReconcileProjectionWidth, which needs to remeasure the composed viewport
+        // Stashed for the coordinator, which needs to remeasure the composed viewport
         // with the exact same constraint this control itself received - not a constraint it could
-        // reconstruct from Bounds, since ReconcileProjectionWidth runs inside this control's own
+        // reconstruct from Bounds, since reconciliation runs inside this control's own
         // ArrangeOverride, before any later Measure call would refresh it.
-        _lastMeasureConstraint = constraint;
+        _projectionCoordinator.CaptureMeasureConstraint(constraint);
         return base.MeasureOverride(constraint);
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
+    protected override void ArrangeOverride(Rect bounds) =>
+        _projectionCoordinator.Arrange(bounds, () => base.ArrangeOverride(bounds));
+
+    /// <summary>Rebuilds the JSON projection for the coordinator's positive settled width.</summary>
+    /// <param name="width">The positive scrollbar-aware viewport width in cells.</param>
+    private void Reproject(int width)
     {
-        // Every _stack.Arrange this method causes - the one base.ArrangeOverride below performs,
-        // and any additional one ReconcileProjectionWidth performs while settling the projection
-        // width - can independently fire the composed viewport's own ScrollChanged with a
-        // still-transitional Extent/Viewport. Suppressing the passthrough for the whole call and
-        // replaying at most one coalesced event afterward is what keeps a subscriber from ever
-        // observing one of those transitional values.
-        _suppressScrollChangedPassthrough = true;
-        ScrollChangedEventArgs? pending;
-
-        try
-        {
-            base.ArrangeOverride(bounds);
-            ReconcileProjectionWidth(bounds);
-        }
-        finally
-        {
-            // Captured and cleared here, inside the finally, rather than after the try/finally:
-            // an exception from either call above must not strand a pending event whose stale
-            // PreviousOffset would otherwise seed the next transaction's own merge.
-            _suppressScrollChangedPassthrough = false;
-            pending = _pendingScrollChanged;
-            _pendingScrollChanged = null;
-        }
-
-        if (pending is { } settled && settled.PreviousOffset != settled.Offset)
-        {
-            ScrollChanged?.Invoke(this, settled);
-        }
-    }
-
-    /// <summary>Forwards the composed viewport's own scroll transitions, coalescing every one that
-    /// occurs while <see cref="ArrangeOverride"/> is settling the wrapped projection's width into
-    /// the single event that override replays once settled.</summary>
-    /// <param name="sender">The composed viewport; unused.</param>
-    /// <param name="e">The composed viewport's own committed transition.</param>
-    private void OnStackScrollChanged(object? sender, ScrollChangedEventArgs e)
-    {
-        _ = sender;
-
-        if (!_suppressScrollChangedPassthrough)
-        {
-            ScrollChanged?.Invoke(this, e);
-            return;
-        }
-
-        // Keep the earliest PreviousOffset seen this transaction - the offset before any of this
-        // arrange's internal reconcile passes ran - paired with the latest Offset/Extent/Viewport,
-        // so the eventually-replayed event reports the one meaningful transition: from where the
-        // subscriber last saw this control settle, to where it settles now.
-        _pendingScrollChanged = new ScrollChangedEventArgs(
-            _pendingScrollChanged?.PreviousOffset ?? e.PreviousOffset,
-            e.Offset,
-            e.Extent,
-            e.Viewport,
-            e.Cause);
-    }
-
-    /// <summary>Keeps the wrapped projection matched to the composed viewport's real,
-    /// scrollbar-reservation-aware width, entirely within the current layout transaction.</summary>
-    /// <remarks>
-    /// The composed viewport measures its content unbounded on the horizontal axis (see
-    /// <see cref="MeasureAndWrap"/>'s remarks), so the only place the real width - after a vertical
-    /// scrollbar has claimed its column - becomes known is here, once the arrange this override
-    /// delegated to has resolved it. Rewrapping can itself change the content's height enough to
-    /// flip whether a vertical scrollbar is needed at all, exactly the coupling
-    /// <see cref="Container"/>'s own two-probe scrollbar resolution exists to settle for a
-    /// non-scrolling-width axis; since that mechanism is a no-op for a horizontally-scrollable one,
-    /// this reproduces it by hand for as many rounds as it takes to settle, bounded defensively
-    /// against runaway growth. Remeasuring and rearranging the composed viewport synchronously -
-    /// instead of only invalidating it for a future pass - is what keeps <see cref="Extent"/> and
-    /// <see cref="Viewport"/> accurate after a single layout pass instead of one frame behind it.
-    /// Every intermediate <see cref="ScrollChanged"/> raised by an internal arrange in this loop is
-    /// coalesced rather than passed through - see <see cref="OnStackScrollChanged"/> - so a
-    /// subscriber never observes an offset clamped against a since-superseded wrap.
-    /// </remarks>
-    /// <param name="bounds">The content-box bounds this control's own arrange resolved.</param>
-    private void ReconcileProjectionWidth(Rect bounds)
-    {
-        for (var attempt = 0; attempt < 4; attempt++)
-        {
-            var viewportWidth = _stack.Viewport.Width;
-
-            if (viewportWidth <= 0 || _projectionWidth == viewportWidth)
-            {
-                return;
-            }
-
-            _projectionWidth = viewportWidth;
-            _lines = BuildDisplayLines(_sourceLines, viewportWidth);
-
-            _stack.InvalidateSelf(Invalidation.Measure);
-            _content.InvalidateSelf(Invalidation.Measure);
-            _stack.Measure(_lastMeasureConstraint);
-            _stack.Arrange(bounds, widthResolved: true, heightResolved: true);
-
-            // The composed viewport's own ScrollChanged only fires when this arrange's offset
-            // clamp actually moved, but Extent/Viewport can still change without one - an earlier
-            // iteration's fire must not leave a later, unclamped iteration's fresher geometry
-            // behind. Unconditionally re-stamping the pending event's Extent/Viewport after every
-            // arrange this loop performs is what keeps the eventually-replayed event's geometry
-            // always the final settled one, not whichever iteration happened to reclamp last.
-            if (_pendingScrollChanged is { } pending)
-            {
-                _pendingScrollChanged = new ScrollChangedEventArgs(
-                    pending.PreviousOffset,
-                    pending.Offset,
-                    _stack.Extent,
-                    _stack.Viewport,
-                    pending.Cause);
-            }
-        }
+        Debug.Assert(width > 0, "Projection reconciliation requires a positive viewport width.");
+        _projectionWidth = width;
+        _lines = BuildDisplayLines(_sourceLines, width);
     }
 
     private void OnStyleChanged(JsonViewStyle previous, JsonViewStyle current)

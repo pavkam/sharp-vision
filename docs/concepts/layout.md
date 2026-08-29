@@ -255,6 +255,15 @@ padding cells, even when one automatic bar induces the other. A theme-resolved
 `Border` change has `Measure` impact, so publishing a theme with new geometry
 remeasures and rearranges this complete box model.
 
+A retained projection whose rows depend on the final viewport width cannot use
+the horizontally unbounded content probe as its settled width. The shared
+width-dependent viewport transaction therefore captures the owner's exact
+measure constraint, performs the initial arrange, rebuilds against the actual
+scrollbar-aware width, and synchronously remeasures and rearranges until the
+projection width matches. The loop is bounded to four rebuilds and either
+settles completely or fails deterministically; it never returns a knowingly
+transitional extent or schedules a redundant repair frame.
+
 ## Expected behavior
 
 Layout behaves consistently across every length combination, nested percentages,

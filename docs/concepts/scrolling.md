@@ -38,8 +38,9 @@ lifecycle-owned forwarding bridge. Explicit public properties retain their own
 validation documentation while typed source getters and setters preserve the
 container's validation order. Source-driven extent, viewport, offset, line,
 page, and policy changes publish the matching owner property once; direct event
-bridges preserve `ScrollChanged`, while JsonView retains its coalescing adapter
-so intermediate layout offsets never become public scroll events.
+bridges preserve `ScrollChanged`. Width-dependent projections use one shared
+coordinator that coalesces every internal reflow and arrange into at most one
+settled event, so intermediate layout offsets never become public.
 
 ## Automatic scrollbar algorithm
 
@@ -54,6 +55,21 @@ so intermediate layout offsets never become public scroll events.
 
 An exact fit does not count as overflow. A zero extent produces a full-size,
 stationary thumb.
+
+`Container` and `TextInput` use the same retained scrollbar-pair controller for
+rail ownership, style forwarding, this two-axis feedback loop, bounded tiny
+geometry, value-before-maximum synchronization, hit testing, and rendering. They
+still own their distinct range policy: editor ranges include the terminal caret
+cell and word wrapping disables the horizontal editor rail, while a container
+owns nested input propagation and typed scroll causes.
+
+When a private projection depends on the final viewport width, as in `JsonView`
+or a wrapped `CodeView`, a bounded synchronous transaction captures the exact
+measure constraint, reprojects against the scrollbar-aware width, and remeasures
+and rearranges the retained viewport until stable. Four rebuilds are the
+defensive maximum; failure to converge throws instead of exposing a transitional
+extent. Intermediate scroll transitions are coalesced using the earliest
+previous offset and the final offset, extent, viewport, and cause.
 
 ## Scrollbar presentation
 

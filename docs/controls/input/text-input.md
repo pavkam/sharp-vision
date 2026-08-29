@@ -105,6 +105,13 @@ choose another glyph family through a `with` expression over `ActualStyle` (or
 `TextInputStyle.Default`) assigned to `Style`, or opt out of the border by
 assigning a complete `Border` whose `Sides` is `BorderSide.None`.
 
+The private horizontal and vertical rails use the same retained pair controller
+as `Container`, including style forwarding, cross-axis reservation feedback,
+tiny-bounds saturation, and guarded range synchronization. Editor policy stays
+local: ranges retain the extra end-of-text caret cell, and `WordWrap` disables
+the horizontal axis while rebuilding lines against the final vertical-rail-aware
+viewport width.
+
 `StartAffix` and `EndAffix` reserve a fixed cell column inboard of the border,
 deflated away from the caret/selection viewport once, before any scroll or
 scrollbar-reservation math runs - so an affix stays pinned in place while
