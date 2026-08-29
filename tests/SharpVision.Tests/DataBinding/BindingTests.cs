@@ -1212,7 +1212,7 @@ public sealed class BindingTests
         var second = new BindingItem("B");
         var source = new ObservableCollection<BindingItem> { first, second };
         var model = new BindingModel { Items = source };
-        var target = new ComboBox { DropDownHeight = 4, IsOpen = true };
+        var target = new ComboBox { DropDownHeight = Length.Cells(4), IsOpen = true };
         using var binding = target.BindItems(model, value => value.Items);
         new LayoutEngine().Layout(target, new Size(24, 12));
         target.SelectedIndex = 1;
@@ -1234,7 +1234,7 @@ public sealed class BindingTests
         var third = new BindingItem("C");
         var source = new ObservableCollection<BindingItem> { first, second, third };
         var model = new BindingModel { Items = source };
-        var target = new ComboBox { DropDownHeight = 4, IsOpen = true };
+        var target = new ComboBox { DropDownHeight = Length.Cells(4), IsOpen = true };
         using var binding = target.BindItems(model, value => value.Items);
         new LayoutEngine().Layout(target, new Size(24, 12));
         target.SelectedIndex = 2;
@@ -1253,7 +1253,7 @@ public sealed class BindingTests
         var first = new BindingItem("A");
         var source = new ObservableCollection<BindingItem> { first, new("B") };
         var model = new BindingModel { Items = source };
-        var target = new ComboBox { DropDownHeight = 4 };
+        var target = new ComboBox { DropDownHeight = Length.Cells(4) };
         using var binding = target.BindItems(model, value => value.Items);
         target.SelectedIndex = -1;
         target.GetDropDownList().SetProvisionalCurrentIndex(0);
@@ -1282,7 +1282,7 @@ public sealed class BindingTests
         var second = new BindingItem("B");
         var source = new ObservableCollection<BindingItem> { first, second };
         var model = new BindingModel { Items = source };
-        var target = new ComboBox { DropDownHeight = 4, IsOpen = true };
+        var target = new ComboBox { DropDownHeight = Length.Cells(4), IsOpen = true };
         using var binding = target.BindItems(model, value => value.Items);
         new LayoutEngine().Layout(target, new Size(24, 12));
         target.SelectedIndex = 1;

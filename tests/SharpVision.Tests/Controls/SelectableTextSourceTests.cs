@@ -756,7 +756,7 @@ public sealed class SelectableTextSourceTests
             SelectedIndex = 0,
             Width = Length.Cells(8),
             Height = Length.Cells(3),
-            DropDownHeight = 2
+            DropDownHeight = Length.Cells(2)
         };
         var root = new Overlay { Children = { combo } };
         await using var surface = await ComponentSurface.MountAsync(

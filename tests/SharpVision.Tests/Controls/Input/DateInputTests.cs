@@ -279,7 +279,7 @@ public sealed class DateInputTests
         using var control = new DateInput();
 
         // Assert
-        control.DropDownHeight.ShouldBe(10);
+        control.DropDownHeight.ShouldBe(Length.Cells(10));
     }
 
     /// <summary>Verifies DropDownHeight round-trips a valid value.</summary>
@@ -290,25 +290,32 @@ public sealed class DateInputTests
         using var control = new DateInput();
 
         // Act
-        control.DropDownHeight = 4;
+        control.DropDownHeight = Length.Percent(50);
 
         // Assert
-        control.DropDownHeight.ShouldBe(4);
+        control.DropDownHeight.ShouldBe(Length.Percent(50));
     }
 
     /// <summary>Verifies DropDownHeight rejects a non-positive value.</summary>
     [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    public void DropDownHeight_WhenNonPositive_ThrowsBeforeMutation(int value)
+    [MemberData(nameof(InvalidDropDownHeights))]
+    public void DropDownHeight_WhenInvalid_ThrowsBeforeMutation(Length value)
     {
         // Arrange
         using var control = new DateInput();
 
         // Act and assert
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.DropDownHeight = value);
-        control.DropDownHeight.ShouldBe(10);
+        _ = Should.Throw<ArgumentException>(() => control.DropDownHeight = value);
+        control.DropDownHeight.ShouldBe(Length.Cells(10));
     }
+
+    /// <summary>Provides unsupported or empty responsive caps.</summary>
+    public static TheoryData<Length> InvalidDropDownHeights =>
+    [
+        Length.Cells(0),
+        Length.Percent(0),
+        Length.Star(1)
+    ];
 
     /// <summary>Verifies a single-character Format outside DateOnly's own specifier set is rejected
     /// by the setter instead of arming a FormatException that would later escape the layout

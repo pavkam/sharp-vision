@@ -23,8 +23,6 @@ public sealed class ComboBox: InputBase
     // resolution adds the border inset on top of the content size returned here.
     private const int _fieldContentHeight = 1;
     private const int _indicatorReservedWidth = 2;
-    private const int _popupConnectingFrameHeight = 1;
-    private const int _defaultDropDownHeight = 8;
     private readonly ListView _list;
     private readonly Popup _popup;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
@@ -62,6 +60,7 @@ public sealed class ComboBox: InputBase
             handleNavigationKey: HandleNavigationKey,
             cancelSession: CancelNavigationSession,
             acceptSession: AcceptNavigationSession);
+        _popup.ContentHeightLimit = Length.Cells(8);
         EnablePressActivation();
         _scrollBarStyle = InitializePartStyle(
             ScrollBarStyle.ForwardingDefinition,
@@ -201,19 +200,27 @@ public sealed class ComboBox: InputBase
         }
     }
 
-    /// <summary>Gets or sets the maximum visible list height in terminal cells.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is zero or negative.</exception>
+    /// <summary>Gets or sets the intrinsic, fixed, or placement-side-relative maximum visible list height.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage value is zero.</exception>
+    /// <exception cref="ArgumentException">The value uses proportional sizing.</exception>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public int DropDownHeight
+    public Length DropDownHeight
     {
-        get;
+        get => _popup.ContentHeightLimit;
         set
         {
-            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+            VerifyMutable();
+
+            if (_popup.ContentHeightLimit == value)
+            {
+                return;
+            }
+
+            _popup.ContentHeightLimit = value;
+            NotifyPropertyChanged(nameof(DropDownHeight), InvalidationImpact.Measure);
         }
-    } = _defaultDropDownHeight;
+    }
 
     /// <summary>Gets or sets the axes available to the owned drop-down overflow host.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
@@ -347,7 +354,7 @@ public sealed class ComboBox: InputBase
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        _ = MeasureChild(_popup, new Constraint(constraint.Width, DropDownHeight.Add(_popupConnectingFrameHeight)));
+        _ = MeasureChild(_popup, new Constraint(constraint.Width, height: null));
         var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
         var width = MeasureCells(SelectedItemText())
             .Add(_indicatorReservedWidth)

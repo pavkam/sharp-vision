@@ -6,6 +6,38 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves ComboBox and its transient list through mounted terminal surfaces.</summary>
 public sealed class ComboBoxSurfaceTests
 {
+    /// <summary>Verifies an open relative cap re-resolves from the usable below-placement interior.</summary>
+    [Fact]
+    public async Task ResizeAsync_WhenDropDownHeightIsRelative_ReflowsOpenListAndPreservesSelectionAsync()
+    {
+        var combo = new ComboBox
+        {
+            DropDownHeight = Length.Percent(50),
+            Height = Length.Cells(3),
+            Items = Enumerable.Range(0, 20).Select(index => (object?) $"Item {index}").ToArray(),
+            SelectedIndex = 5
+        };
+        var root = new Overlay { Children = { combo } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 20),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => combo.IsOpen = true, "open relative-height ComboBox");
+        var popup = OwnedTree.Find<Popup>(combo).ShouldNotBeNull();
+        var list = combo.GetDropDownList();
+
+        popup.ResolvedPlacement.ShouldBe(PopupPlacement.Below);
+        list.Bounds.Height.ShouldBe(8);
+        list.SelectedIndex.ShouldBe(5);
+
+        await surface.ResizeAsync(new Size(30, 12));
+
+        popup.ResolvedPlacement.ShouldBe(PopupPlacement.Below);
+        list.Bounds.Height.ShouldBe(4);
+        list.SelectedIndex.ShouldBe(5);
+        surface.Cell(new Point(list.Bounds.X, list.Bounds.Y)).Text.ShouldNotBeEmpty();
+    }
+
     /// <summary>Verifies an open owner-managed drop-down preserves its presentation while an
     /// unrelated ancestor is disabled and enters one fresh modal scope after recovery.</summary>
     [Fact]
@@ -150,7 +182,7 @@ public sealed class ComboBoxSurfaceTests
         {
             Width = Length.Cells(10),
             Height = Length.Cells(3),
-            DropDownHeight = 2,
+            DropDownHeight = Length.Cells(2),
             Items = ["One", "Two"],
             SelectedIndex = 1
         };
@@ -184,7 +216,7 @@ public sealed class ComboBoxSurfaceTests
         {
             Width = Length.Cells(10),
             Height = Length.Cells(3),
-            DropDownHeight = 2,
+            DropDownHeight = Length.Cells(2),
             Items = ["One", "Two"],
             PopupChrome = new PopupChrome
             {
@@ -217,7 +249,7 @@ public sealed class ComboBoxSurfaceTests
             Items = ["One", "Two"],
             Width = Length.Cells(10),
             Height = Length.Cells(3),
-            DropDownHeight = 3
+            DropDownHeight = Length.Cells(3)
         };
         var background = new ControlText(string.Join('\n', Enumerable.Repeat("Background", 12)));
         var parent = new Stack
@@ -255,7 +287,7 @@ public sealed class ComboBoxSurfaceTests
             Items = ["One", "Two"],
             Width = Length.Cells(10),
             Height = Length.Cells(3),
-            DropDownHeight = 3
+            DropDownHeight = Length.Cells(3)
         };
         var background = new ControlText(string.Join('\n', Enumerable.Repeat("Background", 12)));
         var parent = new Stack
@@ -294,7 +326,7 @@ public sealed class ComboBoxSurfaceTests
             Items = ["One", "Two", "Three", "Four", "Five", "Six"],
             Width = Length.Cells(10),
             Height = Length.Cells(3),
-            DropDownHeight = 3
+            DropDownHeight = Length.Cells(3)
         };
         var background = new ControlText(string.Join('\n', Enumerable.Repeat("Background", 12)));
         var parent = new Stack
@@ -388,7 +420,7 @@ public sealed class ComboBoxSurfaceTests
             SelectedIndex = 0,
             Width = Length.Cells(10),
             Height = Length.Cells(3),
-            DropDownHeight = 3
+            DropDownHeight = Length.Cells(3)
         };
         var root = new Overlay { Children = { combo } };
         await using var surface = await ComponentSurface.MountAsync(
@@ -450,7 +482,7 @@ public sealed class ComboBoxSurfaceTests
             Items = ["One", "Two", "Three"],
             Width = Length.Cells(10),
             Height = Length.Cells(3),
-            DropDownHeight = 3
+            DropDownHeight = Length.Cells(3)
         };
         await using var surface = await ComponentSurface.MountAsync(
             combo,
@@ -530,7 +562,7 @@ public sealed class ComboBoxSurfaceTests
             SelectedIndex = 1,
             Width = Length.Cells(10),
             Height = Length.Cells(3),
-            DropDownHeight = 4
+            DropDownHeight = Length.Cells(4)
         };
         var root = new Overlay { Children = { combo } };
         await using var surface = await ComponentSurface.MountAsync(
@@ -568,7 +600,7 @@ public sealed class ComboBoxSurfaceTests
             SelectedIndex = 3,
             Width = Length.Cells(10),
             Height = Length.Cells(3),
-            DropDownHeight = 4
+            DropDownHeight = Length.Cells(4)
         };
         await using var surface = await ComponentSurface.MountAsync(
             combo,
@@ -598,7 +630,7 @@ public sealed class ComboBoxSurfaceTests
             SelectedIndex = 0,
             Width = Length.Cells(10),
             Height = Length.Cells(3),
-            DropDownHeight = 3
+            DropDownHeight = Length.Cells(3)
         };
         await using var surface = await ComponentSurface.MountAsync(
             combo,
@@ -629,7 +661,7 @@ public sealed class ComboBoxSurfaceTests
             SelectedIndex = 1,
             Width = Length.Cells(10),
             Height = Length.Cells(3),
-            DropDownHeight = 2
+            DropDownHeight = Length.Cells(2)
         };
         var background = new ControlText("outside");
         Overlay.SetTop(background, Length.Cells(7));
@@ -664,7 +696,7 @@ public sealed class ComboBoxSurfaceTests
             SelectedIndex = 1,
             Width = Length.Cells(10),
             Height = Length.Cells(3),
-            DropDownHeight = 3
+            DropDownHeight = Length.Cells(3)
         };
         var closed = 0;
         combo.DropDownClosed += (_, _) => closed++;
@@ -710,7 +742,7 @@ public sealed class ComboBoxSurfaceTests
             SelectedIndex = 0,
             Width = Length.Cells(10),
             Height = Length.Cells(3),
-            DropDownHeight = 3
+            DropDownHeight = Length.Cells(3)
         };
         var closeCount = 0;
         combo.DropDownClosed += (_, _) =>

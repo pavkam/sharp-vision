@@ -22,7 +22,8 @@ internal sealed class DateInputPane: CompositeControlBase
         var basicStatus = new Text("Value: (pick a date)");
         var basic = new DateInput
         {
-            Culture = CultureInfo.InvariantCulture
+            Culture = CultureInfo.InvariantCulture,
+            DropDownHeight = Length.Percent(50)
         };
         basic.ValueChanged += (_, eventArgs) =>
             basicStatus.Content = $"Value: {FormatDate(eventArgs.Value)}";
@@ -73,9 +74,9 @@ internal sealed class DateInputPane: CompositeControlBase
                 "Edit date segments inline with <reverse>Up</reverse>/<reverse>Down</reverse> arrows, or open the Calendar popup with <reverse>Alt+Down</reverse> or <reverse>F4</reverse>.",
                 new DocExample(
                     "Pick a date",
-                    "<reverse>Left</reverse>/<reverse>Right</reverse> move between segments. <reverse>Up</reverse>/<reverse>Down</reverse> adjust the focused segment. Click or press <reverse>Enter</reverse> in the popup to commit.",
+                    "<reverse>Left</reverse>/<reverse>Right</reverse> move between segments. The Calendar uses half the usable placement-side height and responds to terminal resize. Click or press <reverse>Enter</reverse> in the popup to commit.",
                     new DocColumn(basic, basicStatus),
-                    "var dateInput = new DateInput();\ndateInput.ValueChanged += (_, e) =>\n    Console.Write(e.Value);")),
+                    "var dateInput = new DateInput\n{\n    DropDownHeight = Length.Percent(50)\n};\ndateInput.ValueChanged += (_, e) =>\n    Console.Write(e.Value);")),
             new DocSection(
                 "📐",
                 "Bounds and validation",

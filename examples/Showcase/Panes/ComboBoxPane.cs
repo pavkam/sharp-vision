@@ -30,7 +30,7 @@ internal sealed class ComboBoxPane: CompositeControlBase
             Width = Length.Cells(28),
             Items = ["Compact", "Comfortable", "Spacious"],
             SelectedIndex = 1,
-            DropDownHeight = 4
+            DropDownHeight = Length.Cells(4)
         };
         ShowcasePaneHelpers.WireComboSelectionStatus(comboBox, density, "Selected");
         var stage = ShowcasePaneHelpers.ComboStage(30, 6, comboBox);
@@ -76,7 +76,7 @@ internal sealed class ComboBoxPane: CompositeControlBase
         var clearSelection = new Button { Text = "&Clear selection" };
         clearSelection.Click += (_, _) => emptyCombo.SelectedIndex = -1;
 
-        // DropDownHeight caps visible rows; the owned ListView scrolls inside the popup.
+        // A relative DropDownHeight follows the usable placement-side extent while the list scrolls inside it.
         var manyItems = new object?[12];
         for (var index = 0; index < manyItems.Length; index++)
         {
@@ -89,7 +89,7 @@ internal sealed class ComboBoxPane: CompositeControlBase
             Width = Length.Cells(24),
             Items = manyItems,
             SelectedIndex = 0,
-            DropDownHeight = 6
+            DropDownHeight = Length.Percent(50)
         };
         ShowcasePaneHelpers.WireComboSelectionStatus(tall, tallStatus, "Selected");
         var tallStage = ShowcasePaneHelpers.ComboStage(26, 8, tall);
@@ -109,7 +109,7 @@ internal sealed class ComboBoxPane: CompositeControlBase
             Width = Length.Cells(24),
             Items = ["Above when needed", "Clamped to host"],
             SelectedIndex = 0,
-            DropDownHeight = 4
+            DropDownHeight = Length.Cells(4)
         };
         edgeChoice.SelectionChanged += (_, _) =>
             edgeStatus.Content = $"Committed: {edgeChoice.Items[edgeChoice.SelectedIndex]}";
@@ -157,12 +157,12 @@ internal sealed class ComboBoxPane: CompositeControlBase
             new DocSection(
                 "🔽",
                 "Long choices",
-                "Cap popup height and let the owned ListView provide ordinary scrolling for the remaining choices.",
+                "Cap popup height relative to its available placement side and let the owned ListView scroll the remaining choices.",
                 new DocExample(
                     "Capped drop-down",
-                    "Only six rows are visible. Arrow, wheel, and paging input scroll inside the popup before the page.",
+                    "The list uses half of the usable placement-side height and responds when the terminal resizes. Arrow, wheel, and paging input scroll inside the popup before the page.",
                     new DocColumn(tallStage, tallStatus),
-                    "combo.DropDownHeight = 6;\ncombo.ShowScrollBars = ShowScrollBars.WhenNeeded;")),
+                    "combo.DropDownHeight = Length.Percent(50);\ncombo.ShowScrollBars = ShowScrollBars.WhenNeeded;")),
             new DocSection(
                 "🔽",
                 "No selection",

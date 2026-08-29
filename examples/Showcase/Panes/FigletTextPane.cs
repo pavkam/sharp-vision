@@ -24,7 +24,7 @@ internal sealed class FigletTextPane: CompositeControlBase
             Width = Length.Cells(30),
             Items = fontNames,
             SelectedIndex = Array.IndexOf(fontNames, "standard"),
-            DropDownHeight = 8,
+            DropDownHeight = Length.Cells(8),
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
             ScrollBarStyle = ScrollBarStyle.ThinLine

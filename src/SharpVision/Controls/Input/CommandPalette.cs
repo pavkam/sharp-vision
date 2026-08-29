@@ -19,7 +19,6 @@ using SharpVision.Terminal.Input;
 [PublicAPI]
 public sealed class CommandPalette: CompositeControlBase
 {
-    private const int _defaultDropDownHeight = 8;
     private readonly TextInput _input;
     private readonly ListView _list;
     private readonly Popup _popup;
@@ -44,7 +43,6 @@ public sealed class CommandPalette: CompositeControlBase
         _list = new ListView
         {
             IsTabStop = false,
-            MaxHeight = Length.Cells(_defaultDropDownHeight),
             SelectionMode = ListSelectionMode.Single
         };
         _list.ItemActivationStarting += OnItemActivationStarting;
@@ -59,7 +57,8 @@ public sealed class CommandPalette: CompositeControlBase
             Placement = PopupPlacement.Below,
             SuppressCloseOtherPopups = true,
             TabNavigation = TabNavigation.None,
-            TracksAnchorReflow = false
+            TracksAnchorReflow = false,
+            ContentHeightLimit = Length.Cells(8)
         };
         var popupSlot = RegisterOwnedSlot(
             new OwnedControlOptions(
@@ -376,25 +375,25 @@ public sealed class CommandPalette: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public void ResetPopupChrome() => PopupChrome = default;
 
-    /// <summary>Gets or sets the positive maximum visible result height in cells.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    /// <summary>Gets or sets the intrinsic, fixed, or placement-side-relative maximum visible result height.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage value is zero.</exception>
+    /// <exception cref="ArgumentException">The value uses proportional sizing.</exception>
     /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
-    public int DropDownHeight
+    public Length DropDownHeight
     {
-        get => (int) _list.MaxHeight!.Value.Value;
+        get => _popup.ContentHeightLimit;
         set
         {
-            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
             VerifyMutable();
 
-            if (_list.MaxHeight == Length.Cells(value))
+            if (_popup.ContentHeightLimit == value)
             {
                 return;
             }
 
-            _list.MaxHeight = Length.Cells(value);
-            NotifyPropertyChanged(nameof(DropDownHeight), InvalidationImpact.None);
+            _popup.ContentHeightLimit = value;
+            NotifyPropertyChanged(nameof(DropDownHeight), InvalidationImpact.Measure);
         }
     }
 
@@ -455,7 +454,7 @@ public sealed class CommandPalette: CompositeControlBase
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        _ = MeasureChild(_popup, new Constraint(constraint.Width, DropDownHeight.Add(1)));
+        _ = MeasureChild(_popup, new Constraint(constraint.Width, height: null));
         return base.MeasureOverride(constraint);
     }
 

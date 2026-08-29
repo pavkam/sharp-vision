@@ -54,7 +54,7 @@ public sealed class CommandPaletteTests
         // Arrange
         var palette = new CommandPalette
         {
-            DropDownHeight = 3,
+            DropDownHeight = Length.Cells(3),
             IsOpen = true,
             Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(
                 Enumerable.Range(0, 10).Select(index => (object?) $"Item {index}").ToArray())
@@ -503,11 +503,11 @@ public sealed class CommandPaletteTests
     public void DropDownHeight_WhenNonPositive_ThrowsBeforeMutation()
     {
         // Arrange
-        var palette = new CommandPalette { DropDownHeight = 5 };
+        var palette = new CommandPalette { DropDownHeight = Length.Percent(50) };
 
         // Act and assert
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => palette.DropDownHeight = 0);
-        palette.DropDownHeight.ShouldBe(5);
+        _ = Should.Throw<ArgumentException>(() => palette.DropDownHeight = Length.Star(1));
+        palette.DropDownHeight.ShouldBe(Length.Percent(50));
     }
 
     /// <summary>Verifies a resolver contract violation is observable without publishing invalid results.</summary>

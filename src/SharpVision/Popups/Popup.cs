@@ -176,6 +176,23 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     /// </remarks>
     internal bool TracksAnchorReflow { get; set; } = true;
 
+    /// <summary>Gets or sets the intrinsic, fixed, or placement-side-relative ceiling applied to
+    /// owned content height.</summary>
+    /// <remarks>Composite input owners use this seam without exposing their retained popup.</remarks>
+    /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage ceiling is zero.</exception>
+    /// <exception cref="ArgumentException">The ceiling uses proportional sizing.</exception>
+    /// <exception cref="InvalidOperationException">The attached popup is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The popup is disposed.</exception>
+    internal Length ContentHeightLimit
+    {
+        get;
+        set
+        {
+            ValidateContentHeightLimit(value, nameof(value));
+            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        }
+    } = Length.Auto;
+
     /// <summary>Gets or sets whether opening skips the tree-wide sibling popup close.</summary>
     public bool SuppressCloseOtherPopups { get; init; }
 
@@ -484,11 +501,12 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         }
 
         var frame = SurfaceFrame(Placement);
+        var availableContentHeight = constraint.Height.Subtract(frame.Vertical);
         _ = MeasureChild(
             child,
             new Constraint(
                 constraint.Width.Subtract(frame.Horizontal),
-                constraint.Height.Subtract(frame.Vertical)));
+                ApplyContentHeightLimit(availableContentHeight)));
         return IsOpen
             ? SurfaceSize(child, anchorWidth: 0, constraint.Width, constraint.Height, frame)
             : default;
@@ -562,6 +580,31 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                 : placement is PopupPlacement.Below
                     ? anchor.Bottom
                     : anchor.Y;
+        }
+
+        if (ContentHeightLimit.Kind == LengthKind.Percent)
+        {
+            var placementContentHeight = PlacementContentHeight(bounds, anchor, ResolvedPlacement, resolvedFrame);
+            _ = MeasureChild(
+                child,
+                new Constraint(
+                    Math.Max(0, bounds.Width - resolvedFrame.Horizontal),
+                    ApplyContentHeightLimit(placementContentHeight)));
+            desired = SurfaceSize(child, anchorWidth, bounds.Width, bounds.Height, resolvedFrame);
+
+            if (FixedOrigin is null)
+            {
+                x = ResolvedPlacement is PopupPlacement.Left
+                    ? anchor.X - desired.Width
+                    : ResolvedPlacement is PopupPlacement.Right
+                        ? anchor.Right
+                        : anchor.X;
+                y = ResolvedPlacement is PopupPlacement.Above
+                    ? anchor.Y - desired.Height
+                    : ResolvedPlacement is PopupPlacement.Below
+                        ? anchor.Bottom
+                        : anchor.Y;
+            }
         }
 
         if (ConstrainToRoot)
@@ -1316,6 +1359,71 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         child.MinHeight.Kind == LengthKind.Percent ||
         child.MaxWidth is { Kind: LengthKind.Percent } ||
         child.MaxHeight is { Kind: LengthKind.Percent };
+
+    [Pure]
+    private int? ApplyContentHeightLimit(int? availableContentHeight)
+    {
+        var authoredLimit = ContentHeightLimit.Kind switch
+        {
+            LengthKind.Auto => (int?) null,
+            LengthKind.Cells => (int) ContentHeightLimit.Value,
+            LengthKind.Percent when availableContentHeight.HasValue =>
+                ResolvePercent(availableContentHeight.Value, ContentHeightLimit.Value),
+            LengthKind.Percent => null,
+            LengthKind.Star => throw new UnreachableException(),
+            _ => throw new UnreachableException()
+        };
+
+        return availableContentHeight.HasValue && authoredLimit.HasValue
+            ? Math.Min(availableContentHeight.Value, authoredLimit.Value)
+            : availableContentHeight ?? authoredLimit;
+    }
+
+    [Pure]
+    private static int PlacementContentHeight(
+        Rect bounds,
+        Rect anchor,
+        PopupPlacement placement,
+        Thickness frame)
+    {
+        var surfaceHeight = placement switch
+        {
+            PopupPlacement.Below => Math.Max(0, bounds.Bottom - anchor.Bottom),
+            PopupPlacement.Above => Math.Max(0, anchor.Y - bounds.Y),
+            PopupPlacement.Left or PopupPlacement.Right => bounds.Height,
+            _ => throw new UnreachableException()
+        };
+
+        // A directly laid-out popup owner is itself the root and therefore occupies the whole
+        // placement plane. There is no distinct anchor side in that harness shape; preserve the
+        // established clamp-within-root behavior by treating the plane as the usable fallback.
+        if (surfaceHeight == 0 && anchor == bounds)
+        {
+            surfaceHeight = bounds.Height;
+        }
+
+        return Math.Max(0, surfaceHeight - frame.Vertical);
+    }
+
+    [Pure]
+    private static int ResolvePercent(int value, double percent)
+    {
+        var result = Math.Round(value * percent / 100, MidpointRounding.AwayFromZero);
+        return result >= int.MaxValue ? int.MaxValue : (int) result;
+    }
+
+    private static void ValidateContentHeightLimit(Length value, string paramName)
+    {
+        if (value.Kind == LengthKind.Star)
+        {
+            throw new ArgumentException("A popup content height limit cannot use proportional sizing.", paramName);
+        }
+
+        if (value.Kind is LengthKind.Cells or LengthKind.Percent && value.Value == 0)
+        {
+            throw new ArgumentOutOfRangeException(paramName, value, "A popup content height limit must be positive.");
+        }
+    }
 
     [Pure]
     private PopupPlacement ResolvePlacement(Rect bounds, Rect anchor, Size desired)

@@ -23,7 +23,6 @@ public sealed class DateTimeInput: InputBase
     // InputBase.DropDownIndicatorWidth.
     private const int _fieldContentHeight = 1;
     private const int _fieldBorderWidth = 2;
-    private const int _defaultDropDownHeight = 10;
 
     private static readonly IReadOnlyDictionary<char, TemporalSegmentKind> _tokenKinds =
         new Dictionary<char, TemporalSegmentKind>
@@ -91,6 +90,7 @@ public sealed class DateTimeInput: InputBase
             handleNavigationKey: _calendarDropDown.HandleNavigationKey,
             cancelSession: _calendarDropDown.CancelSession,
             acceptSession: _calendarDropDown.AcceptSession);
+        _popup.ContentHeightLimit = Length.Cells(10);
         EnablePressActivation();
 
         _segments = EnableSegmentEditing(
@@ -298,19 +298,27 @@ public sealed class DateTimeInput: InputBase
         set => _ = _state.SetMaximum(value);
     }
 
-    /// <summary>Gets or sets the maximum visible calendar height in terminal cells.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is zero or negative.</exception>
+    /// <summary>Gets or sets the intrinsic, fixed, or placement-side-relative maximum visible calendar height.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage value is zero.</exception>
+    /// <exception cref="ArgumentException">The value uses proportional sizing.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public int DropDownHeight
+    public Length DropDownHeight
     {
-        get;
+        get => _popup.ContentHeightLimit;
         set
         {
-            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+            VerifyMutable();
+
+            if (_popup.ContentHeightLimit == value)
+            {
+                return;
+            }
+
+            _popup.ContentHeightLimit = value;
+            NotifyPropertyChanged(nameof(DropDownHeight), InvalidationImpact.Measure);
         }
-    } = _defaultDropDownHeight;
+    }
 
     /// <summary>Gets or sets the owned Calendar popup's border and shadow together.</summary>
     /// <remarks>
@@ -396,7 +404,7 @@ public sealed class DateTimeInput: InputBase
     protected override Size MeasureOverride(Constraint constraint)
     {
         EnsureSeeded();
-        _ = MeasureChild(_popup, new Constraint(constraint.Width, DropDownHeight));
+        _ = MeasureChild(_popup, new Constraint(constraint.Width, height: null));
         var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
         var width = _fieldBorderWidth + affixes.StartCells + affixes.EndCells;
 

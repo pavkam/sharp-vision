@@ -107,6 +107,21 @@ public sealed class ComboBoxTests
         list.ActualBorder.Sides.ShouldBe(BorderSide.None);
     }
 
+    /// <summary>Verifies the responsive cap defaults to eight cells and validates before mutation.</summary>
+    [Fact]
+    public void DropDownHeight_WhenSet_AcceptsResponsiveKindsAndRejectsInvalidLimits()
+    {
+        using var box = new ComboBox();
+
+        box.DropDownHeight.ShouldBe(Length.Cells(8));
+        box.DropDownHeight = Length.Percent(50);
+
+        box.DropDownHeight.ShouldBe(Length.Percent(50));
+        _ = Should.Throw<ArgumentException>(() => box.DropDownHeight = Length.Star(1));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => box.DropDownHeight = Length.Cells(0));
+        box.DropDownHeight.ShouldBe(Length.Percent(50));
+    }
+
     /// <summary>Verifies drop-down rail local mechanics publish exact resolved-style notifications.</summary>
     [Fact]
     public void ScrollBarStyle_WhenOwnershipChanges_PublishesLocalAndActualNotifications()
@@ -278,7 +293,7 @@ public sealed class ComboBoxTests
     [Fact]
     public void SelectedIndex_WhenSetWhileOpenToAvailableItem_FiresSelectionChangedExactlyOnce()
     {
-        var box = new ComboBox { Items = ["One", "Two", "Three"], DropDownHeight = 4, IsOpen = true };
+        var box = new ComboBox { Items = ["One", "Two", "Three"], DropDownHeight = Length.Cells(4), IsOpen = true };
         new LayoutEngine().Layout(box, new Size(24, 12));
         var selectionChanges = 0;
         box.SelectionChanged += (_, _) => selectionChanges++;
@@ -299,7 +314,7 @@ public sealed class ComboBoxTests
     public void ActivateCurrent_WhenSelectionCallbackInvalidatesContinuation_PreservesNewestDecision(
         string mutation)
     {
-        var box = new ComboBox { Items = ["One", "Two", "Three"], DropDownHeight = 4, IsOpen = true };
+        var box = new ComboBox { Items = ["One", "Two", "Three"], DropDownHeight = Length.Cells(4), IsOpen = true };
         new LayoutEngine().Layout(box, new Size(24, 12));
         var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
         var list = popup.Content.ShouldBeOfType<UiListView>();
@@ -380,7 +395,7 @@ public sealed class ComboBoxTests
                 Height = Length.Cells(1),
                 Items = ["Zero", "One", "Two"],
                 SelectedIndex = 1,
-                DropDownHeight = 3
+                DropDownHeight = Length.Cells(3)
             };
             var size = new Size(12, 6);
             new LayoutEngine().Layout(box, size);
@@ -450,7 +465,7 @@ public sealed class ComboBoxTests
     [Fact]
     public void SelectedIndex_WhenListVetoesWhileOpen_RollsBackWithoutPublishing()
     {
-        var box = new ComboBox { Items = ["One", "Two", "Three"], DropDownHeight = 4, IsOpen = true };
+        var box = new ComboBox { Items = ["One", "Two", "Three"], DropDownHeight = Length.Cells(4), IsOpen = true };
         new LayoutEngine().Layout(box, new Size(24, 12));
         var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
         var list = popup.Content.ShouldBeOfType<UiListView>();
@@ -468,7 +483,7 @@ public sealed class ComboBoxTests
     [Fact]
     public void Render_WhenOpen_RendersChoicesInsideFramedSurface()
     {
-        var box = new ComboBox { DropDownHeight = 4, Items = ["1Row", "3-D", "Standard"], IsOpen = true };
+        var box = new ComboBox { DropDownHeight = Length.Cells(4), Items = ["1Row", "3-D", "Standard"], IsOpen = true };
         var size = new Size(24, 12);
         new LayoutEngine().Layout(box, size);
         using Frame frame = new(size);
@@ -494,7 +509,7 @@ public sealed class ComboBoxTests
     [Fact]
     public void Render_WhenOpenWithFewerItemsThanDropDownHeight_ShrinksToItemCount()
     {
-        var box = new ComboBox { DropDownHeight = 8, Items = ["One", "Two"], IsOpen = true };
+        var box = new ComboBox { DropDownHeight = Length.Cells(8), Items = ["One", "Two"], IsOpen = true };
         new LayoutEngine().Layout(box, new Size(24, 20));
 
         var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
@@ -512,7 +527,7 @@ public sealed class ComboBoxTests
         {
             Width = Length.Cells(10),
             Height = Length.Cells(3),
-            DropDownHeight = 2,
+            DropDownHeight = Length.Cells(2),
             Items = ["One", "Two"],
             SelectedIndex = 0,
             IsOpen = true
@@ -547,7 +562,7 @@ public sealed class ComboBoxTests
             Width = Length.Cells(10),
             Height = Length.Cells(3),
             VerticalAlignment = VerticalAlignment.Bottom,
-            DropDownHeight = 2,
+            DropDownHeight = Length.Cells(2),
             Items = ["One", "Two"],
             SelectedIndex = 0,
             IsOpen = true
@@ -578,7 +593,7 @@ public sealed class ComboBoxTests
         var box = new ComboBox
         {
             Items = ["one", "two", "three", "four", "five", "six"],
-            DropDownHeight = 3,
+            DropDownHeight = Length.Cells(3),
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.Always,
             ScrollBarStyle = ScrollBarStyle.ThinLine,
@@ -691,7 +706,7 @@ public sealed class ComboBoxTests
         {
             Items = ["Zero", "One", "Two", "Three", "Four", "Five", "Six"],
             SelectedIndex = 3,
-            DropDownHeight = 3,
+            DropDownHeight = Length.Cells(3),
             RowHeight = 1,
             IsOpen = true
         };
@@ -715,7 +730,7 @@ public sealed class ComboBoxTests
         {
             Items = ["Zero", "One", "Two", "Three"],
             SelectedIndex = 1,
-            DropDownHeight = 4,
+            DropDownHeight = Length.Cells(4),
             IsOpen = true
         };
         new LayoutEngine().Layout(box, new Size(16, 8));
@@ -742,7 +757,7 @@ public sealed class ComboBoxTests
         {
             Items = ["Zero", "One", "Two", "Three"],
             SelectedIndex = 1,
-            DropDownHeight = 4,
+            DropDownHeight = Length.Cells(4),
             IsOpen = true
         };
         var closed = 0;
@@ -878,7 +893,7 @@ public sealed class ComboBoxTests
                 Height = Length.Cells(1),
                 Items = ["Small", "Large"],
                 SelectedIndex = openingSelectedIndex,
-                DropDownHeight = 2
+                DropDownHeight = Length.Cells(2)
             };
             var size = new Size(12, 6);
             new LayoutEngine().Layout(box, size);
@@ -1135,7 +1150,7 @@ public sealed class ComboBoxTests
     {
         var box = new ComboBox
         {
-            DropDownHeight = 4,
+            DropDownHeight = Length.Cells(4),
             Items = [new Fruit("Kiwi"), new Fruit("Mango")],
             ItemTemplate = static item => new ControlText($"* {((Fruit) item!).Name}"),
             IsOpen = true

@@ -6,6 +6,35 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves DateTimeInput appearance and interaction through mounted terminal surfaces.</summary>
 public sealed class DateTimeInputSurfaceTests
 {
+    /// <summary>Verifies an open date-time calendar re-resolves its relative below-side cap on resize.</summary>
+    [Fact]
+    public async Task ResizeAsync_WhenDropDownHeightIsRelative_ReflowsCalendarBelowAsync()
+    {
+        var input = new DateTimeInput
+        {
+            DropDownHeight = Length.Percent(50),
+            Height = Length.Cells(3),
+            Value = new DateTime(2026, 3, 15, 14, 30, 0)
+        };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+        var popup = OwnedTree.Find<Popup>(input).ShouldNotBeNull();
+        var calendar = input.OwnedCalendar;
+        await surface.UpdateAsync(() => input.IsOpen = true, "open relative-height date-time calendar");
+
+        popup.ResolvedPlacement.ShouldBe(PopupPlacement.Below);
+        calendar.Bounds.Height.ShouldBe(6);
+
+        await surface.ResizeAsync(new Size(30, 11));
+
+        popup.ResolvedPlacement.ShouldBe(PopupPlacement.Below);
+        calendar.Bounds.Height.ShouldBe(4);
+        input.IsOpen.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a mounted DateTimeInput renders a bordered field with date and time.</summary>
     [Fact]
     public async Task Render_WhenDateTimeInputIsMounted_DrawsBorderedFieldAsync()

@@ -1214,7 +1214,7 @@ public sealed class PopupTests
             Width = Length.Cells(10),
             Height = Length.Cells(1),
             Items = ["Small", "Large"],
-            DropDownHeight = 2,
+            DropDownHeight = Length.Cells(2),
             IsOpen = true
         };
         var cover = new Dock { Face = AppearanceTestValues.Face(background: ReferenceColors.Get(7)) };

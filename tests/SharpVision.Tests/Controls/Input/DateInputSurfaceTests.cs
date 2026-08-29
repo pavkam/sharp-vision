@@ -6,6 +6,32 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves DateInput appearance and interaction through mounted terminal surfaces.</summary>
 public sealed class DateInputSurfaceTests
 {
+    /// <summary>Verifies a bottom-aligned input resolves its relative calendar cap above the anchor.</summary>
+    [Fact]
+    public async Task IsOpen_WhenDropDownHeightIsRelativeAndBelowCannotFit_UsesAboveInteriorAsync()
+    {
+        var input = new DateInput
+        {
+            DropDownHeight = Length.Percent(50),
+            Height = Length.Cells(3),
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Value = new DateOnly(2026, 3, 15)
+        };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+        var popup = OwnedTree.Find<Popup>(input).ShouldNotBeNull();
+        var calendar = input.OwnedCalendar;
+
+        await surface.UpdateAsync(() => input.IsOpen = true, "open relative-height calendar above");
+
+        popup.ResolvedPlacement.ShouldBe(PopupPlacement.Above);
+        calendar.Bounds.Height.ShouldBe(6);
+        popup.SurfaceBounds.Bottom.ShouldBe(input.Bounds.Y);
+    }
+
     /// <summary>Verifies a mounted DateInput renders a bordered field with a formatted date.</summary>
     [Fact]
     public async Task Render_WhenDateInputIsMounted_DrawsBorderedFieldWithDateAsync()

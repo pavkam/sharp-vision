@@ -80,6 +80,7 @@ public sealed class DateInput: InputBase
             handleNavigationKey: _calendarDropDown.HandleNavigationKey,
             cancelSession: _calendarDropDown.CancelSession,
             acceptSession: _calendarDropDown.AcceptSession);
+        _popup.ContentHeightLimit = Length.Cells(10);
         EnablePressActivation();
         _segments = EnableSegmentEditing(
             BuildSegments,
@@ -202,19 +203,27 @@ public sealed class DateInput: InputBase
         set => _ = _state.SetMaximum(value);
     }
 
-    /// <summary>Gets or sets the maximum visible calendar height in terminal cells.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is zero or negative.</exception>
+    /// <summary>Gets or sets the intrinsic, fixed, or placement-side-relative maximum visible calendar height.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage value is zero.</exception>
+    /// <exception cref="ArgumentException">The value uses proportional sizing.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public int DropDownHeight
+    public Length DropDownHeight
     {
-        get;
+        get => _popup.ContentHeightLimit;
         set
         {
-            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+            VerifyMutable();
+
+            if (_popup.ContentHeightLimit == value)
+            {
+                return;
+            }
+
+            _popup.ContentHeightLimit = value;
+            NotifyPropertyChanged(nameof(DropDownHeight), InvalidationImpact.Measure);
         }
-    } = 10;
+    }
 
     /// <summary>Gets or sets the owned Calendar popup's border and shadow together.</summary>
     /// <remarks>
@@ -300,7 +309,7 @@ public sealed class DateInput: InputBase
     protected override Size MeasureOverride(Constraint constraint)
     {
         EnsureSeeded();
-        _ = MeasureChild(_popup, new Constraint(constraint.Width, DropDownHeight.Add(1)));
+        _ = MeasureChild(_popup, new Constraint(constraint.Width, height: null));
         var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
         var width = MeasureCells(FormatValue())
             .Add(_indicatorReservedWidth)

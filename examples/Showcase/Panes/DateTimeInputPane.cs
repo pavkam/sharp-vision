@@ -20,7 +20,11 @@ internal sealed class DateTimeInputPane: CompositeControlBase
     {
         // Combined date-time input with live value tracking.
         var combinedStatus = new Text("Value: (pick a date and time)");
-        var combined = new DateTimeInput { TimeStep = TimeSpan.FromMinutes(15) };
+        var combined = new DateTimeInput
+        {
+            TimeStep = TimeSpan.FromMinutes(15),
+            DropDownHeight = Length.Percent(50)
+        };
         combined.ValueChanged += (_, eventArgs) =>
             combinedStatus.Content = $"Value: {FormatDateTime(eventArgs.Value)}";
         combinedStatus.Content = $"Value: {FormatDateTime(combined.Value)}";
@@ -68,10 +72,10 @@ internal sealed class DateTimeInputPane: CompositeControlBase
                 "Combined input",
                 "Date segments open a Calendar popup on activation. Time segments edit inline; this specimen advances minutes in 15-minute steps. <reverse>Alt+Down</reverse> opens the popup from any segment.",
                 new DocExample(
-                    "Default date-time field",
-                    "<reverse>Left</reverse>/<reverse>Right</reverse> navigate all segments. The Calendar popup commits a date while preserving the current time portion.",
+                    "Responsive date-time field",
+                    "<reverse>Left</reverse>/<reverse>Right</reverse> navigate all segments. The Calendar uses half the usable placement-side height and responds to terminal resize while preserving the current time portion.",
                     new DocColumn(combined, combinedStatus),
-                    "var dateTime = new DateTimeInput { TimeStep = TimeSpan.FromMinutes(15) };\ndateTime.ValueChanged += (_, e) =>\n    Console.Write(e.Value);")),
+                    "var dateTime = new DateTimeInput\n{\n    TimeStep = TimeSpan.FromMinutes(15),\n    DropDownHeight = Length.Percent(50)\n};\ndateTime.ValueChanged += (_, e) =>\n    Console.Write(e.Value);")),
             new DocSection(
                 "🕐",
                 "12-hour format",

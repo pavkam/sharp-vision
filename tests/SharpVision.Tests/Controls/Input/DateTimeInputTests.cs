@@ -331,15 +331,15 @@ public sealed class DateTimeInputTests
     /// measured Calendar popup height, matching DateInput's and ComboBox's identically named
     /// property.</summary>
     [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    public void Properties_WhenDropDownHeightIsNonPositive_ThrowsArgumentOutOfRangeException(int value)
+    [MemberData(nameof(InvalidDropDownHeights))]
+    public void Properties_WhenDropDownHeightIsInvalid_ThrowsBeforeMutation(Length value)
     {
         // Arrange
         using var control = new DateTimeInput();
 
         // Act and assert
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.DropDownHeight = value);
+        _ = Should.Throw<ArgumentException>(() => control.DropDownHeight = value);
+        control.DropDownHeight.ShouldBe(Length.Cells(10));
     }
 
     /// <summary>Verifies DropDownHeight round-trips a valid value.</summary>
@@ -350,11 +350,19 @@ public sealed class DateTimeInputTests
         using var control = new DateTimeInput();
 
         // Act
-        control.DropDownHeight = 4;
+        control.DropDownHeight = Length.Auto;
 
         // Assert
-        control.DropDownHeight.ShouldBe(4);
+        control.DropDownHeight.ShouldBe(Length.Auto);
     }
+
+    /// <summary>Provides unsupported or empty responsive caps.</summary>
+    public static TheoryData<Length> InvalidDropDownHeights =>
+    [
+        Length.Cells(0),
+        Length.Percent(0),
+        Length.Star(1)
+    ];
 
     /// <summary>Verifies PopupChrome applies to the owned Calendar popup without leaking it, and
     /// ResetPopupChrome returns it to the PopupChrome appearance.</summary>

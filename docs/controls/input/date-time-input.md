@@ -71,7 +71,7 @@ classDiagram
 | `TimeStep`                         | `TimeSpan`                                         | one minute                       | The positive whole-minute increment for the minute segment.                                                                                 |
 | `Minimum`                          | `DateTime`                                         | `DateTime.MinValue`              | The inclusive lower bound that repairs the current value.                                                                                   |
 | `Maximum`                          | `DateTime`                                         | `DateTime.MaxValue`              | The inclusive upper bound that repairs the current value.                                                                                   |
-| `DropDownHeight`                   | `int`                                              | `10` cells                       | The positive maximum visible calendar height.                                                                                               |
+| `DropDownHeight`                   | `Length`                                           | `Length.Cells(10)`               | The automatic, fixed-cell, or placement-relative maximum visible calendar height.                                                           |
 | `IsOpen`                           | `bool`                                             | `false`                          | Opens or closes the retained Calendar popup.                                                                                                |
 | `CalendarStyle`                    | `CalendarStyle?`                                   | `null`                           | Overrides the owned Calendar's complete local presentation.                                                                                 |
 | `ActualCalendarStyle`              | `CalendarStyle`                                    | Resolved                         | Read-only; the resolved presentation of the owned Calendar.                                                                                 |
@@ -82,6 +82,14 @@ classDiagram
 | Themed disclosure glyph            | —                                                  | `InputStyle.DropDownGlyph` (`▼`) | Authored once for every drop-down input through a theme's `styles.input` section.                                                           |
 | `ValueChanged`                     | `EventHandler<DateTimeInputValueChangedEventArgs>` | no subscribers                   | Raised after a committed value transition.                                                                                                  |
 | `DropDownOpened`, `DropDownClosed` | `EventHandler`                                     | no subscribers                   | Raised after the Calendar popup opens or closes.                                                                                            |
+
+`DropDownHeight` constrains only the Calendar interior and never stretches a
+shorter Calendar to the cap. `Length.Auto` uses its intrinsic height, positive
+`Cells` values set a fixed maximum, and positive `Percent` values resolve
+against the usable extent on the popup's chosen placement side after its frame
+is removed. Root resize and placement fallback resolve that percentage again.
+Star lengths and zero-valued fixed or percentage limits are rejected before
+mutation.
 
 `StartAffix` and `EndAffix` each reserve a fixed cell column inside the field
 box, strictly inboard of the drop-down indicator - the segment layout deflates

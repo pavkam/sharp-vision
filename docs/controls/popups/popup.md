@@ -99,6 +99,13 @@ not applied recursively to the popup's already-clipped surface. A frame-side
 change after edge fallback triggers the corresponding finite remeasure before
 `SurfaceBounds` commits.
 
+Popup-backed inputs may additionally provide their Popup with a content-height
+cap. A percentage cap uses the usable extent on the resolved placement side,
+after frame cells are removed, rather than the input field's height or the
+complete root height. It is re-resolved while open when the root, anchor,
+placement side, frame, or content changes. The cap remains a maximum: content
+whose intrinsic height is smaller keeps that smaller height.
+
 `Anchor` and `Placement` define the position. `Below`, `Above`, `Right`, and
 `Left` use the anchored edge, and when the preferred side does not fit, the
 popup flips to the natural opposite side before clamping. Side-fit arithmetic is

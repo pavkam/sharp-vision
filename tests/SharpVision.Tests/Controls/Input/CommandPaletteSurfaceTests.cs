@@ -6,6 +6,35 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves command-palette focus, keyboard selection, activation, and popup cells when mounted.</summary>
 public sealed class CommandPaletteSurfaceTests
 {
+    /// <summary>Verifies a relative result cap reflows while the open palette preserves its active row.</summary>
+    [Fact]
+    public async Task ResizeAsync_WhenDropDownHeightIsRelative_ReflowsOpenResultsAsync()
+    {
+        var palette = new CommandPalette
+        {
+            DropDownHeight = Length.Percent(50),
+            Height = Length.Cells(3),
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(
+                Enumerable.Range(0, 20).Select(index => (object?) $"Command {index}").ToArray())
+        };
+        var root = new Overlay { Children = { palette } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 20),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => palette.Open(), "open relative-height command results");
+        var list = OwnedTree.Find<UiListView>(palette).ShouldNotBeNull();
+        await surface.UpdateAsync(() => list.SelectedIndex = 5, "select a retained command row");
+
+        list.Bounds.Height.ShouldBe(8);
+
+        await surface.ResizeAsync(new Size(30, 12));
+
+        list.Bounds.Height.ShouldBe(4);
+        list.SelectedIndex.ShouldBe(5);
+        surface.Cell(new Point(list.Bounds.X, list.Bounds.Y)).Text.ShouldNotBeEmpty();
+    }
+
     /// <summary>Verifies the owner-managed results popup does not close an unrelated
     /// owner-managed popup elsewhere in the same tree.</summary>
     [Fact]
@@ -202,7 +231,7 @@ public sealed class CommandPaletteSurfaceTests
         var palette = new CommandPalette
         {
             Width = Length.Cells(18),
-            DropDownHeight = 3,
+            DropDownHeight = Length.Cells(3),
             Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(
                 Enumerable.Range(0, 10).Select(index => (object?) $"Item {index}").ToArray())
         };
@@ -280,7 +309,7 @@ public sealed class CommandPaletteSurfaceTests
         var palette = new CommandPalette
         {
             Width = Length.Cells(18),
-            DropDownHeight = 3,
+            DropDownHeight = Length.Cells(3),
             Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(
                 Enumerable.Range(0, 10).Select(index => (object?) $"Item {index}").ToArray())
         };

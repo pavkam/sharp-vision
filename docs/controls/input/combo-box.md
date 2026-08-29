@@ -44,7 +44,7 @@ classDiagram
 | `SelectedItem`          | `object?`                                     | `null`                           | The selected item, or null when no value is selected; assignment resolves to the matching item.                          |
 | `AllowNull`             | `bool`                                        | `true`                           | Allows Delete/Backspace to clear the selection.                                                                          |
 | `Placeholder`           | `string`                                      | `"Select…"`                      | Face text shown when no item is selected.                                                                                |
-| `DropDownHeight`        | `int`                                         | `8` cells                        | Caps the ListView interior; the connected Popup's three visible frame edges are additional.                              |
+| `DropDownHeight`        | `Length`                                      | `Length.Cells(8)`                | Caps the ListView interior with an automatic, fixed-cell, or placement-relative maximum.                                 |
 | `IsOpen`                | `bool`                                        | `false`                          | Controls popup layout, rendering, and hit testing.                                                                       |
 | `ScrollBars`            | `ScrollBars`                                  | ListView default                 | Configures overflow axes in the private list.                                                                            |
 | `ShowScrollBars`        | `ShowScrollBars`                              | ListView default                 | Configures the scrollbar reservation policy in the private list.                                                         |
@@ -106,8 +106,12 @@ ListView's selection, scrolling, and surface appearance inside the Popup.
   newer decision; the interrupted invocation performs no stale close.
 - `AllowNull` enables clearing with Delete or Backspace, and `Placeholder`
   supplies the closed-face text while the selection is empty.
-- `DropDownHeight` is a positive maximum, in terminal cells, for the visible
-  list.
+- `DropDownHeight` caps the visible list interior. `Length.Auto` leaves it at
+  its intrinsic height, positive `Cells` values set a fixed maximum, and
+  positive `Percent` values use the usable extent on the popup's resolved
+  placement side after frame cells are removed. Star lengths and zero-valued
+  fixed or percentage limits are rejected before mutation. Short lists still
+  shrink to their content instead of reserving the complete maximum.
 - `ScrollBars`, `ShowScrollBars`, and `ScrollBarStyle` forward the common
   overflow policy to the owned ListView, so long choice popups use the same
   rails as standalone lists and viewports.
@@ -212,7 +216,7 @@ var density = new ComboBox
 {
     Items = ["Compact", "Comfortable", "Spacious"],
     SelectedIndex = 1,
-    DropDownHeight = 5,
+    DropDownHeight = Length.Percent(50),
 };
 ```
 

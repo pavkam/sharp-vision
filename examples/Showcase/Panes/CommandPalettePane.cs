@@ -155,7 +155,7 @@ internal sealed class CommandPalettePane: CompositeControlBase
         {
             Placeholder = "Type a command…",
             Resolver = ResolveCommands,
-            DropDownHeight = 6
+            DropDownHeight = Length.Percent(50)
         };
 
         if (borderless)
