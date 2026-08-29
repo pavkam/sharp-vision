@@ -16,7 +16,7 @@ using SharpVision.Tests.Performance;
 /// previous implementation had.
 /// </remarks>
 [Collection(PerformanceGroup.Name)]
-public sealed partial class TreeViewPerformanceTests
+public sealed class TreeViewPerformanceTests
 {
     /// <summary>Depth for paths that walk the hierarchy without materializing visual children.</summary>
     private const int _deep = 20_000;
@@ -166,4 +166,146 @@ public sealed partial class TreeViewPerformanceTests
 
         return (root, current);
     }
+
+    #region Asynchronous child-loading performance
+
+    /// <summary>A child source whose logical hierarchy is effectively unbounded - each node reports
+    /// a fixed fan-out - but only ever answers the one request it receives, so materialized work
+    /// stays proportional to what is actually expanded rather than the logical hierarchy size.</summary>
+    private sealed class HugeFanOutChildSource: ITreeViewChildSource
+    {
+        private const int _fanOut = 50;
+
+        public Task<IReadOnlyList<TreeViewChildDescription>> GetChildrenAsync(
+            TreeViewChildContext context,
+            CancellationToken cancellationToken)
+        {
+            var parentKey = (string?) context.Key ?? string.Empty;
+            IReadOnlyList<TreeViewChildDescription> children = [.. Enumerable.Range(0, _fanOut)
+                .Select(index => new TreeViewChildDescription($"{parentKey}/{index}", $"Node {index}"))];
+
+            return Task.FromResult(children);
+        }
+    }
+
+    /// <summary>Verifies expanding one root against an effectively unbounded logical hierarchy
+    /// materializes only that root's immediate frontier - the fan-out of one level - never the
+    /// deeper hierarchy no descendant ever asked to load.</summary>
+    [Fact]
+    public async Task Expanded_WhenHierarchyIsEffectivelyUnbounded_MaterializesOnlyTheExpandedFrontierAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new HugeFanOutChildSource();
+        TreeView tree = null!;
+        TreeViewItem root = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            root = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+            tree = new TreeView { Items = { root } };
+            tree.Attach(dispatcher);
+            root.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            root,
+            () => root.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        // Only the root's own 50-node frontier materialized - not one grandchild, despite every
+        // materialized node itself carrying a ChildSource capable of answering another 50.
+        root.Children.Count.ShouldBe(50);
+
+        foreach (var child in root.Children)
+        {
+            child.ChildState.ShouldBe(TreeViewChildState.Unloaded, "an unexpanded child must never have requested its own children");
+        }
+    }
+
+    #endregion
+
+    #region Navigation performance
+
+    private const int _largeBranchSize = 10_000;
+
+    /// <summary>Verifies a single Down-arrow keystroke that moves within a small expanded branch
+    /// performs zero full-tree preorder walks, even with a large collapsed sibling branch attached
+    /// to the same tree.</summary>
+    [Fact]
+    public async Task Dispatch_WhenArrowKeyMovesWithinSmallBranch_PerformsNoFullTreeWalkAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var (tree, smallRoot, smallChildA, _) = BuildTreeWithLargeCollapsedSibling();
+            tree.Attach(dispatcher);
+            using FocusManager focus = new(tree);
+            focus.Focus(tree).ShouldBeTrue();
+
+            tree.SelectItem(smallRoot);
+
+            // Building and attaching the tree itself pays one legitimate full-tree walk; only the
+            // keystroke under test is being measured here.
+            tree.OwnedItemsWalkCount = 0;
+
+            var down = new KeyEventArgs(new Stroke(
+                Code.Down, default, nativeCode: 0, Modifiers.None, KeyAction.Press));
+            _ = Router.Route(tree, Events.Key, down);
+
+            down.IsHandled.ShouldBeTrue();
+            tree.SelectedItem.ShouldBeSameAs(smallChildA);
+
+            // The regression this guards against: CommitSelection, ComputeSelectionDelta, and
+            // CollectSelectedItems each independently walked the whole tree - including the large
+            // collapsed branch - on every keystroke.
+            tree.OwnedItemsWalkCount.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a genuine structural change - expanding the large sibling branch - triggers
+    /// exactly one full-tree walk, proving the ownership cache refreshes correctly rather than
+    /// silently going stale after the very case the previous test proves it survives untouched.
+    /// </summary>
+    [Fact]
+    public async Task IsExpanded_WhenLargeBranchExpands_TriggersExactlyOneFullTreeWalkAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var (tree, _, _, largeRoot) = BuildTreeWithLargeCollapsedSibling();
+            tree.Attach(dispatcher);
+            tree.OwnedItemsWalkCount = 0;
+
+            largeRoot.IsExpanded = true;
+
+            tree.OwnedItemsWalkCount.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    private static (TreeView Tree, TreeViewItem SmallRoot, TreeViewItem SmallChildA, TreeViewItem LargeRoot)
+        BuildTreeWithLargeCollapsedSibling()
+    {
+        var tree = new TreeView();
+        var smallRoot = new TreeViewItem { Header = "Small", IsExpanded = true };
+        var smallChildA = new TreeViewItem { Header = "A" };
+        var smallChildB = new TreeViewItem { Header = "B" };
+        smallRoot.Children.Add(smallChildA);
+        smallRoot.Children.Add(smallChildB);
+
+        var largeRoot = new TreeViewItem { Header = "Large", IsExpanded = false };
+
+        for (var index = 0; index < _largeBranchSize; index++)
+        {
+            largeRoot.Children.Add(new TreeViewItem { Header = $"Node{index}" });
+        }
+
+        tree.Items.Add(smallRoot);
+        tree.Items.Add(largeRoot);
+
+        return (tree, smallRoot, smallChildA, largeRoot);
+    }
+
+    #endregion
 }

@@ -6,7 +6,7 @@ namespace SharpVision.Tests.Threading;
 using System.Reflection;
 
 /// <summary>Verifies dispatcher affinity, bounded work, idle, and shutdown.</summary>
-public sealed partial class DispatcherTests
+public sealed class DispatcherTests
 {
     /// <summary>Verifies the dispatcher owns one distinct named background thread.</summary>
     [Fact]
@@ -591,4 +591,68 @@ public sealed partial class DispatcherTests
 
         await stopped.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
     }
+
+    #region Background completion
+
+    /// <summary>Verifies accepted completion runs once on the dispatcher without abandonment.</summary>
+    [Fact]
+    public async Task PostBackgroundCompletion_WhenQueueAccepts_RunsOnlyCompletionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var abandoned = 0;
+
+        dispatcher.PostBackgroundCompletion(
+            () =>
+            {
+                dispatcher.CheckAccess().ShouldBeTrue();
+                completed.SetResult();
+            },
+            () => abandoned++);
+
+        await completed.Task.WaitAsync(TestContext.Current.CancellationToken);
+        abandoned.ShouldBe(0);
+    }
+
+    /// <summary>Verifies disposed dispatchers abandon completion exactly once.</summary>
+    [Fact]
+    public async Task PostBackgroundCompletion_WhenDispatcherIsDisposed_AbandonsOnceAsync()
+    {
+        var dispatcher = Dispatcher.Start();
+        await dispatcher.DisposeAsync();
+        var completed = 0;
+        var abandoned = 0;
+
+        dispatcher.PostBackgroundCompletion(() => completed++, () => abandoned++);
+
+        completed.ShouldBe(0);
+        abandoned.ShouldBe(1);
+    }
+
+    /// <summary>Verifies work accepted before shutdown is abandoned when cancellation prevents execution.</summary>
+    [Fact]
+    public async Task PostBackgroundCompletion_WhenAcceptedWorkIsCancelledByShutdown_AbandonsOnceAsync()
+    {
+        using var release = new ManualResetEventSlim();
+        var dispatcher = Dispatcher.Start();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        dispatcher.Post(() =>
+        {
+            entered.SetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var completed = 0;
+        var abandoned = 0;
+        dispatcher.PostBackgroundCompletion(() => completed++, () => abandoned++);
+
+        var disposal = dispatcher.DisposeAsync();
+        release.Set();
+        await disposal;
+
+        completed.ShouldBe(0);
+        abandoned.ShouldBe(1);
+    }
+
+    #endregion
 }

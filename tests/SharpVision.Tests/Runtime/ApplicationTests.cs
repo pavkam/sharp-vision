@@ -3,6 +3,7 @@
 
 namespace SharpVision.Tests.Runtime;
 
+using SharpVision.Runtime;
 using SharpVision.Tests.Controls;
 
 using Terminal.Capabilities;
@@ -10,11 +11,13 @@ using Terminal.Graphics;
 using Terminal.Kitty.Graphics;
 using Terminal.Multiplexing;
 
+using BindingFlags = System.Reflection.BindingFlags;
 using GraphicsImage = Terminal.Graphics.ImageSource;
 using MultiplexerKind = Terminal.Multiplexing.MultiplexerKind;
+using TargetInvocationException = System.Reflection.TargetInvocationException;
 
 /// <summary>Verifies application startup, frame completion, suspension, and shutdown.</summary>
-public sealed partial class ApplicationTests
+public sealed class ApplicationTests
 {
     /// <summary>Verifies hosted Kitty graphics acknowledgements reach the renderer backend so a
     /// terminal-assigned image id replaces the temporary client image number.</summary>
@@ -3534,4 +3537,1820 @@ public sealed partial class ApplicationTests
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
+
+    #region Dispatcher fullness
+
+    /// <summary>Blocks the dispatcher thread inside one posted callback, then fills the queue to
+    /// capacity so every subsequent <see cref="Dispatcher.Post(Action)"/> throws
+    /// <see cref="InvalidOperationException"/> until the returned handle is released.</summary>
+    private static async Task<ManualResetEventSlim> SaturateQueueAsync(
+        Dispatcher dispatcher,
+        CancellationToken cancellationToken)
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new ManualResetEventSlim();
+
+        dispatcher.Post(() =>
+        {
+            entered.SetResult();
+            release.Wait();
+        });
+
+        await entered.Task.WaitAsync(cancellationToken);
+
+        while (true)
+        {
+            try
+            {
+                dispatcher.Post(static () => { });
+            }
+            catch (InvalidOperationException)
+            {
+                break;
+            }
+        }
+
+        return release;
+    }
+
+    /// <summary>Waits until <see cref="Dispatcher.Post(Action)"/> stops throwing
+    /// <see cref="InvalidOperationException"/>, i.e. the backlog <see cref="SaturateQueueAsync"/>
+    /// queued behind its blocking action has actually finished draining - releasing the blocking
+    /// action only unblocks the dispatcher thread, it does not make the backlog vanish
+    /// instantly, and calling <see cref="Application.DisposeAsync"/> before it drains can itself
+    /// observe the same "queue is full" condition on its own shutdown post.</summary>
+    private static async Task WaitForQueueToDrainAsync(Dispatcher dispatcher, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            var drained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            try
+            {
+                dispatcher.Post(drained.SetResult);
+                await drained.Task.WaitAsync(cancellationToken);
+                return;
+            }
+            catch (InvalidOperationException)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(5), cancellationToken);
+            }
+        }
+    }
+
+    private static Stroke PlainStroke(Code code) =>
+        new(code, character: null, nativeCode: 0, Modifiers.None, KeyAction.Press);
+
+    /// <summary>Verifies the profile-wake site propagates a full-queue failure instead of
+    /// swallowing it.</summary>
+    [Fact]
+    public async Task Profile_WhenDispatcherQueueIsFull_PropagatesInvalidOperationExceptionAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        try
+        {
+            _ = Should.Throw<InvalidOperationException>(
+                () => application.Profile(TerminalCapabilities.Conservative));
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        await application.DisposeAsync();
+    }
+
+    /// <summary>Verifies the profile-wake site still no-ops silently once the dispatcher is
+    /// disposed, exactly as before.</summary>
+    [Fact]
+    public async Task Profile_WhenDispatcherIsDisposed_DoesNotThrowAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.Dispatcher.DisposeAsync();
+
+        Should.NotThrow(() => application.Profile(TerminalCapabilities.Conservative));
+
+        // The Dispatcher was disposed directly, bypassing Application's own shutdown sequence, so
+        // Application.DisposeAsync's cleanup path would try to marshal onto an already-stopped
+        // dispatcher and throw ObjectDisposedException itself - intentionally left undisposed.
+    }
+
+    /// <summary>Verifies the resize-wake site propagates a full-queue failure instead of
+    /// swallowing it.</summary>
+    [Fact]
+    public async Task Resize_WhenDispatcherQueueIsFull_PropagatesInvalidOperationExceptionAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        var dimensions = new Dimensions(new Size(10, 4));
+
+        try
+        {
+            _ = Should.Throw<InvalidOperationException>(
+                () => ((ISink) application).Resize(in dimensions));
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        await application.DisposeAsync();
+    }
+
+    /// <summary>Verifies the resize-wake site still no-ops silently once the dispatcher is
+    /// disposed, exactly as before.</summary>
+    [Fact]
+    public async Task Resize_WhenDispatcherIsDisposed_DoesNotThrowAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.Dispatcher.DisposeAsync();
+        var dimensions = new Dimensions(new Size(10, 4));
+
+        Should.NotThrow(() => ((ISink) application).Resize(in dimensions));
+    }
+
+    /// <summary>Verifies <c>Enqueue</c>, reached through <see cref="Application.Input(in Stroke)"/>,
+    /// propagates a full-queue failure instead of swallowing it.</summary>
+    [Fact]
+    public async Task Input_WhenDispatcherQueueIsFull_PropagatesInvalidOperationExceptionAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        var stroke = PlainStroke(Code.Enter);
+
+        try
+        {
+            _ = Should.Throw<InvalidOperationException>(() => application.Input(in stroke));
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        await application.DisposeAsync();
+    }
+
+    /// <summary>Verifies <c>Enqueue</c> still no-ops silently once the dispatcher is disposed,
+    /// exactly as before.</summary>
+    [Fact]
+    public async Task Input_WhenDispatcherIsDisposed_DoesNotThrowAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.Dispatcher.DisposeAsync();
+        var stroke = PlainStroke(Code.Enter);
+
+        Should.NotThrow(() => application.Input(in stroke));
+    }
+
+    /// <summary>Verifies <c>PostOutOfBand</c> propagates a full-queue failure instead of swallowing
+    /// it.</summary>
+    [Fact]
+    public async Task PostOutOfBand_WhenDispatcherQueueIsFull_PropagatesInvalidOperationExceptionAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        ReadOnlyMemory<byte> bytes = new byte[] { 1, 2, 3 };
+
+        try
+        {
+            _ = Should.Throw<InvalidOperationException>(() => application.PostOutOfBand(bytes));
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        await application.DisposeAsync();
+    }
+
+    /// <summary>Verifies <c>PostOutOfBand</c> still no-ops silently once the dispatcher is disposed,
+    /// exactly as before.</summary>
+    [Fact]
+    public async Task PostOutOfBand_WhenDispatcherIsDisposed_DoesNotThrowAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.Dispatcher.DisposeAsync();
+        ReadOnlyMemory<byte> bytes = new byte[] { 1, 2, 3 };
+
+        Should.NotThrow(() => application.PostOutOfBand(bytes));
+    }
+
+    /// <summary>Verifies <c>DrainInput</c>'s own repost, reached only from inside the dispatcher's
+    /// own dispatch loop, propagates a full-queue failure all the way to
+    /// <see cref="Application.Failure"/> through the framework's existing
+    /// <c>Dispatcher.UnhandledException</c> -&gt; <c>Application.Report</c> path, instead of
+    /// silently stranding the wake flag.</summary>
+    [Fact]
+    public async Task DrainInput_WhenRepostFindsQueueFull_SetsApplicationFailureAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var innerStroke = PlainStroke(Code.Enter);
+
+        // Fires synchronously inside DrainInput, on the dispatcher thread, after the drain loop
+        // observed the input queue empty but before the finally block resets _inputWake - the
+        // exact "concurrent Enqueue inside the reset window" scenario this seam exists for. The
+        // Input call below lands a record while _inputWake is still true, so Enqueue's own post
+        // attempt is skipped and only the finally's own repost - the site under test - ever
+        // touches a saturated dispatcher queue.
+        application.DrainInputRaceHookForTests = () =>
+        {
+            application.Input(in innerStroke);
+
+            while (true)
+            {
+                try
+                {
+                    application.Dispatcher.Post(static () => { });
+                }
+                catch (InvalidOperationException)
+                {
+                    break;
+                }
+            }
+        };
+
+        var failureObserved = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, _) => failureObserved.TrySetResult();
+
+        var outerStroke = PlainStroke(Code.Escape);
+        application.Input(in outerStroke);
+
+        await failureObserved.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        _ = application.Failure.ShouldBeOfType<InvalidOperationException>();
+    }
+
+    /// <summary>Verifies <c>DrainInput</c>'s own repost still no-ops silently when the dispatcher is
+    /// disposed mid-flight, exactly as before.</summary>
+    [Fact]
+    public async Task DrainInput_WhenDispatcherIsDisposedDuringRepost_StaysSwallowedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var innerStroke = PlainStroke(Code.Enter);
+        var disposalStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        application.DrainInputRaceHookForTests = () =>
+        {
+            application.Input(in innerStroke);
+
+            // Runs on the dispatcher's own thread, so the synchronous portion that flips the
+            // dispatcher's internal stopping flag completes before this returns.
+            _ = application.Dispatcher.DisposeAsync().AsTask();
+            disposalStarted.SetResult();
+        };
+
+        var outerStroke = PlainStroke(Code.Escape);
+        application.Input(in outerStroke);
+
+        await disposalStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Off-thread now, and _stopping is already true, so this awaits the dispatcher thread's
+        // own exit instead of racing to be the one that requests it.
+        await application.Dispatcher.DisposeAsync();
+
+        application.Failure.ShouldBeNull();
+
+        // Intentionally left undisposed - see the comment on Profile_WhenDispatcherIsDisposed.
+    }
+
+    /// <summary>Verifies <c>WakeInput</c> - reachable only from inside the first
+    /// <c>DrainResize</c>, when input arrived and was drained before the tree ever attached -
+    /// propagates a full-queue failure instead of swallowing it. Reflection drives the private
+    /// method directly with the exact precondition it checks
+    /// (<c>_input.Count &gt; 0 &amp;&amp; !_inputWake</c>), since no test seam exists to reach it
+    /// through the real first-resize race without introducing a new one.</summary>
+    [Fact]
+    public async Task WakeInput_WhenDispatcherQueueIsFull_PropagatesInvalidOperationExceptionAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        try
+        {
+            var stroke = PlainStroke(Code.Enter);
+
+            // Enqueue's own post attempt also observes the saturated queue and throws here - an
+            // incidental exercise of the already-covered Input site - but the record still lands
+            // in _input and _inputWake is still set true before that happens.
+            _ = Should.Throw<InvalidOperationException>(() => application.Input(in stroke));
+
+            typeof(Application)
+                .GetField("_inputWake", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(application, false);
+
+            var wakeInput = typeof(Application)
+                .GetMethod("WakeInput", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            var thrown = Should.Throw<TargetInvocationException>(() => wakeInput.Invoke(application, null));
+
+            _ = thrown.InnerException.ShouldBeOfType<InvalidOperationException>();
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        await application.DisposeAsync();
+    }
+
+    /// <summary>Verifies <c>WakeInput</c> still no-ops silently once the dispatcher is disposed,
+    /// exactly as before.</summary>
+    [Fact]
+    public async Task WakeInput_WhenDispatcherIsDisposed_DoesNotThrowAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.Dispatcher.DisposeAsync();
+        var stroke = PlainStroke(Code.Enter);
+
+        Should.NotThrow(() => application.Input(in stroke));
+
+        typeof(Application)
+            .GetField("_inputWake", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(application, false);
+
+        var wakeInput = typeof(Application)
+            .GetMethod("WakeInput", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        _ = Should.NotThrow(() => wakeInput.Invoke(application, null));
+    }
+
+    /// <summary>
+    /// Verifies <c>DisposeAsync</c>'s own terminal-resource cleanup step no longer lets a merely
+    /// transient full dispatcher queue escape as <see cref="InvalidOperationException"/>. The queue
+    /// is still saturated - not yet drained - when <c>DisposeAsync</c> is invoked, the exact race
+    /// <see cref="WaitForQueueToDrainAsync"/>'s own remarks describe; releasing the block shortly
+    /// after gives the bounded retry (see <c>Application.InvokeWithQueueRetryAsync</c>) room to
+    /// converge well inside the default <see cref="TerminalOptions.CleanupTimeout"/>, so
+    /// <c>TerminalServices.Dispose</c> still actually runs instead of the clipboard-timer teardown
+    /// being silently skipped.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenDispatcherQueueIsTransientlyFull_DisposesTerminalServicesWithoutThrowingAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        var disposeTask = application.DisposeAsync().AsTask();
+
+        // Deliberately does not drain the backlog first: DisposeAsync must observe the queue still
+        // full at the moment it posts, then release into an already-in-flight retry loop rather
+        // than a fresh one.
+        await Task.Delay(TimeSpan.FromMilliseconds(20), TestContext.Current.CancellationToken);
+        release.Set();
+
+        await disposeTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        ((TerminalServices) application.Terminal).DisposedOnDispatcherThreadForTests.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies the bounded retry gives up gracefully - folding its failure into
+    /// <see cref="Application.LastCleanupException"/> - instead of hanging forever when the
+    /// dispatcher queue never drains for the whole <see cref="TerminalOptions.CleanupTimeout"/>
+    /// window. Drives <c>DisposeTerminalResourcesAsync</c> directly through reflection (as
+    /// <see cref="WakeInput_WhenDispatcherQueueIsFull_PropagatesInvalidOperationExceptionAsync"/>
+    /// does for its own private target) so the assertion is isolated to the retry loop's own
+    /// give-up behavior, without also depending on <c>FinishWithoutSessionAsync</c>'s later
+    /// dispatcher post - which needs the same permanently-saturated queue to drain to make any
+    /// progress at all - succeeding within the test.
+    /// </summary>
+    [Fact]
+    public async Task DisposeTerminalResourcesAsync_WhenQueueNeverDrainsWithinCleanupTimeout_GivesUpAndRecordsFailureAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var options = TerminalOptions.Minimal with { CleanupTimeout = TimeSpan.FromMilliseconds(50) };
+        var application = new Application(new ProbeControl(), terminal, terminal, options);
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        try
+        {
+            var disposeTerminalResources = typeof(Application).GetMethod(
+                "DisposeTerminalResourcesAsync",
+                BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+            var task = (Task<Exception?>) disposeTerminalResources.Invoke(application, null)!;
+            var failure = await task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+            _ = failure.ShouldBeOfType<InvalidOperationException>();
+            application.LastCleanupException.ShouldBeSameAs(failure);
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        await application.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Verifies the bounded retry loop does not mistake a disposed dispatcher for a merely-full
+    /// queue: <see cref="ObjectDisposedException"/> derives from <see cref="InvalidOperationException"/>,
+    /// so a catch clause without the guard <c>Application.InvokeWithQueueRetryAsync</c> documents
+    /// would retry it for the whole <see cref="TerminalOptions.CleanupTimeout"/> window instead of
+    /// propagating it immediately as promised. Uses a long timeout and a stopwatch so a regression
+    /// (retrying instead of propagating) would make this test visibly slow rather than merely wrong.
+    /// </summary>
+    [Fact]
+    public async Task InvokeWithQueueRetryAsync_WhenDispatcherIsDisposed_PropagatesImmediatelyAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var options = TerminalOptions.Minimal with { CleanupTimeout = TimeSpan.FromSeconds(30) };
+        var application = new Application(new ProbeControl(), terminal, terminal, options);
+        await application.Dispatcher.DisposeAsync();
+
+        var invokeWithQueueRetryAsync = typeof(Application).GetMethod(
+            "InvokeWithQueueRetryAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        Action noop = () => { };
+        var stopwatch = Stopwatch.StartNew();
+        var task = (Task<Exception?>) invokeWithQueueRetryAsync.Invoke(application, [noop])!;
+
+        _ = await Should.ThrowAsync<ObjectDisposedException>(
+            () => task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(1));
+    }
+
+    // None of the six sites above ever rolled the wake flag back when the Post attempt
+    // itself failed with anything other than ObjectDisposedException - so a single transient
+    // full-queue trip, survived via a handled UnhandledException or simply outlived once the
+    // backlog drained, permanently and silently froze that entire pipeline for the rest of the
+    // run: every later, ordinary call saw the flag still latched true and returned without even
+    // attempting another Post. The *_WhenDispatcherQueueIsFull_PropagatesInvalidOperationExceptionAsync
+    // tests above only ever asserted the exception itself propagates; the tests below extend each
+    // one to also prove a later, ordinary call - made only once the dispatcher has genuinely
+    // recovered - is still applied instead of swallowed.
+
+    /// <summary>Verifies the profile-wake site recovers from a full-queue trip: once the dispatcher
+    /// drains, a later, ordinary <see cref="Application.Profile"/> call is actually applied instead
+    /// of the flag staying stuck latched from the failed post.</summary>
+    [Fact]
+    public async Task Profile_AfterQueueFullTrip_LaterOrdinaryProfileIsAppliedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        try
+        {
+            _ = Should.Throw<InvalidOperationException>(
+                () => application.Profile(TerminalCapabilities.Conservative));
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        // The dispatcher is now completely healthy again. A brand-new, ordinary profile update
+        // arrives.
+        var laterProfile = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor };
+        Should.NotThrow(() => application.Profile(laterProfile));
+
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // BUG (pre-fix): the profile pipeline stayed permanently frozen, so this later call never
+        // reached DrainProfile and Capabilities never moved off whatever the tree attached with.
+        application.Capabilities.ShouldBeSameAs(laterProfile);
+
+        await application.DisposeAsync();
+    }
+
+    /// <summary>Verifies the resize-wake site recovers from a full-queue trip: once the dispatcher
+    /// drains, a later, ordinary resize is actually applied instead of the flag staying stuck
+    /// latched from the failed post.</summary>
+    [Fact]
+    public async Task Resize_AfterQueueFullTrip_LaterOrdinaryResizeIsAppliedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        application.UnhandledException += static (_, eventArgs) => eventArgs.IsHandled = true;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        application.Size.ShouldBe(new Size(10, 4));
+
+        var resizeEvents = 0;
+        application.Resize += (_, _) => resizeEvents++;
+
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        var trippingResize = new Dimensions(new Size(20, 8));
+
+        try
+        {
+            _ = Should.Throw<InvalidOperationException>(
+                () => ((ISink) application).Resize(in trippingResize));
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        // The dispatcher is now completely healthy again. A brand-new, ordinary resize arrives.
+        var laterResize = new Dimensions(new Size(30, 12));
+        Should.NotThrow(() => ((ISink) application).Resize(in laterResize));
+
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        await Task.Delay(TimeSpan.FromMilliseconds(200), TestContext.Current.CancellationToken);
+
+        // BUG (pre-fix): the resize pipeline stayed permanently frozen at its pre-trip size.
+        application.Size.ShouldBe(new Size(30, 12));
+        resizeEvents.ShouldBeGreaterThan(0);
+
+        await application.DisposeAsync();
+    }
+
+    /// <summary>Verifies <c>Enqueue</c>, reached through <see cref="Application.Input(in Stroke)"/>,
+    /// recovers from a full-queue trip: once the dispatcher drains, a later, ordinary keystroke is
+    /// actually routed instead of the flag staying stuck latched from the failed post.</summary>
+    [Fact]
+    public async Task Input_AfterQueueFullTrip_LaterOrdinaryInputIsAppliedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var root = new ProbeControl { IsFocusable = true };
+        var observedCodes = new List<Code>();
+        _ = root.AddHandler(Events.Key, (_, eventArgs) => observedCodes.Add(eventArgs.Stroke.Code));
+        var application = new Application(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(root).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        var trippingStroke = PlainStroke(Code.Enter);
+
+        try
+        {
+            _ = Should.Throw<InvalidOperationException>(() => application.Input(in trippingStroke));
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        // The dispatcher is now completely healthy again. A brand-new, ordinary keystroke arrives.
+        var laterStroke = PlainStroke(Code.Escape);
+        Should.NotThrow(() => application.Input(in laterStroke));
+
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // BUG (pre-fix): the input pipeline stayed permanently frozen, so neither this later
+        // keystroke - nor the tripping one still sitting in _input - was ever routed.
+        observedCodes.ShouldContain(Code.Escape);
+
+        await application.DisposeAsync();
+    }
+
+    /// <summary>Verifies <c>DrainInput</c>'s own repost recovers from a full-queue trip: once the
+    /// application survives the resulting <see cref="Application.UnhandledException"/> report and
+    /// the backlog it triggered finishes draining on its own, a later, ordinary keystroke is still
+    /// routed instead of the flag staying stuck latched from the failed repost.</summary>
+    [Fact]
+    public async Task DrainInput_AfterRepostQueueFullTrip_LaterOrdinaryInputIsAppliedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var root = new ProbeControl { IsFocusable = true };
+        var observedCodes = new List<Code>();
+        _ = root.AddHandler(Events.Key, (_, eventArgs) => observedCodes.Add(eventArgs.Stroke.Code));
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(root).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        var innerStroke = PlainStroke(Code.Enter);
+
+        // Same "concurrent Enqueue inside the reset window" seam as
+        // DrainInput_WhenRepostFindsQueueFull_SetsApplicationFailureAsync above, but this time the
+        // application is left running afterward instead of tearing down.
+        application.DrainInputRaceHookForTests = () =>
+        {
+            application.Input(in innerStroke);
+
+            while (true)
+            {
+                try
+                {
+                    application.Dispatcher.Post(static () => { });
+                }
+                catch (InvalidOperationException)
+                {
+                    break;
+                }
+            }
+        };
+
+        var failureObserved = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            eventArgs.IsHandled = true;
+            _ = failureObserved.TrySetResult();
+        };
+
+        var outerStroke = PlainStroke(Code.Escape);
+        application.Input(in outerStroke);
+
+        await failureObserved.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        application.DrainInputRaceHookForTests = null;
+
+        // The backlog the hook filled above drains on its own - nothing in the hook blocks the
+        // dispatcher thread, it only fills the queue from inside a callback already running on it.
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        observedCodes.Clear();
+
+        // The dispatcher is now completely healthy again. A brand-new, ordinary keystroke arrives.
+        var laterStroke = PlainStroke(Code.Tab);
+        Should.NotThrow(() => application.Input(in laterStroke));
+
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // BUG (pre-fix): the input pipeline stayed permanently frozen after the repost trip, so
+        // this later keystroke was never routed.
+        observedCodes.ShouldContain(Code.Tab);
+    }
+
+    /// <summary>Verifies <c>WakeInput</c> recovers from a full-queue trip: once the dispatcher
+    /// drains, a later call actually dispatches the record still sitting in <c>_input</c> from the
+    /// earlier trip, instead of the flag staying stuck latched from the failed post. Reflection
+    /// drives the private method directly, exactly as
+    /// <see cref="WakeInput_WhenDispatcherQueueIsFull_PropagatesInvalidOperationExceptionAsync"/>
+    /// does above.</summary>
+    [Fact]
+    public async Task WakeInput_AfterQueueFullTrip_LaterCallDispatchesPendingInputAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var root = new ProbeControl { IsFocusable = true };
+        var observedCodes = new List<Code>();
+        _ = root.AddHandler(Events.Key, (_, eventArgs) => observedCodes.Add(eventArgs.Stroke.Code));
+        var application = new Application(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(root).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        var wakeInput = typeof(Application)
+            .GetMethod("WakeInput", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        try
+        {
+            var stroke = PlainStroke(Code.Enter);
+
+            // Enqueue's own post attempt observes the saturated queue and throws here - an
+            // incidental exercise of the already-covered Input site - but the record still lands
+            // in _input, and this fix's own reset already leaves _inputWake false: exactly
+            // WakeInput's precondition, as in the sibling test above.
+            _ = Should.Throw<InvalidOperationException>(() => application.Input(in stroke));
+
+            var thrown = Should.Throw<TargetInvocationException>(() => wakeInput.Invoke(application, null));
+            _ = thrown.InnerException.ShouldBeOfType<InvalidOperationException>();
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        // The dispatcher is now completely healthy again, and the record from the tripping Input
+        // call above is still sitting in _input, undispatched. A later, ordinary WakeInput call
+        // must actually schedule and run the drain instead of finding a permanently stuck latch.
+        _ = Should.NotThrow(() => wakeInput.Invoke(application, null));
+
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // BUG (pre-fix): the input pipeline stayed permanently frozen, so the record from the
+        // tripping Input call above was never dispatched.
+        observedCodes.ShouldContain(Code.Enter);
+
+        await application.DisposeAsync();
+    }
+
+    /// <summary>Verifies <c>PostOutOfBand</c> recovers from a full-queue trip: once the dispatcher
+    /// drains, a later, ordinary out-of-band write is actually flushed to the transport instead of
+    /// the flag staying stuck latched from the failed post.</summary>
+    [Fact]
+    public async Task PostOutOfBand_AfterQueueFullTrip_LaterOrdinaryPostIsAppliedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var laterWritten = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += memory =>
+        {
+            if (memory.Span.IndexOf((byte) 0x08) >= 0)
+            {
+                _ = laterWritten.TrySetResult();
+            }
+        };
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        ReadOnlyMemory<byte> trippingBytes = new byte[] { 0x07 };
+
+        try
+        {
+            _ = Should.Throw<InvalidOperationException>(() => application.PostOutOfBand(trippingBytes));
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        // The dispatcher is now completely healthy again. A brand-new, ordinary out-of-band write
+        // arrives.
+        ReadOnlyMemory<byte> laterBytes = new byte[] { 0x08 };
+        Should.NotThrow(() => application.PostOutOfBand(laterBytes));
+
+        // BUG (pre-fix): the out-of-band pipeline stayed permanently frozen, so this later write
+        // never reached the transport and this would time out instead.
+        await laterWritten.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        await application.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Verifies <c>DisposeTerminalResourcesAsync</c> preserves the first-recorded
+    /// <c>TerminalServices.Dispose</c> cleanup failure instead of letting a later
+    /// <c>renderer.ShutdownAsync</c> failure silently replace it. The dispatcher queue is kept
+    /// saturated for the whole <see cref="TerminalOptions.CleanupTimeout"/> window so the bounded
+    /// retry around <c>TerminalServices.Dispose</c> (see
+    /// <see cref="DisposeTerminalResourcesAsync_WhenQueueNeverDrainsWithinCleanupTimeout_GivesUpAndRecordsFailureAsync"/>,
+    /// its sibling on the give-up side of the same retry) itself gives up and returns a real
+    /// <see cref="InvalidOperationException"/> as the first failure - not a substitute or a
+    /// reflection-only fake. A live Kitty graphics backend then forces
+    /// <c>Renderer.ShutdownAsync</c>'s own remote-cleanup write to fail with a distinct
+    /// <see cref="IOException"/> right after, exactly as
+    /// <c>StopAsync_WhenGraphicsCleanupFails_StillDisposesSessionTransportAsync</c> proves that
+    /// write is genuinely reachable. Before the fix at the renderer catch site, the second failure
+    /// unconditionally overwrote the first; this asserts the first failure - the one the method's
+    /// own remarks say guards a real armed-<c>DispatcherTimer</c> resource leak - survives.
+    /// </summary>
+    [Fact]
+    public async Task DisposeTerminalResourcesAsync_WhenRendererShutdownAlsoFails_PreservesFirstFailureAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(1, 1), new Size(2, 3)));
+        var options = Options(kitty: true) with { CleanupTimeout = TimeSpan.FromMilliseconds(50) };
+        var application = new Application(
+            new GraphicsProbeControl(Rgba()),
+            terminal,
+            terminal,
+            options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var rendererFailure = new IOException("renderer shutdown failed");
+        terminal.FailWriteNumber = terminal.Writes.Count + 1;
+        terminal.WriteFailure = rendererFailure;
+
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        try
+        {
+            var disposeTerminalResources = typeof(Application).GetMethod(
+                "DisposeTerminalResourcesAsync",
+                BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+            var task = (Task<Exception?>) disposeTerminalResources.Invoke(application, null)!;
+            var failure = await task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+            _ = failure.ShouldBeOfType<InvalidOperationException>();
+            failure.ShouldNotBeSameAs(rendererFailure);
+
+            // DisposeTerminalResourcesAsync assigns LastCleanupException from its own separate
+            // fallback chain (lifetimeDiagnostic ?? _renderer?.LastCleanupException ?? ...) before
+            // returning failure - the public property must reflect the same preserved first
+            // failure the return value does, not silently diverge from it.
+            application.LastCleanupException.ShouldBeSameAs(failure);
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        await application.DisposeAsync();
+    }
+
+    #endregion
+
+    #region Lifecycle
+
+    /// <summary>The ordering regression this file exists to pin. A Starting handler that throws
+    /// takes the terminal path without <c>BeginStopping</c>, and the host's guarded StopAsync must
+    /// not then raise Stopping against an application that has already stopped.</summary>
+    [Fact]
+    public async Task StopAsync_AfterAStartingHandlerThrew_DoesNotRaiseStoppingAfterStoppedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        List<string> order = [];
+        application.Starting += (_, _) => throw new InvalidOperationException("starting-boom");
+        application.Stopping += (_, _) => order.Add("stopping");
+        application.Stopped += (_, _) => order.Add("stopped");
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StartAsync(TestContext.Current.CancellationToken));
+
+        // Exactly what ConsoleApplication.RunApplicationAsync does with the rethrow. It must now
+        // reach StopAsync's documented rethrow rather than detouring through a second
+        // BeginStopping - previously a Stopping handler setting Cancel here returned early and
+        // silently suppressed the error the host was about to report.
+        var rethrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(CancellationToken.None));
+
+        rethrown.Message.ShouldBe("starting-boom");
+        order.ShouldBe(["stopped"]);
+    }
+
+    /// <summary>Verifies the second, permanent form of the same divergent state: disposing an
+    /// application that was never started also reaches the terminal path directly.</summary>
+    [Fact]
+    public async Task DisposeAsync_WhenTheApplicationNeverStarted_DoesNotRaiseStoppingAfterStoppedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        List<string> order = [];
+        application.Stopping += (_, _) => order.Add("stopping");
+        application.Stopped += (_, _) => order.Add("stopped");
+
+        await application.DisposeAsync();
+
+        order.ShouldBe(["stopped"]);
+    }
+
+    /// <summary>Verifies the guard that documents "stopping or stopped" now rejects a stopped
+    /// application, which it could not while the two flags were able to diverge.</summary>
+    [Fact]
+    public async Task RefreshScreen_WhenCalledFromAStoppedHandler_ThrowsAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        Exception? observed = null;
+        application.Starting += (_, _) => throw new InvalidOperationException("starting-boom");
+        application.Stopped += (sender, _) =>
+        {
+            try
+            {
+                ((Application) sender!).RefreshScreen();
+            }
+            catch (Exception exception)
+            {
+                observed = exception;
+            }
+        };
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StartAsync(TestContext.Current.CancellationToken));
+
+        _ = observed.ShouldBeOfType<ObjectDisposedException>();
+    }
+
+    /// <summary>The unrecoverable half of the isolation regression. <c>MarkStarted</c> latches
+    /// before it invokes and <c>TrySetResult</c> has no other caller, so a throwing Started handler
+    /// used to strand StartAsync on an application that was otherwise fully live.</summary>
+    [Fact]
+    public async Task StartAsync_WhenAStartedHandlerThrowsAndIsHandled_StillReturnsAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        List<Exception> reported = [];
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+        };
+        application.Started += (_, _) => throw new InvalidOperationException("started-boom");
+
+        // Without isolation this never completes: _started is stranded, and because the handler
+        // marked the failure handled, _completion never settles either.
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+
+        reported.Select(static exception => exception.Message).ShouldContain("started-boom");
+
+        // Handling the failure lets the application keep running but does not erase Failure
+        // (docs/architecture/error-handling.md), so StopAsync still surfaces it. What this test
+        // pins is that StartAsync returned at all.
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+
+        thrown.Message.ShouldBe("started-boom");
+    }
+
+    /// <summary>Pins the ordering inside the isolation: the Started-handler failure is reported
+    /// through UnhandledException BEFORE StartAsync's awaiter is released. Settling first raced
+    /// the report against the caller's continuation, so a test (or application) reading the
+    /// failure list right after StartAsync returned could observe it mid-write - the assertion
+    /// above flaked exactly that way. The deliberate pause inside the handler makes the inverted
+    /// order fail dependably rather than one run in three: with the settle first, StartAsync
+    /// resumes during the pause and the flag is already set by the time the handler samples it.</summary>
+    [Fact]
+    public async Task StartAsync_WhenAStartedHandlerThrows_ReportsTheFailureBeforeCompletingAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+
+        var startReturned = false;
+        var sampledAfterReturn = new List<bool>();
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            Thread.Sleep(50);
+            sampledAfterReturn.Add(Volatile.Read(ref startReturned));
+            eventArgs.IsHandled = true;
+        };
+        application.Started += (_, _) => throw new InvalidOperationException("started-boom");
+
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+        Volatile.Write(ref startReturned, true);
+
+        sampledAfterReturn.ShouldBe([false]);
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+
+        thrown.Message.ShouldBe("started-boom");
+    }
+
+    /// <summary>Verifies the self-healing half: a throwing FrameRendered handler must not suppress
+    /// the invalidation pump behind it, so an ordinary Invalidate still produces a frame.</summary>
+    [Fact]
+    public async Task Invalidate_WhenAFrameRenderedHandlerThrowsAndIsHandled_StillRendersTheNextFrameAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var control = new ProbeControl();
+        await using Application application = new(control, terminal, terminal, TerminalOptions.Minimal);
+        var frames = 0;
+        int? threshold = null;
+        var exceededThreshold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) => eventArgs.IsHandled = true;
+        application.FrameRendered += (_, _) =>
+        {
+            frames++;
+
+            if (threshold is { } value && frames > value)
+            {
+                _ = exceededThreshold.TrySetResult();
+            }
+
+            throw new InvalidOperationException("frame-boom");
+        };
+
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+        var afterStart = frames;
+        threshold = afterStart;
+
+        await application.Dispatcher.InvokeAsync(
+            () => control.Invalidate(Invalidation.Render),
+            TestContext.Current.CancellationToken);
+        await exceededThreshold.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        frames.ShouldBeGreaterThan(afterStart, "the pump behind a throwing handler must still run");
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+    }
+
+    /// <summary>Verifies the suspended-startup path, which reaches MarkStarted through the Resize
+    /// callback instead - the same hang with FrameRendered never involved.</summary>
+    [Fact]
+    public async Task StartAsync_WhenAResizeHandlerThrowsOnASuspendedStart_StillReturnsAsync()
+    {
+        await using FakeTerminal terminal = new();
+
+        // A zero axis is the suspended branch: layout runs, no frame is produced, and MarkStarted
+        // is reached from DrainResize rather than from CompleteRender.
+        terminal.QueueResize(new Dimensions(new Size(0, 6)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        application.UnhandledException += (_, eventArgs) => eventArgs.IsHandled = true;
+        application.Resize += (_, _) => throw new InvalidOperationException("resize-boom");
+
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+
+        thrown.Message.ShouldBe("resize-boom");
+    }
+
+    /// <summary>The counter-case that keeps the isolation honest: with no handler throwing, the
+    /// documented frame-before-started ordering is unchanged.</summary>
+    [Fact]
+    public async Task StartAsync_WhenNoHandlerThrows_StillRaisesStartedAfterTheFirstFrameAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        List<string> order = [];
+        application.FrameRendered += (_, _) => order.Add("frame");
+        application.Started += (_, _) => order.Add("started");
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        order.IndexOf("frame").ShouldBeLessThan(order.IndexOf("started"));
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    #endregion
+
+    #region Event ordering
+
+    /// <summary>Verifies a blocked dispatcher observes only the newest resize in a storm.</summary>
+    [Fact]
+    public async Task Resize_WhenSeveralArriveBeforeDrain_CoalescesNewestAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        using ManualResetEventSlim release = new();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.Dispatcher.Post(() =>
+        {
+            entered.SetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        List<Size> sizes = [];
+        application.Resize += (_, eventArgs) => sizes.Add(eventArgs.Dimensions.Cells);
+
+        // The dispatcher is blocked in the posted callback above, so coalescing happens in the
+        // resize-reading loop rather than on the dispatcher; wait for all three queued resizes to
+        // actually be dequeued before releasing the block, or the assertion below could observe
+        // fewer than three still sitting in the channel.
+        var resizesRead = 0;
+        var allResizesRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.ResizeRead += dimensions =>
+        {
+            _ = dimensions;
+
+            if (Interlocked.Increment(ref resizesRead) == 3)
+            {
+                _ = allResizesRead.TrySetResult();
+            }
+        };
+
+        terminal.QueueResize(new Dimensions(new Size(20, 5)));
+        terminal.QueueResize(new Dimensions(new Size(30, 6)));
+        terminal.QueueResize(new Dimensions(new Size(40, 7)));
+        await allResizesRead.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        release.Set();
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+
+        sizes.ShouldBe([new Size(40, 7)]);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies key input routes to the manager's current focus target.</summary>
+    [Fact]
+    public async Task Input_WhenFocusExists_RoutesTypedKeyToFocusedControlAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var root = new ProbeContainer();
+        var child = new ProbeControl { IsFocusable = true };
+        root.Children.Add(child);
+        await using Application application = new(
+            root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        List<RoutingPhase> phases = [];
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            application.Focus.Focus(child).ShouldBeTrue();
+            _ = child.AddHandler(Events.Key, (_, eventArgs) =>
+                phases.Add(eventArgs.Phase));
+        }, TestContext.Current.CancellationToken);
+        var stroke = new Stroke(
+            Code.Enter,
+            character: null,
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press);
+
+        application.Input(in stroke);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+
+        phases.ShouldBe([RoutingPhase.Preview, RoutingPhase.Bubble]);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies input received before initial resize is retained until attachment.</summary>
+    [Fact]
+    public async Task Input_WhenReceivedBeforeResize_DeliversAfterTreeAttachmentAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var root = new ProbeContainer();
+        var calls = 0;
+        _ = root.AddHandler(Events.TerminalFocusChanged, (_, _) => calls++);
+        await using Application application = new(
+            root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        var focus = new TerminalFocus(gained: true);
+        application.Input(in focus);
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+
+        calls.ShouldBe(2);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies resize-handler invalidation is laid out before frame production.</summary>
+    [Fact]
+    public async Task Resize_WhenHandlerInvalidatesLayout_ReflowsBeforeFrameAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var root = new ProbeControl();
+        await using Application application = new(
+            root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        application.Resize += (_, _) => root.Width = Length.Cells(5);
+        root.Rendering = _ => root.Bounds.Width.ShouldBe(5);
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        root.Bounds.Width.ShouldBe(5);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a terminal fault is primary and forces stopped completion.</summary>
+    [Fact]
+    public async Task Fault_WhenSessionReportsFailure_StopsWithOriginalExceptionAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var failure = new IOException("terminal");
+
+        application.Fault(failure);
+        var thrown = await Should.ThrowAsync<IOException>(application.Completion);
+
+        thrown.ShouldBeSameAs(failure);
+        application.Failure.ShouldBeSameAs(failure);
+    }
+
+    /// <summary>Verifies idle-posted work drains before the next idle transition.</summary>
+    [Fact]
+    public async Task Idle_WhenHandlerPostsWork_DrainsBeforeSecondIdleAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        List<string> order = [];
+        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.Idle += (_, _) =>
+        {
+            order.Add("idle");
+
+            if (order.Count == 1)
+            {
+                application.Dispatcher.Post(() => order.Add("work"));
+            }
+            else
+            {
+                completed.SetResult();
+            }
+        };
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await completed.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        order.ShouldBe(["idle", "work", "idle"]);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a control invalidated directly from an <c>Idle</c> handler - an ordinary
+    /// property mutation, not queued dispatcher work - is rendered promptly instead of being
+    /// stranded until unrelated dispatcher work happens to arrive and re-arm idle detection.
+    /// </summary>
+    [Fact]
+    public async Task Idle_WhenHandlerInvalidatesAControl_RendersPromptlyAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var probe = new ProbeControl { Content = "a".AsMemory() };
+        await using Application application = new(probe, terminal, terminal, TerminalOptions.Minimal);
+        var frames = 0;
+        var idles = 0;
+        var secondFrame = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.FrameRendered += (_, _) =>
+        {
+            frames++;
+
+            if (frames == 2)
+            {
+                _ = secondFrame.TrySetResult();
+            }
+        };
+        application.Idle += (_, _) =>
+        {
+            idles++;
+
+            if (idles == 1)
+            {
+                // An ordinary, idiomatic mutation performed from Idle - not queuing more dispatcher
+                // work, just invalidating a control the way any property setter would.
+                probe.Content = "b".AsMemory();
+                probe.InvalidateKernel(InvalidationImpact.Render);
+            }
+        };
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        // With nothing else happening on the dispatcher, the invalidation raised from inside the
+        // first Idle callback must still reach a render without waiting for unrelated dispatcher
+        // work to arrive and re-arm idle detection.
+        await secondFrame.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        frames.ShouldBe(2);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a record enqueued while DrainInput's finally block is between resetting the
+    /// wake latch and re-checking the queue is still delivered, instead of being stranded until some
+    /// unrelated later Enqueue happens to re-arm the latch. The window is a handful of CPU
+    /// instructions wide with no natural yield point, so <see cref="Application.DrainInputRaceHookForTests"/>
+    /// pauses the dispatcher there deterministically.</summary>
+    [Fact]
+    public async Task Input_WhenEnqueueRacesDrainFinally_DeliversStrandedRecordAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var root = new ProbeContainer();
+        var child = new ProbeControl { IsFocusable = true };
+        root.Children.Add(child);
+        await using Application application = new(
+            root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        List<Code> codes = [];
+        var delivered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            application.Focus.Focus(child).ShouldBeTrue();
+            _ = child.AddHandler(Events.Key, (_, eventArgs) =>
+            {
+                if (eventArgs.Phase != RoutingPhase.Bubble)
+                {
+                    return;
+                }
+
+                codes.Add(eventArgs.Stroke.Code);
+
+                if (codes.Count == 2)
+                {
+                    _ = delivered.TrySetResult();
+                }
+            });
+        }, TestContext.Current.CancellationToken);
+        var strokeA = new Stroke(Code.Enter, character: null, nativeCode: 0, Modifiers.None, KeyAction.Press);
+        var strokeB = new Stroke(Code.Escape, character: null, nativeCode: 0, Modifiers.None, KeyAction.Press);
+        var hookReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new();
+        application.DrainInputRaceHookForTests = () =>
+        {
+            hookReached.SetResult();
+            release.Wait();
+        };
+
+        // strokeA's Enqueue arms the latch and posts DrainInput, which dequeues strokeA, dispatches
+        // it, observes the queue empty, releases the dequeue lock, and then parks in the hook above -
+        // latch still true, finally's reset not yet run.
+        application.Input(in strokeA);
+        await hookReached.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // strokeB's Enqueue now races the parked drain: it observes _inputWake already true and
+        // returns without posting a repost, exactly like a concurrent Enqueue landing in the old
+        // two-lock reset window.
+        await Task.Run(() => application.Input(in strokeB), TestContext.Current.CancellationToken);
+
+        // Clear the hook before releasing the drain so the reposted DrainInput this triggers (once
+        // fixed) does not re-enter a hook that already fired.
+        application.DrainInputRaceHookForTests = null;
+        release.Set();
+
+        await delivered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        codes.ShouldBe([Code.Enter, Code.Escape]);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies DrainInput's finally-block repost tolerates a dispatcher disposal landing
+    /// in the same handful-of-CPU-instructions window the stranded-record test above targets, so
+    /// the resulting ObjectDisposedException from Dispatcher.Post is silently swallowed instead of
+    /// surfacing through Dispatcher.Run's catch-all as a spurious Application.Failure/
+    /// UnhandledException for what is really an ordinary shutdown race.</summary>
+    [Fact]
+    public async Task Input_WhenDisposeRacesDrainFinallyRepost_DoesNotReportFailureAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var root = new ProbeContainer();
+        var child = new ProbeControl { IsFocusable = true };
+        root.Children.Add(child);
+        var application = new Application(
+            root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var unhandledCount = 0;
+        application.UnhandledException += (_, _) => Interlocked.Increment(ref unhandledCount);
+
+        var strokeA = new Stroke(Code.Enter, character: null, nativeCode: 0, Modifiers.None, KeyAction.Press);
+        var strokeB = new Stroke(Code.Escape, character: null, nativeCode: 0, Modifiers.None, KeyAction.Press);
+        var hookReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new();
+        application.DrainInputRaceHookForTests = () =>
+        {
+            hookReached.SetResult();
+            release.Wait();
+        };
+
+        // strokeA's Enqueue arms the latch and posts DrainInput, which dequeues strokeA, dispatches
+        // it, observes the queue empty, releases the dequeue lock, and then parks in the hook above -
+        // latch still true, finally's reset and repost decision not yet run.
+        application.Input(in strokeA);
+        await hookReached.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // strokeB's Enqueue races the parked drain exactly like the stranded-record test above: it
+        // observes _inputWake already true and returns without posting, leaving strokeB sitting in
+        // the queue for the parked drain's own finally block to discover and decide to repost for.
+        await Task.Run(() => application.Input(in strokeB), TestContext.Current.CancellationToken);
+
+        // Dispose the dispatcher directly from a second thread, bypassing Application's own
+        // serialized StopAsync/DisposeAsync, to force the shutdown race open reliably instead of
+        // merely hoping to land inside a window a handful of CPU instructions wide. DisposeAsync
+        // flips the dispatcher's internal _stopping flag synchronously, under its own gate - a gate
+        // unrelated to Application's own _gate guarding _inputWake/_input - before the call below
+        // returns, so by the time dispatcherDisposeStarted completes, the race window is open.
+        ValueTask dispatcherDisposal = default;
+        var dispatcherDisposeStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _ = Task.Run(
+            () =>
+            {
+                dispatcherDisposal = application.Dispatcher.DisposeAsync();
+                dispatcherDisposeStarted.SetResult();
+            },
+            TestContext.Current.CancellationToken);
+        await dispatcherDisposeStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Release the parked drain. Its finally block now finds the queue non-empty (strokeB),
+        // decides to repost, and calls the now-guarded Dispatcher.Post(DrainInput) squarely inside
+        // the window where the dispatcher just started stopping.
+        application.DrainInputRaceHookForTests = null;
+        release.Set();
+
+        await dispatcherDisposal.AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        application.Failure.ShouldBeNull();
+        unhandledCount.ShouldBe(0);
+
+        try
+        {
+            await application.DisposeAsync();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Application's own StopAsync/DisposeAsync tries to route BeginStopping through the
+            // dispatcher this test just bypassed and disposed directly out from under it; that
+            // expected failure is teardown noise from the forced-race technique, not something this
+            // test is asserting about.
+        }
+    }
+
+    /// <summary>Verifies a record admitted into the input queue just behind a Closed record - both
+    /// enqueued while the application was not yet stopping, so both pass Enqueue's admission check
+    /// - is dequeued but not dispatched once the Closed record, processed earlier in the same drain
+    /// pass, has already flipped <c>_stopping</c>. The skip itself is intentional (dispatching more
+    /// input into a tree that is mid-teardown is not useful), but it must no longer be silent:
+    /// <see cref="Application.DrainInputSkippedRecordHookForTests"/> is the only channel that
+    /// surfaces it, since routing this through <c>Report</c>/<c>UnhandledException</c> would
+    /// misrepresent an ordinary, successful shutdown as an application failure.</summary>
+    [Fact]
+    public async Task Input_WhenQueuedJustBehindClosedInSameDrainPass_SkipsDispatchObservablyAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var root = new ProbeContainer();
+        var child = new ProbeControl { IsFocusable = true };
+        root.Children.Add(child);
+        await using Application application = new(
+            root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var delivered = false;
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                application.Focus.Focus(child).ShouldBeTrue();
+                _ = child.AddHandler(Events.Key, (_, _) => delivered = true);
+            },
+            TestContext.Current.CancellationToken);
+
+        List<RecordKind> skipped = [];
+        application.DrainInputSkippedRecordHookForTests = record => skipped.Add(record.Kind);
+
+        // Block the dispatcher so both Enqueue calls below run - and complete - before DrainInput
+        // gets a chance to process either record, guaranteeing they are admitted while _stopping is
+        // still false and land in the queue in the exact FIFO order this test needs.
+        using ManualResetEventSlim release = new();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.Dispatcher.Post(() =>
+        {
+            entered.SetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        application.Closed();
+        var stroke = new Stroke(Code.Enter, character: null, nativeCode: 0, Modifiers.None, KeyAction.Press);
+        application.Input(in stroke);
+
+        release.Set();
+
+        await application.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        application.Completion.IsCompletedSuccessfully.ShouldBeTrue();
+        application.Failure.ShouldBeNull();
+        delivered.ShouldBeFalse();
+        skipped.ShouldBe([RecordKind.Key]);
+    }
+
+    #endregion
+
+    #region Render dispatcher fullness
+
+    /// <summary>Saturates <paramref name="dispatcher"/>'s bounded queue behind a blocked hostage
+    /// callback, tracking completion of whichever filler lands in the one slot the queue actually
+    /// grants - the rest never get the chance to run.</summary>
+    /// <param name="dispatcher">The dispatcher to saturate.</param>
+    /// <param name="cancellationToken">Cancels waiting for the hostage to start running.</param>
+    /// <returns>The hostage release handle and a completion source that settles once the specific
+    /// filler that claimed the queue's one free slot actually runs.</returns>
+    private static async Task<(ManualResetEventSlim Release, TaskCompletionSource FillerDrained)>
+        SaturateQueueTrackingLastFillerAsync(Dispatcher dispatcher, CancellationToken cancellationToken)
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new ManualResetEventSlim();
+
+        dispatcher.Post(() =>
+        {
+            entered.SetResult();
+            release.Wait();
+        });
+
+        await entered.Task.WaitAsync(cancellationToken);
+
+        var fillerDrained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        try
+        {
+            while (true)
+            {
+                dispatcher.Post(() => fillerDrained.TrySetResult());
+            }
+        }
+        catch (InvalidOperationException)
+        {
+        }
+
+        return (release, fillerDrained);
+    }
+
+    /// <summary>Verifies the render-completion post's bridging retry - given a genuine chance to
+    /// succeed once the saturated slot frees, exactly as a live dispatcher queue drains in
+    /// practice - reaches <see cref="Dispatcher.UnhandledException"/> with the original
+    /// "queue is full" failure, the same outcome a synchronous dispatcher-callback failure already
+    /// produces.</summary>
+    [Fact]
+    public async Task ObserveRenderAsync_WhenCompleteRenderPostFindsQueueFullThenFrees_BridgesToUnhandledExceptionAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.PauseFlush();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var application = new Application(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+
+        var starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
+
+        // The paused flush keeps the very first render in flight indefinitely, so StartAsync
+        // never completes along this path; observe its eventual outcome instead of awaiting it.
+        _ = starting.ContinueWith(
+            static task => _ = task.Exception,
+            TestContext.Current.CancellationToken,
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
+
+        await WaitForAsync(() => application.IsRendering, TimeSpan.FromSeconds(5));
+
+        var (hostageRelease, fillerDrained) = await SaturateQueueTrackingLastFillerAsync(
+            application.Dispatcher,
+            TestContext.Current.CancellationToken);
+
+        // Frees the one saturated slot deterministically, in the otherwise nanosecond-wide window
+        // between the first (failed) attempt and the bridging retry, instead of racing a genuine
+        // drain: releasing the hostage lets the dispatcher thread dequeue and run fillers until it
+        // reaches the one this test is tracking, which signals fillerDrained the moment it does,
+        // before the retry ever attempts to post.
+        application.Dispatcher.BackgroundCompletionRetryHookForTests = () =>
+        {
+            hostageRelease.Set();
+            _ = fillerDrained.Task.Wait(TimeSpan.FromSeconds(5));
+        };
+
+        var unhandled = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.Dispatcher.UnhandledException += (_, eventArgs) => unhandled.TrySetResult(eventArgs.Exception);
+
+        // Unblocks the paused transport flush; RenderAsync's remaining awaits resume off the
+        // dispatcher thread (ConfigureAwait(false) throughout), so ObserveRenderAsync's own
+        // completion post below runs against the queue this test just saturated.
+        terminal.ReleaseFlush();
+
+        var reported = await unhandled.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        reported.ShouldBeOfType<InvalidOperationException>().Message.ShouldBe("The dispatcher queue is full.");
+        await WaitForAsync(() => !application.IsRendering, TimeSpan.FromSeconds(5));
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        await application.DisposeAsync();
+    }
+
+    /// <summary>Verifies the render-completion post's bridging retry, when it is also rejected for
+    /// a full queue - the queue never drains at all in this scenario - drops the fault as the
+    /// documented, accepted edge instead of retrying indefinitely, while still retiring
+    /// <see cref="Application.IsRendering"/> so the shutdown drain never wedges.</summary>
+    [Fact]
+    public async Task ObserveRenderAsync_WhenCompleteRenderPostFindsQueueFullOnBothAttempts_DropsTheFaultAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.PauseFlush();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var application = new Application(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+
+        var starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
+
+        _ = starting.ContinueWith(
+            static task => _ = task.Exception,
+            TestContext.Current.CancellationToken,
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
+
+        await WaitForAsync(() => application.IsRendering, TimeSpan.FromSeconds(5));
+
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        var unhandledObserved = false;
+        application.Dispatcher.UnhandledException += (_, _) => unhandledObserved = true;
+
+        terminal.ReleaseFlush();
+
+        // Nothing ever frees the saturated slot, so both the original attempt and the bridging
+        // retry observe the same full queue; give the off-thread continuation a moment to reach
+        // and exhaust both before asserting the drop.
+        await WaitForAsync(() => !application.IsRendering, TimeSpan.FromSeconds(5));
+
+        unhandledObserved.ShouldBeFalse();
+        application.Failure.ShouldBeNull();
+
+        release.Set();
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+        await application.DisposeAsync();
+    }
+
+    /// <summary>Verifies the out-of-band-completion post's bridging retry - the sibling site to
+    /// <see cref="ObserveRenderAsync_WhenCompleteRenderPostFindsQueueFullThenFrees_BridgesToUnhandledExceptionAsync"/>
+    /// covered above, exercised through <c>Application.PostOutOfBand</c> directly instead of a
+    /// frame render - also reaches <see cref="Dispatcher.UnhandledException"/> once the saturated
+    /// slot frees.</summary>
+    [Fact]
+    public async Task ObserveOutOfBandAsync_WhenCompleteOutOfBandPostFindsQueueFullThenFrees_BridgesToUnhandledExceptionAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        terminal.PauseFlush();
+        ReadOnlyMemory<byte> bytes = new byte[] { 1, 2, 3 };
+        await application.Dispatcher.InvokeAsync(
+            () => application.PostOutOfBand(bytes),
+            TestContext.Current.CancellationToken);
+
+        await WaitForAsync(() => application.IsRendering, TimeSpan.FromSeconds(5));
+
+        var (hostageRelease, fillerDrained) = await SaturateQueueTrackingLastFillerAsync(
+            application.Dispatcher,
+            TestContext.Current.CancellationToken);
+
+        application.Dispatcher.BackgroundCompletionRetryHookForTests = () =>
+        {
+            hostageRelease.Set();
+            _ = fillerDrained.Task.Wait(TimeSpan.FromSeconds(5));
+        };
+
+        var unhandled = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.Dispatcher.UnhandledException += (_, eventArgs) => unhandled.TrySetResult(eventArgs.Exception);
+
+        terminal.ReleaseFlush();
+
+        var reported = await unhandled.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        reported.ShouldBeOfType<InvalidOperationException>().Message.ShouldBe("The dispatcher queue is full.");
+        await WaitForAsync(() => !application.IsRendering, TimeSpan.FromSeconds(5));
+
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the out-of-band-completion post's bridging retry, when it is also
+    /// rejected for a full queue, drops the fault instead of retrying indefinitely - the sibling
+    /// edge case to the render-completion site's own double-failure drop above.</summary>
+    [Fact]
+    public async Task ObserveOutOfBandAsync_WhenCompleteOutOfBandPostFindsQueueFullOnBothAttempts_DropsTheFaultAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        terminal.PauseFlush();
+        ReadOnlyMemory<byte> bytes = new byte[] { 1, 2, 3 };
+        await application.Dispatcher.InvokeAsync(
+            () => application.PostOutOfBand(bytes),
+            TestContext.Current.CancellationToken);
+
+        await WaitForAsync(() => application.IsRendering, TimeSpan.FromSeconds(5));
+
+        var release = await SaturateQueueAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+
+        var unhandledObserved = false;
+        application.Dispatcher.UnhandledException += (_, _) => unhandledObserved = true;
+
+        terminal.ReleaseFlush();
+
+        await WaitForAsync(() => !application.IsRendering, TimeSpan.FromSeconds(5));
+
+        unhandledObserved.ShouldBeFalse();
+        application.Failure.ShouldBeNull();
+
+        release.Set();
+        await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
+    }
+
+    #endregion
+
+    #region Response validation
+
+    /// <summary>Verifies an empty <see cref="PaletteResponse"/> is rejected synchronously instead
+    /// of being enqueued and only failing later during dispatch.</summary>
+    [Fact]
+    public async Task Response_WhenPaletteResponseIsEmpty_ThrowsArgumentExceptionAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+
+        _ = Should.Throw<ArgumentException>(() => application.Response(default(PaletteResponse)));
+
+        await application.DisposeAsync();
+    }
+
+    /// <summary>Verifies an empty <see cref="MetricsResponse"/> is rejected synchronously instead
+    /// of being enqueued and only failing later during dispatch.</summary>
+    [Fact]
+    public async Task Response_WhenMetricsResponseIsEmpty_ThrowsArgumentExceptionAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+
+        _ = Should.Throw<ArgumentException>(() => application.Response(default(MetricsResponse)));
+
+        await application.DisposeAsync();
+    }
+
+    #endregion
 }

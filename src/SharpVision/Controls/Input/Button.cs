@@ -9,7 +9,7 @@ using DisplayText = Display.Text;
 
 /// <summary>Defines a focusable command control with one optional owned content child.</summary>
 [PublicAPI]
-public sealed partial class Button: InputBase, IStyled<ButtonStyle>
+public sealed class Button: InputBase, IStyled<ButtonStyle>
 {
     #region Construction and command properties
 

@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Controls.Collections;
 
 /// <summary>Verifies hierarchical tree view ownership, selection, expand/collapse, and keyboard navigation.</summary>
-public sealed partial class TreeViewTests
+public sealed class TreeViewTests
 {
     /// <summary>Verifies select-all normalizes character case and lock state but rejects larger
     /// application-command chords.</summary>
@@ -2902,4 +2902,2146 @@ public sealed partial class TreeViewTests
 
         return tree;
     }
+
+    #region Selection caching
+
+    private const int _decoyBranchSize = 200;
+
+    /// <summary>Verifies a multi-select snapshot reports items in stable tree order regardless of
+    /// the order they were selected in, with a large collapsed sibling branch attached.</summary>
+    [Fact]
+    public void SelectedItems_WhenSelectedOutOfOrderWithLargeCollapsedSibling_ReturnsThemInTreeOrder()
+    {
+        var (tree, root, childA, childB, _) = BuildTreeWithDecoyBranch();
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+
+        _ = tree.SetSelected(childB, true);
+        _ = tree.SetSelected(root, true);
+        _ = tree.SetSelected(childA, true);
+
+        tree.SelectedItems.ShouldBe([root, childA, childB]);
+    }
+
+    /// <summary>Verifies single-select keyboard navigation reports exactly the one-item swap on
+    /// every keystroke, with a large collapsed sibling branch attached that the moves never touch.
+    /// </summary>
+    [Fact]
+    public async Task Dispatch_WhenArrowKeyNavigatesWithLargeCollapsedSiblingPresent_ReportsSingleItemDeltaAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var (tree, root, childA, childB, _) = BuildTreeWithDecoyBranch();
+            tree.Attach(dispatcher);
+            using FocusManager focus = new(tree);
+            focus.Focus(tree).ShouldBeTrue();
+            tree.SelectItem(root);
+
+            TreeViewSelectionChangedEventArgs? observed = null;
+            tree.SelectionChanged += (_, eventArgs) => observed = eventArgs;
+
+            var down1 = new KeyEventArgs(new Stroke(
+                Code.Down, default, nativeCode: 0, Modifiers.None, KeyAction.Press));
+            _ = Router.Route(tree, Events.Key, down1);
+
+            _ = observed.ShouldNotBeNull();
+            observed.AddedItems.ShouldBe([childA]);
+            observed.RemovedItems.ShouldBe([root]);
+            tree.SelectedItem.ShouldBeSameAs(childA);
+
+            observed = null;
+            var down2 = new KeyEventArgs(new Stroke(
+                Code.Down, default, nativeCode: 0, Modifiers.None, KeyAction.Press));
+            _ = Router.Route(tree, Events.Key, down2);
+
+            _ = observed.ShouldNotBeNull();
+            observed.AddedItems.ShouldBe([childB]);
+            observed.RemovedItems.ShouldBe([childA]);
+            tree.SelectedItem.ShouldBeSameAs(childB);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies detaching one of two selected items reports exactly that item as removed
+    /// and leaves the other as <see cref="TreeView.SelectedItem"/>, with a large collapsed sibling
+    /// branch attached that the removal never touches.</summary>
+    [Fact]
+    public void Items_WhenSelectedItemDetachedWithLargeCollapsedSiblingPresent_ReportsExactRemovedDelta()
+    {
+        var (tree, root, childA, childB, _) = BuildTreeWithDecoyBranch();
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        _ = tree.SetSelected(childA, true);
+        _ = tree.SetSelected(childB, true);
+
+        TreeViewSelectionChangedEventArgs? observed = null;
+        tree.SelectionChanged += (_, eventArgs) => observed = eventArgs;
+
+        _ = root.Children.Remove(childA);
+
+        _ = observed.ShouldNotBeNull();
+        observed.RemovedItems.ShouldBe([childA]);
+        observed.AddedItems.ShouldBeEmpty();
+        tree.SelectedItems.ShouldBe([childB]);
+        tree.SelectedItem.ShouldBeSameAs(childB);
+    }
+
+    /// <summary>Verifies SelectAll reaches every owned item, including the descendants of a
+    /// collapsed branch that never became a visible row - the invariant the ownership cache exists
+    /// to preserve, since the visible-row buffer alone structurally excludes them.</summary>
+    [Fact]
+    public void SelectAll_WhenBranchIsCollapsed_SelectsItsDescendantsToo()
+    {
+        var tree = new TreeView { SelectionMode = TreeSelectionMode.Multiple };
+        var collapsedRoot = new TreeViewItem { Header = "Collapsed", IsExpanded = false };
+        var hiddenChildA = new TreeViewItem { Header = "HiddenA" };
+        var hiddenChildB = new TreeViewItem { Header = "HiddenB" };
+        collapsedRoot.Children.Add(hiddenChildA);
+        collapsedRoot.Children.Add(hiddenChildB);
+        tree.Items.Add(collapsedRoot);
+
+        tree.SelectAll();
+
+        hiddenChildA.IsSelected.ShouldBeTrue();
+        hiddenChildB.IsSelected.ShouldBeTrue();
+        tree.SelectedItems.ShouldBe([collapsedRoot, hiddenChildA, hiddenChildB]);
+    }
+
+    /// <summary>Verifies SelectAll called between BeginUpdate and EndUpdate reaches an item added
+    /// earlier in the same batch - the ownership cache is deliberately left unrefreshed until the
+    /// batch's structural rebuild, so a reader consulting it mid-batch must catch up on demand
+    /// instead of filtering out every item added since BeginUpdate as not-yet-owned.</summary>
+    [Fact]
+    public void SelectAll_WhenCalledMidBatchAfterAnAddition_SelectsTheItemAddedDuringTheBatch()
+    {
+        var tree = new TreeView { SelectionMode = TreeSelectionMode.Multiple };
+        var root = new TreeViewItem { Header = "Root", IsExpanded = true };
+        tree.Items.Add(root);
+
+        tree.BeginUpdate();
+
+        try
+        {
+            var addedDuringBatch = new TreeViewItem { Header = "AddedDuringBatch" };
+            root.Children.Add(addedDuringBatch);
+
+            tree.SelectAll();
+
+            addedDuringBatch.IsSelected.ShouldBeTrue();
+            tree.SelectedItems.ShouldBe([root, addedDuringBatch]);
+        }
+        finally
+        {
+            tree.EndUpdate();
+        }
+    }
+
+    /// <summary>Verifies SetSelected called between BeginUpdate and EndUpdate accepts an item added
+    /// earlier in the same batch, mirroring <see cref="SelectAll_WhenCalledMidBatchAfterAnAddition_SelectsTheItemAddedDuringTheBatch"/>
+    /// for the single-item selection path.</summary>
+    [Fact]
+    public void SetSelected_WhenCalledMidBatchOnAnItemAddedDuringTheBatch_SelectsIt()
+    {
+        var tree = new TreeView { SelectionMode = TreeSelectionMode.Multiple };
+        var root = new TreeViewItem { Header = "Root", IsExpanded = true };
+        tree.Items.Add(root);
+
+        tree.BeginUpdate();
+
+        try
+        {
+            var addedDuringBatch = new TreeViewItem { Header = "AddedDuringBatch" };
+            root.Children.Add(addedDuringBatch);
+
+            var result = tree.SetSelected(addedDuringBatch, true);
+
+            result.ShouldBeTrue();
+            addedDuringBatch.IsSelected.ShouldBeTrue();
+            tree.SelectedItems.ShouldBe([addedDuringBatch]);
+        }
+        finally
+        {
+            tree.EndUpdate();
+        }
+    }
+
+    private static (TreeView Tree, TreeViewItem Root, TreeViewItem ChildA, TreeViewItem ChildB, TreeViewItem DecoyRoot)
+        BuildTreeWithDecoyBranch()
+    {
+        var tree = new TreeView();
+        var root = new TreeViewItem { Header = "Root", IsExpanded = true };
+        var childA = new TreeViewItem { Header = "A" };
+        var childB = new TreeViewItem { Header = "B" };
+        root.Children.Add(childA);
+        root.Children.Add(childB);
+
+        var decoyRoot = new TreeViewItem { Header = "Decoy", IsExpanded = false };
+
+        for (var index = 0; index < _decoyBranchSize; index++)
+        {
+            decoyRoot.Children.Add(new TreeViewItem { Header = $"Decoy{index}" });
+        }
+
+        tree.Items.Add(root);
+        tree.Items.Add(decoyRoot);
+
+        return (tree, root, childA, childB, decoyRoot);
+    }
+
+    #endregion
+
+    #region Asynchronous child loading
+
+    /// <summary>Verifies a loaded-state callback observes the newly committed child in the final
+    /// flattened presentation rather than an intermediate loading tree.</summary>
+    [Fact]
+    public async Task ChildLoad_WhenLoadedCallbackBringsChildIntoView_ObservesRealizedChildAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null, new TreeViewChildDescription("child", "Child"));
+        var root = new TreeViewItem("Root") { ChildSource = source };
+        var tree = new TreeView { Items = { root } };
+        var callbackCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        root.ChildStateChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.Current == TreeViewChildState.Loaded)
+            {
+                tree.BringItemIntoView(root.Children[0]).ShouldBeTrue();
+                callbackCompleted.SetResult();
+            }
+        };
+
+        // Act
+        await dispatcher.InvokeAsync(() => tree.Attach(dispatcher), TestContext.Current.CancellationToken);
+        await callbackCompleted.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        // Assert
+        root.Children.Count.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a loaded child snapshot publishes the resulting aggregate check-state
+    /// transition on its checkable parent.</summary>
+    [Fact]
+    public async Task ChildLoad_WhenMembershipChangesAggregateCheckState_NotifiesParentAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null, new TreeViewChildDescription("child", "Child")
+        {
+            IsCheckable = true,
+            InitialCheckState = false
+        });
+        var root = new TreeViewItem("Root") { ChildSource = source, IsCheckable = true, IsChecked = true };
+        var tree = new TreeView { Items = { root } };
+        var changed = new TaskCompletionSource<CheckChangedEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        root.CheckStateChanged += (_, eventArgs) => _ = changed.TrySetResult(eventArgs);
+
+        // Act
+        await dispatcher.InvokeAsync(() => tree.Attach(dispatcher), TestContext.Current.CancellationToken);
+        await TreeViewChildLoadWait.UntilAsync(
+            root,
+            () => root.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+        var change = await changed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        // Assert
+        root.IsChecked.ShouldBe(false);
+        change.Previous.ShouldBe(true);
+        change.Current.ShouldBe(false);
+    }
+
+    /// <summary>Verifies the deferred attach callback from one dispatcher cannot start a request
+    /// after the item migrates, while the new attachment's callback still starts exactly once.</summary>
+    [Fact]
+    public async Task AttachedLoad_WhenItemMigratesBeforeDeferredCallback_IgnoresPreviousDispatcherAsync()
+    {
+        await using var previousDispatcher = Dispatcher.Start();
+        await using var currentDispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null);
+        var item = new TreeViewItem("Root") { ChildSource = source };
+        var tree = new TreeView { Items = { item } };
+        var detached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var attached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim releasePrevious = new();
+        using ManualResetEventSlim releaseCurrent = new();
+        previousDispatcher.Post(() =>
+        {
+            tree.Attach(previousDispatcher);
+            tree.Detach();
+            detached.SetResult();
+            releasePrevious.Wait();
+        });
+        await detached.Task.WaitAsync(TestContext.Current.CancellationToken);
+        currentDispatcher.Post(() =>
+        {
+            tree.Attach(currentDispatcher);
+            attached.SetResult();
+            releaseCurrent.Wait();
+        });
+        await attached.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        releasePrevious.Set();
+        await previousDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        source.Requests.ShouldBeEmpty();
+
+        releaseCurrent.Set();
+        await currentDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        source.Requests.ShouldBe([null]);
+        await currentDispatcher.InvokeAsync(tree.Dispose, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies detachment cancels an in-flight generation, reattachment starts a current
+    /// request, and the ignored old completion cannot replace the new tree state.</summary>
+    [Fact]
+    public async Task ChildLoad_WhenItemMigratesBeforeCompletion_IgnoresPreviousGenerationAsync()
+    {
+        await using var previousDispatcher = Dispatcher.Start();
+        await using var currentDispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var stale = source.DeferNext(null);
+        source.AddChildren(null, new TreeViewChildDescription("fresh", "Fresh"));
+        var item = new TreeViewItem("Root") { ChildSource = source };
+        var tree = new TreeView { Items = { item } };
+        await previousDispatcher.InvokeAsync(() => tree.Attach(previousDispatcher), TestContext.Current.CancellationToken);
+        await previousDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        source.Requests.Count.ShouldBe(1);
+        await previousDispatcher.InvokeAsync(tree.Detach, TestContext.Current.CancellationToken);
+        await currentDispatcher.InvokeAsync(() => tree.Attach(currentDispatcher), TestContext.Current.CancellationToken);
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        _ = stale.TrySetResult([new TreeViewChildDescription("stale", "Stale")]);
+        await previousDispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        item.Children.ShouldHaveSingleItem().Header.ShouldBe("Fresh");
+        source.Requests.Count.ShouldBe(2);
+        await currentDispatcher.InvokeAsync(tree.Dispose, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies expansion invariant work survives either public expansion observer
+    /// throwing after the state commits.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task IsExpanded_WhenExpansionObserverThrows_StillStartsCommittedLoadAsync(
+        bool throwFromPropertyObserver)
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null, new TreeViewChildDescription("child", "Child")
+        {
+            Presence = TreeViewChildPresence.Leaf
+        });
+        var item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+        var tree = new TreeView { Items = { item } };
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            tree.Attach(dispatcher);
+
+            if (throwFromPropertyObserver)
+            {
+                item.PropertyChanged += (_, eventArgs) =>
+                {
+                    if (eventArgs.PropertyName == nameof(TreeViewItem.IsExpanded))
+                    {
+                        throw new InvalidOperationException("The property observer failed.");
+                    }
+                };
+            }
+            else
+            {
+                item.ExpandedChanged += (_, _) =>
+                    throw new InvalidOperationException("The expanded observer failed.");
+            }
+
+            _ = Should.Throw<InvalidOperationException>(() => item.IsExpanded = true);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        source.Requests.ShouldBe([null]);
+        item.Children.Count.ShouldBe(1);
+    }
+
+    /// <summary>Verifies cancelling from the Loading callback cannot expose a token owned by the
+    /// cancelled and disposed request to the superseded outer start path.</summary>
+    [Fact]
+    public async Task BeginLoad_WhenLoadingObserverClearsSource_DoesNotStartCancelledRequestAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+        var tree = new TreeView { Items = { item } };
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            tree.Attach(dispatcher);
+            item.ChildStateChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.Current == TreeViewChildState.Loading)
+                {
+                    item.ChildSource = null;
+                }
+            };
+
+            item.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Leaf);
+        item.ChildSource.ShouldBeNull();
+        source.Requests.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a failing Loading observer cannot strand a committed loading state with
+    /// no request behind it.</summary>
+    [Fact]
+    public async Task BeginLoad_WhenLoadingObserverThrows_StillStartsRequestAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var completion = source.DeferNext(null);
+        var item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+        var tree = new TreeView { Items = { item } };
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            tree.Attach(dispatcher);
+            item.ChildStateChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.Current == TreeViewChildState.Loading)
+                {
+                    throw new InvalidOperationException("The loading observer failed.");
+                }
+            };
+
+            _ = Should.Throw<InvalidOperationException>(() => item.IsExpanded = true);
+        }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+        source.Requests.ShouldBe([null]);
+
+        completion.SetResult([]);
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+        item.Children.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies an item with no <see cref="TreeViewItem.ChildSource"/> and no children is
+    /// a leaf, distinct from an item whose source has not yet been consulted.</summary>
+    [Fact]
+    public void ChildState_WhenNoChildSourceAndNoChildren_IsLeaf()
+    {
+        var item = new TreeViewItem("Leaf");
+
+        item.ChildState.ShouldBe(TreeViewChildState.Leaf);
+        item.HasChildren.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies an item whose children were authored directly (never through
+    /// <see cref="TreeViewItem.ChildSource"/>) reports Loaded, and HasChildren tracks whether that
+    /// committed snapshot is non-empty rather than reporting true unconditionally.</summary>
+    [Fact]
+    public void ChildState_WhenChildrenAreAuthoredDirectly_IsLoadedAndTracksEmptiness()
+    {
+        var item = new TreeViewItem("Node");
+        item.Children.Add(new TreeViewItem("Child"));
+
+        item.ChildState.ShouldBe(TreeViewChildState.Loaded);
+        item.HasChildren.ShouldBeTrue();
+
+        item.Children.Clear();
+
+        item.ChildState.ShouldBe(TreeViewChildState.Leaf);
+        item.HasChildren.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies assigning a source moves an item to Unloaded, offering a disclosure
+    /// affordance before any request has ever been made.</summary>
+    [Fact]
+    public void ChildSource_WhenAssigned_MovesToUnloadedAndOffersDisclosure()
+    {
+        var source = new FakeTreeViewChildSource();
+        var item = new TreeViewItem("Node") { ChildSource = source };
+
+        item.ChildState.ShouldBe(TreeViewChildState.Unloaded);
+        item.HasChildren.ShouldBeTrue();
+        source.Requests.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies attaching an item that started life IsExpanded (the default) with a
+    /// ChildSource already assigned triggers the deferred load the moment a dispatcher becomes
+    /// available, instead of leaving it Unloaded-but-IsExpanded forever.</summary>
+    [Fact]
+    public async Task OnAttached_WhenItemIsExpandedAndUnloaded_TriggersTheDeferredLoadAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null, new TreeViewChildDescription("a", "A") { Presence = TreeViewChildPresence.Leaf });
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            // ChildSource is assigned - and IsExpanded is already true, the constructor default -
+            // entirely before this item ever reaches a dispatcher.
+            item = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        item.Children.Count.ShouldBe(1);
+        source.Requests.ShouldBe([null]);
+    }
+
+    /// <summary>Verifies re-expanding an item that is already Loading - IsExpanded already true, set
+    /// to true again - is a no-op that never starts a second concurrent request.</summary>
+    [Fact]
+    public async Task Expanded_WhenAlreadyLoadingAndSetAgain_DoesNotStartASecondRequestAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        _ = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+            item.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+        source.Requests.Count.ShouldBe(1);
+
+        await dispatcher.InvokeAsync(() => { item.IsExpanded = true; }, TestContext.Current.CancellationToken);
+
+        source.Requests.Count.ShouldBe(1);
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+    }
+
+    /// <summary>Verifies a load committing many children applies them as one atomic update: the
+    /// Loaded transition and the full child set become observable together, never as a partial
+    /// intermediate set, and the transition fires exactly once.</summary>
+    [Fact]
+    public async Task CommitChildLoad_WhenManyChildrenAreReturned_AppliesAsOneAtomicUpdateAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var descriptions = Enumerable.Range(0, 25)
+            .Select(static index => new TreeViewChildDescription($"child-{index}", $"Child {index}")
+            {
+                Presence = TreeViewChildPresence.Leaf
+            })
+            .ToArray();
+        source.AddChildren(null, descriptions);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+        var loadedTransitions = 0;
+        var observedCountAtLoaded = -1;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+            item.ChildStateChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.Current == TreeViewChildState.Loaded)
+                {
+                    loadedTransitions++;
+                    observedCountAtLoaded = item.Children.Count;
+                }
+            };
+            item.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        loadedTransitions.ShouldBe(1);
+        observedCountAtLoaded.ShouldBe(25, "the full committed set must already be visible at the moment the transition fires");
+        item.Children.Count.ShouldBe(25);
+    }
+
+    /// <summary>Verifies a description that never sets Presence defaults to MayHaveChildren: the
+    /// materialized child inherits the parent's ChildSource instead of becoming a Leaf, so it stays
+    /// independently expandable.</summary>
+    [Fact]
+    public async Task Presence_WhenUnspecified_DefaultsToMayHaveChildrenAndInheritsTheSourceAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null, new TreeViewChildDescription("child", "Child"));
+        TreeView tree = null!;
+        TreeViewItem root = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            root = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { root } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            root,
+            () => root.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        var child = root.Children.ShouldHaveSingleItem();
+        child.ChildSource.ShouldBeSameAs(source);
+        child.ChildState.ShouldBe(TreeViewChildState.Unloaded);
+        child.HasChildren.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies an empty successful result commits Loaded, not Leaf - only never having had
+    /// a source, or an explicit <see cref="TreeViewChildPresence.Leaf"/> answer, means leaf.</summary>
+    [Fact]
+    public async Task CommitChildLoad_WhenResultIsEmpty_BecomesLoadedNotLeafAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState != TreeViewChildState.Loading,
+            TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Loaded);
+        item.Children.ShouldBeEmpty();
+        item.HasChildren.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies collapsing an item whose very first load is still in flight cancels the
+    /// request and restores the state it had before the load started - Unloaded - and that a late
+    /// completion of the cancelled request is dropped rather than committed.</summary>
+    [Fact]
+    public async Task Expanded_WhenSetFalseDuringFirstLoad_CancelsRestoresUnloadedAndDropsStaleCompletionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var deferred = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+        Task observation = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+            item.IsExpanded = true;
+            observation = item.LastChildLoadObservation!;
+        }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+
+        await dispatcher.InvokeAsync(() => { item.IsExpanded = false; }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Unloaded);
+        item.Children.ShouldBeEmpty();
+
+        // Deliver the stale completion, then flush the dispatcher queue once more: the fake source
+        // ignores cancellation on purpose, so the request's own continuation still posts a commit
+        // attempt - this proves it lands and is dropped by the generation guard, not merely that we
+        // never gave it a chance to run.
+        _ = deferred.TrySetResult([]);
+        await observation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Unloaded);
+        item.Children.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies collapsing an item mid-reload - one that already had committed children -
+    /// cancels the reload and restores the prior Loaded state and its children untouched, and that
+    /// the cancelled reload's late completion is dropped.</summary>
+    [Fact]
+    public async Task Expanded_WhenSetFalseDuringReloadInFlight_CancelsRestoresPriorLoadedStateAndDropsStaleCompletionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null, new TreeViewChildDescription("a", "A") { Presence = TreeViewChildPresence.Leaf });
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+        item.Children.Count.ShouldBe(1);
+
+        var deferred = source.DeferNext(null);
+        Task observation = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            _ = item.ReloadChildrenAsync();
+            observation = item.LastChildLoadObservation!;
+        }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+
+        await dispatcher.InvokeAsync(() => { item.IsExpanded = false; }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Loaded);
+        item.Children.Count.ShouldBe(1);
+        item.Children[0].Header.ShouldBe("A");
+
+        _ = deferred.TrySetResult([new TreeViewChildDescription("b", "B") { Presence = TreeViewChildPresence.Leaf }]);
+        await observation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Loaded);
+        item.Children.Count.ShouldBe(1);
+        item.Children[0].Header.ShouldBe("A");
+    }
+
+    /// <summary>Verifies starting a second reload while the first is still in flight supersedes it:
+    /// the first request's late completion is dropped by the generation guard once the second has
+    /// committed.</summary>
+    [Fact]
+    public async Task ReloadChildrenAsync_WhenAnOlderRequestCompletesAfterANewerOne_DropsTheStaleCompletionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null, new TreeViewChildDescription("a", "A") { Presence = TreeViewChildPresence.Leaf });
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        var stale = source.DeferNext(null);
+        Task staleObservation = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            _ = item.ReloadChildrenAsync();
+            staleObservation = item.LastChildLoadObservation!;
+        }, TestContext.Current.CancellationToken);
+
+        source.AddChildren(null, new TreeViewChildDescription("fresh", "Fresh") { Presence = TreeViewChildPresence.Leaf });
+
+        await dispatcher.InvokeAsync(() => { _ = item.ReloadChildrenAsync(); }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.Children.Any(child => child.Header == "Fresh"),
+            TestContext.Current.CancellationToken);
+
+        _ = stale.TrySetResult([new TreeViewChildDescription("stale", "Stale") { Presence = TreeViewChildPresence.Leaf }]);
+        await staleObservation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        _ = item.Children.ShouldHaveSingleItem();
+        item.Children[0].Header.ShouldBe("Fresh");
+    }
+
+    /// <summary>Verifies reassigning a different non-null source over loader-owned children cancels
+    /// any pending load, evicts and disposes the old children, and returns to Unloaded.</summary>
+    [Fact]
+    public async Task ChildSource_WhenReassignedToADifferentSource_EvictsDisposesAndReturnsToUnloadedAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var firstSource = new FakeTreeViewChildSource();
+        firstSource.AddChildren(null, new TreeViewChildDescription("a", "A") { Presence = TreeViewChildPresence.Leaf });
+        var secondSource = new FakeTreeViewChildSource();
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = firstSource };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+        var previousChild = item.Children.ShouldHaveSingleItem();
+
+        await dispatcher.InvokeAsync(() => { item.ChildSource = secondSource; }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Unloaded);
+        item.Children.ShouldBeEmpty();
+        previousChild.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies clearing a loader-owned source to null evicts and disposes the loaded
+    /// children and lands on Leaf - not Loaded - because it no longer has a source to answer for it.</summary>
+    [Fact]
+    public async Task ChildSource_WhenClearedToNull_EvictsDisposesAndBecomesLeafAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null, new TreeViewChildDescription("a", "A") { Presence = TreeViewChildPresence.Leaf });
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+        var previousChild = item.Children.ShouldHaveSingleItem();
+
+        await dispatcher.InvokeAsync(() => { item.ChildSource = null; }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Leaf);
+        item.Children.ShouldBeEmpty();
+        previousChild.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies source eviction publishes the aggregate check-state transition caused by
+    /// removing the loader-owned child snapshot.</summary>
+    [Fact]
+    public async Task ChildSource_WhenLoaderChildrenAreEvicted_NotifiesAggregateCheckStateAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null, new TreeViewChildDescription("a", "A")
+        {
+            IsCheckable = true,
+            InitialCheckState = false,
+            Presence = TreeViewChildPresence.Leaf
+        });
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root")
+            {
+                ChildSource = source,
+                IsCheckable = true,
+                IsChecked = true
+            };
+            var tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        CheckChangedEventArgs? change = null;
+        item.CheckStateChanged += (_, eventArgs) => change = eventArgs;
+
+        // Act
+        await dispatcher.InvokeAsync(() => { item.ChildSource = null; }, TestContext.Current.CancellationToken);
+
+        // Assert
+        item.IsChecked.ShouldBe(true);
+        _ = change.ShouldNotBeNull();
+        change.Previous.ShouldBe(false);
+        change.Current.ShouldBe(true);
+    }
+
+    /// <summary>Verifies a failed reload retains the children an earlier successful load already
+    /// committed, and publishes the failure through <see cref="TreeViewItem.LastChildLoadError"/>.</summary>
+    [Fact]
+    public async Task CommitChildLoadFailure_WhenPriorChildrenExist_RetainsThemAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(
+            null,
+            new TreeViewChildDescription("a", "A") { Presence = TreeViewChildPresence.Leaf },
+            new TreeViewChildDescription("b", "B") { Presence = TreeViewChildPresence.Leaf });
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+        item.Children.Count.ShouldBe(2);
+
+        var failure = new InvalidOperationException("simulated enumeration failure");
+        source.FailNext(null, failure);
+
+        await dispatcher.InvokeAsync(() => { _ = item.ReloadChildrenAsync(); }, TestContext.Current.CancellationToken);
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.LoadFailed,
+            TestContext.Current.CancellationToken);
+
+        item.Children.Count.ShouldBe(2);
+        item.LastChildLoadError.ShouldBeSameAs(failure);
+    }
+
+    /// <summary>Verifies a null result list is rejected as a failure without mutating the previously
+    /// committed - or absent - children.</summary>
+    [Fact]
+    public async Task CommitChildLoad_WhenResultIsNull_RejectsWithoutMutatingStateAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var deferred = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        _ = deferred.TrySetResult(null!);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.LoadFailed,
+            TestContext.Current.CancellationToken);
+
+        item.Children.ShouldBeEmpty();
+        _ = item.LastChildLoadError.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies a null element inside an otherwise valid result list is rejected without
+    /// mutating state.</summary>
+    [Fact]
+    public async Task CommitChildLoad_WhenResultContainsANullElement_RejectsWithoutMutatingStateAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var deferred = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        _ = deferred.TrySetResult([null!]);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.LoadFailed,
+            TestContext.Current.CancellationToken);
+
+        item.Children.ShouldBeEmpty();
+        _ = item.LastChildLoadError.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies duplicate keys within one result are rejected without mutating state.</summary>
+    [Fact]
+    public async Task CommitChildLoad_WhenResultHasDuplicateKeys_RejectsWithoutMutatingStateAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var deferred = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        _ = deferred.TrySetResult([
+            new TreeViewChildDescription("dup", "First") { Presence = TreeViewChildPresence.Leaf },
+            new TreeViewChildDescription("dup", "Second") { Presence = TreeViewChildPresence.Leaf }
+        ]);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.LoadFailed,
+            TestContext.Current.CancellationToken);
+
+        item.Children.ShouldBeEmpty();
+        _ = item.LastChildLoadError.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies a key that collides with an ancestor's stable key - which would materialize
+    /// a cycle - is rejected without mutating state.</summary>
+    [Fact]
+    public async Task CommitChildLoad_WhenResultKeyCollidesWithAnAncestor_RejectsAsACycleAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(null, new TreeViewChildDescription("root-key", "Whoops"));
+        TreeView tree = null!;
+        TreeViewItem root = null!;
+        TreeViewItem child = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            root = new TreeViewItem("Root") { RemoteKey = "root-key" };
+            child = new TreeViewItem("Child") { ChildSource = source };
+            root.Children.Add(child);
+            tree = new TreeView { Items = { root } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            child,
+            () => child.ChildState == TreeViewChildState.LoadFailed,
+            TestContext.Current.CancellationToken);
+
+        child.Children.ShouldBeEmpty();
+        _ = child.LastChildLoadError.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies a header containing a terminal control character is rejected without
+    /// mutating state, matching the same validation a caller-authored <see cref="TreeViewItem.Header"/>
+    /// enforces synchronously.</summary>
+    [Fact]
+    public async Task CommitChildLoad_WhenAHeaderContainsAControlCharacter_RejectsWithoutMutatingStateAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var deferred = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        _ = deferred.TrySetResult([
+            new TreeViewChildDescription("bad", "ContainsBell") { Presence = TreeViewChildPresence.Leaf }
+        ]);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.LoadFailed,
+            TestContext.Current.CancellationToken);
+
+        item.Children.ShouldBeEmpty();
+        _ = item.LastChildLoadError.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies a stable key reused across a reload keeps the same materialized instance,
+    /// preserving its IsExpanded, checked, and selected state instead of rebuilding it from scratch.</summary>
+    [Fact]
+    public async Task ReloadChildrenAsync_WhenKeysAreStable_PreservesExpandedCheckedAndSelectedAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.AddChildren(
+            null,
+            new TreeViewChildDescription("k1", "One") { IsCheckable = true, Presence = TreeViewChildPresence.Leaf },
+            new TreeViewChildDescription("k2", "Two") { IsCheckable = true, Presence = TreeViewChildPresence.Leaf });
+        TreeView tree = null!;
+        TreeViewItem root = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            root = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { root } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            root,
+            () => root.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        var one = root.Children.Single(child => Equals(child.RemoteKey, "k1"));
+        await dispatcher.InvokeAsync(() =>
+        {
+            one.IsExpanded = false;
+            one.IsChecked = true;
+            tree.SelectItem(one);
+        }, TestContext.Current.CancellationToken);
+
+        source.AddChildren(
+            null,
+            new TreeViewChildDescription("k1", "One Renamed") { IsCheckable = true, Presence = TreeViewChildPresence.Leaf },
+            new TreeViewChildDescription("k2", "Two") { IsCheckable = true, Presence = TreeViewChildPresence.Leaf });
+
+        await dispatcher.InvokeAsync(() => { _ = root.ReloadChildrenAsync(); }, TestContext.Current.CancellationToken);
+        await TreeViewChildLoadWait.UntilAsync(
+            root,
+            () => root.Children.Any(child => child.Header == "One Renamed"),
+            TestContext.Current.CancellationToken);
+
+        var reloadedOne = root.Children.Single(child => Equals(child.RemoteKey, "k1"));
+        reloadedOne.ShouldBeSameAs(one, "the stable key must reuse the same materialized instance");
+        reloadedOne.Header.ShouldBe("One Renamed");
+        reloadedOne.IsExpanded.ShouldBeFalse();
+        reloadedOne.IsChecked.ShouldBe(true);
+        tree.SelectedItem.ShouldBeSameAs(one);
+    }
+
+    /// <summary>Verifies a checkable parent's own check state, set before its children ever load,
+    /// applies as the initial state to later-loaded checkable descendants that do not specify their
+    /// own initial state.</summary>
+    [Fact]
+    public async Task IsChecked_WhenSetBeforeChildrenLoad_AppliesToLaterLoadedCheckableDescendantsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        TreeView tree = null!;
+        TreeViewItem root = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            root = new TreeViewItem("Root") { ChildSource = source, IsCheckable = true, IsExpanded = false };
+            tree = new TreeView { Items = { root } };
+            tree.Attach(dispatcher);
+            root.IsChecked = true;
+        }, TestContext.Current.CancellationToken);
+
+        source.AddChildren(null, new TreeViewChildDescription("k1", "One") { IsCheckable = true, Presence = TreeViewChildPresence.Leaf });
+
+        await dispatcher.InvokeAsync(() => { root.IsExpanded = true; }, TestContext.Current.CancellationToken);
+        await TreeViewChildLoadWait.UntilAsync(
+            root,
+            () => root.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        var child = root.Children.ShouldHaveSingleItem();
+        child.IsChecked.ShouldBe(true);
+    }
+
+    /// <summary>Verifies a description's explicit InitialCheckState overrides the checkable
+    /// parent's own check state, rather than always inheriting it.</summary>
+    [Fact]
+    public async Task InitialCheckState_WhenSpecified_OverridesTheCheckableParentsOwnStateAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        TreeView tree = null!;
+        TreeViewItem root = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            root = new TreeViewItem("Root") { ChildSource = source, IsCheckable = true, IsExpanded = false };
+            tree = new TreeView { Items = { root } };
+            tree.Attach(dispatcher);
+            root.IsChecked = true;
+        }, TestContext.Current.CancellationToken);
+
+        source.AddChildren(
+            null,
+            new TreeViewChildDescription("k1", "One")
+            {
+                IsCheckable = true,
+                InitialCheckState = false,
+                Presence = TreeViewChildPresence.Leaf
+            });
+
+        await dispatcher.InvokeAsync(() => { root.IsExpanded = true; }, TestContext.Current.CancellationToken);
+        await TreeViewChildLoadWait.UntilAsync(
+            root,
+            () => root.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        var child = root.Children.ShouldHaveSingleItem();
+        child.IsChecked.ShouldBe(false, "the description's own InitialCheckState must win over the inherited parent state");
+    }
+
+    /// <summary>Verifies disposing the owning tree while a descendant's load is still in flight
+    /// cancels the subtree's pending loads through the item's own disposal hook, and a late
+    /// completion afterward does not fault the fire-and-forget loop.</summary>
+    [Fact]
+    public async Task Dispose_WhenLoadIsInFlight_CancelsTheSubtreeLoadWithoutFaultingAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var deferred = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+        Task observation = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+            item.IsExpanded = true;
+            observation = item.LastChildLoadObservation!;
+        }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+
+        await dispatcher.InvokeAsync(tree.Dispose, TestContext.Current.CancellationToken);
+
+        _ = deferred.TrySetResult([new TreeViewChildDescription("a", "A") { Presence = TreeViewChildPresence.Leaf }]);
+
+        await observation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        observation.IsFaulted.ShouldBeFalse();
+        item.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies directly disposing a loading item removes its semantic entry and drops a late completion.</summary>
+    [Fact]
+    public async Task ItemDispose_WhenLoadIsInFlight_RemovesEntryAndDropsLateCompletionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var deferred = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+        Task observation = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+            item.IsExpanded = true;
+            observation = item.LastChildLoadObservation!;
+        }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+
+        await dispatcher.InvokeAsync(item.Dispose, TestContext.Current.CancellationToken);
+
+        tree.Items.ShouldBeEmpty();
+        item.ParentCollection.ShouldBeNull();
+        _ = deferred.TrySetResult([new TreeViewChildDescription("late", "Late") { Presence = TreeViewChildPresence.Leaf }]);
+        await observation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        observation.IsFaulted.ShouldBeFalse();
+        item.Children.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies <see cref="TreeViewItem.ReloadChildrenAsync"/> rejects a null ChildSource.</summary>
+    [Fact]
+    public async Task ReloadChildrenAsync_WhenChildSourceIsNull_ThrowsInvalidOperationExceptionAsync()
+    {
+        var item = new TreeViewItem("Leaf");
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => item.ReloadChildrenAsync());
+    }
+
+    /// <summary>Verifies <see cref="TreeViewItem.ReloadChildrenAsync"/> requires an item attached to
+    /// a running dispatcher.</summary>
+    [Fact]
+    public async Task ReloadChildrenAsync_WhenItemIsUnattached_ThrowsInvalidOperationExceptionAsync()
+    {
+        var source = new FakeTreeViewChildSource();
+        var item = new TreeViewItem("Node") { ChildSource = source };
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => item.ReloadChildrenAsync());
+    }
+
+    /// <summary>Verifies an unloaded branch is skipped by <see cref="TreeView.ExpandAll"/> rather
+    /// than being forced to start a remote load it never promised to trigger.</summary>
+    [Fact]
+    public async Task ExpandAll_WhenBranchIsUnloaded_SkipsItWithoutStartingALoadAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Node") { ChildSource = source, IsExpanded = false };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+            tree.ExpandAll();
+        }, TestContext.Current.CancellationToken);
+
+        item.IsExpanded.ShouldBeFalse();
+        item.ChildState.ShouldBe(TreeViewChildState.Unloaded);
+        source.Requests.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a fresh tree defaults to four concurrent child-load admissions.</summary>
+    [Fact]
+    public void MaxConcurrentChildLoads_WhenCreated_DefaultsToFour()
+    {
+        var tree = new TreeView();
+
+        tree.MaxConcurrentChildLoads.ShouldBe(4);
+    }
+
+    /// <summary>Verifies a non-positive concurrency limit is rejected before mutation.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void MaxConcurrentChildLoads_WhenSetToNonPositiveValue_ThrowsArgumentOutOfRangeException(int value)
+    {
+        var tree = new TreeView();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tree.MaxConcurrentChildLoads = value);
+
+        tree.MaxConcurrentChildLoads.ShouldBe(4);
+    }
+
+    /// <summary>Verifies a changed concurrency limit publishes once, while an equivalent
+    /// assignment remains notification-free.</summary>
+    [Fact]
+    public void MaxConcurrentChildLoads_WhenChanged_RaisesPropertyChangedOnce()
+    {
+        // Arrange
+        var tree = new TreeView();
+        List<string?> changed = [];
+        tree.PropertyChanged += (_, eventArgs) => changed.Add(eventArgs.PropertyName);
+
+        // Act
+        tree.MaxConcurrentChildLoads = 2;
+        tree.MaxConcurrentChildLoads = 2;
+
+        // Assert
+        changed.ShouldBe([nameof(TreeView.MaxConcurrentChildLoads)]);
+    }
+
+    /// <summary>Verifies even an equivalent concurrency-limit assignment enforces dispatcher
+    /// affinity before returning as a no-op.</summary>
+    [Fact]
+    public async Task MaxConcurrentChildLoads_WhenAttachedAndAssignedCurrentValueOffDispatcher_ThrowsAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var tree = new TreeView();
+        await dispatcher.InvokeAsync(() => tree.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        // Act and assert
+        _ = Should.Throw<InvalidOperationException>(() => tree.MaxConcurrentChildLoads = 4);
+        tree.MaxConcurrentChildLoads.ShouldBe(4);
+    }
+
+    /// <summary>Verifies a disposed tree rejects a concurrency-limit mutation before changing the
+    /// retained admission policy.</summary>
+    [Fact]
+    public void MaxConcurrentChildLoads_WhenOwnerIsDisposed_ThrowsBeforeMutation()
+    {
+        // Arrange
+        var tree = new TreeView();
+        tree.Dispose();
+
+        // Act and assert
+        _ = Should.Throw<ObjectDisposedException>(() => tree.MaxConcurrentChildLoads = 2);
+        tree.MaxConcurrentChildLoads.ShouldBe(4);
+    }
+
+    /// <summary>Verifies increasing the live concurrency limit immediately grants available slots
+    /// to already queued requests instead of leaving capacity idle until another load finishes.</summary>
+    [Fact]
+    public async Task MaxConcurrentChildLoads_WhenIncreased_AdmitsQueuedRequestImmediatelyAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var firstDeferred = source.DeferNext(null);
+        var secondDeferred = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem first = null!;
+        TreeViewItem second = null!;
+        await dispatcher.InvokeAsync(() =>
+        {
+            tree = new TreeView { MaxConcurrentChildLoads = 1 };
+            first = new TreeViewItem("First") { ChildSource = source, IsExpanded = false };
+            second = new TreeViewItem("Second") { ChildSource = source, IsExpanded = false };
+            tree.Items.Add(first);
+            tree.Items.Add(second);
+            tree.Attach(dispatcher);
+            first.IsExpanded = true;
+            second.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+        source.Requests.Count.ShouldBe(1);
+        second.IsAwaitingLoadSlot.ShouldBeTrue();
+
+        // Act
+        _ = await dispatcher.InvokeAsync(
+            () => tree.MaxConcurrentChildLoads = 2,
+            TestContext.Current.CancellationToken);
+        _ = secondDeferred.TrySetResult([]);
+
+        // Assert
+        await TreeViewChildLoadWait.UntilAsync(
+            second,
+            () => second.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+        source.Requests.Count.ShouldBe(2);
+        second.IsAwaitingLoadSlot.ShouldBeFalse();
+
+        _ = firstDeferred.TrySetResult([]);
+        await TreeViewChildLoadWait.UntilAsync(
+            first,
+            () => first.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a second concurrent load request beyond <see cref="TreeView.MaxConcurrentChildLoads"/>
+    /// is admission-queued rather than issued immediately, and is granted its own slot once an
+    /// earlier request releases one.</summary>
+    [Fact]
+    public async Task RequestLoadSlot_WhenConcurrencyLimitIsReached_QueuesTheAdditionalRequestAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var firstDeferred = source.DeferNext(null);
+        var secondDeferred = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem first = null!;
+        TreeViewItem second = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            tree = new TreeView { MaxConcurrentChildLoads = 1 };
+            first = new TreeViewItem("First") { ChildSource = source, IsExpanded = false };
+            second = new TreeViewItem("Second") { ChildSource = source, IsExpanded = false };
+            tree.Items.Add(first);
+            tree.Items.Add(second);
+            tree.Attach(dispatcher);
+            first.IsExpanded = true;
+            second.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+
+        first.ChildState.ShouldBe(TreeViewChildState.Loading);
+        second.ChildState.ShouldBe(TreeViewChildState.Loading);
+        source.Requests.Count.ShouldBe(1, "only the admitted request should have reached the source");
+        second.IsAwaitingLoadSlot.ShouldBeTrue();
+
+        var firstObservation = first.LastChildLoadObservation!;
+        var secondObservation = second.LastChildLoadObservation!;
+
+        // Resolved from this test thread, not the dispatcher - RunLoadAsync's slot-release path
+        // (ConfigureAwait(false) throughout, so its continuation and finally block run wherever
+        // the source's task completed) must marshal back to the dispatcher before touching the
+        // tree's admission bookkeeping or the queued item's own state, exactly as its commit and
+        // failure branches already do. Awaiting both observations and asserting they never
+        // faulted is what would have caught that admission handoff corrupting state or throwing
+        // an unobserved exception off-dispatcher.
+        _ = firstDeferred.TrySetResult([]);
+        _ = secondDeferred.TrySetResult([]);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            first,
+            () => first.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+        await TreeViewChildLoadWait.UntilAsync(
+            second,
+            () => second.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        await firstObservation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await secondObservation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        firstObservation.IsFaulted.ShouldBeFalse();
+        secondObservation.IsFaulted.ShouldBeFalse();
+
+        second.IsAwaitingLoadSlot.ShouldBeFalse();
+        source.Requests.Count.ShouldBe(2, "releasing the first slot must admit the queued second request");
+    }
+
+    /// <summary>Verifies collapsing an admission-queued item and immediately re-expanding it - all
+    /// within the same dispatcher turn, before the cancelled request's posted slot-cleanup callback
+    /// has had a chance to run - does not strand the re-expanded request. The cancelled request's
+    /// deferred cleanup must not blindly clear whatever wait handle is currently installed: by the
+    /// time it runs, the re-expand has already installed its own live one, and clearing it would
+    /// leave nobody to ever grant that request its slot.</summary>
+    [Fact]
+    public async Task Expanded_WhenCollapsedAndReExpandedWhileAdmissionQueued_StillReachesLoadedAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var firstDeferred = source.DeferNext(null);
+        var secondDeferred = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem first = null!;
+        TreeViewItem second = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            tree = new TreeView { MaxConcurrentChildLoads = 1 };
+            first = new TreeViewItem("First") { ChildSource = source, IsExpanded = false };
+            second = new TreeViewItem("Second") { ChildSource = source, IsExpanded = false };
+            tree.Items.Add(first);
+            tree.Items.Add(second);
+            tree.Attach(dispatcher);
+            first.IsExpanded = true;
+            second.IsExpanded = true;
+
+            // Collapse the still-queued second item and immediately re-expand it, both within this
+            // same synchronous block. The first expand's cancellation posts its slot-cleanup callback
+            // back through the dispatcher rather than running it inline, so it cannot possibly run
+            // before this block finishes - the re-expand below is guaranteed to have already installed
+            // its own live wait handle by the time that stale cleanup eventually executes.
+            second.IsExpanded = false;
+            second.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+
+        first.ChildState.ShouldBe(TreeViewChildState.Loading);
+        second.ChildState.ShouldBe(TreeViewChildState.Loading);
+        source.Requests.Count.ShouldBe(1, "only the admitted first request should have reached the source so far");
+
+        var firstObservation = first.LastChildLoadObservation!;
+        _ = firstDeferred.TrySetResult([]);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            first,
+            () => first.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+        await firstObservation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        // Releasing the first slot must admit the re-expanded second request. Before the fix, the
+        // first expand's stale posted cleanup unconditionally nulled the field the re-expand had
+        // already repointed at its own wait handle, so nothing was ever left to grant a slot to and
+        // this second item stayed Loading forever - this call would time out.
+        var secondObservation = second.LastChildLoadObservation!;
+        _ = secondDeferred.TrySetResult([]);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            second,
+            () => second.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+        await secondObservation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        second.ChildState.ShouldBe(TreeViewChildState.Loaded);
+        second.IsAwaitingLoadSlot.ShouldBeFalse();
+        source.Requests.Count.ShouldBe(2, "the re-expanded second request must eventually reach the source");
+    }
+
+    /// <summary>Verifies a Control-held Enter over a LoadFailed item does not retry the load and
+    /// leaves the stroke unhandled - matching the activation-eligible modifier gate
+    /// <c>TreeView.OnKeyRouted</c> already applies to the ordinary activation path just a
+    /// few lines below.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterHasControlModifierOnLoadFailedItem_DoesNotRetryAndLeavesUnhandledAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.FailNext(null, new InvalidOperationException("simulated"));
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.LoadFailed,
+            TestContext.Current.CancellationToken);
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            tree.SelectItem(item);
+            using FocusManager focus = new(tree);
+            focus.Focus(tree).ShouldBeTrue();
+
+            var enter = new KeyEventArgs(new Stroke(
+                Code.Enter, default, nativeCode: 0, Modifiers.Control, KeyAction.Press));
+            _ = Router.Route(tree, Events.Key, enter);
+
+            enter.IsHandled.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.LoadFailed);
+        source.Requests.Count.ShouldBe(1, "the gated stroke must not have started a second request");
+    }
+
+    /// <summary>Verifies an Alt-held Enter over a LoadFailed item is gated the same way a
+    /// Control-held one is.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterHasAltModifierOnLoadFailedItem_DoesNotRetryAndLeavesUnhandledAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.FailNext(null, new InvalidOperationException("simulated"));
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.LoadFailed,
+            TestContext.Current.CancellationToken);
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            tree.SelectItem(item);
+            using FocusManager focus = new(tree);
+            focus.Focus(tree).ShouldBeTrue();
+
+            var enter = new KeyEventArgs(new Stroke(
+                Code.Enter, default, nativeCode: 0, Modifiers.Alt, KeyAction.Press));
+            _ = Router.Route(tree, Events.Key, enter);
+
+            enter.IsHandled.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.LoadFailed);
+        source.Requests.Count.ShouldBe(1, "the gated stroke must not have started a second request");
+    }
+
+    /// <summary>Verifies a plain Enter over a LoadFailed item still retries the load and handles
+    /// the stroke.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterIsPlainOnLoadFailedItem_RetriesAndHandlesAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.FailNext(null, new InvalidOperationException("simulated"));
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.LoadFailed,
+            TestContext.Current.CancellationToken);
+
+        source.AddChildren(null, new TreeViewChildDescription("a", "A") { Presence = TreeViewChildPresence.Leaf });
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            tree.SelectItem(item);
+            using FocusManager focus = new(tree);
+            focus.Focus(tree).ShouldBeTrue();
+
+            var enter = new KeyEventArgs(new Stroke(
+                Code.Enter, default, nativeCode: 0, Modifiers.None, KeyAction.Press));
+            _ = Router.Route(tree, Events.Key, enter);
+
+            enter.IsHandled.ShouldBeTrue();
+            item.ChildState.ShouldBe(TreeViewChildState.Loading);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        item.Children.Count.ShouldBe(1);
+        source.Requests.Count.ShouldBe(2, "the retry must have reached the source as a second request");
+    }
+
+    /// <summary>Verifies a Shift-held Enter (a common terminal chord) over a LoadFailed item still
+    /// retries the load and handles the stroke.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterHasShiftModifierOnLoadFailedItem_RetriesAndHandlesAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        source.FailNext(null, new InvalidOperationException("simulated"));
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.LoadFailed,
+            TestContext.Current.CancellationToken);
+
+        source.AddChildren(null, new TreeViewChildDescription("a", "A") { Presence = TreeViewChildPresence.Leaf });
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            tree.SelectItem(item);
+            using FocusManager focus = new(tree);
+            focus.Focus(tree).ShouldBeTrue();
+
+            var enter = new KeyEventArgs(new Stroke(
+                Code.Enter, default, nativeCode: 0, Modifiers.Shift, KeyAction.Press));
+            _ = Router.Route(tree, Events.Key, enter);
+
+            enter.IsHandled.ShouldBeTrue();
+            item.ChildState.ShouldBe(TreeViewChildState.Loading);
+        }, TestContext.Current.CancellationToken);
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        item.Children.Count.ShouldBe(1);
+        source.Requests.Count.ShouldBe(2, "the retry must have reached the source as a second request");
+    }
+
+    /// <summary>Verifies a fresh tree carries the documented default status row text.</summary>
+    [Fact]
+    public void LoadingAndLoadFailedText_WhenCreated_UseDocumentedDefaults()
+    {
+        var tree = new TreeView();
+
+        tree.LoadingText.ShouldBe("Loading…");
+        tree.LoadFailedText.ShouldBe("Failed to load. Press Enter to retry.");
+    }
+
+    /// <summary>Verifies LoadingText and LoadFailedText round-trip a caller-assigned value.</summary>
+    [Fact]
+    public void LoadingAndLoadFailedText_WhenAssigned_RoundTrip()
+    {
+        var tree = new TreeView
+        {
+            LoadingText = "Please wait…",
+            LoadFailedText = "Could not load.",
+        };
+
+        tree.LoadingText.ShouldBe("Please wait…");
+        tree.LoadFailedText.ShouldBe("Could not load.");
+    }
+
+    /// <summary>Verifies LoadingText and LoadFailedText reject a null value.</summary>
+    [Fact]
+    public void LoadingAndLoadFailedText_WhenAssignedNull_ThrowArgumentNullException()
+    {
+        var tree = new TreeView();
+
+        _ = Should.Throw<ArgumentNullException>(() => tree.LoadingText = null!);
+        _ = Should.Throw<ArgumentNullException>(() => tree.LoadFailedText = null!);
+
+        tree.LoadingText.ShouldBe("Loading…");
+        tree.LoadFailedText.ShouldBe("Failed to load. Press Enter to retry.");
+    }
+
+    /// <summary>Verifies LoadingText and LoadFailedText reject a value containing a terminal
+    /// control character instead of silently corrupting the rendered status row.</summary>
+    [Theory]
+    [InlineData("Loading\nnow")]
+    [InlineData("Loading\tnow")]
+    public void LoadingAndLoadFailedText_WhenContainingControlCharacter_ThrowArgumentException(string value)
+    {
+        var tree = new TreeView();
+
+        _ = Should.Throw<ArgumentException>(() => tree.LoadingText = value);
+        _ = Should.Throw<ArgumentException>(() => tree.LoadFailedText = value);
+
+        tree.LoadingText.ShouldBe("Loading…");
+        tree.LoadFailedText.ShouldBe("Failed to load. Press Enter to retry.");
+    }
+
+    #endregion
+
+    #region Child-loading dispatcher fullness
+
+    private static TreeViewChildDescription[] OneLeafChild() =>
+        [new TreeViewChildDescription("a", "A") { Presence = TreeViewChildPresence.Leaf }];
+
+    /// <summary>Blocks the dispatcher thread inside one posted callback (which becomes the
+    /// currently-running work item, so it no longer counts against the bounded queue itself), then
+    /// queues one more filler behind it, saturating a capacity-1 dispatcher for as long as the
+    /// returned handle is held.</summary>
+    /// <param name="dispatcher">The capacity-1 dispatcher to saturate.</param>
+    /// <param name="cancellationToken">Cancels waiting for the hostage to start running.</param>
+    /// <param name="filler">The queued filler; defaults to a no-op when null.</param>
+    private static async Task<ManualResetEventSlim> SaturateSingleSlotQueueAsync(
+        Dispatcher dispatcher,
+        CancellationToken cancellationToken,
+        Action? filler = null)
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new ManualResetEventSlim();
+        dispatcher.Post(() =>
+        {
+            entered.SetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(cancellationToken);
+        dispatcher.Post(filler ?? (static () => { }));
+        return release;
+    }
+
+    /// <summary>Verifies the success-commit post's bridging retry - given a genuine chance to
+    /// succeed once the saturated slot frees, exactly as a live dispatcher queue drains in
+    /// practice - reaches <see cref="Dispatcher.UnhandledException"/> and
+    /// <see cref="Dispatcher.FatalException"/> with the original "queue is full" failure, the same
+    /// outcome a synchronous dispatcher-callback failure already produces. The commit itself never
+    /// runs (only the rethrow was ever queued), so the item stays stuck Loading - loading state is
+    /// deliberately not reset as a substitute for this contract.</summary>
+    [Fact]
+    public async Task RunLoadAsync_WhenSuccessCommitPostFindsQueueFullThenFrees_BridgesToUnhandledExceptionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start(capacity: 1);
+        var source = new FakeTreeViewChildSource();
+        var completion = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+            item.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+
+        var observation = item.LastChildLoadObservation!;
+
+        var fillerDrained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var hostageRelease = await SaturateSingleSlotQueueAsync(
+            dispatcher,
+            TestContext.Current.CancellationToken,
+            filler: () => fillerDrained.SetResult());
+
+        // Frees the one saturated slot deterministically, in the otherwise nanosecond-wide window
+        // between the first (failed) attempt and the bridging retry, instead of racing a genuine
+        // drain: releasing the hostage lets the dispatcher thread dequeue and run the filler above,
+        // which signals fillerDrained the moment it does, before the retry ever attempts to post.
+        dispatcher.BackgroundCompletionRetryHookForTests = () =>
+        {
+            hostageRelease.Set();
+            _ = fillerDrained.Task.Wait(TimeSpan.FromSeconds(5));
+        };
+
+        var unhandled = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+        dispatcher.UnhandledException += (_, eventArgs) => unhandled.TrySetResult(eventArgs.Exception);
+
+        completion.SetResult(OneLeafChild());
+
+        var reported = await unhandled.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        reported.ShouldBeOfType<InvalidOperationException>().Message.ShouldBe("The dispatcher queue is full.");
+        await observation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        observation.IsCompletedSuccessfully.ShouldBeTrue();
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+
+        await Should.NotThrowAsync(async () =>
+            await dispatcher.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        dispatcher.FatalException.ShouldBeSameAs(reported);
+    }
+
+    /// <summary>Verifies the success-commit post's bridging retry, when it is also rejected for a
+    /// full queue - the queue never drains at all in this scenario - drops the fault as the
+    /// documented, accepted edge instead of retrying indefinitely: the observation completes
+    /// successfully, nothing reaches <see cref="Dispatcher.UnhandledException"/>, and the item
+    /// stays stuck Loading with no observable signal beyond that stall.</summary>
+    [Fact]
+    public async Task RunLoadAsync_WhenSuccessCommitPostFindsQueueFullOnBothAttempts_DropsTheFaultAsync()
+    {
+        await using var dispatcher = Dispatcher.Start(capacity: 1);
+        var source = new FakeTreeViewChildSource();
+        var completion = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+            item.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+
+        var observation = item.LastChildLoadObservation!;
+        var release = await SaturateSingleSlotQueueAsync(dispatcher, TestContext.Current.CancellationToken);
+
+        var unhandledObserved = false;
+        dispatcher.UnhandledException += (_, _) => unhandledObserved = true;
+
+        completion.SetResult(OneLeafChild());
+
+        // Nothing ever frees the saturated slot, so both the original attempt and the bridging
+        // retry observe the same full queue; give the off-thread continuation a moment to reach and
+        // exhaust both before asserting the drop.
+        await Task.Delay(TimeSpan.FromMilliseconds(200), TestContext.Current.CancellationToken);
+
+        release.Set();
+
+        await observation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        observation.IsCompletedSuccessfully.ShouldBeTrue();
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+        unhandledObserved.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies the success-commit and slot-release posts still no-op silently once the
+    /// dispatcher is disposed, exactly as before.</summary>
+    [Fact]
+    public async Task RunLoadAsync_WhenDispatcherIsDisposedAfterSuccess_CompletesWithoutFaultingAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var completion = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+            item.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+
+        var observation = item.LastChildLoadObservation!;
+
+        await dispatcher.DisposeAsync();
+
+        completion.SetResult(OneLeafChild());
+
+        await observation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        observation.IsCompletedSuccessfully.ShouldBeTrue();
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+    }
+
+    /// <summary>Verifies the failure-commit post's bridging retry - given the same genuine chance
+    /// to succeed as the success-commit site above - reaches
+    /// <see cref="Dispatcher.UnhandledException"/> with the original "queue is full" failure.</summary>
+    [Fact]
+    public async Task RunLoadAsync_WhenFailureCommitPostFindsQueueFullThenFrees_BridgesToUnhandledExceptionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start(capacity: 1);
+        var source = new FakeTreeViewChildSource();
+        var completion = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+            item.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+
+        var observation = item.LastChildLoadObservation!;
+
+        var fillerDrained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var hostageRelease = await SaturateSingleSlotQueueAsync(
+            dispatcher,
+            TestContext.Current.CancellationToken,
+            filler: () => fillerDrained.SetResult());
+
+        dispatcher.BackgroundCompletionRetryHookForTests = () =>
+        {
+            hostageRelease.Set();
+            _ = fillerDrained.Task.Wait(TimeSpan.FromSeconds(5));
+        };
+
+        var unhandled = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+        dispatcher.UnhandledException += (_, eventArgs) => unhandled.TrySetResult(eventArgs.Exception);
+
+        completion.SetException(new InvalidOperationException("simulated child-source failure"));
+
+        var reported = await unhandled.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        reported.ShouldBeOfType<InvalidOperationException>().Message.ShouldBe("The dispatcher queue is full.");
+        await observation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        observation.IsCompletedSuccessfully.ShouldBeTrue();
+
+        // The failure commit never ran either (same bridge, same only-the-rethrow-was-queued
+        // shape), so LastChildLoadError is never published and the item stays stuck Loading rather
+        // than advancing to LoadFailed.
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+        item.LastChildLoadError.ShouldBeNull();
+    }
+
+    /// <summary>Verifies the failure-commit post's bridging retry, when it is also rejected for a
+    /// full queue, drops the fault instead of retrying indefinitely - the sibling edge case to the
+    /// success-commit site's own double-failure drop above.</summary>
+    [Fact]
+    public async Task RunLoadAsync_WhenFailureCommitPostFindsQueueFullOnBothAttempts_DropsTheFaultAsync()
+    {
+        await using var dispatcher = Dispatcher.Start(capacity: 1);
+        var source = new FakeTreeViewChildSource();
+        var completion = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+            item.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+
+        var observation = item.LastChildLoadObservation!;
+        var release = await SaturateSingleSlotQueueAsync(dispatcher, TestContext.Current.CancellationToken);
+
+        var unhandledObserved = false;
+        dispatcher.UnhandledException += (_, _) => unhandledObserved = true;
+
+        completion.SetException(new InvalidOperationException("simulated child-source failure"));
+
+        await Task.Delay(TimeSpan.FromMilliseconds(200), TestContext.Current.CancellationToken);
+
+        release.Set();
+
+        await observation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        observation.IsCompletedSuccessfully.ShouldBeTrue();
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+        item.LastChildLoadError.ShouldBeNull();
+        unhandledObserved.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies the failure-commit and slot-release posts still no-op silently once the
+    /// dispatcher is disposed, exactly as before.</summary>
+    [Fact]
+    public async Task RunLoadAsync_WhenDispatcherIsDisposedAfterFailure_CompletesWithoutFaultingAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource();
+        var completion = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+            item.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+
+        var observation = item.LastChildLoadObservation!;
+
+        await dispatcher.DisposeAsync();
+
+        completion.SetException(new InvalidOperationException("simulated child-source failure"));
+
+        await observation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        observation.IsCompletedSuccessfully.ShouldBeTrue();
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+    }
+
+    /// <summary>Verifies the <c>finally</c> block's own admission-slot release post, when its own
+    /// bridging retry is also rejected for a full queue - isolated from the other two sites by
+    /// letting the success-commit post through first - drops the fault as the documented, accepted
+    /// edge instead of retrying indefinitely, and that the already-queued commit still runs once
+    /// the dispatcher is unblocked even though the slot itself was never released.</summary>
+    [Fact]
+    public async Task RunLoadAsync_WhenSlotReleasePostFindsQueueFullOnBothAttempts_DropsTheFaultButStillCommitsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start(capacity: 1);
+        var source = new FakeTreeViewChildSource();
+        var completion = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+            item.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+
+        var observation = item.LastChildLoadObservation!;
+
+        using ManualResetEventSlim release = new();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        dispatcher.Post(() =>
+        {
+            entered.SetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // No filler this time: with capacity 1 and the hostage already dequeued, the queue is
+        // empty, so the success-commit post below succeeds and consumes the one slot the queue
+        // allows - isolating the finally block's own slot-release post (and its own bridging
+        // retry) as the one that finds it full on both attempts.
+        completion.SetResult(OneLeafChild());
+
+        var unhandledObserved = false;
+        dispatcher.UnhandledException += (_, _) => unhandledObserved = true;
+
+        // The success commit's own post succeeded immediately (queue was empty), so give the
+        // off-thread continuation a moment to reach the finally block and exhaust both of its own
+        // post attempts against the now-saturated queue before asserting the drop.
+        await Task.Delay(TimeSpan.FromMilliseconds(200), TestContext.Current.CancellationToken);
+
+        // The success commit was already queued behind the still-blocked dispatcher thread before
+        // the finally's own posts failed, so it has not run yet.
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+        unhandledObserved.ShouldBeFalse();
+
+        release.Set();
+
+        await TreeViewChildLoadWait.UntilAsync(
+            item,
+            () => item.ChildState == TreeViewChildState.Loaded,
+            TestContext.Current.CancellationToken);
+
+        item.Children.Count.ShouldBe(1);
+        await observation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        observation.IsCompletedSuccessfully.ShouldBeTrue();
+    }
+
+    #endregion
 }

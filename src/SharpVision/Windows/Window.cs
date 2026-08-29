@@ -16,7 +16,7 @@ using Terminal.Rendering;
 
 /// <summary>Frames one owned content control as a titled terminal window with optional Turbo Vision-style shadowing.</summary>
 [PublicAPI]
-public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
+public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 {
     private const int _closeChromeWidth = 7;
     private const int _closeTargetWidth = 3;
