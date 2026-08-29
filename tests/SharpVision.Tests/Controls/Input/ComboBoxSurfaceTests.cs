@@ -13,7 +13,9 @@ public sealed class ComboBoxSurfaceTests
         var combo = new ComboBox
         {
             DropDownHeight = Length.Percent(50),
+            RowHeight = Length.Percent(50),
             Height = Length.Cells(3),
+            ItemTemplate = item => new ControlText((string) item!) { Height = Length.Star(1) },
             Items = Enumerable.Range(0, 20).Select(index => (object?) $"Item {index}").ToArray(),
             SelectedIndex = 5
         };
@@ -29,12 +31,14 @@ public sealed class ComboBoxSurfaceTests
         popup.ResolvedPlacement.ShouldBe(PopupPlacement.Below);
         list.Bounds.Height.ShouldBe(8);
         list.SelectedIndex.ShouldBe(5);
+        OwnedTree.FindAll<ListItem>(list).ShouldAllBe(item => item.Bounds.Height == 4);
 
         await surface.ResizeAsync(new Size(30, 12));
 
         popup.ResolvedPlacement.ShouldBe(PopupPlacement.Below);
         list.Bounds.Height.ShouldBe(4);
         list.SelectedIndex.ShouldBe(5);
+        OwnedTree.FindAll<ListItem>(list).ShouldAllBe(item => item.Bounds.Height == 2);
         surface.Cell(new Point(list.Bounds.X, list.Bounds.Y)).Text.ShouldNotBeEmpty();
     }
 

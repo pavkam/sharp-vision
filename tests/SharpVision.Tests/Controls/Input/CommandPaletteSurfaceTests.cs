@@ -13,7 +13,9 @@ public sealed class CommandPaletteSurfaceTests
         var palette = new CommandPalette
         {
             DropDownHeight = Length.Percent(50),
+            RowHeight = Length.Percent(50),
             Height = Length.Cells(3),
+            ItemTemplate = item => new ControlText((string) item!) { Height = Length.Star(1) },
             Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(
                 Enumerable.Range(0, 20).Select(index => (object?) $"Command {index}").ToArray())
         };
@@ -27,11 +29,13 @@ public sealed class CommandPaletteSurfaceTests
         await surface.UpdateAsync(() => list.SelectedIndex = 5, "select a retained command row");
 
         list.Bounds.Height.ShouldBe(8);
+        OwnedTree.FindAll<ListItem>(list).ShouldAllBe(item => item.Bounds.Height == 4);
 
         await surface.ResizeAsync(new Size(30, 12));
 
         list.Bounds.Height.ShouldBe(4);
         list.SelectedIndex.ShouldBe(5);
+        OwnedTree.FindAll<ListItem>(list).ShouldAllBe(item => item.Bounds.Height == 2);
         surface.Cell(new Point(list.Bounds.X, list.Bounds.Y)).Text.ShouldNotBeEmpty();
     }
 

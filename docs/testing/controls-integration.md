@@ -312,6 +312,16 @@ nothing new, but a host that owns spacing, track contribution, desired-size
 aggregation, scroll extents, or item realization proves each of those against
 its own real content.
 
+Virtualized uniform-row hosts additionally prove their complete geometry
+transaction on mounted surfaces. Fixed and percentage requests cover tiny and
+zero viewports, rounding, row gaps, both-scrollbar feedback, resize anchoring,
+selection and paging, pointer hit testing, mutations, overscan, huge counts, and
+horizontal overflow. Fixed-seed randomized cases assert deterministic extent and
+bounded realization; progressive Table cases also assert bounded source windows
+and cache state across stale asynchronous completions. Composite owners such as
+ComboBox and CommandPalette prove that their public request is forwarded into
+the retained ListView and re-resolved when the popup viewport changes.
+
 Mounted proof for a structural host uses a full `IsVisible` → `Hidden` →
 `Collapsed` → `IsVisible` transition on a live `ComponentSurface`, not only the
 initial mounted state: an opaque sibling background proves the committed final

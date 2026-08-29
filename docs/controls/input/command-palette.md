@@ -30,7 +30,7 @@ classDiagram
 | `Items`              | `IReadOnlyList<object?>`                                | Empty             | Read-only copied snapshot from the latest current successful resolution.                             |
 | `IsResolving`        | `bool`                                                  | `false`           | Read-only; true between starting and committing the current asynchronous request.                    |
 | `ItemTemplate`       | `ItemTemplate`                                          | Text template     | Realizes each resolved item as one detached result-row control.                                      |
-| `RowHeight`          | `int?`                                                  | `null`            | Optional positive fixed result-row height; null keeps content-sized rows.                            |
+| `RowHeight`          | `Length`                                                | `Length.Auto`     | Automatic eager rows or a positive fixed/percentage virtualized result-row request.                  |
 | `Placeholder`        | `string?`                                               | `null`            | Placeholder shown while the retained editor is empty.                                                |
 | `StartAffix`         | `Affix?`                                                | `null`            | Optional leading edge-pinned editor decoration.                                                      |
 | `EndAffix`           | `Affix?`                                                | `null`            | Optional trailing edge-pinned editor decoration.                                                     |
@@ -64,6 +64,12 @@ the usable extent on the popup's chosen placement side after its frame is
 removed. The percentage is resolved again when placement or root size changes.
 Star lengths and zero-valued fixed or percentage limits are rejected before
 mutation.
+
+`RowHeight` forwards the retained ListView's uniform-row contract. A positive
+percentage resolves against the final result-list viewport and re-resolves while
+the popup is open without replacing the active result, selection, focus, or
+resolver snapshot. `Length.Auto` retains content-sized eager rows; proportional
+and zero fixed/percentage requests are invalid.
 
 ## Resolution and interaction
 

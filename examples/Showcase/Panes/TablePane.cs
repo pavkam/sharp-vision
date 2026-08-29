@@ -43,14 +43,14 @@ internal sealed class TablePane: CompositeControlBase
             {
                 if (!table.IsDisposed)
                 {
-                    table.SetDataSource(source, RowTemplate, rowHeight: 1);
+                    table.SetDataSource(source, RowTemplate, rowHeight: Length.Percent(20));
                 }
             });
         }
     }
 
     private static TableRow RowTemplate(int item) =>
-        new([new Text($"Row {item:D5}")]);
+        new([new Text($"Row {item:D5}") { Height = Length.Star(1) }]);
 
     /// <inheritdoc/>
     private DocPage CreateContent()
@@ -324,7 +324,7 @@ internal sealed class TablePane: CompositeControlBase
                     "50,000 rows over a deliberately slow, occasionally failing source",
                     "Scroll or page through 50,000 rows fetched on demand. The very first range is deliberately failed once to show the themed error placeholder recovering after a retry; every fetch is artificially delayed to keep placeholders visible.",
                     new DocColumn(progressive, progressiveStatus),
-                    "table.SetDataSource(source, item => new TableRow([new Text($\"Row {item:D5}\")]), rowHeight: 1);")));
+                    "table.SetDataSource(source, item => new TableRow([new Text($\"Row {item:D5}\") { Height = Length.Star(1) }]), rowHeight: Length.Percent(20));")));
     }
 
     private static TableRow Shortcut(string key, string action) => new([

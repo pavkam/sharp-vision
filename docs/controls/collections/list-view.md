@@ -47,7 +47,7 @@ classDiagram
 | ------------------------------ | ---------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Items`                        | `IReadOnlyList<object?>`                       | Empty snapshot           | Copies the borrowed source before realizing controls; rejects null.                                                                                                                         |
 | `ItemTemplate`                 | `ItemTemplate`                                 | Invariant-culture `Text` | Detached-control factory; must return one unique, detached, undisposed, non-null control per item.                                                                                          |
-| `RowHeight`                    | `int?`                                         | `null`                   | Fixed per-row cell height that opts into windowed (virtualized) realization; rejects zero or negative.                                                                                      |
+| `RowHeight`                    | `Length`                                       | `Length.Auto`            | Automatic eager rows, or a positive fixed/viewport-relative uniform height that opts into windowed realization.                                                                             |
 | `SelectionMode`                | `ListSelectionMode`                            | `Single`                 | Allows no, one, or multiple selected indexes; rejects an undefined value.                                                                                                                   |
 | `ItemInvocation`               | `ListItemInvocation`                           | `SingleClick`            | Chooses whether every pointer activation, or only a plain multi-click, raises `ItemInvoked`.                                                                                                |
 | `SelectedIndex`                | `int`                                          | `-1`                     | Lowest selected index; setting replaces the exclusive selection, makes that row current, and minimally reveals it. Rejects a value outside `Items`, or a non-negative value in `None` mode. |
@@ -184,13 +184,13 @@ transaction is cancelled, both values stay unchanged. `None` mode moves only the
 active index. PageUp and PageDown accumulate each realized row's own height in
 eager mode rather than treating the viewport's cell height as an item count, so
 rows taller than one cell are never skipped; in windowed mode the identical
-distance becomes pure arithmetic against the fixed `RowHeight`, requiring no
-realized row. A navigation target outside the current window is realized (and
-scrolled into view) on demand, and every successful move uses the composed
-`BringIntoView` path. Keyboard Up and Down always move by exactly one item
-regardless of `RowHeight` or `LineSize`; an application wanting the wheel to
-step by whole rows in windowed mode can set `LineSize` to the same value as
-`RowHeight`.
+distance becomes pure arithmetic against the resolved uniform row height,
+requiring no realized row. A navigation target outside the current window is
+realized (and scrolled into view) on demand, and every successful move uses the
+composed `BringIntoView` path. Keyboard Up and Down always move by exactly one
+item regardless of `RowHeight` or `LineSize`; an application wanting the wheel
+to step by whole rows in windowed mode can set `LineSize` to the resolved cell
+height.
 
 Pointer hit testing targets the pressable item wrapper rather than letting its
 display child swallow the activation, so capture, focus loss, disable, detach,
@@ -208,19 +208,30 @@ the paired selection background.
 
 ## Virtualization
 
-Setting `RowHeight` to a positive cell count opts a ListView into windowed
+`RowHeight = Length.Auto` keeps eager realization byte-for-byte unchanged.
+Positive `Cells` and `Percent` requests opt a ListView into windowed
 realization: only rows inside the current viewport plus a bounded overscan
-margin are ever realized, and every arranged row is clipped to exactly the
-configured height. `RowHeight = null` (the default) keeps eager realization
-byte-for-byte unchanged - `ComboBox`, the file-picker dialogs, and every
-existing showcase page embed a ListView on that guarantee, so eager stays the
-default rather than a deprecated fallback.
+margin are ever realized. A percentage resolves against the final
+scrollbar-aware content viewport height with midpoint rounding away from zero; a
+positive percentage becomes one cell when the viewport is empty or rounding
+would otherwise produce zero. Star requests and zero fixed/percentage requests
+are rejected before mutation.
+
+The resolved positive cell height is frozen for each layout transaction and is
+used everywhere: extent, window boundaries, overscan, arrangement, paging,
+bring-into-view, mutation compensation, hit testing, and selection reveal. A
+resize or scrollbar-feedback change resolves it again, atomically rewindows, and
+remaps the vertical offset so the same logical top row and proportional point
+within it remain anchored. Every arranged row is clipped to the resolved height.
 
 ```csharp
 var results = new ListView
 {
-    RowHeight = 1,
-    ItemTemplate = item => new Text(item?.ToString() ?? string.Empty),
+    RowHeight = Length.Percent(25),
+    ItemTemplate = item => new Text(item?.ToString() ?? string.Empty)
+    {
+        Height = Length.Star(1),
+    },
     Items = matches, // tens of thousands of rows
 };
 ```
@@ -230,9 +241,12 @@ Windowed realization is opt-in because it trades away a real capability:
 width-dependent (wrapped text reflows as the viewport narrows, and reserving a
 scrollbar column can itself change how a row wraps), so there is no
 estimate-then-correct fallback — a template whose natural height differs from
-`RowHeight` is clipped, not silently misaligned, and only eager mode supports
-it. Choose `RowHeight` for large, uniform-height collections (logs, search
-results, file listings); leave it `null` for everything else.
+the resolved row height is clipped, not silently misaligned, and only eager mode
+supports it. Choose fixed or percentage `RowHeight` for large, uniform-height
+collections (logs, search results, file listings); leave it `Length.Auto` for
+everything else. A relative multi-cell row normally gives its template a
+stretching height such as `Length.Star(1)` so the content accepts the complete
+uniform slot.
 
 - Selection, the active row, and `SelectedItems` are pure index and value state
   independent of which rows happen to be realized, so they behave identically in
@@ -248,8 +262,8 @@ results, file listings); leave it `null` for everything else.
   panels make elsewhere: `Extent.Width` reports only the widest _currently
   realized_ row rather than the widest row overall.
 - `Extent.Height`, the scrollbar `Maximum`, `BringIntoView(int)`, and
-  offset-to-index conversion are all pure arithmetic against `RowHeight` and
-  never depend on a realized row.
+  offset-to-index conversion are all pure arithmetic against the frozen resolved
+  row height and never depend on a realized row.
 
 ## Example
 

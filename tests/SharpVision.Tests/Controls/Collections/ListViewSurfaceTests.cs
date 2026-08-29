@@ -6,6 +6,44 @@ namespace SharpVision.Tests.Controls.Collections;
 /// <summary>Verifies ListView selection, focus, invocation, modifiers, scrolling, mutation, and cells through mounted surfaces.</summary>
 public sealed class ListViewSurfaceTests
 {
+    /// <summary>Verifies a percentage row uses the final viewport after both scrollbar rails are
+    /// reserved and re-resolves in the same mounted resize transaction.</summary>
+    [Fact]
+    public async Task ResizeAsync_WhenRelativeRowsReserveBothScrollBars_UsesFinalViewportHeightAsync()
+    {
+        var list = new UiListView
+        {
+            RowHeight = Length.Percent(50),
+            ScrollBars = ScrollBars.Both,
+            ShowScrollBars = ShowScrollBars.Always,
+            ItemTemplate = item => new ControlText((string) item!)
+            {
+                Height = Length.Star(1),
+                Width = Length.Cells(30)
+            },
+            Items = Enumerable.Range(0, 100).Select(index => (object?) $"Row {index}").ToArray()
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(10, 10),
+            TestContext.Current.CancellationToken);
+
+        list.Viewport.Height.ShouldBe(9);
+        OwnedTree.FindAll<ListItem>(list).ShouldAllBe(item => item.Bounds.Height == 5);
+
+        await surface.ResizeAsync(new Size(10, 6));
+
+        list.Viewport.Height.ShouldBe(5);
+        OwnedTree.FindAll<ListItem>(list).ShouldAllBe(item => item.Bounds.Height == 3);
+
+        await surface.Pointer.ClickAsync(
+            OwnedTree.FindAll<ListItem>(list).Single(item => item.Index == 1),
+            new Point(1, 1));
+
+        list.SelectedIndex.ShouldBe(1);
+        list.ActiveIndex.ShouldBe(1);
+    }
+
     /// <summary>Verifies default idle rows compose over one continuous borderless ListView background.</summary>
     [Fact]
     public async Task Render_WhenDefaultChromeIsUsed_DrawsBorderlessSurfaceBehindIdleRowsAsync()
@@ -1050,7 +1088,7 @@ public sealed class ListViewSurfaceTests
         List<ControlText> realized = [];
         var list = new UiListView
         {
-            RowHeight = 1,
+            RowHeight = Length.Cells(1),
             ItemTemplate = item => Add(realized, new ControlText((string) item!)
             {
                 Face = AppearanceTestValues.Face(background: Color.Rgb(0x10, 0x20, 0x30)),

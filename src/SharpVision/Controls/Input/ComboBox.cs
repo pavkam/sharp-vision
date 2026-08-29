@@ -305,12 +305,12 @@ public sealed class ComboBox: InputBase
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
     public void ResetPopupChrome() => PopupChrome = default;
 
-    /// <summary>Gets or sets the fixed row height of every owned drop-down item, or null to size each
-    /// row to its content.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    /// <summary>Gets or sets the automatic, fixed, or popup-viewport-relative uniform row height.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage value is zero.</exception>
+    /// <exception cref="ArgumentException">The value uses proportional sizing.</exception>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public int? RowHeight
+    public Length RowHeight
     {
         get => _list.RowHeight;
         set

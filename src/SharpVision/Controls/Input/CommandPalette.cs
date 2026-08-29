@@ -173,16 +173,23 @@ public sealed class CommandPalette: CompositeControlBase
         }
     }
 
-    /// <summary>Gets or sets the fixed row height, or null for content-sized rows.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    /// <summary>Gets or sets the automatic, fixed, or popup-viewport-relative uniform result-row height.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage value is zero.</exception>
+    /// <exception cref="ArgumentException">The value uses proportional sizing.</exception>
     /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
-    public int? RowHeight
+    public Length RowHeight
     {
         get => _list.RowHeight;
         set
         {
             VerifyMutable();
+
+            if (_list.RowHeight == value)
+            {
+                return;
+            }
+
             _list.RowHeight = value;
             NotifyPropertyChanged(nameof(RowHeight), InvalidationImpact.None);
         }

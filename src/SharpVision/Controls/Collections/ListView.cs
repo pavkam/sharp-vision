@@ -33,7 +33,7 @@ public sealed class ListView: ItemsControl
     private readonly GenericList _selectedItems = [];
     private readonly ReadOnlyCollection<object?> _selectedView;
 
-    // Parallel to _items, consulted only while RowHeight is set. Populated opportunistically at
+    // Parallel to _items, consulted only while RowHeight enables virtualization. Populated opportunistically at
     // realize/derealize time; an index never realized stays null and IsIndexAvailable treats that
     // as optimistically eligible, since FindEligible already tolerates skipping into unavailable
     // rows without crashing.
@@ -42,6 +42,19 @@ public sealed class ListView: ItemsControl
     private int _selectionVersion;
     private int _selectionAnchor = -1;
     private ulong _activationGeneration;
+    private int? _rowHeightAnchorPrevious;
+    private int _rowHeightAnchorOffset;
+
+    private bool IsVirtualized => RowHeight.Kind != LengthKind.Auto;
+
+    private int ResolvedRowHeight
+    {
+        get
+        {
+            Debug.Assert(_stack.RowHeight.HasValue, "A virtualized list has one resolved row height.");
+            return _stack.RowHeight.Value;
+        }
+    }
 
     /// <summary>Initializes an empty single-selection ListView with a text template and continuous background.</summary>
     public ListView()
@@ -94,7 +107,7 @@ public sealed class ListView: ItemsControl
             VerifyMutable();
             var copied = Copy(value);
 
-            if (RowHeight is int height)
+            if (IsVirtualized)
             {
                 ReplaceVirtualized(copied, replaceItems: true);
             }
@@ -124,7 +137,7 @@ public sealed class ListView: ItemsControl
                 return;
             }
 
-            if (RowHeight is not null)
+            if (IsVirtualized)
             {
                 _ = SetPropertyAndSynchronize(
                     ref field,
@@ -143,32 +156,29 @@ public sealed class ListView: ItemsControl
         }
     } = DefaultTemplate;
 
-    /// <summary>Gets or sets the fixed per-row cell height that opts into virtualized viewport-window
-    /// realization; <see langword="null"/> retains today's eager realization.</summary>
+    /// <summary>Gets or sets the automatic, fixed, or viewport-relative uniform row height.</summary>
     /// <remarks>
-    /// A <see langword="null"/> value (the default) keeps eager, byte-for-byte realization -
+    /// <see cref="Length.Auto"/> (the default) keeps eager, byte-for-byte realization -
     /// ComboBox, the file-picker dialogs, and every existing showcase and test embed a
-    /// <see cref="ListView"/> on that guarantee. Assigning a positive value opts into windowed
+    /// <see cref="ListView"/> on that guarantee. Assigning a positive fixed or percentage value opts into windowed
     /// realization: only items inside the current viewport plus a bounded overscan margin are ever
-    /// realized, and every arranged row is clipped to exactly this height. A template whose natural
-    /// height differs from <see cref="RowHeight"/> is not supported in windowed mode - use
-    /// <see langword="null"/> for variable-height templates. Toggling this property on an already
+    /// realized, and every arranged row is clipped to the resolved cell height. A template whose natural
+    /// height differs from that resolved height is not supported in windowed mode - use
+    /// <see cref="Length.Auto"/> for variable-height templates. Toggling this property on an already
     /// populated ListView reconciles realization immediately: turning windowing on derealizes every
     /// row outside the freshly computed window, and turning it back off fully re-realizes the
     /// collection through <see cref="ItemTemplate"/> again, the same as reassigning <see cref="Items"/>.
     /// </remarks>
-    /// <exception cref="ArgumentOutOfRangeException">The value is zero or negative.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage value is zero.</exception>
+    /// <exception cref="ArgumentException">The value uses proportional sizing.</exception>
     /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
-    public int? RowHeight
+    public Length RowHeight
     {
         get;
         set
         {
-            if (value is <= 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "RowHeight must be a positive cell count.");
-            }
+            UniformRowHeight.Validate(value, allowAuto: true, nameof(value));
 
             VerifyMutable();
 
@@ -177,16 +187,24 @@ public sealed class ListView: ItemsControl
                 return;
             }
 
-            var wasVirtualized = field is not null;
+            var wasVirtualized = field.Kind != LengthKind.Auto;
             _ = SetPropertyAndSynchronize(
                 ref field,
                 value,
                 InvalidationImpact.Measure,
                 () =>
                 {
-                    _stack.RowHeight = RowHeight;
+                    if (IsVirtualized)
+                    {
+                        ResolveHostRowHeight(Viewport.Height);
+                    }
+                    else
+                    {
+                        _stack.RowHeight = null;
+                        _rowHeightAnchorPrevious = null;
+                    }
 
-                    if (RowHeight is not null)
+                    if (IsVirtualized)
                     {
                         Rewindow();
                     }
@@ -196,7 +214,7 @@ public sealed class ListView: ItemsControl
                     }
                 });
         }
-    }
+    } = Length.Auto;
 
     /// <summary>Gets or sets whether no, one, or many indexes may be selected.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -412,10 +430,10 @@ public sealed class ListView: ItemsControl
         ValidateIndex(index);
         VerifyMutable();
 
-        if (RowHeight is int height)
+        if (IsVirtualized)
         {
             var before = VerticalOffset;
-            ScrollIndexIntoView(index, height);
+            ScrollIndexIntoView(index, ResolvedRowHeight);
             Rewindow();
             return VerticalOffset != before;
         }
@@ -506,7 +524,15 @@ public sealed class ListView: ItemsControl
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureOverride(Constraint constraint) => MeasureChild(_stack, constraint);
+    protected override Size MeasureOverride(Constraint constraint)
+    {
+        if (IsVirtualized)
+        {
+            ResolveHostRowHeight(constraint.Height ?? Viewport.Height);
+        }
+
+        return MeasureChild(_stack, constraint);
+    }
 
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
@@ -522,7 +548,35 @@ public sealed class ListView: ItemsControl
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
+        var previousHeight = _rowHeightAnchorPrevious ?? _stack.RowHeight;
+        var previousOffset = _rowHeightAnchorPrevious.HasValue ? _rowHeightAnchorOffset : VerticalOffset;
         ArrangeChild(_stack, bounds, ResolvedAxes.Both);
+
+        if (IsVirtualized)
+        {
+            for (var pass = 0; pass < 2; pass++)
+            {
+                var resolved = UniformRowHeight.Resolve(RowHeight, Viewport.Height);
+
+                if (_stack.RowHeight == resolved)
+                {
+                    break;
+                }
+
+                _stack.RowHeight = resolved;
+                _ = MeasureChild(_stack, new Constraint(bounds.Width, bounds.Height));
+                ArrangeChild(_stack, bounds, ResolvedAxes.Both);
+            }
+
+            if (previousHeight is int height && height != ResolvedRowHeight)
+            {
+                var target = UniformRowHeight.RemapOffset(previousOffset, height, ResolvedRowHeight, gap: 0);
+                var maximum = Math.Max(0, Extent.Height - Viewport.Height);
+                _ = _stack.ScrollByKnownMaximum(target - VerticalOffset, maximum, ScrollCause.Resize);
+            }
+
+            _rowHeightAnchorPrevious = null;
+        }
 
         // _stack's own arrange transaction has already closed by this point - reconciling here
         // catches every case that changed viewport, offset, or extent without a genuine
@@ -823,10 +877,12 @@ public sealed class ListView: ItemsControl
     /// arrange transaction - see <see cref="OnHostScrollChanged"/>.</summary>
     private void Rewindow()
     {
-        if (RowHeight is not int height)
+        if (!IsVirtualized)
         {
             return;
         }
+
+        var height = ResolvedRowHeight;
 
         var viewportRows = Math.Max(1, Viewport.Height / height);
         var first = _items.Count == 0 ? 0 : Math.Max(0, (VerticalOffset / height) - viewportRows);
@@ -921,6 +977,24 @@ public sealed class ListView: ItemsControl
         }
     }
 
+    private void ResolveHostRowHeight(int viewportHeight)
+    {
+        var resolved = UniformRowHeight.Resolve(RowHeight, viewportHeight);
+
+        if (_stack.RowHeight == resolved)
+        {
+            return;
+        }
+
+        if (_stack.RowHeight is int previous && !_rowHeightAnchorPrevious.HasValue)
+        {
+            _rowHeightAnchorPrevious = previous;
+            _rowHeightAnchorOffset = VerticalOffset;
+        }
+
+        _stack.RowHeight = resolved;
+    }
+
     [Pure]
     private int FindRealizedInsertPosition(int index)
     {
@@ -961,7 +1035,7 @@ public sealed class ListView: ItemsControl
         ArgumentOutOfRangeException.ThrowIfGreaterThan(index, _items.Count);
         VerifyMutable();
 
-        var height = RowHeight;
+        var height = IsVirtualized ? ResolvedRowHeight : (int?) null;
         var listItem = height is null ? BuildSingle(index, item, ItemTemplate) : null;
         _selectionVersion++;
         _items.Insert(index, item);
@@ -1024,7 +1098,7 @@ public sealed class ListView: ItemsControl
             {
                 // A plain ScrollBy would clamp against Extent, which only refreshes on a layout
                 // pass that has not run since _items.Count changed above - it would still reflect
-                // the pre-insertion item count. Fixed RowHeight makes the true post-insertion
+                // the pre-insertion item count. Resolved uniform RowHeight makes the true post-insertion
                 // maximum knowable arithmetically right now, so that computed bound is supplied
                 // directly instead of trusting the stale Extent.
                 var maximumY = Math.Max(0, _items.Count.Multiply(rowHeight) - Viewport.Height);
@@ -1139,8 +1213,9 @@ public sealed class ListView: ItemsControl
             nextActiveIndex = FindAvailableActiveIndex(nextActiveIndex);
         }
 
-        if (RowHeight is int height)
+        if (IsVirtualized)
         {
+            var height = ResolvedRowHeight;
             // Mirrors InsertItem's compensation, with a strict comparison: removing the row
             // currently at the first-visible position itself leaves no matching logical item to
             // re-anchor to, so only a removal strictly above the first-visible row shifts the
@@ -1879,16 +1954,16 @@ public sealed class ListView: ItemsControl
     // In eager mode every realized row's arranged Bounds.Height is already available, so a page
     // step accumulates realized row heights from the current index until the sum reaches the
     // committed viewport height (minus the retained overlap), rather than applying a cell-space
-    // distance directly as an item-index delta. Once RowHeight is set every row is the same fixed
-    // height, so the same distance becomes pure arithmetic requiring no realized row at all. The
+    // distance directly as an item-index delta. Once RowHeight enables virtualization every row has
+    // the same resolved height, so the same distance becomes pure arithmetic requiring no realized row at all. The
     // returned index is raw and possibly out of range; FindEligible resolves it.
     [Pure]
     private int StepPage(int start, int direction)
     {
         var target = PagingStep.TargetExtent(Viewport.Height, PageOverlap);
 
-        return RowHeight is int height
-            ? start + (direction * Math.Max(1, (target + height - 1) / height))
+        return IsVirtualized
+            ? start + (direction * Math.Max(1, (target + ResolvedRowHeight - 1) / ResolvedRowHeight))
             : PagingStep.Accumulate(start, direction, Items.Count, target, index => ItemAt(index)?.Bounds.Height ?? 0, clamp: false);
     }
 
@@ -1943,7 +2018,7 @@ public sealed class ListView: ItemsControl
             return null;
         }
 
-        if (RowHeight is null)
+        if (!IsVirtualized)
         {
             return index >= ItemControlCount ? null : (ListItem) GetItemControl(index);
         }
@@ -1979,7 +2054,7 @@ public sealed class ListView: ItemsControl
         }
 
         var item = ItemAt(index);
-        return item?.IsAvailable ?? (RowHeight is not null && _availability[index] != false);
+        return item?.IsAvailable ?? (IsVirtualized && _availability[index] != false);
     }
 
     /// <summary>Ensures a logical index is realized, scrolling it into view first if necessary.</summary>
@@ -1993,8 +2068,8 @@ public sealed class ListView: ItemsControl
             return existing;
         }
 
-        Debug.Assert(RowHeight is not null, "Every valid index is already realized in eager mode.");
-        ScrollIndexIntoView(index, RowHeight.Value);
+        Debug.Assert(IsVirtualized, "Every valid index is already realized in eager mode.");
+        ScrollIndexIntoView(index, ResolvedRowHeight);
         Rewindow();
         var realized = ItemAt(index);
         Debug.Assert(realized is not null, "Rewindow realizes any index the viewport now reveals.");

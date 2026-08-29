@@ -229,7 +229,9 @@ Snapshot construction is `O(n)` in `ListView`'s default eager mode, which
 realizes every item. Setting
 [`ListView.RowHeight`](../controls/collections/list-view.md#virtualization) opts
 into windowed realization instead, so a bound snapshot never pays more than
-viewport-bounded realization cost regardless of collection size. The collection
+viewport-bounded realization cost regardless of collection size. Fixed cells
+remain exact, while a percentage freezes one uniform height from the final
+scrollbar-aware viewport for the complete layout transaction. The collection
 must remain stable while `Count` and its indexer are read on the target
 dispatcher. Worker-thread mutation of a thread-unsafe `ObservableCollection<T>`
 still requires marshaling through the application dispatcher.

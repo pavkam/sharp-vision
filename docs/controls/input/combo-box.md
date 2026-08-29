@@ -50,7 +50,7 @@ classDiagram
 | `ShowScrollBars`        | `ShowScrollBars`                              | ListView default                 | Configures the scrollbar reservation policy in the private list.                                                         |
 | `ScrollBarStyle`        | `ScrollBarStyle?`                             | `null`                           | Overrides the private list's complete rail presentation.                                                                 |
 | `ActualScrollBarStyle`  | `ScrollBarStyle`                              | Resolved                         | Read-only; the local, theme-owned, or code-owned rail presentation.                                                      |
-| `RowHeight`             | `int?`                                        | `null`                           | Forwards to the private list's fixed row height, or `null` to size each row to its content.                              |
+| `RowHeight`             | `Length`                                      | `Length.Auto`                    | Forwards automatic eager sizing or a fixed/percentage virtualized row request to the private list.                       |
 | `PopupChrome`           | `PopupChrome`                                 | `default`                        | Overrides the private Popup's border and shadow together (see [Popup](../popups/popup.md#overview)).                     |
 | `ResetPopupChrome()`    | `void`                                        | —                                | Returns the private Popup's border and shadow to `PopupChrome` ownership.                                                |
 | `ItemTemplate`          | `ItemTemplate`                                | ListView default                 | Forwards directly to the private ListView's own `ItemTemplate`, realizing each popup row.                                |
@@ -115,6 +115,10 @@ ListView's selection, scrolling, and surface appearance inside the Popup.
 - `ScrollBars`, `ShowScrollBars`, and `ScrollBarStyle` forward the common
   overflow policy to the owned ListView, so long choice popups use the same
   rails as standalone lists and viewports.
+- `RowHeight` forwards the ListView uniform-row contract. A positive percentage
+  resolves against the final drop-down list viewport, not the field or complete
+  root, and re-resolves without losing the accepted or provisional selection
+  when the open popup resizes. `Length.Auto` retains content-sized eager rows.
 - `IsOpen` controls Popup layout, rendering, hit testing, and one
   `OutsideInteraction.Dismiss` plane rooted at the ComboBox while the field
   keeps focus. The popup is at least as wide as the field, and `DropDownHeight`

@@ -867,7 +867,7 @@ namespace SharpVision.Controls.Collections
         public System.Collections.Generic.IReadOnlyList<object?> Items { get; set; }
         public int LineSize { get; set; }
         public int PageOverlap { get; set; }
-        public int? RowHeight { get; set; }
+        public SharpVision.Layout.Length RowHeight { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
         public int SelectedIndex { get; set; }
@@ -1561,7 +1561,7 @@ namespace SharpVision.Controls.Input
         public System.Collections.Generic.IReadOnlyList<object?> Items { get; set; }
         public string Placeholder { get; set; }
         public SharpVision.Popups.PopupChrome PopupChrome { get; set; }
-        public int? RowHeight { get; set; }
+        public SharpVision.Layout.Length RowHeight { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
         public int SelectedIndex { get; set; }
@@ -1596,7 +1596,7 @@ namespace SharpVision.Controls.Input
         public string? Placeholder { get; set; }
         public SharpVision.Popups.PopupChrome PopupChrome { get; set; }
         public SharpVision.Controls.Input.CommandPaletteResolver? Resolver { get; set; }
-        public int? RowHeight { get; set; }
+        public SharpVision.Layout.Length RowHeight { get; set; }
         public SharpVision.Styling.Affix? StartAffix { get; set; }
         public string Text { get; set; }
         public event System.EventHandler? Closed;
@@ -2116,7 +2116,7 @@ namespace SharpVision.Controls.Layout
         public void SelectIndex(int index, SharpVision.Terminal.Input.Modifiers modifiers = 0) { }
         public void SelectKey(object key, SharpVision.Terminal.Input.Modifiers modifiers = 0) { }
         public void SelectRow(SharpVision.Controls.Layout.TableRow row, SharpVision.Terminal.Input.Modifiers modifiers = 0) { }
-        public void SetDataSource<T>(SharpVision.Controls.Layout.ITableDataSource<T> source, SharpVision.Controls.Layout.TableRowTemplate<T> rowTemplate, int rowHeight) { }
+        public void SetDataSource<T>(SharpVision.Controls.Layout.ITableDataSource<T> source, SharpVision.Controls.Layout.TableRowTemplate<T> rowTemplate, SharpVision.Layout.Length rowHeight) { }
         public void SetSort(int columnIndex, SharpVision.Controls.Layout.TableSortDirection direction) { }
         public void SortBy(int columnIndex) { }
     }

@@ -77,6 +77,16 @@ defensive maximum; failure to converge throws instead of exposing a transitional
 extent. Intermediate scroll transitions are coalesced using the earliest
 previous offset and the final offset, extent, viewport, and cause.
 
+A virtualized uniform-row host resolves a percentage row height from that same
+final scrollbar-aware viewport, not from the outer allocation. The resolved
+positive cell stride is frozen for the complete layout transaction and used for
+extent, realization, hit testing, paging, selection reveal, and mutation
+compensation. Resize or scrollbar feedback starts a new transaction and remaps
+the existing offset by logical row plus its proportional position inside the old
+stride, preserving the visible anchor where the new range permits it. A
+progressive Table excludes its retained header from the percentage base because
+only the data viewport contains virtualized rows.
+
 ## Scrollbar presentation
 
 `ScrollBar.Style` is a nullable, complete `ScrollBarStyle`. Hosts that generate

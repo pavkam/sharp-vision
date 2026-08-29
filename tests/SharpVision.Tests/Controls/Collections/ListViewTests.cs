@@ -7,6 +7,91 @@ namespace SharpVision.Tests.Controls.Collections;
 /// <summary>Verifies realized ListView ownership, selection, input, scrolling, and rendering.</summary>
 public sealed class ListViewTests
 {
+    private const int _responsiveRowSeed = 0x524F5753;
+
+    /// <summary>Verifies a percentage uniform row resolves from the final viewport on every layout
+    /// while realization stays bounded and the selected logical item survives rewindowing.</summary>
+    [Fact]
+    public void Arrange_WhenRelativeRowHeightResolvesAfterResize_RewindowsWithoutLosingSelection()
+    {
+        var list = new UiListView
+        {
+            RowHeight = Length.Percent(50),
+            ItemTemplate = item => new ControlText((string) item!) { Height = Length.Star(1) },
+            Items = Enumerable.Range(0, 10_000).Select(index => (object?) $"Row {index}").ToArray(),
+            SelectedIndex = 2
+        };
+        var engine = new LayoutEngine();
+
+        engine.Layout(list, new Size(20, 8));
+
+        list.RowHeight.ShouldBe(Length.Percent(50));
+        OwnedTree.FindAll<ListItem>(list).ShouldAllBe(item => item.Bounds.Height == 4);
+        OwnedTree.FindAll<ListItem>(list).Count.ShouldBeLessThan(10);
+        _ = list.ScrollBy(0, 40);
+        var anchoredIndex = list.VerticalOffset / 4;
+
+        engine.Layout(list, new Size(20, 4));
+
+        list.SelectedIndex.ShouldBe(2);
+        (list.VerticalOffset / 2).ShouldBe(anchoredIndex);
+        OwnedTree.FindAll<ListItem>(list).ShouldAllBe(item => item.Bounds.Height == 2);
+        OwnedTree.FindAll<ListItem>(list).Count.ShouldBeLessThan(10);
+
+        list.MoveCurrent(Code.PageDown).ShouldBeTrue();
+        list.ActiveIndex.ShouldBe(4);
+        var beforeWheel = list.VerticalOffset;
+        var target = list.HitTest(new Point(0, 0)).ShouldNotBeNull();
+        _ = Router.Route(target, Events.Pointer, new PointerEventArgs(Wheel(wheelY: -1)));
+        list.VerticalOffset.ShouldBe(beforeWheel + 1);
+
+        list.BringIntoView(9_000).ShouldBeTrue();
+        var mutationOffset = list.VerticalOffset;
+        var firstVisibleIndex = mutationOffset / 2;
+        var firstVisibleItem = list.Items[firstVisibleIndex];
+
+        list.InsertItem(0, "Inserted");
+
+        list.VerticalOffset.ShouldBe(mutationOffset + 2);
+        list.Items[list.VerticalOffset / 2].ShouldBeSameAs(firstVisibleItem);
+
+        list.RemoveItem(0);
+
+        list.VerticalOffset.ShouldBe(mutationOffset);
+        list.Items[list.VerticalOffset / 2].ShouldBeSameAs(firstVisibleItem);
+        OwnedTree.FindAll<ListItem>(list).Count.ShouldBeLessThan(10);
+    }
+
+    /// <summary>Verifies fixed-seed percentage requests resolve deterministically across tiny and
+    /// ordinary viewports while realized ownership remains proportional to the viewport.</summary>
+    [Fact]
+    public void Arrange_WhenRelativeRowGeometryIsRandomized_RemainsDeterministicAndBounded()
+    {
+        var random = new Random(_responsiveRowSeed);
+
+        for (var caseIndex = 0; caseIndex < 40; caseIndex++)
+        {
+            var percent = random.Next(1, 101);
+            var viewportHeight = random.Next(0, 41);
+            var itemCount = random.Next(1_000, 5_001);
+            var list = new UiListView
+            {
+                RowHeight = Length.Percent(percent),
+                ItemTemplate = item => new ControlText(item!.ToString()!) { Height = Length.Star(1) },
+                Items = Enumerable.Range(0, itemCount).Select(static index => (object?) index).ToArray()
+            };
+
+            new LayoutEngine().Layout(list, new Size(20, viewportHeight));
+
+            var resolved = Math.Max(
+                1,
+                (int) Math.Round(list.Viewport.Height * percent / 100.0, MidpointRounding.AwayFromZero));
+            list.Extent.Height.ShouldBe(itemCount * resolved, $"case {caseIndex}");
+            var realizedLimit = (3 * Math.Max(1, list.Viewport.Height / resolved)) + 2;
+            OwnedTree.FindAll<ListItem>(list).Count.ShouldBeLessThanOrEqualTo(realizedLimit, $"case {caseIndex}");
+        }
+    }
+
     /// <summary>Verifies both realization inputs use the newest values committed from their owner
     /// notifications, keeping generated rows aligned with the public template and height.</summary>
     [Fact]
@@ -23,19 +108,19 @@ public sealed class ListViewTests
                 list.ItemTemplate = nestedTemplate;
             }
 
-            if (eventArgs.PropertyName == nameof(UiListView.RowHeight) && list.RowHeight == 2)
+            if (eventArgs.PropertyName == nameof(UiListView.RowHeight) && list.RowHeight == Length.Cells(2))
             {
-                list.RowHeight = 3;
+                list.RowHeight = Length.Cells(3);
             }
         };
 
         list.ItemTemplate = outerTemplate;
-        list.RowHeight = 2;
+        list.RowHeight = Length.Cells(2);
         list.Items = ["value"];
         new LayoutEngine().Layout(list, new Size(20, 6));
 
         list.ItemTemplate.ShouldBeSameAs(nestedTemplate);
-        list.RowHeight.ShouldBe(3);
+        list.RowHeight.ShouldBe(Length.Cells(3));
         OwnedTree.FindAll<ControlText>(list).ShouldContain(text => text.Content == "Nested");
         OwnedTree.FindAll<ControlText>(list).ShouldNotContain(text => text.Content == "Outer");
         OwnedTree.Find<ListItem>(list).ShouldNotBeNull().Bounds.Height.ShouldBe(3);
@@ -368,7 +453,7 @@ public sealed class ListViewTests
         var remaining = new object();
         var control = new UiListView
         {
-            RowHeight = virtualized ? 1 : null,
+            RowHeight = virtualized ? Length.Cells(1) : Length.Auto,
             Items = [selected, remaining],
             SelectedIndex = 0
         };
@@ -396,7 +481,7 @@ public sealed class ListViewTests
         var selected = new object();
         var control = new UiListView
         {
-            RowHeight = virtualized ? 1 : null,
+            RowHeight = virtualized ? Length.Cells(1) : Length.Auto,
             Items = [selected, new object()],
             SelectedIndex = 0
         };
@@ -621,7 +706,7 @@ public sealed class ListViewTests
         {
             ItemTemplate = item => new ControlText((string) item!),
             Items = Enumerable.Range(0, 5).Select(value => (object?) $"Item {value}").ToArray(),
-            RowHeight = 1
+            RowHeight = Length.Cells(1)
         };
         new LayoutEngine().Layout(control, new Size(10, 20));
         control.SelectedIndex = 0;
@@ -641,7 +726,7 @@ public sealed class ListViewTests
         {
             ItemTemplate = item => new ControlText((string) item!),
             Items = Enumerable.Range(0, 5).Select(value => (object?) $"Item {value}").ToArray(),
-            RowHeight = 1
+            RowHeight = Length.Cells(1)
         };
         new LayoutEngine().Layout(control, new Size(10, 20));
         control.SelectedIndex = 4;
@@ -653,7 +738,7 @@ public sealed class ListViewTests
     }
 
     /// <summary>Verifies the RowHeight fast path's PageDown distance matches what eager mode's
-    /// PagingStep.Accumulate produces for the same viewport/row-height combination: RowHeight=3
+    /// PagingStep.Accumulate produces for the same viewport/row-height combination: RowHeight = Length.Cells(3)
     /// against a Viewport.Height of 10 accumulates 3, 6, 9, 12 and stops at 12 (the fourth row),
     /// so PageDown must advance by 4 rows rather than floor(10/3) = 3.</summary>
     [Fact]
@@ -663,7 +748,7 @@ public sealed class ListViewTests
         {
             ItemTemplate = item => new ControlText((string) item!) { Height = Length.Cells(3) },
             Items = Enumerable.Range(0, 10).Select(value => (object?) $"Item {value}").ToArray(),
-            RowHeight = 3
+            RowHeight = Length.Cells(3)
         };
         new LayoutEngine().Layout(control, new Size(10, 10));
         control.SelectedIndex = 0;
@@ -1445,7 +1530,7 @@ public sealed class ListViewTests
     {
         var control = new UiListView
         {
-            RowHeight = virtualized ? 1 : null,
+            RowHeight = virtualized ? Length.Cells(1) : Length.Auto,
             Items = ["A", "B", "C"],
             SelectedIndex = 1
         };
@@ -1526,7 +1611,7 @@ public sealed class ListViewTests
         {
             ItemTemplate = item => new ControlText((string) item!),
             Items = Enumerable.Range(0, 12).Select(index => (object?) $"Item {index}").ToArray(),
-            RowHeight = 1,
+            RowHeight = Length.Cells(1),
             Height = Length.Cells(3),
             SelectionMode = selectionMode
         };
@@ -1782,7 +1867,7 @@ public sealed class ListViewTests
         control.HorizontalOffset.ShouldBe(1);
     }
 
-    /// <summary>Verifies RowHeight defaults to null and that leaving it unset produces byte-identical
+    /// <summary>Verifies RowHeight defaults to Auto and that leaving it unset produces byte-identical
     /// eager realization, rendering, and disposal - the one guarantee the windowed-realization
     /// scaffolding must never break, since ComboBox and the file-picker dialogs embed a ListView
     /// on it.</summary>
@@ -1799,21 +1884,21 @@ public sealed class ListViewTests
         using Frame baselineFrame = new(new Size(10, 3));
         baseline.Render(baselineFrame.Canvas);
 
-        List<ControlText> realizedWithNullRowHeight = [];
+        List<ControlText> realizedWithAutomaticRowHeight = [];
         var control = new UiListView
         {
-            RowHeight = null,
-            ItemTemplate = item => Add(realizedWithNullRowHeight, new ControlText(item?.ToString() ?? "null")),
+            RowHeight = Length.Auto,
+            ItemTemplate = item => Add(realizedWithAutomaticRowHeight, new ControlText(item?.ToString() ?? "null")),
             Items = Enumerable.Range(0, 5).Select(value => (object?) $"Item {value}").ToArray()
         };
         new LayoutEngine().Layout(control, new Size(10, 3));
         using Frame frame = new(new Size(10, 3));
         control.Render(frame.Canvas);
 
-        control.RowHeight.ShouldBeNull();
-        realizedWithNullRowHeight.Count.ShouldBe(realizedWithoutRowHeight.Count);
-        realizedWithNullRowHeight.Count.ShouldBe(5);
-        realizedWithNullRowHeight.All(item => item.Parent is not null).ShouldBeTrue();
+        control.RowHeight.ShouldBe(Length.Auto);
+        realizedWithAutomaticRowHeight.Count.ShouldBe(realizedWithoutRowHeight.Count);
+        realizedWithAutomaticRowHeight.Count.ShouldBe(5);
+        realizedWithAutomaticRowHeight.All(item => item.Parent is not null).ShouldBeTrue();
 
         for (var y = 0; y < 3; y++)
         {
@@ -1834,14 +1919,14 @@ public sealed class ListViewTests
         List<ControlText> realized = [];
         var control = new UiListView
         {
-            RowHeight = 1,
+            RowHeight = Length.Cells(1),
             // Star tracks whatever RowHeight is current at measure time (see the reassignment
             // below), the same way a real fixed-row template is expected to.
             ItemTemplate = item => Add(realized, new ControlText(item?.ToString() ?? "null") { Height = Length.Star(1) }),
             Items = Enumerable.Range(0, 500).Select(value => (object?) $"Item {value}").ToArray()
         };
 
-        control.RowHeight.ShouldBe(1);
+        control.RowHeight.ShouldBe(Length.Cells(1));
         new LayoutEngine().Layout(control, new Size(10, 3));
         using Frame frame = new(new Size(10, 3));
         control.Render(frame.Canvas);
@@ -1849,8 +1934,8 @@ public sealed class ListViewTests
         realized.Count.ShouldBeLessThan(500);
         realized.All(item => item.Parent is not null).ShouldBeTrue();
 
-        control.RowHeight = 4;
-        control.RowHeight.ShouldBe(4);
+        control.RowHeight = Length.Cells(4);
+        control.RowHeight.ShouldBe(Length.Cells(4));
     }
 
     /// <summary>Verifies first realization repairs a previously selected virtual row whose
@@ -1863,7 +1948,7 @@ public sealed class ListViewTests
         const int target = 30;
         var control = new UiListView
         {
-            RowHeight = 1,
+            RowHeight = Length.Cells(1),
             Items = Enumerable.Range(0, 40).Cast<object?>().ToArray(),
             ItemTemplate = item => new ControlText(item?.ToString() ?? string.Empty)
             {
@@ -1889,7 +1974,7 @@ public sealed class ListViewTests
         List<ControlText> realized = [];
         var control = new UiListView
         {
-            RowHeight = virtualized ? 1 : null,
+            RowHeight = virtualized ? Length.Cells(1) : Length.Auto,
             Items = ["first", "second"],
             ItemTemplate = item => Add(realized, new ControlText(item?.ToString() ?? string.Empty))
         };
@@ -1913,7 +1998,7 @@ public sealed class ListViewTests
         const string text = "0123456789ABCDEFGHIJ";
         var control = new UiListView
         {
-            RowHeight = 1,
+            RowHeight = Length.Cells(1),
             ScrollBars = ScrollBars.Both,
             ItemTemplate = _ => new ControlText(text),
             Items = Enumerable.Range(0, 30).Select(value => (object?) value).ToArray()
@@ -1942,7 +2027,7 @@ public sealed class ListViewTests
         const string text = "0123456789ABCDEFGHIJ";
         var control = new UiListView
         {
-            RowHeight = 1,
+            RowHeight = Length.Cells(1),
             ScrollBars = ScrollBars.Both,
             ItemTemplate = _ => new ControlText(text),
             Items = Enumerable.Range(0, 30).Select(value => (object?) value).ToArray()
@@ -1980,7 +2065,7 @@ public sealed class ListViewTests
         Dictionary<int, ControlText> realized = [];
         var control = new UiListView
         {
-            RowHeight = 1,
+            RowHeight = Length.Cells(1),
             ScrollBars = ScrollBars.Both,
             ItemTemplate = item =>
             {
@@ -2008,16 +2093,19 @@ public sealed class ListViewTests
         realized[1].Bounds.Width.ShouldBe(expectedRowWidth);
     }
 
-    /// <summary>Verifies RowHeight rejects non-positive cell counts.</summary>
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    public void RowHeight_WhenNonPositive_ThrowsArgumentOutOfRangeException(int value)
+    /// <summary>Verifies RowHeight accepts automatic, fixed, and percentage requests while
+    /// rejecting zero and proportional values before mutation.</summary>
+    [Fact]
+    public void RowHeight_WhenSet_ValidatesSupportedResponsiveKindsBeforeMutation()
     {
-        var control = Create("A", "B", "C");
+        var control = new UiListView { RowHeight = Length.Cells(2) };
 
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.RowHeight = value);
-        control.RowHeight.ShouldBeNull();
+        control.RowHeight = Length.Percent(25);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.RowHeight = Length.Cells(0));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.RowHeight = Length.Percent(0));
+        _ = Should.Throw<ArgumentException>(() => control.RowHeight = Length.Star(1));
+        control.RowHeight.ShouldBe(Length.Percent(25));
     }
 
     /// <summary>Verifies LineSize rejects a negative value.</summary>
@@ -2120,7 +2208,7 @@ public sealed class ListViewTests
     {
         var control = new UiListView
         {
-            RowHeight = 1,
+            RowHeight = Length.Cells(1),
             ItemTemplate = item => new ControlText(item?.ToString() ?? "null"),
             Items = Enumerable.Range(0, 200).Select(value => (object?) $"Item {value}").ToArray()
         };
@@ -2139,7 +2227,7 @@ public sealed class ListViewTests
     {
         var control = new UiListView
         {
-            RowHeight = 3,
+            RowHeight = Length.Cells(3),
             ItemTemplate = item => new ControlText(item?.ToString() ?? "null") { Height = Length.Cells(3) },
             Items = Enumerable.Range(0, 20).Select(value => (object?) $"Item {value}").ToArray(),
             LineSize = 3
@@ -2160,7 +2248,7 @@ public sealed class ListViewTests
     {
         var control = new UiListView
         {
-            RowHeight = 3,
+            RowHeight = Length.Cells(3),
             ItemTemplate = item => new ControlText(item?.ToString() ?? "null") { Height = Length.Cells(3) },
             Items = Enumerable.Range(0, 20).Select(value => (object?) $"Item {value}").ToArray()
         };
@@ -2754,7 +2842,7 @@ public sealed class ListViewTests
         List<ControlText> realized = [];
         var control = new UiListView
         {
-            RowHeight = virtualized ? 1 : null,
+            RowHeight = virtualized ? Length.Cells(1) : Length.Auto,
             ItemTemplate = item => Add(realized, new ControlText((string) item!)),
             Items = ["A", "B"],
             SelectedIndex = 1
@@ -2970,7 +3058,7 @@ public sealed class ListViewTests
         {
             SelectionMode = ListSelectionMode.Multiple,
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            RowHeight = 1,
+            RowHeight = Length.Cells(1),
             Items = items
         };
 
@@ -3022,7 +3110,7 @@ public sealed class ListViewTests
                         // same logical first-visible row on an insertion at or above it - eager
                         // rows have no fixed per-row size to make that arithmetic safe, so it
                         // stays unchanged there by design. Every realized row here is exactly one
-                        // cell tall (the default single-line template, matching RowHeight = 1
+                        // cell tall (the default single-line template, matching RowHeight = Length.Cells(1)
                         // below), so mirroring the identical shift on eager keeps this parity
                         // baseline honest instead of comparing against eager's un-anchored offset.
                         var firstVisible = eager.VerticalOffset;
@@ -3214,7 +3302,7 @@ public sealed class ListViewTests
         List<ControlText> realized = [];
         var control = new UiListView
         {
-            RowHeight = 1,
+            RowHeight = Length.Cells(1),
             ItemTemplate = item => Add(realized, new ControlText(item?.ToString() ?? "null") { Height = Length.Cells(1) }),
             Items = new object?[] { "A", "B", "C" }
         };
@@ -3245,7 +3333,7 @@ public sealed class ListViewTests
         List<ControlText> realized = [];
         var control = new UiListView
         {
-            RowHeight = 2,
+            RowHeight = Length.Cells(2),
             ItemTemplate = item => Add(realized, new ControlText(item?.ToString() ?? "null") { Height = Length.Cells(2) }),
             Items = new object?[] { "A", "B", "C" }
         };
@@ -3281,7 +3369,7 @@ public sealed class ListViewTests
         List<ControlText> realized = [];
         var control = new UiListView
         {
-            RowHeight = 2,
+            RowHeight = Length.Cells(2),
             ItemTemplate = item => Add(realized, new ControlText(item?.ToString() ?? "null") { Height = Length.Cells(2) }),
             Items = Enumerable.Range(0, 20).Select(value => (object?) $"Item {value}").ToArray()
         };
@@ -3305,7 +3393,7 @@ public sealed class ListViewTests
         List<ControlText> realized = [];
         var control = new UiListView
         {
-            RowHeight = 2,
+            RowHeight = Length.Cells(2),
             ItemTemplate = item => Add(realized, new ControlText(item?.ToString() ?? "null") { Height = Length.Cells(2) }),
             Items = new object?[] { "A", "B", "C" }
         };
@@ -3423,7 +3511,7 @@ public sealed class ListViewTests
     {
         var control = new UiListView
         {
-            RowHeight = 1,
+            RowHeight = Length.Cells(1),
             Items = Enumerable.Range(0, 40).Select(value => (object?) $"Item {value}").ToArray()
         };
         new LayoutEngine().Layout(control, new Size(10, 5));
@@ -3431,5 +3519,5 @@ public sealed class ListViewTests
     }
 
     private static object? FirstVisibleItem(UiListView control) =>
-        control.Items[control.VerticalOffset / control.RowHeight!.Value];
+        control.Items[control.VerticalOffset / (int) control.RowHeight.Value];
 }

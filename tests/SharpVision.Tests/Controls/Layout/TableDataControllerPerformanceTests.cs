@@ -37,7 +37,7 @@ public sealed class TableDataControllerPerformanceTests
 
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(20, 24), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind a 150k-row source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind a 150k-row source");
 
         var controller = table.ProgressiveController!;
         controller.LogicalCount.ShouldBe(total);

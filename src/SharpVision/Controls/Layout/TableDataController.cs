@@ -39,19 +39,39 @@ internal sealed class TableDataController: IDisposable
     /// <param name="owner">The owning table.</param>
     /// <param name="presenter">The owning table's private presenter.</param>
     /// <param name="adapter">The type-erased source/template adapter.</param>
-    /// <param name="rowHeight">The positive uniform row height.</param>
-    public TableDataController(Table owner, TablePresenter presenter, TableDataAdapter adapter, int rowHeight)
+    /// <param name="rowHeight">The validated fixed or viewport-relative uniform row request.</param>
+    public TableDataController(Table owner, TablePresenter presenter, TableDataAdapter adapter, Length rowHeight)
     {
         _owner = owner;
         _presenter = presenter;
         _adapter = adapter;
-        RowHeight = rowHeight;
+        RowHeightRequest = rowHeight;
+        RowHeight = UniformRowHeight.Resolve(rowHeight, viewportHeight: 0);
         _adapter.Changed += OnAdapterChanged;
     }
 
+    /// <summary>Gets the authored fixed or viewport-relative uniform row request.</summary>
+    public Length RowHeightRequest { get; }
+
     /// <summary>Gets the positive uniform row height.</summary>
     [ValueRange(1, int.MaxValue)]
-    public int RowHeight { get; }
+    public int RowHeight { get; private set; }
+
+    /// <summary>Freezes the authored row request against the current final viewport.</summary>
+    /// <param name="viewportHeight">The non-negative scrollbar-aware viewport height.</param>
+    /// <returns>True when the resolved cell height changed.</returns>
+    public bool ResolveRowHeight(int viewportHeight)
+    {
+        var resolved = UniformRowHeight.Resolve(RowHeightRequest, viewportHeight);
+
+        if (resolved == RowHeight)
+        {
+            return false;
+        }
+
+        RowHeight = resolved;
+        return true;
+    }
 
     /// <summary>Gets the table-wide aggregate loading state.</summary>
     public TableLoadState LoadState { get; private set; } = TableLoadState.Idle;

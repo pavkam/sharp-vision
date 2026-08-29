@@ -135,8 +135,11 @@ internal sealed class ListViewPane: CompositeControlBase
         var virtualized = new ListView
         {
             Width = Length.Cells(20),
-            Height = Length.Cells(6),
-            RowHeight = 1,
+            Height = Length.Percent(40),
+            MinHeight = Length.Cells(4),
+            MaxHeight = Length.Cells(12),
+            RowHeight = Length.Percent(25),
+            ItemTemplate = item => new Text((string) item!) { Height = Length.Star(1) },
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.Always,
             ScrollBarStyle = ScrollBarStyle.ThinLine,
@@ -203,11 +206,11 @@ internal sealed class ListViewPane: CompositeControlBase
             new DocSection(
                 "🪟",
                 "Virtualization",
-                "Setting RowHeight opts into windowed realization: only rows inside the viewport plus a bounded overscan margin are ever realized.",
+                "A fixed or relative RowHeight opts into windowed realization: only rows inside the viewport plus a bounded overscan margin are ever realized.",
                 new DocExample(
                     "20,000 rows, viewport-bounded realization",
-                    "Scroll, page, or use <reverse>Home</reverse>/<reverse>End</reverse> across 20,000 rows without realizing them all up front.",
+                    "Resize, scroll, page, or use <reverse>Home</reverse>/<reverse>End</reverse> across 20,000 rows. Row height follows one quarter of the final viewport while realization stays bounded.",
                     new DocColumn(virtualized, virtualizedStatus),
-                    "list.RowHeight = 1;\nlist.Items = hugeCollection;")));
+                    "list.RowHeight = Length.Percent(25);\nlist.ItemTemplate = item => new Text(item.ToString()) { Height = Length.Star(1) };\nlist.Items = hugeCollection;")));
     }
 }

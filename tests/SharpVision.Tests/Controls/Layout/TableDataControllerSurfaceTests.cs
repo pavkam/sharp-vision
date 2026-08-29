@@ -31,6 +31,47 @@ public sealed class TableDataControllerSurfaceTests
         return table;
     }
 
+    /// <summary>Verifies progressive rows freeze one viewport-relative height per layout and
+    /// atomically rewindow after resize without losing the active logical row.</summary>
+    [Fact]
+    public async Task ResizeAsync_WhenProgressiveRowHeightIsRelative_RewindowsWithResolvedStrideAsync()
+    {
+        var table = CreateHost();
+        table.RowSpacing = 1;
+        var source = CreateSource(10_000);
+        source.Gate();
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(20, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(
+            () => table.SetDataSource(source, BuildRow, Length.Percent(50)),
+            "bind relative-row source");
+        await surface.UpdateAsync(() => table.SelectIndex(2), "select progressive row");
+        var controller = table.ProgressiveController!;
+
+        controller.RowHeight.ShouldBe(4);
+        controller.WindowCount.ShouldBeLessThan(10);
+        await surface.UpdateAsync(() => table.ScrollBy(0, 40), "scroll relative-row table");
+        var anchoredIndex = table.VerticalOffset / 5;
+
+        await surface.ResizeAsync(new Size(20, 4));
+
+        controller.RowHeight.ShouldBe(2);
+        controller.WindowCount.ShouldBeLessThan(10);
+        table.ActiveIndex.ShouldBe(2);
+        (table.VerticalOffset / 3).ShouldBe(anchoredIndex);
+
+        await SettleUntilAsync(
+            surface,
+            source,
+            () => controller.PendingCount == 0 && !controller.IsPlaceholder(controller.WindowStart));
+
+        source.HeldCount.ShouldBe(0);
+        controller.PendingCount.ShouldBe(0);
+        controller.RowAt(controller.WindowStart)!.Cells[0].Bounds.Height.ShouldBe(2);
+    }
+
     /// <summary>Releases whatever is currently held and settles the dispatcher, repeatedly, until a
     /// predicate is satisfied or a generous iteration bound is exhausted. A gated fetch's completion
     /// still has to cross the controller's own dispatcher-marshaled commit and any resulting
@@ -86,7 +127,7 @@ public sealed class TableDataControllerSurfaceTests
         source.Gate();
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 5), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
 
         surface.Cell(new Point(0, 0)).Text.ShouldBe(table.ActualStyle.Glyphs.Placeholder.ToString());
     }
@@ -105,7 +146,7 @@ public sealed class TableDataControllerSurfaceTests
         source.Gate();
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 5), theme, TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
 
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(
             TerminalPalette.Project(theme.ResolveColor(SemanticColor.Accent), ColorDepth.Basic16));
@@ -149,7 +190,7 @@ public sealed class TableDataControllerSurfaceTests
         source.Gate();
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 5), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
 
         await SettleUntilAsync(surface, source, () => !table.ProgressiveController!.IsPlaceholder(0));
 
@@ -171,7 +212,7 @@ public sealed class TableDataControllerSurfaceTests
         var source = CreateSource(20);
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 5), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
         var cell = table.ProgressiveController!.RowAt(0)!.Cells[0];
 
         // The default theme does not paint plain text content differently for IsSelected/Current -
@@ -196,7 +237,7 @@ public sealed class TableDataControllerSurfaceTests
         var source = CreateSource(20);
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 5), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
         var cell = table.ProgressiveController!.RowAt(1)!.Cells[0];
         cell.GetAppearanceState().HasFlag(VisualState.Current).ShouldBeFalse();
 
@@ -217,7 +258,7 @@ public sealed class TableDataControllerSurfaceTests
         source.Gate();
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 5), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
         await SettleUntilAsync(surface, source, () => !table.ProgressiveController!.IsPlaceholder(0));
         await surface.UpdateAsync(table.SelectAll, "select every currently loaded row");
 
@@ -244,7 +285,7 @@ public sealed class TableDataControllerSurfaceTests
         var loadFailedCount = 0;
         table.LoadFailed += (_, _) => loadFailedCount++;
 
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
         await AdvanceUntilLoadStateAsync(surface, table, TableLoadState.Failed);
 
         loadFailedCount.ShouldBe(1);
@@ -284,7 +325,7 @@ public sealed class TableDataControllerSurfaceTests
         source.Gate();
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 5), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
         await surface.Pointer.ClickAsync(table, new Point(0, 0));
         var loadCallCountBeforeEnd = source.LoadCallCount;
 
@@ -322,7 +363,7 @@ public sealed class TableDataControllerSurfaceTests
         var source = CreateSource(100);
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 5), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
         await surface.Pointer.ClickAsync(table, new Point(0, 0));
 
         await surface.Keyboard.PressAsync(Code.End);
@@ -343,7 +384,7 @@ public sealed class TableDataControllerSurfaceTests
     }
 
     /// <summary>Verifies the progressive path's PageDown distance matches what eager mode's
-    /// PagingStep.Accumulate produces for the same viewport/row-height combination: RowHeight=3
+    /// PagingStep.Accumulate produces for the same viewport/row-height combination: RowHeight = Length.Cells(3)
     /// against a Viewport.Height of 10 accumulates 3, 6, 9, 12 and stops at 12 (the fourth row),
     /// so PageDown must advance ActiveIndex by 4 rows rather than floor(10/3) = 3.</summary>
     [Fact]
@@ -353,7 +394,7 @@ public sealed class TableDataControllerSurfaceTests
         var source = CreateSource(50);
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 10), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 3), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(3)), "bind source");
         await surface.Pointer.ClickAsync(table, new Point(0, 0));
 
         await surface.Keyboard.PressAsync(Code.PageDown);
@@ -364,7 +405,7 @@ public sealed class TableDataControllerSurfaceTests
     /// <summary>Verifies the progressive path's PageDown distance accounts for RowGap - regression
     /// for StepPageRows computing the page step from RowHeight alone instead of the gap-inclusive
     /// stride ArrangeWindow/TryResolvePoint/BringIntoProgressiveView all use, which advanced
-    /// ActiveIndex by far more rows than actually fit in one viewport page. RowHeight=3, RowGap=2
+    /// ActiveIndex by far more rows than actually fit in one viewport page. RowHeight = Length.Cells(3), RowGap=2
     /// (via RowSpacing) gives a stride of 5 against a Viewport.Height of 10, so PageDown must
     /// advance ActiveIndex by 2 rows (floor(10/5) = 2), not floor(10/3) = 3 or ceil(10/3) = 4.</summary>
     [Fact]
@@ -375,7 +416,7 @@ public sealed class TableDataControllerSurfaceTests
         var source = CreateSource(50);
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 10), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 3), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(3)), "bind source");
         await surface.Pointer.ClickAsync(table, new Point(0, 0));
 
         await surface.Keyboard.PressAsync(Code.PageDown);
@@ -393,7 +434,7 @@ public sealed class TableDataControllerSurfaceTests
         var source = CreateSource(20);
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 6), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
         List<TableSortChangedEventArgs> requests = [];
         table.SortRequested += (_, args) => requests.Add(args);
         var loadCallCountBeforeClick = source.LoadCallCount;
@@ -426,7 +467,7 @@ public sealed class TableDataControllerSurfaceTests
         var host = new Overlay { Children = { table } };
         await using var surface = await ComponentSurface.MountAsync(
             host, new Size(10, 6), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
         var replacementLoadsAfterMutation = 0;
         table.SortRequested += (_, _) =>
         {
@@ -436,7 +477,7 @@ public sealed class TableDataControllerSurfaceTests
                     table.ClearDataSource();
                     break;
                 case 1:
-                    table.SetDataSource(replacement, BuildRow, 1);
+                    table.SetDataSource(replacement, BuildRow, Length.Cells(1));
                     replacementLoadsAfterMutation = replacement.LoadCallCount;
                     break;
                 case 2:
@@ -464,7 +505,7 @@ public sealed class TableDataControllerSurfaceTests
         var source = CreateSource(20);
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 6), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
         var reentered = false;
         table.SortRequested += (_, _) =>
         {
@@ -496,7 +537,7 @@ public sealed class TableDataControllerSurfaceTests
         host.Children.Add(table);
         await using var surface = await ComponentSurface.MountAsync(
             host, new Size(10, 5), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
         source.HeldCount.ShouldBe(1);
 
         await surface.UpdateAsync(() => host.Children.Remove(table), "detach mid-fetch");
@@ -520,7 +561,7 @@ public sealed class TableDataControllerSurfaceTests
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(1, 1), TestContext.Current.CancellationToken);
 
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
 
         table.IsProgressive.ShouldBeTrue();
     }
@@ -537,7 +578,7 @@ public sealed class TableDataControllerSurfaceTests
         var source = CreateSource(20);
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 5), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
         table.ProgressiveController!.IsPlaceholder(0).ShouldBeFalse();
         var loadCallCountBeforeChange = source.LoadCallCount;
 
@@ -566,7 +607,7 @@ public sealed class TableDataControllerSurfaceTests
         var source = CreateSource(20);
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 5), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
         table.ProgressiveController!.IsPlaceholder(0).ShouldBeFalse();
         var loadCallCountBeforeChange = source.LoadCallCount;
 
@@ -599,7 +640,7 @@ public sealed class TableDataControllerSurfaceTests
         previousDispatcher.Post(() =>
         {
             previousRoot.Attach(previousDispatcher);
-            table.SetDataSource(source, BuildRow, 1);
+            table.SetDataSource(source, BuildRow, Length.Cells(1));
             ready.SetResult();
             changed.Wait();
             previousRoot.Children.Remove(table).ShouldBeTrue();
@@ -648,7 +689,7 @@ public sealed class TableDataControllerSurfaceTests
         previousDispatcher.Post(() =>
         {
             previousRoot.Attach(previousDispatcher);
-            table.SetDataSource(source, BuildRow, 1);
+            table.SetDataSource(source, BuildRow, Length.Cells(1));
             ready.SetResult();
             failed.Wait();
             previousRoot.Children.Remove(table).ShouldBeTrue();
@@ -691,7 +732,7 @@ public sealed class TableDataControllerSurfaceTests
         var source = CreateSource(20);
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 5), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
 
         table.ProgressiveController!.IsPlaceholder(0).ShouldBeFalse();
         surface.Cell(new Point(0, 0)).Text.ShouldBe("R");
@@ -725,7 +766,7 @@ public sealed class TableDataControllerSurfaceTests
         var source = CreateSource(5);
         await using var progressiveSurface = await ComponentSurface.MountAsync(
             progressive, size, TestContext.Current.CancellationToken);
-        await progressiveSurface.UpdateAsync(() => progressive.SetDataSource(source, BuildRow, 1), "bind source");
+        await progressiveSurface.UpdateAsync(() => progressive.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
         await progressiveSurface.UpdateAsync(() => progressive.SelectIndex(2), "select index 2 (progressive)");
 
         for (var y = 0; y < size.Height; y++)
@@ -778,7 +819,7 @@ public sealed class TableDataControllerSurfaceTests
 
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 5), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildIndexRow, rowHeight), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildIndexRow, Length.Cells(rowHeight)), "bind source");
 
         // The source reports a known, fixed total count from the start, so Extent already
         // reflects the full 500 rows before any fetch resolves - the jump below is a legitimate
@@ -826,7 +867,7 @@ public sealed class TableDataControllerSurfaceTests
             [new TwoColumnItem(0, "12345678", "abcdefgh")], static item => item.Id, count: 1);
         await using var surface = await ComponentSurface.MountAsync(
             table, new Size(10, 4), TestContext.Current.CancellationToken);
-        await surface.UpdateAsync(() => table.SetDataSource(source, BuildTwoColumnRow, 1), "bind source");
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildTwoColumnRow, Length.Cells(1)), "bind source");
 
         await surface.UpdateAsync(() => table.HorizontalOffset = 3, "scroll horizontally");
 

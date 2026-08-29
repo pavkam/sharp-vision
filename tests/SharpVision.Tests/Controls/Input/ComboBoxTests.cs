@@ -223,10 +223,10 @@ public sealed class ComboBoxTests
         var box = new ComboBox();
         var list = OwnedTree.Find<UiListView>(box).ShouldNotBeNull();
 
-        box.RowHeight = 3;
+        box.RowHeight = Length.Cells(3);
 
-        list.RowHeight.ShouldBe(3);
-        box.RowHeight.ShouldBe(3);
+        list.RowHeight.ShouldBe(Length.Cells(3));
+        box.RowHeight.ShouldBe(Length.Cells(3));
     }
 
     /// <summary>Verifies ComboBox publishes its committed index before forwarding selection change.</summary>
@@ -707,7 +707,7 @@ public sealed class ComboBoxTests
             Items = ["Zero", "One", "Two", "Three", "Four", "Five", "Six"],
             SelectedIndex = 3,
             DropDownHeight = Length.Cells(3),
-            RowHeight = 1,
+            RowHeight = Length.Cells(1),
             IsOpen = true
         };
         new LayoutEngine().Layout(box, new Size(16, 8));

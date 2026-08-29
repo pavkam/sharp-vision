@@ -89,7 +89,9 @@ internal sealed class ComboBoxPane: CompositeControlBase
             Width = Length.Cells(24),
             Items = manyItems,
             SelectedIndex = 0,
-            DropDownHeight = Length.Percent(50)
+            DropDownHeight = Length.Percent(50),
+            RowHeight = Length.Percent(25),
+            ItemTemplate = item => new Text((string) item!) { Height = Length.Star(1) }
         };
         ShowcasePaneHelpers.WireComboSelectionStatus(tall, tallStatus, "Selected");
         var tallStage = ShowcasePaneHelpers.ComboStage(26, 8, tall);
@@ -162,7 +164,7 @@ internal sealed class ComboBoxPane: CompositeControlBase
                     "Capped drop-down",
                     "The list uses half of the usable placement-side height and responds when the terminal resizes. Arrow, wheel, and paging input scroll inside the popup before the page.",
                     new DocColumn(tallStage, tallStatus),
-                    "combo.DropDownHeight = Length.Percent(50);\ncombo.ShowScrollBars = ShowScrollBars.WhenNeeded;")),
+                    "combo.DropDownHeight = Length.Percent(50);\ncombo.RowHeight = Length.Percent(25);\ncombo.ShowScrollBars = ShowScrollBars.WhenNeeded;")),
             new DocSection(
                 "🔽",
                 "No selection",

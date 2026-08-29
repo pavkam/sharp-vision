@@ -235,6 +235,31 @@ public sealed class CommandPaletteTests
         palette.IsDisposed.ShouldBeTrue();
     }
 
+    /// <summary>Verifies assigning the current row-height request is an observable no-op.</summary>
+    [Fact]
+    public void RowHeight_WhenAssignedSameValue_DoesNotPublishPropertyChange()
+    {
+        // Arrange
+        var palette = new CommandPalette
+        {
+            RowHeight = Length.Percent(25)
+        };
+        var changes = 0;
+        palette.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(CommandPalette.RowHeight))
+            {
+                changes++;
+            }
+        };
+
+        // Act
+        palette.RowHeight = Length.Percent(25);
+
+        // Assert
+        changes.ShouldBe(0);
+    }
+
     /// <summary>Verifies a throwing Text observer cannot prevent the committed search from being
     /// admitted to the resolver.</summary>
     [Fact]

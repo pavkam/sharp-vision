@@ -815,7 +815,39 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
+        var previousHeight = Progressive?.RowHeight;
+        var previousOffset = VerticalOffset;
         ArrangeChild(_presenter, bounds, ResolvedAxes.Both);
+
+        if (Progressive is { } controller)
+        {
+            for (var pass = 0; pass < 2; pass++)
+            {
+                var dataViewportHeight = Math.Max(0, Viewport.Height - _presenter.ProgressiveHeaderHeight);
+
+                if (!controller.ResolveRowHeight(dataViewportHeight))
+                {
+                    break;
+                }
+
+                _ = MeasureChild(_presenter, new Constraint(bounds.Width, bounds.Height));
+                ArrangeChild(_presenter, bounds, ResolvedAxes.Both);
+            }
+
+            if (previousHeight is int height && height != controller.RowHeight)
+            {
+                var headerHeight = _presenter.ProgressiveHeaderHeight;
+                var contentOffset = Math.Max(0, previousOffset - headerHeight);
+                var mapped = UniformRowHeight.RemapOffset(
+                    contentOffset,
+                    height,
+                    controller.RowHeight,
+                    _presenter.RowGap);
+                var target = previousOffset < headerHeight ? previousOffset : headerHeight.Add(mapped);
+                var maximum = Math.Max(0, Extent.Height - Viewport.Height);
+                _ = _presenter.ScrollByKnownMaximum(target - VerticalOffset, maximum, ScrollCause.Resize);
+            }
+        }
 
         // The presenter's own arrange transaction has already closed by this point - reconciling
         // here catches every case that changed viewport, offset, or extent without a genuine
@@ -937,10 +969,10 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// <typeparam name="T">The item type loaded from <paramref name="source"/>.</typeparam>
     /// <param name="source">The non-null data source.</param>
     /// <param name="rowTemplate">The non-null row template, invoked only on the dispatcher.</param>
-    /// <param name="rowHeight">The positive uniform row height.</param>
+    /// <param name="rowHeight">The positive fixed or viewport-relative uniform row height.</param>
     /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="rowTemplate"/> is null.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="rowHeight"/> is not positive.</exception>
-    /// <exception cref="ArgumentException">A defined column uses <see cref="LengthKind.Auto"/> width.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="rowHeight"/> is a zero fixed or percentage length.</exception>
+    /// <exception cref="ArgumentException"><paramref name="rowHeight"/> is automatic or proportional, or a defined column uses <see cref="LengthKind.Auto"/> width.</exception>
     /// <exception cref="InvalidOperationException">
     /// <see cref="Rows"/> is non-empty, <see cref="SelectionMode"/> is a cell mode, or the table is
     /// mutated off-dispatcher or without an attached dispatcher.
@@ -949,11 +981,11 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     public void SetDataSource<T>(
         ITableDataSource<T> source,
         TableRowTemplate<T> rowTemplate,
-        [ValueRange(1, int.MaxValue)] int rowHeight)
+        Length rowHeight)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(rowTemplate);
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(rowHeight, 0);
+        UniformRowHeight.Validate(rowHeight, allowAuto: false, nameof(rowHeight));
         VerifyMutable();
 
         if (Dispatcher is null)
