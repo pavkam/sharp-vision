@@ -105,7 +105,7 @@ public sealed class ComboBoxSurfaceTests
 
     /// <summary>Verifies a disabled Turbo Vision field shows its authored flat "disabledBorder"
     /// color instead of the passive Sunken bezel a Sunken/Raised relief would otherwise
-    /// substitute - "input.disabled.border.foreground": "disabledBorder" (darkGray, #555555),
+    /// substitute - "input.disabled.border.foreground": "disabledBorder" (darkGray, `#555555`),
     /// restored to visibility by the border-relief-vs-authored-Foreground fix.</summary>
     [Fact]
     public async Task Render_WhenTurboVisionComboBoxIsDisabled_ShowsFlatDisabledBorderAsync()

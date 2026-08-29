@@ -9,7 +9,7 @@ public sealed class IntrinsicBorderSurfaceTests
     /// <summary>Verifies a focused Turbo Vision input shows its authored flat "focusedBorder"
     /// color on every edge instead of the passive Sunken bezel a Sunken/Raised relief would
     /// otherwise substitute - "input.focused.border.foreground": "focusedBorder" (brightCyan,
-    /// #55ffff), restored to visibility by the border-relief-vs-authored-Foreground fix.</summary>
+    /// `#55ffff`), restored to visibility by the border-relief-vs-authored-Foreground fix.</summary>
     [Fact]
     public async Task Render_WhenTurboVisionInputReceivesFocus_ShowsFlatActiveFrameAsync()
     {
