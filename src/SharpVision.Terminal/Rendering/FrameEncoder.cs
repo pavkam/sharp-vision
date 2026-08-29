@@ -138,6 +138,7 @@ public static class FrameEncoder
         front?.ThrowIfDisposed();
         var redraw = full || front is null || front.Size != back.Size;
         var semanticStyle = CellStyle.Default;
+        var styleCacheValid = true;
         var style = CellStyle.Default;
         var spanCount = 0;
         var scroll = default(VerticalScrollDamage);
@@ -238,6 +239,7 @@ public static class FrameEncoder
                             profile,
                             interpreter);
                         semanticStyle = new CellStyle(background: overlay.Background);
+                        styleCacheValid = false;
                         placeholderStyle = overlay;
                     }
 
@@ -252,12 +254,13 @@ public static class FrameEncoder
                     continue;
                 }
 
-                var projected = cell.Style == semanticStyle
+                var projected = styleCacheValid && cell.Style == semanticStyle
                     ? style
                     : Project(cell.Style, profile);
                 usedFallback |= UsesFallback(cell.Style, projected, profile);
                 style = ApplyStyle(destination, style, projected, profile, interpreter);
                 semanticStyle = cell.Style;
+                styleCacheValid = true;
                 var grapheme = back.GetGrapheme(index);
                 destination.Write(grapheme.IsEmpty ? " "u8 : grapheme);
             }

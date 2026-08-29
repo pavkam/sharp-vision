@@ -87,6 +87,55 @@ public sealed class RendererTests
         bytes.AsSpan().IndexOf("38;2;"u8).ShouldBe(-1);
     }
 
+    /// <summary>
+    /// Verifies a full redraw restores the terminal's default foreground for cells trailing a Kitty
+    /// placeholder run instead of leaking the placeholder's synthetic identity-color style into them.
+    /// </summary>
+    [Fact]
+    public async Task RenderAsync_WhenFullRedrawFollowsKittyPlaceholder_RestoresDefaultStyleForTrailingCellsAsync()
+    {
+        var capabilities = TerminalCapabilities.Conservative with
+        {
+            ColorDepth = ColorDepth.TrueColor,
+            KittyGraphics = new Feature(CapabilitySupport.Supported, Origin.Query)
+        };
+        using var backend = new KittyGraphicsBackend();
+        using var renderer = new Renderer(backend);
+        await using var transport = new FakeTransport();
+        using var frame = CreateGraphicsFrame(withImage: true);
+        _ = await renderer.RenderAsync(
+            frame,
+            transport,
+            TerminalProfile.CreateAnsi(capabilities),
+            TestContext.Current.CancellationToken);
+        renderer.AcceptKittyGraphicsResponse(
+            KittyGraphicsResponse.Parse("Gi=66051,I=1;OK"u8));
+        _ = await renderer.RenderAsync(
+            frame,
+            transport,
+            TerminalProfile.CreateAnsi(capabilities),
+            TestContext.Current.CancellationToken);
+        transport.Writes.Clear();
+
+        // Forces a full/redraw pass: the overlay and the trailing "xt" cells land in the same
+        // contiguous damage span, unlike the incremental two-render sequence above.
+        renderer.Invalidate();
+        _ = await renderer.RenderAsync(
+            frame,
+            transport,
+            TerminalProfile.CreateAnsi(capabilities),
+            TestContext.Current.CancellationToken);
+
+        var bytes2 = transport.Writes.ShouldHaveSingleItem();
+        var foreground = bytes2.AsSpan().IndexOf("\u001b[38;2;1;2;3m"u8);
+        foreground.ShouldBeGreaterThanOrEqualTo(0);
+        var afterForeground = bytes2.AsSpan(foreground);
+        var reset = afterForeground.IndexOf("\u001b[0m"u8);
+        reset.ShouldBeGreaterThan(0);
+        var trailing = afterForeground[reset..].IndexOf("xt"u8);
+        trailing.ShouldBeGreaterThan(0);
+    }
+
     /// <summary>Verifies virtual image cells participate in the same scroll-shaped damage transaction.</summary>
     [Fact]
     public async Task RenderAsync_WhenKittyPlaceholderRowsScroll_UsesDecstbmWithOrdinaryCellsAsync()
