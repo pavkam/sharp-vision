@@ -38,6 +38,7 @@ public sealed class Renderer: IDisposable
     private int _disposed;
     private int _rendering;
     private bool _invalidated = true;
+    private bool _scrollRegionUncertain;
 
     /// <summary>Initializes a renderer with finite reusable output storage.</summary>
     /// <param name="maxOutputBytes">The positive maximum encoded batch size.</param>
@@ -404,13 +405,22 @@ public sealed class Renderer: IDisposable
                 _backend!.WriteUploads(_buffer);
             }
 
-            var encoded = FrameEncoder.Encode(
+            if (backendResult.Changed && backendResult.CellPreludes != 0)
+            {
+                _backend!.WriteCellPreludes(_buffer);
+            }
+
+            var encoded = FrameEncoder.EncodeWithState(
                 _front,
                 back,
                 _buffer,
                 profile,
                 transactionInterpreter,
-                forceFull || backendResult.FullCellRedraw);
+                forceFull || backendResult.FullCellRedraw,
+                _backend?.CommittedCellOverlay,
+                _backend?.PreparedCellOverlay,
+                _scrollRegionUncertain,
+                out var usedScrollRegion);
 
             if (backendResult.Changed && backendResult.Placements != 0)
             {
@@ -462,6 +472,8 @@ public sealed class Renderer: IDisposable
                 _buffer.Prepend(_synchronizedBegin);
                 _buffer.Write(_synchronizedEnd);
             }
+
+            _scrollRegionUncertain |= usedScrollRegion;
 
             return WriteAsync(
                 back,
@@ -684,6 +696,7 @@ public sealed class Renderer: IDisposable
             transactionInterpreter.CommitTransaction();
             _interpreter = transactionInterpreter;
             _invalidated = false;
+            _scrollRegionUncertain = false;
             var metrics = new RenderMetrics(
                 _buffer.WrittenCount,
                 1,

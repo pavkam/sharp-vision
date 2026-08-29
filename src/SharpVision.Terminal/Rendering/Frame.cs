@@ -19,6 +19,9 @@ public sealed class Frame: IDisposable
     private Cell[]? _cells;
     private int _mutationCaptureDepth;
     private ulong _mutationRevision;
+    private ulong[]? _rowFingerprints;
+    private ulong _rowFingerprintRevision;
+    private bool _rowFingerprintsValid;
     private byte[]? _text;
     private Placement[]? _placements;
     private int _placementCount;
@@ -60,6 +63,7 @@ public sealed class Frame: IDisposable
 
         var cellCount = checked(size.Width * size.Height);
         var cells = ArrayPool<Cell>.Shared.Rent(Math.Max(1, cellCount));
+        var rowFingerprints = ArrayPool<ulong>.Shared.Rent(Math.Max(1, size.Height));
 
         try
         {
@@ -69,10 +73,12 @@ public sealed class Frame: IDisposable
         catch
         {
             ArrayPool<Cell>.Shared.Return(cells, clearArray: true);
+            ArrayPool<ulong>.Shared.Return(rowFingerprints, clearArray: true);
             throw;
         }
 
         _cells = cells;
+        _rowFingerprints = rowFingerprints;
         MaxTextBytes = maxTextBytes;
         MaxPlacements = maxPlacements;
         AmbiguousWidth = ambiguousWidth;
@@ -261,14 +267,16 @@ public sealed class Frame: IDisposable
     {
         var cells = _cells;
         var text = _text;
+        var rowFingerprints = _rowFingerprints;
 
-        if (cells is null || text is null)
+        if (cells is null || text is null || rowFingerprints is null)
         {
             return;
         }
 
         _cells = null;
         _text = null;
+        _rowFingerprints = null;
         ClearPlacements();
         var placements = _placements;
         _placements = null;
@@ -276,6 +284,7 @@ public sealed class Frame: IDisposable
         TextLength = 0;
         ArrayPool<Cell>.Shared.Return(cells, clearArray: true);
         ArrayPool<byte>.Shared.Return(text, clearArray: true);
+        ArrayPool<ulong>.Shared.Return(rowFingerprints, clearArray: true);
 
         if (placements is not null)
         {
@@ -379,6 +388,7 @@ public sealed class Frame: IDisposable
             _placementCount = source._placementCount;
         }
         _mutationRevision = source._mutationRevision;
+        _rowFingerprintsValid = false;
         TextLength = source.TextLength;
         Cursor = source.Cursor;
     }
@@ -678,17 +688,68 @@ public sealed class Frame: IDisposable
     internal bool SemanticallyEquals(Frame other, int index)
     {
         Debug.Assert(Size == other.Size, "Semantic cell comparison requires equal dimensions.");
-        var left = GetCellByIndex(index);
-        var right = other.GetCellByIndex(index);
+        return CellSemanticallyEquals(other, index, index);
+    }
+
+    /// <summary>Compares complete semantic rows at independent coordinates.</summary>
+    /// <param name="other">The other same-sized frame.</param>
+    /// <param name="row">This frame's zero-based row.</param>
+    /// <param name="otherRow">The other frame's zero-based row.</param>
+    /// <returns>Whether every cell and complete lead grapheme is equal.</returns>
+    [Pure]
+    internal bool RowSemanticallyEquals(Frame other, int row, int otherRow)
+    {
+        Debug.Assert(Size == other.Size, "Semantic row comparison requires equal dimensions.");
+        Debug.Assert((uint) row < (uint) Size.Height, "The source row is inside the frame.");
+        Debug.Assert((uint) otherRow < (uint) Size.Height, "The target row is inside the frame.");
+        var left = checked(row * Size.Width);
+        var right = checked(otherRow * Size.Width);
+
+        for (var column = 0; column < Size.Width; column++)
+        {
+            if (!CellSemanticallyEquals(other, left + column, right + column))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>Gets a cached mismatch prefilter for one complete semantic row.</summary>
+    /// <param name="row">The validated zero-based row.</param>
+    /// <returns>A fingerprint whose equality must still be confirmed semantically.</returns>
+    internal ulong RowSemanticFingerprint(int row)
+    {
+        Debug.Assert((uint) row < (uint) Size.Height, "The fingerprint row is inside the frame.");
+
+        if (!_rowFingerprintsValid || _rowFingerprintRevision != _mutationRevision)
+        {
+            RefreshRowFingerprints();
+        }
+
+        return _rowFingerprints![row];
+    }
+
+    /// <summary>Compares cells at independent absolute indices.</summary>
+    /// <param name="other">The other same-sized frame.</param>
+    /// <param name="leftIndex">This frame's absolute cell index.</param>
+    /// <param name="rightIndex">The other frame's absolute cell index.</param>
+    /// <returns>Whether metadata and complete lead bytes are equal.</returns>
+    [Pure]
+    internal bool CellSemanticallyEquals(Frame other, int leftIndex, int rightIndex)
+    {
+        var left = GetCellByIndex(leftIndex);
+        var right = other.GetCellByIndex(rightIndex);
 
         return left.Width == right.Width &&
-               left.LeadIndex == right.LeadIndex &&
+               (!left.IsContinuation || left.LeadIndex % Size.Width == right.LeadIndex % Size.Width) &&
                left.Style == right.Style &&
                left.IsContinuation == right.IsContinuation &&
                (left.IsContinuation ||
                 (left.Hash == right.Hash &&
                  left.Length == right.Length &&
-                 GetGrapheme(index).SequenceEqual(other.GetGrapheme(index))));
+                 GetGrapheme(leftIndex).SequenceEqual(other.GetGrapheme(rightIndex))));
     }
 
     /// <summary>Gets a validated absolute index for an in-bounds point.</summary>
@@ -1064,5 +1125,32 @@ public sealed class Frame: IDisposable
         }
 
         return hash;
+    }
+
+    private void RefreshRowFingerprints()
+    {
+        const ulong offsetBasis = 14695981039346656037;
+        const ulong prime = 1099511628211;
+
+        for (var row = 0; row < Size.Height; row++)
+        {
+            var value = offsetBasis;
+            var offset = checked(row * Size.Width);
+
+            for (var column = 0; column < Size.Width; column++)
+            {
+                var cell = GetCellByIndex(offset + column);
+                value = (value ^ cell.Width) * prime;
+                value = (value ^ (uint) (cell.IsContinuation ? (cell.LeadIndex % Size.Width) + 2 : 1)) * prime;
+                value = (value ^ (uint) cell.Style.GetHashCode()) * prime;
+                value = (value ^ cell.Hash) * prime;
+                value = (value ^ (uint) cell.Length) * prime;
+            }
+
+            _rowFingerprints![row] = value;
+        }
+
+        _rowFingerprintRevision = _mutationRevision;
+        _rowFingerprintsValid = true;
     }
 }

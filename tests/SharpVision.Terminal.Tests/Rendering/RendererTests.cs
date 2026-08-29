@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Graphics;
+using SharpVision.Terminal.Kitty.Graphics;
 
 /// <summary>
 /// Verifies commit-on-success rendering, invalidation, cleanup, and backpressure; atomic cell and
@@ -16,6 +17,142 @@ using SharpVision.Terminal.Graphics;
 [Collection(PerformanceGroup.Name)]
 public sealed class RendererTests
 {
+    /// <summary>Verifies assigned Kitty images become exact-color placeholder cells after their virtual prelude.</summary>
+    [Fact]
+    public async Task RenderAsync_WhenKittyImageIdIsAssigned_WritesVirtualPlacementBeforePlaceholderCellsAsync()
+    {
+        var capabilities = TerminalCapabilities.Conservative with
+        {
+            ColorDepth = ColorDepth.TrueColor,
+            KittyGraphics = new Feature(CapabilitySupport.Supported, Origin.Query)
+        };
+        using var backend = new KittyGraphicsBackend();
+        using var renderer = new Renderer(backend);
+        await using var transport = new FakeTransport();
+        using var frame = CreateGraphicsFrame(withImage: true);
+        _ = await renderer.RenderAsync(
+            frame,
+            transport,
+            TerminalProfile.CreateAnsi(capabilities),
+            TestContext.Current.CancellationToken);
+        transport.Writes.Clear();
+        renderer.AcceptKittyGraphicsResponse(
+            KittyGraphicsResponse.Parse("Gi=66051,I=1;OK"u8));
+
+        _ = await renderer.RenderAsync(
+            frame,
+            transport,
+            TerminalProfile.CreateAnsi(capabilities),
+            TestContext.Current.CancellationToken);
+
+        var bytes = transport.Writes.ShouldHaveSingleItem();
+        var prelude = bytes.AsSpan().IndexOf("a=p,i=66051,p=1,x=0,y=0,w=1,h=1,c=2,r=1,U=1"u8);
+        var placeholder = bytes.AsSpan().IndexOf("\U0010EEEE\u0305\u0305"u8);
+        prelude.ShouldBeGreaterThanOrEqualTo(0);
+        placeholder.ShouldBeGreaterThan(prelude);
+        bytes.AsSpan().IndexOf("\u001b[38;2;1;2;3m"u8).ShouldBeGreaterThan(prelude);
+        bytes.AsSpan().IndexOf("\u001b[58;2;0;0;1m"u8).ShouldBeGreaterThan(prelude);
+    }
+
+    /// <summary>Verifies indexed placeholders preserve protocol identifiers without palette projection.</summary>
+    [Fact]
+    public async Task RenderAsync_WhenKittyPlaceholderUsesIndexedColor_WritesExactIdentifierIndexesAsync()
+    {
+        var capabilities = TerminalCapabilities.Conservative with
+        {
+            ColorDepth = ColorDepth.Indexed256,
+            KittyGraphics = new Feature(CapabilitySupport.Supported, Origin.Query)
+        };
+        using var backend = new KittyGraphicsBackend();
+        using var renderer = new Renderer(backend);
+        await using var transport = new FakeTransport();
+        using var frame = CreateGraphicsFrame(withImage: true);
+        _ = await renderer.RenderAsync(
+            frame,
+            transport,
+            TerminalProfile.CreateAnsi(capabilities),
+            TestContext.Current.CancellationToken);
+        transport.Writes.Clear();
+        renderer.AcceptKittyGraphicsResponse(KittyGraphicsResponse.Parse("Gi=42,I=1;OK"u8));
+
+        _ = await renderer.RenderAsync(
+            frame,
+            transport,
+            TerminalProfile.CreateAnsi(capabilities),
+            TestContext.Current.CancellationToken);
+
+        var bytes = transport.Writes.ShouldHaveSingleItem();
+        bytes.AsSpan().IndexOf("\u001b[38;5;42m"u8).ShouldBeGreaterThanOrEqualTo(0);
+        bytes.AsSpan().IndexOf("\u001b[58;5;1m"u8).ShouldBeGreaterThanOrEqualTo(0);
+        bytes.AsSpan().IndexOf("38;2;"u8).ShouldBe(-1);
+    }
+
+    /// <summary>Verifies virtual image cells participate in the same scroll-shaped damage transaction.</summary>
+    [Fact]
+    public async Task RenderAsync_WhenKittyPlaceholderRowsScroll_UsesDecstbmWithOrdinaryCellsAsync()
+    {
+        var capabilities = TerminalCapabilities.Conservative with
+        {
+            ColorDepth = ColorDepth.TrueColor,
+            KittyGraphics = new Feature(CapabilitySupport.Supported, Origin.Query)
+        };
+        var profile = TerminalProfile.CreateAnsi(capabilities);
+        var image = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        using var front = CreateRows("head", "1111", "2222", "3333", "4444");
+        front.Canvas.DrawImage(image, new Rect(0, 2, 1, 1), PlacementMode.Stretch);
+        using var back = CreateRows("head", "2222", "3333", "4444", "5555");
+        back.Canvas.DrawImage(image, new Rect(0, 1, 1, 1), PlacementMode.Stretch);
+        using var backend = new KittyGraphicsBackend();
+        using var renderer = new Renderer(backend);
+        await using var transport = new FakeTransport();
+        _ = await renderer.RenderAsync(front, transport, profile, TestContext.Current.CancellationToken);
+        renderer.AcceptKittyGraphicsResponse(KittyGraphicsResponse.Parse("Gi=42,I=1;OK"u8));
+        _ = await renderer.RenderAsync(front, transport, profile, TestContext.Current.CancellationToken);
+        transport.Writes.Clear();
+
+        _ = await renderer.RenderAsync(back, transport, profile, TestContext.Current.CancellationToken);
+
+        var bytes = transport.Writes.ShouldHaveSingleItem();
+        var prelude = bytes.AsSpan().IndexOf("U=1"u8);
+        var scroll = bytes.AsSpan().IndexOf("\u001b[2;5r\u001b[1S\u001b[r"u8);
+        prelude.ShouldBeGreaterThanOrEqualTo(0);
+        scroll.ShouldBeGreaterThan(prelude);
+    }
+
+    /// <summary>Verifies a torn scroll transaction resets its possibly stranded region before repair.</summary>
+    [Fact]
+    public async Task RenderAsync_WhenScrollWriteTears_ResetsRegionBeforeFullRepairAsync()
+    {
+        using var front = CreateRows("head", "1111", "2222", "3333", "4444");
+        using var back = CreateRows("head", "2222", "3333", "4444", "5555");
+        using var renderer = new Renderer();
+        await using var transport = new FakeTransport();
+        _ = await renderer.RenderAsync(
+            front,
+            transport,
+            TerminalCapabilities.Conservative,
+            TestContext.Current.CancellationToken);
+        transport.Writes.Clear();
+        var failure = new IOException("torn scroll write");
+        transport.QueueFailure(failure, prefixBytes: 8);
+
+        var thrown = await Should.ThrowAsync<IOException>(async () =>
+            await renderer.RenderAsync(
+                back,
+                transport,
+                TerminalCapabilities.Conservative,
+                TestContext.Current.CancellationToken));
+        var recovered = await renderer.RenderAsync(
+            back,
+            transport,
+            TerminalCapabilities.Conservative,
+            TestContext.Current.CancellationToken);
+
+        thrown.ShouldBeSameAs(failure);
+        recovered.Full.ShouldBeTrue();
+        transport.Writes[^1].AsSpan().StartsWith("\u001b[r"u8).ShouldBeTrue();
+    }
+
     /// <summary>Verifies an optional actual expansion failure still commits one safely degraded frame.</summary>
     [Fact]
     public async Task RenderAsync_WhenActualOptionalColorExpansionFails_CommitsDegradedFrameAsync()
@@ -1956,6 +2093,19 @@ public sealed class RendererTests
                 GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]),
                 new Rect(0, 0, 2, 1),
                 PlacementMode.Contain);
+        }
+
+        return frame;
+    }
+
+    private static Frame CreateRows(params string[] rows)
+    {
+        var width = rows.Max(static row => row.Length);
+        var frame = new Frame(new Size(width, rows.Length));
+
+        for (var row = 0; row < rows.Length; row++)
+        {
+            _ = frame.Canvas.Draw(rows[row], new Point(0, row));
         }
 
         return frame;

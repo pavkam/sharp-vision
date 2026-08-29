@@ -390,13 +390,16 @@ public sealed class KittyGraphicsBackendSurfaceTests
     private static PreparedBytes WritePrepared(KittyGraphicsBackend backend)
     {
         var uploads = new ArrayBufferWriter<byte>();
+        var cellPreludes = new ArrayBufferWriter<byte>();
         var placements = new ArrayBufferWriter<byte>();
         var removals = new ArrayBufferWriter<byte>();
         backend.WriteUploads(uploads);
+        backend.WriteCellPreludes(cellPreludes);
         backend.WritePlacements(placements);
         backend.WriteRemovals(removals);
         return new PreparedBytes(
             uploads.WrittenSpan.ToArray(),
+            cellPreludes.WrittenSpan.ToArray(),
             placements.WrittenSpan.ToArray(),
             removals.WrittenSpan.ToArray());
     }

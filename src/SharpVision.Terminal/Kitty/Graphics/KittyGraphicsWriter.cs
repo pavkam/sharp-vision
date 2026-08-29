@@ -306,6 +306,11 @@ public static class KittyGraphicsWriter
             position = AppendField(destination, position, (byte) 'c', command.Destination.Width);
             position = AppendField(destination, position, (byte) 'r', command.Destination.Height);
 
+            if (command.IsUnicodePlaceholder)
+            {
+                position = AppendField(destination, position, (byte) 'U', 1);
+            }
+
             if (command.ZIndex != 0)
             {
                 position = AppendField(destination, position, (byte) 'z', command.ZIndex);

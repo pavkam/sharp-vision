@@ -10,6 +10,9 @@ public ref struct DamageEnumerator
     private readonly Frame? _front;
     private readonly Frame _back;
     private readonly bool _full;
+    private readonly VerticalScrollDamage _scroll;
+    private readonly GraphicsCellOverlay? _frontOverlay;
+    private readonly GraphicsCellOverlay? _backOverlay;
     private int _row;
     private int _column;
 
@@ -17,11 +20,23 @@ public ref struct DamageEnumerator
     /// <param name="front">The optional committed frame.</param>
     /// <param name="back">The target frame.</param>
     /// <param name="full">Whether complete damage is required.</param>
-    internal DamageEnumerator(Frame? front, Frame back, bool full)
+    /// <param name="scroll">The optional scroll transform already applied to the terminal.</param>
+    /// <param name="frontOverlay">The optional committed protocol cell projection.</param>
+    /// <param name="backOverlay">The optional target protocol cell projection.</param>
+    internal DamageEnumerator(
+        Frame? front,
+        Frame back,
+        bool full,
+        VerticalScrollDamage scroll = default,
+        GraphicsCellOverlay? frontOverlay = null,
+        GraphicsCellOverlay? backOverlay = null)
     {
         _front = front;
         _back = back;
         _full = full || front is null || front.Size != back.Size;
+        _scroll = scroll;
+        _frontOverlay = frontOverlay;
+        _backOverlay = backOverlay;
         _row = 0;
         _column = 0;
         Current = default;
@@ -92,7 +107,32 @@ public ref struct DamageEnumerator
     private readonly bool CellsEqual(int row, int column)
     {
         Debug.Assert(_front is not null, "Incremental comparison requires a front frame.");
+
+        if (_scroll.IsExposed(row))
+        {
+            return false;
+        }
+
+        if (_scroll.TryMapSourceRow(row, out var sourceRow))
+        {
+            var sourceIndex = checked((sourceRow * _back.Size.Width) + column);
+            var targetIndex = checked((row * _back.Size.Width) + column);
+            return GraphicsCellOverlay.CellsEqual(
+                _front,
+                _frontOverlay,
+                sourceIndex,
+                _back,
+                _backOverlay,
+                targetIndex);
+        }
+
         var index = checked((row * _back.Size.Width) + column);
-        return _front.SemanticallyEquals(_back, index);
+        return GraphicsCellOverlay.CellsEqual(
+            _front,
+            _frontOverlay,
+            index,
+            _back,
+            _backOverlay,
+            index);
     }
 }

@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Rendering;
 
 using Capabilities;
 
+using Kitty.Graphics;
+
 /// <summary>Encodes semantic frame damage through one immutable terminal profile.</summary>
 [PublicAPI]
 public static class FrameEncoder
@@ -98,7 +100,35 @@ public static class FrameEncoder
         IBufferWriter<byte> destination,
         TerminalProfile profile,
         Interpreter interpreter,
-        bool full = false)
+        bool full = false,
+        GraphicsCellOverlay? frontOverlay = null,
+        GraphicsCellOverlay? backOverlay = null)
+    {
+        return EncodeWithState(
+            front,
+            back,
+            destination,
+            profile,
+            interpreter,
+            full,
+            frontOverlay,
+            backOverlay,
+            resetScrollRegion: false,
+            out _);
+    }
+
+    /// <summary>Encodes while reporting and repairing renderer-owned scroll-region state.</summary>
+    internal static EncodeResult EncodeWithState(
+        Frame? front,
+        Frame back,
+        IBufferWriter<byte> destination,
+        TerminalProfile profile,
+        Interpreter interpreter,
+        bool full,
+        GraphicsCellOverlay? frontOverlay,
+        GraphicsCellOverlay? backOverlay,
+        bool resetScrollRegion,
+        out bool usedScrollRegion)
     {
         ArgumentNullException.ThrowIfNull(back);
         ArgumentNullException.ThrowIfNull(destination);
@@ -110,9 +140,17 @@ public static class FrameEncoder
         var semanticStyle = CellStyle.Default;
         var style = CellStyle.Default;
         var spanCount = 0;
+        var scroll = default(VerticalScrollDamage);
+        var placeholderStyle = default(GraphicsCellOverlayValue);
+        usedScrollRegion = false;
 
         if (redraw)
         {
+            if (resetScrollRegion)
+            {
+                Csi.ResetScrollRegion(new ProtocolWriter(destination));
+            }
+
             // sgr0 restores SGR attributes only; it never terminates an OSC 8 hyperlink
             // (IsVisualDefault below deliberately excludes Hyperlink for the same reason).
             // A redraw exists to repair unknown terminal state after a torn or interrupted
@@ -128,7 +166,40 @@ public static class FrameEncoder
             }
         }
 
-        foreach (var span in Damage.Enumerate(front, back, redraw))
+        if (!redraw &&
+            profile.AnsiCompatible &&
+            Damage.TryFindVerticalScroll(
+                front!,
+                back,
+                frontOverlay,
+                backOverlay,
+                out scroll))
+        {
+            var writer = new ProtocolWriter(destination);
+            Csi.SetScrollRegion(writer, scroll.Top + 1, scroll.Bottom + 1);
+
+            if (scroll.SourceOffset > 0)
+            {
+                Csi.ScrollUp(writer, scroll.Count);
+            }
+            else
+            {
+                Csi.ScrollDown(writer, scroll.Count);
+            }
+
+            Csi.ResetScrollRegion(writer);
+            usedScrollRegion = true;
+        }
+
+        var damage = Damage.Enumerate(
+            front,
+            back,
+            redraw,
+            frontOverlay,
+            backOverlay,
+            scroll);
+
+        foreach (var span in damage)
         {
             WriteRequired(profile, interpreter, destination, "cup", span.Row, span.Start);
             spanCount++;
@@ -142,7 +213,8 @@ public static class FrameEncoder
                     profile,
                     interpreter,
                     ref semanticStyle,
-                    ref style))
+                    ref style,
+                    backOverlay))
             {
                 continue;
             }
@@ -151,6 +223,27 @@ public static class FrameEncoder
             {
                 var index = checked((span.Row * back.Size.Width) + column);
                 var cell = back.GetCellByIndex(index);
+                var overlay = backOverlay?.GetCell(index) ?? default;
+
+                if (overlay.IsActive)
+                {
+                    if (!PlaceholderStylesEqual(placeholderStyle, overlay))
+                    {
+                        style = ApplyPlaceholderStyle(
+                            destination,
+                            style,
+                            overlay,
+                            profile,
+                            interpreter);
+                        semanticStyle = new CellStyle(background: overlay.Background);
+                        placeholderStyle = overlay;
+                    }
+
+                    KittyGraphicsPlaceholderWriter.WriteText(overlay, destination);
+                    continue;
+                }
+
+                placeholderStyle = default;
 
                 if (cell.IsContinuation)
                 {
@@ -228,7 +321,8 @@ public static class FrameEncoder
         TerminalProfile profile,
         Interpreter interpreter,
         ref CellStyle semanticStyle,
-        ref CellStyle style)
+        ref CellStyle style,
+        GraphicsCellOverlay? overlay)
     {
         if (!profile.Description.BackColorErase ||
             end != back.Size.Width ||
@@ -244,7 +338,9 @@ public static class FrameEncoder
             var index = checked((span.Row * back.Size.Width) + column);
             var cell = back.GetCellByIndex(index);
 
-            if (cell.IsContinuation || !back.GetGrapheme(index).IsEmpty)
+            if (overlay?.GetCell(index).IsActive == true ||
+                cell.IsContinuation ||
+                !back.GetGrapheme(index).IsEmpty)
             {
                 return false;
             }
@@ -277,6 +373,52 @@ public static class FrameEncoder
         semanticStyle = semantic.Value;
         return profile.Programs.TryWrite("el", [], interpreter, destination);
     }
+
+    private static bool PlaceholderStylesEqual(
+        GraphicsCellOverlayValue left,
+        GraphicsCellOverlayValue right) =>
+        left.IsActive &&
+        left.ImageId == right.ImageId &&
+        left.PlacementId == right.PlacementId &&
+        left.Background == right.Background &&
+        left.IdentityColorDepth == right.IdentityColorDepth;
+
+    private static CellStyle ApplyPlaceholderStyle(
+        IBufferWriter<byte> destination,
+        CellStyle current,
+        GraphicsCellOverlayValue placeholder,
+        TerminalProfile profile,
+        Interpreter interpreter)
+    {
+        var background = Project(
+            new CellStyle(background: placeholder.Background),
+            profile);
+        _ = ApplyStyle(destination, current, background, profile, interpreter);
+        var writer = new ProtocolWriter(destination);
+        Color foreground;
+
+        if (placeholder.IdentityColorDepth == ColorDepth.Indexed256)
+        {
+            Sgr.ForegroundPalette(writer, (int) placeholder.ImageId);
+            Sgr.UnderlineColorPalette(writer, (int) placeholder.PlacementId);
+            foreground = TerminalPalette.ColorAt((int) placeholder.ImageId);
+        }
+        else
+        {
+            foreground = IdentifierColor(placeholder.ImageId);
+            Sgr.Foreground(writer, foreground);
+            Sgr.UnderlineColor(writer, IdentifierColor(placeholder.PlacementId));
+        }
+
+        return new CellStyle(
+            foreground,
+            background.Background);
+    }
+
+    private static Color IdentifierColor(uint value) => Color.Rgb(
+        (int) ((value >> 16) & byte.MaxValue),
+        (int) ((value >> 8) & byte.MaxValue),
+        (int) (value & byte.MaxValue));
 
     private static CellStyle ApplyStyle(
         IBufferWriter<byte> destination,

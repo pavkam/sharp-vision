@@ -31,7 +31,8 @@ public sealed class KittyGraphicsCommand
         int frameGap = 0,
         KittyGraphicsAnimationControl control = default,
         int loopCount = 0,
-        bool usesImageNumber = false)
+        bool usesImageNumber = false,
+        bool isUnicodePlaceholder = false)
     {
         Action = action;
         Medium = medium;
@@ -53,6 +54,7 @@ public sealed class KittyGraphicsCommand
         Control = control;
         LoopCount = loopCount;
         UsesImageNumber = usesImageNumber;
+        IsUnicodePlaceholder = isUnicodePlaceholder;
     }
 
     /// <summary>Gets the typed action.</summary>
@@ -94,6 +96,9 @@ public sealed class KittyGraphicsCommand
 
     /// <summary>Gets whether placement uses the Kitty <c>C=1</c> no-cursor-movement policy.</summary>
     public bool DoNotMoveCursor { get; }
+
+    /// <summary>Gets whether placement creates a virtual Unicode-placeholder prototype.</summary>
+    public bool IsUnicodePlaceholder { get; }
 
     /// <summary>Gets whether another direct payload chunk follows.</summary>
     public bool More { get; }
@@ -234,6 +239,7 @@ public sealed class KittyGraphicsCommand
     /// <param name="zIndex">The signed stacking order.</param>
     /// <param name="quiet">Response suppression mode zero, one, or two.</param>
     /// <param name="doNotMoveCursor">Whether to emit <c>C=1</c>.</param>
+    /// <param name="unicodePlaceholder">Whether to emit <c>U=1</c> for a virtual placeholder placement.</param>
     /// <returns>A validated placement command.</returns>
     /// <exception cref="ArgumentOutOfRangeException">An identifier, rectangle, dimension, or quiet value is invalid.</exception>
     [Pure]
@@ -244,7 +250,8 @@ public sealed class KittyGraphicsCommand
         Size destination,
         int zIndex = 0,
         int quiet = 2,
-        bool doNotMoveCursor = true)
+        bool doNotMoveCursor = true,
+        bool unicodePlaceholder = false)
     {
         RequireId(imageId, nameof(imageId));
         RequireId(placementId, nameof(placementId));
@@ -263,8 +270,9 @@ public sealed class KittyGraphicsCommand
             destination,
             zIndex,
             quiet,
-            doNotMoveCursor,
-            more: false);
+            doNotMoveCursor: doNotMoveCursor && !unicodePlaceholder,
+            more: false,
+            isUnicodePlaceholder: unicodePlaceholder);
     }
 
     /// <summary>Creates one hard delete that frees image data and all placements.</summary>
@@ -421,7 +429,8 @@ public sealed class KittyGraphicsCommand
         FrameOffset,
         BaseFrameId,
         FrameGap,
-        usesImageNumber: UsesImageNumber);
+        usesImageNumber: UsesImageNumber,
+        isUnicodePlaceholder: IsUnicodePlaceholder);
 
     /// <summary>Uses the command's image value as a terminal-allocation image number.</summary>
     [Pure]
@@ -445,7 +454,8 @@ public sealed class KittyGraphicsCommand
         FrameGap,
         Control,
         LoopCount,
-        usesImageNumber: true);
+        usesImageNumber: true,
+        isUnicodePlaceholder: IsUnicodePlaceholder);
 
     /// <summary>Creates a metadata-minimal continuation chunk for the given data-bearing action.</summary>
     [Pure]

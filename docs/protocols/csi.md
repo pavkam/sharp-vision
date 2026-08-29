@@ -39,17 +39,24 @@ focus 1004, bracketed paste 2004, synchronized output 2026, Kitty clipboard mode
 5522, and the mouse tracking (9/1000/1002/1003) and coordinate
 (1005/1006/1015/1016) modes.
 
+For an ANSI-compatible profile, the frame encoder detects contiguous rows that
+have moved vertically between committed and target frames. When the saved cell
+bytes exceed the finite cost of the operation, it emits DECSTBM for the smallest
+affected region, `CSI Ps S` or `CSI Ps T` for the shift, resets DECSTBM in the
+same batch, and repaints only newly exposed or otherwise changed cells. The
+comparison includes Kitty Unicode-placeholder cells, so an assigned virtual
+image scrolls with ordinary text instead of forcing cursor-anchored replacement.
+Profiles that are not ANSI-compatible, frames with unprojected graphics, and
+shifts that do not reduce output retain ordinary absolute repaint.
+
+DECSTBM is terminal-global state. If a transport write or flush tears after the
+region was set, the renderer marks both the frame and the scroll region
+uncertain. The forced full repair starts with `CSI r` before style reset and
+clear, preventing a stranded margin from constraining subsequent output.
+
 Tabulation control (HTS/TBC/CHT/CBT) has no typed commands by design: the frame
 encoder addresses every cell absolutely through the description's `cup` program,
 so hardware tab stops play no role in full-screen output.
-
-> [!IMPORTANT]
->
-> **Implementation gap:** `Csi.SetScrollRegion` and `Csi.ResetScrollRegion` can
-> emit `CSI Pt ; Pb r` and its reset form, but nothing in the renderer calls
-> them yet. Scroll-shaped damage is still repainted through absolute cursor
-> addressing instead of a scroll region, so a one-line scroll still costs a
-> repaint of every moved row until that renderer-side optimization is built.
 
 ## Recovery and tests
 
@@ -65,8 +72,10 @@ cover absent, zero, default, maximum, and rejected values.
 - [XTerm Control Sequences, patch level 410, 2026-04-19](https://www.invisible-island.net/xterm/ctlseqs/ctlseqs.html)
   defines the xterm and DEC-compatible private forms used by the supported
   profile.
+- [VT510 Programmer Information: DECSTBM](https://vt100.net/docs/vt510-rm/DECSTBM.html)
+  defines top and bottom margins, their scrolling effect, and cursor relocation.
 
-Sources accessed 2026-07-20.
+Sources accessed 2026-08-29.
 
 ## Expected behavior
 

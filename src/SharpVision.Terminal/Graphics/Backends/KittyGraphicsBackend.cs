@@ -54,6 +54,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     private List<uint>? _retiredImageIds;
     private List<uint>? _retiredPlacementIds;
     private byte[] _uploads = [];
+    private byte[] _cellPreludeBytes = [];
     private byte[] _placementBytes = [];
     private byte[] _removals = [];
     private byte[] _cleanup = [];
@@ -104,6 +105,12 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     #region Frame transactions
 
     /// <inheritdoc />
+    public GraphicsCellOverlay? CommittedCellOverlay { get; private set; }
+
+    /// <inheritdoc />
+    public GraphicsCellOverlay? PreparedCellOverlay { get; private set; }
+
+    /// <inheritdoc />
     public void Accept(KittyGraphicsResponse response)
     {
         ArgumentNullException.ThrowIfNull(response);
@@ -141,10 +148,12 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         output.Reset(_maxPreparedBytes);
         var uploadCount = 0;
         var placementCount = 0;
+        var cellPreludeCount = 0;
         var removalCount = 0;
         var enabled = context.Profile is null || GraphicsBackendSelector.Authoritative(
             context.Profile.Capabilities.KittyGraphics,
             allowQuery: true);
+        var placeholderColorDepth = context.Profile?.RenderingColorDepth ?? ColorDepth.TrueColor;
         var encodable = new bool[back.PlacementCount];
         List<GraphicsPlacementDiagnostic>? skippedPlacements = null;
 
@@ -333,15 +342,45 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             var remaining = _maxPreparedBytes;
             _uploads = FinishApcPhase(output, ref remaining);
 
+            var preparedCellOverlay = BuildCellOverlay(back, placements, placeholderColorDepth);
+            var virtualPlacementsChanged = !CellOverlaysEqual(
+                CommittedCellOverlay,
+                preparedCellOverlay);
+
+            if (!virtualPlacementsChanged)
+            {
+                virtualPlacementsChanged = PlacementsChanged(
+                    placements,
+                    placeholderColorDepth,
+                    placeholders: true);
+            }
+
+            if (virtualPlacementsChanged)
+            {
+                for (var index = 0; index < placements.Count; index++)
+                {
+                    var placementState = placements[index];
+
+                    if (CanUsePlaceholder(placementState, placeholderColorDepth))
+                    {
+                        WriteVirtualPlacement(placementState, index, output);
+                        cellPreludeCount++;
+                    }
+                }
+            }
+
+            _cellPreludeBytes = FinishApcPhase(output, ref remaining);
+
             for (var index = 0; index < placements.Count; index++)
             {
                 var placementState = placements[index];
                 var placement = placementState.Placement;
 
-                if (reconstruct ||
+                if (!CanUsePlaceholder(placementState, placeholderColorDepth) &&
+                    (reconstruct ||
                     index >= _placements.Count ||
                     _placements[index].PlacementId != placementState.PlacementId ||
-                    _placements[index].Placement != placement)
+                    _placements[index].Placement != placement))
                 {
                     WritePlacement(placementState, index, output);
                     placementCount++;
@@ -441,6 +480,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             _removals = FinishApcPhase(output, ref remaining);
             _preparedImages = images;
             _preparedPlacements = placements;
+            PreparedCellOverlay = preparedCellOverlay;
             _rentedImageIds = rentedImages;
             _rentedPlacementIds = rentedPlacements;
             _rentedPlacementStates = rentedPlacementStates;
@@ -456,17 +496,20 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             // release their stored image data.
             var requiresFinalPlacementClear = _placements.Count != 0 && placements.Count == 0;
             return new GraphicsBackendResult(
-                uploadCount + placementCount + removalCount != 0,
+                uploadCount + cellPreludeCount + placementCount + removalCount != 0 ||
+                    !CellOverlaysEqual(CommittedCellOverlay, preparedCellOverlay),
                 uploadCount,
                 placementCount,
                 removalCount,
                 fullCellRedraw: requiresFinalPlacementClear,
-                skippedPlacements);
+                skippedPlacements,
+                cellPreludes: cellPreludeCount);
         }
         catch
         {
             ReturnRented(rentedImages, rentedPlacements);
             _uploads = [];
+            _cellPreludeBytes = [];
             _placementBytes = [];
             _removals = [];
             output.Reset(_maxPreparedBytes);
@@ -479,6 +522,13 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     {
         EnsurePrepared();
         WritePrepared(_uploads, destination);
+    }
+
+    /// <inheritdoc />
+    public void WriteCellPreludes(IBufferWriter<byte> destination)
+    {
+        EnsurePrepared();
+        WritePrepared(_cellPreludeBytes, destination);
     }
 
     /// <inheritdoc />
@@ -503,6 +553,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         ReturnUncertain();
         _images = _preparedImages!;
         _placements = _preparedPlacements!;
+        CommittedCellOverlay = PreparedCellOverlay;
         ClearPrepared(returnRented: false);
         _invalidated = false;
     }
@@ -612,6 +663,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         ReturnUncertain();
         _images.Clear();
         _placements.Clear();
+        CommittedCellOverlay = null;
         _cleanup = [];
         _cleanupPrepared = false;
         _invalidated = false;
@@ -631,6 +683,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         ReturnUncertain();
         _images.Clear();
         _placements.Clear();
+        CommittedCellOverlay = null;
         _output.Dispose();
         _disposed = true;
     }
@@ -638,6 +691,91 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     #endregion
 
     #region Encoding
+
+    private static GraphicsCellOverlay? BuildCellOverlay(
+        Frame back,
+        List<KittyGraphicsPlacementState> placements,
+        ColorDepth colorDepth)
+    {
+        GraphicsCellOverlay? overlay = null;
+
+        foreach (var state in placements)
+        {
+            if (!CanUsePlaceholder(state, colorDepth))
+            {
+                continue;
+            }
+
+            overlay ??= new GraphicsCellOverlay(back);
+            overlay.Paint(
+                back,
+                state.Placement.Destination,
+                state.ImageId,
+                state.PlacementId,
+                colorDepth);
+        }
+
+        return overlay;
+    }
+
+    private static bool CanUsePlaceholder(
+        KittyGraphicsPlacementState state,
+        ColorDepth colorDepth) =>
+        !state.UsesImageNumber &&
+        (colorDepth switch
+        {
+            ColorDepth.TrueColor => state.PlacementId <= 0x00FF_FFFF,
+            ColorDepth.Indexed256 => state.ImageId <= byte.MaxValue && state.PlacementId <= byte.MaxValue,
+            ColorDepth.Basic16 or ColorDepth.Monochrome => false,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(colorDepth), colorDepth, "The color depth is unknown.")
+        }) &&
+        state.Placement.Destination.Width <= KittyGraphicsPlaceholderWriter.CoordinateLimit &&
+        state.Placement.Destination.Height <= KittyGraphicsPlaceholderWriter.CoordinateLimit;
+
+    private bool PlacementsChanged(
+        List<KittyGraphicsPlacementState> placements,
+        ColorDepth colorDepth,
+        bool placeholders)
+    {
+        if (placements.Count != _placements.Count)
+        {
+            return true;
+        }
+
+        for (var index = 0; index < placements.Count; index++)
+        {
+            if (CanUsePlaceholder(placements[index], colorDepth) == placeholders &&
+                placements[index].Placement != _placements[index].Placement)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool CellOverlaysEqual(
+        GraphicsCellOverlay? left,
+        GraphicsCellOverlay? right) =>
+        left is null ? right is null : left.SemanticallyEquals(right);
+
+    private void WriteVirtualPlacement(
+        KittyGraphicsPlacementState state,
+        int zIndex,
+        IBufferWriter<byte> destination)
+    {
+        Debug.Assert(!state.UsesImageNumber, "Placeholder cells require a terminal-assigned image id.");
+        var command = KittyGraphicsCommand.Place(
+            state.ImageId,
+            state.PlacementId,
+            state.Placement.Source,
+            new Size(state.Placement.Destination.Width, state.Placement.Destination.Height),
+            zIndex,
+            unicodePlaceholder: true);
+
+        WritePlacementCommand(command, destination);
+    }
 
     private void WritePlacement(KittyGraphicsPlacementState state, int zIndex, IBufferWriter<byte> destination)
     {
@@ -651,6 +789,13 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             new Size(state.Placement.Destination.Width, state.Placement.Destination.Height),
             zIndex), state.UsesImageNumber);
 
+        WritePlacementCommand(command, destination);
+    }
+
+    private void WritePlacementCommand(
+        KittyGraphicsCommand command,
+        IBufferWriter<byte> destination)
+    {
         if (_route is null)
         {
             KittyGraphicsWriter.Write(command, [], destination);
@@ -1075,6 +1220,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
         _preparedImages = null;
         _preparedPlacements = null;
+        PreparedCellOverlay = null;
         _rentedImageIds = null;
         _rentedPlacementIds = null;
         _rentedPlacementStates = null;
@@ -1082,6 +1228,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         _retiredImageIds = null;
         _retiredPlacementIds = null;
         _uploads = [];
+        _cellPreludeBytes = [];
         _placementBytes = [];
         _removals = [];
         _prepared = false;

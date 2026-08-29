@@ -23,9 +23,8 @@ externally managed lifetimes that SharpVision does not trust.
 
 > [!IMPORTANT]
 >
-> **Implementation gap:** Unicode placeholder presentation has no typed surface.
-> Frame transmission (`a=f`) and animation playback control (`a=a`) now have a
-> typed, validated, byte-exact wire surface — see
+> **Implementation gap:** Frame transmission (`a=f`) and animation playback
+> control (`a=a`) have a typed, validated, byte-exact wire surface — see
 > [Frame transmission and animation control](#frame-transmission-and-animation-control-protocol-surface-only)
 > — but the renderer does not consume it: `KittyGraphicsBackend.Prepare` and the
 > `Frame`/`Placement` diff model that drives it have no concept of a retained
@@ -47,6 +46,8 @@ Typed and implemented behavior includes:
 - 4,096-byte maximum encoded data chunks with metadata-minimal continuation
   chunks;
 - transactional upload, cell, placement, and removal ordering;
+- Kitty 0.28 Unicode-placeholder placement integrated with cell damage and
+  vertical scrolling after terminal image-id assignment;
 - explicit asynchronous remote cleanup before local renderer disposal; and
 - explicitly authorized tmux passthrough.
 
@@ -109,12 +110,32 @@ they were given.
 
 Placements carry the exact source pixel rectangle, destination cell width and
 height, stable image/placement pair, deterministic frame-order z-index, and
-`C=1` so the command itself does not advance the cursor. Kitty placement is
-anchored at the current cursor, so the backend emits absolute CUP to the
-pane-local destination before each APC. After all placements it emits one
-absolute CUP to the semantic `Frame.Cursor.Position`. It does not consume the
-terminal save/restore slot. Kitty terminals are VT-compatible; this CUP
-requirement is part of backend selection.
+`C=1` for cursor-anchored placement. Until the terminal acknowledges a
+number-addressed upload with its assigned image id, the backend emits absolute
+CUP to the pane-local destination before each APC and restores the semantic
+`Frame.Cursor.Position` afterwards. It does not consume the terminal
+save/restore slot. Kitty terminals are VT-compatible; this CUP requirement is
+part of backend selection.
+
+After acknowledgement, an eligible placement switches to Kitty 0.28 Unicode
+placeholders. A virtual placement command uses `U=1`; its ordinary cell stream
+then writes U+10EEEE followed by explicit row and column diacritics from Kitty's
+fixed table. Image ids above 24 bits add the table entry selected by the high
+byte as a third diacritic. The low 24 image-id bits are carried as exact RGB
+foreground and the placement id as exact RGB underline color. An indexed-256
+profile uses the exact low-byte palette indexes for both identifiers. These are
+protocol fields, so they bypass ordinary color projection: SharpVision never
+quantizes them. Basic-16 and monochrome profiles, indexed identifiers above 255,
+placement identifiers above the representable range, or dimensions beyond the
+283-entry coordinate table retain cursor-anchored placement.
+
+The placeholder projection is transactional overlay state rather than semantic
+frame content. It participates in damage equality, replacement ordering, and
+vertical-scroll detection while preserving the semantic underlay background for
+transparent image pixels. Uploads and `U=1` virtual-placement preludes precede
+placeholder cells; non-placeholder placements follow cell output; removals stay
+last. Overlapping placeholders resolve in semantic placement order. A failed
+write invalidates both the backend overlay and cell front before reconstruction.
 
 Updating the same semantic placement reuses its image/placement pair. Removing
 one placement of a shared image uses `a=d,d=n,I=...,p=...` before
@@ -236,6 +257,7 @@ framing run at every possible transport split; numeric overflow, canonical IDs,
 bounds, duplicate correlation, and redaction are also covered. Real
 backend-to-renderer tests prove image caching, byte-quiet commit, stable ID
 reuse, last-use deletion, cursor restoration, uncertain tombstone recovery,
+exact placeholder identity colors and diacritics, placeholder scrolling,
 allocation-free cleanup commit, per-delete tmux routing, Screen rejection, and
 explicit shutdown after success or partial failure.
 
@@ -251,12 +273,13 @@ this change.
   defines APC framing, query, direct media, chunking, placement, response, and
   deletion.
 
-Source accessed 2026-07-28.
+Source accessed 2026-08-29. Unicode-placeholder behavior is specified by the
+source's “Unicode placeholders” section, introduced in Kitty 0.28.0.
 
 ## Expected behavior
 
 | Layer         | Required evidence                                                                       |
 | ------------- | --------------------------------------------------------------------------------------- |
 | Writer/parser | Exact query/upload/place/delete bytes, every split, correlation, bounds, and recovery.  |
-| Renderer      | ID lifetime, chunks, commit/tombstone order, occlusion, revocation, retry, and cleanup. |
+| Renderer      | ID lifetime, chunks, placeholders, damage, commit/tombstone order, retry, and cleanup.  |
 | Integration   | Authorized multiplexer route, cell fallback, resize metrics, final bytes, and shutdown. |

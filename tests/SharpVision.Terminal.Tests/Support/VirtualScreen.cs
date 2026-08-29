@@ -20,6 +20,8 @@ internal sealed class VirtualScreen: ISequenceSink
     private string? _hyperlink;
     private readonly bool _automaticMargins;
     private readonly bool _eatNewlineGlitch;
+    private int _scrollBottom;
+    private int _scrollTop;
     private bool _wrapPending;
 
     /// <summary>Initializes a blank virtual screen.</summary>
@@ -35,6 +37,7 @@ internal sealed class VirtualScreen: ISequenceSink
         _automaticMargins = automaticMargins;
         _eatNewlineGlitch = eatNewlineGlitch;
         _cells = new ModelCell[checked(size.Width * size.Height)];
+        _scrollBottom = Math.Max(0, size.Height - 1);
 
         for (var index = 0; index < _cells.Length; index++)
         {
@@ -177,6 +180,28 @@ internal sealed class VirtualScreen: ISequenceSink
                 _ => CursorShape.Block
             };
         }
+        else if (final == (byte) 'r' && intermediates.IsEmpty)
+        {
+            if (parameters.IsEmpty)
+            {
+                _scrollTop = 0;
+                _scrollBottom = Math.Max(0, Size.Height - 1);
+            }
+            else
+            {
+                var values = Parse(parameters);
+                _scrollTop = values[0] - 1;
+                _scrollBottom = values[1] - 1;
+            }
+
+            _position = default;
+            _wrapPending = false;
+        }
+        else if (final is (byte) 'S' or (byte) 'T' && intermediates.IsEmpty)
+        {
+            var count = parameters.IsEmpty ? 1 : Parse(parameters)[0];
+            Scroll(final == (byte) 'S' ? count : -count);
+        }
     }
 
     /// <inheritdoc/>
@@ -312,6 +337,40 @@ internal sealed class VirtualScreen: ISequenceSink
 
         _attributes &= ~TerminalAttributes.Underline;
         _underline = (Underline) value;
+    }
+
+    private void Scroll(int delta)
+    {
+        var height = _scrollBottom - _scrollTop + 1;
+        var count = Math.Min(Math.Abs(delta), height);
+        var blank = ModelCell.Blank with { Style = new CellStyle(background: _background) };
+
+        if (delta > 0)
+        {
+            Array.Copy(
+                _cells,
+                (_scrollTop + count) * Size.Width,
+                _cells,
+                _scrollTop * Size.Width,
+                (height - count) * Size.Width);
+            Array.Fill(
+                _cells,
+                blank,
+                (_scrollBottom - count + 1) * Size.Width,
+                count * Size.Width);
+        }
+        else
+        {
+            Array.Copy(
+                _cells,
+                _scrollTop * Size.Width,
+                _cells,
+                (_scrollTop + count) * Size.Width,
+                (height - count) * Size.Width);
+            Array.Fill(_cells, blank, _scrollTop * Size.Width, count * Size.Width);
+        }
+
+        _wrapPending = false;
     }
 
     private void Write(string value, int width)

@@ -21,6 +21,12 @@ using Rendering;
 /// </remarks>
 internal interface IGraphicsBackend: IDisposable
 {
+    /// <summary>Gets the protocol cell overlay committed by the previous successful frame.</summary>
+    public GraphicsCellOverlay? CommittedCellOverlay => null;
+
+    /// <summary>Gets the protocol cell overlay prepared for the pending frame.</summary>
+    public GraphicsCellOverlay? PreparedCellOverlay => null;
+
     /// <summary>Accepts an asynchronous Kitty graphics response relevant to retained ownership.</summary>
     /// <param name="response">The non-null decoded response.</param>
     public void Accept(KittyGraphicsResponse response) => ArgumentNullException.ThrowIfNull(response);
@@ -40,6 +46,11 @@ internal interface IGraphicsBackend: IDisposable
     /// <summary>Writes every prepared image upload without allocating.</summary>
     /// <param name="destination">The renderer-owned bounded batch.</param>
     public void WriteUploads(IBufferWriter<byte> destination);
+
+    /// <summary>Writes virtual placement commands that must precede their projected cells.</summary>
+    /// <param name="destination">The renderer-owned bounded batch.</param>
+    public void WriteCellPreludes(IBufferWriter<byte> destination) =>
+        ArgumentNullException.ThrowIfNull(destination);
 
     /// <summary>Writes every prepared replacement placement without allocating.</summary>
     /// <param name="destination">The renderer-owned bounded batch.</param>

@@ -38,8 +38,37 @@ public sealed class KittyGraphicsBackendTests
 
         Encoding.ASCII.GetString(initial.Uploads).ShouldContain(",I=1;");
         Encoding.ASCII.GetString(initial.Placements).ShouldContain("a=p,I=1,p=1");
-        Encoding.ASCII.GetString(movement.Placements).ShouldContain("a=p,i=99,p=1");
+        Encoding.ASCII.GetString(movement.CellPreludes).ShouldContain("a=p,i=99,p=1");
+        Encoding.ASCII.GetString(movement.CellPreludes).ShouldContain("U=1");
+        movement.Placements.ShouldBeEmpty();
         Encoding.ASCII.GetString(cleanup.Removals).ShouldBe("\u001b_Ga=d,d=I,i=99,q=2\u001b\\");
+    }
+
+    /// <summary>Verifies color depths that cannot preserve protocol identifiers retain cursor placement.</summary>
+    [Fact]
+    public void Prepare_WhenColorDepthCannotEncodeExactPlaceholderIds_UsesCursorPlacement()
+    {
+        var capabilities = TerminalCapabilities.Conservative with
+        {
+            ColorDepth = ColorDepth.Basic16,
+            KittyGraphics = new Feature(CapabilitySupport.Supported, Origin.Query)
+        };
+        var context = new GraphicsContext(TerminalProfile.CreateAnsi(capabilities), null);
+        using var backend = new KittyGraphicsBackend();
+        var image = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        using var frame = Frame(image, new Rect(0, 0, 1, 1));
+        using var moved = Frame(image, new Rect(1, 0, 1, 1));
+        _ = backend.Prepare(null, frame, full: true, context);
+        _ = WritePrepared(backend);
+        backend.Commit();
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=42,I=1;OK"u8));
+
+        _ = backend.Prepare(frame, moved, full: false, context);
+        var assigned = WritePrepared(backend);
+
+        assigned.CellPreludes.ShouldBeEmpty();
+        backend.PreparedCellOverlay.ShouldBeNull();
+        Encoding.ASCII.GetString(assigned.Placements).ShouldContain("a=p,i=42,p=1");
     }
 
     /// <summary>Verifies shutdown consumes a queued terminal assignment even when no later frame
@@ -488,13 +517,16 @@ public sealed class KittyGraphicsBackendTests
     private static PreparedBytes WritePrepared(KittyGraphicsBackend backend)
     {
         var uploads = new ArrayBufferWriter<byte>();
+        var cellPreludes = new ArrayBufferWriter<byte>();
         var placements = new ArrayBufferWriter<byte>();
         var removals = new ArrayBufferWriter<byte>();
         backend.WriteUploads(uploads);
+        backend.WriteCellPreludes(cellPreludes);
         backend.WritePlacements(placements);
         backend.WriteRemovals(removals);
         return new PreparedBytes(
             uploads.WrittenSpan.ToArray(),
+            cellPreludes.WrittenSpan.ToArray(),
             placements.WrittenSpan.ToArray(),
             removals.WrittenSpan.ToArray());
     }

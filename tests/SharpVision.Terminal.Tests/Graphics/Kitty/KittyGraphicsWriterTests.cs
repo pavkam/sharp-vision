@@ -236,6 +236,26 @@ public sealed class KittyGraphicsWriterTests
             "\u001b_Ga=p,i=7,p=9,x=0,y=0,w=1,h=1,c=2,r=3,q=2,C=1\u001b\\"u8.ToArray());
     }
 
+    /// <summary>Verifies a virtual placement emits U=1 without cursor-movement policy.</summary>
+    [Fact]
+    public void Write_WhenPlacementUsesUnicodePlaceholders_EmitsExactVirtualPlacementBytes()
+    {
+        var output = new ArrayBufferWriter<byte>();
+        var command = KittyGraphicsCommand.Place(
+            imageId: 7,
+            placementId: 9,
+            new Rect(1, 2, 3, 4),
+            new Size(5, 6),
+            unicodePlaceholder: true);
+
+        KittyGraphicsWriter.Write(command, [], output);
+
+        command.IsUnicodePlaceholder.ShouldBeTrue();
+        command.DoNotMoveCursor.ShouldBeFalse();
+        output.WrittenSpan.ToArray().ShouldBe(
+            "\u001b_Ga=p,i=7,p=9,x=1,y=2,w=3,h=4,c=5,r=6,U=1,q=2\u001b\\"u8.ToArray());
+    }
+
     /// <summary>Verifies hard image deletion frees data for the exact identifier.</summary>
     [Fact]
     public void Write_WhenImageIsDeleted_EmitsExactHardDelete()

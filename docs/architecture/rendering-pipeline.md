@@ -70,6 +70,12 @@ Profile, frame geometry, ambiguous-width, and cell-pixel-metric transitions all
 force complete reconstruction. Backend commit follows a successful flush; any
 preparation or I/O failure invalidates the next transaction.
 
+An assigned Kitty virtual placement may also contribute a transactional cell
+overlay. Its U+10EEEE placeholder graphemes remain backend-owned projection, not
+semantic canvas content, but participate in the same damage comparison and
+scroll transaction as ordinary cells. Protocol identity colors bypass semantic
+color quantization; the underlay background still follows the active profile.
+
 `GraphicsBackendSelector` accepts only supported authoritative capability
 evidence and an authorized route. It does not resolve terminal emulator
 identity; that separate boundary is specified by the
@@ -357,6 +363,8 @@ value invalidate automatically. A changed frame size or East Asian Ambiguous
 width policy forces both complete cell output and complete graphics
 reconstruction, even when every placement is otherwise semantically equal.
 Cancellation observed before a write preserves the previously committed state.
+If an incremental batch used DECSTBM, a torn operation also makes the terminal's
+scroll region uncertain; the next full repair emits `CSI r` before clearing.
 
 One renderer owns one bounded `Interpreter`. A frame encode is an outer
 static-variable transaction: uppercase terminfo variables commit only after the
@@ -407,6 +415,13 @@ visibility. Transition comparison uses the complete projected style, so richer
 semantic colors or decorations that share one terminal fallback do not produce
 redundant bytes. The built-in ANSI compatibility profile retains its canonical
 typed fast path only for equivalent intrinsic programs.
+
+Before ordinary span enumeration, an ANSI-compatible encoder may recognize a
+byte-beneficial contiguous vertical row shift. It emits the smallest DECSTBM
+region, one scroll-up or scroll-down operation, and an immediate region reset;
+only exposed and independently changed rows remain damaged. Overlay-aware row
+equality lets eligible Kitty placeholder cells move in that same operation.
+Unprojected graphics and non-beneficial candidates stay on absolute repaint.
 
 Rapid blink lowers to ordinary blink when only `blink` is described and is
 omitted when neither form is available. Other unavailable visual attributes are

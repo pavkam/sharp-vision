@@ -183,6 +183,34 @@ public sealed class FrameEncoderTests
         result.Spans.ShouldBe(1);
     }
 
+    /// <summary>Verifies a shifted row region uses one bounded DECSTBM transaction and repaints only exposure.</summary>
+    [Fact]
+    public void Encode_WhenRowsScrollUp_WritesRegionScrollResetAndExposedRow()
+    {
+        using var front = CreateRows("head", "1111", "2222", "3333", "4444");
+        using var back = CreateRows("head", "2222", "3333", "4444", "5555");
+        var destination = new ArrayBufferWriter<byte>();
+
+        var result = FrameEncoder.Encode(front, back, destination, TrueColorCapabilities);
+
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001b[2;5r\u001b[1S\u001b[r\u001b[5;1H5555\u001b[1;1H"u8.ToArray());
+        result.ShouldBe(new EncodeResult(1, false));
+    }
+
+    /// <summary>Verifies scroll-shaped incremental output converges to the complete semantic target.</summary>
+    [Fact]
+    public void Encode_WhenRowsScrollDown_AgreesWithFullRender()
+    {
+        using var front = CreateRows("head", "1111", "2222", "3333", "4444");
+        using var back = CreateRows("head", "0000", "1111", "2222", "3333");
+        var incremental = new VirtualScreen(back.Size);
+        incremental.Apply(Encode(null, front));
+        incremental.Apply(Encode(front, back));
+
+        incremental.ShouldMatch(back);
+    }
+
     /// <summary>
     /// Verifies equal content and cursor state emits no bytes.
     /// </summary>
@@ -1004,6 +1032,19 @@ public sealed class FrameEncoderTests
     {
         var frame = new Frame(new Size(3, 1));
         _ = frame.Canvas.Draw(value.AsSpan(), new Point(0, 0));
+        return frame;
+    }
+
+    private static Frame CreateRows(params string[] rows)
+    {
+        var width = rows.Max(static row => row.Length);
+        var frame = new Frame(new Size(width, rows.Length));
+
+        for (var row = 0; row < rows.Length; row++)
+        {
+            _ = frame.Canvas.Draw(rows[row], new Point(0, row));
+        }
+
         return frame;
     }
 

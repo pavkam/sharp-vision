@@ -923,6 +923,7 @@ namespace SharpVision.Terminal.Kitty.Graphics
         public int FrameGap { get; }
         public SharpVision.Terminal.Geometry.Point FrameOffset { get; }
         public uint ImageId { get; }
+        public bool IsUnicodePlaceholder { get; }
         public int LoopCount { get; }
         public SharpVision.Terminal.Kitty.Graphics.KittyGraphicsMedium Medium { get; }
         public bool More { get; }
@@ -934,7 +935,7 @@ namespace SharpVision.Terminal.Kitty.Graphics
         public static SharpVision.Terminal.Kitty.Graphics.KittyGraphicsCommand Animate(uint imageId, SharpVision.Terminal.Kitty.Graphics.KittyGraphicsAnimationControl control, int loopCount = 0, int quiet = 2) { }
         public static SharpVision.Terminal.Kitty.Graphics.KittyGraphicsCommand DeleteImage(uint imageId, int quiet = 2) { }
         public static SharpVision.Terminal.Kitty.Graphics.KittyGraphicsCommand DeletePlacement(uint imageId, uint placementId, int quiet = 2) { }
-        public static SharpVision.Terminal.Kitty.Graphics.KittyGraphicsCommand Place(uint imageId, uint placementId, SharpVision.Terminal.Geometry.Rect source, SharpVision.Terminal.Geometry.Size destination, int zIndex = 0, int quiet = 2, bool doNotMoveCursor = true) { }
+        public static SharpVision.Terminal.Kitty.Graphics.KittyGraphicsCommand Place(uint imageId, uint placementId, SharpVision.Terminal.Geometry.Rect source, SharpVision.Terminal.Geometry.Size destination, int zIndex = 0, int quiet = 2, bool doNotMoveCursor = true, bool unicodePlaceholder = false) { }
         public static SharpVision.Terminal.Kitty.Graphics.KittyGraphicsCommand Query(uint imageId) { }
         public static SharpVision.Terminal.Kitty.Graphics.KittyGraphicsCommand Transmit(uint imageId, SharpVision.Terminal.Geometry.Size pixelSize, SharpVision.Terminal.Kitty.Graphics.KittyGraphicsFormat format, int quiet = 2, SharpVision.Terminal.Kitty.Graphics.KittyGraphicsMedium medium = 0, SharpVision.Terminal.Kitty.Graphics.KittyGraphicsCompression compression = 0) { }
         public static SharpVision.Terminal.Kitty.Graphics.KittyGraphicsCommand TransmitFrame(uint imageId, SharpVision.Terminal.Geometry.Size pixelSize, SharpVision.Terminal.Kitty.Graphics.KittyGraphicsFormat format, uint baseFrameId = 0, SharpVision.Terminal.Geometry.Point offset = default, int frameGap = 0, int quiet = 2, SharpVision.Terminal.Kitty.Graphics.KittyGraphicsMedium medium = 0, SharpVision.Terminal.Kitty.Graphics.KittyGraphicsCompression compression = 0) { }

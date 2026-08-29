@@ -15,6 +15,8 @@ public sealed class ComponentScreen: ISequenceSink
     private TerminalAttributes _attributes;
     private Underline _underline;
     private string? _hyperlink;
+    private int _scrollTop;
+    private int _scrollBottom;
     private bool CursorVisibleValue { get; set; } = true;
     private CursorShape CursorShapeValue { get; set; }
 
@@ -26,6 +28,7 @@ public sealed class ComponentScreen: ISequenceSink
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(size.Width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(size.Height);
         Size = size;
+        _scrollBottom = size.Height - 1;
         _cells = new SurfaceCell[checked(size.Width * size.Height)];
 
         for (var index = 0; index < _cells.Length; index++)
@@ -180,6 +183,15 @@ public sealed class ComponentScreen: ISequenceSink
                 5 or 6 => CursorShape.Bar,
                 _ => CursorShape.Block
             };
+        }
+        else if (final == (byte) 'r' && intermediates.IsEmpty)
+        {
+            ApplyScrollRegion(parameters);
+        }
+        else if (final is (byte) 'S' or (byte) 'T' && intermediates.IsEmpty)
+        {
+            var count = parameters.IsEmpty ? 1 : Math.Max(1, int.Parse(parameters, CultureInfo.InvariantCulture));
+            Scroll(count, up: final == (byte) 'S');
         }
     }
 
@@ -395,6 +407,62 @@ public sealed class ComponentScreen: ISequenceSink
         for (var offset = 0; offset < Math.Max(1, lead.Width) && leadX + offset < Size.Width; offset++)
         {
             _cells[IndexUnchecked(new Point(leadX + offset, y))] = SurfaceCell.Blank with { Style = lead.Style };
+        }
+    }
+
+    private void ApplyScrollRegion(ReadOnlySpan<byte> parameters)
+    {
+        if (parameters.IsEmpty)
+        {
+            _scrollTop = 0;
+            _scrollBottom = Size.Height - 1;
+        }
+        else
+        {
+            var (top, bottom) = ParsePosition(parameters);
+            _scrollTop = Math.Clamp(top - 1, 0, Size.Height - 1);
+            _scrollBottom = Math.Clamp(bottom - 1, _scrollTop, Size.Height - 1);
+        }
+
+        _position = default;
+    }
+
+    private void Scroll(int requestedCount, bool up)
+    {
+        var height = _scrollBottom - _scrollTop + 1;
+        var count = Math.Min(requestedCount, height);
+
+        if (up)
+        {
+            for (var row = _scrollTop; row <= _scrollBottom - count; row++)
+            {
+                CopyRow(row + count, row);
+            }
+
+            ClearRows(_scrollBottom - count + 1, _scrollBottom);
+            return;
+        }
+
+        for (var row = _scrollBottom; row >= _scrollTop + count; row--)
+        {
+            CopyRow(row - count, row);
+        }
+
+        ClearRows(_scrollTop, _scrollTop + count - 1);
+    }
+
+    private void CopyRow(int source, int destination)
+    {
+        var sourceOffset = checked(source * Size.Width);
+        var destinationOffset = checked(destination * Size.Width);
+        _cells.AsSpan(sourceOffset, Size.Width).CopyTo(_cells.AsSpan(destinationOffset, Size.Width));
+    }
+
+    private void ClearRows(int first, int last)
+    {
+        for (var row = first; row <= last; row++)
+        {
+            _cells.AsSpan(checked(row * Size.Width), Size.Width).Fill(SurfaceCell.Blank);
         }
     }
 
