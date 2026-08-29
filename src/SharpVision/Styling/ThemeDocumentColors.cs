@@ -45,6 +45,14 @@ internal sealed class ThemeDocumentColors
     [JsonPropertyName("controlShadow")]
     public string? ControlShadow { get; set; }
 
+    /// <summary>Gets or sets the illuminated relief edge.</summary>
+    [JsonPropertyName("reliefHighlight")]
+    public string? ReliefHighlight { get; set; }
+
+    /// <summary>Gets or sets the shaded relief edge.</summary>
+    [JsonPropertyName("reliefShade")]
+    public string? ReliefShade { get; set; }
+
     /// <summary>Gets or sets the active control face.</summary>
     [JsonPropertyName("activeControl")]
     public string? ActiveControl { get; set; }
@@ -166,6 +174,8 @@ internal sealed class ThemeDocumentColors
         SemanticColor.ControlText => ControlText,
         SemanticColor.ControlBorder => ControlBorder,
         SemanticColor.ControlShadow => ControlShadow,
+        SemanticColor.ReliefHighlight => ReliefHighlight,
+        SemanticColor.ReliefShade => ReliefShade,
         SemanticColor.ActiveControl => ActiveControl,
         SemanticColor.ActiveText => ActiveText,
         SemanticColor.ActiveBorder => ActiveBorder,

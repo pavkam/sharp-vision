@@ -36,6 +36,8 @@
     "controlText": "white",
     "controlBorder": "slateGray",
     "controlShadow": "steelGray",
+    "reliefHighlight": "white",
+    "reliefShade": "steelGray",
     "activeControl": "graphite",
     "activeText": "paleCyan",
     "activeBorder": "lightGray",

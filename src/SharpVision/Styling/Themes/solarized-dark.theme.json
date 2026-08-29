@@ -38,6 +38,8 @@
     "controlText": "base0",
     "controlBorder": "base01",
     "controlShadow": "base01",
+    "reliefHighlight": "base0",
+    "reliefShade": "base01",
     "activeControl": "deepTeal",
     "activeText": "base1",
     "activeBorder": "base1",

@@ -35,6 +35,8 @@
     "controlText": "black",
     "controlBorder": "white",
     "controlShadow": "black",
+    "reliefHighlight": "white",
+    "reliefShade": "black",
     "activeControl": "cyan",
     "activeText": "white",
     "activeBorder": "brightCyan",
@@ -122,12 +124,7 @@
         "border": {
           "sides": "all",
           "glyphStyle": "light",
-          "edgeColors": {
-            "top": "black",
-            "right": "white",
-            "bottom": "white",
-            "left": "black"
-          }
+          "relief": "sunken"
         }
       },
       "pointerOver": {
@@ -137,13 +134,7 @@
           "background": "activeControl"
         },
         "border": {
-          "foreground": "activeBorder",
-          "edgeColors": {
-            "top": "blue",
-            "right": "brightCyan",
-            "bottom": "brightCyan",
-            "left": "blue"
-          }
+          "foreground": "activeBorder"
         }
       },
       "focused": {
@@ -153,13 +144,7 @@
           "attributes": "focusedText"
         },
         "border": {
-          "foreground": "focusedBorder",
-          "edgeColors": {
-            "top": "blue",
-            "right": "brightCyan",
-            "bottom": "brightCyan",
-            "left": "blue"
-          }
+          "foreground": "focusedBorder"
         }
       },
       "pressed": {
@@ -169,13 +154,7 @@
           "attributes": "pressedText"
         },
         "border": {
-          "foreground": "pressedBorder",
-          "edgeColors": {
-            "top": "black",
-            "right": "yellow",
-            "bottom": "yellow",
-            "left": "black"
-          }
+          "foreground": "pressedBorder"
         }
       },
       "selected": {
@@ -187,13 +166,7 @@
       },
       "disabled": {
         "border": {
-          "foreground": "disabledBorder",
-          "edgeColors": {
-            "top": "darkGray",
-            "right": "white",
-            "bottom": "white",
-            "left": "darkGray"
-          }
+          "foreground": "disabledBorder"
         }
       }
     },
@@ -205,12 +178,7 @@
         "border": {
           "sides": "all",
           "glyphStyle": "light",
-          "edgeColors": {
-            "top": "black",
-            "right": "white",
-            "bottom": "white",
-            "left": "black"
-          }
+          "relief": "sunken"
         }
       }
     },
@@ -223,12 +191,7 @@
         "border": {
           "sides": "all",
           "glyphStyle": "paired",
-          "edgeColors": {
-            "top": "white",
-            "right": "black",
-            "bottom": "black",
-            "left": "white"
-          }
+          "relief": "raised"
         },
         "shadow": {
           "visible": true,
@@ -241,13 +204,7 @@
       },
       "focusWithin": {
         "border": {
-          "foreground": "activeBorder",
-          "edgeColors": {
-            "top": "brightCyan",
-            "right": "blue",
-            "bottom": "blue",
-            "left": "brightCyan"
-          }
+          "foreground": "activeBorder"
         }
       }
     },
@@ -260,12 +217,7 @@
         "border": {
           "sides": "all",
           "glyphStyle": "paired",
-          "edgeColors": {
-            "top": "white",
-            "right": "black",
-            "bottom": "black",
-            "left": "white"
-          }
+          "relief": "raised"
         }
       }
     },
@@ -278,12 +230,7 @@
         "border": {
           "sides": "all",
           "glyphStyle": "light",
-          "edgeColors": {
-            "top": "white",
-            "right": "black",
-            "bottom": "black",
-            "left": "white"
-          }
+          "relief": "raised"
         }
       }
     }

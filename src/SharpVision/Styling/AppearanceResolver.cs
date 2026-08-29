@@ -145,7 +145,7 @@ internal static class AppearanceResolver
         var face = ResolveFace(theme, authored.Face);
         var border = ResolveBorder(theme, authored.Border);
         var shadow = ResolveShadow(theme, authored.Shadow);
-        return CreateResolved(face, border, shadow);
+        return CreateResolved(theme, face, border, shadow);
     }
 
     private static ControlAppearance FoldAuthoredAppearance(
@@ -195,6 +195,7 @@ internal static class AppearanceResolver
                 ? InvalidationImpact.Measure
                 : previous.Face != current.Face ||
                   previous.Border != current.Border ||
+                  previous.BorderStyles != current.BorderStyles ||
                   previous.Shadow != current.Shadow
                     ? InvalidationImpact.Render
                     : InvalidationImpact.None;
@@ -237,30 +238,13 @@ internal static class AppearanceResolver
     {
         var foreground = Resolve(theme, border.Foreground);
         ValidatePaint(foreground, border.Foreground, "border foreground");
-        var top = ResolveBorderEdge(theme, border.EdgeColors.Top, "top");
-        var right = ResolveBorderEdge(theme, border.EdgeColors.Right, "right");
-        var bottom = ResolveBorderEdge(theme, border.EdgeColors.Bottom, "bottom");
-        var left = ResolveBorderEdge(theme, border.EdgeColors.Left, "left");
-
         return new Border(
             border.Sides,
             border.GlyphStyle,
             foreground,
-            new BorderEdgeColors(top, right, bottom, left),
+            border.Relief,
             Resolve(theme, border.Background),
             Resolve(theme, border.Attributes));
-    }
-
-    private static ControlColor? ResolveBorderEdge(Theme? theme, ControlColor? source, string edge)
-    {
-        if (source is not { } authored)
-        {
-            return null;
-        }
-
-        var resolved = Resolve(theme, authored);
-        ValidatePaint(resolved, authored, $"border {edge} foreground");
-        return resolved;
     }
 
     private static Shadow ResolveShadow(Theme? theme, Shadow shadow)
@@ -326,7 +310,7 @@ internal static class AppearanceResolver
         parent.Underline,
         parent.UnderlineColor.Literal);
 
-    private static ResolvedAppearance CreateResolved(Face face, Border border, Shadow shadow)
+    private static ResolvedAppearance CreateResolved(Theme? theme, Face face, Border border, Shadow shadow)
     {
         var style = new TerminalStyle(
             face.Foreground.Literal,
@@ -341,6 +325,7 @@ internal static class AppearanceResolver
         return new ResolvedAppearance(
             face,
             border,
+            ResolvedBorderStyles.Create(border, theme),
             shadow,
             style,
             Background(face.Background.Literal),

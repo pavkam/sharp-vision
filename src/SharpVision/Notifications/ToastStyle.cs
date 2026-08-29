@@ -152,7 +152,7 @@ public sealed record ToastStyle: PopupStyle
             Foreground = accent,
             Attributes = SemanticDecoration.ActiveText
         };
-        var border = popup.Border with { Foreground = accent };
+        var border = popup.Border with { Foreground = accent, Relief = BorderRelief.Flat };
         return new ToastStyle(
             face,
             border,

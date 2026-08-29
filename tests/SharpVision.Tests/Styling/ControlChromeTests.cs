@@ -6,12 +6,16 @@ namespace SharpVision.Tests.Styling;
 /// <summary>Verifies shared control chrome rasterization and geometry.</summary>
 public sealed class ControlChromeTests
 {
-    /// <summary>Verifies per-edge colors paint leading and trailing edges independently.</summary>
+    /// <summary>Verifies semantic sunken relief paints shade on top/left and highlight on
+    /// right/bottom while horizontal edges retain corner ownership.</summary>
     [Fact]
-    public void DrawPartialBorder_WhenEdgeColorsAreSet_UsesHorizontalColorsForCorners()
+    public void DrawPartialBorder_WhenReliefIsSunken_UsesSemanticColorsAndHorizontalCorners()
     {
         var highlight = Color.Rgb(255, 255, 255);
         var shade = Color.Rgb(0, 0, 0);
+        var theme = new Theme();
+        theme.SetColor(SemanticColor.ReliefHighlight, highlight);
+        theme.SetColor(SemanticColor.ReliefShade, shade);
         var border = new LayoutProbe
         {
             Bounds = new Rect(0, 0, 4, 3),
@@ -19,10 +23,11 @@ public sealed class ControlChromeTests
                 BorderSide.All,
                 BorderGlyphStyle.Ascii,
                 Color.Rgb(170, 170, 170),
-                BorderEdgeColors.Sunken(highlight, shade),
+                BorderRelief.Sunken,
                 Color.Transparent,
                 TerminalAttributes.None),
         };
+        border.PropagateTheme(theme);
         using Frame frame = new(new Size(4, 3));
 
         border.Render(frame.Canvas);
@@ -33,6 +38,35 @@ public sealed class ControlChromeTests
         frame.GetCell(new Point(3, 1)).Style.Foreground.ShouldBe(highlight);
         frame.GetCell(new Point(0, 2)).Style.Foreground.ShouldBe(highlight);
         frame.GetCell(new Point(3, 2)).Style.Foreground.ShouldBe(highlight);
+    }
+
+    /// <summary>Verifies a relief-palette Theme swap changes paint without requesting layout.</summary>
+    [Fact]
+    public void PropagateTheme_WhenReliefColorsChange_InvalidatesRenderOnlyAndRepaints()
+    {
+        var first = ReliefTheme(Color.Rgb(255, 0, 0), Color.Rgb(0, 0, 255));
+        var second = ReliefTheme(Color.Rgb(0, 255, 0), Color.Rgb(255, 255, 0));
+        var border = new LayoutProbe
+        {
+            Bounds = new Rect(0, 0, 4, 3),
+            Border = new Border(
+                BorderSide.All,
+                BorderGlyphStyle.Ascii,
+                SemanticColor.ControlBorder,
+                BorderRelief.Raised,
+                Color.Transparent,
+                TerminalAttributes.None)
+        };
+        border.PropagateTheme(first);
+        border.Clear(Invalidation.All);
+
+        border.PropagateTheme(second);
+
+        border.Pending.ShouldBe(Invalidation.Render);
+        using Frame frame = new(new Size(4, 3));
+        border.Render(frame.Canvas);
+        frame.GetCell(new Point(1, 0)).Style.Foreground.ShouldBe(Color.Rgb(0, 255, 0));
+        frame.GetCell(new Point(3, 1)).Style.Foreground.ShouldBe(Color.Rgb(255, 255, 0));
     }
 
     /// <summary>Verifies partial border edges draw only enabled sides on tiny bounds.</summary>
@@ -98,5 +132,13 @@ public sealed class ControlChromeTests
         new LayoutEngine().Layout(border, new Size(10, 4));
 
         border.DesiredSize.ShouldBe(new Size(3, 1));
+    }
+
+    private static Theme ReliefTheme(Color highlight, Color shade)
+    {
+        var theme = new Theme();
+        theme.SetColor(SemanticColor.ReliefHighlight, highlight);
+        theme.SetColor(SemanticColor.ReliefShade, shade);
+        return theme;
     }
 }

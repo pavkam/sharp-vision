@@ -27,21 +27,30 @@ public sealed class BorderOverlayTests
         result.Attributes.SemanticDecoration.ShouldBe(SemanticDecoration.Border);
     }
 
-    /// <summary>Verifies edge-color contributions replace only the optional per-edge mapping.</summary>
+    /// <summary>Verifies relief contributions replace only the semantic relief kind.</summary>
     [Fact]
-    public void Apply_WhenEdgeColorsAreSet_PreservesUniformBorderMembers()
+    public void Apply_WhenReliefIsSet_PreservesOtherBorderMembers()
     {
         var border = AppearanceTestValues.Border(BorderSide.All, BorderGlyphStyle.Paired);
-        var colors = BorderEdgeColors.Sunken(Color.Rgb(255, 255, 255), Color.Rgb(0, 0, 0));
-        var overlay = BorderOverlay.WithEdgeColors(colors);
+        var overlay = new BorderOverlay(relief: BorderRelief.Sunken);
 
         var result = overlay.Apply(border);
 
         result.Sides.ShouldBe(border.Sides);
         result.GlyphStyle.ShouldBe(border.GlyphStyle);
         result.Foreground.ShouldBe(border.Foreground);
-        result.EdgeColors.ShouldBe(colors);
+        result.Relief.ShouldBe(BorderRelief.Sunken);
         result.Background.ShouldBe(border.Background);
         result.Attributes.ShouldBe(border.Attributes);
+    }
+
+    /// <summary>Verifies an unknown relief contribution is rejected before a complete Border is changed.</summary>
+    [Fact]
+    public void Constructor_WhenReliefIsUnknown_ThrowsArgumentOutOfRangeException()
+    {
+        var exception = Should.Throw<ArgumentOutOfRangeException>(
+            () => _ = new BorderOverlay(relief: (BorderRelief) 99));
+
+        exception.ParamName.ShouldBe("relief");
     }
 }

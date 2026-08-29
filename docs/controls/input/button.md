@@ -37,17 +37,18 @@ classDiagram
 
 `ButtonStyle : InputStyle` is a complete immutable presentation: it carries
 `Padding` alongside the inherited `Face`/`Border`/`Shadow`.
-`ButtonStyle.Standard` is the bordered default with one horizontal padding cell
-and Theme-owned state appearance; `ButtonStyle.Filled` is a shadowed, borderless
-preset with two horizontal padding cells and a fractional lower-right shadow. A
-`with` expression creates a validated member-wise copy of `ButtonStyle.Default`
-(`Standard`). Validation rejects any reachable state that combines a visible
-shadow with enabled border sides. Button declares no `styles.*` theme key of its
-own, so `Padding` is a fixed code-owned value (one horizontal cell) unless a
-local `Style` assigns a different one. Assigning `Style` makes the whole style
-local and authoritative, and assigning `null` hands ownership back to the Theme.
-`ActualStyle` never returns null, and it changes when an inherited Theme changes
-while `Style` is null.
+`ButtonStyle.Standard` is the raised bordered default with one horizontal
+padding cell and Theme-owned state appearance; while pressed, its border becomes
+sunken until release or cancellation. `ButtonStyle.Filled` is a shadowed,
+borderless preset with two horizontal padding cells and a fractional lower-right
+shadow. A `with` expression creates a validated member-wise copy of
+`ButtonStyle.Default` (`Standard`). Validation rejects any reachable state that
+combines a visible shadow with enabled border sides. Button declares no
+`styles.*` theme key of its own, so `Padding` is a fixed code-owned value (one
+horizontal cell) unless a local `Style` assigns a different one. Assigning
+`Style` makes the whole style local and authoritative, and assigning `null`
+hands ownership back to the Theme. `ActualStyle` never returns null, and it
+changes when an inherited Theme changes while `Style` is null.
 
 `StartAffix` and `EndAffix` each reserve a fixed cell column pinned to a face
 edge, inside the padding and outside the caption's own alignment box - setting
@@ -66,9 +67,12 @@ Button does not expose the raw `Border` and `Shadow` properties, their reset
 methods, or `SetAppearance`. Those remain protected seams for control authors,
 because arbitrary chrome could break Button's border-or-shadow layout invariant.
 The public `ActualBorder` and `ActualShadow` properties remain available for
-inspection. When the pointer hovers over a button, the face fill excludes the
-border cells; a Theme may change any border member per state, but a change to
-the face background alone never recolors the frame.
+inspection. A Theme owns the `ReliefHighlight` and `ReliefShade` colors used by
+the raised and sunken edges; changing those colors repaints without layout. A
+complete local `Style` may choose its own `Border.Relief` and remains
+authoritative in every state. When the pointer hovers over a button, the face
+fill excludes the border cells; a Theme may change any border member per state,
+but a change to the face background alone never recolors the frame.
 
 ## Interaction
 
@@ -119,7 +123,9 @@ var add = new Button
   ownership, and replacing the Theme restyles buttons that have no local style.
 - Style validation rejects invalid combinations, and the standard and filled
   styles render their exact documented cells.
-- Hovering changes the face background without recoloring the border.
+- Standard buttons are raised at rest, sunken during pointer or Space holds, and
+  raised again after release or cancellation.
+- Hovering changes the face background without changing border relief.
 - Space, Enter, and pointer activation behave identically, capture cancellation
   clears a pending press, and the click event and command run in their
   documented order.

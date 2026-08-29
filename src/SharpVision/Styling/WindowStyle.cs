@@ -78,7 +78,13 @@ public record WindowStyle: ControlStyle
     /// composite shadow offset two cells right and one row down.</summary>
     public static new WindowStyle Default { get; } = new(
         DefaultFace,
-        new Border(BorderSide.All, BorderGlyphStyle.Paired, Color.Default, Color.Transparent, TerminalAttributes.None),
+        new Border(
+            BorderSide.All,
+            BorderGlyphStyle.Paired,
+            Color.Default,
+            BorderRelief.Raised,
+            Color.Transparent,
+            TerminalAttributes.None),
         new Shadow(true, ShadowMode.Composite, new Point(2, 1), ControlGlyphs.Chrome.Shadow.Value, Color.Default, Color.Transparent, TerminalAttributes.Dim),
         ControlGlyphs.Chrome.WindowClose.Value,
         ControlGlyphs.Chrome.WindowCloseLeft.Value,

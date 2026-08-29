@@ -34,6 +34,8 @@
     "controlText": "nord4",
     "controlBorder": "nord3",
     "controlShadow": "nord3",
+    "reliefHighlight": "nord4",
+    "reliefShade": "nord3",
     "activeControl": "nord2",
     "activeText": "nord6",
     "activeBorder": "nord6",

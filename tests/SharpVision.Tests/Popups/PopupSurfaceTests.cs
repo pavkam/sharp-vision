@@ -196,7 +196,7 @@ public sealed class PopupSurfaceTests
         surface.ShouldHaveState(action, VisualState.IsPointerOver | VisualState.Focused);
         var origin = new Point(action.Bounds.X, action.Bounds.Y);
         surface.Cell(origin).Style.Foreground.ShouldBe(TerminalPalette.Project(
-            ThemeColorHelper.FocusedBorder(ThemeCatalog.Dark),
+            ThemeCatalog.Dark.ResolveColor(SemanticColor.ReliefHighlight),
             ColorDepth.Basic16));
     }
 

@@ -23,26 +23,26 @@ public readonly record struct Border: IAppearanceFragment
             sides,
             glyphStyle,
             foreground,
-            default,
+            BorderRelief.Flat,
             background,
             attributes)
     {
     }
 
-    /// <summary>Initializes a complete border appearance with optional per-edge foregrounds.</summary>
+    /// <summary>Initializes a complete border appearance with semantic depth.</summary>
     /// <param name="sides">The enabled one-cell edges.</param>
     /// <param name="glyphStyle">The complete border glyph family.</param>
-    /// <param name="foreground">The uniform foreground inherited by edges without overrides.</param>
-    /// <param name="edgeColors">The optional physical-edge foreground overrides.</param>
+    /// <param name="foreground">The foreground used by flat borders.</param>
+    /// <param name="relief">The defined semantic depth treatment.</param>
     /// <param name="background">The border-cell background.</param>
     /// <param name="attributes">The border attributes.</param>
     /// <exception cref="ArgumentException">A foreground is transparent.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="sides"/> contains unknown flags.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="sides"/> contains unknown flags or <paramref name="relief"/> is undefined.</exception>
     public Border(
         BorderSide sides,
         BorderGlyphStyle glyphStyle,
         ControlColor foreground,
-        BorderEdgeColors edgeColors,
+        BorderRelief relief,
         ControlColor background,
         ControlDecoration attributes)
     {
@@ -61,11 +61,13 @@ public readonly record struct Border: IAppearanceFragment
             throw new ArgumentOutOfRangeException(nameof(sides), sides, "The border sides contain unknown flags.");
         }
 
+        ArgumentOutOfRangeException.ThrowIfNotDefined(relief, nameof(relief), "The border relief is unknown.");
+
         ControlColor.ValidatePaint(foreground, nameof(foreground));
         Sides = sides;
         GlyphStyle = glyphStyle;
         Foreground = foreground;
-        EdgeColors = edgeColors;
+        Relief = relief;
         Background = background;
         Attributes = attributes;
     }
@@ -110,8 +112,17 @@ public readonly record struct Border: IAppearanceFragment
         }
     }
 
-    /// <summary>Gets optional physical-edge foreground overrides.</summary>
-    public BorderEdgeColors EdgeColors { get; init; }
+    /// <summary>Gets the semantic depth treatment.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The replacement value is undefined.</exception>
+    public BorderRelief Relief
+    {
+        get;
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The border relief is unknown.");
+            field = value;
+        }
+    }
 
     /// <summary>Gets the border-cell background.</summary>
     public ControlColor Background { get; init; }

@@ -33,7 +33,7 @@ public sealed class StyleSlotTests
 
         // Assert
         assigned.ShouldBe(local);
-        control.ActualStyle.ShouldBe(ButtonStyle.Definition.Resolve(null, ThemeCatalog.Dark));
+        control.ActualStyle.ShouldBe(ProbeStyle(ThemeCatalog.Dark));
         control.StyleChanges.ShouldBe(2);
     }
 
@@ -54,7 +54,7 @@ public sealed class StyleSlotTests
 
         // Assert
         assigned.ShouldBe(local);
-        reset.ShouldBe(ButtonStyle.Definition.Resolve(null, ThemeCatalog.Dark));
+        reset.ShouldBe(ProbeStyle(ThemeCatalog.Dark));
     }
 
     /// <summary>Verifies binding forwards nullable ownership instead of pinning a resolved value.</summary>
@@ -75,7 +75,7 @@ public sealed class StyleSlotTests
         assigned.ShouldBe(local);
         control.SecondTarget.Style.ShouldBeNull();
         control.Target.Style.ShouldBeNull();
-        control.Target.ActualStyle.ShouldBe(ButtonStyle.Definition.Resolve(null, ThemeCatalog.Dark));
+        control.Target.ActualStyle.ShouldBe(ProbeStyle(ThemeCatalog.Dark));
     }
 
     /// <summary>Verifies a bound target cannot acquire a competing local owner.</summary>
@@ -92,6 +92,12 @@ public sealed class StyleSlotTests
 
         // Assert
         exception.Message.ShouldContain("upstream");
+    }
+
+    private static ButtonStyle ProbeStyle(Theme theme)
+    {
+        var input = theme.GetStyleSet(InputStyle.Default).Normal;
+        return new ButtonStyle(input.Face, input.Border, input.Shadow, ButtonStyle.Standard.Padding);
     }
 
     /// <summary>Verifies one source fans out to every matching retained target.</summary>

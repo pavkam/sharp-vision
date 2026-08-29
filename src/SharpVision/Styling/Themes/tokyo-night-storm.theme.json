@@ -35,6 +35,8 @@
     "controlText": "fg",
     "controlBorder": "comment",
     "controlShadow": "comment",
+    "reliefHighlight": "fg",
+    "reliefShade": "comment",
     "activeControl": "slate",
     "activeText": "frost",
     "activeBorder": "fg",

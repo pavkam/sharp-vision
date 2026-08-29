@@ -242,7 +242,9 @@ public sealed class FlyoutTests
         // Assert
         action.IsPointerOver.ShouldBeTrue();
         surface.ShouldHaveState(action, VisualState.IsPointerOver);
-        var borderColor = TerminalPalette.Project(ThemeColorHelper.HoveredBorder(ThemeCatalog.Dark), ColorDepth.Basic16);
+        var borderColor = TerminalPalette.Project(
+            ThemeCatalog.Dark.ResolveColor(SemanticColor.ReliefHighlight),
+            ColorDepth.Basic16);
         var hoveredForeground = TerminalPalette.Project(ThemeColorHelper.HoveredForeground(ThemeCatalog.Dark), ColorDepth.Basic16);
         var origin = new Point(action.Bounds.X, action.Bounds.Y);
         surface.Cell(origin).Style.Foreground.ShouldBe(borderColor);

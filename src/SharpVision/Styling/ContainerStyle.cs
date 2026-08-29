@@ -19,6 +19,12 @@ public record ContainerStyle: ControlStyle
     /// <summary>Gets the default container appearance: a light all-side border, no shadow.</summary>
     public static new ContainerStyle Default { get; } = new(
         DefaultFace,
-        new Border(BorderSide.All, BorderGlyphStyle.Light, Color.Default, Color.Transparent, TerminalAttributes.None),
+        new Border(
+            BorderSide.All,
+            BorderGlyphStyle.Light,
+            Color.Default,
+            BorderRelief.Sunken,
+            Color.Transparent,
+            TerminalAttributes.None),
         NoShadow);
 }

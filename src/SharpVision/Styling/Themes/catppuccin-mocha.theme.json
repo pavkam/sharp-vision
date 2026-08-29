@@ -36,6 +36,8 @@
     "controlText": "text",
     "controlBorder": "overlay0",
     "controlShadow": "overlay0",
+    "reliefHighlight": "text",
+    "reliefShade": "overlay0",
     "activeControl": "slate",
     "activeText": "frost",
     "activeBorder": "text",

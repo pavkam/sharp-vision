@@ -153,37 +153,26 @@ public sealed class CuratedThemesTests
     }
 
     /// <summary>Verifies the Turbo Vision theme retains the canonical BIOS palette roles and
-    /// opposite raised and sunken edge mappings shown by its original window chrome.</summary>
+    /// semantic relief pair and raised/sunken intent shown by its original window chrome.</summary>
     [Fact]
     public void TurboVision_WhenLoaded_UsesCanonicalPaletteAndReliefChrome()
     {
         var theme = ThemeCatalog.Load("turbo-vision");
         var raised = theme.Window.Normal.Border;
         var sunken = theme.Container.Normal.Border;
-        var focused = theme.Input.Resolve(VisualState.Focused).Border;
-        var disabled = theme.Input.Resolve(VisualState.Disabled).Border;
-        var activeWindow = theme.Window.Resolve(VisualState.FocusWithin).Border;
 
         theme.ResolveColor(SemanticColor.Window).ShouldBe(Color.FromHex("#0000aa"));
         theme.ResolveColor(SemanticColor.WindowSurface).ShouldBe(Color.FromHex("#aaaaaa"));
         theme.ResolveColor(SemanticColor.SelectedControl).ShouldBe(Color.FromHex("#00aaaa"));
         theme.ResolveColor(SemanticColor.PressedControl).ShouldBe(Color.FromHex("#00aa00"));
         theme.ResolveColor(SemanticColor.Hotkey).ShouldBe(Color.FromHex("#aa0000"));
-        theme.Resolve(raised.EdgeColors.ResolveTop(raised.Foreground)).ShouldBe(Color.FromHex("#ffffff"));
-        theme.Resolve(raised.EdgeColors.ResolveLeft(raised.Foreground)).ShouldBe(Color.FromHex("#ffffff"));
-        theme.Resolve(raised.EdgeColors.ResolveRight(raised.Foreground)).ShouldBe(Color.FromHex("#000000"));
-        theme.Resolve(raised.EdgeColors.ResolveBottom(raised.Foreground)).ShouldBe(Color.FromHex("#000000"));
-        theme.Resolve(sunken.EdgeColors.ResolveTop(sunken.Foreground)).ShouldBe(Color.FromHex("#000000"));
-        theme.Resolve(sunken.EdgeColors.ResolveLeft(sunken.Foreground)).ShouldBe(Color.FromHex("#000000"));
-        theme.Resolve(sunken.EdgeColors.ResolveRight(sunken.Foreground)).ShouldBe(Color.FromHex("#ffffff"));
-        theme.Resolve(sunken.EdgeColors.ResolveBottom(sunken.Foreground)).ShouldBe(Color.FromHex("#ffffff"));
-        theme.Resolve(focused.EdgeColors.ResolveTop(focused.Foreground)).ShouldBe(Color.FromHex("#0000aa"));
-        theme.Resolve(focused.EdgeColors.ResolveRight(focused.Foreground)).ShouldBe(Color.FromHex("#55ffff"));
-        theme.Resolve(disabled.EdgeColors.ResolveTop(disabled.Foreground)).ShouldBe(Color.FromHex("#555555"));
-        theme.Resolve(disabled.EdgeColors.ResolveRight(disabled.Foreground)).ShouldBe(Color.FromHex("#ffffff"));
-        theme.Resolve(disabled.EdgeColors.ResolveBottom(disabled.Foreground)).ShouldBe(Color.FromHex("#ffffff"));
-        theme.Resolve(activeWindow.EdgeColors.ResolveTop(activeWindow.Foreground)).ShouldBe(Color.FromHex("#55ffff"));
-        theme.Resolve(activeWindow.EdgeColors.ResolveRight(activeWindow.Foreground)).ShouldBe(Color.FromHex("#0000aa"));
+        theme.ResolveColor(SemanticColor.ReliefHighlight).ShouldBe(Color.FromHex("#ffffff"));
+        theme.ResolveColor(SemanticColor.ReliefShade).ShouldBe(Color.FromHex("#000000"));
+        raised.Relief.ShouldBe(BorderRelief.Raised);
+        sunken.Relief.ShouldBe(BorderRelief.Sunken);
+        theme.Input.Resolve(VisualState.Focused).Border.Relief.ShouldBe(BorderRelief.Sunken);
+        theme.Input.Resolve(VisualState.Disabled).Border.Relief.ShouldBe(BorderRelief.Sunken);
+        theme.Window.Resolve(VisualState.FocusWithin).Border.Relief.ShouldBe(BorderRelief.Raised);
         theme.Resolve(theme.Window.Normal.Shadow.Foreground).ShouldBe(Color.FromHex("#000000"));
     }
 

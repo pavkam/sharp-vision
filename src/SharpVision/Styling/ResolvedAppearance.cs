@@ -8,6 +8,7 @@ internal readonly struct ResolvedAppearance
     internal ResolvedAppearance(
         Face face,
         Border border,
+        ResolvedBorderStyles borderStyles,
         Shadow shadow,
         TerminalStyle style,
         BackgroundMode backgroundMode,
@@ -17,6 +18,7 @@ internal readonly struct ResolvedAppearance
     {
         Face = face;
         Border = border;
+        BorderStyles = borderStyles;
         Shadow = shadow;
         Style = style;
         BackgroundMode = backgroundMode;
@@ -28,6 +30,8 @@ internal readonly struct ResolvedAppearance
     internal Face Face { get; }
 
     internal Border Border { get; }
+
+    internal ResolvedBorderStyles BorderStyles { get; }
 
     internal Shadow Shadow { get; }
 

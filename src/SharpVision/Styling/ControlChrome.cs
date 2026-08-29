@@ -166,7 +166,7 @@ internal static class ControlChrome
                     body,
                     border.Sides,
                     glyphs,
-                    ResolvedBorderStyles.Create(border),
+                    appearance.BorderStyles,
                     appearance.BorderBackgroundMode);
             }
         }

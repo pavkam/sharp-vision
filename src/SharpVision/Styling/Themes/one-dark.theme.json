@@ -35,6 +35,8 @@
     "controlText": "fg",
     "controlBorder": "gutter-grey",
     "controlShadow": "gutter-grey",
+    "reliefHighlight": "fg",
+    "reliefShade": "gutter-grey",
     "activeControl": "visual-grey",
     "activeText": "ghost-grey",
     "activeBorder": "fg",

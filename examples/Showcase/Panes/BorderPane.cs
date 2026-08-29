@@ -77,10 +77,10 @@ internal sealed class BorderPane: CompositeControlBase
         var relief = new DocColumn(
             CreateReliefSample(
                 "Raised: light top/left",
-                BorderEdgeColors.Raised(Color.Rgb(0xff, 0xff, 0xff), Color.Rgb(0x00, 0x00, 0x00))),
+                BorderRelief.Raised),
             CreateReliefSample(
                 "Sunken: dark top/left",
-                BorderEdgeColors.Sunken(Color.Rgb(0xff, 0xff, 0xff), Color.Rgb(0x00, 0x00, 0x00))));
+                BorderRelief.Sunken));
 
         return new DocPage(
             Title,
@@ -114,12 +114,12 @@ internal sealed class BorderPane: CompositeControlBase
             new DocSection(
                 "◩",
                 "Raised and sunken edges",
-                "BorderEdgeColors overrides physical edge foregrounds while the Border foreground remains the fallback for any omitted edge.",
+                "BorderRelief preserves semantic depth while the active theme owns the highlight and shade colors.",
                 new DocExample(
                     "Turbo Vision relief",
-                    "Raised highlights top and left; Sunken reverses the same exact white and black edge pair. Horizontal edges own corner colors.",
+                    "Raised highlights top and left; Sunken reverses the active theme's highlight and shade pair. Horizontal edges own corner colors.",
                     relief,
-                    "var relief = BorderEdgeColors.Sunken(Color.Rgb(255, 255, 255), Color.Rgb(0, 0, 0));\ncontrol.Border = new Border(BorderSide.All, BorderGlyphStyle.Light, Color.Rgb(170, 170, 170), relief, Color.Transparent, TerminalAttributes.None);")));
+                    "control.Border = new Border(BorderSide.All, BorderGlyphStyle.Light, SemanticColor.ControlBorder, BorderRelief.Sunken, Color.Transparent, SemanticDecoration.Border);")));
     }
 
     private static Dock CreateFamilySample(string caption, BorderGlyphStyle glyphs) => new()
@@ -150,7 +150,7 @@ internal sealed class BorderPane: CompositeControlBase
         Children = { new Text(caption) }
     };
 
-    private static Dock CreateReliefSample(string caption, BorderEdgeColors edgeColors) => new()
+    private static Dock CreateReliefSample(string caption, BorderRelief relief) => new()
     {
         Width = Length.Cells(38),
         Height = Length.Cells(4),
@@ -163,8 +163,8 @@ internal sealed class BorderPane: CompositeControlBase
         Border = new Border(
             BorderSide.All,
             BorderGlyphStyle.Light,
-            Color.Rgb(0xaa, 0xaa, 0xaa),
-            edgeColors,
+            SemanticColor.ControlBorder,
+            relief,
             Color.Rgb(0xaa, 0xaa, 0xaa),
             TerminalAttributes.None),
         Padding = new Thickness(1, 0),

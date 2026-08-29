@@ -35,6 +35,8 @@
     "controlText": "fg1",
     "controlBorder": "bg3",
     "controlShadow": "bg3",
+    "reliefHighlight": "fg1",
+    "reliefShade": "bg3",
     "activeControl": "bg2",
     "activeText": "fg0",
     "activeBorder": "fg1",

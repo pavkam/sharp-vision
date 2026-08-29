@@ -21,6 +21,12 @@ public record TooltipStyle: ControlStyle
     /// <summary>Gets the default tooltip appearance: a light all-side border, no shadow.</summary>
     public static new TooltipStyle Default { get; } = new(
         DefaultFace,
-        new Border(BorderSide.All, BorderGlyphStyle.Light, Color.Default, Color.Transparent, TerminalAttributes.None),
+        new Border(
+            BorderSide.All,
+            BorderGlyphStyle.Light,
+            Color.Default,
+            BorderRelief.Raised,
+            Color.Transparent,
+            TerminalAttributes.None),
         NoShadow);
 }

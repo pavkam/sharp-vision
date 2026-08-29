@@ -34,6 +34,26 @@ public static class StyleDefinitions
         Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compare)
         where TStyle : ControlStyle
         where TFallback : ControlStyle
+        => CreateControl(fallbackTo, complete, compare, preserveCompleteLocalAppearance: false);
+
+    /// <summary>Creates a primary control-style definition whose completion may add code-owned
+    /// state defaults for Theme-owned styles while a complete local style remains authoritative
+    /// in every state.</summary>
+    internal static StyleDefinition<TStyle> ControlWithThemeOwnedStateDefaults<TStyle, TFallback>(
+        Func<Theme, StyleStates<TFallback>> fallbackTo,
+        Func<TFallback, VisualState, Theme, TStyle> complete,
+        Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compare)
+        where TStyle : ControlStyle
+        where TFallback : ControlStyle
+        => CreateControl(fallbackTo, complete, compare, preserveCompleteLocalAppearance: true);
+
+    private static StyleDefinition<TStyle> CreateControl<TStyle, TFallback>(
+        Func<Theme, StyleStates<TFallback>> fallbackTo,
+        Func<TFallback, VisualState, Theme, TStyle> complete,
+        Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compare,
+        bool preserveCompleteLocalAppearance)
+        where TStyle : ControlStyle
+        where TFallback : ControlStyle
     {
         ArgumentNullException.ThrowIfNull(fallbackTo);
         ArgumentNullException.ThrowIfNull(complete);
@@ -49,11 +69,14 @@ public static class StyleDefinitions
             (previous, previousTheme, current, currentTheme) => MaximumImpact(
                 compare(previous, previousTheme, current, currentTheme),
                 GetInheritedImpact(previous, previousTheme, current, currentTheme)),
-            localAppearance: (style, theme) =>
-                (theme ?? ThemeCatalog.Dark).BuildCodeOwnedStates(
-                    style,
-                    ResolveFallback(Theme.Unthemed).Normal,
-                    Complete));
+            localAppearance: preserveCompleteLocalAppearance
+                ? static (style, _) => new AppearanceStates(
+                    new ControlAppearance(style.Face, style.Border, style.Shadow))
+                : (style, theme) =>
+                    (theme ?? ThemeCatalog.Dark).BuildCodeOwnedStates(
+                        style,
+                        ResolveFallback(Theme.Unthemed).Normal,
+                        Complete));
     }
 
     // Used to also overlay this key's own "normal" JSON on top of the completed fallback. A leaf

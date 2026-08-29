@@ -178,17 +178,18 @@ public sealed class WindowSurfaceTests
             },
             "apply Turbo Vision and activate the window");
 
-        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(Color.FromHex("#55ffff"));
-        surface.Cell(new Point(9, 0)).Style.Foreground.ShouldBe(Color.FromHex("#55ffff"));
-        surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(Color.FromHex("#55ffff"));
-        surface.Cell(new Point(9, 1)).Style.Foreground.ShouldBe(Color.FromHex("#0000aa"));
-        surface.Cell(new Point(0, 3)).Style.Foreground.ShouldBe(Color.FromHex("#0000aa"));
-        surface.Cell(new Point(9, 3)).Style.Foreground.ShouldBe(Color.FromHex("#0000aa"));
+        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(Color.FromHex("#ffffff"));
+        surface.Cell(new Point(9, 0)).Style.Foreground.ShouldBe(Color.FromHex("#ffffff"));
+        surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(Color.FromHex("#ffffff"));
+        surface.Cell(new Point(9, 1)).Style.Foreground.ShouldBe(Color.FromHex("#000000"));
+        surface.Cell(new Point(0, 3)).Style.Foreground.ShouldBe(Color.FromHex("#000000"));
+        surface.Cell(new Point(9, 3)).Style.Foreground.ShouldBe(Color.FromHex("#000000"));
     }
 
-    /// <summary>Verifies focus and primary clicks switch Application activation without conflating keyboard focus.</summary>
+    /// <summary>Verifies focus and primary clicks switch Application activation without
+    /// conflating keyboard focus or changing the semantic raised frame.</summary>
     [Fact]
-    public async Task Activation_WhenFocusAndWindowChromeChangeTargets_SwitchesWithoutStealingFocusAsync()
+    public async Task Activation_WhenFocusTargetSwitches_ChangesOwnershipWithoutStealingFocusAsync()
     {
         var firstAction = new Button { Text = "First" };
         var first = new Window
@@ -222,9 +223,8 @@ public sealed class WindowSurfaceTests
         surface.ShouldHaveFocus(firstAction);
         var firstBorderPoint = new Point(first.Bounds.X, first.Bounds.Y);
         var secondBorderPoint = new Point(second.Bounds.X, second.Bounds.Y);
-        var activeBorder = surface.Cell(firstBorderPoint).Style.Foreground;
-        var normalBorder = surface.Cell(secondBorderPoint).Style.Foreground;
-        activeBorder.ShouldNotBe(normalBorder);
+        var raisedBorder = surface.Cell(firstBorderPoint).Style.Foreground;
+        surface.Cell(secondBorderPoint).Style.Foreground.ShouldBe(raisedBorder);
 
         await surface.Pointer.MoveToAsync(second, new Point(1, 0));
         surface.Application.Capture.Hovered.ShouldBeSameAs(second);
@@ -240,8 +240,8 @@ public sealed class WindowSurfaceTests
         first.ContainsFocus.ShouldBeTrue();
         second.ContainsFocus.ShouldBeFalse();
         surface.ShouldHaveFocus(firstAction);
-        surface.Cell(firstBorderPoint).Style.Foreground.ShouldBe(normalBorder);
-        surface.Cell(secondBorderPoint).Style.Foreground.ShouldBe(activeBorder);
+        surface.Cell(firstBorderPoint).Style.Foreground.ShouldBe(raisedBorder);
+        surface.Cell(secondBorderPoint).Style.Foreground.ShouldBe(raisedBorder);
     }
 
     /// <summary>Verifies a second Window attached to a live Overlay while already Visible becomes
@@ -593,7 +593,7 @@ public sealed class WindowSurfaceTests
         surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(pressed);
         window.IsActive.ShouldBeTrue();
         var activeFrame = surface.Cell(new Point(3, 0)).Style.Foreground;
-        activeFrame.ShouldNotBe(hoveredFrame);
+        activeFrame.ShouldBe(hoveredFrame);
         surface.Cell(new Point(4, 0)).Style.Background.ShouldBe(background);
 
         // Act and assert releasing outside the target cancels activation, leaving the Window

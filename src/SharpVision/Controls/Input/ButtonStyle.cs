@@ -14,7 +14,7 @@ public sealed record ButtonStyle: InputStyle
 {
     /// <summary>Gets the primary Button-style definition. Falls back to <see cref="InputStyle"/>'s
     /// "input" role section for its passive chrome; Padding is code-owned.</summary>
-    internal static StyleDefinition<ButtonStyle> Definition { get; } = StyleDefinitions.Control(
+    internal static StyleDefinition<ButtonStyle> Definition { get; } = StyleDefinitions.ControlWithThemeOwnedStateDefaults(
         static theme => theme.GetStyleSet(InputStyle.Default),
         Complete,
         static (previous, previousTheme, current, currentTheme) =>
@@ -30,7 +30,16 @@ public sealed record ButtonStyle: InputStyle
         static (_, _, _, _) => InvalidationImpact.None);
 
     private static ButtonStyle Complete(InputStyle input, VisualState state, Theme theme) =>
-        new(input.Face, input.Border, input.Shadow, new Thickness(horizontal: 1, vertical: 0))
+        new(
+            input.Face,
+            input.Border with
+            {
+                Relief = (state & VisualState.Pressed) != 0
+                    ? BorderRelief.Sunken
+                    : BorderRelief.Raised
+            },
+            input.Shadow,
+            new Thickness(horizontal: 1, vertical: 0))
         {
             // Forwarded from the fallback rather than left at the code-owned value the base
             // constructor supplies. Without this, DropDownGlyph would stay stuck at

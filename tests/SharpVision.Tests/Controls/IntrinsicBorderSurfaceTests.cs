@@ -33,12 +33,12 @@ public sealed class IntrinsicBorderSurfaceTests
             },
             "apply Turbo Vision and focus the input");
 
-        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(Color.FromHex("#0000aa"));
-        surface.Cell(new Point(5, 0)).Style.Foreground.ShouldBe(Color.FromHex("#0000aa"));
-        surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(Color.FromHex("#0000aa"));
-        surface.Cell(new Point(5, 1)).Style.Foreground.ShouldBe(Color.FromHex("#55ffff"));
-        surface.Cell(new Point(0, 2)).Style.Foreground.ShouldBe(Color.FromHex("#55ffff"));
-        surface.Cell(new Point(5, 2)).Style.Foreground.ShouldBe(Color.FromHex("#55ffff"));
+        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(Color.FromHex("#000000"));
+        surface.Cell(new Point(5, 0)).Style.Foreground.ShouldBe(Color.FromHex("#000000"));
+        surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(Color.FromHex("#000000"));
+        surface.Cell(new Point(5, 1)).Style.Foreground.ShouldBe(Color.FromHex("#ffffff"));
+        surface.Cell(new Point(0, 2)).Style.Foreground.ShouldBe(Color.FromHex("#ffffff"));
+        surface.Cell(new Point(5, 2)).Style.Foreground.ShouldBe(Color.FromHex("#ffffff"));
     }
 
     /// <summary>Verifies the Turbo Vision container role renders its exact sunken edge colors.</summary>

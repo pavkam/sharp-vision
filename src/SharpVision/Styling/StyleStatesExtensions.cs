@@ -99,12 +99,10 @@ public static class StyleStatesExtensions
         var sides = Keep(state.Sides, normal.Sides, authored, "Border.Sides");
         var glyphStyle = Keep(state.GlyphStyle, normal.GlyphStyle, authored, "Border.GlyphStyle");
         var foreground = Keep(state.Foreground, normal.Foreground, authored, "Border.Foreground");
-        var edgeColors = Keep(state.EdgeColors, normal.EdgeColors, authored, "Border.EdgeColors");
         var background = Keep(state.Background, normal.Background, authored, "Border.Background");
         var attributes = Keep(state.Attributes, normal.Attributes, authored, "Border.Attributes");
-        return edgeColors is { } edges
-            ? BorderOverlay.WithEdgeColors(edges, sides, glyphStyle, foreground, background, attributes)
-            : new BorderOverlay(sides, glyphStyle, foreground, background, attributes);
+        var relief = Keep(state.Relief, normal.Relief, authored, "Border.Relief");
+        return new BorderOverlay(sides, glyphStyle, foreground, background, attributes, relief);
     }
 
     private static ShadowOverlay DiffShadow(Shadow normal, Shadow state, IReadOnlySet<string>? authored) => new(

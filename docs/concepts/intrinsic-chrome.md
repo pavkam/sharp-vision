@@ -49,8 +49,8 @@ member-wise contribution used by themes and states.
 | ------------ | ------------------- | -------------------- | ------------------------------------------------------------------ |
 | `Sides`      | `BorderSide`        | `BorderSide?`        | IsEnabled one-cell physical edges; unknown flag bits are rejected. |
 | `GlyphStyle` | `BorderGlyphStyle`  | `BorderGlyphStyle?`  | Eight validated single-cell runes for corners and edges.           |
-| `Foreground` | `ControlColor`      | `ControlColor?`      | Uniform fallback paint color; transparent is rejected.             |
-| `EdgeColors` | `BorderEdgeColors`  | `BorderEdgeColors?`  | Optional top, right, bottom, and left foreground overrides.        |
+| `Foreground` | `ControlColor`      | `ControlColor?`      | Paint color for flat borders; transparent is rejected.             |
+| `Relief`     | `BorderRelief`      | `BorderRelief?`      | Semantic `Flat`, `Raised`, or `Sunken` depth treatment.            |
 | `Background` | `ControlColor`      | `ControlColor?`      | Independent border-cell background channel.                        |
 | `Attributes` | `ControlDecoration` | `ControlDecoration?` | Terminal attributes or semantic decoration.                        |
 
@@ -59,14 +59,13 @@ member-wise contribution used by themes and states.
 caller-created family validates every rune as printable and exactly one cell
 wide. Partial edges reserve and draw only the physical sides they select.
 
-`BorderEdgeColors` leaves each physical edge optional. An absent override uses
-`Border.Foreground`, so assigning one edge does not force a caller to repeat the
-other three. `Raised(highlight, shade)` maps the highlight to top and left and
-the shade to right and bottom; `Sunken(highlight, shade)` reverses that mapping.
-Both reject transparent paint. Horizontal edges already own corner glyphs, so
-the top color owns both top corners and the bottom color owns both bottom
-corners when adjacent edges differ. The same precedence applies to a one-row
-frame.
+`BorderRelief.Flat` paints every enabled edge with `Border.Foreground`. `Raised`
+paints the top and left edges with the active Theme's `ReliefHighlight` color
+and the right and bottom edges with `ReliefShade`; `Sunken` reverses that
+mapping. Horizontal edges own corner glyphs, so the top color owns both top
+corners and the bottom color owns both bottom corners. The same precedence
+applies to partial and one-row frames. Undefined relief values are rejected by
+complete borders, overlays, `with` expressions, and Theme JSON.
 
 ## Shadow API
 
@@ -103,8 +102,9 @@ For chrome specifically:
 2. Overlay active theme-state `BorderOverlay` and `ShadowOverlay` contributions.
 3. Apply the complete local control Style and any derived-control chrome.
 4. Overlay protected derived-control state contributions.
-5. Compute border inset and shadow visual overflow.
-6. Paint shadow and body, call `OnRenderContent`, render normal children, then
+5. Resolve semantic relief to the active Theme's highlight and shade colors.
+6. Compute border inset and shadow visual overflow.
+7. Paint shadow and body, call `OnRenderContent`, render normal children, then
    overlay the border.
 
 The border background is independent from the face background. Changing a
@@ -120,9 +120,7 @@ var card = new Stack
         BorderSide.All,
         BorderGlyphStyle.Rounded,
         SemanticColor.ControlBorder,
-        BorderEdgeColors.Sunken(
-            Color.Rgb(255, 255, 255),
-            Color.Rgb(0, 0, 0)),
+        BorderRelief.Sunken,
         Color.Transparent,
         SemanticDecoration.Border),
     Shadow = new Shadow(

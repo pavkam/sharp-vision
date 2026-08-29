@@ -22,6 +22,10 @@ public enum SemanticColor
     ControlBorder,
     /// <summary>The ordinary control shadow.</summary>
     ControlShadow,
+    /// <summary>The illuminated edge of raised or sunken relief.</summary>
+    ReliefHighlight,
+    /// <summary>The shaded edge of raised or sunken relief.</summary>
+    ReliefShade,
     /// <summary>The active control background.</summary>
     ActiveControl,
     /// <summary>The active control text.</summary>

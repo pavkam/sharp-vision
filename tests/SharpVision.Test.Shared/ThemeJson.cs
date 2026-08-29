@@ -93,6 +93,7 @@ public static class ThemeJson
                 "surface":"{{backgroundRef}}", "surfaceText":"{{foregroundRef}}",
                 "control":"{{backgroundRef}}", "controlText":"{{foregroundRef}}",
                 "controlBorder":"{{controlBorderRef}}", "controlShadow":"__controlShadow",
+                "reliefHighlight":"{{foregroundRef}}", "reliefShade":"__controlShadow",
                 "activeControl":"{{backgroundRef}}", "activeText":"{{foregroundRef}}", "activeBorder":"{{accentRef}}",
                 "focusedControl":"{{backgroundRef}}", "focusedText":"{{accentRef}}", "focusedBorder":"{{accentRef}}",
                 "pressedControl":"{{backgroundRef}}", "pressedText":"{{accentRef}}", "pressedBorder":"{{accentRef}}",

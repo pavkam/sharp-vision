@@ -47,11 +47,11 @@ consistently by programmatic, parsed, and catalog-entry metadata.
 
 ## Global values
 
-`colors` requires these 36 properties:
+`colors` requires these 38 properties:
 
 ```text
 window, windowSurface, windowText, surface, surfaceText, control, controlText,
-controlBorder, controlShadow, activeControl, activeText, activeBorder,
+controlBorder, controlShadow, reliefHighlight, reliefShade, activeControl, activeText, activeBorder,
 focusedControl, focusedText, focusedBorder, pressedControl, pressedText,
 pressedBorder, selectedControl, selectedText, disabledControl,
 disabledText, disabledBorder, accent, muted, hotkey, error, warning,
@@ -289,12 +289,12 @@ The bundled `turbo-vision` theme is sourced from Turbo Vision's published
 `cpAppColor` BIOS palette. Its sixteen palette entries use the canonical CGA/VGA
 RGB values without interpolation. It combines the original blue application
 plane, gray raised surfaces, cyan selection, green press feedback, red access
-keys, black shadows, and line glyphs with per-edge `BorderEdgeColors`: Window,
-Popup, and Tooltip use raised white/black edges, while Input and Container use
-the inverse sunken mapping. Focus, press, disabled, and active-window states
-retain that relief while shifting the edge pair to their corresponding canonical
-palette roles. Load it with `ThemeCatalog.Load("turbo-vision")`; the Showcase
-theme picker discovers it from the same catalog automatically.
+keys, black shadows, and line glyphs with semantic relief. Its `ReliefHighlight`
+and `ReliefShade` roles are exact white and black: Window, Popup, and Tooltip
+use raised edges, while Input and Container use the inverse sunken mapping.
+Buttons are raised at rest and reverse that same pair while pressed. Load it
+with `ThemeCatalog.Load("turbo-vision")`; the Showcase theme picker discovers it
+from the same catalog automatically.
 
 ### Glyph families
 
@@ -390,6 +390,8 @@ own appearance. Both are public and require no internal access; see
     "controlText": "ink",
     "controlBorder": "outline",
     "controlShadow": "shadow",
+    "reliefHighlight": "ink",
+    "reliefShade": "shadow",
     "activeControl": "highlight",
     "activeText": "ink",
     "activeBorder": "accent",

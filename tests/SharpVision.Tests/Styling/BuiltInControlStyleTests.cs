@@ -44,10 +44,14 @@ public sealed class BuiltInControlStyleTests
     public void ActualBorder_WhenThirdPartyControlOverridesItsStyle_UsesSelectedAppearance()
     {
         var control = new ThirdPartyThemeControl();
-        var button = new Button();
         control.SetTheme(ThemeCatalog.Dark);
-        button.SetTheme(ThemeCatalog.Dark);
+        var expected = ThemeCatalog.Dark.GetStyleSet(InputStyle.Default).Normal.Border;
 
-        control.ActualBorder.ShouldBe(button.ActualBorder);
+        control.ActualBorder.Sides.ShouldBe(expected.Sides);
+        control.ActualBorder.GlyphStyle.ShouldBe(expected.GlyphStyle);
+        control.ActualBorder.Relief.ShouldBe(expected.Relief);
+        control.ActualBorder.Foreground.Literal.ShouldBe(ThemeCatalog.Dark.Resolve(expected.Foreground));
+        control.ActualBorder.Background.Literal.ShouldBe(ThemeCatalog.Dark.Resolve(expected.Background));
+        control.ActualBorder.Attributes.Literal.ShouldBe(ThemeCatalog.Dark.Resolve(expected.Attributes));
     }
 }

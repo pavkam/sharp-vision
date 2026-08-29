@@ -25,7 +25,13 @@ public record InputStyle: ControlStyle
     /// <summary>Gets the default input appearance: a heavy all-side border, no shadow.</summary>
     public static new InputStyle Default { get; } = new(
         DefaultFace,
-        new Border(BorderSide.All, BorderGlyphStyle.Heavy, Color.Default, Color.Transparent, TerminalAttributes.None),
+        new Border(
+            BorderSide.All,
+            BorderGlyphStyle.Heavy,
+            Color.Default,
+            BorderRelief.Sunken,
+            Color.Transparent,
+            TerminalAttributes.None),
         NoShadow,
         ControlGlyphs.Disclosure.DropDown.Value);
 

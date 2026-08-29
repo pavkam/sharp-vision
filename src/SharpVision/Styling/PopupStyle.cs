@@ -26,6 +26,12 @@ public record PopupStyle: ControlStyle
     /// <summary>Gets the default popup appearance: a rounded all-side border, no shadow.</summary>
     public static new PopupStyle Default { get; } = new(
         DefaultFace,
-        new Border(BorderSide.All, BorderGlyphStyle.Rounded, Color.Default, Color.Transparent, TerminalAttributes.None),
+        new Border(
+            BorderSide.All,
+            BorderGlyphStyle.Rounded,
+            Color.Default,
+            BorderRelief.Raised,
+            Color.Transparent,
+            TerminalAttributes.None),
         NoShadow);
 }
