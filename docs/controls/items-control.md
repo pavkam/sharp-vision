@@ -27,7 +27,11 @@ disposed along with the private host.
 `OnItemControlsChanged` runs once after each committed snapshot, including a
 change caused by direct item disposal. It observes the complete new order while
 guarded ownership publication is still active. A callback failure does not roll
-back the committed snapshot, and reentrant ownership mutation is rejected.
+back the committed snapshot, and reentrant ownership mutation is rejected. The
+framework-side host adapter also receives the immutable committed delta: copied
+old/new orders, entering and leaving identities, indices, mutation kind, and
+release reason. Concrete framework controls use those facts for selection and
+current-item repair instead of reconstructing the mutation from the final list.
 
 A framework control whose one semantic item requires controls in several private
 hosts uses the internal compound ownership transaction rather than calling these

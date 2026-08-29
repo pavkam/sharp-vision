@@ -321,8 +321,11 @@ Owner-driven teardown skips both. The transaction order is then:
    changes, detach hooks, and attach hooks follow. Overlapping changed roots are
    captured once, so a descendant is never notified twice.
 4. The transaction requests its slot invalidation impact exactly once, before
-   the slot-changed notification, so a notification callback can consume current
-   layout without leaving a redundant pass behind.
+   publishing an immutable committed change for each affected slot. That change
+   carries copied previous/current orders, added/removed identities, stable
+   old/new indices, the normalized operation, and `ReleaseReason`; it never
+   exposes the registry's mutable storage. A callback can therefore repair
+   semantic state from exact facts without leaving a redundant layout pass.
 
 Callback failures are remembered while the remaining publication and cleanup
 continue: a `finally` path still requests invalidation when an unexpected
@@ -331,6 +334,15 @@ once the new tree is coherent. The structural publication guard spans
 `OnDisposing`, the unavailable notification, the exact-slot unlink, and
 descendant cleanup — a disposal callback cannot switch to ordinary collection
 removal to publish `Detached`, and cannot bypass the exact slot.
+
+A retained owner that temporarily controls a child's live property uses one
+ownership-generation lease. The lease captures the caller-authored value,
+attributes owner writes explicitly, and intercepts later caller requests through
+one shared property boundary. While imposed, a caller request updates only the
+authored value; ordinary detachment restores the latest request after the
+structural commit, while direct or owner disposal retires it without
+restoration. Reownership installs a newer generation before callbacks can let an
+old lease write over the new owner's presentation.
 
 ## Invalidation API
 

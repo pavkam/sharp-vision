@@ -72,14 +72,14 @@ public abstract class Container: ControlBase
     /// <remarks>
     /// The callback also runs after child-initiated disposal. It runs during guarded structural
     /// publication, so reentrant ownership mutation is rejected. Throwing does not roll back the
-    /// committed mutation. This mirrors <see cref="ItemsControl.OnItemControlsChanged"/>, which
+    /// committed mutation. This mirrors <see cref="ItemsControl.OnItemControlsChanged()"/>, which
     /// consumes the identical internal notification on its own private presentation host.
     /// </remarks>
     protected virtual void OnChildrenChanged()
     {
     }
 
-    private void OnChildrenChangedCore() => OnChildrenChanged();
+    private void OnChildrenChangedCore(OwnedControlChange change) => OnChildrenChanged();
 
     /// <summary>Measures the concrete container's public children within the supplied content constraint.</summary>
     /// <param name="constraint">The non-negative content-box constraint.</param>

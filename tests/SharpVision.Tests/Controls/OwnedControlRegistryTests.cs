@@ -9,6 +9,179 @@ using SharpVision.DataBinding;
 /// cross-cutting Tab, render, and hit-test traversal over every central ownership slot.</summary>
 public sealed class OwnedControlRegistryTests
 {
+    /// <summary>Verifies restoration failure preserves the first exception while restoring later
+    /// properties and retiring the completed generation.</summary>
+    [Fact]
+    public void RetainedPropertyOverride_WhenRestoreCallbackThrows_CompletesAndRetiresLease()
+    {
+        var owner = new ProbeOwnedControl();
+        var child = new ProbeControl { Width = Length.Cells(4), Height = Length.Cells(5) };
+        owner.AddPrimary(child);
+        using var service = new RetainedPropertyOverrideService(owner, owner.PrimarySlot);
+        var lease = service.Acquire(
+            child,
+            RetainedPropertyOverrides.Width,
+            RetainedPropertyOverrides.Height);
+        lease.SetLive(RetainedControlProperty.Width, Length.Percent(100));
+        lease.SetLive(RetainedControlProperty.Height, Length.Percent(100));
+        child.Width = Length.Cells(8);
+        child.Height = Length.Cells(9);
+        _ = owner.RemovePrimary(child);
+        child.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ControlBase.Width))
+            {
+                throw new InvalidOperationException("restore callback failed");
+            }
+        };
+
+        var exception = Should.Throw<InvalidOperationException>(() => service.Restore(lease));
+
+        exception.Message.ShouldBe("restore callback failed");
+        child.Width.ShouldBe(Length.Cells(8));
+        child.Height.ShouldBe(Length.Cells(9));
+        child.RetainedPropertyOverride.ShouldBeNull();
+        service.Count.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a retained-property lease separates authored requests from live owner
+    /// values, restores after detach, retires disposal, and cannot overwrite a newer generation.</summary>
+    [Fact]
+    public void RetainedPropertyOverride_WhenOwnershipChanges_PreservesCurrentGeneration()
+    {
+        var firstOwner = new ProbeOwnedControl();
+        var child = new ProbeControl
+        {
+            Width = Length.Cells(4),
+            Height = Length.Cells(5),
+            IsFocusable = true,
+            IsTabStop = true,
+        };
+        firstOwner.AddPrimary(child);
+        using var firstService = new RetainedPropertyOverrideService(firstOwner, firstOwner.PrimarySlot);
+        var firstLease = firstService.Acquire(
+            child,
+            RetainedPropertyOverrides.Width,
+            RetainedPropertyOverrides.Height,
+            RetainedPropertyOverrides.IsFocusable,
+            RetainedPropertyOverrides.IsTabStop);
+        firstLease.SetLive(RetainedControlProperty.Width, Length.Percent(100));
+        firstLease.SetLive(RetainedControlProperty.Height, Length.Percent(100));
+        firstLease.SetLive(RetainedControlProperty.IsFocusable, false);
+        firstLease.SetLive(RetainedControlProperty.IsTabStop, false);
+
+        child.Width = Length.Cells(8);
+        child.Height = Length.Cells(9);
+        child.IsFocusable = true;
+        child.IsTabStop = true;
+
+        child.Width.ShouldBe(Length.Percent(100));
+        child.Height.ShouldBe(Length.Percent(100));
+        child.IsFocusable.ShouldBeFalse();
+        child.IsTabStop.ShouldBeFalse();
+        firstLease.GetAuthored<Length>(RetainedControlProperty.Width).ShouldBe(Length.Cells(8));
+        firstLease.GetAuthored<Length>(RetainedControlProperty.Height).ShouldBe(Length.Cells(9));
+
+        firstOwner.RemovePrimary(child).ShouldBeTrue();
+        firstService.Restore(child);
+
+        child.Width.ShouldBe(Length.Cells(8));
+        child.Height.ShouldBe(Length.Cells(9));
+        child.IsFocusable.ShouldBeTrue();
+        child.IsTabStop.ShouldBeTrue();
+        child.RetainedPropertyOverride.ShouldBeNull();
+
+        firstOwner.AddPrimary(child);
+        var staleLease = firstService.Acquire(
+            child,
+            RetainedPropertyOverrides.Width,
+            RetainedPropertyOverrides.Height);
+        staleLease.SetLive(RetainedControlProperty.Width, Length.Percent(100));
+        staleLease.SetLive(RetainedControlProperty.Height, Length.Percent(100));
+        child.Width = Length.Cells(12);
+        child.Height = Length.Cells(13);
+        firstOwner.RemovePrimary(child).ShouldBeTrue();
+        var secondOwner = new ProbeOwnedControl();
+        using var secondService = new RetainedPropertyOverrideService(secondOwner, secondOwner.PrimarySlot);
+        var reowned = false;
+        child.PropertyChanged += (_, eventArgs) =>
+        {
+            if (reowned || eventArgs.PropertyName != nameof(ControlBase.Width))
+            {
+                return;
+            }
+
+            reowned = true;
+            secondOwner.AddPrimary(child);
+            var currentLease = secondService.Acquire(
+                child,
+                RetainedPropertyOverrides.Width,
+                RetainedPropertyOverrides.Height);
+            currentLease.SetLive(RetainedControlProperty.Width, Length.Cells(20));
+            currentLease.SetLive(RetainedControlProperty.Height, Length.Cells(21));
+        };
+
+        firstService.Restore(child);
+
+        child.Parent.ShouldBeSameAs(secondOwner);
+        child.Width.ShouldBe(Length.Cells(20));
+        child.Height.ShouldBe(Length.Cells(21));
+        staleLease.IsCurrent.ShouldBeFalse();
+        firstService.Count.ShouldBe(0);
+
+        child.Dispose();
+
+        secondService.Count.ShouldBe(0);
+        child.RetainedPropertyOverride.ShouldBeNull();
+    }
+
+    /// <summary>Verifies every normalized mutation publishes one stable copied delta with exact
+    /// identity, indices, and release reason, including child-initiated disposal.</summary>
+    [Fact]
+    public void Mutations_WhenCommitted_PublishCompleteImmutableDeltasExactlyOnce()
+    {
+        var owner = new ProbeOwnedControl();
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        var replacement = new ProbeControl();
+
+        owner.AddPrimary(first);
+        var retainedInsert = owner.PrimaryChangeLog[0];
+        owner.InsertPrimary(0, second);
+        owner.ReplacePrimary(1, replacement);
+        owner.MovePrimary(0, 1);
+        _ = owner.RemovePrimary(replacement);
+        owner.ClearPrimary();
+
+        owner.PrimaryChangeLog.Count.ShouldBe(6);
+        AssertChange(owner.PrimaryChangeLog[0], OwnedControlMutationKind.Insert, -1, 0, [], [first]);
+        AssertChange(owner.PrimaryChangeLog[1], OwnedControlMutationKind.Insert, -1, 0, [], [second]);
+        AssertChange(owner.PrimaryChangeLog[2], OwnedControlMutationKind.Replace, 1, 1, [first], [replacement]);
+        AssertChange(owner.PrimaryChangeLog[3], OwnedControlMutationKind.Move, 0, 1, [], []);
+        AssertChange(owner.PrimaryChangeLog[4], OwnedControlMutationKind.Remove, 0, -1, [replacement], []);
+        AssertChange(owner.PrimaryChangeLog[5], OwnedControlMutationKind.Clear, -1, -1, [second], []);
+        retainedInsert.Previous.ToArray().ShouldBeEmpty();
+        retainedInsert.Current.ToArray().ShouldBe([first]);
+        retainedInsert.Reason.ShouldBe(ReleaseReason.Detached);
+
+        var disposalOwner = new ProbeOwnedControl();
+        var disposing = new ProbeControl();
+        disposalOwner.AddPrimary(disposing);
+        disposalOwner.PrimaryChangeLog.Clear();
+
+        disposing.Dispose();
+
+        disposalOwner.PrimaryChangeLog.Count.ShouldBe(1);
+        AssertChange(
+            disposalOwner.PrimaryChangeLog[0],
+            OwnedControlMutationKind.DirectDisposal,
+            0,
+            -1,
+            [disposing],
+            []);
+        disposalOwner.PrimaryChangeLog[0].Reason.ShouldBe(ReleaseReason.Disposed);
+    }
+
     /// <summary>Verifies a disabled ordinary owner publishes each changed derived state once for
     /// every affected level on add and remove, while an already-disabled descendant stays silent.</summary>
     [Fact]
@@ -46,6 +219,21 @@ public sealed class OwnedControlRegistryTests
         branchNotifications.ShouldBe(expected);
         leafNotifications.ShouldBe(expected);
         locallyDisabledNotifications.ShouldBeEmpty();
+    }
+
+    private static void AssertChange(
+        OwnedControlChange change,
+        OwnedControlMutationKind kind,
+        int previousIndex,
+        int currentIndex,
+        ControlBase[] removed,
+        ControlBase[] added)
+    {
+        change.Kind.ShouldBe(kind);
+        change.PreviousIndex.ShouldBe(previousIndex);
+        change.CurrentIndex.ShouldBe(currentIndex);
+        change.Removed.ToArray().ShouldBe(removed);
+        change.Added.ToArray().ShouldBe(added);
     }
 
     /// <summary>Verifies a collapsed ordinary owner publishes only visibility-derived changes on
@@ -264,8 +452,8 @@ public sealed class OwnedControlRegistryTests
         var page = new ProbeControl();
         var header = new ProbeControl();
         var headerChanges = 0;
-        pages.Children.Changed += () => throw new InvalidOperationException("page slot publication failed");
-        headers.Children.Changed += () => headerChanges++;
+        pages.Children.Changed += _ => throw new InvalidOperationException("page slot publication failed");
+        headers.Children.Changed += _ => headerChanges++;
 
         var exception = Should.Throw<InvalidOperationException>(() =>
             OwnedControlRegistry.CommitCompound(

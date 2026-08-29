@@ -21,14 +21,13 @@ public sealed class Menu: ItemsControl
     /// <see cref="SelectedItem"/>'s identity silently changed - this retained reference can.</summary>
     private ControlBase? _selectedEntry;
 
-    private readonly Dictionary<ControlBase, MenuEntryPresentation> _requestedPresentations = [];
+    private readonly RetainedPropertyOverrideService _propertyOverrides;
     private readonly LayoutStack _stack;
     private bool _closeChainAfterInvocation;
     private bool _closeChainPending;
     private bool _discardPendingSubmenuTransitionOnClose;
     private bool _isClosingChain;
     private bool _isEnteringModalScope;
-    private bool _isHandlingKnownMutation;
     private int _itemInvocationDepth;
     private ModalScope? _modalScope;
     private ModalityManager? _pendingSubmenuModalityOwner;
@@ -47,6 +46,7 @@ public sealed class Menu: ItemsControl
         MinWidth = 10;
         _stack = new LayoutStack { Orientation = Orientation.Horizontal, Spacing = 0 };
         InitializeItemsHost(_stack);
+        _propertyOverrides = new RetainedPropertyOverrideService(this, ItemControlsSlot);
         Items = new MenuEntryCollection(this);
         IsFocusable = true;
         IsTabStop = true;
@@ -426,24 +426,20 @@ public sealed class Menu: ItemsControl
         // overwritten. InsertItemControl can throw for a duplicate, already
         // attached, or disposed candidate; a rejected insertion must leave the
         // caller's object exactly as it found it.
-        _isHandlingKnownMutation = true;
-
-        try
+        InsertItemControl(index, item);
+        if (item is MenuItem)
         {
-            InsertItemControl(index, item);
+            var lease = _propertyOverrides.Acquire(
+                item,
+                RetainedPropertyOverrides.IsFocusable,
+                RetainedPropertyOverrides.IsTabStop,
+                RetainedPropertyOverrides.Height);
+            lease.SetLive(RetainedControlProperty.IsFocusable, false);
+            lease.SetLive(RetainedControlProperty.IsTabStop, false);
         }
-        finally
+        else
         {
-            _isHandlingKnownMutation = false;
-        }
-        _requestedPresentations.Add(
-            item,
-            new MenuEntryPresentation(item.IsFocusable, item.IsTabStop, item.Width, item.Height));
-
-        if (item is MenuItem menuItem)
-        {
-            menuItem.IsFocusable = false;
-            menuItem.IsTabStop = false;
+            _ = _propertyOverrides.Acquire(item, RetainedPropertyOverrides.Height);
         }
 
         ApplyItemSizing(item);
@@ -513,18 +509,9 @@ public sealed class Menu: ItemsControl
             return false;
         }
 
-        RestorePresentation(item);
-
-        _isHandlingKnownMutation = true;
-
-        try
-        {
-            _ = RemoveItemControl(item);
-        }
-        finally
-        {
-            _isHandlingKnownMutation = false;
-        }
+        var propertyLease = _propertyOverrides.Get(item);
+        _ = RemoveItemControl(item);
+        _propertyOverrides.Restore(propertyLease);
 
         // Mirrors InsertItem's symmetric case: a removal that does not touch the selected
         // entry must never change its identity. Only an actual removal of the selected entry
@@ -570,27 +557,25 @@ public sealed class Menu: ItemsControl
         }
 
         var wasSelected = index == _selectedIndex;
+        var oldPropertyLease = _propertyOverrides.Get(old);
 
-        _isHandlingKnownMutation = true;
+        ReplaceItemControl(index, item);
 
-        try
+        _propertyOverrides.Restore(oldPropertyLease);
+
+        if (item is MenuItem)
         {
-            ReplaceItemControl(index, item);
+            var lease = _propertyOverrides.Acquire(
+                item,
+                RetainedPropertyOverrides.IsFocusable,
+                RetainedPropertyOverrides.IsTabStop,
+                RetainedPropertyOverrides.Height);
+            lease.SetLive(RetainedControlProperty.IsFocusable, false);
+            lease.SetLive(RetainedControlProperty.IsTabStop, false);
         }
-        finally
+        else
         {
-            _isHandlingKnownMutation = false;
-        }
-
-        RestorePresentation(old);
-        _requestedPresentations.Add(
-            item,
-            new MenuEntryPresentation(item.IsFocusable, item.IsTabStop, item.Width, item.Height));
-
-        if (item is MenuItem menuItem)
-        {
-            menuItem.IsFocusable = false;
-            menuItem.IsTabStop = false;
+            _ = _propertyOverrides.Acquire(item, RetainedPropertyOverrides.Height);
         }
 
         ApplyItemSizing(item);
@@ -633,17 +618,9 @@ public sealed class Menu: ItemsControl
             return;
         }
 
-        _isHandlingKnownMutation = true;
         ExceptionDispatchInfo? failure = null;
 
-        try
-        {
-            ExceptionAggregation.Capture(() => MoveItemControl(oldIndex, newIndex), ref failure);
-        }
-        finally
-        {
-            _isHandlingKnownMutation = false;
-        }
+        ExceptionAggregation.Capture(() => MoveItemControl(oldIndex, newIndex), ref failure);
 
         var previousSelectedIndex = _selectedIndex;
 
@@ -674,55 +651,37 @@ public sealed class Menu: ItemsControl
     {
         VerifyMutable();
 
-        for (var index = 0; index < ItemControlCount; index++)
+        var items = new ControlBase[ItemControlCount];
+        var propertyLeases = new RetainedPropertyOverrideLease[ItemControlCount];
+
+        for (var index = 0; index < items.Length; index++)
         {
-            RestorePresentation(ItemAt(index));
+            items[index] = ItemAt(index);
+            propertyLeases[index] = _propertyOverrides.Get(items[index]);
         }
 
-        _isHandlingKnownMutation = true;
+        ClearItemControls();
 
-        try
+        foreach (var propertyLease in propertyLeases)
         {
-            ClearItemControls();
-        }
-        finally
-        {
-            _isHandlingKnownMutation = false;
+            _propertyOverrides.Restore(propertyLease);
         }
 
         Select(-1, focus: false);
     }
 
-    // Runs before the item is detached so callers observe restored values
-    // immediately, not private policy defaults still in effect.
-    private void RestorePresentation(ControlBase item)
-    {
-        if (!_requestedPresentations.Remove(item, out var presentation))
-        {
-            return;
-        }
-
-        if (item is MenuItem menuItem)
-        {
-            menuItem.IsFocusable = presentation.IsFocusable;
-            menuItem.IsTabStop = presentation.IsTabStop;
-        }
-
-        item.Width = presentation.Width;
-        item.Height = presentation.Height;
-    }
-
-    // Reconciles _selectedIndex and _spacePressedItem for an items-collection change that
-    // didn't go through AddEntry/RemoveEntry/ClearItems — most notably a direct Dispose() call
-    // on an owned item, which the base ItemsControl already reports through this same hook.
-    // Add/Remove/Clear guard their own mutation via _isHandlingKnownMutation since they already
-    // run their own precise Select(...) call afterward.
+    // Reconciles state only for child-initiated disposal. Ordinary collection methods use their
+    // position-aware repair after the commit; the delta distinguishes those paths without a
+    // component-local mutation flag.
     /// <inheritdoc/>
-    protected override void OnItemControlsChanged()
-    {
-        base.OnItemControlsChanged();
+    protected override void OnItemControlsChanged() => base.OnItemControlsChanged();
 
-        if (_isHandlingKnownMutation)
+    /// <inheritdoc/>
+    private protected override void OnItemControlsChanged(OwnedControlChange change)
+    {
+        base.OnItemControlsChanged(change);
+
+        if (change.Kind != OwnedControlMutationKind.DirectDisposal)
         {
             return;
         }
@@ -766,6 +725,13 @@ public sealed class Menu: ItemsControl
         {
             item.CommitSelection(ContainsFocus);
         }
+    }
+
+    /// <inheritdoc/>
+    private protected override void OnItemsControlDisposing()
+    {
+        _propertyOverrides.Dispose();
+        base.OnItemsControlDisposing();
     }
 
     /// <inheritdoc/>
@@ -1644,7 +1610,8 @@ public sealed class Menu: ItemsControl
         }
     }
 
-    private static void ApplyItemSizing(ControlBase item) => item.Height = Length.Cells(1);
+    private void ApplyItemSizing(ControlBase item) =>
+        _propertyOverrides.Get(item).SetLive(RetainedControlProperty.Height, Length.Cells(1));
 
     [Pure]
     private static ControlBase RequireEntry(ControlBase child)

@@ -17,7 +17,6 @@ using SharpVision.Text;
 public abstract class ContentControl: ControlBase
 {
     private readonly OwnedControlSlot _contentSlot;
-    private ControlBase? _publishedContent;
 
     /// <summary>Initializes an empty single-content control.</summary>
     protected ContentControl()
@@ -122,11 +121,10 @@ public abstract class ContentControl: ControlBase
         }
     }
 
-    private void OnContentSlotChanged()
+    private void OnContentSlotChanged(OwnedControlChange change)
     {
-        var previous = _publishedContent;
-        var current = Content;
-        _publishedContent = current;
+        var previous = change.Previous.Length == 0 ? null : change.Previous.Span[0];
+        var current = change.Current.Length == 0 ? null : change.Current.Span[0];
         ExceptionDispatchInfo? failure = null;
 
         ExceptionAggregation.Capture(() => OnContentChanged(previous, current), ref failure);

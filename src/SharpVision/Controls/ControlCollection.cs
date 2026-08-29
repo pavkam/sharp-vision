@@ -14,7 +14,7 @@ public sealed class ControlCollection: IList<ControlBase>, IReadOnlyList<Control
     /// This internal seam lets framework ownership roles observe the same committed slot used by
     /// public containers without exposing either the slot or its notifications to callers.
     /// </remarks>
-    internal event Action? Changed
+    internal event Action<OwnedControlChange>? Changed
     {
         add => Slot.Changed += value;
         remove => Slot.Changed -= value;

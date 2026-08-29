@@ -15,11 +15,9 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
 {
     private readonly LayoutStack _stack;
     private readonly OwnedControlSlot _childrenSlot;
-    private readonly Dictionary<NavigationViewItem, NavigationItemPresentation> _requestedPresentations = [];
+    private readonly RetainedPropertyOverrideService _propertyOverrides;
     private readonly PressBehavior _press;
     private readonly StyleSlot<NavigationViewGroupStyle> _style;
-    private bool _isWritingItemFocusPolicy;
-    private long _presentationVersion;
 
     /// <summary>Initializes an expanded navigation group with no header.</summary>
     public NavigationViewGroup()
@@ -37,6 +35,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
                 InvalidationImpact.Measure),
             capacity: 1);
         _childrenSlot.Add(_stack);
+        _propertyOverrides = new RetainedPropertyOverrideService(this, _stack.Children.OwnedSlot);
         Items = new NavigationViewItemCollection(this);
         IsFocusable = false;
         IsTabStop = false;
@@ -116,7 +115,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     internal int ItemCount => _stack.Children.Count;
 
     /// <summary>Gets the retained authored-presentation count used to prove metadata retires with ownership.</summary>
-    internal int RequestedPresentationCount => _requestedPresentations.Count;
+    internal int RequestedPresentationCount => _propertyOverrides.Count;
 
     /// <summary>Verifies the owner before a public collection validates candidate-specific state.</summary>
     internal void VerifyMutation() => VerifyMutable();
@@ -135,12 +134,11 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
         // overwritten. A rejected insertion (duplicate, already attached,
         // disposed) must leave the caller's object exactly as it found it.
         _stack.Children.Add(item);
-        var presentation = new NavigationItemPresentation(
-            item.IsFocusable,
-            item.IsTabStop,
-            ++_presentationVersion);
-        _requestedPresentations.Add(item, presentation);
-        ConfigureItem(item, presentation.Version);
+        var lease = _propertyOverrides.Acquire(
+            item,
+            RetainedPropertyOverrides.IsFocusable,
+            RetainedPropertyOverrides.IsTabStop);
+        ConfigureItem(item, lease);
     }
 
     /// <summary>Removes one sub-item from this group.</summary>
@@ -163,10 +161,8 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
         // whether the removed item is (or owns) the view's current selection.
         var owner = FindNavigationView();
         var repair = owner?.PrepareRemoval(item);
-        var presentation = TakePresentation(item);
-
+        var lease = _propertyOverrides.Get(item);
         _ = _stack.Children.Remove(item);
-        item.PropertyChanged -= OnItemFocusPolicyChanged;
         item.Invoked -= OnItemInvoked;
 
         if (repair is { } value)
@@ -174,9 +170,13 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
             owner!.CompleteRemoval(value);
         }
 
-        if (restorePresentation && presentation is { } requested)
+        if (restorePresentation)
         {
-            RestorePresentation(item, requested);
+            _propertyOverrides.Restore(lease);
+        }
+        else
+        {
+            _propertyOverrides.Retire(lease);
         }
 
         return true;
@@ -194,21 +194,11 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
         var owner = FindNavigationView();
         var repair = owner?.PrepareDescendantRemoval(this);
         var items = _stack.Children.OfType<NavigationViewItem>().ToArray();
-        var presentations = new List<(NavigationViewItem Item, NavigationItemPresentation Presentation)>();
-
-        foreach (var item in items)
-        {
-            if (TakePresentation(item) is { } presentation)
-            {
-                presentations.Add((item, presentation));
-            }
-        }
-
+        var leases = items.Select(_propertyOverrides.Get).ToArray();
         _stack.Children.Clear();
 
         foreach (var item in items)
         {
-            item.PropertyChanged -= OnItemFocusPolicyChanged;
             item.Invoked -= OnItemInvoked;
         }
 
@@ -217,115 +207,37 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
             owner!.CompleteRemoval(value);
         }
 
-        foreach (var (item, presentation) in presentations)
+        foreach (var lease in leases)
         {
-            RestorePresentation(item, presentation);
+            _propertyOverrides.Restore(lease);
         }
     }
 
-    private NavigationItemPresentation? TakePresentation(NavigationViewItem item)
-        => _requestedPresentations.Remove(item, out var presentation) ? presentation : null;
-
-    private void ConfigureItem(NavigationViewItem item, long presentationVersion)
+    private void ConfigureItem(NavigationViewItem item, RetainedPropertyOverrideLease lease)
     {
-        item.IsFocusable = false;
+        lease.SetLive(RetainedControlProperty.IsFocusable, false);
 
-        if (!IsCommitted(item, presentationVersion))
+        if (!IsCommitted(item, lease))
         {
             return;
         }
 
-        item.IsTabStop = false;
+        lease.SetLive(RetainedControlProperty.IsTabStop, false);
 
-        if (!IsCommitted(item, presentationVersion))
+        if (!IsCommitted(item, lease))
         {
             return;
         }
 
-        item.PropertyChanged += OnItemFocusPolicyChanged;
         item.Invoked += OnItemInvoked;
     }
 
-    private void OnItemFocusPolicyChanged(
-        object? sender,
-        System.ComponentModel.PropertyChangedEventArgs eventArgs)
-    {
-        if (_isWritingItemFocusPolicy ||
-            sender is not NavigationViewItem item ||
-            !_requestedPresentations.TryGetValue(item, out var presentation))
-        {
-            return;
-        }
-
-        if (eventArgs.PropertyName == nameof(IsFocusable))
-        {
-            _requestedPresentations[item] = presentation.WithFocusable(item.IsFocusable);
-
-            if (item.IsFocusable)
-            {
-                WriteItemFocusPolicy(item, isFocusable: true);
-            }
-        }
-        else if (eventArgs.PropertyName == nameof(IsTabStop))
-        {
-            _requestedPresentations[item] = presentation.WithTabStop(item.IsTabStop);
-
-            if (item.IsTabStop)
-            {
-                WriteItemFocusPolicy(item, isFocusable: false);
-            }
-        }
-    }
-
-    private void WriteItemFocusPolicy(NavigationViewItem item, bool isFocusable)
-    {
-        if (item.IsDisposed || item.IsDisposing)
-        {
-            return;
-        }
-
-        _isWritingItemFocusPolicy = true;
-
-        try
-        {
-            if (isFocusable)
-            {
-                item.IsFocusable = false;
-            }
-            else
-            {
-                item.IsTabStop = false;
-            }
-        }
-        finally
-        {
-            _isWritingItemFocusPolicy = false;
-        }
-    }
-
     [Pure]
-    private bool IsCommitted(NavigationViewItem item, long presentationVersion) =>
-        _stack.Children.Contains(item) &&
-        _requestedPresentations.TryGetValue(item, out var presentation) &&
-        presentation.Version == presentationVersion;
-
-    private static void RestorePresentation(NavigationViewItem item, NavigationItemPresentation presentation)
-    {
-        if (item.Parent is not null || item.IsDisposed || item.IsDisposing)
-        {
-            return;
-        }
-
-        item.IsFocusable = presentation.IsFocusable;
-
-        if (!item.IsDisposed && !item.IsDisposing)
-        {
-            item.IsTabStop = presentation.IsTabStop;
-        }
-    }
+    private bool IsCommitted(NavigationViewItem item, RetainedPropertyOverrideLease lease) =>
+        _stack.Children.Contains(item) && lease.IsCurrent;
 
     /// <summary>Retires descendant snapshots before owner-driven disposal skips direct child hooks.</summary>
-    internal void RetirePresentationMetadataForOwnerDisposal() => _requestedPresentations.Clear();
+    internal void RetirePresentationMetadataForOwnerDisposal() => _propertyOverrides.Dispose();
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
@@ -470,7 +382,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     internal override void OnDirectDisposalRequested()
     {
         FindNavigationView()?.RemoveEntryForDisposal(this);
-        _requestedPresentations.Clear();
+        _propertyOverrides.Dispose();
         base.OnDirectDisposalRequested();
     }
 

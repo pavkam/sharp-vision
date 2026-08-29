@@ -67,8 +67,9 @@ earliest failure is rethrown. The control never rolls back by publishing inverse
 parent transitions.
 
 Directly disposing an owned `TabItem` first removes it through the same semantic
-collection path. Its generated header and presentation bookkeeping leave with
-it, and selection repairs exactly as for `Items.Remove`.
+collection path. Its generated header and property-override lease leave with it
+without restoring values onto the disposing page, and selection repairs exactly
+as for `Items.Remove`.
 
 ## Behavior
 
@@ -92,7 +93,9 @@ it, and selection repairs exactly as for `Items.Remove`.
   interrupted insertion or replacement performs no stale header work.
 - Removal restores caller-authored visibility and geometry only after the page,
   header, and selection snapshot have committed. Restoration callbacks may
-  safely begin another collection mutation.
+  safely begin another collection mutation. If one callback re-owns the page,
+  its new lease supersedes the detached generation before any remaining stale
+  property can be restored.
 - While owned, a page's live `Width` and `Height` remain `100%` so selected
   content fills the body. Runtime size requests are retained as the latest
   authored values and restored on detach. Runtime `Visibility` requests are

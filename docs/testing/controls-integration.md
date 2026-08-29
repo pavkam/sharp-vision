@@ -68,7 +68,10 @@ Compound ownership fixtures use two retained hosts and assert complete snapshot
 visibility from the first parent callback, deterministic later-callback and
 slot-notification delivery after an earlier failure, cross-host reentrancy
 rejection, and stable ownership after add, replace, remove, move, clear, direct
-child disposal, and owner disposal. `TabControlTests` applies that foundation to
+child disposal, and owner disposal. The same foundation verifies immutable
+committed deltas, exact identities and indices, release reasons, authored-value
+capture, owner-write attribution, disposal retirement, and stale-lease rejection
+after callback-driven reownership. `TabControlTests` applies that foundation to
 page/header parity, mappings, subscriptions, presentation restoration, and
 selection repair. Its mounted fixture then proves the committed selected page
 and generated header render and remain interactive through the real dispatcher.

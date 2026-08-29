@@ -78,7 +78,10 @@ classDiagram
   mutation performs no further writes or event subscription.
 - Removal and clear detach their complete entry snapshot and repair selection
   before restoring caller-authored focus properties. Restoration callbacks may
-  safely begin another collection mutation against the committed state.
+  safely begin another collection mutation against the committed state. Each
+  entry is tracked by an ownership-generation lease, so reownership supersedes a
+  pending restore and direct disposal retires authored metadata without writing
+  onto the disposing control.
 - While owned, every item, group, separator, and grouped item remains
   non-focusable and outside the tab order. Attempts to change either focus flag
   are retained as the latest authored policy, normalized immediately, and
@@ -126,8 +129,8 @@ available predecessor. Earlier inserts, removals, moves, group expansion, or
 availability transitions therefore cannot make repair jump to a stale index.
 
 Direct item, group, separator, and owner disposal retire private authored-focus
-snapshots with their ownership. A disposed view or retained disposed group does
-not keep former entries alive through presentation metadata.
+leases with their ownership. A disposed view or retained disposed group does not
+keep former entries alive through presentation metadata.
 
 `LineSize` forwards the mouse wheel's cell step to the generated scroll
 container from every point in the view, including its fixed header and footer.

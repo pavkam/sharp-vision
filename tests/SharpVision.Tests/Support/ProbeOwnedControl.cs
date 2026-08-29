@@ -47,6 +47,9 @@ internal sealed class ProbeOwnedControl: ControlBase
     /// <summary>Gets the number of committed primary-slot changes.</summary>
     internal int PrimaryChanges { get; private set; }
 
+    /// <summary>Gets immutable committed deltas published by the primary slot.</summary>
+    internal List<OwnedControlChange> PrimaryChangeLog { get; } = [];
+
     /// <summary>Gets or sets work invoked from the primary-slot notification.</summary>
     internal Action<ProbeOwnedControl>? PrimaryChanging { get; set; }
 
@@ -92,6 +95,25 @@ internal sealed class ProbeOwnedControl: ControlBase
         PrimarySlot.ReplaceAll(controls);
     }
 
+    /// <summary>Moves one primary child while retaining ownership.</summary>
+    /// <param name="oldIndex">The existing position.</param>
+    /// <param name="newIndex">The destination position.</param>
+    internal void MovePrimary(int oldIndex, int newIndex)
+    {
+        EnsurePrimaryChangeSubscription();
+        var next = new List<ControlBase>();
+
+        for (var index = 0; index < PrimarySlot.Count; index++)
+        {
+            next.Add(PrimarySlot[index]);
+        }
+
+        var control = next[oldIndex];
+        next.RemoveAt(oldIndex);
+        next.Insert(newIndex, control);
+        PrimarySlot.ReplaceAll(next);
+    }
+
     /// <summary>Removes one primary control.</summary>
     /// <param name="control">The non-null candidate.</param>
     /// <returns>Whether the control was present.</returns>
@@ -134,9 +156,10 @@ internal sealed class ProbeOwnedControl: ControlBase
         IsPrimaryChangeSubscribed = true;
     }
 
-    private void OnPrimaryChanged()
+    private void OnPrimaryChanged(OwnedControlChange change)
     {
         PrimaryChanges++;
+        PrimaryChangeLog.Add(change);
         PrimaryChanging?.Invoke(this);
     }
 

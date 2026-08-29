@@ -174,6 +174,15 @@ their own slot and an ancestor slot participate. Failure is aggregated without
 inverse ownership publication or rollback, and reentrant tree mutation through
 any participant is rejected until publication completes.
 
+Framework item owners receive an immutable committed delta for each retained
+slot rather than inferring an insert, removal, replacement, move, clear, or
+direct disposal from the final list. When such an owner must temporarily impose
+a live child property, it uses the shared ownership-generation lease: caller
+requests remain authored state, attributed owner writes remain live state, and
+only the still-current generation may restore after detachment. These are
+framework infrastructure rules; a consumer-derived `ItemsControl` continues to
+author behavior through the protected helpers and `OnItemControlsChanged`.
+
 ## Chrome and custom rendering
 
 `Border` and `Shadow` are declared once on `ControlBase` and are already public

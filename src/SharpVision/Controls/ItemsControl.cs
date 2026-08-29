@@ -237,6 +237,10 @@ public abstract class ItemsControl: ControlBase
     [Pure]
     private Container GetItemsHost() => (Container) _itemsHostSlot.RequirePermanentControl();
 
-    private void OnHostItemsChanged() => OnItemControlsChanged();
+    /// <summary>Responds to the complete committed mutation of the private item host.</summary>
+    /// <param name="change">The immutable structural change.</param>
+    private protected virtual void OnItemControlsChanged(OwnedControlChange change) => OnItemControlsChanged();
+
+    private void OnHostItemsChanged(OwnedControlChange change) => OnItemControlsChanged(change);
 
 }

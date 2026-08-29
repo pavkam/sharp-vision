@@ -26,7 +26,7 @@ internal sealed class OwnedControlSlot
     }
 
     /// <summary>Raised after one complete structural change, including child-initiated disposal.</summary>
-    public event Action? Changed;
+    public event Action<OwnedControlChange>? Changed;
 
     /// <summary>Gets one control by its zero-based position or atomically replaces it.</summary>
     /// <param name="index">The valid zero-based position.</param>
@@ -172,7 +172,7 @@ internal sealed class OwnedControlSlot
     public List<ControlBase> Items { get; } = [];
 
     /// <summary>Publishes one committed slot change outside structural state mutation.</summary>
-    public void PublishChanged() => Changed?.Invoke();
+    public void PublishChanged(OwnedControlChange change) => Changed?.Invoke(change);
 
     /// <summary>Removes a disposing child through its exact slot while disposal holds publication.</summary>
     /// <param name="control">The identical disposing child.</param>

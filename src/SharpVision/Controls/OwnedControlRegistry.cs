@@ -466,7 +466,12 @@ internal sealed class OwnedControlRegistry
             return;
         }
 
-        Commit(slot, [], ReleaseReason.Detached, notifyUnavailable: true);
+        Commit(
+            slot,
+            [],
+            ReleaseReason.Detached,
+            notifyUnavailable: true,
+            forcedKind: OwnedControlMutationKind.Clear);
     }
 
     /// <summary>Removes one disposing child while an enclosing disposal publication is active.</summary>
@@ -567,11 +572,12 @@ internal sealed class OwnedControlRegistry
         List<ControlBase> next,
         ReleaseReason reason,
         bool notifyUnavailable,
-        bool publicationAlreadyActive = false)
+        bool publicationAlreadyActive = false,
+        OwnedControlMutationKind? forcedKind = null)
     {
         CommitCompound(
             structuralContinuation: null,
-            [(slot, next, reason, notifyUnavailable)],
+            [(slot, next, reason, notifyUnavailable, forcedKind)],
             publicationAlreadyActive);
     }
 
@@ -622,7 +628,7 @@ internal sealed class OwnedControlRegistry
     {
         ArgumentNullException.ThrowIfNull(structuralContinuation);
         ArgumentNullException.ThrowIfNull(snapshots);
-        var prepared = new (OwnedControlSlot Slot, List<ControlBase> Next, ReleaseReason Reason, bool NotifyUnavailable)[snapshots.Length];
+        var prepared = new (OwnedControlSlot Slot, List<ControlBase> Next, ReleaseReason Reason, bool NotifyUnavailable, OwnedControlMutationKind? ForcedKind)[snapshots.Length];
 
         for (var index = 0; index < snapshots.Length; index++)
         {
@@ -641,7 +647,7 @@ internal sealed class OwnedControlRegistry
                 next.Add(control);
             }
 
-            prepared[index] = (slot, next, reason, notifyUnavailable);
+            prepared[index] = (slot, next, reason, notifyUnavailable, null);
         }
 
         CommitCompound(structuralContinuation, prepared, publicationAlreadyActive);
@@ -649,14 +655,14 @@ internal sealed class OwnedControlRegistry
 
     private static void CommitCompound(
         Action? structuralContinuation,
-        (OwnedControlSlot Slot, List<ControlBase> Next, ReleaseReason Reason, bool NotifyUnavailable)[] snapshots,
+        (OwnedControlSlot Slot, List<ControlBase> Next, ReleaseReason Reason, bool NotifyUnavailable, OwnedControlMutationKind? ForcedKind)[] snapshots,
         bool publicationAlreadyActive)
     {
         var distinctSlots = new HashSet<OwnedControlSlot>(ReferenceEqualityComparer.Instance);
         var distinctControls = new HashSet<ControlBase>(ReferenceEqualityComparer.Instance);
         var changes = new List<OwnedControlMutation>();
 
-        foreach (var (slot, next, reason, notifyUnavailable) in snapshots)
+        foreach (var (slot, next, reason, notifyUnavailable, forcedKind) in snapshots)
         {
             var registry = slot.Registry;
             registry.VerifySlot(slot);
@@ -692,7 +698,15 @@ internal sealed class OwnedControlRegistry
             var previous = new List<ControlBase>(slot.Items);
             var removed = previous.FindAll(control => !ContainsIdentity(next, control));
             var added = next.FindAll(control => !ContainsIdentity(previous, control));
-            changes.Add(new OwnedControlMutation(slot, next, removed, added, reason, notifyUnavailable));
+            changes.Add(new OwnedControlMutation(
+                slot,
+                previous,
+                next,
+                removed,
+                added,
+                reason,
+                notifyUnavailable,
+                forcedKind));
         }
 
         if (changes.Count == 0)
@@ -879,7 +893,8 @@ internal sealed class OwnedControlRegistry
 
             foreach (var change in changes)
             {
-                ExceptionAggregation.Capture(change.Slot.PublishChanged, ref failure);
+                var committedChange = change.CreateChange();
+                ExceptionAggregation.Capture(() => change.Slot.PublishChanged(committedChange), ref failure);
             }
 
             void AddPlan(ContextTransitionPlan plan)

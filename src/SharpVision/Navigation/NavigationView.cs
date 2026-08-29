@@ -19,10 +19,8 @@ public sealed class NavigationView: CompositeControlBase
     private readonly DisplayText _headerText;
     private readonly CurrentItemNavigator _navigator;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
-    private readonly Dictionary<ControlBase, NavigationEntryPresentation> _requestedPresentations = [];
-    private bool _isHandlingKnownRemoval;
-    private bool _isWritingEntryFocusPolicy;
-    private long _presentationVersion;
+    private readonly RetainedPropertyOverrideService _itemPropertyOverrides;
+    private readonly RetainedPropertyOverrideService _footerPropertyOverrides;
     private long _selectionVersion;
     private ControlBase? _trackedCurrent;
     private Rect _trackedCurrentLogicalBounds;
@@ -34,7 +32,7 @@ public sealed class NavigationView: CompositeControlBase
     private int _selectedIndex = -1;
 
     /// <summary>Gets the retained authored-presentation count used to prove metadata retires with ownership.</summary>
-    internal int RequestedPresentationCount => _requestedPresentations.Count;
+    internal int RequestedPresentationCount => _itemPropertyOverrides.Count + _footerPropertyOverrides.Count;
 
     /// <summary>Gets the private footer offset used to prove bounded footer exposure.</summary>
     internal int FooterVerticalOffset => _footerStack.VerticalOffset;
@@ -210,6 +208,8 @@ public sealed class NavigationView: CompositeControlBase
 
         _itemsStack.Children.Changed += OnEntryHostChanged;
         _footerStack.Children.Changed += OnEntryHostChanged;
+        _itemPropertyOverrides = new RetainedPropertyOverrideService(this, _itemsStack.Children.OwnedSlot);
+        _footerPropertyOverrides = new RetainedPropertyOverrideService(this, _footerStack.Children.OwnedSlot);
         _itemsStack.BoundsChanged += OnNavigationHostBoundsChanged;
         _footerStack.BoundsChanged += OnNavigationHostBoundsChanged;
         _itemsStack.PropertyChanged += OnItemsStackPropertyChanged;
@@ -310,6 +310,10 @@ public sealed class NavigationView: CompositeControlBase
     internal int GetItemCount(bool isFooter) =>
         (isFooter ? _footerStack : _itemsStack).Children.Count;
 
+    [Pure]
+    private RetainedPropertyOverrideService PropertyOverrides(bool isFooter) =>
+        isFooter ? _footerPropertyOverrides : _itemPropertyOverrides;
+
     /// <summary>Gets one item by index in a section.</summary>
     internal ControlBase GetItem(int index, bool isFooter) =>
         (isFooter ? _footerStack : _itemsStack).Children[index];
@@ -329,12 +333,11 @@ public sealed class NavigationView: CompositeControlBase
         // overwritten. A rejected insertion must leave the caller's object
         // exactly as it found it.
         stack.Children.Insert(index, entry);
-        var presentation = new NavigationEntryPresentation(
-            entry.IsFocusable,
-            entry.IsTabStop,
-            ++_presentationVersion);
-        _requestedPresentations.Add(entry, presentation);
-        ConfigureEntry(stack, entry, presentation.Version);
+        var lease = PropertyOverrides(isFooter).Acquire(
+            entry,
+            RetainedPropertyOverrides.IsFocusable,
+            RetainedPropertyOverrides.IsTabStop);
+        ConfigureEntry(stack, entry, lease);
     }
 
     /// <summary>Removes one typed entry from a section.</summary>
@@ -353,25 +356,20 @@ public sealed class NavigationView: CompositeControlBase
         }
 
         var repair = PrepareRemoval(entry);
-        var presentation = TakePresentation(entry);
-
-        _isHandlingKnownRemoval = true;
-
-        try
-        {
-            _ = stack.Children.Remove(entry);
-        }
-        finally
-        {
-            _isHandlingKnownRemoval = false;
-        }
+        var propertyOverrides = PropertyOverrides(isFooter);
+        var lease = propertyOverrides.Get(entry);
+        _ = stack.Children.Remove(entry);
 
         UnsubscribeEntry(entry);
         CompleteRemoval(repair);
 
-        if (restorePresentation && presentation is { } requested)
+        if (restorePresentation)
         {
-            RestorePresentation(entry, requested);
+            propertyOverrides.Restore(lease);
+        }
+        else
+        {
+            propertyOverrides.Retire(lease);
         }
 
         return true;
@@ -447,32 +445,18 @@ public sealed class NavigationView: CompositeControlBase
         }
 
         var repair = PrepareRemoval(old);
+        var oldLease = PropertyOverrides(isFooter).Get(old);
 
-        _isHandlingKnownRemoval = true;
-
-        try
-        {
-            stack.Children[index] = entry;
-        }
-        finally
-        {
-            _isHandlingKnownRemoval = false;
-        }
+        stack.Children[index] = entry;
 
         UnsubscribeEntry(old);
-        var oldPresentation = TakePresentation(old);
-        var presentation = new NavigationEntryPresentation(
-            entry.IsFocusable,
-            entry.IsTabStop,
-            ++_presentationVersion);
-        _requestedPresentations.Add(entry, presentation);
-        ConfigureEntry(stack, entry, presentation.Version);
+        var lease = PropertyOverrides(isFooter).Acquire(
+            entry,
+            RetainedPropertyOverrides.IsFocusable,
+            RetainedPropertyOverrides.IsTabStop);
+        ConfigureEntry(stack, entry, lease);
         CompleteRemoval(repair);
-
-        if (oldPresentation is { } requested)
-        {
-            RestorePresentation(old, requested);
-        }
+        PropertyOverrides(isFooter).Restore(oldLease);
     }
 
     /// <summary>Detaches a top-level semantic entry before direct disposal publication begins.</summary>
@@ -485,20 +469,15 @@ public sealed class NavigationView: CompositeControlBase
         }
     }
 
-    // Repairs selection/current-item state for a top-level entry that left the tree without
-    // going through RemoveEntry/ClearEntries — most notably a direct Dispose() call, which
-    // ControlBase.DisposeCore removes from its owning slot as ordinary disposal, publishing this
-    // same notification. RemoveEntry/ClearEntries already run the precise, position-aware
-    // repair themselves and suppress this handler for their own mutation via
-    // _isHandlingKnownRemoval, so this only ever reconciles the otherwise-unhandled path.
-    private void OnEntryHostChanged()
+    // Repairs state only when a disposing entry initiated its own semantic removal. Ordinary API
+    // removals run their position-aware repair after commit; the removed snapshot distinguishes
+    // those paths without component-local mutation flags.
+    private void OnEntryHostChanged(OwnedControlChange change)
     {
-        if (_isHandlingKnownRemoval)
+        if (!ContainsDisposingControl(change.Removed.Span))
         {
             return;
         }
-
-        RetireDetachedPresentationMetadata();
 
         // This notification publishes from inside DisposeCore, which removes the item from
         // its owning slot before IsDisposed itself flips true — IsDisposing is what's already
@@ -516,6 +495,20 @@ public sealed class NavigationView: CompositeControlBase
         {
             _selectedIndex = CollectSemanticItems().IndexOf(selected);
         }
+    }
+
+    [Pure]
+    private static bool ContainsDisposingControl(ReadOnlySpan<ControlBase> controls)
+    {
+        foreach (var control in controls)
+        {
+            if (control.IsDisposing || control.IsDisposed)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // Captures whether the current-navigation or selected item is the root
@@ -562,26 +555,24 @@ public sealed class NavigationView: CompositeControlBase
         }
     }
 
-    private NavigationEntryPresentation? TakePresentation(ControlBase entry)
-        => _requestedPresentations.Remove(entry, out var presentation) ? presentation : null;
-
-    private void ConfigureEntry(LayoutStack stack, ControlBase entry, long presentationVersion)
+    private void ConfigureEntry(
+        LayoutStack stack,
+        ControlBase entry,
+        RetainedPropertyOverrideLease lease)
     {
-        entry.IsFocusable = false;
+        lease.SetLive(RetainedControlProperty.IsFocusable, false);
 
-        if (!IsCommitted(stack, entry, presentationVersion))
+        if (!IsCommitted(stack, entry, lease))
         {
             return;
         }
 
-        entry.IsTabStop = false;
+        lease.SetLive(RetainedControlProperty.IsTabStop, false);
 
-        if (!IsCommitted(stack, entry, presentationVersion))
+        if (!IsCommitted(stack, entry, lease))
         {
             return;
         }
-
-        entry.PropertyChanged += OnEntryFocusPolicyChanged;
 
         if (entry is NavigationViewItem item)
         {
@@ -594,15 +585,15 @@ public sealed class NavigationView: CompositeControlBase
     }
 
     [Pure]
-    private bool IsCommitted(LayoutStack stack, ControlBase entry, long presentationVersion) =>
+    private static bool IsCommitted(
+        LayoutStack stack,
+        ControlBase entry,
+        RetainedPropertyOverrideLease lease) =>
         stack.Children.Contains(entry) &&
-        _requestedPresentations.TryGetValue(entry, out var presentation) &&
-        presentation.Version == presentationVersion;
+        lease.IsCurrent;
 
     private void UnsubscribeEntry(ControlBase entry)
     {
-        entry.PropertyChanged -= OnEntryFocusPolicyChanged;
-
         if (entry is NavigationViewItem item)
         {
             item.Invoked -= OnItemInvoked;
@@ -613,90 +604,6 @@ public sealed class NavigationView: CompositeControlBase
         }
     }
 
-    private void OnEntryFocusPolicyChanged(
-        object? sender,
-        System.ComponentModel.PropertyChangedEventArgs eventArgs)
-    {
-        if (_isWritingEntryFocusPolicy ||
-            sender is not ControlBase entry ||
-            !_requestedPresentations.TryGetValue(entry, out var presentation))
-        {
-            return;
-        }
-
-        if (eventArgs.PropertyName == nameof(IsFocusable))
-        {
-            _requestedPresentations[entry] = presentation.WithFocusable(entry.IsFocusable);
-
-            if (entry.IsFocusable)
-            {
-                WriteEntryFocusPolicy(entry, isFocusable: true);
-            }
-        }
-        else if (eventArgs.PropertyName == nameof(IsTabStop))
-        {
-            _requestedPresentations[entry] = presentation.WithTabStop(entry.IsTabStop);
-
-            if (entry.IsTabStop)
-            {
-                WriteEntryFocusPolicy(entry, isFocusable: false);
-            }
-        }
-    }
-
-    private void WriteEntryFocusPolicy(ControlBase entry, bool isFocusable)
-    {
-        if (entry.IsDisposed || entry.IsDisposing)
-        {
-            return;
-        }
-
-        _isWritingEntryFocusPolicy = true;
-
-        try
-        {
-            if (isFocusable)
-            {
-                entry.IsFocusable = false;
-            }
-            else
-            {
-                entry.IsTabStop = false;
-            }
-        }
-        finally
-        {
-            _isWritingEntryFocusPolicy = false;
-        }
-    }
-
-    private void RetireDetachedPresentationMetadata()
-    {
-        foreach (var entry in _requestedPresentations.Keys.ToArray())
-        {
-            if (!ReferenceEquals(entry.Parent, _itemsStack) &&
-                !ReferenceEquals(entry.Parent, _footerStack))
-            {
-                _ = _requestedPresentations.Remove(entry);
-            }
-        }
-    }
-
-    private static void RestorePresentation(ControlBase entry, NavigationEntryPresentation presentation)
-    {
-        if (entry.Parent is not null || entry.IsDisposed || entry.IsDisposing)
-        {
-            return;
-        }
-
-        entry.IsFocusable = presentation.IsFocusable;
-
-        if (!entry.IsDisposed && !entry.IsDisposing)
-        {
-            entry.IsTabStop = presentation.IsTabStop;
-        }
-    }
-
     /// <summary>Clears all entries in a section.</summary>
     internal void ClearEntries(bool isFooter)
     {
@@ -704,26 +611,8 @@ public sealed class NavigationView: CompositeControlBase
         var stack = isFooter ? _footerStack : _itemsStack;
         var repair = PrepareRemoval(stack);
         var entries = stack.Children.ToArray();
-        var presentations = new List<(ControlBase Entry, NavigationEntryPresentation Presentation)>();
-
-        foreach (var child in entries)
-        {
-            if (TakePresentation(child) is { } presentation)
-            {
-                presentations.Add((child, presentation));
-            }
-        }
-
-        _isHandlingKnownRemoval = true;
-
-        try
-        {
-            stack.Children.Clear();
-        }
-        finally
-        {
-            _isHandlingKnownRemoval = false;
-        }
+        var leases = entries.Select(PropertyOverrides(isFooter).Get).ToArray();
+        stack.Children.Clear();
 
         foreach (var child in entries)
         {
@@ -732,9 +621,9 @@ public sealed class NavigationView: CompositeControlBase
 
         CompleteRemoval(repair);
 
-        foreach (var (entry, presentation) in presentations)
+        foreach (var lease in leases)
         {
-            RestorePresentation(entry, presentation);
+            PropertyOverrides(isFooter).Restore(lease);
         }
     }
 
@@ -978,12 +867,13 @@ public sealed class NavigationView: CompositeControlBase
         {
             _itemsStack.PropertyChanged -= OnItemsStackPropertyChanged;
             _itemsStack.ScrollChanged -= OnItemsStackScrollChanged;
-            foreach (var group in _requestedPresentations.Keys.OfType<NavigationViewGroup>())
+            foreach (var group in _itemsStack.Children.Concat(_footerStack.Children).OfType<NavigationViewGroup>())
             {
                 group.RetirePresentationMetadataForOwnerDisposal();
             }
 
-            _requestedPresentations.Clear();
+            _itemPropertyOverrides.Dispose();
+            _footerPropertyOverrides.Dispose();
             SelectionChanged = null;
             ScrollChanged = null;
             _ = SetCurrent(null);

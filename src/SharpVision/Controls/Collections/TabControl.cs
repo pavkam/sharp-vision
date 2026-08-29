@@ -21,18 +21,11 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     private const int _headerStripHeight = _headerRowHeight + _selectionIndicatorRowHeight;
     private const int _headerSeparatorWidth = 1;
     private readonly Dictionary<TabItem, TabHeader> _headersByItem = [];
-    private readonly Dictionary<TabItem, TabItemPresentation> _requestedPresentations = [];
+    private readonly RetainedPropertyOverrideService _propertyOverrides;
     private readonly HashSet<TabItem> _closeRequestsInFlight = [];
     private readonly StyleSlot<TabControlStyle> _style;
     private readonly LayoutStack _headers;
     private readonly LayoutStack _stack;
-    private bool _isWritingItemHeight;
-    private bool _isWritingItemWidth;
-    private int _presentationDepth;
-    private TabItem? _writingItem;
-    private Length _writingHeight;
-    private Length _writingWidth;
-    private Visibility _writingVisibility;
     private int _selectedIndex = -1;
     private long _closeRequestVersion;
     private long _selectionVersion;
@@ -61,6 +54,10 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             capacity: 1);
         headersSlot.Add(_headers);
         InitializeItemsHost(_stack);
+        _propertyOverrides = new RetainedPropertyOverrideService(
+            this,
+            ItemControlsSlot,
+            OnAuthoredPropertyRequest);
         Items = new TabItemCollection(this);
         IsFocusable = true;
         IsTabStop = true;
@@ -315,11 +312,11 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
                 "The insertion index is outside the tab control.");
         }
 
-        var requestedPresentation = new TabItemPresentation(item.Visibility, item.Width, item.Height);
+        var requestedVisibility = item.Visibility;
         var header = new TabHeader(item.HeaderText)
         {
             IsEnabled = item.IsEnabled,
-            Visibility = requestedPresentation.Visibility,
+            Visibility = requestedVisibility,
             Width = HeaderWidth,
         };
         header.Activated += OnHeaderActivated;
@@ -338,7 +335,11 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
                 {
                     committed = true;
                     _headersByItem.Add(item, header);
-                    _requestedPresentations.Add(item, requestedPresentation);
+                    _ = _propertyOverrides.Acquire(
+                        item,
+                        RetainedPropertyOverrides.Visibility,
+                        RetainedPropertyOverrides.Width,
+                        RetainedPropertyOverrides.Height);
                     item.PropertyChanged += OnItemPropertyChanged;
 
                     if (previousSelectedIndex >= index)
@@ -422,13 +423,21 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             return false;
         }
 
-        RemoveItemAtCore(idx);
+        RemoveItemAtCore(idx, restorePresentation: true);
         return true;
     }
 
     /// <summary>Detaches an owned page before its caller-initiated disposal publication begins.</summary>
     /// <param name="item">The page whose direct disposal was requested.</param>
-    internal void RemoveItemForDisposal(TabItem item) => _ = RemoveItem(item);
+    internal void RemoveItemForDisposal(TabItem item)
+    {
+        var index = IndexOfItemControl(item);
+
+        if (index >= 0)
+        {
+            RemoveItemAtCore(index, restorePresentation: false);
+        }
+    }
 
     internal void RemoveItemAt(int index)
     {
@@ -440,10 +449,10 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
                 "The removal index is outside the tab control.");
         }
 
-        RemoveItemAtCore(index);
+        RemoveItemAtCore(index, restorePresentation: true);
     }
 
-    private void RemoveItemAtCore(int idx)
+    private void RemoveItemAtCore(int idx, bool restorePresentation)
     {
         var item = ItemAt(idx);
         var wasSelected = idx == _selectedIndex;
@@ -452,7 +461,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         // may resolve to a different surviving item or be out of range.
         var previousSelectedItem = _selectedIndex >= 0 ? ItemAt(_selectedIndex) : null;
         var header = HeaderAt(idx);
-        var requestedPresentation = _requestedPresentations[item];
+        var propertyLease = _propertyOverrides.Get(item);
         var nextItems = new List<ControlBase>(ItemControlsSlot.Items);
         nextItems.RemoveAt(idx);
         var nextHeaders = new List<ControlBase>(_headers.Children);
@@ -468,7 +477,6 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
                     item.PropertyChanged -= OnItemPropertyChanged;
                     header.Activated -= OnHeaderActivated;
                     _ = _headersByItem.Remove(item);
-                    _ = _requestedPresentations.Remove(item);
 
                     if (wasSelected)
                     {
@@ -525,7 +533,19 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             ref failure);
         ExceptionAggregation.Capture(() => header.CommitSelection(false), ref failure);
         ExceptionAggregation.Capture(header.Dispose, ref failure);
-        ExceptionAggregation.Capture(() => RestorePresentation(item, requestedPresentation), ref failure);
+        ExceptionAggregation.Capture(
+            () =>
+            {
+                if (restorePresentation)
+                {
+                    _propertyOverrides.Restore(propertyLease);
+                }
+                else
+                {
+                    _propertyOverrides.Retire(propertyLease);
+                }
+            },
+            ref failure);
         failure?.Throw();
     }
 
@@ -551,16 +571,16 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         var previousSelectedIndex = _selectedIndex;
         var previousSelectedItem = _selectedIndex >= 0 ? ItemAt(_selectedIndex) : null;
         var oldHeader = HeaderAt(index);
-        var requestedPresentation = new TabItemPresentation(item.Visibility, item.Width, item.Height);
+        var oldPropertyLease = _propertyOverrides.Get(old);
+        var requestedVisibility = item.Visibility;
         var newHeader = new TabHeader(item.HeaderText)
         {
             IsEnabled = item.IsEnabled,
-            Visibility = requestedPresentation.Visibility,
+            Visibility = requestedVisibility,
             Width = HeaderWidth,
         };
         newHeader.Activated += OnHeaderActivated;
 
-        var oldPresentation = _requestedPresentations[old];
         var nextItems = new List<ControlBase>(ItemControlsSlot.Items) { [index] = item };
         var nextHeaders = new List<ControlBase>(_headers.Children) { [index] = newHeader };
         var stagedSelectedIndex = previousSelectedIndex;
@@ -574,9 +594,12 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
                     old.PropertyChanged -= OnItemPropertyChanged;
                     oldHeader.Activated -= OnHeaderActivated;
                     _ = _headersByItem.Remove(old);
-                    _ = _requestedPresentations.Remove(old);
                     _headersByItem.Add(item, newHeader);
-                    _requestedPresentations.Add(item, requestedPresentation);
+                    _ = _propertyOverrides.Acquire(
+                        item,
+                        RetainedPropertyOverrides.Visibility,
+                        RetainedPropertyOverrides.Width,
+                        RetainedPropertyOverrides.Height);
                     item.PropertyChanged += OnItemPropertyChanged;
 
                     if (wasSelected)
@@ -630,7 +653,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
                 ref failure);
         }
 
-        ExceptionAggregation.Capture(() => RestorePresentation(old, oldPresentation), ref failure);
+        ExceptionAggregation.Capture(() => _propertyOverrides.Restore(oldPropertyLease), ref failure);
         failure?.Throw();
     }
 
@@ -786,6 +809,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         }
 
         var items = new TabItem[ItemControlCount];
+        var propertyLeases = new RetainedPropertyOverrideLease[ItemControlCount];
         var headers = new TabHeader[_headers.Children.Count];
         var previousSelectedIndex = _selectedIndex;
         var previousSelectedItem = previousSelectedIndex >= 0 ? ItemAt(previousSelectedIndex) : null;
@@ -795,10 +819,10 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             var item = ItemAt(index);
             var header = HeaderAt(index);
             items[index] = item;
+            propertyLeases[index] = _propertyOverrides.Get(item);
             headers[index] = header;
         }
 
-        var presentations = _requestedPresentations.ToArray();
         System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
         var committed = false;
         ExceptionAggregation.Capture(CommitSnapshots, ref failure);
@@ -819,9 +843,15 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             ExceptionAggregation.Capture(header.Dispose, ref failure);
         }
 
-        foreach (var (item, presentation) in presentations)
+        for (var index = 0; index < items.Length; index++)
         {
-            ExceptionAggregation.Capture(() => RestorePresentation(item, presentation), ref failure);
+            var item = items[index];
+
+            if (!disposing)
+            {
+                var propertyLease = propertyLeases[index];
+                ExceptionAggregation.Capture(() => _propertyOverrides.Restore(propertyLease), ref failure);
+            }
 
             if (disposing)
             {
@@ -863,23 +893,16 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             }
 
             _headersByItem.Clear();
-            _requestedPresentations.Clear();
             _selectedIndex = -1;
             _selectionVersion++;
         }
     }
 
     /// <inheritdoc/>
-    private protected override void OnItemsControlDisposing() => ClearItems(disposing: true);
-
-    // Restoration runs only after ownership, headers, and selection have reached their final
-    // snapshot. Caller PropertyChanged handlers can therefore mutate the collection without
-    // resuming an obsolete outer transaction against a detached item or disposed header.
-    private static void RestorePresentation(TabItem item, TabItemPresentation presentation)
+    private protected override void OnItemsControlDisposing()
     {
-        item.Visibility = presentation.Visibility;
-        item.Width = presentation.Width;
-        item.Height = presentation.Height;
+        ClearItems(disposing: true);
+        _propertyOverrides.Dispose();
     }
 
     [Pure]
@@ -1022,46 +1045,39 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
     private void ApplyPresentation()
     {
-        _presentationDepth++;
-        var previousWritingItem = _writingItem;
-        var previousWritingVisibility = _writingVisibility;
-
-        try
+        for (var index = 0; index < ItemControlCount; index++)
         {
-            for (var index = 0; index < ItemControlCount; index++)
+            var item = ItemAt(index);
+            var visibility = index == _selectedIndex && RequestedVisibility(item) == Visibility.Visible
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            if (visibility == Visibility.Collapsed)
             {
-                var item = ItemAt(index);
-                var visibility = index == _selectedIndex && RequestedVisibility(item) == Visibility.Visible
-                    ? Visibility.Visible
-                    : Visibility.Collapsed;
-
-                if (visibility == Visibility.Collapsed)
-                {
-                    item.ClearPresentedContent();
-                }
-
-                var parentWritingItem = _writingItem;
-                var parentWritingVisibility = _writingVisibility;
-
-                try
-                {
-                    _writingItem = item;
-                    _writingVisibility = visibility;
-                    item.Visibility = visibility;
-                }
-                finally
-                {
-                    _writingItem = parentWritingItem;
-                    _writingVisibility = parentWritingVisibility;
-                }
+                item.ClearPresentedContent();
             }
+
+            _propertyOverrides.Get(item).SetLive(RetainedControlProperty.Visibility, visibility);
         }
-        finally
+    }
+
+    private void OnAuthoredPropertyRequest(ControlBase control, RetainedControlProperty property)
+    {
+        if (property != RetainedControlProperty.Visibility || control is not TabItem item)
         {
-            _writingItem = previousWritingItem;
-            _writingVisibility = previousWritingVisibility;
-            _presentationDepth--;
+            return;
         }
+
+        var index = IndexOfItemControl(item);
+
+        if (index < 0)
+        {
+            return;
+        }
+
+        HeaderAt(index).Visibility = RequestedVisibility(item);
+        RepairSelectionAfterAvailabilityChange(index);
+        ApplyPresentation();
     }
 
     private bool TryNavigate(Code code)
@@ -1108,80 +1124,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
     [Pure]
     private Visibility RequestedVisibility(TabItem item) =>
-        _requestedPresentations.TryGetValue(item, out var presentation) ? presentation.Visibility : item.Visibility;
-
-    /// <summary>Captures an owned page's authored width while preserving the fill-page presentation.</summary>
-    /// <param name="item">The page receiving the public request.</param>
-    /// <param name="value">The requested width.</param>
-    /// <returns>True when this owner consumed the request; otherwise, false.</returns>
-    internal bool TryHandleItemWidthRequest(TabItem item, Length value)
-    {
-        if (_isWritingItemWidth && ReferenceEquals(_writingItem, item) && value == _writingWidth)
-        {
-            return false;
-        }
-
-        if (!_requestedPresentations.TryGetValue(item, out var presentation) || IndexOfItemControl(item) < 0)
-        {
-            return false;
-        }
-
-        _requestedPresentations[item] = presentation.WithWidth(value);
-        return true;
-    }
-
-    /// <summary>Captures an owned page's authored height while preserving the fill-page presentation.</summary>
-    /// <param name="item">The page receiving the public request.</param>
-    /// <param name="value">The requested height.</param>
-    /// <returns>True when this owner consumed the request; otherwise, false.</returns>
-    internal bool TryHandleItemHeightRequest(TabItem item, Length value)
-    {
-        if (_isWritingItemHeight && ReferenceEquals(_writingItem, item) && value == _writingHeight)
-        {
-            return false;
-        }
-
-        if (!_requestedPresentations.TryGetValue(item, out var presentation) || IndexOfItemControl(item) < 0)
-        {
-            return false;
-        }
-
-        _requestedPresentations[item] = presentation.WithHeight(value);
-        return true;
-    }
-
-    /// <summary>Captures an owned page's authored visibility even when its private live
-    /// presentation already has the same value.</summary>
-    /// <param name="item">The page receiving the public request.</param>
-    /// <param name="value">The requested visibility.</param>
-    /// <returns>True when this owner consumed the request; otherwise, false.</returns>
-    internal bool TryHandleItemVisibilityRequest(TabItem item, Visibility value)
-    {
-        if (_presentationDepth > 0 &&
-            ReferenceEquals(_writingItem, item) &&
-            value == _writingVisibility)
-        {
-            return false;
-        }
-
-        if (!_requestedPresentations.TryGetValue(item, out var presentation))
-        {
-            return false;
-        }
-
-        var index = IndexOfItemControl(item);
-
-        if (index < 0)
-        {
-            return false;
-        }
-
-        _requestedPresentations[item] = presentation.WithVisibility(value);
-        HeaderAt(index).Visibility = value;
-        RepairSelectionAfterAvailabilityChange(index);
-        ApplyPresentation();
-        return true;
-    }
+        _propertyOverrides.Get(item).GetAuthored<Visibility>(RetainedControlProperty.Visibility);
 
     private void RepairSelectionAfterAvailabilityChange(int index)
     {
@@ -1201,46 +1144,10 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     }
 
     private void WriteItemWidth(TabItem item, Length value)
-    {
-        var previousItem = _writingItem;
-        var previousWriting = _isWritingItemWidth;
-        var previousValue = _writingWidth;
-        _writingItem = item;
-        _isWritingItemWidth = true;
-        _writingWidth = value;
-
-        try
-        {
-            item.Width = value;
-        }
-        finally
-        {
-            _writingItem = previousItem;
-            _isWritingItemWidth = previousWriting;
-            _writingWidth = previousValue;
-        }
-    }
+        => _propertyOverrides.Get(item).SetLive(RetainedControlProperty.Width, value);
 
     private void WriteItemHeight(TabItem item, Length value)
-    {
-        var previousItem = _writingItem;
-        var previousWriting = _isWritingItemHeight;
-        var previousValue = _writingHeight;
-        _writingItem = item;
-        _isWritingItemHeight = true;
-        _writingHeight = value;
-
-        try
-        {
-            item.Height = value;
-        }
-        finally
-        {
-            _writingItem = previousItem;
-            _isWritingItemHeight = previousWriting;
-            _writingHeight = previousValue;
-        }
-    }
+        => _propertyOverrides.Get(item).SetLive(RetainedControlProperty.Height, value);
 
     private void SelectNearest(int index)
     {
@@ -1277,23 +1184,12 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
         if (eventArgs.PropertyName == nameof(Visibility))
         {
-            // _presentationDepth only says a write from ApplyPresentation is in flight, not that
-            // this particular notification is that write: a consumer can reassign Visibility from
-            // inside this very notification, which reenters here before ApplyPresentation unwinds.
-            // Attribute the write by comparing against what ApplyPresentation actually wrote for this
-            // item - a mismatch means a consumer's reentrant request, which must be honored.
-            if (_presentationDepth > 0 && ReferenceEquals(_writingItem, item) && item.Visibility == _writingVisibility)
+            if (_propertyOverrides.Get(item).IsWriting(RetainedControlProperty.Visibility))
             {
                 return;
             }
 
-            if (_requestedPresentations.TryGetValue(item, out var presentation))
-            {
-                _requestedPresentations[item] =
-                    new TabItemPresentation(item.Visibility, presentation.Width, presentation.Height);
-            }
-
-            header.Visibility = item.Visibility;
+            header.Visibility = RequestedVisibility(item);
         }
         else if (eventArgs.PropertyName == nameof(IsEnabled))
         {

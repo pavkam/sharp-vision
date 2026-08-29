@@ -74,6 +74,9 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
     /// <summary>Gets the exact slot owning this control, or null for an ownership root.</summary>
     internal OwnedControlSlot? OwningSlot { get; private set; }
 
+    /// <summary>Gets the current retained-owner property lease, or null.</summary>
+    internal RetainedPropertyOverrideLease? RetainedPropertyOverride { get; private set; }
+
     /// <summary>Gets the owning dispatcher while attached.</summary>
     public Dispatcher? Dispatcher { get; private set; }
 
@@ -297,7 +300,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         {
             VerifyMutable();
 
-            if (!TryHandleWidthRequest(value))
+            if (!TryHandleRetainedPropertyRequest(RetainedControlProperty.Width, value))
             {
                 _ = SetProperty(ref field, value, InvalidationImpact.Measure);
             }
@@ -318,7 +321,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         {
             VerifyMutable();
 
-            if (!TryHandleHeightRequest(value))
+            if (!TryHandleRetainedPropertyRequest(RetainedControlProperty.Height, value))
             {
                 _ = SetProperty(ref field, value, InvalidationImpact.Measure);
             }
@@ -447,7 +450,7 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                 : InvalidationImpact.Render;
             VerifyMutable();
 
-            if (TryHandleVisibilityRequest(value))
+            if (TryHandleRetainedPropertyRequest(RetainedControlProperty.Visibility, value))
             {
                 return;
             }
@@ -497,36 +500,6 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
             failure?.Throw();
         }
     } = Visibility.Visible;
-
-    /// <summary>Lets a retained owner capture an authored width request while preserving private
-    /// live presentation geometry.</summary>
-    /// <param name="value">The validated requested width.</param>
-    /// <returns>True when the owner consumed the request; otherwise, false.</returns>
-    internal virtual bool TryHandleWidthRequest(Length value)
-    {
-        _ = value;
-        return false;
-    }
-
-    /// <summary>Lets a retained owner capture an authored height request while preserving private
-    /// live presentation geometry.</summary>
-    /// <param name="value">The validated requested height.</param>
-    /// <returns>True when the owner consumed the request; otherwise, false.</returns>
-    internal virtual bool TryHandleHeightRequest(Length value)
-    {
-        _ = value;
-        return false;
-    }
-
-    /// <summary>Lets a retained owner capture an authored visibility request even when private
-    /// live presentation already has the same value.</summary>
-    /// <param name="value">The validated requested visibility.</param>
-    /// <returns>True when the owner consumed the request; otherwise, false.</returns>
-    internal virtual bool TryHandleVisibilityRequest(Visibility value)
-    {
-        _ = value;
-        return false;
-    }
 
     /// <summary>Gets or sets whether local behavior accepts input.</summary>
     /// <remarks>
@@ -660,6 +633,11 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         {
             VerifyMutable();
 
+            if (TryHandleRetainedPropertyRequest(RetainedControlProperty.IsFocusable, value))
+            {
+                return;
+            }
+
             if (field == value)
             {
                 return;
@@ -717,12 +695,42 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         get;
         set
         {
+            VerifyMutable();
+
+            if (TryHandleRetainedPropertyRequest(RetainedControlProperty.IsTabStop, value))
+            {
+                return;
+            }
+
             if (SetProperty(ref field, value, InvalidationImpact.None))
             {
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanTabStop)));
             }
         }
     } = true;
+
+    /// <summary>Installs one new retained-owner property lease, retiring a stale generation.</summary>
+    /// <param name="lease">The non-null new generation.</param>
+    internal void InstallRetainedPropertyOverride(RetainedPropertyOverrideLease lease)
+    {
+        ArgumentNullException.ThrowIfNull(lease);
+        RetainedPropertyOverride?.Retire();
+        RetainedPropertyOverride = lease;
+    }
+
+    /// <summary>Clears one lease only while it remains this control's current generation.</summary>
+    /// <param name="lease">The generation requesting retirement.</param>
+    internal void ClearRetainedPropertyOverride(RetainedPropertyOverrideLease lease)
+    {
+        if (ReferenceEquals(RetainedPropertyOverride, lease))
+        {
+            RetainedPropertyOverride = null;
+        }
+    }
+
+    private bool TryHandleRetainedPropertyRequest<T>(RetainedControlProperty property, T value)
+        where T : notnull =>
+        RetainedPropertyOverride?.TryHandleRequest(property, value) == true;
 
     /// <summary>Gets whether this control currently participates in Tab traversal.</summary>
     public virtual bool CanTabStop => CanFocus && IsTabStop;
@@ -1863,6 +1871,11 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
                 GC.SuppressFinalize(this);
                 return;
             }
+
+            // A direct-disposal path never restores caller-authored values onto the dying control.
+            // Retire the exact property generation before slot publication so cleanup cannot depend
+            // on multicast subscriber order or be skipped by an earlier throwing callback.
+            RetainedPropertyOverride?.Retire();
         }
 
         try

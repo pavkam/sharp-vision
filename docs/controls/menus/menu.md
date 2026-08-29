@@ -129,6 +129,11 @@ The menu sets
 acts as one focus stop. Its private `MenuItem` faces never enter global
 traversal; the menu handles Tab and Shift+Tab before the global focus default
 and uses them to update selection. Separators and unavailable items are skipped.
+Each retained row has an ownership-generation property lease: the menu imposes
+one-cell height and, for items, excludes the row from focus and tab traversal.
+Caller requests made while those values are imposed become the latest authored
+values and are restored only after ordinary detachment. Disposal retires the
+lease without writing back onto the disposing row.
 
 ```text
   Menu focus ──► MenuItem "File"       (selected private face)

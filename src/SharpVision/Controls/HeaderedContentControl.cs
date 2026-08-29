@@ -19,7 +19,6 @@ using DisplayText = Display.Text;
 public abstract class HeaderedContentControl: ContentControl, IAccessKeyCaptionOwner
 {
     private readonly OwnedControlSlot _headerSlot;
-    private ControlBase? _publishedHeader;
 
     /// <summary>Initializes an empty headered content control.</summary>
     protected HeaderedContentControl()
@@ -148,11 +147,10 @@ public abstract class HeaderedContentControl: ContentControl, IAccessKeyCaptionO
         return true;
     }
 
-    private void OnHeaderSlotChanged()
+    private void OnHeaderSlotChanged(OwnedControlChange change)
     {
-        var previous = _publishedHeader;
-        var current = Header;
-        _publishedHeader = current;
+        var previous = change.Previous.Length == 0 ? null : change.Previous.Span[0];
+        var current = change.Current.Length == 0 ? null : change.Current.Span[0];
         ExceptionDispatchInfo? failure = null;
 
         ExceptionAggregation.Capture(() => OnHeaderChanged(previous, current), ref failure);

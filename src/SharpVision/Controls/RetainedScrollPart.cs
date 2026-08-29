@@ -139,7 +139,7 @@ internal sealed class RetainedScrollPart: IDisposable
         }
     }
 
-    private void OnSourceSlotChanged()
+    private void OnSourceSlotChanged(OwnedControlChange change)
     {
         if (!ReferenceEquals(_source.OwningSlot, _sourceSlot))
         {
