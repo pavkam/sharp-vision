@@ -46,6 +46,16 @@ width-dependent composite can route its retained viewport through the shared
 reconciliation coordinator so subscribers receive one settled scroll transition
 instead of a direct event for each internal layout pass.
 
+Synchronous scalar callbacks use one logical transition stream per value. A
+commit produces an opaque token before publication; any nested commit, including
+an away-and-back change to the same final value, permanently supersedes the
+outer token. Property and typed-event invocation lists are captured and walked
+only while that token is current, so an earlier subscriber can prevent later
+subscribers from observing an obsolete payload. Mandatory invariant repair still
+runs after supersession or owner disposal, and the earliest callback failure is
+re-thrown only after required work completes. Numeric generations are an
+implementation detail: callers never perform version arithmetic.
+
 Async component work composes two independent identities. Capture the owning
 control's opaque attachment before leaving the dispatcher, and retain an opaque
 latest-operation lease when newer work supersedes older work. A completion may

@@ -3,8 +3,6 @@
 
 namespace SharpVision.Controls.Layout;
 
-using System.Runtime.ExceptionServices;
-
 using DisplayText = Display.Text;
 
 /// <summary>Displays a collapsible section with a focusable header toggle and optional content.</summary>
@@ -23,7 +21,7 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
 
     private readonly PressBehavior _interaction;
     private readonly StyleSlot<ExpanderStyle> _style;
-    private long _expandedVersion;
+    private readonly CallbackTransitionStream _expandedTransitions = new();
     private bool _isHeaderPointerOver;
     private Visibility? _requestedContentVisibility;
 
@@ -62,38 +60,24 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
         get;
         set
         {
-            VerifyMutable();
-
-            if (field == value)
+            if (!SetTransitionProperty(
+                    ref field,
+                    value,
+                    InvalidationImpact.Measure,
+                    _expandedTransitions,
+                    out var transition))
             {
                 return;
             }
 
-            field = value;
-            var version = ++_expandedVersion;
-            ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(
-                () => NotifyPropertyChanged(nameof(IsExpanded), InvalidationImpact.Measure),
-                ref failure);
-
-            if (IsCurrentExpansion(version, value))
-            {
-                ExceptionAggregation.Capture(ApplyContentVisibility, ref failure);
-            }
-
-            if (IsCurrentExpansion(version, value))
-            {
-                ExceptionAggregation.Capture(
-                    () => ExpandedChanged?.Invoke(this, new ExpandedChangedEventArgs(value)),
-                    ref failure);
-            }
-
-            failure?.Throw();
+            transition.CaptureIfCurrent(ApplyContentVisibility);
+            transition.PublishCurrent(
+                ExpandedChanged,
+                this,
+                new ExpandedChangedEventArgs(value));
+            transition.ThrowIfFailed();
         }
     } = true;
-
-    private bool IsCurrentExpansion(long version, bool value) =>
-        !IsDisposed && _expandedVersion == version && IsExpanded == value;
 
     /// <summary>Gets or sets the complete local presentation, or null for theme ownership.</summary>
     /// <exception cref="InvalidOperationException">The attached expander is mutated off-dispatcher.</exception>

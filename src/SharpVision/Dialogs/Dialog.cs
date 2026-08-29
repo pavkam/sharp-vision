@@ -25,7 +25,6 @@ public abstract class Dialog<TResult>: Window
 
     private TaskCompletionSource<TResult>? _completion;
     private PresentationHost? _host;
-    private ModalScope? _scope;
     private CancellationTokenRegistration _externalCancellation;
     private bool _completed;
     private bool _completesWithCancellation;
@@ -153,18 +152,12 @@ public abstract class Dialog<TResult>: Window
 
         try
         {
-            _scope = ShowModal(OutsideInteraction.Ignore, initialFocus);
+            var scope = ShowModal(OutsideInteraction.Ignore, initialFocus);
 
-            if (!_scope.IsActive)
+            if (!scope.IsActive)
             {
                 throw new InvalidOperationException("A presented dialog requires one active modal scope.");
             }
-
-            // An older scope torn down from underneath this one unwinds this scope too
-            // (ModalityManager.Exit unwinds every younger scope in reverse order). Without this,
-            // the dialog stays attached, painted, and no longer modal, with nothing ever settling
-            // its completion.
-            _scope.Exited += OnScopeExited;
 
             if (cancellationToken.CanBeCanceled)
             {
@@ -454,15 +447,7 @@ public abstract class Dialog<TResult>: Window
         ExceptionAggregation.Capture(_externalCancellation.Dispose, ref failure);
         _externalCancellation = default;
 
-        var scope = _scope;
-        _scope = null;
-
-        scope?.Exited -= OnScopeExited;
-
-        if (scope is { IsActive: true })
-        {
-            ExceptionAggregation.Capture(scope.Dispose, ref failure);
-        }
+        ExceptionAggregation.Capture(ExitSurfaceModal, ref failure);
 
         ExceptionAggregation.Capture(RemoveFromHost, ref failure);
 
@@ -537,8 +522,10 @@ public abstract class Dialog<TResult>: Window
         }
     }
 
-    private void OnScopeExited(object? sender, EventArgs eventArgs)
+    /// <inheritdoc/>
+    private protected override void OnSurfaceModalExited(ModalScope scope)
     {
+        base.OnSurfaceModalExited(scope);
         var dispatcher = Dispatcher;
 
         // FinishCompletion already begins its result before CleanupPresentation disposes the
@@ -596,7 +583,6 @@ public abstract class Dialog<TResult>: Window
         CancelScheduledCompletion();
         base.OnDisposed();
         _host = null;
-        _scope = null;
         SettleCompletion();
         ResultSelected = null;
     }

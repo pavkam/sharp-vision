@@ -18,7 +18,7 @@ using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
 [PublicAPI]
 public abstract class FloatingSurfaceBase: ContentControl
 {
-    private ModalScope? _modalScope;
+    private readonly ModalSession _modalSession;
     private bool _isClosing;
     private bool _isRequestingClose;
     private bool _isEnteringModal;
@@ -26,6 +26,12 @@ public abstract class FloatingSurfaceBase: ContentControl
     private bool _allowsOpeningDuringClosing;
     private bool _openingInvalidated;
     private bool _presentationReleasedForPendingDetach;
+
+    /// <summary>Initializes one surface with shared modal-session policy routing.</summary>
+    protected FloatingSurfaceBase() =>
+        _modalSession = new ModalSession(
+            OnSurfaceModalDismissRequested,
+            OnSurfaceModalExited);
 
     #region Surface lifecycle
 
@@ -61,7 +67,7 @@ public abstract class FloatingSurfaceBase: ContentControl
     private protected bool IsSurfaceOpen { get; private set; }
 
     /// <summary>Gets whether this surface currently owns one active application modality scope.</summary>
-    protected bool HasActiveSurfaceModal => _modalScope is { IsActive: true };
+    protected bool HasActiveSurfaceModal => _modalSession.IsActive;
 
     /// <summary>Gets the identity of the current common presentation transaction.</summary>
     internal long SurfacePresentationVersion { get; private set; }
@@ -419,17 +425,16 @@ public abstract class FloatingSurfaceBase: ContentControl
             throw new InvalidOperationException("A floating surface must be presented before it can enter modality.");
         }
 
-        if (_isEnteringModal)
+        if (_isEnteringModal || _modalSession.IsEntering)
         {
             throw new InvalidOperationException("Floating surface modal entry cannot be reentered.");
         }
 
-        if (_modalScope is { IsActive: true })
+        if (_modalSession.IsActive)
         {
             throw new InvalidOperationException("The floating surface is already modal.");
         }
 
-        ClearInactiveModalScope();
         var modality = ModalityOwner ?? throw new InvalidOperationException(
             "A modal floating surface must belong to an attached application tree.");
         var presentationVersion = SurfacePresentationVersion;
@@ -437,25 +442,12 @@ public abstract class FloatingSurfaceBase: ContentControl
 
         try
         {
-            var scope = modality.Enter(this, outsideInteraction, initialFocus);
-
-            if (!scope.IsActive)
-            {
-                return scope;
-            }
-
-            if (!IsSurfacePresented ||
-                presentationVersion != SurfacePresentationVersion ||
-                Dispatcher is null ||
-                !ReferenceEquals(ModalityOwner, modality))
-            {
-                scope.Dispose();
-                return scope;
-            }
-
-            _modalScope = scope;
-            scope.Exited += OnModalExited;
-            return scope;
+            return _modalSession.Enter(
+                () => modality.Enter(this, outsideInteraction, initialFocus),
+                () => IsSurfacePresented &&
+                    presentationVersion == SurfacePresentationVersion &&
+                    Dispatcher is not null &&
+                    ReferenceEquals(ModalityOwner, modality));
         }
         finally
         {
@@ -466,20 +458,7 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <summary>Ends this surface's active modal presentation, if any.</summary>
     /// <remarks>The tracked identity clears before callbacks run so replacement lifetimes remain distinct.</remarks>
     /// <exception cref="Exception">Modal focus restoration or an exit callback fails after cleanup.</exception>
-    protected void ExitSurfaceModal()
-    {
-        if (_modalScope is not { } scope)
-        {
-            return;
-        }
-
-        ClearModalScope(scope);
-
-        if (scope.IsActive)
-        {
-            scope.Dispose();
-        }
-    }
+    protected void ExitSurfaceModal() => _modalSession.Exit();
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
@@ -527,36 +506,15 @@ public abstract class FloatingSurfaceBase: ContentControl
         failure?.Throw();
     }
 
-    private void OnModalExited(object? sender, EventArgs eventArgs)
-    {
-        _ = eventArgs;
+    /// <summary>Applies family policy for a current active modal dismissal request.</summary>
+    /// <param name="scope">The exact current active scope.</param>
+    private protected virtual void OnSurfaceModalDismissRequested(ModalScope scope) =>
+        _ = scope;
 
-        if (sender is ModalScope scope)
-        {
-            ClearModalScope(scope);
-        }
-    }
-
-    private void ClearInactiveModalScope()
-    {
-        if (_modalScope is { IsActive: false } scope)
-        {
-            ClearModalScope(scope);
-        }
-    }
-
-    private void ClearModalScope(ModalScope scope)
-    {
-        Debug.Assert(scope is not null, "Modal tracking cleanup requires one concrete lifetime.");
-
-        if (!ReferenceEquals(_modalScope, scope))
-        {
-            return;
-        }
-
-        _modalScope = null;
-        scope.Exited -= OnModalExited;
-    }
+    /// <summary>Applies family policy after an externally ended scope clears from the session.</summary>
+    /// <param name="scope">The exact exited scope.</param>
+    private protected virtual void OnSurfaceModalExited(ModalScope scope) =>
+        _ = scope;
 
     /// <summary>
     /// Clears this surface's presented bounds and flag outside the normal close path, so a caller that

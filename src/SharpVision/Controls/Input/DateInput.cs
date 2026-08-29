@@ -3,8 +3,6 @@
 
 namespace SharpVision.Controls.Input;
 
-using System.Runtime.ExceptionServices;
-
 using Popups;
 
 using SharpVision.Terminal.Input;
@@ -51,6 +49,7 @@ public sealed class DateInput: InputBase
         _state = new TemporalValueState<DateOnly>(
             DateOnly.MinValue,
             DateOnly.MaxValue,
+            this,
             VerifyMutable,
             NotifyPropertyChanged,
             () => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime),
@@ -767,13 +766,15 @@ public sealed class DateInput: InputBase
     private void SynchronizeCalendarValue(DateOnly? value) =>
         _calendarDropDown.SyncValue(value);
 
-    private void RaiseValueChanged(DateOnly? previous, DateOnly? current)
+    private void RaiseValueChanged(
+        ref CallbackTransitionTransaction transition,
+        DateOnly? previous,
+        DateOnly? current)
     {
-        ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(
-            () => ValueChanged?.Invoke(this, new DateInputValueChangedEventArgs(previous, current)),
-            ref failure);
-        failure?.Throw();
+        transition.PublishCurrent(
+            ValueChanged,
+            this,
+            new DateInputValueChangedEventArgs(previous, current));
     }
 
     #endregion

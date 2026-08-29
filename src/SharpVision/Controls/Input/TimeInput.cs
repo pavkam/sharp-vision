@@ -49,11 +49,11 @@ public sealed class TimeInput: InputBase
         _state = new TemporalValueState<TimeOnly>(
             TimeOnly.MinValue,
             TimeOnly.MaxValue,
+            this,
             VerifyMutable,
             NotifyPropertyChanged,
             () => TimeOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime),
-            (previous, current) =>
-                ValueChanged?.Invoke(this, new TimeInputValueChangedEventArgs(previous, current)));
+            PublishValueChanged);
         _segments = EnableSegmentEditing(
             BuildSegments,
             ApplyDigitValue,
@@ -68,6 +68,15 @@ public sealed class TimeInput: InputBase
 
     /// <summary>Raised after a committed value transition.</summary>
     public event EventHandler<TimeInputValueChangedEventArgs>? ValueChanged;
+
+    private void PublishValueChanged(
+        ref CallbackTransitionTransaction transition,
+        TimeOnly? previous,
+        TimeOnly? current) =>
+        transition.PublishCurrent(
+            ValueChanged,
+            this,
+            new TimeInputValueChangedEventArgs(previous, current));
 
     /// <summary>Gets or sets the current time value, or null when cleared.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>

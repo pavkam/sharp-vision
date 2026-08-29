@@ -268,6 +268,18 @@ the requested scope begins its own `Exited` publication as younger work, and a
 replacement entered by that requested `Exited` callback survives. Modal
 transitions never reacquire cancelled pointer capture.
 
+One internal modal-session lifetime composes the manager scope for floating
+surfaces, top-level menus, dialogs, and private popup-backed inputs. It rejects
+entry reentrancy, validates caller presentation after entry callbacks, and owns
+the exact current scope subscriptions. External-exit policy runs only after that
+identity clears, so it can install a replacement safely. Dismissal policy
+instead receives the still-active current scope and initiates the family close.
+Family policy remains explicit: a Popup closes, a Window remains visible after
+external exit, a Menu closes its chain, and a private dropdown closes or
+temporarily waits for ancestor availability. Failed entry rolls back both the
+candidate scope and caller-owned presentation while preserving the initiating
+failure over cleanup failures.
+
 ## Popup and Window presentations
 
 | Surface            | Trigger                                                                                                                                                                       | Scope root          | Default `OutsideInteraction`                            | Exit behavior                                                                                                                                                                                                                                                                                                                 |

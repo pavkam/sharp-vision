@@ -8,7 +8,7 @@ namespace SharpVision.Controls.Display;
 public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
 {
     private double _value;
-    private long _valueVersion;
+    private readonly CallbackTransitionStream _valueTransitions = new();
     private readonly StyleSlot<ProgressBarStyle> _style;
 
     /// <summary>Initializes a non-focusable horizontal progress bar at zero progress.</summary>
@@ -66,10 +66,18 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
             field = value;
             var previousValue = _value;
             _value = clamped;
-            var valueVersion = previousValue.Equals(clamped) ? _valueVersion : ++_valueVersion;
 
-            NotifyPropertyChanged(nameof(Minimum), InvalidationImpact.Render);
-            NotifyValueChanged(previousValue, clamped, valueVersion);
+            if (previousValue.Equals(clamped))
+            {
+                NotifyPropertyChanged(nameof(Minimum), InvalidationImpact.Render);
+                return;
+            }
+
+            var transition = BeginPropertyTransition(
+                _valueTransitions,
+                InvalidationImpact.Render,
+                nameof(Minimum));
+            NotifyValueChanged(previousValue, clamped, ref transition);
         }
     }
 
@@ -101,10 +109,18 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
             field = value;
             var previousValue = _value;
             _value = clamped;
-            var valueVersion = previousValue.Equals(clamped) ? _valueVersion : ++_valueVersion;
 
-            NotifyPropertyChanged(nameof(Maximum), InvalidationImpact.Render);
-            NotifyValueChanged(previousValue, clamped, valueVersion);
+            if (previousValue.Equals(clamped))
+            {
+                NotifyPropertyChanged(nameof(Maximum), InvalidationImpact.Render);
+                return;
+            }
+
+            var transition = BeginPropertyTransition(
+                _valueTransitions,
+                InvalidationImpact.Render,
+                nameof(Maximum));
+            NotifyValueChanged(previousValue, clamped, ref transition);
         }
     } = 1;
 
@@ -123,10 +139,18 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
             VerifyMutable();
             var clamped = Math.Clamp(value, Minimum, Maximum);
             var previousValue = _value;
-            _value = clamped;
-            var valueVersion = previousValue.Equals(clamped) ? _valueVersion : ++_valueVersion;
 
-            NotifyValueChanged(previousValue, clamped, valueVersion);
+            if (previousValue.Equals(clamped))
+            {
+                return;
+            }
+
+            _value = clamped;
+            var transition = BeginPropertyTransition(
+                _valueTransitions,
+                InvalidationImpact.Render,
+                nameof(Value));
+            PublishValueChanged(previousValue, clamped, ref transition);
         }
     }
 
@@ -369,23 +393,27 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
     // history. Callers commit _value before calling this, so every endpoint
     // and Value are already coherent for both notifications raised here. A
     // clamp that leaves Value unchanged stays silent.
-    private void NotifyValueChanged(double previousValue, double currentValue, long version)
+    private void NotifyValueChanged(
+        double previousValue,
+        double currentValue,
+        ref CallbackTransitionTransaction transition)
     {
-        if (previousValue.Equals(currentValue))
-        {
-            return;
-        }
+        PublishTransitionProperty(
+            ref transition,
+            nameof(Value),
+            InvalidationImpact.Render);
+        PublishValueChanged(previousValue, currentValue, ref transition);
+    }
 
-        if (!IsVersionedPropertyCurrent(_value, currentValue, _valueVersion, version))
-        {
-            return;
-        }
-
-        NotifyPropertyChanged(nameof(Value), InvalidationImpact.Render);
-
-        if (IsVersionedPropertyCurrent(_value, currentValue, _valueVersion, version))
-        {
-            ValueChanged?.Invoke(this, new ProgressValueChangedEventArgs(previousValue, currentValue));
-        }
+    private void PublishValueChanged(
+        double previousValue,
+        double currentValue,
+        ref CallbackTransitionTransaction transition)
+    {
+        transition.PublishCurrent(
+            ValueChanged,
+            this,
+            new ProgressValueChangedEventArgs(previousValue, currentValue));
+        transition.ThrowIfFailed();
     }
 }

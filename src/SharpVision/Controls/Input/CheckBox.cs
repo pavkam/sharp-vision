@@ -3,14 +3,12 @@
 
 namespace SharpVision.Controls.Input;
 
-using System.Runtime.ExceptionServices;
-
 /// <summary>Defines a focusable two- or three-state toggle with optional content.</summary>
 [PublicAPI]
 public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
 {
     private bool? _isChecked = false;
-    private int _stateVersion;
+    private readonly CallbackTransitionStream _stateTransitions = new();
     private readonly StyleSlot<CheckBoxStyle> _style;
 
     /// <summary>Initializes an unchecked two-state CheckBox.</summary>
@@ -85,35 +83,19 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
             {
                 field = false;
                 _isChecked = false;
-                var version = ++_stateVersion;
                 InvalidateVisualState();
                 var eventArgs = new CheckChangedEventArgs(previous: null, current: false, ActivationCause.Programmatic);
-                ExceptionDispatchInfo? failure = null;
-                ExceptionAggregation.Capture(
-                    () => NotifyPropertyChanged(nameof(ThreeState), InvalidationImpact.None),
-                    ref failure);
-                ExceptionAggregation.Capture(() =>
-                {
-                    if (IsStateCommitCurrent(version, false))
-                    {
-                        NotifyPropertyChanged(nameof(IsChecked), InvalidationImpact.None);
-                    }
-                }, ref failure);
-                ExceptionAggregation.Capture(() =>
-                {
-                    if (IsStateCommitCurrent(version, false))
-                    {
-                        Unchecked?.Invoke(this, eventArgs);
-                    }
-                }, ref failure);
-                ExceptionAggregation.Capture(() =>
-                {
-                    if (IsStateCommitCurrent(version, false))
-                    {
-                        StateChanged?.Invoke(this, eventArgs);
-                    }
-                }, ref failure);
-                failure?.Throw();
+                var transition = BeginPropertyTransition(
+                    _stateTransitions,
+                    InvalidationImpact.None,
+                    nameof(ThreeState));
+                PublishTransitionProperty(
+                    ref transition,
+                    nameof(IsChecked),
+                    InvalidationImpact.None);
+                transition.PublishCurrent(Unchecked, this, eventArgs);
+                transition.PublishCurrent(StateChanged, this, eventArgs);
+                transition.ThrowIfFailed();
                 return;
             }
 
@@ -274,39 +256,30 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
         }
 
         _isChecked = value;
-        var version = ++_stateVersion;
         InvalidateVisualState();
-        NotifyPropertyChanged(nameof(IsChecked), InvalidationImpact.None);
-
-        if (!IsStateCommitCurrent(version, value))
-        {
-            return;
-        }
+        var transition = BeginPropertyTransition(
+            _stateTransitions,
+            InvalidationImpact.None,
+            nameof(IsChecked));
 
         var eventArgs = new CheckChangedEventArgs(previous, value, cause);
 
         if (value == true)
         {
-            Checked?.Invoke(this, eventArgs);
+            transition.PublishCurrent(Checked, this, eventArgs);
         }
         else if (value == false)
         {
-            Unchecked?.Invoke(this, eventArgs);
+            transition.PublishCurrent(Unchecked, this, eventArgs);
         }
         else
         {
-            Indeterminate?.Invoke(this, eventArgs);
+            transition.PublishCurrent(Indeterminate, this, eventArgs);
         }
 
-        if (IsStateCommitCurrent(version, value))
-        {
-            StateChanged?.Invoke(this, eventArgs);
-        }
+        transition.PublishCurrent(StateChanged, this, eventArgs);
+        transition.ThrowIfFailed();
     }
-
-    [Pure]
-    private bool IsStateCommitCurrent(int version, bool? value) =>
-        !IsDisposed && _stateVersion == version && _isChecked == value;
 
     private int MarkWidth => ActualStyle.MarkWidth;
 

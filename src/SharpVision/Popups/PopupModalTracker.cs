@@ -3,8 +3,6 @@
 
 namespace SharpVision.Popups;
 
-using System.Runtime.ExceptionServices;
-
 /// <summary>
 /// Manages the modal scope lifetime for a control that owns a private popup.
 /// Replaces the duplicated EnterModalScope/ExitModalScope/OnModalDismissRequested/
@@ -19,7 +17,7 @@ internal sealed class PopupModalTracker
 {
     private readonly Popup _popup;
     private readonly Action _close;
-    private ModalScope? _scope;
+    private readonly ModalSession _session;
     private ControlBase? _owner;
     private ControlBase? _ownerInitialFocus;
     private ControlBase? _availabilityAncestor;
@@ -31,6 +29,7 @@ internal sealed class PopupModalTracker
     {
         _popup = popup;
         _close = close;
+        _session = new ModalSession(OnDismissRequested, OnExited);
         _popup.PropertyChanged += OnPopupPropertyChanged;
     }
 
@@ -44,7 +43,7 @@ internal sealed class PopupModalTracker
         _owner = owner;
         _ownerInitialFocus = ownerInitialFocus;
 
-        if (_scope?.IsActive == true || owner.ModalityOwner is not { } modality)
+        if (_session.IsActive || owner.ModalityOwner is not { } modality)
         {
             return;
         }
@@ -64,56 +63,13 @@ internal sealed class PopupModalTracker
             ? focused
             : ownerInitialFocus ?? owner;
 
-        ModalScope? scope = null;
-
-        try
-        {
-            scope = modality.Enter(owner, OutsideInteraction.Dismiss, initialFocus);
-
-            if (!scope.IsActive || !_popup.IsOpen)
-            {
-                if (scope.IsActive)
-                {
-                    scope.Dispose();
-                }
-
-                return;
-            }
-
-            _scope = scope;
-            scope.DismissRequested += OnDismissRequested;
-            scope.Exited += OnExited;
-        }
-        catch (Exception exception)
-        {
-            var failure = ExceptionDispatchInfo.Capture(exception);
-
-            if (scope?.IsActive == true)
-            {
-                try
-                {
-                    scope.Dispose();
-                }
-                catch
-                {
-                    // The initiating entry failure remains authoritative.
-                }
-            }
-
-            if (_popup.IsOpen)
-            {
-                try
-                {
-                    _popup.IsOpen = false;
-                }
-                catch
-                {
-                    // Visual rollback cannot replace the initiating entry failure.
-                }
-            }
-
-            failure.Throw();
-        }
+        _ = _session.Enter(
+            () => modality.Enter(owner, OutsideInteraction.Dismiss, initialFocus),
+            () => _popup.IsOpen &&
+                owner.EffectiveIsEnabled &&
+                owner.EffectiveIsVisible &&
+                ReferenceEquals(owner.ModalityOwner, modality),
+            RollbackOpenState);
     }
 
     /// <summary>Exits and clears the tracked modal scope if one is active.</summary>
@@ -121,17 +77,7 @@ internal sealed class PopupModalTracker
     {
         StopAwaitingAvailability();
 
-        if (_scope is not { } scope)
-        {
-            return;
-        }
-
-        if (scope.IsActive)
-        {
-            scope.Dispose();
-        }
-
-        Clear(scope);
+        _session.Exit();
     }
 
     /// <summary>Releases the tracker subscriptions when its composite owner is disposed.</summary>
@@ -143,30 +89,20 @@ internal sealed class PopupModalTracker
         _ownerInitialFocus = null;
     }
 
-    private void OnDismissRequested(object? sender, EventArgs eventArgs)
+    private void OnDismissRequested(ModalScope scope)
     {
-        _ = eventArgs;
-
-        if (sender is ModalScope scope &&
-            ReferenceEquals(_scope, scope) &&
-            scope.IsActive &&
+        if (scope.IsActive &&
             _popup.IsOpen)
         {
             _close();
         }
     }
 
-    private void OnExited(object? sender, EventArgs eventArgs)
+    private void OnExited(ModalScope scope)
     {
-        _ = eventArgs;
-
-        if (sender is not ModalScope scope || !ReferenceEquals(_scope, scope))
-        {
-            return;
-        }
+        _ = scope;
 
         var preserveOpen = _popup.ModalityOwner?.IsUnavailable(_popup) == true;
-        Clear(scope);
 
         if (!preserveOpen && _popup.IsOpen)
         {
@@ -175,6 +111,14 @@ internal sealed class PopupModalTracker
         else if (preserveOpen && _popup.IsOpen)
         {
             AwaitAvailability();
+        }
+    }
+
+    private void RollbackOpenState()
+    {
+        if (_popup.IsOpen)
+        {
+            _popup.IsOpen = false;
         }
     }
 
@@ -251,15 +195,4 @@ internal sealed class PopupModalTracker
         ancestor.PropertyChanged -= OnAvailabilityAncestorPropertyChanged;
     }
 
-    private void Clear(ModalScope scope)
-    {
-        if (!ReferenceEquals(_scope, scope))
-        {
-            return;
-        }
-
-        _scope = null;
-        scope.DismissRequested -= OnDismissRequested;
-        scope.Exited -= OnExited;
-    }
 }

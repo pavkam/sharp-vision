@@ -20,7 +20,7 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
     private readonly DisplayText _status;
     private bool _synchronizing;
     private Color _value = Color.Rgb(255, 0, 0);
-    private long _valueVersion;
+    private readonly CallbackTransitionStream _valueTransitions = new();
     private readonly StyleSlot<ColorPickerStyle> _style;
 
     #region Construction and public state
@@ -291,30 +291,26 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
         VerifyMutable();
         var previous = _value;
 
-        if (!SetVersionedProperty(
+        if (!SetTransitionProperty(
                 ref _value,
                 requested,
                 InvalidationImpact.Render,
-                ref _valueVersion,
-                out var version,
+                _valueTransitions,
+                out var transition,
                 nameof(Value)))
         {
             SynchronizeParts();
             return false;
         }
 
-        if (!IsVersionedPropertyCurrent(_value, requested, _valueVersion, version))
-        {
-            return true;
-        }
-
-        SynchronizeParts();
-        NotifyPropertyChanged(nameof(ActualStyle), InvalidationImpact.None);
-
-        if (IsVersionedPropertyCurrent(_value, requested, _valueVersion, version))
-        {
-            ValueChanged?.Invoke(this, new ColorChangedEventArgs(previous, requested));
-        }
+        transition.CaptureIfCurrent(SynchronizeParts);
+        transition.CaptureIfCurrent(
+            () => NotifyPropertyChanged(nameof(ActualStyle), InvalidationImpact.None));
+        transition.PublishCurrent(
+            ValueChanged,
+            this,
+            new ColorChangedEventArgs(previous, requested));
+        transition.ThrowIfFailed();
 
         return true;
     }

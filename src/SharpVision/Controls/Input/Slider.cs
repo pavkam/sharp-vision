@@ -12,7 +12,7 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 public sealed class Slider: ControlBase, IStyled<SliderStyle>
 {
     private int _value;
-    private long _valueVersion;
+    private readonly CallbackTransitionStream _valueTransitions = new();
     private readonly DragBehavior _drag;
     private Rect _dragBounds;
     private int _dragLength;
@@ -259,21 +259,22 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
         value = Math.Clamp(value, Minimum, Maximum);
         var previous = _value;
 
-        if (!SetVersionedProperty(
+        if (!SetTransitionProperty(
                 ref _value,
                 value,
                 InvalidationImpact.Render,
-                ref _valueVersion,
-                out var version,
+                _valueTransitions,
+                out var transition,
                 nameof(Value)))
         {
             return false;
         }
 
-        if (IsVersionedPropertyCurrent(_value, value, _valueVersion, version))
-        {
-            ValueChanged?.Invoke(this, new SliderValueChangedEventArgs(previous, value));
-        }
+        transition.PublishCurrent(
+            ValueChanged,
+            this,
+            new SliderValueChangedEventArgs(previous, value));
+        transition.ThrowIfFailed();
 
         return true;
     }

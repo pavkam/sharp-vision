@@ -61,11 +61,11 @@ public sealed class DateTimeInput: InputBase
         _state = new TemporalValueState<DateTime>(
             DateTime.MinValue,
             DateTime.MaxValue,
+            this,
             VerifyMutable,
             NotifyPropertyChanged,
             () => TimeProvider.GetLocalNow().DateTime,
-            (previous, current) =>
-                ValueChanged?.Invoke(this, new DateTimeInputValueChangedEventArgs(previous, current)),
+            PublishValueChanged,
             SynchronizeCalendarValue,
             SyncCalendarBounds);
         _calendarDropDown = new CalendarDropDownCoordinator<DateTime>(
@@ -108,6 +108,15 @@ public sealed class DateTimeInput: InputBase
 
     /// <summary>Raised after a committed value transition.</summary>
     public event EventHandler<DateTimeInputValueChangedEventArgs>? ValueChanged;
+
+    private void PublishValueChanged(
+        ref CallbackTransitionTransaction transition,
+        DateTime? previous,
+        DateTime? current) =>
+        transition.PublishCurrent(
+            ValueChanged,
+            this,
+            new DateTimeInputValueChangedEventArgs(previous, current));
 
     /// <summary>Raised after the Calendar popup opens.</summary>
     public event EventHandler? DropDownOpened;

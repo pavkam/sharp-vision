@@ -17,8 +17,10 @@ internal sealed class TemporalValueState<T>
 {
     private readonly Action _verifyMutable;
     private readonly Action<string, InvalidationImpact> _notifyPropertyChanged;
+    private readonly ControlBase _owner;
+    private readonly CallbackTransitionStream _valueTransitions = new();
     private readonly Func<T> _resolveSeed;
-    private readonly Action<T?, T?> _raiseValueChanged;
+    private readonly TemporalValueChangedPublisher<T> _publishValueChanged;
     private readonly Action<T?>? _synchronizeValue;
     private readonly Action? _synchronizeBounds;
     private T _minimum;
@@ -27,10 +29,11 @@ internal sealed class TemporalValueState<T>
     /// <summary>Initializes shared temporal state with its full representable range and owner callbacks.</summary>
     /// <param name="minimum">The initial inclusive lower bound.</param>
     /// <param name="maximum">The initial inclusive upper bound.</param>
+    /// <param name="owner">The non-null control owning callback lifetime.</param>
     /// <param name="verifyMutable">Validates the owning control's dispatcher and lifetime.</param>
     /// <param name="notifyPropertyChanged">Publishes a committed public property and invalidates its affected phase.</param>
     /// <param name="resolveSeed">Projects the owning dispatcher's current clock into <typeparamref name="T"/>.</param>
-    /// <param name="raiseValueChanged">Raises the owning control's typed value event.</param>
+    /// <param name="publishValueChanged">Publishes the owning control's typed value event.</param>
     /// <param name="synchronizeValue">Optionally synchronizes a connected presentation after a value commit.</param>
     /// <param name="synchronizeBounds">Optionally synchronizes connected range presentation after a bound commit.</param>
     /// <exception cref="ArgumentException"><paramref name="minimum"/> exceeds <paramref name="maximum"/>.</exception>
@@ -38,10 +41,11 @@ internal sealed class TemporalValueState<T>
     public TemporalValueState(
         T minimum,
         T maximum,
+        ControlBase owner,
         Action verifyMutable,
         Action<string, InvalidationImpact> notifyPropertyChanged,
         Func<T> resolveSeed,
-        Action<T?, T?> raiseValueChanged,
+        TemporalValueChangedPublisher<T> publishValueChanged,
         Action<T?>? synchronizeValue = null,
         Action? synchronizeBounds = null)
     {
@@ -52,15 +56,17 @@ internal sealed class TemporalValueState<T>
 
         ArgumentNullException.ThrowIfNull(verifyMutable);
         ArgumentNullException.ThrowIfNull(notifyPropertyChanged);
+        ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(resolveSeed);
-        ArgumentNullException.ThrowIfNull(raiseValueChanged);
+        ArgumentNullException.ThrowIfNull(publishValueChanged);
 
         _minimum = minimum;
         _maximum = maximum;
+        _owner = owner;
         _verifyMutable = verifyMutable;
         _notifyPropertyChanged = notifyPropertyChanged;
         _resolveSeed = resolveSeed;
-        _raiseValueChanged = raiseValueChanged;
+        _publishValueChanged = publishValueChanged;
         _synchronizeValue = synchronizeValue;
         _synchronizeBounds = synchronizeBounds;
     }
@@ -119,23 +125,14 @@ internal sealed class TemporalValueState<T>
 
         var previous = Value;
         Value = candidate;
-        var version = ++ValueVersion;
-        ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(
-            () => _notifyPropertyChanged("Value", InvalidationImpact.Render),
-            ref failure);
-
-        if (IsCurrent(candidate, version))
-        {
-            ExceptionAggregation.Capture(() => _synchronizeValue?.Invoke(candidate), ref failure);
-        }
-
-        if (IsCurrent(candidate, version))
-        {
-            ExceptionAggregation.Capture(() => _raiseValueChanged(previous, candidate), ref failure);
-        }
-
-        failure?.Throw();
+        ValueVersion++;
+        var transition = _owner.BeginCallbackPropertyTransition(
+            _valueTransitions,
+            InvalidationImpact.Render,
+            nameof(Value));
+        transition.CaptureIfCurrent(() => _synchronizeValue?.Invoke(candidate));
+        _publishValueChanged(ref transition, previous, candidate);
+        transition.ThrowIfFailed();
         return true;
     }
 
@@ -224,7 +221,4 @@ internal sealed class TemporalValueState<T>
         }
     }
 
-    [Pure]
-    private bool IsCurrent(T? candidate, long version) =>
-        ValueVersion == version && EqualityComparer<T?>.Default.Equals(Value, candidate);
 }

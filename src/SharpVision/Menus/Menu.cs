@@ -22,14 +22,13 @@ public sealed class Menu: ItemsControl
     private ControlBase? _selectedEntry;
 
     private readonly RetainedPropertyOverrideService _propertyOverrides;
+    private readonly ModalSession _modalSession;
     private readonly LayoutStack _stack;
     private bool _closeChainAfterInvocation;
     private bool _closeChainPending;
     private bool _discardPendingSubmenuTransitionOnClose;
     private bool _isClosingChain;
-    private bool _isEnteringModalScope;
     private int _itemInvocationDepth;
-    private ModalScope? _modalScope;
     private ModalityManager? _pendingSubmenuModalityOwner;
     private Menu? _pendingSubmenuMenu;
     private MenuItem? _pendingSubmenuOpen;
@@ -47,6 +46,7 @@ public sealed class Menu: ItemsControl
         _stack = new LayoutStack { Orientation = Orientation.Horizontal, Spacing = 0 };
         InitializeItemsHost(_stack);
         _propertyOverrides = new RetainedPropertyOverrideService(this, ItemControlsSlot);
+        _modalSession = new ModalSession(OnModalDismissRequested, OnModalScopeExited);
         Items = new MenuEntryCollection(this);
         IsFocusable = true;
         IsTabStop = true;
@@ -987,7 +987,7 @@ public sealed class Menu: ItemsControl
     }
 
     private bool IsSessionArmed =>
-        _modalScope?.IsActive == true || _isEnteringModalScope || _submenuTransitionDepth > 0;
+        _modalSession.IsActive || _modalSession.IsEntering || _submenuTransitionDepth > 0;
 
     /// <summary>Finds the exact top menu that owns this menu's current submenu session.</summary>
     /// <returns>This menu or its outermost owning menu.</returns>
@@ -1012,7 +1012,7 @@ public sealed class Menu: ItemsControl
         MenuItem item,
         bool openedFromPointerSelection)
     {
-        if (_isClosingChain || _isEnteringModalScope)
+        if (_isClosingChain || _modalSession.IsEntering)
         {
             QueueSubmenuTransition(menu, item, openedFromPointerSelection);
             return;
@@ -1114,7 +1114,7 @@ public sealed class Menu: ItemsControl
             return true;
         }
 
-        if (_modalScope?.IsActive == true)
+        if (_modalSession.IsActive)
         {
             return true;
         }
@@ -1124,73 +1124,36 @@ public sealed class Menu: ItemsControl
             return true;
         }
 
-        if (_isEnteringModalScope)
+        if (_modalSession.IsEntering)
         {
             return false;
         }
 
-        _isEnteringModalScope = true;
-        ModalScope? scope = null;
-
-        try
-        {
-            scope = modality.Enter(this, OutsideInteraction.Dismiss);
-        }
-        finally
-        {
-            _isEnteringModalScope = false;
-        }
-
-        if (!scope.IsActive)
-        {
-            return false;
-        }
-
-        _modalScope = scope;
-        scope.DismissRequested += OnModalDismissRequested;
-        scope.Exited += OnModalScopeExited;
-        return true;
+        var scope = _modalSession.Enter(
+            () => modality.Enter(this, OutsideInteraction.Dismiss),
+            () => !IsDisposed &&
+                EffectiveIsEnabled &&
+                EffectiveIsVisible &&
+                ReferenceEquals(ModalityOwner, modality));
+        return scope.IsActive && ReferenceEquals(_modalSession.Current, scope);
     }
 
-    private void OnModalDismissRequested(object? sender, EventArgs eventArgs)
+    private void OnModalDismissRequested(ModalScope scope)
     {
-        _ = eventArgs;
-
-        if (sender is ModalScope scope &&
-            ReferenceEquals(_modalScope, scope) &&
-            scope.IsActive)
+        if (scope.IsActive)
         {
             CloseChain();
         }
     }
 
-    private void OnModalScopeExited(object? sender, EventArgs eventArgs)
+    private void OnModalScopeExited(ModalScope scope)
     {
-        _ = eventArgs;
-
-        if (sender is not ModalScope scope || !ReferenceEquals(_modalScope, scope))
-        {
-            return;
-        }
-
-        ClearModalScope(scope);
+        _ = scope;
 
         if (!_isClosingChain)
         {
             CloseChain();
         }
-    }
-
-    private void ClearModalScope(ModalScope scope)
-    {
-        if (!ReferenceEquals(_modalScope, scope))
-        {
-            return;
-        }
-
-        _modalScope = null;
-        scope.DismissRequested -= OnModalDismissRequested;
-        scope.Exited -= OnModalScopeExited;
     }
 
     /// <summary>Closes every retained submenu and releases this exact owner's modal session.</summary>
@@ -1199,7 +1162,7 @@ public sealed class Menu: ItemsControl
 
     private void CloseChain(bool replayPendingSubmenuTransition)
     {
-        if (_submenuTransitionDepth > 0 || _isEnteringModalScope)
+        if (_submenuTransitionDepth > 0 || _modalSession.IsEntering)
         {
             _closeChainPending = true;
             _discardPendingSubmenuTransitionOnClose |= !replayPendingSubmenuTransition;
@@ -1217,21 +1180,11 @@ public sealed class Menu: ItemsControl
         _isClosingChain = true;
         _closeChainPending = false;
         ExceptionDispatchInfo? failure = null;
-        var scope = _modalScope;
 
         try
         {
             CloseOpenSubmenus(this, ref failure);
-
-            if (scope?.IsActive == true)
-            {
-                ExceptionAggregation.Capture(scope.Dispose, ref failure);
-            }
-
-            if (scope is not null && ReferenceEquals(_modalScope, scope))
-            {
-                ClearModalScope(scope);
-            }
+            ExceptionAggregation.Capture(_modalSession.Exit, ref failure);
         }
         finally
         {

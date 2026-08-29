@@ -1223,7 +1223,6 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
                 return scope;
             }
 
-            TrackModalCallbacks(scope);
             return scope;
         }
         catch (Exception exception)
@@ -1260,34 +1259,13 @@ public partial class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         }
     }
 
-    private void TrackModalCallbacks(ModalScope scope)
+    /// <inheritdoc/>
+    private protected override void OnSurfaceModalDismissRequested(ModalScope scope)
     {
-        Debug.Assert(scope is not null, "A Window observes one concrete modal lifetime.");
-        Debug.Assert(scope.IsActive, "A Window observes only an active modal lifetime.");
-        scope.DismissRequested += OnModalDismissRequested;
-        scope.Exited += OnWindowModalExited;
-    }
-
-    private void OnModalDismissRequested(object? sender, EventArgs eventArgs)
-    {
-        _ = eventArgs;
-
-        if (sender is ModalScope scope &&
-            scope.IsActive &&
+        if (scope.IsActive &&
             Visibility == Visibility.Visible)
         {
             RequestClose();
-        }
-    }
-
-    private void OnWindowModalExited(object? sender, EventArgs eventArgs)
-    {
-        _ = eventArgs;
-
-        if (sender is ModalScope scope)
-        {
-            scope.DismissRequested -= OnModalDismissRequested;
-            scope.Exited -= OnWindowModalExited;
         }
     }
 

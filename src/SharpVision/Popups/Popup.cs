@@ -210,7 +210,6 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     /// <summary>Gets whether this popup is inside its public open-state transition.</summary>
     private protected bool IsOpenTransitioning { get; private set; }
     private ControlBase? _availabilityAncestor;
-    private ModalScope? _modalCallbackScope;
     private ControlBase? _subscribedReflowAnchor;
 
     /// <summary>Gets or sets whether this Popup self-manages its modal scope on open.</summary>
@@ -378,7 +377,6 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                 return scope;
             }
 
-            TrackModalCallbacks(scope);
             return scope;
         }
         catch (Exception exception)
@@ -1242,45 +1240,28 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         failure?.Throw();
     }
 
-    private void TrackModalCallbacks(ModalScope scope)
+    /// <inheritdoc/>
+    private protected override void OnSurfaceModalDismissRequested(ModalScope scope)
     {
-        Debug.Assert(scope is not null, "A Popup observes one concrete modal lifetime.");
-        Debug.Assert(scope.IsActive, "A Popup observes only an active modal lifetime.");
-        Debug.Assert(_modalCallbackScope is null, "A Popup observes at most one active modal lifetime.");
-        _modalCallbackScope = scope;
-        scope.DismissRequested += OnModalDismissRequested;
-        scope.Exited += OnPopupModalExited;
-    }
-
-    private void OnModalDismissRequested(object? sender, EventArgs eventArgs)
-    {
-        _ = eventArgs;
-
-        if (sender is ModalScope { IsActive: true } && IsOpen)
+        if (scope.IsActive && IsOpen)
         {
             IsOpen = false;
         }
     }
 
-    private void OnPopupModalExited(object? sender, EventArgs eventArgs)
+    /// <inheritdoc/>
+    private protected override void OnSurfaceModalExited(ModalScope scope)
     {
-        _ = eventArgs;
+        _ = scope;
+        var preserveOpen = ModalityOwner?.IsUnavailable(this) == true;
 
-        if (sender is ModalScope scope)
+        if (!preserveOpen && IsOpen)
         {
-            var preserveOpen = ModalityOwner?.IsUnavailable(this) == true;
-            _modalCallbackScope = null;
-            scope.DismissRequested -= OnModalDismissRequested;
-            scope.Exited -= OnPopupModalExited;
-
-            if (!preserveOpen && IsOpen)
-            {
-                IsOpen = false;
-            }
-            else if (preserveOpen && IsOpen)
-            {
-                TrackUnavailableAncestor();
-            }
+            IsOpen = false;
+        }
+        else if (preserveOpen && IsOpen)
+        {
+            TrackUnavailableAncestor();
         }
     }
 

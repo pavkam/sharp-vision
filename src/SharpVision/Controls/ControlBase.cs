@@ -3686,6 +3686,94 @@ public abstract partial class ControlBase: INotifyPropertyChanged, IDisposable
         return true;
     }
 
+    /// <summary>Commits one property and begins a current-aware callback transaction.</summary>
+    /// <typeparam name="T">The property value type.</typeparam>
+    /// <param name="field">The current backing field.</param>
+    /// <param name="value">The validated replacement value.</param>
+    /// <param name="impact">The validated earliest affected phase.</param>
+    /// <param name="stream">The non-null logical callback stream for this property.</param>
+    /// <param name="transition">Receives the committed publication transaction.</param>
+    /// <param name="propertyName">The non-empty property name supplied by the compiler.</param>
+    /// <returns>Whether a changed value was committed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="stream"/> or
+    /// <paramref name="propertyName"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="propertyName"/> is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    [NotifyPropertyChangedInvocator]
+    private protected bool SetTransitionProperty<T>(
+        ref T field,
+        T value,
+        InvalidationImpact impact,
+        CallbackTransitionStream stream,
+        out CallbackTransitionTransaction transition,
+        [CallerMemberName] string? propertyName = null)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        ValidateImpact(impact);
+        ArgumentException.ThrowIfNullOrEmpty(propertyName);
+        VerifyMutable();
+
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            transition = default;
+            return false;
+        }
+
+        field = value;
+        transition = BeginPropertyTransition(stream, impact, propertyName);
+        return true;
+    }
+
+    /// <summary>Begins one callback transition and publishes its first committed property.</summary>
+    /// <param name="stream">The non-null logical callback stream.</param>
+    /// <param name="impact">The validated earliest affected phase.</param>
+    /// <param name="propertyName">The non-empty committed property name.</param>
+    /// <returns>The current-aware transaction retaining any observer failure.</returns>
+    private protected CallbackTransitionTransaction BeginPropertyTransition(
+        CallbackTransitionStream stream,
+        InvalidationImpact impact,
+        string propertyName)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        ValidateImpact(impact);
+        ArgumentException.ThrowIfNullOrEmpty(propertyName);
+        VerifyMutable();
+        var transition = new CallbackTransitionTransaction(stream.Commit(this));
+        PublishTransitionProperty(ref transition, propertyName, impact);
+        return transition;
+    }
+
+    /// <summary>Begins a property transition for an assembly-owned state coordinator.</summary>
+    /// <param name="stream">The non-null logical callback stream.</param>
+    /// <param name="impact">The validated earliest affected phase.</param>
+    /// <param name="propertyName">The non-empty committed property name.</param>
+    /// <returns>The current-aware transaction retaining any observer failure.</returns>
+    internal CallbackTransitionTransaction BeginCallbackPropertyTransition(
+        CallbackTransitionStream stream,
+        InvalidationImpact impact,
+        string propertyName) =>
+        BeginPropertyTransition(stream, impact, propertyName);
+
+    /// <summary>Publishes another property belonging to an existing current-aware transaction.</summary>
+    /// <param name="transition">The committed transaction.</param>
+    /// <param name="propertyName">The non-empty committed property name.</param>
+    /// <param name="impact">The validated earliest affected phase.</param>
+    private protected void PublishTransitionProperty(
+        ref CallbackTransitionTransaction transition,
+        string propertyName,
+        InvalidationImpact impact)
+    {
+        ValidateImpact(impact);
+        ArgumentException.ThrowIfNullOrEmpty(propertyName);
+        Invalidate(InvalidationFor(impact));
+        transition.PublishCurrent(
+            PropertyChanged,
+            this,
+            new PropertyChangedEventArgs(propertyName));
+    }
+
     /// <summary>Gets whether a versioned property transition still owns dependent work.</summary>
     private protected static bool IsVersionedPropertyCurrent<T>(
         T field,

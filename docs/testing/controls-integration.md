@@ -39,6 +39,15 @@ fixtures additionally prove Calendar culture/bounds/value synchronization,
 provisional navigation, current-version rollback, single acceptance, disposal
 cleanup, and preservation of `DateTimeKind` and sub-second ticks.
 
+The shared callback-transition matrix covers Slider, ScrollBar, ProgressBar,
+ColorPicker, DateInput, TimeInput, DateTimeInput, Expander, and CheckBox. It
+requires away-and-back reentry to invalidate the outer commit, disposal during
+`PropertyChanged` to suppress stale typed events without skipping mandatory
+cleanup, a first subscriber's newer commit to stop the remaining captured
+invocation list, and the earliest observer failure to survive later required
+work. A deterministic overflow fixture also proves generation wrap changes the
+opaque epoch rather than making an ancient token current again.
+
 Default-appearance tests require inactive and disabled semantic
 foreground/border pairs for transparent interactive controls, complete triplets
 for explicitly opaque faces, foreground/border-only hover and direct focus with

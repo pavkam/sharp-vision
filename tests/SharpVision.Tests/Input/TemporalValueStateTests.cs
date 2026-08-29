@@ -14,9 +14,11 @@ public sealed class TemporalValueStateTests
     {
         var seedReads = 0;
         List<(DateOnly? Previous, DateOnly? Current)> changes = [];
+        var owner = new ProbeControl();
         var state = new TemporalValueState<DateOnly>(
             DateOnly.MinValue,
             DateOnly.MaxValue,
+            owner,
             static () => { },
             static (_, _) => { },
             () =>
@@ -24,7 +26,8 @@ public sealed class TemporalValueStateTests
                 seedReads++;
                 return new DateOnly(2026, 8, 28);
             },
-            (previous, current) => changes.Add((previous, current)));
+            (ref transition, previous, current) =>
+                transition.CaptureIfCurrent(() => changes.Add((previous, current))));
 
         _ = state.SetMinimum(new DateOnly(2026, 9, 1));
 
@@ -70,21 +73,23 @@ public sealed class TemporalValueStateTests
         var outer = new DateOnly(2026, 8, 20);
         var nested = new DateOnly(2026, 8, 21);
         List<(DateOnly? Previous, DateOnly? Current)> changes = [];
+        var owner = new ProbeControl();
         state = new TemporalValueState<DateOnly>(
             DateOnly.MinValue,
             DateOnly.MaxValue,
+            owner,
             static () => { },
-            (name, impact) =>
-            {
-                _ = impact;
-
-                if (name == "Value" && state!.Value == outer)
-                {
-                    _ = state.SetValue(nested);
-                }
-            },
+            static (_, _) => { },
             static () => new DateOnly(2026, 8, 1),
-            (previous, current) => changes.Add((previous, current)));
+            (ref transition, previous, current) =>
+                transition.CaptureIfCurrent(() => changes.Add((previous, current))));
+        owner.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(TemporalValueState<>.Value) && state.Value == outer)
+            {
+                _ = state.SetValue(nested);
+            }
+        };
 
         _ = state.SetValue(outer);
 
@@ -101,6 +106,7 @@ public sealed class TemporalValueStateTests
         state = new TemporalValueState<TimeOnly>(
             TimeOnly.MinValue,
             TimeOnly.MaxValue,
+            new ProbeControl(),
             static () => { },
             (name, impact) =>
             {
@@ -112,7 +118,7 @@ public sealed class TemporalValueStateTests
                 }
             },
             static () => new TimeOnly(12, 0),
-            static (_, _) => { });
+            static (ref _, _, _) => { });
         _ = state.SetValue(null);
 
         _ = state.SetAllowNull(false);
@@ -141,24 +147,27 @@ public sealed class TemporalValueStateTests
     private static TemporalValueState<TimeOnly> CreateTimeState() => new(
         TimeOnly.MinValue,
         TimeOnly.MaxValue,
+        new ProbeControl(),
         static () => { },
         static (_, _) => { },
         static () => new TimeOnly(12, 0),
-        static (_, _) => { });
+        static (ref _, _, _) => { });
 
     private static TemporalValueState<DateOnly> CreateDateState() => new(
         DateOnly.MinValue,
         DateOnly.MaxValue,
+        new ProbeControl(),
         static () => { },
         static (_, _) => { },
         static () => new DateOnly(2026, 8, 28),
-        static (_, _) => { });
+        static (ref _, _, _) => { });
 
     private static TemporalValueState<DateTime> CreateDateTimeState() => new(
         DateTime.MinValue,
         DateTime.MaxValue,
+        new ProbeControl(),
         static () => { },
         static (_, _) => { },
         static () => new DateTime(2026, 8, 28, 12, 0, 0),
-        static (_, _) => { });
+        static (ref _, _, _) => { });
 }
