@@ -175,6 +175,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         }
 
         var blocked = back.FindFallbackBlockedPlacements(encodable);
+        skippedPlacements = back.AppendOverlapBlockedDiagnostics(encodable, blocked, skippedPlacements);
 
         // Identifiers for images the new frame no longer needs. Renting a fresh identifier for a
         // logical replacement threw at full capacity even though the retiring image's own

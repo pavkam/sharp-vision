@@ -115,6 +115,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             itermImages,
             sixelBackgrounds);
         var blocked = back.FindFallbackBlockedPlacements(encodable);
+        skippedPlacements = back.AppendOverlapBlockedDiagnostics(encodable, blocked, skippedPlacements);
         var currentCount = CountRenderable(
             encodable,
             metricDependent,

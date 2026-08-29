@@ -496,6 +496,7 @@ namespace SharpVision.Terminal.Graphics
         ProtocolNotAuthorized = 1,
         PlacementNotEncodable = 2,
         OutputLimitExceeded = 3,
+        OverlapBlocked = 4,
     }
     public enum ImageFormat
     {

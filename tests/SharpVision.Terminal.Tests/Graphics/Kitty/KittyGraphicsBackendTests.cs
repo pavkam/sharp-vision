@@ -489,6 +489,33 @@ public sealed class KittyGraphicsBackendTests
         shown.Placements.ShouldBe(1);
     }
 
+    /// <summary>Verifies a later overlapping placement that is not effective (occluded by cell
+    /// paint that arrived after it) suppresses an overlapping lower placement with an
+    /// overlap-blocked diagnostic rather than falling back silently.</summary>
+    [Fact]
+    public void Prepare_WhenLaterOverlapIsIneffective_SuppressesLowerPlacementWithDiagnostic()
+    {
+        using var backend = new KittyGraphicsBackend();
+        var lowerImage = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        var upperImage = GraphicsImage.FromRgba(new Size(1, 1), [4, 5, 6, 255]);
+        using var frame = new RenderFrame(new Size(4, 2));
+        frame.Canvas.DrawImage(lowerImage, new Rect(0, 0, 2, 1), PlacementMode.Stretch);
+        frame.Canvas.DrawImage(upperImage, new Rect(1, 0, 2, 1), PlacementMode.Stretch);
+
+        // Painted only over the cell that is exclusive to the upper placement's destination, so
+        // only the upper placement becomes ineffective; the lower placement's own destination is
+        // untouched by this paint and stays effective on its own.
+        _ = frame.Canvas.Draw("x", new Point(2, 0));
+
+        var result = backend.Prepare(null, frame, full: true);
+        var bytes = WritePrepared(backend);
+
+        result.Placements.ShouldBe(0);
+        bytes.Placements.ShouldBeEmpty();
+        result.SkippedPlacements.ShouldHaveSingleItem().Reason.ShouldBe(
+            GraphicsPlacementSkipReason.OverlapBlocked);
+    }
+
     private static RenderFrame Frame(GraphicsImage image, Rect destination)
     {
         var frame = new RenderFrame(new Size(4, 2));

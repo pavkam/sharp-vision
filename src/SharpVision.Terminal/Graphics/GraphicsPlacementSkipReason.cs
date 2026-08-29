@@ -17,5 +17,11 @@ public enum GraphicsPlacementSkipReason
     PlacementNotEncodable,
 
     /// <summary>The placement could be encoded, but not within the remaining prepared-frame byte limit.</summary>
-    OutputLimitExceeded
+    OutputLimitExceeded,
+
+    /// <summary>
+    /// The placement could be encoded on its own, but a later, overlapping placement that could not
+    /// be encoded forced it to fall back instead.
+    /// </summary>
+    OverlapBlocked
 }

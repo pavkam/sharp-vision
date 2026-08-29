@@ -305,7 +305,9 @@ public sealed class NonRetainedGraphicsBackendTests
         Count(WritePlacements(backend), "\u001b]1337;MultipartFile="u8).ShouldBe(3);
     }
 
-    /// <summary>Verifies a later fallback suppresses every transitively overlapping lower PNG.</summary>
+    /// <summary>Verifies a later fallback suppresses every transitively overlapping lower PNG, and
+    /// that each suppressed lower placement is reported with an overlap-blocked diagnostic rather
+    /// than falling back silently.</summary>
     [Fact]
     public void Prepare_WhenLaterOverlapIsUnsupported_SuppressesAffectedLowerPlacements()
     {
@@ -321,6 +323,10 @@ public sealed class NonRetainedGraphicsBackendTests
         result.Placements.ShouldBe(0);
         result.FullCellRedraw.ShouldBeFalse();
         WritePlacements(backend).ShouldBeEmpty();
+        result.SkippedPlacements.Count.ShouldBe(3);
+        result.SkippedPlacements[0].Reason.ShouldBe(GraphicsPlacementSkipReason.PlacementNotEncodable);
+        result.SkippedPlacements[1].Reason.ShouldBe(GraphicsPlacementSkipReason.OverlapBlocked);
+        result.SkippedPlacements[2].Reason.ShouldBe(GraphicsPlacementSkipReason.OverlapBlocked);
     }
 
     /// <summary>Verifies paint-only occlusion transitions repair non-retained pixels and later reveal the image.</summary>

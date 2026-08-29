@@ -43,6 +43,32 @@ internal static class GraphicsBackendSupport
 
             return blocked;
         }
+
+        /// <summary>
+        /// Appends a diagnostic for every placement that was encodable on its own but was forced to
+        /// fall back solely because a later, overlapping placement could not be encoded.
+        /// </summary>
+        /// <param name="encodable">Whether each placement, by index, can be protocol-encoded.</param>
+        /// <param name="blocked">Whether each placement, by index, must fall back to an ordinary-cell render.</param>
+        /// <param name="skippedPlacements">The skipped-placement diagnostics collected so far, lazily allocated.</param>
+        /// <returns>The skipped-placement diagnostics, including any newly appended entries.</returns>
+        public List<GraphicsPlacementDiagnostic>? AppendOverlapBlockedDiagnostics(
+            ReadOnlySpan<bool> encodable,
+            ReadOnlySpan<bool> blocked,
+            List<GraphicsPlacementDiagnostic>? skippedPlacements)
+        {
+            for (var index = 0; index < frame.PlacementCount; index++)
+            {
+                if (encodable[index] && blocked[index])
+                {
+                    (skippedPlacements ??= []).Add(new GraphicsPlacementDiagnostic(
+                        frame.GetPlacement(index).ImageIdentity,
+                        GraphicsPlacementSkipReason.OverlapBlocked));
+                }
+            }
+
+            return skippedPlacements;
+        }
     }
 
     extension(Rect first)
