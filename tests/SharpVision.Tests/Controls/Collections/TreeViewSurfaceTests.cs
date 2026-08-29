@@ -787,6 +787,13 @@ public sealed class TreeViewSurfaceTests
     /// TreeViewStyle previously fell back to the bare passive "container" key, which no bundled
     /// theme authors a focus delta for, so a user tabbing onto a TreeView had no cue it had
     /// happened despite the TreeView already drawing an all-sides border to recolor.</summary>
+    /// <remarks>
+    /// Also asserts the actually-rendered edge colors, not just the logical <c>ActualBorder</c>
+    /// value: ContainerStyle's baseline relief is Sunken, so <c>ResolvedBorderStyles.Create</c>
+    /// previously discarded the authored focused foreground for highlight/shade substitution even
+    /// though <c>ActualBorder.Foreground</c> itself already carried the right color - a control
+    /// could pass the logical assertion while every edge still painted the wrong color.
+    /// </remarks>
     [Fact]
     public async Task Keyboard_WhenTreeViewReceivesFocus_RecolorsItsOwnBorderAsync()
     {
@@ -800,12 +807,31 @@ public sealed class TreeViewSurfaceTests
         var theme = tree.Theme.ShouldNotBeNull();
         tree.ActualBorder.Foreground.Literal.ShouldBe(ThemeColorHelper.Border(theme));
 
+        // ContainerStyle's baseline Relief is Sunken and never changes by state, so the unfocused
+        // border still shows the two-tone highlight/shade bezel rather than a flat color.
+        var highlight = theme.ResolveColor(SemanticColor.ReliefHighlight);
+        var shade = theme.ResolveColor(SemanticColor.ReliefShade);
+        var normalStyles = tree.ResolveBorderStyles(tree.GetAppearanceState());
+        normalStyles.Top.Foreground.ShouldBe(shade);
+        normalStyles.Right.Foreground.ShouldBe(highlight);
+        normalStyles.Bottom.Foreground.ShouldBe(highlight);
+        normalStyles.Left.Foreground.ShouldBe(shade);
+
         // Act
         await surface.Keyboard.PressAsync(Code.Tab);
 
         // Assert
         tree.IsFocused.ShouldBeTrue();
         tree.ActualBorder.Foreground.Literal.ShouldBe(ThemeColorHelper.FocusedBorder(theme));
+
+        // Assert - every physical edge, not just the logical value, paints the authored focused
+        // color: ContainerStyle's Sunken baseline relief must not substitute highlight/shade over
+        // this state's explicitly authored border foreground.
+        var focusedStyles = tree.ResolveBorderStyles(tree.GetAppearanceState());
+        focusedStyles.Top.Foreground.ShouldBe(ThemeColorHelper.FocusedBorder(theme));
+        focusedStyles.Right.Foreground.ShouldBe(ThemeColorHelper.FocusedBorder(theme));
+        focusedStyles.Bottom.Foreground.ShouldBe(ThemeColorHelper.FocusedBorder(theme));
+        focusedStyles.Left.Foreground.ShouldBe(ThemeColorHelper.FocusedBorder(theme));
     }
 
     /// <summary>Verifies the current row renders an underline cue independent of both theme

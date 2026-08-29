@@ -103,9 +103,12 @@ public sealed class ComboBoxSurfaceTests
         pinned.IsOpen.ShouldBeTrue();
     }
 
-    /// <summary>Verifies Turbo Vision preserves the bright bottom edge of a disabled sunken field.</summary>
+    /// <summary>Verifies a disabled Turbo Vision field shows its authored flat "disabledBorder"
+    /// color instead of the passive Sunken bezel a Sunken/Raised relief would otherwise
+    /// substitute - "input.disabled.border.foreground": "disabledBorder" (darkGray, #555555),
+    /// restored to visibility by the border-relief-vs-authored-Foreground fix.</summary>
     [Fact]
-    public async Task Render_WhenTurboVisionComboBoxIsDisabled_KeepsBottomBorderVisibleAsync()
+    public async Task Render_WhenTurboVisionComboBoxIsDisabled_ShowsFlatDisabledBorderAsync()
     {
         // Arrange
         var combo = new ComboBox
@@ -132,8 +135,9 @@ public sealed class ComboBoxSurfaceTests
             "apply Turbo Vision to the disabled ComboBox");
 
         // Assert
+        var disabledBorder = surface.Application.Theme.ResolveColor(SemanticColor.DisabledBorder);
         var bottom = surface.Cell(new Point(5, 2)).Style;
-        bottom.Foreground.ShouldBe(Color.FromHex("#ffffff"));
+        bottom.Foreground.ShouldBe(disabledBorder);
         bottom.Foreground.ShouldNotBe(bottom.Background);
     }
 

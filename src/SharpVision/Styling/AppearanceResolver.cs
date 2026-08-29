@@ -124,7 +124,7 @@ internal static class AppearanceResolver
         // e.g. decorative content (FigletText, Spinner) commonly leaves LocalFace's background at
         // the default transparent while still choosing its own explicit foreground. It keeps
         // opting out of inheritance unconditionally.
-        var dryRunFace = ResolveFace(theme, FoldAuthoredAppearance(control, states, visualState, normal).Face);
+        var dryRunFace = ResolveFace(theme, FoldAuthoredAppearance(control, states, visualState, normal).Appearance.Face);
         var isTransparent = control.LocalFace is null &&
             !control.IsAppearanceBoundary &&
             dryRunFace.Background.Literal == Color.Transparent;
@@ -136,19 +136,42 @@ internal static class AppearanceResolver
             inheritedFace = ApplyAmbientFace(inheritedFace, ambient);
         }
 
-        var authored = FoldAuthoredAppearance(
+        var (authoredAppearance, borderForegroundAuthored) = FoldAuthoredAppearance(
             control,
             states,
             visualState,
             new ControlAppearance(inheritedFace, normal.Border, normal.Shadow));
 
-        var face = ResolveFace(theme, authored.Face);
-        var border = ResolveBorder(theme, authored.Border);
-        var shadow = ResolveShadow(theme, authored.Shadow);
-        return CreateResolved(theme, face, border, shadow);
+        var face = ResolveFace(theme, authoredAppearance.Face);
+        var border = ResolveBorder(theme, authoredAppearance.Border);
+        var shadow = ResolveShadow(theme, authoredAppearance.Shadow);
+        return CreateResolved(theme, face, border, shadow, borderForegroundAuthored);
     }
 
-    private static ControlAppearance FoldAuthoredAppearance(
+    /// <summary>Folds per-state theme and local overlays onto one base appearance, additionally
+    /// reporting whether the currently active visual state(s) - theme-authored or locally
+    /// overlaid - actually changed <see cref="Border.Foreground"/> away from what it would be with
+    /// no visual-state overlay active at all, rather than it merely surviving unchanged.</summary>
+    /// <remarks>
+    /// A plain value comparison, not a presence check against the per-state overlay machinery: a
+    /// state whose own delta happens to restate Normal's exact Foreground must not opt out of
+    /// relief highlight/shade substitution for a color that never actually changed.
+    ///
+    /// <para>The comparison baseline is <see cref="ControlBase.LocalBorder"/> when present, not
+    /// <paramref name="baseAppearance"/>'s own Normal - a local override is itself part of this
+    /// control's baseline authoring, applied identically regardless of visual state, and must not
+    /// be mistaken for a per-state delta merely because its Foreground happens to differ from the
+    /// Theme's own Normal. Only a subsequent visual-state-specific change on top of it - theme or
+    /// local - counts as authored.</para>
+    ///
+    /// <para>Always false when <see cref="AppearanceStates.StateAuthorsOwnRelief"/> - Button's
+    /// own per-state completion (<c>ButtonStyle.Complete</c>) swaps <see cref="Border.Relief"/> as
+    /// its state-feedback mechanism, and its Foreground genuinely does differ per state (inherited
+    /// unchanged from its fallback's own per-state color), but that difference was never authored
+    /// FOR Button's own rendering and must not compete with the Relief switch it already owns. See
+    /// <see cref="ResolvedBorderStyles.Create"/>.</para>
+    /// </remarks>
+    private static (ControlAppearance Appearance, bool BorderForegroundAuthored) FoldAuthoredAppearance(
         ControlBase control,
         AppearanceStates states,
         VisualState visualState,
@@ -174,7 +197,12 @@ internal static class AppearanceResolver
             }
         }
 
-        return authored.Apply(localCombined);
+        var finalAppearance = authored.Apply(localCombined);
+        var authoredBaseline = control.LocalBorder ?? baseAppearance.Border;
+        var borderForegroundAuthored = !states.StateAuthorsOwnRelief &&
+            finalAppearance.Border.Foreground != authoredBaseline.Foreground;
+
+        return (finalAppearance, borderForegroundAuthored);
     }
 
     extension(ResolvedAppearance previous)
@@ -310,7 +338,12 @@ internal static class AppearanceResolver
         parent.Underline,
         parent.UnderlineColor.Literal);
 
-    private static ResolvedAppearance CreateResolved(Theme? theme, Face face, Border border, Shadow shadow)
+    private static ResolvedAppearance CreateResolved(
+        Theme? theme,
+        Face face,
+        Border border,
+        Shadow shadow,
+        bool borderForegroundAuthoredForState)
     {
         var style = new TerminalStyle(
             face.Foreground.Literal,
@@ -325,7 +358,7 @@ internal static class AppearanceResolver
         return new ResolvedAppearance(
             face,
             border,
-            ResolvedBorderStyles.Create(border, theme),
+            ResolvedBorderStyles.Create(border, theme, borderForegroundAuthoredForState),
             shadow,
             style,
             Background(face.Background.Literal),

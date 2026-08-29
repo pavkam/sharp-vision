@@ -148,9 +148,18 @@ public sealed class WindowSurfaceTests
         await surface.UpdateAsync(scope.ShouldNotBeNull().Dispose, "end sibling modal Window");
     }
 
-    /// <summary>Verifies active Window chrome consumes Turbo Vision's focused raised-edge mapping.</summary>
+    /// <summary>Verifies active Window chrome consumes Turbo Vision's explicit
+    /// "window.focusWithin.border.foreground" delta - a flat "activeBorder" color on every edge -
+    /// rather than the passive Raised bezel a Sunken/Raised relief would otherwise substitute.</summary>
+    /// <remarks>
+    /// Before the border-relief-vs-authored-Foreground fix, this authored per-state color was
+    /// silently discarded for every non-Flat relief, and every edge showed the same
+    /// highlight/shade corner pattern active or not - exactly the defect
+    /// <see cref="Activation_WhenFocusTargetSwitches_ChangesOwnershipWithoutStealingFocusAsync"/>
+    /// also exercises.
+    /// </remarks>
     [Fact]
-    public async Task Render_WhenTurboVisionWindowIsMounted_DrawsRaisedFrameAsync()
+    public async Task Render_WhenTurboVisionWindowIsMounted_ShowsFlatActiveFrameAsync()
     {
         var action = new Button { Text = "Focus" };
         var window = new Window
@@ -178,16 +187,21 @@ public sealed class WindowSurfaceTests
             },
             "apply Turbo Vision and activate the window");
 
-        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(Color.FromHex("#ffffff"));
-        surface.Cell(new Point(9, 0)).Style.Foreground.ShouldBe(Color.FromHex("#ffffff"));
-        surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(Color.FromHex("#ffffff"));
-        surface.Cell(new Point(9, 1)).Style.Foreground.ShouldBe(Color.FromHex("#000000"));
-        surface.Cell(new Point(0, 3)).Style.Foreground.ShouldBe(Color.FromHex("#000000"));
-        surface.Cell(new Point(9, 3)).Style.Foreground.ShouldBe(Color.FromHex("#000000"));
+        var activeBorder = surface.Application.Theme.ResolveColor(SemanticColor.ActiveBorder);
+        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(activeBorder);
+        surface.Cell(new Point(9, 0)).Style.Foreground.ShouldBe(activeBorder);
+        surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(activeBorder);
+        surface.Cell(new Point(9, 1)).Style.Foreground.ShouldBe(activeBorder);
+        surface.Cell(new Point(0, 3)).Style.Foreground.ShouldBe(activeBorder);
+        surface.Cell(new Point(9, 3)).Style.Foreground.ShouldBe(activeBorder);
     }
 
     /// <summary>Verifies focus and primary clicks switch Application activation without
-    /// conflating keyboard focus or changing the semantic raised frame.</summary>
+    /// conflating keyboard focus, and that only the active Window's frame adopts its flat
+    /// ActiveBorder color while the inactive one keeps the passive Raised bezel -
+    /// Theme.BuildWindowStyleSet's code-owned "an active Window's border has always distinguished
+    /// itself from an inactive one" default, restored to visibility by the border-relief-vs-
+    /// authored-Foreground fix.</summary>
     [Fact]
     public async Task Activation_WhenFocusTargetSwitches_ChangesOwnershipWithoutStealingFocusAsync()
     {
@@ -212,6 +226,9 @@ public sealed class WindowSurfaceTests
             root,
             new Size(24, 7),
             TestContext.Current.CancellationToken);
+        var theme = surface.Application.Theme;
+        var activeBorder = TerminalPalette.Project(theme.ResolveColor(SemanticColor.ActiveBorder), ColorDepth.Basic16);
+        var passiveBezel = TerminalPalette.Project(theme.ResolveColor(SemanticColor.ReliefHighlight), ColorDepth.Basic16);
 
         await surface.UpdateAsync(
             () => surface.Application.Focus.Focus(firstAction).ShouldBeTrue(),
@@ -223,8 +240,8 @@ public sealed class WindowSurfaceTests
         surface.ShouldHaveFocus(firstAction);
         var firstBorderPoint = new Point(first.Bounds.X, first.Bounds.Y);
         var secondBorderPoint = new Point(second.Bounds.X, second.Bounds.Y);
-        var raisedBorder = surface.Cell(firstBorderPoint).Style.Foreground;
-        surface.Cell(secondBorderPoint).Style.Foreground.ShouldBe(raisedBorder);
+        surface.Cell(firstBorderPoint).Style.Foreground.ShouldBe(activeBorder);
+        surface.Cell(secondBorderPoint).Style.Foreground.ShouldBe(passiveBezel);
 
         await surface.Pointer.MoveToAsync(second, new Point(1, 0));
         surface.Application.Capture.Hovered.ShouldBeSameAs(second);
@@ -240,8 +257,8 @@ public sealed class WindowSurfaceTests
         first.ContainsFocus.ShouldBeTrue();
         second.ContainsFocus.ShouldBeFalse();
         surface.ShouldHaveFocus(firstAction);
-        surface.Cell(firstBorderPoint).Style.Foreground.ShouldBe(raisedBorder);
-        surface.Cell(secondBorderPoint).Style.Foreground.ShouldBe(raisedBorder);
+        surface.Cell(firstBorderPoint).Style.Foreground.ShouldBe(passiveBezel);
+        surface.Cell(secondBorderPoint).Style.Foreground.ShouldBe(activeBorder);
     }
 
     /// <summary>Verifies a second Window attached to a live Overlay while already Visible becomes
@@ -553,7 +570,16 @@ public sealed class WindowSurfaceTests
     }
 
     /// <summary>Verifies close-mark states remain local while its primary press activates the Window frame.</summary>
-    /// <remarks>Releases outside the close target to cancel activation, since a completed click now closes the Window by default.</remarks>
+    /// <remarks>
+    /// Releases outside the close target to cancel activation, since a completed click now closes
+    /// the Window by default.
+    ///
+    /// <para>The frame itself only reacts to genuine Window activation (FocusWithin), not to mere
+    /// pointer-over of the close mark - "window" authors no "pointerOver" delta, so hovering alone
+    /// leaves the frame at its passive Raised bezel exactly like Normal, and only pressing (which
+    /// also focuses/activates the Window) switches it to the flat ActiveBorder color
+    /// Theme.BuildWindowStyleSet's code-owned default has always intended.</para>
+    /// </remarks>
     [Fact]
     public async Task Pointer_WhenCloseAffordanceChangesState_ChangesOnlyMarkForegroundAsync()
     {
@@ -581,19 +607,24 @@ public sealed class WindowSurfaceTests
         hovered.ShouldNotBe(pressed);
         surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(normal);
 
-        // Act and assert hover
+        // Act and assert hover - the frame does not react, since "window" authors no
+        // "pointerOver" delta of its own.
         await surface.Pointer.MoveToAsync(window, new Point(4, 0));
         surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(hovered);
         var hoveredFrame = surface.Cell(new Point(3, 0)).Style.Foreground;
         hoveredFrame.IsRgb.ShouldBeTrue();
+        hoveredFrame.ShouldBe(frame);
         surface.Cell(new Point(4, 0)).Style.Background.ShouldBe(background);
 
-        // Act and assert held press
+        // Act and assert held press - pressing the close mark also focuses/activates the Window,
+        // which switches the frame to its own flat ActiveBorder color, distinct from the passive
+        // bezel hovering alone left untouched above.
         await surface.Pointer.PressAsync();
         surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(pressed);
         window.IsActive.ShouldBeTrue();
         var activeFrame = surface.Cell(new Point(3, 0)).Style.Foreground;
-        activeFrame.ShouldBe(hoveredFrame);
+        activeFrame.ShouldNotBe(hoveredFrame);
+        activeFrame.ShouldBe(TerminalPalette.Project(theme.ResolveColor(SemanticColor.ActiveBorder), ColorDepth.Basic16));
         surface.Cell(new Point(4, 0)).Style.Background.ShouldBe(background);
 
         // Act and assert releasing outside the target cancels activation, leaving the Window

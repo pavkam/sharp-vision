@@ -6,9 +6,12 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies intrinsic border glyph families through mounted terminal surfaces.</summary>
 public sealed class IntrinsicBorderSurfaceTests
 {
-    /// <summary>Verifies Turbo Vision keeps sunken relief while making focused input chrome active.</summary>
+    /// <summary>Verifies a focused Turbo Vision input shows its authored flat "focusedBorder"
+    /// color on every edge instead of the passive Sunken bezel a Sunken/Raised relief would
+    /// otherwise substitute - "input.focused.border.foreground": "focusedBorder" (brightCyan,
+    /// #55ffff), restored to visibility by the border-relief-vs-authored-Foreground fix.</summary>
     [Fact]
-    public async Task Render_WhenTurboVisionInputReceivesFocus_DrawsActiveSunkenFrameAsync()
+    public async Task Render_WhenTurboVisionInputReceivesFocus_ShowsFlatActiveFrameAsync()
     {
         var control = new TextInput
         {
@@ -33,12 +36,13 @@ public sealed class IntrinsicBorderSurfaceTests
             },
             "apply Turbo Vision and focus the input");
 
-        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(Color.FromHex("#000000"));
-        surface.Cell(new Point(5, 0)).Style.Foreground.ShouldBe(Color.FromHex("#000000"));
-        surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(Color.FromHex("#000000"));
-        surface.Cell(new Point(5, 1)).Style.Foreground.ShouldBe(Color.FromHex("#ffffff"));
-        surface.Cell(new Point(0, 2)).Style.Foreground.ShouldBe(Color.FromHex("#ffffff"));
-        surface.Cell(new Point(5, 2)).Style.Foreground.ShouldBe(Color.FromHex("#ffffff"));
+        var focusedBorder = surface.Application.Theme.ResolveColor(SemanticColor.FocusedBorder);
+        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(focusedBorder);
+        surface.Cell(new Point(5, 0)).Style.Foreground.ShouldBe(focusedBorder);
+        surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(focusedBorder);
+        surface.Cell(new Point(5, 1)).Style.Foreground.ShouldBe(focusedBorder);
+        surface.Cell(new Point(0, 2)).Style.Foreground.ShouldBe(focusedBorder);
+        surface.Cell(new Point(5, 2)).Style.Foreground.ShouldBe(focusedBorder);
     }
 
     /// <summary>Verifies the Turbo Vision container role renders its exact sunken edge colors.</summary>

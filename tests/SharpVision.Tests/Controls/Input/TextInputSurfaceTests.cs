@@ -820,4 +820,96 @@ public sealed class TextInputSurfaceTests
         input.HorizontalOffset.ShouldBe(0);
         surface.ShouldRender("abcd");
     }
+
+    /// <summary>Verifies pointer hover recolors every physical edge of TextInput's border, not just
+    /// the logical resolved value. InputStyle's baseline relief is Sunken, so
+    /// ResolvedBorderStyles.Create previously discarded the theme-authored "input.pointerOver.border.foreground"
+    /// delta for highlight/shade substitution even though ActualBorder.Foreground already carried the
+    /// right color - every bundled theme's hover cue was invisible on TextInput's actual border.</summary>
+    [Fact]
+    public async Task Pointer_WhenMovedOverTextInput_RecolorsEveryBorderEdgeAsync()
+    {
+        // Arrange
+        var input = new TextInput
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(8),
+            Height = Length.Cells(3)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(10, 5),
+            TestContext.Current.CancellationToken);
+        var theme = input.Theme.ShouldNotBeNull();
+        AssertSunkenReliefEdges(input, theme);
+
+        // Act
+        await surface.Pointer.MoveToAsync(input);
+
+        // Assert - every edge, not just the two bezel corners, turns the same authored flat color.
+        surface.ShouldHaveState(input, VisualState.IsPointerOver);
+        AssertFlatEdges(input, ThemeColorHelper.HoveredBorder(theme));
+
+        // Act - move away, so the hover cue is not a fixed accident of relief substitution.
+        await surface.Pointer.MoveToAsync(new Point(20, 20));
+
+        // Assert - the Sunken bezel returns once the authored color no longer applies.
+        surface.ShouldHaveState(input, VisualState.Normal);
+        AssertSunkenReliefEdges(input, theme);
+    }
+
+    /// <summary>Verifies keyboard focus recolors every physical edge of TextInput's border, not just
+    /// the logical resolved value - the focus-cue sibling of
+    /// <see cref="Pointer_WhenMovedOverTextInput_RecolorsEveryBorderEdgeAsync"/>, exercising
+    /// "input.focused.border.foreground" instead of "input.pointerOver.border.foreground".</summary>
+    [Fact]
+    public async Task Keyboard_WhenTextInputReceivesFocus_RecolorsEveryBorderEdgeAsync()
+    {
+        // Arrange
+        var input = new TextInput
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(8),
+            Height = Length.Cells(3)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(10, 5),
+            TestContext.Current.CancellationToken);
+        var theme = input.Theme.ShouldNotBeNull();
+        AssertSunkenReliefEdges(input, theme);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert - every edge, not just the two bezel corners, turns the same authored flat color.
+        input.IsFocused.ShouldBeTrue();
+        surface.ShouldHaveState(input, VisualState.Focused);
+        AssertFlatEdges(input, ThemeColorHelper.FocusedBorder(theme));
+    }
+
+    // TextInput's baseline Relief is Sunken and never changes by state, so an unauthored state
+    // (Normal, or a state with no border-color delta) must still show the two-tone highlight/shade
+    // bezel - Top/Left shaded, Right/Bottom highlighted for Sunken - rather than a flat color.
+    private static void AssertSunkenReliefEdges(TextInput input, Theme theme)
+    {
+        var highlight = theme.ResolveColor(SemanticColor.ReliefHighlight);
+        var shade = theme.ResolveColor(SemanticColor.ReliefShade);
+        var styles = input.ResolveBorderStyles(input.GetAppearanceState());
+        styles.Top.Foreground.ShouldBe(shade);
+        styles.Right.Foreground.ShouldBe(highlight);
+        styles.Bottom.Foreground.ShouldBe(highlight);
+        styles.Left.Foreground.ShouldBe(shade);
+    }
+
+    private static void AssertFlatEdges(TextInput input, Color expected)
+    {
+        var styles = input.ResolveBorderStyles(input.GetAppearanceState());
+        styles.Top.Foreground.ShouldBe(expected);
+        styles.Right.Foreground.ShouldBe(expected);
+        styles.Bottom.Foreground.ShouldBe(expected);
+        styles.Left.Foreground.ShouldBe(expected);
+    }
 }
