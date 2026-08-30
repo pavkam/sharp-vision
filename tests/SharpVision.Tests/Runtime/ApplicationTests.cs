@@ -277,6 +277,54 @@ public sealed class ApplicationTests
         application.Failure.ShouldBeNull();
     }
 
+    /// <summary>Verifies an arrange request retained from inside the current layout transaction
+    /// produces a frame for the replayed geometry instead of leaving the terminal on the frame
+    /// painted before that replay.</summary>
+    [Fact]
+    public async Task Layout_WhenArrangeIsRetainedDuringCurrentTransaction_RendersReplayedGeometryAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var probe = new ProbeControl();
+        await using Application application = new(probe, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var arrangeCount = 0;
+        var frameCount = 0;
+        var replayedFrame = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.FrameRendered += (_, _) =>
+        {
+            if (++frameCount >= 2)
+            {
+                _ = replayedFrame.TrySetResult();
+            }
+        };
+
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                probe.Arranging = current =>
+                {
+                    arrangeCount++;
+                    current.Content = arrangeCount.ToString(CultureInfo.InvariantCulture).AsMemory();
+
+                    if (arrangeCount == 1)
+                    {
+                        current.InvalidateKernel(InvalidationImpact.Arrange);
+                    }
+                };
+                probe.InvalidateKernel(InvalidationImpact.Arrange);
+            },
+            TestContext.Current.CancellationToken);
+
+        await replayedFrame.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        arrangeCount.ShouldBe(2);
+        frameCount.ShouldBe(2);
+        application.Root.Pending.ShouldBe(Invalidation.None);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        application.Failure.ShouldBeNull();
+    }
+
     /// <summary>Verifies Shutdown() drives the identical cooperative stop path as the ISink Closed()
     /// callback, giving application code a discoverable, intention-named exit call.</summary>
     [Fact]

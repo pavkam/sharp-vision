@@ -2368,7 +2368,12 @@ public sealed class Application:
             break;
         }
 
-        if ((Root.Pending & Invalidation.Render) != 0)
+        // A control can retain Arrange while its current arrange transaction is still open. The
+        // frame already being produced consumes that request's Render bit before CompleteRender
+        // replays the retained layout, so the replay itself is the remaining proof that the
+        // committed geometry no longer matches the terminal. Render whenever this transaction
+        // performed layout, even when an overlapping frame consumed the original Render bit.
+        if ((Root.Pending & Invalidation.Render) != 0 || _layoutSinceLastRender)
         {
             StartRender(skipCleanSubtrees: !_layoutSinceLastRender);
         }
