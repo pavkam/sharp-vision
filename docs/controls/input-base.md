@@ -113,6 +113,15 @@ every time instead. Its ownership and close lifetime follow the
 [popup navigation session contract](../concepts/floating-surfaces.md#popup-navigation-sessions),
 while first-party provisional state remains an internal implementation detail.
 
+## Keyboard
+
+| Key            | Behavior                                                                                                   |
+| -------------- | ---------------------------------------------------------------------------------------------------------- |
+| Enter          | Activates immediately when the derived control enables press activation.                                   |
+| Space          | Shows the pressed state on key down and activates on the matching key up when press activation is enabled. |
+| Up / Down      | Can be mapped by a derived value control to increase or decrease its value.                                |
+| Alt+access key | Focuses and activates the derived control when the caption capability declares that access key.            |
+
 ## Example
 
 ```csharp

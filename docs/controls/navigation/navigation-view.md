@@ -58,6 +58,16 @@ classDiagram
 | `SelectionChanged`                                         | `EventHandler<NavigationViewSelectionChangedEventArgs>` | No subscribers | Reports a committed selection change.                                         |
 | `ScrollChanged`                                            | `EventHandler<ScrollChangedEventArgs>`                  | No subscribers | Raised by the view after the generated scroll container's offset commits.     |
 
+## Keyboard
+
+| Key                 | Behavior                                                 |
+| ------------------- | -------------------------------------------------------- |
+| Up / Down           | Moves to the previous or next available item or group.   |
+| Home / End          | Moves to the first or last available entry.              |
+| Page Up / Page Down | Moves by one visible page.                               |
+| Enter / Space       | Invokes the current item or toggles the current group.   |
+| Alt+access key      | Invokes the matching item or toggles the matching group. |
+
 ## Behavior
 
 - `Header` is hidden when null or empty. Visible header text is always bold;

@@ -49,6 +49,13 @@ classDiagram
 `BottomCenter`, and `BottomRight`. `ToastAnimation` defines `SlideTop`,
 `SlideDown`, `SlideLeft`, `SlideRight`, `Expand`, and `Fade`.
 
+## Keyboard
+
+| Key           | Behavior                                                               |
+| ------------- | ---------------------------------------------------------------------- |
+| Escape        | Dismisses a focused Toast when `IsDismissible` is `true`.              |
+| Enter / Space | Activates the focused close affordance when `IsDismissible` is `true`. |
+
 ## Presentation and timing
 
 `Show(owner)` resolves the attached owner’s stable presentation plane and mounts

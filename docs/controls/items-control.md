@@ -73,6 +73,12 @@ classDiagram
 types such as [`ListView`](collections/list-view.md#overview) and
 [`Table`](layout/table.md#overview) publish typed semantic collections.
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Example
 
 ```csharp

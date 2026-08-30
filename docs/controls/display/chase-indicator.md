@@ -40,6 +40,12 @@ or timer scheduling after publication even when a `PropertyChanged` observer
 throws; the observer failure is rethrown only after the committed timing state
 is coherent.
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Presets and glyphs
 
 `ChaseIndicatorStyle`, reached through `Style`/`ActualStyle`, owns the per-part

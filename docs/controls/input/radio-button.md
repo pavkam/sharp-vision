@@ -83,6 +83,16 @@ RadioButton does not expose raw border, shadow, or state-appearance mutation.
 For third-party composition, inspect `ActualStyle`, `ActualBorder`, and
 `ActualShadow` instead.
 
+## Keyboard
+
+| Key            | Behavior                                                                          |
+| -------------- | --------------------------------------------------------------------------------- |
+| Enter          | Selects this radio button immediately.                                            |
+| Space          | Selects this radio button on key release.                                         |
+| Left / Up      | Moves focus and selection to the previous eligible member, wrapping at the start. |
+| Right / Down   | Moves focus and selection to the next eligible member, wrapping at the end.       |
+| Alt+access key | Focuses and selects the radio button when `Text` declares that access key.        |
+
 ## Group and interaction behavior
 
 User activation selects a member and never toggles it back to false. Unnamed

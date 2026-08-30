@@ -40,6 +40,12 @@ that same order, so reversing the stack also reverses popup drawing and hit
 priority. Selectable-text aggregation follows the same visual reading order, so
 semantic offsets, pointer geometry, and copied text remain aligned.
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Behavior
 
 Along the stack axis, automatic children receive their intrinsic space and

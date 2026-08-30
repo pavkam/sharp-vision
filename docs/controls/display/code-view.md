@@ -107,6 +107,18 @@ changes during a catalog notification supersede that completed catalog
 projection instead of letting the outer transition restore a stale grammar.
 Reassigning the same value is silent.
 
+## Keyboard
+
+| Key                 | Behavior                                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------ |
+| Left / Right        | Moves the caret by one grapheme; Ctrl moves by one word and Shift extends the selection.               |
+| Up / Down           | Moves to the nearest caret position on the previous or next visible line; Shift extends the selection. |
+| Home / End          | Moves to the start or end of the current line; Shift extends the selection.                            |
+| Page Up / Page Down | Moves by one viewport minus `PageOverlap`; Shift extends the selection.                                |
+| Ctrl+A              | Selects all source text, including folded lines.                                                       |
+| Ctrl+C              | Copies the selected source text through the application clipboard.                                     |
+| Tab / Shift+Tab     | Moves focus out of CodeView; generated scrollbars are not tab stops inside it.                         |
+
 ## Selection, viewport, and copying
 
 Selection is a single directional range (`Selection.Anchor`/`Selection.Caret`)

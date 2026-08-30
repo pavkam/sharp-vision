@@ -71,6 +71,19 @@ the popup is open without replacing the active result, selection, focus, or
 resolver snapshot. `Length.Auto` retains content-sized eager rows; proportional
 and zero fixed/percentage requests are invalid.
 
+## Keyboard
+
+| Key                 | Behavior                                                          |
+| ------------------- | ----------------------------------------------------------------- |
+| Typed text          | Edits the query and refreshes the result list.                    |
+| Up / Left           | Moves to the previous available result while the palette is open. |
+| Down / Right        | Moves to the next available result while the palette is open.     |
+| Home / End          | Moves to the first or last available result.                      |
+| Page Up / Page Down | Moves by one visible result page.                                 |
+| Enter               | Accepts the current result and closes the palette.                |
+| Space               | Inserts a space in the query; it does not accept a result.        |
+| Escape              | Cancels and closes the palette.                                   |
+
 ## Resolution and interaction
 
 1. A text change revokes and cancels the previous opaque operation lease, sets
@@ -89,17 +102,7 @@ and zero fixed/percentage requests are invalid.
    snapshots the prior selected and current rows so a close without acceptance
    can restore them.
 
-| Input                                     | Open-session behavior                                                                                                                           |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Up or Left, initial or repeat             | Moves selection and current state to the previous available result.                                                                             |
-| Down or Right, initial or repeat          | Moves selection and current state to the next available result.                                                                                 |
-| Home or End, initial or repeat            | Moves selection and current state to the first or last available result.                                                                        |
-| Page Up or Page Down, initial or repeat   | Moves selection and current state by one visible page and keeps the result visible.                                                             |
-| Enter, initial activation-eligible press  | Accepts the current result, closes the popup, then publishes `ItemInvoked`; while resolving, consumes the key without activating stale results. |
-| Space                                     | Remains editable query text while the retained editor has focus; it is not a palette acceptance shortcut.                                       |
-| Escape, initial activation-eligible press | Cancels and closes the popup.                                                                                                                   |
-
-The navigation rows above use the
+The keyboard commands use the
 [shared focus-independent delegation rule](../../concepts/input-routing.md#popup-navigation-delegation).
 They run exactly once whether focus remains in the retained editor or is moved
 into the result list. Selection and current state are provisional until Enter or

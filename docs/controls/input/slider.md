@@ -38,6 +38,15 @@ the inherited `Face`/`Border`/`Shadow`. A `with` expression creates a validated
 member-wise copy of `SliderStyle.Default`; assigning `null` to `Style` restores
 the Theme-owned presentation.
 
+## Keyboard
+
+| Key                 | Behavior                                                     |
+| ------------------- | ------------------------------------------------------------ |
+| Left / Right        | Decreases or increases a horizontal slider by `SmallChange`. |
+| Down / Up           | Decreases or increases a vertical slider by `SmallChange`.   |
+| Page Down / Page Up | Decreases or increases the value by `LargeChange`.           |
+| Home / End          | Selects `Minimum` or `Maximum`.                              |
+
 ## Behavior
 
 - An endpoint setter throws `ArgumentException` only when it would invert the

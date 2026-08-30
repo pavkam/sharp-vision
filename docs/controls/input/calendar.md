@@ -80,6 +80,16 @@ a fresh anchor. Date hover is cleared whenever the framework retires Calendar's
 pointer-over path, including ancestor hide, disable, removal, reparenting, and
 modal-plane exclusion; it does not depend on receiving a routed `Leave`.
 
+## Keyboard
+
+| Key                 | Behavior                                                       |
+| ------------------- | -------------------------------------------------------------- |
+| Left / Right        | Moves to the previous or next selectable date.                 |
+| Up / Down           | Moves by one week, continuing past blocked dates.              |
+| Home / End          | Moves to the first or last selectable date of the week.        |
+| Page Up / Page Down | Moves to the corresponding date in the previous or next month. |
+| Enter / Space       | Activates `ActiveDate` using the current selection mode.       |
+
 ## Dates, bounds, and culture
 
 `ActiveDate` and `DisplayMonth` resolve to the local date on first read rather
@@ -217,22 +227,17 @@ as of the control's last render and moves to the new date on the next redraw, so
 an idle Calendar keeps the previous day's marker across midnight until something
 repaints it. The focused active date renders with an underline.
 
-## Keyboard and pointer input
+## Input details
 
 The Calendar is one focus stop with `TabNavigation.None`.
 
-| Input                | Action                                                                                                    |
-| -------------------- | --------------------------------------------------------------------------------------------------------- |
-| Left / Right         | Move to the previous / next selectable date.                                                              |
-| Up / Down            | Move one week, continuing in that direction past blocked days.                                            |
-| Home / End           | Move inward to the first / last selectable date of the week.                                              |
-| Page Up / Page Down  | Move to the corresponding date in the adjacent month.                                                     |
-| Enter / Space        | Activate `ActiveDate` through the current mode.                                                           |
-| Header arrow press   | Change only `DisplayMonth`, unless a focus callback invalidated the control.                              |
-| Selectable day press | Focus, then make active and activate the mapped date while the control stays valid after focus callbacks. |
-| Blocked day press    | Consume the press without changing selection.                                                             |
-| Pointer move / leave | Update direct date hover and interval preview; committed pointer-over loss also clears both.              |
-| Wheel up / down      | Display the previous / next month.                                                                        |
+| Pointer action       | Behavior                                                                                      |
+| -------------------- | --------------------------------------------------------------------------------------------- |
+| Header arrow press   | Changes only `DisplayMonth`, unless a focus callback invalidated the control.                 |
+| Selectable day press | Focuses, makes active, and activates the mapped date while the control remains valid.         |
+| Blocked day press    | Consumes the press without changing selection.                                                |
+| Pointer move / leave | Updates direct date hover and interval preview; committed pointer-over loss also clears both. |
+| Wheel up / down      | Displays the previous or next month.                                                          |
 
 Initial key presses and navigation repeats are accepted; release is ignored.
 Movement keys accept lock state but no Shift or application-command modifier;

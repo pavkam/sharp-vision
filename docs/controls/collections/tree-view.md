@@ -85,6 +85,19 @@ section, while `LoadingColor`/`FailedColor`/`LoadingGlyph`/`FailedGlyph`/
 `CollapsedGlyph`/`ExpandedGlyph` stay code-owned - reachable only through a
 locally assigned `Style`.
 
+## Keyboard
+
+| Key                 | Behavior                                                       |
+| ------------------- | -------------------------------------------------------------- |
+| Up / Down           | Moves to the previous or next visible item.                    |
+| Left                | Collapses the current item, or moves to its parent.            |
+| Right               | Expands the current item, or moves to its first visible child. |
+| Home / End          | Moves to the first or last visible item.                       |
+| Page Up / Page Down | Moves by one visible page.                                     |
+| Space               | Toggles check state or applies the current selection gesture.  |
+| Enter               | Activates and selects the current item.                        |
+| Ctrl+A              | Selects every enabled item in `Multiple` mode.                 |
+
 ## Selection
 
 Setting a `TreeViewItem`'s `Visibility` to `Collapsed` removes both its own row
@@ -122,19 +135,11 @@ refusing it would leave the control in a state its own configuration forbids.
 
 ## Navigation
 
-| Input                                         | Result                                                                                                                     |
-| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Up / Down                                     | Moves to the previous or next item in linear depth-first order; does not wrap.                                             |
-| Left                                          | Collapses an expanded item with children; otherwise selects and moves to its parent.                                       |
-| Right                                         | Expands a collapsed item with children; otherwise selects and moves to its first visible child.                            |
-| Home / End                                    | Selects the first or last visible item.                                                                                    |
-| PageUp / PageDown                             | Moves by items filling the committed viewport height minus `PageOverlap`, accumulating each realized item's own height.    |
-| Space                                         | Toggles check state or selection when only Control, Shift, or lock modifiers accompany it; larger chords remain unhandled. |
-| Enter                                         | Activates the current item, applies selection, and raises `ItemInvoked` for an activation-eligible modifier state.         |
-| Control+A (`Multiple` mode)                   | Selects every enabled item for the exact lock-normalized Control command; larger chords remain unhandled.                  |
-| Primary pointer click on the disclosure glyph | Toggles `IsExpanded`.                                                                                                      |
-| Primary pointer click on the check mark       | Toggles the check state; every cell of the mark is a hit target.                                                           |
-| Primary pointer click elsewhere on the row    | Invokes and applies selection.                                                                                             |
+| Pointer action                        | Result                                                           |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| Primary click on the disclosure glyph | Toggles `IsExpanded`.                                            |
+| Primary click on the check mark       | Toggles the check state; every cell of the mark is a hit target. |
+| Primary click elsewhere on the row    | Invokes and applies selection.                                   |
 
 Movement accepts Control, Shift, and incidental lock state for collection
 selection, but leaves Alt, Super, Hyper, Meta, and larger application chords

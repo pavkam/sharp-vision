@@ -84,6 +84,18 @@ everything, the value's own box shrinks first, then the end affix drops whole,
 then the start affix - never a partial cluster - and the decision is
 re-evaluated against the control's actual bounds on every render.
 
+## Keyboard
+
+| Key                         | Behavior                                                      |
+| --------------------------- | ------------------------------------------------------------- |
+| Typed digits and separators | Edits the temporary text buffer at the caret.                 |
+| Left / Right                | Moves the caret through the temporary buffer.                 |
+| Backspace / Delete          | Removes text before or at the caret.                          |
+| Up / Down                   | Adds or subtracts `Step` and commits immediately.             |
+| Home / End                  | Commits `Minimum` or `Maximum`.                               |
+| Enter                       | Parses and commits the temporary buffer.                      |
+| Escape                      | Discards the temporary edit and restores the committed value. |
+
 ## Example
 
 ![The NumberInput control rendered in the live showcase](../../images/controls/number-input.png)

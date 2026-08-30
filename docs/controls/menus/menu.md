@@ -28,6 +28,18 @@ classDiagram
 | `SelectedItem`  | `MenuItem?`                              | `null`             | Gets or selects the active non-separator item; derived from `SelectedIndex`. |
 | `ItemInvoked`   | `EventHandler<MenuItemInvokedEventArgs>` | No subscribers     | Reports an item after its own `Invoked` subscribers complete.                |
 
+## Keyboard
+
+| Key                 | Behavior                                                                    |
+| ------------------- | --------------------------------------------------------------------------- |
+| Left / Right        | Moves through a horizontal menu, wrapping and skipping unavailable entries. |
+| Up / Down           | Moves through a vertical menu, wrapping and skipping unavailable entries.   |
+| Tab / Shift+Tab     | Moves to the next or previous menu item regardless of orientation.          |
+| Enter               | Activates the selected item.                                                |
+| Space               | Activates the selected item on key release.                                 |
+| Escape              | Closes the active menu chain.                                               |
+| Alt+item access key | Selects and activates the matching item.                                    |
+
 ## Behavior
 
 - `Items : MenuEntryCollection` can be inspected as an `IReadOnlyList<Control>`

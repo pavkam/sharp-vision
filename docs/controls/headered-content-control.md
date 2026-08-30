@@ -40,6 +40,12 @@ classDiagram
 | `ArrangeOverride(Rect bounds)`                                 | `void`         | —       | Protected abstract; assigns the final content-box slots of `Header` and `Content`.                     |
 | `OnHeaderChanged(ControlBase? previous, ControlBase? current)` | `void`         | —       | Protected virtual; responds after the header ownership change is structurally committed.               |
 
+## Keyboard
+
+| Key                   | Behavior                                                             |
+| --------------------- | -------------------------------------------------------------------- |
+| Alt+header access key | Focuses the semantic owner when `HeaderText` declares an access key. |
+
 ## Ownership and mutation
 
 `Header` follows the exact ownership, replacement, and disposal contract

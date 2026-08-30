@@ -55,6 +55,15 @@ Concrete controls normally use the unbounded parameterless constructor;
 specialized presenters may impose a finite semantic limit through
 `Container(int capacity)`.
 
+## Keyboard
+
+| Key                 | Behavior                                                                      |
+| ------------------- | ----------------------------------------------------------------------------- |
+| Left / Right        | Scrolls horizontally by `LineSize` when horizontal scrolling is available.    |
+| Up / Down           | Scrolls vertically by `LineSize` when vertical scrolling is available.        |
+| Page Up / Page Down | Scrolls by one viewport minus `PageOverlap`; vertical scrolling is preferred. |
+| Home / End          | Scrolls to the start or end of the preferred axis.                            |
+
 ## Children and ownership
 
 `Children` is the public adapter over exactly one container-child ownership

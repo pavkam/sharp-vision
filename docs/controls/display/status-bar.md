@@ -82,6 +82,12 @@ Presence and appearance of each separator are separate, independently settable
 facts: whether a separator exists reserves a cell and is layout, which the item
 owns; which glyph it draws is presentation, which the theme owns.
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Separator presentation
 
 `StatusBarItemStyle`, reached through `Style`/`ActualStyle`, owns the required

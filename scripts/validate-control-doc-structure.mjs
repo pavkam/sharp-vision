@@ -46,6 +46,7 @@ const documentedTypeOverrides = new Map([
 ]);
 
 const expectedApiHeader = ["Member", "Type", "Default", "Description"];
+const expectedKeyboardHeader = ["Key", "Behavior"];
 
 /**
  * Reports whether a table's header row is exactly the canonical `Member | Type | Default |
@@ -384,8 +385,8 @@ export function findNearestHeadingBefore(headings, lineIndex) {
 }
 
 /**
- * Validates the required control-page H2 spine: `Overview`, `Inheritance`, `API`, any number of
- * optional topic sections, `Example`, then `Expected behavior`, in that exact order.
+ * Validates the required control-page H2 spine: `Overview`, `Inheritance`, `API`, `Keyboard`, any
+ * number of optional topic sections, `Example`, then `Expected behavior`, in that exact order.
  *
  * @param {{ text: string }[]} headings The page's H2 headings, in document order.
  * @returns {string | null} A violation description, or `null` when the spine is correct.
@@ -396,7 +397,7 @@ export function validateSectionSpine(headings) {
     if (texts.length < 5) {
         return (
             `H2 spine is incomplete (found: ${texts.length === 0 ? "none" : texts.join(", ")}); ` +
-            "expected Overview, Inheritance, API, ..., Example, Expected behavior"
+            "expected Overview, Inheritance, API, Keyboard, ..., Example, Expected behavior"
         );
     }
 
@@ -412,6 +413,10 @@ export function validateSectionSpine(headings) {
 
     if (texts[2] !== "API") {
         problems.push(`third H2 is "${texts[2]}", expected "API"`);
+    }
+
+    if (texts[3] !== "Keyboard") {
+        problems.push("## Keyboard is required after ## API");
     }
 
     if (texts.at(-1) !== "Expected behavior") {
@@ -1048,7 +1053,10 @@ export async function validateControlDocStructure(root) {
     try {
         snapshotTexts.push(
             await readFile(
-                join(snapshotsRoot, "SharpVision.SyntaxHighlighting.verified.txt"),
+                join(
+                    snapshotsRoot,
+                    "SharpVision.SyntaxHighlighting.verified.txt",
+                ),
                 "utf8",
             ),
         );
@@ -1136,6 +1144,35 @@ export async function validateControlDocStructure(root) {
             errors.push(
                 `${relativePath}: ## API table header is "| ${apiTables[0].headerCells.join(" | ")} |", ` +
                     `expected "| ${expectedApiHeader.join(" | ")} |"`,
+            );
+        }
+
+        const keyboardSection = sliceSection(lines, headings, "Keyboard");
+        const keyboardTables =
+            keyboardSection === undefined
+                ? []
+                : parseMarkdownTables(keyboardSection);
+
+        if (keyboardSection !== undefined && keyboardTables.length === 0) {
+            errors.push(`${relativePath}: ## Keyboard has no Markdown table`);
+        } else if (
+            keyboardTables.length > 0 &&
+            keyboardTables[0].dataRows.length === 0
+        ) {
+            errors.push(
+                `${relativePath}: ## Keyboard table has no behavior rows`,
+            );
+        } else if (
+            keyboardTables.length > 0 &&
+            (keyboardTables[0].headerCells.length !==
+                expectedKeyboardHeader.length ||
+                !keyboardTables[0].headerCells.every(
+                    (cell, index) => cell === expectedKeyboardHeader[index],
+                ))
+        ) {
+            errors.push(
+                `${relativePath}: ## Keyboard table header is "| ${keyboardTables[0].headerCells.join(" | ")} |", ` +
+                    `expected "| ${expectedKeyboardHeader.join(" | ")} |"`,
             );
         }
 

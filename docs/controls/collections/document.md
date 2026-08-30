@@ -164,6 +164,21 @@ Reading `ActiveLink` after disposal throws `ObjectDisposedException`. Disposal
 also clears the retained link reference and its internal projected index, so an
 unavailable document cannot keep a detached interactive selection alive.
 
+## Keyboard
+
+| Key                             | Behavior                                                                                               |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Tab / Shift+Tab                 | Moves to the next or previous enabled link or embedded control; at an edge, focus leaves the Document. |
+| Enter / Space                   | Activates the focused link.                                                                            |
+| Up / Down                       | Scrolls by `LineSize` lines.                                                                           |
+| Page Up / Page Down             | Scrolls by one viewport minus `PageOverlap`.                                                           |
+| Home / End                      | Scrolls to the first or last line.                                                                     |
+| Ctrl+A                          | Selects the complete semantic document.                                                                |
+| Ctrl+C                          | Copies from the nearest focused document or embedded-control selection.                                |
+| Shift+Arrow keys                | Extends the text selection by grapheme or visual row.                                                  |
+| Shift+Home / Shift+End          | Extends the selection to the current visual line boundary.                                             |
+| Shift+Page Up / Shift+Page Down | Extends the selection by one document page.                                                            |
+
 ## Content tree
 
 Every node derives from `DocumentNode`, most of them through one of two abstract
@@ -535,24 +550,12 @@ focus on the document; controls embedded through `DocumentInlineControl` and
 `DocumentBlockControl` receive focus directly and retain their ordinary input
 behavior. At either end, the unhandled Tab leaves the whole document subtree.
 
-| Input                                  | Result                                                                        |
-| -------------------------------------- | ----------------------------------------------------------------------------- |
-| Tab                                    | Moves to the next enabled link or embedded control and scrolls it into view.  |
-| Shift+Tab                              | Moves to the previous enabled link or embedded control and reveals it.        |
-| Enter / Space                          | Activates the focused link once on the initial activation-eligible press.     |
-| Up / Down                              | Scrolls by `LineSize` lines.                                                  |
-| Page Up / Page Down                    | Scrolls by the viewport height minus `PageOverlap`, and by at least one line. |
-| Home / End                             | Scrolls to the first or last line.                                            |
-| Wheel up / down                        | Scrolls by `LineSize` lines per notch.                                        |
-| Ctrl+A                                 | Selects the complete semantic stream while `Document` owns focus.             |
-| Ctrl+C                                 | Publishes the nearest focused copy source through the application clipboard.  |
-| Shift+Left / Shift+Right               | Extends from the active caret by one complete grapheme.                       |
-| Shift+Up / Shift+Down                  | Extends by visual row while preserving a sticky cell column.                  |
-| Shift+Home / Shift+End                 | Extends to the current visual line boundary.                                  |
-| Shift+Page Up / Shift+Page Down        | Extends by one document page and reveals the new caret.                       |
-| Primary click on selectable content    | Collapses the selection at the nearest semantic endpoint.                     |
-| Primary drag across selectable content | Selects semantic text and suppresses link or embedded-control activation.     |
-| Eligible primary release on a link     | Activates the same enabled link where the primary press began.                |
+| Pointer action                         | Result                                                                    |
+| -------------------------------------- | ------------------------------------------------------------------------- |
+| Wheel up / down                        | Scrolls by `LineSize` lines per notch.                                    |
+| Primary click on selectable content    | Collapses the selection at the nearest semantic endpoint.                 |
+| Primary drag across selectable content | Selects semantic text and suppresses link or embedded-control activation. |
+| Eligible primary release on a link     | Activates the enabled link where the primary press began.                 |
 
 Tab and Shift+Tab consume the keystroke only while it actually reaches another
 interactive item. At either end of the document the keystroke is left unhandled,

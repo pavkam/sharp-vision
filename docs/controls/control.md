@@ -136,6 +136,17 @@ silent when its corresponding effective value was already false.
 `IsHitTestVisible` affects pointer targeting only; it does not suppress drawing,
 visibility, enabled state, or explicit focus.
 
+## Keyboard
+
+| Key                                       | Behavior                                                                                                 |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Tab                                       | Moves focus to the next eligible tab stop when the focused control does not handle Tab itself.           |
+| Shift+Tab                                 | Moves focus to the previous eligible tab stop.                                                           |
+| Alt+access key                            | Focuses or activates the matching control when its caption declares that access key.                     |
+| Ctrl+A                                    | Selects all semantic text when text selection is enabled for this control.                               |
+| Arrow keys, Home, End, Page Up, Page Down | Moves the semantic-text caret; Shift extends the selection and Ctrl changes horizontal movement by word. |
+| Ctrl+C                                    | Copies the nearest selected text or clipboard source through the application clipboard.                  |
+
 ## Semantic text selection
 
 Every control inherits the opt-in

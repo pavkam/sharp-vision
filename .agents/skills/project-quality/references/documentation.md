@@ -18,7 +18,8 @@ gap callouts, protocol sources, coverage claims, links, diagrams, or validators.
 
 ## Required document spines
 
-- Control: Overview, Inheritance, API, Example, Expected behavior — follow the
+- Control: Overview, Inheritance, API, Keyboard, Example, Expected behavior —
+  follow the
   [control-page template](../../../../docs/documentation-guide.md#control-page-template)
   exactly.
 - Dialog: Overview, API, Interaction, Example, Expected behavior.

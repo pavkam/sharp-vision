@@ -57,6 +57,15 @@ reached to reset it, pinning would leave the bar both unreachable and
 unthemeable. A null proxy therefore leaves the bar to the Theme and the library
 default, exactly like every other host.
 
+## Keyboard
+
+| Key                 | Behavior                                                        |
+| ------------------- | --------------------------------------------------------------- |
+| Left / Right        | Decreases or increases a horizontal scrollbar by `SmallChange`. |
+| Up / Down           | Decreases or increases a vertical scrollbar by `SmallChange`.   |
+| Page Up / Page Down | Decreases or increases the value by `LargeChange`.              |
+| Home / End          | Moves to `Minimum` or `Maximum`.                                |
+
 ## Behavior
 
 Range setters validate before mutating. `Minimum` and `Maximum` throw when the

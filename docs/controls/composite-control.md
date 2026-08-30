@@ -44,6 +44,12 @@ Callers configure the composite's public semantic properties plus the inherited
 [`ControlBase` properties](control.md#api); they cannot replace its
 implementation tree.
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Construction and ownership
 
 A concrete constructor creates its complete retained subtree and transfers one

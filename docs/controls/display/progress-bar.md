@@ -52,6 +52,12 @@ resolved visual-state style, paints across the control's full `Bounds` — paddi
 does not inset the fill — and participates in shared intrinsic chrome. Zero
 bounds draw nothing, and the control never handles pointer or keyboard input.
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Presentation and glyphs
 
 `ProgressBarStyle`, reached through `Style`/`ActualStyle`, owns the per-part

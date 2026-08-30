@@ -32,6 +32,12 @@ classDiagram
 | Inherited `Closing`             | `EventHandler`   | —       | Raised when closure is requested or after closing state commits.        |
 | Inherited `Closed`              | `EventHandler`   | —       | Raised only after the surface becomes unavailable and its bounds clear. |
 
+## Keyboard
+
+| Key    | Behavior                                                               |
+| ------ | ---------------------------------------------------------------------- |
+| Escape | Closes the open Flyout through the inherited `CloseOnEscape` behavior. |
+
 ## Light dismiss
 
 `ShowAt(anchor)` validates the anchor, assigns it, and opens the same Flyout

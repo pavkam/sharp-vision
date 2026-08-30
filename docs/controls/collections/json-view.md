@@ -73,6 +73,17 @@ entries start expanded. Replacing `Json` selects the first property or array
 entry in depth-first source order and resets the document's disclosure model. A
 scalar root and an empty container have no selection.
 
+## Keyboard
+
+| Key                 | Behavior                                                             |
+| ------------------- | -------------------------------------------------------------------- |
+| Up / Down           | Selects the previous or next visible entry.                          |
+| Left                | Collapses the selected container, or moves to its visible parent.    |
+| Right               | Expands the selected container, or moves to its first visible child. |
+| Home / End          | Selects the first or last visible entry.                             |
+| Page Up / Page Down | Moves by one viewport minus `PageOverlap`.                           |
+| Enter / Space       | Toggles the selected non-empty container.                            |
+
 ## Wrapping
 
 Within a finite width, string values wrap at whitespace and fall back to
@@ -87,23 +98,17 @@ unwrapped and can still require horizontal scrolling.
 
 Navigation follows the visible depth-first projection:
 
-| Input             | Result                                                                               |
-| ----------------- | ------------------------------------------------------------------------------------ |
-| Up / Down         | Select the previous or next visible property or array index.                         |
-| PageUp / PageDown | Select the entry as many lines away as fill the viewport height minus `PageOverlap`. |
-| Home / End        | Select the first or last visible entry.                                              |
-| Left              | Collapse the selected container, or select its nearest visible parent.               |
-| Right             | Expand the selected container, or select its first visible child.                    |
-| Enter / Space     | Toggle the selected non-empty container.                                             |
-| Primary key click | Select that property or array index.                                                 |
-| Disclosure click  | Select and toggle that container.                                                    |
+| Pointer action    | Result                                |
+| ----------------- | ------------------------------------- |
+| Primary key click | Selects that property or array index. |
+| Disclosure click  | Selects and toggles that container.   |
 
 Keyboard movement accepts incidental lock state but leaves Shift and every
 application-command-modified movement key unhandled.
 
-The movement rows repeat while a key is held; the Enter/Space toggle fires once
-per key hold and only with activation-eligible modifiers, so a command chord
-such as Ctrl+Enter never toggles a container.
+The keyboard movement commands repeat while a key is held; the Enter/Space
+toggle fires once per key hold and only with activation-eligible modifiers, so a
+command chord such as Ctrl+Enter never toggles a container.
 
 Selection highlights only the quoted key or `[index]` token. The value keeps its
 scalar type color, which avoids erasing syntax meaning as navigation moves.

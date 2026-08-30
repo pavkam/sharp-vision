@@ -84,6 +84,18 @@ narrow for everything, the value's own box shrinks first, then the end affix
 drops whole, then the start affix - never a partial cluster - and the decision
 is re-evaluated against the control's actual bounds on every render.
 
+## Keyboard
+
+| Key                         | Behavior                                                              |
+| --------------------------- | --------------------------------------------------------------------- |
+| Typed digits and separators | Edits the temporary amount at the caret using the configured culture. |
+| Left / Right                | Moves the caret through the temporary buffer.                         |
+| Backspace / Delete          | Removes text before or at the caret.                                  |
+| Up / Down                   | Adds or subtracts `Step` and commits immediately.                     |
+| Home / End                  | Commits `Minimum` or `Maximum`.                                       |
+| Enter                       | Parses and commits the temporary amount.                              |
+| Escape                      | Discards the temporary edit and restores the committed value.         |
+
 ## Currency identity resolution
 
 `DisplayMode` chooses which text `CurrencyOverride`, when unset, falls back to:

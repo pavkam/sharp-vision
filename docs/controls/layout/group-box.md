@@ -57,6 +57,12 @@ style instead.
 To hold several children, use a [`Stack`](stack.md#overview),
 [`Grid`](grid.md#overview), or another layout container as the content.
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Layout and rendering
 
 The frame is drawn with the intrinsic `ControlBase` border properties rather

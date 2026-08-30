@@ -35,6 +35,12 @@ classDiagram
 | ----------- | ---------- | ------- | -------------------------------------------------- |
 | `Dock.Side` | `DockSide` | `Left`  | Selects the physical edge one child docks against. |
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Layout algorithm
 
 Each child measures against whatever space is still available. Arrangement

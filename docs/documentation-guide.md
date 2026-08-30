@@ -32,7 +32,7 @@ in place of the standard ones.
 
 | Kind         | Location               | Required H2 sections, in order                                                                 | Covers                                                       |
 | ------------ | ---------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| Control      | `docs/controls/**`     | `Overview`, `Inheritance`, `API`, `Example`, `Expected behavior`                               | One public control or authoring role.                        |
+| Control      | `docs/controls/**`     | `Overview`, `Inheritance`, `API`, `Keyboard`, `Example`, `Expected behavior`                   | One public control or authoring role.                        |
 | Dialog       | `docs/dialogs/**`      | `Overview`, `API`, `Interaction`, `Example`, `Expected behavior`                               | One modal task and its typed result.                         |
 | Concept      | `docs/concepts/**`     | `Overview`, topic sections, `Expected behavior`                                                | Behavior shared by multiple public types.                    |
 | Architecture | `docs/architecture/**` | `Overview`, ownership/flow sections, `Expected behavior`                                       | Cross-layer ownership and ordering.                          |
@@ -70,18 +70,19 @@ so a reader compares any two pages without relearning their shape.
 
 ### Section order
 
-| Order | Section             | Required            | Notes                                                           |
-| ----- | ------------------- | ------------------- | --------------------------------------------------------------- |
-| 1     | `Overview`          | Always              | The type, its role, and what a caller can rely on.              |
-| 2     | `Inheritance`       | Always              | One page-local Mermaid `classDiagram`.                          |
-| 3     | `API`               | Always              | Opens with the canonical member table.                          |
-| 4     | Topic sections      | Optional, any count | Only between `API` and `Example`.                               |
-| 5     | `Example`           | Always              | Compilable C#, plus the generated image for a concrete control. |
-| 6     | `Expected behavior` | Always              | `Scope`/`Observable evidence` table plus feature bullets.       |
+| Order | Section             | Required            | Notes                                                       |
+| ----- | ------------------- | ------------------- | ----------------------------------------------------------- |
+| 1     | `Overview`          | Always              | The type, its role, and its guarantees.                     |
+| 2     | `Inheritance`       | Always              | One page-local Mermaid `classDiagram`.                      |
+| 3     | `API`               | Always              | Opens with the canonical member table.                      |
+| 4     | `Keyboard`          | Always              | A key-and-behavior table, including when no keys are owned. |
+| 5     | Topic sections      | Optional, any count | Only between `Keyboard` and `Example`.                      |
+| 6     | `Example`           | Always              | Compilable C# and an image for a concrete control.          |
+| 7     | `Expected behavior` | Always              | Evidence table plus feature bullets.                        |
 
-A topic section never replaces `Inheritance`, `API`, `Example`, or
+A topic section never replaces `Inheritance`, `API`, `Keyboard`, `Example`, or
 `Expected behavior`, and it never appears before `API` or after `Example`. An
-abstract authoring-role page follows the identical six-slot spine; only its
+abstract authoring-role page follows the identical seven-slot spine; only its
 `Example` section's image requirement differs, described below.
 
 ### Inheritance
@@ -145,6 +146,21 @@ Document members in this order:
 Glyph, state, decision, input, and failure tables never belong inside `## API`,
 even when they describe a property the API table already lists — they live under
 their own topic heading.
+
+### Keyboard
+
+Every control page has a `## Keyboard` section immediately after `## API`. It
+starts with this exact table header:
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
+Replace the final row with one row per key or closely related key group when the
+control owns keyboard behavior. Use the key names a user sees, such as `Up`,
+`Shift+Tab`, or `Ctrl+A`, and describe the visible result in ordinary language.
+Put shared application behavior in the input-routing reference and link to it
+instead of repeating the routing algorithm on every control page.
 
 `## Example` shows compilable C# that illustrates a rule the page already
 states; it never defines an otherwise undocumented default. A concrete control's
@@ -355,6 +371,12 @@ classDiagram
 | Member                  | Type  | Default | Description                                    |
 | ----------------------- | ----- | ------- | ---------------------------------------------- |
 | `Owner.ExampleAttached` | `int` | `0`     | Describes the attached value and who reads it. |
+
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
 
 ## Optional topic section
 

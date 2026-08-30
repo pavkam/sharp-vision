@@ -41,6 +41,12 @@ changes. Clearing an offset returns that edge to ordinary shared-box layout. The
 attached `ZIndex` accepts any integer; children with equal values keep their
 collection order.
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Layout algorithm
 
 An unpositioned child contributes its margin-inclusive desired size and resolves

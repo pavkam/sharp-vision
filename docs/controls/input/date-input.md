@@ -99,6 +99,22 @@ layout shrinks first, then the end affix drops whole, then the start affix -
 never a partial cluster - re-evaluated against the control's actual bounds on
 every render.
 
+## Keyboard
+
+| Key                 | Behavior                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Left / Right        | Moves between editable date segments while the popup is closed; moves by one day while it is open.                 |
+| Up / Down           | Changes the active segment while closed; moves by one week while open.                                             |
+| Home / End          | Moves to the first or last segment while closed; moves to the first or last selectable day of the week while open. |
+| Page Up / Page Down | Moves the open Calendar by one month.                                                                              |
+| Digits              | Replaces or advances the active date segment while the popup is closed.                                            |
+| Backspace           | Clears the active segment while the popup is closed.                                                               |
+| Delete              | Clears the complete value when `AllowNull` is `true`.                                                              |
+| Alt+Down / F4       | Opens the Calendar popup.                                                                                          |
+| Enter / Space       | Accepts the active date and closes the open popup.                                                                 |
+| Escape              | Cancels the open popup and restores its opening state.                                                             |
+| Tab / Shift+Tab     | Cancels the open popup, then continues focus traversal.                                                            |
+
 ## Popup navigation session
 
 Opening snapshots the committed `Value`, `Calendar.ActiveDate`, and Calendar
@@ -106,17 +122,9 @@ selection, then seeds the Calendar from the accepted value. Calendar browsing is
 provisional: it changes `ActiveDate` without changing `Value` until an explicit
 activation accepts the session.
 
-| Input                                     | Open-session behavior                                                             |
-| ----------------------------------------- | --------------------------------------------------------------------------------- |
-| Left or Right, initial or repeat          | Moves `ActiveDate` backward or forward by one day.                                |
-| Up or Down, initial or repeat             | Moves `ActiveDate` backward or forward by one week.                               |
-| Home or End, initial or repeat            | Moves `ActiveDate` to the first or last day of its week.                          |
-| Page Up or Page Down, initial or repeat   | Moves `ActiveDate` backward or forward by one month.                              |
-| Enter or Space, initial activation press  | Accepts `ActiveDate` into `Value` and closes the popup.                           |
-| Primary pointer activation on a date      | Accepts that date, including the already-active date, and closes the popup.       |
-| Escape, initial activation-eligible press | Cancels and closes the popup.                                                     |
-| Plain Tab or Shift+Tab                    | Cancels the popup and continues application traversal.                            |
-| Repeated Alt+Down                         | Is consumed by the already-open session without reopening or moving the Calendar. |
+A primary pointer activation accepts that date, including the already-active
+date, and closes the popup. Repeated Alt+Down is consumed by the already-open
+session without reopening or moving the Calendar.
 
 The navigation and acceptance keys use the
 [shared focus-independent delegation rule](../../concepts/input-routing.md#popup-navigation-delegation),

@@ -36,6 +36,12 @@ classDiagram
 All inherited layout, appearance, availability, and focus properties are defined
 by [`ControlBase`](control.md#api).
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Ownership and mutation
 
 The base constructor registers one capacity-one, normal-layer content slot
