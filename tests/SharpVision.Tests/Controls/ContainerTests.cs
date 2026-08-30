@@ -746,6 +746,22 @@ public sealed class ContainerTests
         observed.ShouldBe([(new Point(0, 4), new Point(0, 4))]);
     }
 
+    /// <summary>Verifies a wheel scroll completes without throwing when a ScrollChanged subscriber
+    /// disposes the container mid-propagation, rather than letting PropagateScroll's post-scroll
+    /// offset re-read discover the disposal by throwing ObjectDisposedException.</summary>
+    [Fact]
+    public void Wheel_WhenScrollChangedHandlerDisposesContainer_CompletesWithoutThrowing()
+    {
+        var container = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+        container.ScrollChanged += (_, _) => container.Dispose();
+
+        Should.NotThrow(() => container.RaiseWheel(0, -3));
+
+        container.IsDisposed.ShouldBeTrue();
+    }
+
     /// <summary>Verifies BringIntoView scrolls minimally to expose a descendant below the viewport.</summary>
     [Fact]
     public void BringIntoView_WhenDescendantBelowViewport_ScrollsToReveal()
@@ -760,6 +776,25 @@ public sealed class ContainerTests
 
         changed.ShouldBeTrue();
         container.VerticalOffset.ShouldBeGreaterThan(0);
+    }
+
+    /// <summary>Verifies BringIntoView completes without throwing when its own ScrollChanged
+    /// subscriber disposes the container from inside the final Apply call, rather than letting the
+    /// trailing boundary comparison re-read the now-throwing offset getters.</summary>
+    [Fact]
+    public void BringIntoView_WhenScrollChangedHandlerDisposesContainer_CompletesWithoutThrowing()
+    {
+        var container = new Stack { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        container.Children.Add(new ProbeControl(new Size(4, 20)));
+        var target = new ProbeControl(new Size(4, 1));
+        container.Children.Add(target);
+        new LayoutEngine().Layout(container, new Size(4, 10));
+        container.ScrollChanged += (_, _) => container.Dispose();
+
+        var result = Should.NotThrow(() => container.BringIntoView(target));
+
+        result.ShouldBeFalse();
+        container.IsDisposed.ShouldBeTrue();
     }
 
     /// <summary>Verifies BringIntoView walks through an intervening armed container, scrolling it
@@ -787,6 +822,33 @@ public sealed class ContainerTests
         result.ShouldBeTrue();
         inner.VerticalOffset.ShouldBe(4);
         outer.VerticalOffset.ShouldBe(14);
+    }
+
+    /// <summary>Verifies BringIntoView completes without throwing when a ScrollChanged subscriber
+    /// disposes an intervening armed ancestor mid-walk, rather than letting the delta computed
+    /// against it re-read that ancestor's now-throwing offset getters.</summary>
+    [Fact]
+    public void BringIntoView_WhenScrollChangedHandlerDisposesIntermediateContainer_CompletesWithoutThrowing()
+    {
+        var inner = new Stack
+        {
+            AutoScroll = true,
+            ShowScrollBars = ShowScrollBars.Never,
+            Height = Length.Cells(4)
+        };
+        var target = new ProbeControl(new Size(4, 2));
+        inner.Children.Add(new ProbeControl(new Size(4, 6)));
+        inner.Children.Add(target);
+        var outer = new Stack { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        outer.Children.Add(new ProbeControl(new Size(4, 20)));
+        outer.Children.Add(inner);
+        new LayoutEngine().Layout(outer, new Size(4, 10));
+        inner.ScrollChanged += (_, _) => inner.Dispose();
+
+        var result = Should.NotThrow(() => outer.BringIntoView(target));
+
+        result.ShouldBeFalse();
+        inner.IsDisposed.ShouldBeTrue();
     }
 
     /// <summary>Verifies BringIntoView reports false when the receiver's own extent boundary
@@ -924,6 +986,27 @@ public sealed class ContainerTests
 
         inner.VerticalOffset.ShouldBe(10);
         leaf.Bounds.Y.ShouldBe(-10);
+    }
+
+    /// <summary>Verifies a layout pass completes without throwing when a ScrollChanged subscriber
+    /// disposes the container from inside ResolveContentSlot's own offset-clamp Apply call - a
+    /// shrunk content extent past the current offset forces that clamp to actually change the
+    /// offset and raise the event - rather than letting the returned content slot's trailing
+    /// offset re-read throw mid-Arrange.</summary>
+    [Fact]
+    public void Layout_WhenScrollChangedHandlerDisposesContainerDuringArrange_CompletesWithoutThrowing()
+    {
+        var container = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+        _ = container.ScrollBy(0, 30, ScrollCause.Programmatic);
+        container.Children.Clear();
+        container.Children.Add(new ProbeControl(new Size(4, 10)));
+        container.ScrollChanged += (_, _) => container.Dispose();
+
+        Should.NotThrow(() => new LayoutEngine().Layout(container, new Size(4, 10)));
+
+        container.IsDisposed.ShouldBeTrue();
     }
 
     /// <summary>Verifies an armed container renders the automatic horizontal bar chrome.</summary>

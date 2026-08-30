@@ -693,6 +693,14 @@ public abstract class Container: ControlBase
             var revealY = Reveal(beforeY, scrollable.Viewport.Height, scrollableLogicalY, bounds.Height);
             _ = scrollable.Apply(revealX, revealY, ScrollCause.BringIntoView);
 
+            // Apply above can run a caller's ScrollChanged handler synchronously, and that handler
+            // may dispose scrollable - the offsets below would throw ObjectDisposedException on a
+            // control that no longer exists, so stop the walk instead of trusting bounds against it.
+            if (scrollable.IsDisposed)
+            {
+                return false;
+            }
+
             bounds = new Rect(
                 bounds.X.Add(beforeX - scrollable.HorizontalOffset),
                 bounds.Y.Add(beforeY - scrollable.VerticalOffset),
@@ -705,6 +713,14 @@ public abstract class Container: ControlBase
         var x = Reveal(HorizontalOffset, Viewport.Width, logicalX, bounds.Width);
         var y = Reveal(VerticalOffset, Viewport.Height, logicalY, bounds.Height);
         _ = Apply(x, y, ScrollCause.BringIntoView);
+
+        // Apply above can run a caller's ScrollChanged handler synchronously, and that handler may
+        // dispose this container - the offsets below would throw ObjectDisposedException, so report
+        // the reveal as incomplete instead of re-reading them.
+        if (IsDisposed)
+        {
+            return false;
+        }
 
         return logicalX >= HorizontalOffset && logicalX.Add(bounds.Width) <= HorizontalOffset.Add(Viewport.Width) &&
                logicalY >= VerticalOffset && logicalY.Add(bounds.Height) <= VerticalOffset.Add(Viewport.Height);
@@ -876,6 +892,15 @@ public abstract class Container: ControlBase
             var previousY = current.VerticalOffset;
             _ = current.ScrollBy(x, y, cause);
 
+            // ScrollBy above can run a caller's ScrollChanged handler synchronously, and that
+            // handler may dispose current - the offsets below would throw ObjectDisposedException,
+            // and a handler reacting to a delivered change implies one worth latching, so report
+            // the scroll as handled instead of re-reading them or continuing the ancestor walk.
+            if (current.IsDisposed)
+            {
+                return true;
+            }
+
             if (current.HorizontalOffset != previousX || current.VerticalOffset != previousY)
             {
                 return true;
@@ -951,6 +976,14 @@ public abstract class Container: ControlBase
             Math.Min(HorizontalOffset, MaximumX()),
             Math.Min(VerticalOffset, MaximumY()),
             extentChanged ? ScrollCause.Content : ScrollCause.Resize);
+
+        // Apply above can run a caller's ScrollChanged handler synchronously, and that handler may
+        // dispose this container mid-Arrange - the offsets below would throw ObjectDisposedException,
+        // so fall back to the same unscrolled slot the non-AutoScroll branch above returns.
+        if (IsDisposed)
+        {
+            return padded;
+        }
 
         var scrollsHorizontally = (ScrollBars & ScrollBars.Horizontal) != 0;
         var scrollsVertically = (ScrollBars & ScrollBars.Vertical) != 0;
