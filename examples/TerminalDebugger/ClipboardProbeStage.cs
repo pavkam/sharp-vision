@@ -18,6 +18,9 @@ internal enum ClipboardProbeStage
     /// <summary>The probe is reading back its unique marker.</summary>
     ReadingMarker,
 
-    /// <summary>The probe is restoring previously read clipboard text.</summary>
-    Restoring
+    /// <summary>The probe is waiting for acknowledgement of a Kitty restoration write.</summary>
+    RestoringWrite,
+
+    /// <summary>The probe is reading back the restoration to verify it.</summary>
+    VerifyingRestore
 }

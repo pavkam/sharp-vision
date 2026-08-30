@@ -51,7 +51,7 @@ internal sealed class InputEventRecorder: IDisposable
 
     private void OnKey(object? sender, KeyEventArgs eventArgs)
     {
-        if (eventArgs.Phase != RoutingPhase.Bubble)
+        if (_log.IsPaused || eventArgs.Phase != RoutingPhase.Bubble)
         {
             return;
         }
@@ -85,7 +85,7 @@ internal sealed class InputEventRecorder: IDisposable
 
     private void OnText(object? sender, TextEventArgs eventArgs)
     {
-        if (eventArgs.Phase != RoutingPhase.Bubble)
+        if (_log.IsPaused || eventArgs.Phase != RoutingPhase.Bubble)
         {
             return;
         }
@@ -105,7 +105,7 @@ internal sealed class InputEventRecorder: IDisposable
 
     private void OnPointer(object? sender, PointerEventArgs eventArgs)
     {
-        if (eventArgs.Phase != RoutingPhase.Bubble)
+        if (_log.IsPaused || eventArgs.Phase != RoutingPhase.Bubble)
         {
             return;
         }
@@ -142,7 +142,7 @@ internal sealed class InputEventRecorder: IDisposable
 
     private void OnPaste(object? sender, PasteEventArgs eventArgs)
     {
-        if (eventArgs.Phase != RoutingPhase.Bubble)
+        if (_log.IsPaused || eventArgs.Phase != RoutingPhase.Bubble)
         {
             return;
         }
@@ -165,7 +165,7 @@ internal sealed class InputEventRecorder: IDisposable
 
     private void OnFocus(object? sender, TerminalFocusEventArgs eventArgs)
     {
-        if (eventArgs.Phase != RoutingPhase.Bubble)
+        if (_log.IsPaused || eventArgs.Phase != RoutingPhase.Bubble)
         {
             return;
         }
@@ -184,6 +184,11 @@ internal sealed class InputEventRecorder: IDisposable
 
     private void OnResize(object? sender, ResizeEventArgs eventArgs)
     {
+        if (_log.IsPaused)
+        {
+            return;
+        }
+
         var dimensions = eventArgs.Dimensions;
         _log.Add(
             DiagnosticEventKind.Resize,
@@ -198,6 +203,11 @@ internal sealed class InputEventRecorder: IDisposable
 
     private void OnClipboardPaste(object? sender, ClipboardPasteEventArgs eventArgs)
     {
+        if (_log.IsPaused)
+        {
+            return;
+        }
+
         _log.Add(
             DiagnosticEventKind.Clipboard,
             $"Kitty paste notification · {eventArgs.Selection}",
@@ -210,6 +220,12 @@ internal sealed class InputEventRecorder: IDisposable
 
     private void OnClipboardReply(object? sender, KittyClipboardReplyEventArgs eventArgs)
     {
+        if (_log.IsPaused)
+        {
+            eventArgs.KittyResult?.Dispose();
+            return;
+        }
+
         var fields = new List<DiagnosticField>
         {
             new("Selection", eventArgs.Selection.ToString()),
@@ -220,14 +236,16 @@ internal sealed class InputEventRecorder: IDisposable
 
         if (eventArgs.Text is { } text)
         {
-            fields.Add(new DiagnosticField("OSC 52 data", DiagnosticTextFormatter.FormatBytes(text.Span)));
+            fields.Add(new DiagnosticField("OSC 52 payload", $"[content redacted, {text.Length} bytes]"));
         }
 
         if (eventArgs.KittyResult is { } kitty)
         {
             foreach (var item in kitty.Items)
             {
-                fields.Add(new DiagnosticField($"Kitty {item.Mime}", DiagnosticTextFormatter.FormatBytes(item.Data.Span)));
+                fields.Add(new DiagnosticField(
+                    $"Kitty {item.Mime}",
+                    $"[content redacted, {item.Data.Length} bytes]"));
             }
 
             kitty.Dispose();
@@ -236,7 +254,7 @@ internal sealed class InputEventRecorder: IDisposable
         _log.Add(
             DiagnosticEventKind.Clipboard,
             eventArgs.IsSucceeded ? "Clipboard transfer succeeded" : "Clipboard transfer failed",
-            "This is the completed public clipboard-service outcome, including bounded owned payload data.",
+            "This is the completed public clipboard-service outcome. Payload content is never retained in the general event history.",
             fields);
     }
 

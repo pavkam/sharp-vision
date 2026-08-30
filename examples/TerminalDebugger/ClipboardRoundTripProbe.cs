@@ -12,6 +12,7 @@ internal sealed class ClipboardRoundTripProbe: IDisposable
     private ClipboardProbeStage _stage;
     private string? _marker;
     private string? _original;
+    private string? _resultAfterRestore;
 
     /// <summary>Initializes one clipboard probe.</summary>
     /// <param name="status">The non-null status publisher.</param>
@@ -103,7 +104,11 @@ internal sealed class ClipboardRoundTripProbe: IDisposable
             case ClipboardProbeStage.WritingMarker:
                 if (!eventArgs.IsSucceeded)
                 {
-                    Fail("The terminal rejected or timed out the Kitty clipboard write.");
+                    Verify(
+                        ActiveProtocol(application),
+                        VerificationState.Failed,
+                        "The terminal rejected or timed out the Kitty clipboard write.");
+                    Restore(application, "<error>The terminal rejected or timed out the Kitty clipboard write.</error>");
                     return;
                 }
 
@@ -136,8 +141,38 @@ internal sealed class ClipboardRoundTripProbe: IDisposable
                         : "<error>Clipboard round trip returned different text.</error>");
                 break;
 
-            case ClipboardProbeStage.Restoring:
-                _stage = ClipboardProbeStage.Idle;
+            case ClipboardProbeStage.RestoringWrite:
+                if (!eventArgs.IsSucceeded)
+                {
+                    Verify(
+                        ActiveProtocol(application),
+                        VerificationState.Failed,
+                        "The terminal did not acknowledge restoration of the previous clipboard text.");
+                    Complete(
+                        $"{_resultAfterRestore} <error>Previous clipboard text was not restored: the Kitty write failed.</error>");
+                    return;
+                }
+
+                _stage = ClipboardProbeStage.VerifyingRestore;
+                _status("<info>Restoration write acknowledged; verifying the previous text…</info>");
+                application.Terminal.Clipboard.Request();
+                break;
+
+            case ClipboardProbeStage.VerifyingRestore:
+                var restored = TryReadText(eventArgs, out var restoredText) &&
+                               string.Equals(restoredText, _original, StringComparison.Ordinal);
+
+                if (!restored)
+                {
+                    Verify(
+                        ActiveProtocol(application),
+                        VerificationState.Failed,
+                        "The previous clipboard text could not be confirmed after restoration.");
+                }
+
+                Complete(restored
+                    ? $"{_resultAfterRestore} <success>Previous clipboard text was restored and verified.</success>"
+                    : $"{_resultAfterRestore} <error>Previous clipboard text could not be verified after restoration.</error>");
                 break;
 
             case ClipboardProbeStage.Idle:
@@ -150,16 +185,22 @@ internal sealed class ClipboardRoundTripProbe: IDisposable
     {
         if (_original is null)
         {
-            _stage = ClipboardProbeStage.Idle;
-            _status(result);
+            Complete(result);
             return;
         }
 
+        _resultAfterRestore = result;
         application.Terminal.Clipboard.Write(_original);
-        _status($"{result} <d>Previous clipboard text was restored.</d>");
-        _stage = application.Capabilities.KittyClipboard.Authoritative
-            ? ClipboardProbeStage.Restoring
-            : ClipboardProbeStage.Idle;
+        _status($"{result} <info>Restoring and verifying the previous clipboard text…</info>");
+
+        if (application.Capabilities.KittyClipboard.Authoritative)
+        {
+            _stage = ClipboardProbeStage.RestoringWrite;
+            return;
+        }
+
+        _stage = ClipboardProbeStage.VerifyingRestore;
+        application.Terminal.Clipboard.Request();
     }
 
     private void Fail(string detail)
@@ -171,6 +212,21 @@ internal sealed class ClipboardRoundTripProbe: IDisposable
 
         _stage = ClipboardProbeStage.Idle;
         _status($"<error>{TextMarkup.Escape(detail)}</error>");
+        ClearSensitiveState();
+    }
+
+    private void Complete(string status)
+    {
+        _stage = ClipboardProbeStage.Idle;
+        _status(status);
+        ClearSensitiveState();
+    }
+
+    private void ClearSensitiveState()
+    {
+        _marker = null;
+        _original = null;
+        _resultAfterRestore = null;
     }
 
     private void Verify(TerminalProtocol protocol, VerificationState state, string detail) =>
@@ -210,12 +266,26 @@ internal sealed class ClipboardRoundTripProbe: IDisposable
     {
         if (_application is { } application)
         {
+            if (_stage is ClipboardProbeStage.WritingMarker or
+                ClipboardProbeStage.ReadingMarker or
+                ClipboardProbeStage.RestoringWrite or
+                ClipboardProbeStage.VerifyingRestore && _original is not null)
+            {
+                try
+                {
+                    application.Terminal.Clipboard.Write(_original);
+                }
+                catch (Exception exception) when (exception is InvalidOperationException or ObjectDisposedException)
+                {
+                    // Shutdown can release the terminal before this best-effort restoration reaches it.
+                }
+            }
+
             application.Terminal.Clipboard.KittyClipboardReplyReceived -= OnReply;
             _application = null;
         }
 
         _stage = ClipboardProbeStage.Idle;
-        _marker = null;
-        _original = null;
+        ClearSensitiveState();
     }
 }

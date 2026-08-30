@@ -9,7 +9,10 @@ internal sealed class CapabilityDashboard: CompositeControlBase
     private readonly Text _environment;
     private readonly ListView _list;
     private readonly Text _detail;
+    private readonly Grid _matrix;
+    private readonly GroupBox _detailGroup;
     private readonly Dictionary<TerminalProtocol, CapabilityStatus> _statuses = [];
+    private bool _isCompact;
 
     /// <summary>Initializes the retained capability dashboard.</summary>
     internal CapabilityDashboard()
@@ -25,6 +28,7 @@ internal sealed class CapabilityDashboard: CompositeControlBase
             VerticalAlignment = VerticalAlignment.Stretch,
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
+            RowHeight = Length.Cells(1),
             ItemTemplate = item => new Text(((CapabilityStatus) item!).RowText)
             {
                 Overflow = Overflow.Ellipsis,
@@ -38,25 +42,25 @@ internal sealed class CapabilityDashboard: CompositeControlBase
         };
         _list.SelectionChanged += OnSelectionChanged;
 
-        var matrix = new Grid
+        _matrix = new Grid
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
             ColumnSpacing = 1
         };
-        matrix.Columns.Add(Track.Star(3));
-        matrix.Columns.Add(Track.Star(2));
+        _matrix.Columns.Add(Track.Star(3));
+        _matrix.Columns.Add(Track.Star(2));
         Grid.SetColumn(_list, 0);
-        var detailGroup = new GroupBox
+        _detailGroup = new GroupBox
         {
             HeaderText = "Evidence",
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
             Content = _detail
         };
-        Grid.SetColumn(detailGroup, 1);
-        matrix.Children.Add(_list);
-        matrix.Children.Add(detailGroup);
+        Grid.SetColumn(_detailGroup, 1);
+        _matrix.Children.Add(_list);
+        _matrix.Children.Add(_detailGroup);
 
         var root = new Dock
         {
@@ -65,7 +69,7 @@ internal sealed class CapabilityDashboard: CompositeControlBase
         };
         Dock.SetSide(_environment, DockSide.Top);
         root.Children.Add(_environment);
-        root.Children.Add(matrix);
+        root.Children.Add(_matrix);
         InitializeContent(root);
     }
 
@@ -104,6 +108,69 @@ internal sealed class CapabilityDashboard: CompositeControlBase
                 application.Capabilities.Support(descriptor.Protocol)));
         }
 
+        UpdateEnvironment(application);
+        RefreshItems(selectFirst: true);
+    }
+
+    /// <summary>Updates detected evidence without losing live verification state.</summary>
+    /// <param name="application">The non-null running application.</param>
+    internal void UpdateCapabilities(Application application)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        CapabilityCatalog.Validate(application.Capabilities);
+
+        foreach (var status in _statuses.Values)
+        {
+            status.UpdateFeature(application.Capabilities.Support(status.Descriptor.Protocol));
+        }
+
+        UpdateEnvironment(application);
+        RefreshItems(selectFirst: false);
+    }
+
+    /// <summary>Refreshes terminal identity, dimensions, and public service availability.</summary>
+    /// <param name="application">The non-null running application.</param>
+    internal void RefreshEnvironment(Application application)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        UpdateEnvironment(application);
+    }
+
+    /// <summary>Switches between side-by-side and stacked evidence layouts.</summary>
+    /// <param name="isCompact">Whether the available terminal width needs a stacked layout.</param>
+    internal void SetCompact(bool isCompact)
+    {
+        if (_isCompact == isCompact)
+        {
+            return;
+        }
+
+        _isCompact = isCompact;
+
+        if (isCompact)
+        {
+            Grid.SetColumn(_detailGroup, 0);
+            _matrix.Columns.Clear();
+            _matrix.Columns.Add(Track.Star(1));
+            _matrix.Rows.Add(Track.Star(3));
+            _matrix.Rows.Add(Track.Star(2));
+            Grid.SetRow(_detailGroup, 1);
+            _matrix.ColumnSpacing = 0;
+            _matrix.RowSpacing = 1;
+            return;
+        }
+
+        Grid.SetRow(_detailGroup, 0);
+        _matrix.Rows.Clear();
+        _matrix.Columns.Add(Track.Star(2));
+        Grid.SetColumn(_detailGroup, 1);
+        _matrix.Columns[0] = Track.Star(3);
+        _matrix.ColumnSpacing = 1;
+        _matrix.RowSpacing = 0;
+    }
+
+    private void UpdateEnvironment(Application application)
+    {
         var description = application.Terminal.Description;
         _environment.Content =
             $"<accent><b>{TextMarkup.Escape(description.Name)}</b></accent> · source {description.Origin} · " +
@@ -112,22 +179,6 @@ internal sealed class CapabilityDashboard: CompositeControlBase
             $"Unicode {application.Capabilities.UnicodeVersion} · ambiguous width {application.Capabilities.AmbiguousWidth}\n" +
             $"Services: title {YesNo(application.Terminal.IsTitleSupported)}, bell {YesNo(application.Terminal.Bell.IsSupported)}, " +
             $"clipboard {YesNo(application.Terminal.Clipboard.IsSupported)}, notifications {YesNo(application.Terminal.Notifications.IsSupported)}";
-        RefreshItems(selectFirst: true);
-    }
-
-    /// <summary>Updates detected evidence without losing live verification state.</summary>
-    /// <param name="capabilities">The non-null replacement profile.</param>
-    internal void UpdateCapabilities(TerminalCapabilities capabilities)
-    {
-        ArgumentNullException.ThrowIfNull(capabilities);
-        CapabilityCatalog.Validate(capabilities);
-
-        foreach (var status in _statuses.Values)
-        {
-            status.UpdateFeature(capabilities.Support(status.Descriptor.Protocol));
-        }
-
-        RefreshItems(selectFirst: false);
     }
 
     /// <summary>Records live verification for one protocol.</summary>

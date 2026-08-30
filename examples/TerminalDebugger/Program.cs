@@ -3,6 +3,8 @@
 
 var status = await ConsoleApplication.RunAsync(
     new TerminalDebugger.TerminalDebuggerScreen(),
-    static builder => builder.TreatControlCAsInput());
+    static builder => builder
+        .TreatControlCAsInput()
+        .UseClipboardPasteEvents());
 
 return status == ConsoleRunStatus.Failed ? 1 : 0;

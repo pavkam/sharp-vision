@@ -11,6 +11,10 @@ internal sealed class InputEventInspector: CompositeControlBase
     private readonly Text _detail;
     private readonly Button _pause;
     private readonly Text _count;
+    private readonly Grid _matrix;
+    private readonly GroupBox _detailGroup;
+    private DispatcherTimer? _refreshTimer;
+    private bool _isCompact;
 
     /// <summary>Initializes an inspector for one session log.</summary>
     /// <param name="log">The non-null owned session log.</param>
@@ -24,6 +28,7 @@ internal sealed class InputEventInspector: CompositeControlBase
             VerticalAlignment = VerticalAlignment.Stretch,
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
+            RowHeight = Length.Cells(1),
             ItemTemplate = item => new Text(TextMarkup.Escape(item?.ToString() ?? string.Empty))
             {
                 Padding = new Thickness(1, 0),
@@ -50,25 +55,25 @@ internal sealed class InputEventInspector: CompositeControlBase
             Padding = new Thickness(1, 0),
             Children = { _pause, clear, _count }
         };
-        var matrix = new Grid
+        _matrix = new Grid
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
             ColumnSpacing = 1
         };
-        matrix.Columns.Add(Track.Star(3));
-        matrix.Columns.Add(Track.Star(2));
+        _matrix.Columns.Add(Track.Star(3));
+        _matrix.Columns.Add(Track.Star(2));
         Grid.SetColumn(_list, 0);
-        var detailGroup = new GroupBox
+        _detailGroup = new GroupBox
         {
             HeaderText = "Decoded event",
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
             Content = _detail
         };
-        Grid.SetColumn(detailGroup, 1);
-        matrix.Children.Add(_list);
-        matrix.Children.Add(detailGroup);
+        Grid.SetColumn(_detailGroup, 1);
+        _matrix.Children.Add(_list);
+        _matrix.Children.Add(_detailGroup);
 
         var root = new Dock
         {
@@ -77,13 +82,70 @@ internal sealed class InputEventInspector: CompositeControlBase
         };
         Dock.SetSide(toolbar, DockSide.Top);
         root.Children.Add(toolbar);
-        root.Children.Add(matrix);
+        root.Children.Add(_matrix);
         InitializeContent(root);
         _log.Changed += OnLogChanged;
     }
 
+    /// <summary>Attaches a coalescing refresh clock to the application dispatcher.</summary>
+    /// <param name="application">The non-null running application.</param>
+    internal void Attach(Application application)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+
+        if (_refreshTimer is not null)
+        {
+            throw new InvalidOperationException("The event inspector is already attached.");
+        }
+
+        _refreshTimer = new DispatcherTimer(application.Dispatcher, TimeSpan.FromMilliseconds(50));
+        _refreshTimer.Tick += OnRefreshTick;
+    }
+
+    /// <summary>Switches between side-by-side and stacked event-detail layouts.</summary>
+    /// <param name="isCompact">Whether the available terminal width needs a stacked layout.</param>
+    internal void SetCompact(bool isCompact)
+    {
+        if (_isCompact == isCompact)
+        {
+            return;
+        }
+
+        _isCompact = isCompact;
+
+        if (isCompact)
+        {
+            Grid.SetColumn(_detailGroup, 0);
+            _matrix.Columns.Clear();
+            _matrix.Columns.Add(Track.Star(1));
+            _matrix.Rows.Add(Track.Star(3));
+            _matrix.Rows.Add(Track.Star(2));
+            Grid.SetRow(_detailGroup, 1);
+            _matrix.ColumnSpacing = 0;
+            _matrix.RowSpacing = 1;
+            return;
+        }
+
+        Grid.SetRow(_detailGroup, 0);
+        _matrix.Rows.Clear();
+        _matrix.Columns.Add(Track.Star(2));
+        Grid.SetColumn(_detailGroup, 1);
+        _matrix.Columns[0] = Track.Star(3);
+        _matrix.ColumnSpacing = 1;
+        _matrix.RowSpacing = 0;
+    }
+
     private void OnLogChanged(object? sender, EventArgs eventArgs)
     {
+        if (_refreshTimer is { IsRunning: false } timer)
+        {
+            timer.Start();
+        }
+    }
+
+    private void OnRefreshTick(object? sender, EventArgs eventArgs)
+    {
+        _refreshTimer?.Stop();
         var items = _log.Records.Reverse().Cast<object?>().ToArray();
         _list.Items = items;
         _count.Content = $"{items.Length} / 500 records";
@@ -127,6 +189,13 @@ internal sealed class InputEventInspector: CompositeControlBase
         if (reason == ReleaseReason.Disposed)
         {
             _log.Changed -= OnLogChanged;
+
+            if (_refreshTimer is { } timer)
+            {
+                timer.Tick -= OnRefreshTick;
+                timer.Dispose();
+                _refreshTimer = null;
+            }
         }
 
         base.OnUnavailable(reason);

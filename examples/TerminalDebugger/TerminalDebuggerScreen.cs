@@ -85,16 +85,13 @@ internal sealed class TerminalDebuggerScreen: Screen
         CapabilityCatalog.Validate(application.Capabilities);
         _capabilities.Initialize(application);
         _probes.Attach(application);
+        _input.Attach(application);
         _recorder = new InputEventRecorder(_eventLog, _capabilities.SetVerification);
         _recorder.Attach(application, this);
         application.CapabilitiesChanged += OnCapabilitiesChanged;
         application.Resize += OnApplicationResize;
-        _identity.Content = $"{application.Terminal.Description.Name} · {application.Size.Width}×{application.Size.Height}";
-
-        if (application.Terminal.IsTitleSupported)
-        {
-            application.Terminal.SetTitle("SharpVision Terminal Debugger");
-        }
+        UpdateResponsiveLayout(application.Size.Width);
+        _identity.Content = $"{TextMarkup.Escape(application.Terminal.Description.Name)} · {application.Size.Width}×{application.Size.Height}";
     }
 
     private void OnSummaryChanged(object? sender, EventArgs eventArgs)
@@ -107,15 +104,33 @@ internal sealed class TerminalDebuggerScreen: Screen
             $"<error>! {_capabilities.FailedCount} failed</error>";
     }
 
-    private void OnCapabilitiesChanged(object? sender, CapabilitiesChangedEventArgs eventArgs) =>
-        _capabilities.UpdateCapabilities(eventArgs.Current);
+    private void OnCapabilitiesChanged(object? sender, CapabilitiesChangedEventArgs eventArgs)
+    {
+        if (Application is not { } application)
+        {
+            return;
+        }
+
+        _capabilities.UpdateCapabilities(application);
+        _probes.RefreshAvailability(application);
+    }
 
     private void OnApplicationResize(object? sender, ResizeEventArgs eventArgs)
     {
         if (Application is { } application)
         {
-            _identity.Content = $"{application.Terminal.Description.Name} · {eventArgs.Dimensions.Cells.Width}×{eventArgs.Dimensions.Cells.Height}";
+            var width = eventArgs.Dimensions.Cells.Width;
+            _identity.Content = $"{TextMarkup.Escape(application.Terminal.Description.Name)} · {width}×{eventArgs.Dimensions.Cells.Height}";
+            _capabilities.RefreshEnvironment(application);
+            UpdateResponsiveLayout(width);
         }
+    }
+
+    private void UpdateResponsiveLayout(int width)
+    {
+        var isCompact = width < 100;
+        _capabilities.SetCompact(isCompact);
+        _input.SetCompact(isCompact);
     }
 
     private void OnKey(object? sender, KeyEventArgs eventArgs)

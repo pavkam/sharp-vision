@@ -19,6 +19,7 @@ global using SharpVision.Terminal.Capabilities;
 global using SharpVision.Terminal.Geometry;
 global using SharpVision.Terminal.Input;
 global using SharpVision.Text;
+global using SharpVision.Threading;
 
 global using Screen = SharpVision.Controls.Screen;
 global using Text = SharpVision.Controls.Display.Text;

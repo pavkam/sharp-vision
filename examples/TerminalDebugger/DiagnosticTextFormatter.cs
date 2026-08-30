@@ -52,14 +52,29 @@ internal static class DiagnosticTextFormatter
             ? $"… [truncated after {maximumBytes} of {value.Length} bytes]"
             : string.Empty;
 
-        try
+        var utf8Length = 0;
+        var isInvalid = false;
+
+        while (utf8Length < visible.Length)
         {
-            var utf8 = new UTF8Encoding(false, true).GetString(visible);
-            return $"{hex}{suffix} | UTF-8: {EscapeText(utf8)}";
+            var status = Rune.DecodeFromUtf8(visible[utf8Length..], out _, out var consumed);
+
+            if (status == System.Buffers.OperationStatus.Done)
+            {
+                utf8Length += consumed;
+                continue;
+            }
+
+            isInvalid = status == System.Buffers.OperationStatus.InvalidData || value.Length == visible.Length;
+            break;
         }
-        catch (DecoderFallbackException)
+
+        if (isInvalid)
         {
             return $"{hex}{suffix} | UTF-8: [invalid]";
         }
+
+        var utf8 = Encoding.UTF8.GetString(visible[..utf8Length]);
+        return $"{hex}{suffix} | UTF-8: {EscapeText(utf8)}";
     }
 }

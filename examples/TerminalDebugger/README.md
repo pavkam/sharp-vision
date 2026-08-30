@@ -59,26 +59,32 @@ renderings are capped at 4,096 units and state the original byte count when
 truncated.
 
 The terminal's one-time Kitty clipboard credential is always redacted. Clipboard
-content itself remains visible because this is an explicitly launched local
-diagnostic application; it is never written to a file by Terminal Debugger.
+reply content is also redacted from the general timeline: it reports protocol,
+selection, MIME type, byte count, result, and diagnostics without retaining the
+payload. The explicit round-trip test compares text only in memory and clears
+its references when the restoration check finishes.
 
 ## Explicit tests
 
 Nothing in the **Tests** tab runs on startup. Buttons explicitly request:
 
 - the terminal bell;
-- a temporary window-title change;
+- a window-title change, with an explicit warning that the previous title cannot
+  be read or restored through the public API;
 - a desktop notification when authoritatively enabled;
 - a clipboard write/read round trip after first reading content for restoration;
 - color, rendition, underline, and Unicode cell-geometry specimens;
-- a generated RGBA checkerboard through SharpVision's public `Image` control and
-  the active authorized graphics backend.
+- a generated RGBA checkerboard through SharpVision's public `Image` control.
 
-Visual and audible checks require Pass or Fail confirmation. Clipboard compares
-a unique marker automatically and restores the previous text when the initial
-read succeeded. If the initial clipboard read fails, the debugger refuses to
-overwrite the clipboard. Graphics fallback reasons are reported through the
-public application diagnostic event rather than inferred from a missing image.
+Optional underline styles, underline color, and overline each have an
+independent Pass or Fail confirmation. Clipboard compares a unique marker
+automatically, restores the previous text when the initial read succeeded, and
+reads it back before claiming restoration. If the initial clipboard read fails,
+the debugger refuses to overwrite the clipboard. Graphics fallback reasons are
+reported through the public application diagnostic event rather than inferred
+from a missing image. The public image path does not expose the selected
+backend, so a visual result is not misattributed to Kitty, Sixel, or iTerm
+images.
 
 ## Status meanings
 

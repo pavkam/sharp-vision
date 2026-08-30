@@ -17,6 +17,9 @@ internal sealed class TerminalProbePanel: CompositeControlBase
     private readonly Button _notification;
     private readonly Button _clipboard;
     private readonly Button _showSpecimens;
+    private readonly Button _styledUnderlines;
+    private readonly Button _underlineColor;
+    private readonly Button _overline;
     private readonly Button _showGraphics;
     private readonly Button _pass;
     private readonly Button _fail;
@@ -25,6 +28,7 @@ internal sealed class TerminalProbePanel: CompositeControlBase
     private readonly ClipboardRoundTripProbe _clipboardProbe;
     private Application? _application;
     private TerminalProtocol[] _pendingProtocols = [];
+    private bool _graphicsConfirmationPending;
 
     /// <summary>Initializes the explicit test panel.</summary>
     /// <param name="capabilities">The non-null capability dashboard to update.</param>
@@ -47,6 +51,18 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         _clipboard.Click += (_, _) => _clipboardProbe.Start();
         _showSpecimens = new Button("Show &rendition + Unicode");
         _showSpecimens.Click += (_, _) => ShowSpecimens();
+        _styledUnderlines = new Button("Check underline st&yles");
+        _styledUnderlines.Click += (_, _) => CheckRendition(
+            TerminalProtocol.StyledUnderlines,
+            "Inspect straight, double, curly, dotted, and dashed underline shapes.");
+        _underlineColor = new Button("Check underline &color");
+        _underlineColor.Click += (_, _) => CheckRendition(
+            TerminalProtocol.UnderlineColor,
+            "Inspect whether the curly underline under 'curly yellow' is yellow.");
+        _overline = new Button("Check &overline");
+        _overline.Click += (_, _) => CheckRendition(
+            TerminalProtocol.Overline,
+            "Inspect whether 'overline' has a line above its glyphs.");
         _showGraphics = new Button("Show &graphics sample");
         _showGraphics.Click += (_, _) => ShowGraphics();
         _pass = new Button("✓ &Pass") { IsEnabled = false };
@@ -74,7 +90,13 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         {
             Orientation = Orientation.Horizontal,
             Spacing = 1,
-            Children = { _showSpecimens, _showGraphics, _pass, _fail }
+            Children = { _showSpecimens, _showGraphics }
+        };
+        var confirmationActions = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 1,
+            Children = { _styledUnderlines, _underlineColor, _overline, _pass, _fail }
         };
         var content = new Stack
         {
@@ -92,8 +114,9 @@ internal sealed class TerminalProbePanel: CompositeControlBase
                 actions,
                 _status,
                 new Text("<accent><b>Visual specimens</b></accent>\n" +
-                         "Reveal a sample, inspect what your terminal actually drew, then mark it Pass or Fail."),
+                         "Reveal the samples, then verify each optional rendition independently."),
                 visualActions,
+                confirmationActions,
                 _specimens
             }
         };
@@ -112,13 +135,24 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         }
 
         _application = application;
+        RefreshAvailability(application);
+        _clipboardProbe.Attach(application);
+        application.GraphicsDiagnostic += OnGraphicsDiagnostic;
+    }
+
+    /// <summary>Refreshes service and protocol action availability after capability refinement.</summary>
+    /// <param name="application">The non-null running application.</param>
+    internal void RefreshAvailability(Application application)
+    {
+        ArgumentNullException.ThrowIfNull(application);
         _bell.IsEnabled = application.Terminal.Bell.IsSupported;
         _title.IsEnabled = application.Terminal.IsTitleSupported;
         _notification.IsEnabled = application.Terminal.Notifications.IsSupported;
         _clipboard.IsEnabled = application.Terminal.Clipboard.IsSupported;
-        _showGraphics.IsEnabled = GraphicsProtocol(application) is not null;
-        _clipboardProbe.Attach(application);
-        application.GraphicsDiagnostic += OnGraphicsDiagnostic;
+        _styledUnderlines.IsEnabled = application.Capabilities.StyledUnderlines.Authoritative;
+        _underlineColor.IsEnabled = application.Capabilities.UnderlineColor.Authoritative;
+        _overline.IsEnabled = application.Capabilities.Overline.Authoritative;
+        _showGraphics.IsEnabled = HasGraphicsSupport(application);
     }
 
     private void RingBell()
@@ -140,7 +174,9 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         }
 
         application.Terminal.SetTitle("SharpVision Terminal Debugger — title test");
-        BeginConfirmation([], "Did the terminal window title change to the diagnostic title?");
+        BeginConfirmation(
+            [],
+            "Did the terminal window title change? The previous title cannot be read or restored by this API.");
     }
 
     private void TestNotification()
@@ -159,21 +195,31 @@ internal sealed class TerminalProbePanel: CompositeControlBase
     private void ShowSpecimens()
     {
         _specimens.Visibility = Visibility.Visible;
-        BeginConfirmation(
-            [TerminalProtocol.StyledUnderlines, TerminalProtocol.UnderlineColor, TerminalProtocol.Overline],
-            "Inspect the color, rendition, Unicode, and cell-guide specimens below.");
+        _pendingProtocols = [];
+        _pass.IsEnabled = false;
+        _fail.IsEnabled = false;
+        SetStatus("<info>Specimens revealed. Use the three focused checks to record optional rendition results.</info>");
+    }
+
+    private void CheckRendition(TerminalProtocol protocol, string prompt)
+    {
+        _specimens.Visibility = Visibility.Visible;
+        BeginConfirmation([protocol], prompt);
     }
 
     private void ShowGraphics()
     {
-        if (_application is not { } application || GraphicsProtocol(application) is not { } protocol)
+        if (_application is not { } application || !HasGraphicsSupport(application))
         {
             return;
         }
 
         _specimens.Visibility = Visibility.Visible;
         _image.Source = CreateDiagnosticImage();
-        BeginConfirmation([protocol], $"Inspect the generated checkerboard image. Candidate protocol: {protocol}.");
+        _graphicsConfirmationPending = true;
+        BeginConfirmation(
+            [],
+            "Inspect the generated checkerboard image. SharpVision's public image path does not expose which backend was selected.");
     }
 
     private void BeginConfirmation(TerminalProtocol[] protocols, string prompt)
@@ -196,11 +242,7 @@ internal sealed class TerminalProbePanel: CompositeControlBase
             _capabilities.SetVerification(protocol, state, detail);
         }
 
-        if (_application is { } application && _title.IsEnabled)
-        {
-            application.Terminal.SetTitle("SharpVision Terminal Debugger");
-        }
-
+        _graphicsConfirmationPending = false;
         _pendingProtocols = [];
         _pass.IsEnabled = false;
         _fail.IsEnabled = false;
@@ -212,9 +254,12 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         var detail = string.Join(", ", eventArgs.Placements.Select(static placement => placement.Reason));
         SetStatus($"<error>Graphics fell back to cells: {TextMarkup.Escape(detail)}.</error>");
 
-        if (_application is { } application && GraphicsProtocol(application) is { } protocol)
+        if (_graphicsConfirmationPending)
         {
-            _capabilities.SetVerification(protocol, VerificationState.Failed, $"Graphics placement fell back: {detail}.");
+            _graphicsConfirmationPending = false;
+            _pendingProtocols = [];
+            _pass.IsEnabled = false;
+            _fail.IsEnabled = false;
         }
     }
 
@@ -284,16 +329,10 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         return ImageSource.FromRgba(new Size(width, height), rgba);
     }
 
-    private static TerminalProtocol? GraphicsProtocol(Application application)
-    {
-        return application.Capabilities.KittyGraphics.Authoritative
-            ? TerminalProtocol.KittyGraphics
-            : application.Capabilities.Sixel.Authoritative
-                ? TerminalProtocol.Sixel
-                : application.Capabilities.ItermImages.Authoritative
-                    ? TerminalProtocol.ItermImages
-                    : null;
-    }
+    private static bool HasGraphicsSupport(Application application) =>
+        application.Capabilities.KittyGraphics.Authoritative ||
+        application.Capabilities.Sixel.Authoritative ||
+        application.Capabilities.ItermImages.Authoritative;
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
@@ -303,11 +342,6 @@ internal sealed class TerminalProbePanel: CompositeControlBase
             if (_application is { } application)
             {
                 application.GraphicsDiagnostic -= OnGraphicsDiagnostic;
-
-                if (application.Terminal.IsTitleSupported)
-                {
-                    application.Terminal.SetTitle("SharpVision Terminal Debugger");
-                }
             }
 
             _clipboardProbe.Dispose();
