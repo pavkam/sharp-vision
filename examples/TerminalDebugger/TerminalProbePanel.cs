@@ -5,7 +5,7 @@ namespace TerminalDebugger;
 
 using SharpVision.Terminal.Graphics;
 
-using DiagnosticImage = SharpVision.Controls.Display.Image;
+using DiagnosticImage = Image;
 
 /// <summary>Hosts explicit terminal-service probes and visual rendering specimens.</summary>
 internal sealed class TerminalProbePanel: CompositeControlBase
