@@ -592,6 +592,39 @@ public sealed class DispatcherTests
         await stopped.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies disposing a freshly started dispatcher synchronously and immediately - from
+    /// the same thread that just called <see cref="Dispatcher.Start"/>, with nothing yet posted -
+    /// actually stops the background thread rather than leaking it. This is the exact shape
+    /// <c>Application</c>'s own constructor now uses in its catch block: if a step after
+    /// <c>Dispatcher.Start</c> throws, it blocks on <c>Dispatcher.DisposeAsync().AsTask()
+    /// .GetAwaiter().GetResult()</c> before rethrowing, since <c>ConsoleApplicationBuilder.Build()</c>'s
+    /// own catch has no application reference to reach the dispatcher through once the constructor
+    /// never returns one. There is no dependency reachable through <c>Application</c>'s public
+    /// constructor arguments that fails deterministically in that exact post-<c>Start</c> window -
+    /// the one call capable of it, <c>CooperativeShutdownSignals.Register</c>, only throws depending
+    /// on platform signal support - so the mechanism the fix relies on is exercised directly here
+    /// instead.</summary>
+    [Fact]
+    public async Task DisposeAsync_WhenCalledSynchronouslyRightAfterStartWithNothingPosted_StopsTheThreadAsync()
+    {
+        var dispatcher = Dispatcher.Start(name: "SharpVision.PostStartFailure");
+
+        var exited = await Task.Run(() =>
+        {
+            // Mirrors Application's constructor catch block exactly.
+            dispatcher.DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+            var thread = (Thread) typeof(Dispatcher)
+                .GetField("_thread", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(dispatcher)!;
+
+            return thread.Join(TimeSpan.FromSeconds(5));
+        }).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        exited.ShouldBeTrue("the background thread must exit rather than leak");
+        Should.Throw<ObjectDisposedException>(() => dispatcher.Post(static () => { }));
+    }
+
     #region Background completion
 
     /// <summary>Verifies accepted completion runs once on the dispatcher without abandonment.</summary>

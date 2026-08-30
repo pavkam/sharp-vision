@@ -206,28 +206,44 @@ public sealed class Application:
         Capabilities = TerminalProfile.Capabilities;
         CellPolicy = new UnicodePolicy(Capabilities.AmbiguousWidth);
         Dispatcher = Dispatcher.Start(name: "SharpVision.UI", timeProvider: _timeProvider);
-        Pointer = new PointerDevice(() => CaptureValue);
-        _terminalServices = new TerminalServices(this, _multiplexerRoute);
-        Terminal = _terminalServices;
-        Session = new Session(
-            transport,
-            resize,
-            this,
-            _options,
-            _timeProvider);
-        _initializeModalKey = InitializeModalKey;
-        Dispatcher.Idle += OnIdle;
-        Dispatcher.UnhandledException += OnDispatcherUnhandled;
 
-        if (observeProcessSignals is { } observeCtrlC)
+        try
         {
-            _processSignals = CooperativeShutdownSignals.Register(observeCtrlC, RequestCooperativeStop);
-            // FinalizeStopped is the sole writer of _stopped and the one funnel every terminal
-            // path crosses - the normal BeginStopping-driven stop, a forced Closed(), a fault, and
-            // the two paths that never raise Stopping at all - so this fires exactly once
-            // regardless of how this instance ends up stopped, without this class needing to
-            // duplicate that funnel itself.
-            Stopped += (_, _) => DisposeProcessSignals();
+            Pointer = new PointerDevice(() => CaptureValue);
+            _terminalServices = new TerminalServices(this, _multiplexerRoute);
+            Terminal = _terminalServices;
+            Session = new Session(
+                transport,
+                resize,
+                this,
+                _options,
+                _timeProvider);
+            _initializeModalKey = InitializeModalKey;
+            Dispatcher.Idle += OnIdle;
+            Dispatcher.UnhandledException += OnDispatcherUnhandled;
+
+            if (observeProcessSignals is { } observeCtrlC)
+            {
+                _processSignals = CooperativeShutdownSignals.Register(observeCtrlC, RequestCooperativeStop);
+                // FinalizeStopped is the sole writer of _stopped and the one funnel every terminal
+                // path crosses - the normal BeginStopping-driven stop, a forced Closed(), a fault, and
+                // the two paths that never raise Stopping at all - so this fires exactly once
+                // regardless of how this instance ends up stopped, without this class needing to
+                // duplicate that funnel itself.
+                Stopped += (_, _) => DisposeProcessSignals();
+            }
+        }
+        catch
+        {
+            // Dispatcher.Start already spawned the real background thread above. If anything past
+            // this point throws, the constructor never returns an Application for a caller to hold -
+            // ConsoleApplicationBuilder.Build()'s own catch still finds its `application` local null
+            // and falls into the preflight-failure cleanup path, which never owned this dispatcher -
+            // so without this, the thread runs forever. Nothing dispatcher-affine has been posted
+            // yet, so blocking synchronously on disposal here from the constructing thread cannot
+            // deadlock against work this instance itself queued.
+            Dispatcher.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            throw;
         }
     }
 
