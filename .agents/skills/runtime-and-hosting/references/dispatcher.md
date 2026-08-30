@@ -17,8 +17,7 @@ reentrancy, callback ordering, cancellation, or exception propagation.
 
 - Dispatcher and timers: `src/SharpVision/Threading/`
 - Application integration: `src/SharpVision/Application.cs`
-- Tests: `tests/SharpVision.Tests/Threading/` and
-  `Runtime/ApplicationTests.cs`
+- Tests: `tests/SharpVision.Tests/Threading/` and `Runtime/ApplicationTests.cs`
 
 ## Workflow
 

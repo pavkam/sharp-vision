@@ -12,7 +12,7 @@ when shown asynchronously; there is no nested proxy Window.
 ## API
 
 | Member                 | Type                     | Default                | Description                                                                                                                                                                                 |
-| ---------------------- | ------------------------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ---------------------- | ------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Message`              | `string`                 | required               | Non-null message rendered as grapheme-safe wrapped `Text`.                                                                                                                                  |
 | `Title`                | `string`                 | `"Message"`            | Non-null Window title.                                                                                                                                                                      |
 | `Buttons`              | `MessageBoxButtons`      | `MessageBoxButtons.Ok` | Defined semantic action layout.                                                                                                                                                             |

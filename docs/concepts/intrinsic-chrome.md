@@ -67,18 +67,17 @@ corners and the bottom color owns both bottom corners. The same precedence
 applies to partial and one-row frames. Undefined relief values are rejected by
 complete borders, overlays, `with` expressions, and Theme JSON.
 
-An authored per-state `Border.Foreground` bypasses relief substitution on
-every edge exactly like `BorderRelief.Flat`, whatever the baseline `Relief`
-is. "Authored" means the currently active visual state - a theme's
+An authored per-state `Border.Foreground` bypasses relief substitution on every
+edge exactly like `BorderRelief.Flat`, whatever the baseline `Relief` is.
+"Authored" means the currently active visual state - a theme's
 `pointerOver`/`focused`/`pressed`/`disabled` border-color delta, or a locally
 overlaid one - actually changes `Border.Foreground` away from the control's
 local border override when one is set, or otherwise away from the resolved
-`Normal` border; a state whose delta merely restates that color does not
-count. The one exception is a style whose own per-state completion already
-switches `Border.Relief` itself - currently only `Button`, which swaps
-`Raised`/`Sunken` while pressed - where that control's per-state foreground is
-never treated as authored for this purpose, so its Relief switch keeps
-working undisturbed.
+`Normal` border; a state whose delta merely restates that color does not count.
+The one exception is a style whose own per-state completion already switches
+`Border.Relief` itself - currently only `Button`, which swaps `Raised`/`Sunken`
+while pressed - where that control's per-state foreground is never treated as
+authored for this purpose, so its Relief switch keeps working undisturbed.
 
 ## Shadow API
 
@@ -116,9 +115,9 @@ For chrome specifically:
 3. Apply the complete local control Style and any derived-control chrome.
 4. Overlay protected derived-control state contributions.
 5. Resolve semantic relief to the active Theme's highlight and shade colors,
-   unless the active visual state authored `Border.Foreground` itself, in
-   which case that color paints every edge instead (except for a style, such
-   as `Button`, whose own per-state completion switches `Border.Relief`).
+   unless the active visual state authored `Border.Foreground` itself, in which
+   case that color paints every edge instead (except for a style, such as
+   `Button`, whose own per-state completion switches `Border.Relief`).
 6. Compute border inset and shadow visual overflow.
 7. Paint shadow and body, call `OnRenderContent`, render normal children, then
    overlay the border.

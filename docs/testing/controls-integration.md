@@ -184,11 +184,11 @@ and the scope state during the edit to prove the current route stays stable.
 disable, and disposal callbacks after temporarily restoring the affected
 control. It requires the guarded subtree to remain unavailable while unrelated
 roots and ancestor planes remain valid, including automatic focus selection that
-skips the guarded descendant. `ModalityManagerTests` also proves
-failed-entry rollback publishes every observed scope youngest first, nested exit
-restores before `Exited`, failed focus callbacks leave coherent `Focused` and
-`IsFocused` facts, and reentrant shutdown or unavailability strengthens a
-deferred teardown before its notifications publish.
+skips the guarded descendant. `ModalityManagerTests` also proves failed-entry
+rollback publishes every observed scope youngest first, nested exit restores
+before `Exited`, failed focus callbacks leave coherent `Focused` and `IsFocused`
+facts, and reentrant shutdown or unavailability strengthens a deferred teardown
+before its notifications publish.
 
 ### Mounted component surfaces
 

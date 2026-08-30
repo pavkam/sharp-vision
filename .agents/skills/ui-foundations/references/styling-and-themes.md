@@ -76,16 +76,15 @@ for the full resolution mechanics.
 
 ## Current API model
 
-A control opts into themed styling by declaring `IStyled<TStyle>` and
-forwarding `Style`/`ActualStyle` itself over a private `StyleSlot<TStyle>`
-field returned by `ControlBase.InitializeStyle<TStyle>(definition, changed)`,
-the same way regardless of the control's actual base type. There is no virtual
+A control opts into themed styling by declaring `IStyled<TStyle>` and forwarding
+`Style`/`ActualStyle` itself over a private `StyleSlot<TStyle>` field returned
+by `ControlBase.InitializeStyle<TStyle>(definition, changed)`, the same way
+regardless of the control's actual base type. There is no virtual
 `OnStyleChanged` to override — pass a private method as `InitializeStyle`'s
 optional `changed` callback instead. See
 [Styling](../../../../docs/concepts/styling.md#overview) and
-[Visual states](../../../../docs/concepts/styling.md#visual-states) for the
-full API surface, including `ActualStyle`, chrome authoring, and
-`ResolveAppearance`.
+[Visual states](../../../../docs/concepts/styling.md#visual-states) for the full
+API surface, including `ActualStyle`, chrome authoring, and `ResolveAppearance`.
 
 ## Traps that have already caused regressions
 
