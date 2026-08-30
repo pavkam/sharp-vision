@@ -717,12 +717,8 @@ public abstract class Container: ControlBase
         // Apply above can run a caller's ScrollChanged handler synchronously, and that handler may
         // dispose this container - the offsets below would throw ObjectDisposedException, so report
         // the reveal as incomplete instead of re-reading them.
-        if (IsDisposed)
-        {
-            return false;
-        }
-
-        return logicalX >= HorizontalOffset && logicalX.Add(bounds.Width) <= HorizontalOffset.Add(Viewport.Width) &&
+        return !IsDisposed &&
+               logicalX >= HorizontalOffset && logicalX.Add(bounds.Width) <= HorizontalOffset.Add(Viewport.Width) &&
                logicalY >= VerticalOffset && logicalY.Add(bounds.Height) <= VerticalOffset.Add(Viewport.Height);
     }
 
