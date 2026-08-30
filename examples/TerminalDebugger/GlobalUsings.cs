@@ -13,8 +13,10 @@ global using SharpVision.Controls.Input;
 global using SharpVision.Controls.Layout;
 global using SharpVision.Input;
 global using SharpVision.Layout;
+global using SharpVision.Scrolling;
 global using SharpVision.Styling;
 global using SharpVision.Terminal.Capabilities;
+global using SharpVision.Terminal.Geometry;
 global using SharpVision.Terminal.Input;
 global using SharpVision.Text;
 

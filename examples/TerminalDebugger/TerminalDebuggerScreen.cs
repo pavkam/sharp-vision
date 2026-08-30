@@ -9,6 +9,11 @@ internal sealed class TerminalDebuggerScreen: Screen
     private readonly Text _identity;
     private readonly Text _summary;
     private readonly Text _status;
+    private readonly CapabilityDashboard _capabilities;
+    private readonly DiagnosticEventLog _eventLog;
+    private readonly InputEventInspector _input;
+    private readonly TerminalProbePanel _probes;
+    private InputEventRecorder? _recorder;
 
     /// <summary>Initializes the retained dashboard shell.</summary>
     internal TerminalDebuggerScreen()
@@ -16,6 +21,11 @@ internal sealed class TerminalDebuggerScreen: Screen
         var header = BuildHeader(out _identity);
         _summary = new Text("<d>Waiting for terminal discovery…</d>") { Padding = new Thickness(1, 0) };
         _status = new Text("Ready") { Overflow = Overflow.Ellipsis };
+        _capabilities = new CapabilityDashboard();
+        _capabilities.SummaryChanged += OnSummaryChanged;
+        _eventLog = new DiagnosticEventLog();
+        _input = new InputEventInspector(_eventLog);
+        _probes = new TerminalProbePanel(_capabilities);
 
         var tabs = new TabControl
         {
@@ -23,9 +33,9 @@ internal sealed class TerminalDebuggerScreen: Screen
             VerticalAlignment = VerticalAlignment.Stretch,
             HeaderOverflowPolicy = TabHeaderOverflowPolicy.Scroll
         };
-        tabs.Items.Add(new TabItem { HeaderText = "&Capabilities", Content = BuildCapabilitiesPane() });
-        tabs.Items.Add(new TabItem { HeaderText = "&Input events", Content = BuildInputPane() });
-        tabs.Items.Add(new TabItem { HeaderText = "&Tests", Content = BuildTestsPane() });
+        tabs.Items.Add(new TabItem { HeaderText = "&Capabilities", Content = _capabilities });
+        tabs.Items.Add(new TabItem { HeaderText = "&Input events", Content = _input });
+        tabs.Items.Add(new TabItem { HeaderText = "&Tests", Content = _probes });
 
         var statusBar = new StatusBar { Padding = new Thickness(1, 0) };
         statusBar.Items.Add(new StatusBarItem { Content = _status });
@@ -67,39 +77,44 @@ internal sealed class TerminalDebuggerScreen: Screen
         return header;
     }
 
-    private static Text BuildCapabilitiesPane() => new Text(
-        "<b>Detected evidence</b> and <b>live verification</b> will appear here.")
-    {
-        Padding = new Thickness(1),
-        Overflow = Overflow.Wrap
-    };
-
-    private static Text BuildInputPane() => new Text(
-        "Keyboard, text, pointer, paste, focus, resize, and clipboard events will appear here.")
-    {
-        Padding = new Thickness(1),
-        Overflow = Overflow.Wrap
-    };
-
-    private static Text BuildTestsPane() => new Text(
-        "All side-effecting checks are explicit. Nothing runs merely because this tab exists.")
-    {
-        Padding = new Thickness(1),
-        Overflow = Overflow.Wrap
-    };
-
     /// <inheritdoc/>
     protected override void OnAttach(Application application)
     {
         ArgumentNullException.ThrowIfNull(application);
         application.Theme = ThemeCatalog.Dark;
         CapabilityCatalog.Validate(application.Capabilities);
+        _capabilities.Initialize(application);
+        _probes.Attach(application);
+        _recorder = new InputEventRecorder(_eventLog, _capabilities.SetVerification);
+        _recorder.Attach(application, this);
+        application.CapabilitiesChanged += OnCapabilitiesChanged;
+        application.Resize += OnApplicationResize;
         _identity.Content = $"{application.Terminal.Description.Name} · {application.Size.Width}×{application.Size.Height}";
-        _summary.Content = $"<info>{application.Capabilities.ColorDepth}</info> color · Unicode {application.Capabilities.UnicodeVersion} · {application.Capabilities.Features.Count} optional protocols";
 
         if (application.Terminal.IsTitleSupported)
         {
             application.Terminal.SetTitle("SharpVision Terminal Debugger");
+        }
+    }
+
+    private void OnSummaryChanged(object? sender, EventArgs eventArgs)
+    {
+        _summary.Content =
+            $"<success>✓ {_capabilities.SupportedCount} detected</success>   " +
+            $"<error>× {_capabilities.UnsupportedCount} unsupported</error>   " +
+            $"<warning>? {_capabilities.UnknownCount} unknown</warning>   " +
+            $"<info>● {_capabilities.VerifiedCount} verified</info>   " +
+            $"<error>! {_capabilities.FailedCount} failed</error>";
+    }
+
+    private void OnCapabilitiesChanged(object? sender, CapabilitiesChangedEventArgs eventArgs) =>
+        _capabilities.UpdateCapabilities(eventArgs.Current);
+
+    private void OnApplicationResize(object? sender, ResizeEventArgs eventArgs)
+    {
+        if (Application is { } application)
+        {
+            _identity.Content = $"{application.Terminal.Description.Name} · {eventArgs.Dimensions.Cells.Width}×{eventArgs.Dimensions.Cells.Height}";
         }
     }
 
@@ -113,5 +128,20 @@ internal sealed class TerminalDebuggerScreen: Screen
             Application?.Shutdown();
             eventArgs.IsHandled = true;
         }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnDispose()
+    {
+        _capabilities.SummaryChanged -= OnSummaryChanged;
+
+        if (Application is { } application)
+        {
+            application.CapabilitiesChanged -= OnCapabilitiesChanged;
+            application.Resize -= OnApplicationResize;
+        }
+
+        _recorder?.Dispose();
+        _recorder = null;
     }
 }
