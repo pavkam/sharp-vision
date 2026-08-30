@@ -20,8 +20,10 @@ to the section that owns it.
 
 For larger working applications, run the
 [text editor](../../examples/TextEditor/README.md#sharpvision-text-editor) or
-[Snake](../../examples/Snake/README.md#sharpvision-snake). The
-[showcase contract](../architecture/showcase.md#overview) explains how the
+[Snake](../../examples/Snake/README.md#sharpvision-snake). To inspect the active
+terminal's detected capabilities and decoded events, run
+[Terminal Debugger](../../examples/TerminalDebugger/README.md#sharpvision-terminal-debugger).
+The [showcase contract](../architecture/showcase.md#overview) explains how the
 interactive gallery doubles as executable API documentation.
 
 ## Reference after the walkthroughs

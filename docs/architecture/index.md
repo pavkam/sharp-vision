@@ -8,7 +8,7 @@ showcase and runnable examples are consumers, not privileged framework code.
 
 ```mermaid
 flowchart TB
-    Apps["Showcase, Snake, TextEditor, and ProcessMonitor"] --> UI["SharpVision\ncontrols, layout, input, styling"]
+    Apps["Showcase, Snake, TextEditor, ProcessMonitor, and TerminalDebugger"] --> UI["SharpVision\ncontrols, layout, input, styling"]
     UI --> Terminal["SharpVision.Terminal\nprotocols, Unicode, cells, transport"]
 
     UITests["SharpVision.Tests"] --> UI

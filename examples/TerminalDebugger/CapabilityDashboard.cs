@@ -152,10 +152,6 @@ internal sealed class CapabilityDashboard: CompositeControlBase
         }
     }
 
-    /// <summary>Updates the displayed committed terminal size.</summary>
-    /// <param name="application">The non-null running application.</param>
-    internal void UpdateEnvironment(Application application) => Initialize(application);
-
     private void RefreshItems(bool selectFirst)
     {
         _list.Items = _statuses.Values.Cast<object?>().ToArray();

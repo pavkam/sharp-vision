@@ -11,7 +11,7 @@ internal static class DiagnosticTextFormatter
     /// <returns>A bounded escaped representation.</returns>
     internal static string EscapeText(ReadOnlySpan<char> value)
     {
-        const int maximumRunes = 2_048;
+        const int maximumRunes = 4_096;
         var builder = new StringBuilder(Math.Min(value.Length, maximumRunes));
         var count = 0;
 
@@ -19,7 +19,7 @@ internal static class DiagnosticTextFormatter
         {
             if (count++ == maximumRunes)
             {
-                _ = builder.Append("… [truncated]");
+                _ = builder.Append("… [truncated after 4096 Unicode scalars]");
                 break;
             }
 
@@ -45,10 +45,12 @@ internal static class DiagnosticTextFormatter
     /// <returns>A bounded hexadecimal and text representation.</returns>
     internal static string FormatBytes(ReadOnlySpan<byte> value)
     {
-        const int maximumBytes = 512;
+        const int maximumBytes = 4_096;
         var visible = value[..Math.Min(value.Length, maximumBytes)];
         var hex = Convert.ToHexString(visible);
-        var suffix = value.Length > maximumBytes ? "… [truncated]" : string.Empty;
+        var suffix = value.Length > maximumBytes
+            ? $"… [truncated after {maximumBytes} of {value.Length} bytes]"
+            : string.Empty;
 
         try
         {
