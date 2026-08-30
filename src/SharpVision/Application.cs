@@ -2062,7 +2062,26 @@ public sealed class Application:
 
     private async Task FinishWithoutSessionAsync()
     {
+        // Terminal (Bell/SetTitle/Notify/Clipboard) is callable before StartAsync ever ran, or from
+        // inside a Starting handler that then throws or observes a pre-empted start, and any bytes
+        // that buffers land in _outOfBand via PostOutOfBand. Suspended()'s Size check never trips on
+        // this never-started path, so nothing else would ever flush or report them - they would sit
+        // in _outOfBand until DisposeTerminalResourcesAsync below tears the still-live _transport
+        // down underneath them, stranding those bytes permanently and silently. Flushing here first,
+        // the same way every post-session-start stop path already does via FlushOutOfBandOnStop,
+        // closes that gap. The drain loop mirrors ObserveSessionAsync's own shutdown drain (`do {
+        // await _renderTask; } while (IsRendering);`): FlushOutOfBandOnStop only starts the write and
+        // returns, so this waits for it to actually finish before the transport it depends on is
+        // disposed.
+        var flushDispatchFailure = await InvokeWithQueueRetryAsync(FlushOutOfBandOnStop);
+
+        do
+        {
+            await _renderTask;
+        } while (IsRendering);
+
         var cleanupFailure = await DisposeTerminalResourcesAsync();
+        cleanupFailure ??= flushDispatchFailure;
 
         // A transiently full queue is absorbed by the bounded retry instead of escaping straight
         // out of DisposeAsync and masking whatever cleanupFailure it was about to record. Only if

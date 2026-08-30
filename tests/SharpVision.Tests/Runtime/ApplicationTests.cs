@@ -5647,6 +5647,33 @@ public sealed class ApplicationTests
         await WaitForQueueToDrainAsync(application.Dispatcher, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies out-of-band bytes posted before a session ever started are still written
+    /// once the application finishes without one, instead of being silently stranded in
+    /// <c>_outOfBand</c>. <c>DrainOutOfBand</c>'s own <c>Suspended()</c> gate always bails before a
+    /// session has resized the application even once, so nothing but the never-started finish path
+    /// itself can ever flush these bytes - unlike every post-session-start stop path, which already
+    /// flushes via <c>FlushOutOfBandOnStop</c> before tearing the transport down.</summary>
+    [Fact]
+    public async Task PostOutOfBand_WhenApplicationNeverStartsASession_FlushesBufferedBytesOnDisposeAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var bell = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += memory =>
+        {
+            if (memory.Span.IndexOf((byte) 0x07) >= 0)
+            {
+                _ = bell.TrySetResult();
+            }
+        };
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+
+        application.PostOutOfBand(new byte[] { 0x07 });
+        await application.DisposeAsync();
+
+        await bell.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        application.Failure.ShouldBeNull();
+    }
+
     #endregion
 
     #region Response validation
