@@ -368,7 +368,11 @@ public sealed class ComboBox: InputBase
     {
         ArrangeChild(_popup, RootBounds(bounds), ResolvedAxes.Both);
 
-        if (_selectedIndex >= 0 && _list.SelectedIndex != _selectedIndex)
+        if (IsOpen && _list.SelectedIndex != _list.ActiveIndex)
+        {
+            SynchronizeListSelection(_list.ActiveIndex);
+        }
+        else if (!IsOpen && _selectedIndex >= 0 && _list.SelectedIndex != _selectedIndex)
         {
             _synchronizingSelection = true;
 
@@ -525,7 +529,14 @@ public sealed class ComboBox: InputBase
             return accepted;
         }
 
-        return _list.HandleCurrentNavigationKey(eventArgs);
+        var moved = _list.HandleCurrentNavigationKey(eventArgs);
+
+        if (moved)
+        {
+            SynchronizeListProvisionalSelection(_list.ActiveIndex);
+        }
+
+        return moved;
     }
 
     private void CancelNavigationSession()
@@ -538,7 +549,7 @@ public sealed class ComboBox: InputBase
 
         if (!openingSnapshotIsCurrent)
         {
-            SynchronizeListSelection(_selectedIndex);
+            SynchronizeListProvisionalSelection(_selectedIndex);
             _list.SetProvisionalCurrentIndex(_selectedIndex);
             return;
         }
@@ -549,7 +560,7 @@ public sealed class ComboBox: InputBase
         }
         else
         {
-            SynchronizeListSelection(_openingSelectedIndex);
+            SynchronizeListProvisionalSelection(_openingSelectedIndex);
         }
 
         _list.SetProvisionalCurrentIndex(_openingCurrentIndex);
@@ -713,6 +724,20 @@ public sealed class ComboBox: InputBase
         try
         {
             _list.SelectedIndex = value;
+        }
+        finally
+        {
+            _synchronizingSelection = false;
+        }
+    }
+
+    private void SynchronizeListProvisionalSelection(int value)
+    {
+        _synchronizingSelection = true;
+
+        try
+        {
+            _list.SetProvisionalSelectionIndex(value);
         }
         finally
         {

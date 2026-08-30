@@ -686,8 +686,8 @@ public sealed class ComboBoxTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies every initial and repeated list-navigation key uses current-only browsing
-    /// while the committed ComboBox selection remains unchanged.</summary>
+    /// <summary>Verifies every initial and repeated list-navigation key moves the popup's visible
+    /// provisional selection while the committed ComboBox selection remains unchanged.</summary>
     [Theory]
     [InlineData(Code.Up, KeyAction.Press, 2)]
     [InlineData(Code.Down, KeyAction.Press, 4)]
@@ -697,7 +697,7 @@ public sealed class ComboBoxTests
     [InlineData(Code.End, KeyAction.Repeat, 6)]
     [InlineData(Code.PageUp, KeyAction.Press, 0)]
     [InlineData(Code.PageDown, KeyAction.Repeat, 6)]
-    public void Dispatch_WhenOpenNavigationKeyIsRouted_MovesOnlyCurrent(
+    public void Dispatch_WhenOpenNavigationKeyIsRouted_MovesPopupSelection(
         Code code,
         KeyAction action,
         int expectedCurrent)
@@ -712,19 +712,20 @@ public sealed class ComboBoxTests
         };
         new LayoutEngine().Layout(box, new Size(16, 8));
         var key = Key(code, action);
+        var list = box.GetDropDownList();
 
         var result = Router.Route(box, Events.Key, key);
 
         result.IsHandled.ShouldBeTrue();
         box.SelectedIndex.ShouldBe(3);
-        box.GetDropDownList().SelectedIndex.ShouldBe(3);
-        box.GetDropDownList().ActiveIndex.ShouldBe(expectedCurrent);
+        list.ActiveIndex.ShouldBe(expectedCurrent);
+        list.SelectedIndex.ShouldBe(expectedCurrent);
     }
 
     /// <summary>Verifies owner preview routing intercepts a popup-focused navigation key exactly
-    /// once, preventing the ListView's ordinary selecting route from committing it a second time.</summary>
+    /// once, moving the private provisional selection without committing the ComboBox value.</summary>
     [Fact]
-    public void Dispatch_WhenNavigationTargetsOpenPopupList_MovesCurrentExactlyOnceWithoutSelecting()
+    public void Dispatch_WhenNavigationTargetsOpenPopupList_MovesProvisionalSelectionExactlyOnce()
     {
         var box = new ComboBox
         {
@@ -741,7 +742,7 @@ public sealed class ComboBoxTests
 
         result.IsHandled.ShouldBeTrue();
         box.SelectedIndex.ShouldBe(1);
-        list.SelectedIndex.ShouldBe(1);
+        list.SelectedIndex.ShouldBe(2);
         list.ActiveIndex.ShouldBe(2);
     }
 

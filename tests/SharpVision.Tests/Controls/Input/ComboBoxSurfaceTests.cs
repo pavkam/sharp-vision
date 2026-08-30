@@ -6,6 +6,41 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves ComboBox and its transient list through mounted terminal surfaces.</summary>
 public sealed class ComboBoxSurfaceTests
 {
+    /// <summary>Verifies opening above the field publishes the selected-row scroll before the
+    /// first interactive frame, so painted and hit-tested rows cannot disagree.</summary>
+    [Fact]
+    public async Task Input_WhenSelectedRowScrollsAboveDropDown_PaintedTopRowMatchesPointerTargetAsync()
+    {
+        var combo = new ComboBox
+        {
+            Width = Length.Cells(14),
+            Height = Length.Cells(3),
+            VerticalAlignment = VerticalAlignment.Bottom,
+            DropDownHeight = Length.Cells(8),
+            Items = Enumerable.Range(0, 19).Select(index => (object?) $"Item {index}").ToArray(),
+            SelectedIndex = 17
+        };
+        var root = new Overlay { Children = { combo } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 12),
+            TestContext.Current.CancellationToken);
+        var list = combo.GetDropDownList();
+
+        await surface.UpdateAsync(() => combo.IsOpen = true, "open the selected-row drop-down above its field");
+        var popup = OwnedTree.Find<Popup>(combo).ShouldNotBeNull();
+
+        popup.ResolvedPlacement.ShouldBe(PopupPlacement.Above);
+        var painted = string.Concat(
+            Enumerable.Range(0, 7).Select(offset => surface.Cell(new Point(list.Bounds.X + offset, list.Bounds.Y)).Text));
+        painted.ShouldBe("Item 10");
+
+        await surface.Pointer.ClickAsync(list, new Point(1, 0));
+
+        combo.SelectedIndex.ShouldBe(10);
+        combo.IsOpen.ShouldBeFalse();
+    }
+
     /// <summary>Verifies an open relative cap re-resolves from the usable below-placement interior.</summary>
     [Fact]
     public async Task ResizeAsync_WhenDropDownHeightIsRelative_ReflowsOpenListAndPreservesSelectionAsync()
@@ -480,6 +515,47 @@ public sealed class ComboBoxSurfaceTests
                              """);
     }
 
+    /// <summary>Verifies a pointer-opened drop-down moves its visible provisional selection with
+    /// directional keys while keeping the field value uncommitted.</summary>
+    [Fact]
+    public async Task Input_WhenPointerOpensDropDown_DirectionalKeyMovesPopupSelectionAsync()
+    {
+        var combo = new ComboBox
+        {
+            Items = ["Zero", "One", "Two", "Three"],
+            SelectedIndex = 1,
+            Width = Length.Cells(10),
+            Height = Length.Cells(3),
+            DropDownHeight = Length.Cells(2)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            combo,
+            new Size(12, 6),
+            TestContext.Current.CancellationToken);
+
+        await surface.Pointer.ClickAsync(combo);
+        var list = combo.GetDropDownList();
+        var rows = OwnedTree.FindAll<ListItem>(list);
+        var openingSelectedBackground = surface.Cell(new Point(rows[1].Bounds.X, rows[1].Bounds.Y)).Style.Background;
+        var openingUnselectedBackground = surface.Cell(new Point(rows[2].Bounds.X, rows[2].Bounds.Y)).Style.Background;
+
+        openingSelectedBackground.ShouldNotBe(openingUnselectedBackground);
+
+        await surface.Keyboard.PressAsync(Code.Down);
+
+        combo.IsOpen.ShouldBeTrue();
+        surface.ShouldHaveFocus(combo);
+        combo.SelectedIndex.ShouldBe(1, "the field value commits only when the current row is accepted");
+        list.ActiveIndex.ShouldBe(2);
+        list.SelectedIndex.ShouldBe(2);
+        rows[1].GetAppearanceState().HasFlag(VisualState.Selected).ShouldBeFalse();
+        rows[2].GetAppearanceState().HasFlag(VisualState.Selected).ShouldBeTrue();
+        surface.Cell(new Point(rows[1].Bounds.X, rows[1].Bounds.Y)).Style.Background
+            .ShouldBe(openingUnselectedBackground);
+        surface.Cell(new Point(rows[2].Bounds.X, rows[2].Bounds.Y)).Style.Background
+            .ShouldBe(openingSelectedBackground);
+    }
+
     /// <summary>Verifies field press, popup navigation, release activation, and unavailable cleanup.</summary>
     [Fact]
     public async Task Input_WhenDropDownNavigates_CommitsReleasedChoiceAndCleanupAsync()
@@ -586,7 +662,7 @@ public sealed class ComboBoxSurfaceTests
         await surface.Keyboard.RepeatAsync(Code.Down);
 
         combo.SelectedIndex.ShouldBe(1);
-        list.SelectedIndex.ShouldBe(1);
+        list.SelectedIndex.ShouldBe(3);
         list.ActiveIndex.ShouldBe(3);
 
         await surface.Keyboard.PressAsync(Code.Escape);

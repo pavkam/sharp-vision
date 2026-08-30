@@ -93,8 +93,10 @@ ListView's selection, scrolling, and surface appearance inside the Popup.
   in range, so Escape cannot restore a cursor captured for different items.
 - Opening snapshots the accepted `SelectedIndex` and the popup list's current
   row, then seeds provisional current-row navigation from the accepted item.
-  Directional, endpoint, and page browsing does not change `SelectedIndex` or
-  `SelectedItem` until an activation accepts the current row.
+  Directional, endpoint, and page browsing moves the private list's selected
+  highlight with its current row, including across a scrolled viewport, but does
+  not change the ComboBox `SelectedIndex` or `SelectedItem` until an activation
+  accepts that row.
 - `SelectedIndex` is `-1` or an index within `Items`; a committed selection
   publishes `PropertyChanged(SelectedIndex)` before `SelectionChanged`.
   Publication is versioned under synchronous reentry: a `PropertyChanged`
@@ -161,10 +163,10 @@ session, the following keys use the
 
 | Input                                     | Open-session behavior                                                                                        |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Up or Left, initial or repeat             | Moves the provisional current row to the previous available item.                                            |
-| Down or Right, initial or repeat          | Moves the provisional current row to the next available item.                                                |
-| Home or End, initial or repeat            | Moves the provisional current row to the first or last available item.                                       |
-| Page Up or Page Down, initial or repeat   | Moves by one visible page, bounded by the first or last available item.                                      |
+| Up or Left, initial or repeat             | Moves the visible provisional selection to the previous available item.                                      |
+| Down or Right, initial or repeat          | Moves the visible provisional selection to the next available item.                                          |
+| Home or End, initial or repeat            | Moves the visible provisional selection to the first or last available item.                                 |
+| Page Up or Page Down, initial or repeat   | Moves the visible provisional selection by one page, bounded by the first or last available item.            |
 | Enter, initial activation-eligible press  | Accepts the current row, commits `SelectedIndex`, and closes the popup.                                      |
 | Space                                     | Remains field press activation rather than popup acceptance; it does not replace Enter's accept transaction. |
 | Escape, initial activation-eligible press | Cancels and closes the popup.                                                                                |
@@ -197,7 +199,7 @@ Super, Hyper, or Meta remains unhandled and leaves the popup open. The arrow
 keys (Up/Down/Left/Right), Home, End, Page Up, and Page Down move between items
 through the ListView's own keyboard handler. Initial and repeated key-down input
 share that path, so holding a navigation key continues moving the current row
-and keeps it visible while the ComboBox retains focus. Movement accepts
+and its selected highlight while the ComboBox retains focus. Movement accepts
 incidental lock state but leaves Shift and application-command-modified keys
 unhandled without changing the provisional current row.
 
@@ -235,8 +237,9 @@ var density = new ComboBox
 - Assigned items are copied, indices are validated, and the connected popup
   renders its exact cells in both below and above placement.
 - Initial and repeated list navigation is delivered exactly once regardless of
-  focus placement, remains provisional until Enter or pointer acceptance, and
-  restores the opening row on every cancelling close path.
+  focus placement, visibly moves the popup selection while remaining provisional
+  until Enter or pointer acceptance, and restores the opening row on every
+  cancelling close path.
 - The popup renders opaquely and hit tests only what is visible. Popup
   arrangement, Escape, and mouse selection through the Popup behave as
   documented, and keyboard focus, navigation, and activation follow the rules

@@ -1613,6 +1613,30 @@ public sealed class ListView: ItemsControl
         }
     }
 
+    /// <summary>Moves the private visual selection used by an owner-controlled provisional
+    /// navigation session without starting a second current-item or reveal transaction.</summary>
+    /// <param name="index">The already-resolved available current index, or -1 to clear the
+    /// provisional selection.</param>
+    /// <remarks>This invariant exists so a mounted drop-down can visibly browse before its owner
+    /// commits the public selection. The owner has already resolved availability and scrolling by
+    /// moving current, so repeating those operations here could repair the current row backward.</remarks>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the
+    /// item range.</exception>
+    /// <exception cref="InvalidOperationException">The attached ListView is mutated
+    /// off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    internal void SetProvisionalSelectionIndex(int index)
+    {
+        if (index < -1 || index >= Items.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), index, "Provisional selection is outside Items.");
+        }
+
+        VerifyMutable();
+        HashSet<int> next = index < 0 ? [] : [index];
+        _ = ApplySelection(next, cancellable: false, requireAvailability: false);
+    }
+
     /// <summary>Activates the owned current item without transferring focus to that item.</summary>
     /// <param name="cause">The semantic activation source.</param>
     /// <param name="key">The activating key, or null for non-key activation.</param>
