@@ -2,7 +2,7 @@
 
 ## Overview
 
-The solution contains five production libraries, four executable examples, and
+The solution contains five production libraries, five executable examples, and
 eight test projects. Each library has its own test project; examples are
 demonstrations whose behavior the owning libraries' tests already cover, so they
 carry no test projects of their own.
@@ -18,6 +18,7 @@ flowchart LR
     Snake["Snake"]
     TextEditor["TextEditor"]
     ProcessMonitor["ProcessMonitor"]
+    TerminalDebugger["TerminalDebugger"]
     TerminalTests["SharpVision.Terminal.Tests"]
     Probe["SharpVision.Terminal.Probe"]
     UITests["SharpVision.Tests"]
@@ -34,6 +35,7 @@ flowchart LR
     Snake --> FigletFonts
     TextEditor --> UI
     ProcessMonitor --> UI
+    TerminalDebugger --> UI
     TerminalTests -. tests .-> Terminal
     TerminalTests -. launches .-> Probe
     Probe --> Terminal
@@ -170,9 +172,12 @@ follows the ordinary control ownership, layout, modality, styling, input, and
 dispatcher contracts.
 
 `examples/Showcase` contains `SharpVision.Showcase`, which owns no library
-behavior and composes public APIs into a responsive gallery. `examples/Snake`
-and `examples/TextEditor` are smaller application examples. The production
-libraries never reference an example or test project.
+behavior and composes public APIs into a responsive gallery. `examples/Snake`,
+`examples/TextEditor`, and `examples/ProcessMonitor` are focused application
+examples. `examples/TerminalDebugger` composes public capability, input,
+terminal-service, rendition, Unicode, and graphics APIs into an interactive
+diagnostic dashboard. The production libraries never reference an example or
+test project.
 
 `SharpVision.Terminal.Probe` is a test-support executable for process-level
 terminal checks. `SharpVision.Terminal.Tests` owns its lifecycle and assertions;
