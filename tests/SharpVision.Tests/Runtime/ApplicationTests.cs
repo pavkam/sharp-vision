@@ -3005,6 +3005,55 @@ public sealed class ApplicationTests
         terminal.Disposals.ShouldBe(1);
     }
 
+    /// <summary>Verifies out-of-band bytes buffered behind a frame render are still flushed when a
+    /// reentrant stop cancels <c>_lifetime</c> synchronously between <c>Root.Render</c> returning and
+    /// <c>Renderer.RenderAsync</c>'s own <c>ThrowIfCancellationRequested</c> check observing it - the
+    /// StartRender counterpart of <see
+    /// cref="CompleteRender_WhenStopCommitsWhileOutOfBandIsBuffered_FlushesBufferedOutOfBandBytesAsync"/>
+    /// for the synchronous fault path <see
+    /// cref="StartAsync_WhenRenderAsyncFaultsSynchronously_CompletesInsteadOfHangingAsync"/> exercises
+    /// with an unrelated exception. StartRender's own <c>RenderAsync</c> catch used to rethrow this
+    /// benign, stop-driven cancellation unconditionally instead of swallowing it like
+    /// <c>CompleteRender</c> does, and never flushed the bytes it stranded behind - with
+    /// <c>Failure</c> and <c>LastCleanupException</c> both staying null throughout.</summary>
+    [Fact]
+    public async Task StartRender_WhenReentrantStopCancelsBeforeRenderAsyncObservesIt_FlushesBufferedOutOfBandBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var probe = new ProbeControl { Content = "a".AsMemory() };
+        await using Application application = new(probe, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        // Fires from inside Root.Render (OnRenderContent), synchronously on the dispatcher thread,
+        // for the next render this test triggers below. Out-of-band bytes must be buffered before
+        // the reentrant stop, since PostOutOfBand discards anything posted once _stopping is
+        // already true. Dispatcher.InvokeAsync runs inline when already on the dispatcher thread
+        // (see its own remarks), so this StopAsync call's BeginStopping - and the _lifetime.Cancel()
+        // inside it - has already committed by the time this hook returns, well before StartRender
+        // reaches RenderAsync.
+        probe.Rendering = renderingProbe =>
+        {
+            _ = renderingProbe; // unused: the hook only needs to run on the dispatcher thread
+            application.PostOutOfBand(new byte[] { 0x07 });
+            _ = application.StopAsync();
+        };
+
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                probe.Content = "b".AsMemory();
+                probe.InvalidateKernel(InvalidationImpact.Render);
+            },
+            TestContext.Current.CancellationToken);
+
+        await application.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        terminal.Writes.ShouldContain(write => write.Length == 1 && write[0] == 0x07); // BEL still sent
+        application.Failure.ShouldBeNull();
+        application.LastCleanupException.ShouldBeNull();
+    }
+
     /// <summary>Verifies a shortcut invokes its item without ever reaching Router.Route, so a
     /// focused TextInput neither consumes the chord nor sees it as typed text.</summary>
     [Fact]

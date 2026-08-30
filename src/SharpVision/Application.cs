@@ -2639,6 +2639,18 @@ public sealed class Application:
             // application is not permanently wedged believing a render is still in flight.
             frame.Dispose();
             IsRendering = false;
+
+            // Root.Render runs application/control code, and a legal reentrant StopAsync() call
+            // from within it (see the IsRendering comment above) commits BeginStopping - including
+            // its FlushOutOfBandOnStop-style stranding risk - before this catch ever runs. This
+            // fault is unrelated to that stop, so it always rethrows; it only needs to flush bytes
+            // the stop left stuck behind IsRendering just now going false, for the same reason
+            // CompleteRender's matching branch does.
+            if (_stopping && HasPendingOutOfBand())
+            {
+                FlushOutOfBandOnStop();
+            }
+
             throw;
         }
 
@@ -2658,22 +2670,42 @@ public sealed class Application:
                 _cellMetrics,
                 _lifetime.Token);
         }
-        catch
+        catch (Exception exception)
         {
             // RenderAsync is a non-async ValueTask method: a fault raised before its first await
             // (e.g. out of backend Prepare) propagates synchronously here instead of completing
             // the returned ValueTask. Without this catch, hold/completion/IsRendering would never
             // retire and ObserveRenderAsync would never run to dispose the frame, wedging shutdown
             // on an unobservable _renderTask. This performs exactly the retirement
-            // CompleteRender would perform for the equivalent asynchronous fault, then rethrows so
-            // the single Report call happens where it always does - OnDispatcherUnhandled.
+            // CompleteRender would perform for the equivalent asynchronous fault.
             frame.Dispose();
             IsRendering = false;
             _renderer?.Invalidate();
             _rendererInvalidationPending = false;
             hold.Dispose();
             _ = completion.TrySetResult();
-            throw;
+
+            if (exception is not OperationCanceledException || !_lifetime.IsCancellationRequested)
+            {
+                // The single Report call happens where it always does - OnDispatcherUnhandled.
+                throw;
+            }
+
+            // _lifetime.Token was passed above, and BeginStopping's _lifetime.Cancel() can commit
+            // between Root.Render returning and this call's first statement running - the same
+            // reentrant-stop window the try block above already documents - so this is the benign
+            // stop-driven cancellation CompleteRender's matching branch already swallows, not a
+            // genuine fault. Flush whatever out-of-band bytes the stop stranded behind
+            // IsRendering just now going false, for the same reason FlushOutOfBandOnStop exists.
+            if (_stopping && HasPendingOutOfBand())
+            {
+                FlushOutOfBandOnStop();
+            }
+
+            // frame/hold/completion are already fully retired above and operation never ran, so
+            // there is nothing left for ObserveRenderAsync to observe - unlike the rethrow branch,
+            // this path must not fall through to it.
+            return;
         }
 
         _ = ObserveRenderAsync(operation, frame, hold, completion);
