@@ -21,8 +21,8 @@ public sealed class KittyGraphicsBackendTests
     {
         using var backend = new KittyGraphicsBackend();
         var image = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
-        using var first = Frame(image, new Rect(0, 0, 1, 1));
-        using var moved = Frame(image, new Rect(1, 0, 1, 1));
+        using var first = Frame(image, new Rect(0, 0, 1, 1), PlacementMode.Contain);
+        using var moved = Frame(image, new Rect(1, 0, 1, 1), PlacementMode.Contain);
         using var empty = new RenderFrame(new Size(4, 2));
         _ = backend.Prepare(null, first, full: true);
         var initial = WritePrepared(backend);
@@ -64,6 +64,32 @@ public sealed class KittyGraphicsBackendTests
         backend.Accept(KittyGraphicsResponse.Parse("Gi=42,I=1;OK"u8));
 
         _ = backend.Prepare(frame, moved, full: false, context);
+        var assigned = WritePrepared(backend);
+
+        assigned.CellPreludes.ShouldBeEmpty();
+        backend.PreparedCellOverlay.ShouldBeNull();
+        Encoding.ASCII.GetString(assigned.Placements).ShouldContain("a=p,i=42,p=1");
+    }
+
+    /// <summary>Verifies modes whose fitting semantics differ from Kitty's aspect-preserving
+    /// Unicode placeholders remain cursor-anchored after terminal image-id assignment.</summary>
+    [Theory]
+    [InlineData(PlacementMode.Cover)]
+    [InlineData(PlacementMode.Stretch)]
+    public void Prepare_WhenAssignedPlacementIsNotContain_KeepsCursorPlacement(PlacementMode mode)
+    {
+        using var backend = new KittyGraphicsBackend();
+        var image = GraphicsImage.FromRgba(new Size(2, 1), new byte[8]);
+        using var first = new RenderFrame(new Size(5, 2));
+        using var moved = new RenderFrame(new Size(5, 2));
+        first.Canvas.DrawImage(image, new Rect(0, 0, 3, 2), mode);
+        moved.Canvas.DrawImage(image, new Rect(1, 0, 3, 2), mode);
+        _ = backend.Prepare(null, first, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=42,I=1;OK"u8));
+
+        _ = backend.Prepare(first, moved, full: false);
         var assigned = WritePrepared(backend);
 
         assigned.CellPreludes.ShouldBeEmpty();
@@ -516,10 +542,13 @@ public sealed class KittyGraphicsBackendTests
             GraphicsPlacementSkipReason.OverlapBlocked);
     }
 
-    private static RenderFrame Frame(GraphicsImage image, Rect destination)
+    private static RenderFrame Frame(
+        GraphicsImage image,
+        Rect destination,
+        PlacementMode mode = PlacementMode.Stretch)
     {
         var frame = new RenderFrame(new Size(4, 2));
-        frame.Canvas.DrawImage(image, destination, PlacementMode.Stretch);
+        frame.Canvas.DrawImage(image, destination, mode);
         return frame;
     }
 

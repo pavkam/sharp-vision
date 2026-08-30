@@ -723,6 +723,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         KittyGraphicsPlacementState state,
         ColorDepth colorDepth) =>
         !state.UsesImageNumber &&
+        state.Placement.Mode == PlacementMode.Contain &&
         (colorDepth switch
         {
             ColorDepth.TrueColor => state.PlacementId <= 0x00FF_FFFF,

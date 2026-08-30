@@ -148,9 +148,9 @@ public sealed class RendererTests
         var profile = TerminalProfile.CreateAnsi(capabilities);
         var image = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
         using var front = CreateRows("head", "1111", "2222", "3333", "4444");
-        front.Canvas.DrawImage(image, new Rect(0, 2, 1, 1), PlacementMode.Stretch);
+        front.Canvas.DrawImage(image, new Rect(0, 2, 1, 1), PlacementMode.Contain);
         using var back = CreateRows("head", "2222", "3333", "4444", "5555");
-        back.Canvas.DrawImage(image, new Rect(0, 1, 1, 1), PlacementMode.Stretch);
+        back.Canvas.DrawImage(image, new Rect(0, 1, 1, 1), PlacementMode.Contain);
         using var backend = new KittyGraphicsBackend();
         using var renderer = new Renderer(backend);
         await using var transport = new FakeTransport();

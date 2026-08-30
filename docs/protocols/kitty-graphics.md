@@ -117,17 +117,20 @@ CUP to the pane-local destination before each APC and restores the semantic
 save/restore slot. Kitty terminals are VT-compatible; this CUP requirement is
 part of backend selection.
 
-After acknowledgement, an eligible placement switches to Kitty 0.28 Unicode
-placeholders. A virtual placement command uses `U=1`; its ordinary cell stream
-then writes U+10EEEE followed by explicit row and column diacritics from Kitty's
-fixed table. Image ids above 24 bits add the table entry selected by the high
-byte as a third diacritic. The low 24 image-id bits are carried as exact RGB
-foreground and the placement id as exact RGB underline color. An indexed-256
-profile uses the exact low-byte palette indexes for both identifiers. These are
-protocol fields, so they bypass ordinary color projection: SharpVision never
-quantizes them. Basic-16 and monochrome profiles, indexed identifiers above 255,
-placement identifiers above the representable range, or dimensions beyond the
-283-entry coordinate table retain cursor-anchored placement.
+After acknowledgement, an eligible contain-mode placement switches to Kitty 0.28
+Unicode placeholders. Kitty specifies that virtual placements always preserve
+the source aspect ratio, so cover and stretch placements remain cursor-anchored
+rather than silently acquiring contain semantics on a later frame. A virtual
+placement command uses `U=1`; its ordinary cell stream then writes U+10EEEE
+followed by explicit row and column diacritics from Kitty's fixed table. Image
+ids above 24 bits add the table entry selected by the high byte as a third
+diacritic. The low 24 image-id bits are carried as exact RGB foreground and the
+placement id as exact RGB underline color. An indexed-256 profile uses the exact
+low-byte palette indexes for both identifiers. These are protocol fields, so
+they bypass ordinary color projection: SharpVision never quantizes them.
+Basic-16 and monochrome profiles, indexed identifiers above 255, placement
+identifiers above the representable range, or dimensions beyond the 283-entry
+coordinate table retain cursor-anchored placement.
 
 The placeholder projection is transactional overlay state rather than semantic
 frame content. It participates in damage equality, replacement ordering, and
