@@ -45,7 +45,7 @@ classDiagram
 | `Style`                | `TabControlStyle?`                           | `null`                            | Optional complete developer-authored tab-strip style.                                                             |
 | `ActualStyle`          | `TabControlStyle`                            | Resolved                          | Read-only; the local style when assigned, otherwise the `control` role plus code-owned tab-strip members.         |
 | `RequestClose(item)`   | `bool`                                       | —                                 | Requests closure of a closeable owned page; raises `CloseRequested` and removes it unless cancelled.              |
-| `SelectionChanged`     | `EventHandler<TabSelectionChangedEventArgs>` | No subscribers                    | Raised after the selected tab index changes.                                                                      |
+| `SelectionChanged`     | `EventHandler<TabSelectionChangedEventArgs>` | No subscribers                    | Raised after the selected tab index changes while the control is live; disposal settles selection silently.       |
 | `CloseRequested`       | `EventHandler<TabCloseRequestedEventArgs>`   | No subscribers                    | Raised before a closeable tab is removed; cancellation or a newer request stops delivery to later subscribers.    |
 
 `Items : TabItemCollection` exposes typed `Add`, `Insert`, `Remove`, `RemoveAt`,
@@ -82,7 +82,8 @@ as for `Items.Remove`.
   Invalid indexes and unavailable targets are rejected before mutation.
 - `SelectionChanged` fires once, after the selected page identity and the
   retained content participation have committed. Assigning the same index again
-  is not a selection change.
+  is not a selection change. Disposing the `TabControl` clears its selection and
+  owned pages without publishing an ordinary selection transition.
 - Selection and presentation are transaction-ordered under synchronous reentry.
   A newer selection or structural mutation from `SelectedIndex`, `SelectedItem`,
   or page `Visibility` notification supersedes the interrupted transaction;

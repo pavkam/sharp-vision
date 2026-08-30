@@ -65,7 +65,8 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         ConfigureHeaderOverflow();
     }
 
-    /// <summary>Raised after the selected tab index changes.</summary>
+    /// <summary>Raised after the selected tab index changes while the control is live; disposal
+    /// settles selection without publishing a transition.</summary>
     public event EventHandler<TabSelectionChangedEventArgs>? SelectionChanged;
 
     /// <summary>Raised before a closeable tab is removed; handlers may cancel the request, which
@@ -833,9 +834,12 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             return;
         }
 
-        ExceptionAggregation.Capture(
-            () => CommitSelection(-1, previousSelectedIndex, previousSelectedItem, force: true),
-            ref failure);
+        if (!disposing)
+        {
+            ExceptionAggregation.Capture(
+                () => CommitSelection(-1, previousSelectedIndex, previousSelectedItem, force: true),
+                ref failure);
+        }
 
         foreach (var header in headers)
         {

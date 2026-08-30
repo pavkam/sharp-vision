@@ -815,6 +815,20 @@ public sealed class TabControlTests
             tabs.Style = TabControlStyle.Default with { DividerColor = Color.Rgb(0xff, 0, 0) });
     }
 
+    /// <summary>Verifies owner teardown settles the selected page without publishing an ordinary
+    /// selection transition to subscribers whose surrounding surface may already be disposed.</summary>
+    [Fact]
+    public void Dispose_WhenSelectedPageExists_DoesNotPublishSelectionChanged()
+    {
+        var tabs = Create(Create("General", "Body"));
+        var selectionChanges = 0;
+        tabs.SelectionChanged += (_, _) => selectionChanges++;
+
+        tabs.Dispose();
+
+        selectionChanges.ShouldBe(0);
+    }
+
     /// <summary>Verifies disposed collection mutations fail before changing the tab set.</summary>
     [Fact]
     public void Items_WhenOwnerIsDisposed_RejectsRemoveAndClear()
