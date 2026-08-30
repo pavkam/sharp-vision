@@ -74,6 +74,38 @@ public sealed class OscTests
     }
 
     /// <summary>
+    /// Verifies a literal <c>;</c> byte in the title is rejected before writing: the urxvt/foot
+    /// receiver splits the OSC 777 payload once after the "notify;" prefix, so an embedded ';'
+    /// in the title would shift that boundary and truncate the title.
+    /// </summary>
+    [Fact]
+    public void Notify_WhenTitleContainsSemicolon_ThrowsBeforeWriting()
+    {
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new ProtocolWriter(destination);
+
+        _ = Should.Throw<ArgumentException>(() => Osc.Notify(writer, "ti;tle"u8, "body"u8));
+
+        destination.WrittenCount.ShouldBe(0);
+    }
+
+    /// <summary>
+    /// Verifies a literal <c>;</c> byte in the body is accepted and written through unchanged:
+    /// the receiver treats everything after the first split as the body, so further ';' bytes
+    /// there are safe under the urxvt/foot convention.
+    /// </summary>
+    [Fact]
+    public void Notify_WhenBodyContainsSemicolon_WritesExactBytes()
+    {
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new ProtocolWriter(destination);
+
+        Osc.Notify(writer, "title"u8, "bo;dy"u8);
+
+        destination.WrittenSpan.ToArray().ShouldBe(WrapOsc("777", "notify;title;bo;dy"));
+    }
+
+    /// <summary>
     /// Builds the exact bytes a decimal-selector OSC command with the given payload should
     /// produce: ESC, ']', the selector, ';', the UTF-8 payload, and the ST terminator.
     /// </summary>

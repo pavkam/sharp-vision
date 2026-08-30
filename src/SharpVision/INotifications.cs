@@ -31,13 +31,17 @@ public interface INotifications
     public void Notify(string body);
 
     /// <summary>Raises a titled desktop notification using OSC 777; a no-op when unsupported.</summary>
-    /// <param name="title">The non-null notification title without terminal control characters.</param>
+    /// <param name="title">
+    /// The non-null notification title without terminal control characters or a literal
+    /// <c>;</c> character.
+    /// </param>
     /// <param name="body">The non-null notification body without terminal control characters.</param>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="title"/> or <paramref name="body"/> is null.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="title"/> or <paramref name="body"/> contains a terminal control character.
+    /// <paramref name="title"/> or <paramref name="body"/> contains a terminal control character,
+    /// or <paramref name="title"/> contains a <c>;</c> character.
     /// </exception>
     /// <exception cref="InvalidOperationException">
     /// The dispatcher's bounded post queue was full at the moment of the call.

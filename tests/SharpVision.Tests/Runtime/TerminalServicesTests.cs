@@ -1878,6 +1878,45 @@ public sealed class TerminalServicesTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>
+    /// Verifies the titled overload rejects a literal ';' in the title but accepts one in the
+    /// body, matching <see cref="Osc.Notify(ProtocolWriter, ReadOnlySpan{byte}, ReadOnlySpan{byte})"/>'s
+    /// asymmetric field-injection guard: a ';' in the title would shift the OSC 777 title/body
+    /// boundary the urxvt/foot receiver assumes, while one in the body is absorbed safely.
+    /// </summary>
+    [Fact]
+    public async Task Notify_WhenTitleContainsSemicolon_ThrowsArgumentExceptionAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { Notifications = supported }
+        };
+        List<string> written = [];
+        var complete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += memory =>
+        {
+            written.Add(Encoding.ASCII.GetString(memory.Span));
+
+            if (string.Concat(written).Contains("]777;notify;title;bo;dy", StringComparison.Ordinal))
+            {
+                _ = complete.TrySetResult();
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.Notifications.IsSupported.ShouldBeTrue();
+        _ = Should.Throw<ArgumentException>(
+            () => application.Terminal.Notifications.Notify("ti;tle", "body"));
+        application.Terminal.Notifications.Notify("title", "bo;dy");
+        await complete.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies both notify overloads validate their string arguments unconditionally,
     /// even when notifications are unsupported, matching <c>SetTitle</c>'s null-check ordering.</summary>
     [Fact]

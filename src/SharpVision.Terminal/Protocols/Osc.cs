@@ -39,12 +39,26 @@ public static class Osc
 
     /// <summary>Raises a desktop notification with a title and body, using OSC 777.</summary>
     /// <param name="writer">The validated protocol writer.</param>
-    /// <param name="title">Borrowed UTF-8 notification title bytes without controls.</param>
+    /// <param name="title">
+    /// Borrowed UTF-8 notification title bytes without controls or a literal <c>;</c> byte.
+    /// </param>
     /// <param name="body">Borrowed UTF-8 notification body bytes without controls.</param>
-    /// <exception cref="ArgumentException">A value contains a control byte.</exception>
+    /// <exception cref="ArgumentException">
+    /// A value contains a control byte, or <paramref name="title"/> contains a literal <c>;</c> byte.
+    /// </exception>
     /// <exception cref="OverflowException">The combined payload length exceeds <see cref="int.MaxValue"/>.</exception>
     public static void Notify(ProtocolWriter writer, ReadOnlySpan<byte> title, ReadOnlySpan<byte> body)
     {
+        if (title.IndexOf((byte) ';') >= 0)
+        {
+            throw new ArgumentException(
+                "A notification title cannot contain a ';' byte: the receiving urxvt/foot " +
+                "convention splits the OSC 777 payload once after the \"notify;\" prefix, so a " +
+                "';' embedded in the title would shift the title/body boundary earlier than " +
+                "intended and truncate it.",
+                nameof(title));
+        }
+
         var length = checked("notify;"u8.Length + title.Length + 1 + body.Length);
         var rented = length > _stackPayloadLimit
             ? ArrayPool<byte>.Shared.Rent(length)
