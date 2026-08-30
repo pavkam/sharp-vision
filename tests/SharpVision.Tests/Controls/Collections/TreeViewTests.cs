@@ -3479,9 +3479,20 @@ public sealed class TreeViewTests
             () => item.ChildState == TreeViewChildState.Loaded,
             TestContext.Current.CancellationToken);
 
-        loadedTransitions.ShouldBe(1);
-        observedCountAtLoaded.ShouldBe(25, "the full committed set must already be visible at the moment the transition fires");
-        item.Children.Count.ShouldBe(25);
+        // The state field commits before SetChildState finishes publishing its callbacks. Queueing
+        // the observation behind that dispatcher transaction prevents an off-thread fast-path
+        // predicate from asserting while the Loaded callback is still pending in the same turn.
+        var (transitions, countAtTransition, finalCount) = await dispatcher.InvokeAsync(
+            () => (Transitions: loadedTransitions,
+                CountAtTransition: observedCountAtLoaded,
+                FinalCount: item.Children.Count),
+            TestContext.Current.CancellationToken);
+
+        transitions.ShouldBe(1);
+        countAtTransition.ShouldBe(
+            25,
+            "the full committed set must already be visible at the moment the transition fires");
+        finalCount.ShouldBe(25);
     }
 
     /// <summary>Verifies a description that never sets Presence defaults to MayHaveChildren: the

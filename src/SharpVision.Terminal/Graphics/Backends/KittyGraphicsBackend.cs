@@ -337,6 +337,12 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                         imageState.UsesImageNumber));
                 }
 
+                // Stamped now, while placeholderColorDepth and every other input CanUsePlaceholder
+                // depends on are in scope, so it can be compared against the equivalent prior-frame
+                // flag captured on _placements[index] once this state is committed — see the
+                // placeholder-eligibility checks below and in PlaceholderEligibilityChanged.
+                placementState = placementState.WithUsedPlaceholder(
+                    CanUsePlaceholder(placementState, placeholderColorDepth));
                 placements.Add(placementState);
             }
 
@@ -354,6 +360,16 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                     placements,
                     placeholderColorDepth,
                     placeholders: true);
+            }
+
+            // Defensive symmetry with the real-placement loop's own eligibility check below: even
+            // though a flip into or out of placeholder eligibility should already change the cell
+            // overlay (BuildCellOverlay only paints currently-eligible placements), that isn't
+            // relied upon here as the sole guarantee - an explicit per-placement disagreement
+            // against the prior committed frame also forces the placeholder batch to be rewritten.
+            if (!virtualPlacementsChanged)
+            {
+                virtualPlacementsChanged = PlaceholderEligibilityChanged(placements);
             }
 
             if (virtualPlacementsChanged)
@@ -377,11 +393,17 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                 var placementState = placements[index];
                 var placement = placementState.Placement;
 
-                if (!CanUsePlaceholder(placementState, placeholderColorDepth) &&
+                if (!placementState.UsedPlaceholder &&
                     (reconstruct ||
                     index >= _placements.Count ||
                     _placements[index].PlacementId != placementState.PlacementId ||
-                    _placements[index].Placement != placement))
+                    _placements[index].Placement != placement ||
+                    // The placement held identity and geometry across frames but was rendered
+                    // through a virtual placeholder last time and just lost that eligibility (e.g.
+                    // a color-depth change) - the placeholder loop above no longer emits anything
+                    // for it, so the real placement command must be forced here or the image
+                    // silently vanishes with zero bytes and no diagnostic.
+                    _placements[index].UsedPlaceholder))
                 {
                     WritePlacement(placementState, index, output);
                     placementCount++;
@@ -749,6 +771,32 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         {
             if (CanUsePlaceholder(placements[index], colorDepth) == placeholders &&
                 placements[index].Placement != _placements[index].Placement)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Reports whether any placement's placeholder eligibility this frame (already stamped onto
+    /// <see cref="KittyGraphicsPlacementState.UsedPlaceholder"/> for every entry in
+    /// <paramref name="placements"/> while it was being built) disagrees with the eligibility
+    /// captured on the equivalent committed <see cref="_placements"/> entry from the prior frame.
+    /// This is the one caller-independent signal that a placement's placeholder/real-placement
+    /// rendering channel needs to change, regardless of <c>reconstruct</c>, identity, or geometry.
+    /// </summary>
+    private bool PlaceholderEligibilityChanged(List<KittyGraphicsPlacementState> placements)
+    {
+        if (placements.Count != _placements.Count)
+        {
+            return true;
+        }
+
+        for (var index = 0; index < placements.Count; index++)
+        {
+            if (placements[index].UsedPlaceholder != _placements[index].UsedPlaceholder)
             {
                 return true;
             }

@@ -115,8 +115,8 @@ For chrome specifically:
 4. Overlay protected derived-control state contributions.
 5. Resolve semantic relief to the active Theme's highlight and shade colors,
    unless the active visual state authored `Border.Foreground` itself, in which
-   case that color paints every edge instead (except for a style, such as
-   `Button`, whose own per-state completion switches `Border.Relief`).
+   case that color paints every edge instead. A state-authored relief remains
+   semantic and continues to resolve through the active Theme's edge colors.
 6. Compute border inset and shadow visual overflow.
 7. Paint shadow and body, call `OnRenderContent`, render normal children, then
    overlay the border.

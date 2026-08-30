@@ -13,7 +13,8 @@ internal readonly struct KittyGraphicsPlacementState
         Placement placement,
         uint imageId,
         uint placementId,
-        bool usesImageNumber = false)
+        bool usesImageNumber = false,
+        bool usedPlaceholder = false)
     {
         if (placement.IsEmpty)
         {
@@ -26,6 +27,7 @@ internal readonly struct KittyGraphicsPlacementState
         ImageId = imageId;
         PlacementId = placementId;
         UsesImageNumber = usesImageNumber;
+        UsedPlaceholder = usedPlaceholder;
     }
 
     /// <summary>Gets the semantic placement.</summary>
@@ -40,7 +42,20 @@ internal readonly struct KittyGraphicsPlacementState
     /// <summary>Gets whether <see cref="ImageId"/> is a client image number awaiting assignment.</summary>
     public bool UsesImageNumber { get; }
 
+    /// <summary>
+    /// Gets whether this placement was eligible for (and rendered through) a virtual/Unicode
+    /// placeholder in the <c>Prepare</c> call that produced this state, rather than an explicit
+    /// Kitty placement command. Captured at <c>Commit()</c> time alongside the rest of this state
+    /// so a later <c>Prepare</c> call can detect a flip in placeholder eligibility on its own,
+    /// without depending on the caller forcing a full reconstruct.
+    /// </summary>
+    public bool UsedPlaceholder { get; }
+
     /// <summary>Creates the same placement using its terminal-assigned image identifier.</summary>
     public KittyGraphicsPlacementState WithAssignedImageId(uint imageId) =>
-        new(Placement, imageId, PlacementId);
+        new(Placement, imageId, PlacementId, usedPlaceholder: UsedPlaceholder);
+
+    /// <summary>Creates the same placement recording whether it used a placeholder this frame.</summary>
+    public KittyGraphicsPlacementState WithUsedPlaceholder(bool usedPlaceholder) =>
+        new(Placement, ImageId, PlacementId, UsesImageNumber, usedPlaceholder);
 }

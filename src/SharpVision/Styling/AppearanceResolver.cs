@@ -164,11 +164,9 @@ internal static class AppearanceResolver
     /// Theme's own Normal. Only a subsequent visual-state-specific change on top of it - theme or
     /// local - counts as authored.</para>
     ///
-    /// <para>Always false when <see cref="AppearanceStates.StateAuthorsOwnRelief"/> - Button's
-    /// own per-state completion (<c>ButtonStyle.Complete</c>) swaps <see cref="Border.Relief"/> as
-    /// its state-feedback mechanism, and its Foreground genuinely does differ per state (inherited
-    /// unchanged from its fallback's own per-state color), but that difference was never authored
-    /// FOR Button's own rendering and must not compete with the Relief switch it already owns. See
+    /// <para>Always false when <see cref="AppearanceStates.StateAuthorsOwnRelief"/>. A state that
+    /// explicitly authors relief owns the edge-color feedback for that state, so an inherited
+    /// foreground difference must not suppress the relief during resolved-border creation. See
     /// <see cref="ResolvedBorderStyles.Create"/>.</para>
     /// </remarks>
     private static (ControlAppearance Appearance, bool BorderForegroundAuthored) FoldAuthoredAppearance(

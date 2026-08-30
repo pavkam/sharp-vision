@@ -180,6 +180,16 @@ ancestry keeps every retained row effectively unavailable; an empty item list
 leaves navigation unhandled. During an open session, the same keys use the
 [shared focus-independent delegation rule](../../concepts/input-routing.md#popup-navigation-delegation):
 
+| Input                                     | Open-session behavior                                                                                        |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Up or Left, initial or repeat             | Moves the visible provisional selection to the previous available item.                                      |
+| Down or Right, initial or repeat          | Moves the visible provisional selection to the next available item.                                          |
+| Home or End, initial or repeat            | Moves the visible provisional selection to the first or last available item.                                 |
+| Page Up or Page Down, initial or repeat   | Moves the visible provisional selection by one page, bounded by the first or last available item.            |
+| Enter, initial activation-eligible press  | Accepts the current row, commits `SelectedIndex`, and closes the popup.                                      |
+| Space                                     | Remains field press activation rather than popup acceptance; it does not replace Enter's accept transaction. |
+| Escape, initial activation-eligible press | Cancels and closes the popup.                                                                                |
+
 The ComboBox normally keeps focus while the private list owns the delegated
 navigation semantics. Moving focus into the list does not double-apply a
 navigation stroke. A primary pointer click on a realized row accepts that row

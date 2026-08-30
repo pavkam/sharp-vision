@@ -134,16 +134,11 @@ public sealed class AppearanceStates: IEquatable<AppearanceStates>
         ChangesChromeGeometry(Pressed) ||
         ChangesChromeGeometry(Disabled);
 
-    // Button is - today - the sole style whose own per-state completion swaps Border.Relief
-    // (Raised/Sunken) as its chosen state-feedback mechanism; no bundled theme JSON authors a
-    // per-state "relief" delta at all (only ever "normal"). A style that owns its state feedback
-    // this way must not ALSO have a same-state Border.Foreground difference it never asked for -
-    // inherited unchanged from a borrowed fallback's own per-state color, see ButtonStyle.Complete
-    // - reinterpreted downstream as deliberate per-state authorship and painted flat, discarding
-    // the very Raised/Sunken bezel this Relief switch exists to show. Scanning every slot, not just
-    // the currently active one, is required: Button's own Relief only actually changes for
-    // Pressed, but the same opt-out must cover Focused/IsPointerOver too, since their inherited
-    // Foreground still differs from Normal even though their own Relief does not.
+    // An explicitly state-authored relief owns that state's border feedback. It must not also have
+    // an inherited same-state Border.Foreground difference reinterpreted downstream as deliberate
+    // foreground authorship, because that would flatten the relief it explicitly requested.
+    // Scanning every slot, not just the currently active one, keeps that rule consistent as visual
+    // states overlap.
     internal bool StateAuthorsOwnRelief =>
         IsPointerOver.Border?.Relief.HasValue == true ||
         FocusWithin.Border?.Relief.HasValue == true ||

@@ -383,7 +383,7 @@ public static class KittyGraphicsWriter
         if (command.Action == KittyGraphicsAction.Animate)
         {
             position = AppendLiteralField(destination, position, (byte) 'a', (byte) 'a');
-            position = AppendField(destination, position, (byte) 'i', command.ImageId);
+            position = AppendField(destination, position, command.UsesImageNumber ? (byte) 'I' : (byte) 'i', command.ImageId);
             position = AppendField(destination, position, (byte) 's', (int) command.Control);
 
             if (command.LoopCount != 0)

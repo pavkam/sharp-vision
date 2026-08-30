@@ -97,6 +97,48 @@ public sealed class KittyGraphicsBackendTests
         Encoding.ASCII.GetString(assigned.Placements).ShouldContain("a=p,i=42,p=1");
     }
 
+    /// <summary>Verifies a placement that was rendered through a virtual placeholder in the
+    /// previously committed frame, and loses that eligibility on a later frame purely because the
+    /// color depth dropped - with identical placement identity and geometry, and no full
+    /// reconstruct - still emits the real placement command. Neither the placeholder loop (gated
+    /// on the same eligibility check) nor the real-placement diff (previously keyed only on
+    /// reconstruct/identity/geometry) would otherwise have anything left to trigger it, silently
+    /// dropping the image.</summary>
+    [Fact]
+    public void Prepare_WhenPlaceholderEligibilityIsLostWithoutReconstruct_StillEmitsPlacement()
+    {
+        var basic16Capabilities = TerminalCapabilities.Conservative with
+        {
+            ColorDepth = ColorDepth.Basic16,
+            KittyGraphics = new Feature(CapabilitySupport.Supported, Origin.Query)
+        };
+        var basic16Context = new GraphicsContext(TerminalProfile.CreateAnsi(basic16Capabilities), null);
+        using var backend = new KittyGraphicsBackend();
+        var image = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        using var frame = Frame(image, new Rect(0, 0, 1, 1), PlacementMode.Contain);
+
+        _ = backend.Prepare(null, frame, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=42,I=1;OK"u8));
+
+        // Establishes the placeholder-eligible baseline: default (TrueColor) context, identical
+        // geometry, full: false. The terminal-assigned id and small placement id keep it eligible.
+        _ = backend.Prepare(frame, frame, full: false);
+        var baseline = WritePrepared(backend);
+        backend.Commit();
+
+        Encoding.ASCII.GetString(baseline.CellPreludes).ShouldContain("a=p,i=42,p=1");
+        baseline.Placements.ShouldBeEmpty();
+
+        // Only the color depth changes on this call: same placement identity, same geometry,
+        // still full: false. Basic16 makes CanUsePlaceholder false unconditionally.
+        _ = backend.Prepare(frame, frame, full: false, basic16Context);
+        var afterEligibilityLost = WritePrepared(backend);
+
+        Encoding.ASCII.GetString(afterEligibilityLost.Placements).ShouldContain("a=p,i=42,p=1");
+    }
+
     /// <summary>Verifies shutdown consumes a queued terminal assignment even when no later frame
     /// was prepared, avoiding an unsafe image-number delete during application teardown.</summary>
     [Fact]
