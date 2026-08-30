@@ -3,8 +3,6 @@
 
 namespace SharpVision.Terminal.Tests.Multiplexing;
 
-using System.Reflection;
-
 using Capabilities;
 
 using SharpVision.Terminal.Capabilities;
@@ -702,7 +700,7 @@ public sealed class MultiplexerRouteTests
 
         var escapesField = typeof(ProtocolRouter).GetField(
             "_multiplexerDiscardEscapes",
-            BindingFlags.NonPublic | BindingFlags.Instance)!;
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
         escapesField.FieldType.ShouldBe(typeof(long));
         escapesField.SetValue(router, (long) int.MaxValue - 1);
 
