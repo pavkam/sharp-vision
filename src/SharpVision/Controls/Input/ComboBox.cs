@@ -424,7 +424,7 @@ public sealed class ComboBox: InputBase
                 eventArgs.IsHandled = true;
                 SetSelectedIndex(target);
 
-                if (!IsOpen && _selectedIndex == target)
+                if (!IsDisposed && !IsOpen && _selectedIndex == target)
                 {
                     _list.SetProvisionalCurrentIndex(target);
                     SynchronizeListProvisionalSelection(target);
@@ -580,6 +580,14 @@ public sealed class ComboBox: InputBase
         else
         {
             SynchronizeListProvisionalSelection(_openingSelectedIndex);
+        }
+
+        // SetSelectedIndex above can run a caller's SelectionChanged handler synchronously, and
+        // that handler may dispose this control. Bail out before touching the private list so a
+        // reentrant dispose cannot turn a cancelled session into an ObjectDisposedException.
+        if (IsDisposed)
+        {
+            return;
         }
 
         _list.SetProvisionalCurrentIndex(_openingCurrentIndex);

@@ -668,6 +668,25 @@ public sealed class ComboBoxTests
         selectionChanges.ShouldBe(1);
     }
 
+    /// <summary>Verifies a focused, closed ComboBox survives a SelectionChanged handler that
+    /// disposes the control from an arrow-key commit: the closed-navigation continuation that
+    /// re-reads IsOpen and the committed index afterward must not touch a disposed private list.</summary>
+    [Fact]
+    public void Dispatch_WhenClosedNavigationSelectionChangedDisposesControl_DoesNotThrow()
+    {
+        var box = new ComboBox
+        {
+            Items = ["Zero", "One", "Two", "Three"],
+            SelectedIndex = 1
+        };
+        box.SelectionChanged += (_, _) => box.Dispose();
+
+        var result = Should.NotThrow(() => Router.Route(box, Events.Key, Key(Code.Down)));
+
+        result.IsHandled.ShouldBeTrue();
+        box.IsDisposed.ShouldBeTrue();
+    }
+
     /// <summary>Verifies closed navigation skips a locally disabled item even though the popup's
     /// collapsed ancestry makes every retained row effectively unavailable.</summary>
     [Fact]
@@ -856,6 +875,36 @@ public sealed class ComboBoxTests
         box.SelectedIndex.ShouldBe(1);
         list.SelectedIndex.ShouldBe(1);
         list.ActiveIndex.ShouldBe(1);
+        closed.ShouldBe(1);
+    }
+
+    /// <summary>Verifies cancelling a session whose committed selection changed while it was open
+    /// (so the opening snapshot is stale relative to the live value) re-syncs the popup to that
+    /// live selection instead of reverting to the opening one, and stays safe with a
+    /// SelectionChanged subscriber wired to dispose the control still attached through the close.</summary>
+    [Fact]
+    public void Close_WhenCancelledAfterSelectionChangedWhileOpen_SyncsToLiveSelectionAndDoesNotThrow()
+    {
+        var box = new ComboBox
+        {
+            Items = ["Zero", "One", "Two", "Three"],
+            SelectedIndex = 1,
+            DropDownHeight = Length.Cells(4),
+            IsOpen = true
+        };
+        var closed = 0;
+        box.DropDownClosed += (_, _) => closed++;
+        new LayoutEngine().Layout(box, new Size(16, 8));
+        var list = box.GetDropDownList();
+        box.SelectedIndex = 3;
+        box.SelectionChanged += (_, _) => box.Dispose();
+
+        Should.NotThrow(() => Router.Route(box, Events.Key, Key(Code.Escape)));
+
+        box.IsDisposed.ShouldBeFalse();
+        box.IsOpen.ShouldBeFalse();
+        box.SelectedIndex.ShouldBe(3);
+        list.SelectedIndex.ShouldBe(3);
         closed.ShouldBe(1);
     }
 
