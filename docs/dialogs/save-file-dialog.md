@@ -13,47 +13,41 @@ result, the actual save belongs to the caller.
 
 ### SaveFileOptions
 
-| Property           | Default                                          | Validation and effect                                                 |
-| ------------------ | ------------------------------------------------ | --------------------------------------------------------------------- |
-| `Title`            | `Save As`                                        | Rejects null or blank values.                                         |
-| `InitialDirectory` | Construction-time `Environment.CurrentDirectory` | Rejects null or blank values; dialog construction canonicalizes it.   |
-| `InitialFileName`  | Empty string                                     | Rejects null; supplies the initial filename and Save-button state.    |
-| `ConfirmOverwrite` | `true`                                           | Requires confirmation before returning an existing path.              |
-| `ShowHidden`       | `false`                                          | Includes dot-prefixed and hidden-attribute entries initially.         |
-| `MaxVisibleRows`   | `12`                                             | Rejects non-positive values; caps visible ListView content rows.      |
-| `Filters`          | `[FilePickerFilter.AllFiles]`                    | Copies a non-null, non-empty list without null entries.               |
-| `FilterIndex`      | `0`                                              | Must remain inside `Filters`; replacing Filters cannot invalidate it. |
+| Member                    | Type                              | Default                                          | Description                                                                                                                              |
+| ------------------------- | ---------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Title`                   | `string`                           | `"Save As"`                                       | Rejects null or blank values.                                                                                                                |
+| `InitialDirectory`        | `string`                           | Construction-time `Environment.CurrentDirectory` | Rejects null or blank values; dialog construction canonicalizes it.                                                                          |
+| `InitialFileName`         | `string`                           | `""`                                               | Rejects null; supplies the initial filename and Save-button state.                                                                          |
+| `ConfirmOverwrite`        | `bool`                             | `true`                                             | Requires confirmation before returning an existing path.                                                                                     |
+| `ShowHidden`              | `bool`                             | `false`                                            | Includes dot-prefixed and hidden-attribute entries initially.                                                                                |
+| `MaxVisibleRows`          | `int`                              | `12`                                                | Rejects non-positive values; caps visible ListView content rows.                                                                            |
+| `Filters`                 | `IReadOnlyList<FilePickerFilter>`  | `[FilePickerFilter.AllFiles]`                     | Copies a non-null, non-empty list without null entries.                                                                                      |
+| `FilterIndex`             | `int`                              | `0`                                                 | Must remain inside `Filters`; replacing Filters cannot invalidate it.                                                                        |
+| `CancelButtonStyle`       | `ButtonStyle?`                     | `null`                                             | The Cancel Button.                                                                                                                            |
+| `ShowHiddenCheckBoxStyle` | `CheckBoxStyle?`                   | `null`                                             | The Show hidden CheckBox.                                                                                                                     |
+| `FileListScrollBarStyle`  | `ScrollBarStyle?`                  | `null`                                             | The file ListView's generated scrollbars.                                                                                                    |
+| `FilterScrollBarStyle`    | `ScrollBarStyle?`                  | `null`                                             | The filter ComboBox's generated scrollbar.                                                                                                   |
+| `SaveButtonStyle`         | `ButtonStyle?`                     | `null`                                             | The Save Button, and the overwrite-confirmation MessageBox's action Buttons unless `OverwriteStyle` also carries its own `ButtonStyle`.      |
+| `Style`                   | `SaveFileDialogStyle?`             | `null`                                             | The dialog's own frame and structural geometry (see [Theming](#theming)).                                                                    |
+| `OverwriteStyle`          | `MessageBoxStyle?`                 | `null`                                             | The overwrite-confirmation MessageBox's frame, message face, and geometry.                                                                   |
+| `ParentDirectoryText`     | `string`                           | `"↑"`                                              | Non-null caption for the parent-directory navigation action.                                                                                 |
+| `DirectoryPlaceholder`    | `string`                           | `"Directory path"`                                | Non-null placeholder shown in the empty directory path input.                                                                                |
+| `ShowHiddenText`          | `string`                           | `"Show &hidden"`                                  | Non-null caption for the hidden-entry toggle.                                                                                                |
+| `CancelText`              | `string`                           | `"&Cancel"`                                        | Non-null caption for the Cancel action.                                                                                                      |
+| `SaveText`                | `string`                           | `"&Save"`                                          | Non-null caption for the Save action.                                                                                                        |
+| `FileNameLabel`           | `string`                           | `"Name:"`                                          | Non-null label preceding the filename input.                                                                                                 |
+| `FileNamePlaceholder`     | `string`                           | `"File name"`                                      | Non-null placeholder shown in the empty filename input.                                                                                      |
+| `OverwriteTitle`          | `string`                           | `"Confirm Save As"`                               | Non-null title for the overwrite-confirmation MessageBox.                                                                                    |
+| `OverwriteYesText`        | `string`                           | `"&Yes"`                                           | Non-null caption for the overwrite-confirmation Yes action.                                                                                  |
+| `OverwriteNoText`         | `string`                           | `"&No"`                                            | Non-null caption for the overwrite-confirmation No action.                                                                                   |
 
 Each setter validates its value before storing it. `SaveFileDialog` copies the
 complete options object during construction, including an owned filter snapshot,
 so changing an options object afterwards never affects a dialog that is already
 showing.
 
-| Style property            | Default | Applies to                                                                                                                              |
-| ------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `CancelButtonStyle`       | `null`  | The Cancel Button.                                                                                                                      |
-| `ShowHiddenCheckBoxStyle` | `null`  | The Show hidden CheckBox.                                                                                                               |
-| `FileListScrollBarStyle`  | `null`  | The file ListView's generated scrollbars.                                                                                               |
-| `FilterScrollBarStyle`    | `null`  | The filter ComboBox's generated scrollbar.                                                                                              |
-| `SaveButtonStyle`         | `null`  | The Save Button, and the overwrite-confirmation MessageBox's action Buttons unless `OverwriteStyle` also carries its own `ButtonStyle`. |
-| `Style`                   | `null`  | The dialog's own frame and structural geometry (see [Theming](#theming)).                                                               |
-| `OverwriteStyle`          | `null`  | The overwrite-confirmation MessageBox's frame, message face, and geometry.                                                              |
-
 `null` for a style property lets the corresponding owned part use its own
 semantic input profile.
-
-| Text property          | Default             |
-| ---------------------- | ------------------- |
-| `ParentDirectoryText`  | `"↑"`               |
-| `DirectoryPlaceholder` | `"Directory path"`  |
-| `ShowHiddenText`       | `"Show &hidden"`    |
-| `CancelText`           | `"&Cancel"`         |
-| `SaveText`             | `"&Save"`           |
-| `FileNameLabel`        | `"Name:"`           |
-| `FileNamePlaceholder`  | `"File name"`       |
-| `OverwriteTitle`       | `"Confirm Save As"` |
-| `OverwriteYesText`     | `"&Yes"`            |
-| `OverwriteNoText`      | `"&No"`             |
 
 `OverwriteMessageFormat` (`Func<string, string>`, default builds
 `'{name}' already exists.\nDo you want to replace it?`) formats the confirmation

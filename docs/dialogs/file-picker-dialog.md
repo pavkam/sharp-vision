@@ -37,16 +37,27 @@ pattern is rooted, or a pattern contains a directory separator.
 
 ### FilePickerOptions
 
-| Property           | Default                                          | Validation and effect                                                 |
-| ------------------ | ------------------------------------------------ | --------------------------------------------------------------------- |
-| `Title`            | `Open File`                                      | Rejects null or blank values.                                         |
-| `InitialDirectory` | Construction-time `Environment.CurrentDirectory` | Rejects null or blank values; dialog construction canonicalizes it.   |
-| `AllowMultiple`    | `false`                                          | Selects single or multiple ListView semantics.                        |
-| `SelectionMode`    | `FileSelectionMode.Files`                        | Which entry kinds the accepted selection may contain (see below).     |
-| `ShowHidden`       | `false`                                          | Includes dot-prefixed and hidden-attribute entries initially.         |
-| `MaxVisibleRows`   | `20`                                             | Rejects non-positive values; caps visible ListView content rows.      |
-| `Filters`          | `[FilePickerFilter.AllFiles]`                    | Copies a non-null, non-empty list without null entries.               |
-| `FilterIndex`      | `0`                                              | Must remain inside `Filters`; replacing Filters cannot invalidate it. |
+| Member                    | Type                              | Default                                          | Description                                                                |
+| ------------------------- | ---------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `Title`                   | `string`                           | `"Open File"`                                     | Rejects null or blank values.                                                |
+| `InitialDirectory`        | `string`                           | Construction-time `Environment.CurrentDirectory` | Rejects null or blank values; dialog construction canonicalizes it.          |
+| `AllowMultiple`           | `bool`                             | `false`                                            | Selects single or multiple ListView semantics.                               |
+| `SelectionMode`           | `FileSelectionMode`                | `FileSelectionMode.Files`                         | Which entry kinds the accepted selection may contain (see below).            |
+| `ShowHidden`              | `bool`                             | `false`                                            | Includes dot-prefixed and hidden-attribute entries initially.                |
+| `MaxVisibleRows`          | `int`                              | `20`                                               | Rejects non-positive values; caps visible ListView content rows.             |
+| `Filters`                 | `IReadOnlyList<FilePickerFilter>`  | `[FilePickerFilter.AllFiles]`                     | Copies a non-null, non-empty list without null entries.                      |
+| `FilterIndex`             | `int`                              | `0`                                                 | Must remain inside `Filters`; replacing Filters cannot invalidate it.        |
+| `CancelButtonStyle`       | `ButtonStyle?`                     | `null`                                             | The Cancel Button.                                                            |
+| `ShowHiddenCheckBoxStyle` | `CheckBoxStyle?`                   | `null`                                             | The Show hidden CheckBox.                                                     |
+| `FileListScrollBarStyle`  | `ScrollBarStyle?`                  | `null`                                             | The file ListView's generated scrollbars.                                    |
+| `FilterScrollBarStyle`    | `ScrollBarStyle?`                  | `null`                                             | The filter ComboBox's generated scrollbar.                                   |
+| `OpenButtonStyle`         | `ButtonStyle?`                     | `null`                                             | The Open Button.                                                              |
+| `Style`                   | `FilePickerDialogStyle?`           | `null`                                             | The dialog's own frame and structural geometry (see [Theming](#theming)).    |
+| `ParentDirectoryText`     | `string`                           | `"↑"`                                              | Non-null caption for the parent-directory navigation action.                 |
+| `DirectoryPlaceholder`    | `string`                           | `"Directory path"`                                | Non-null placeholder shown in the empty directory path input.                |
+| `ShowHiddenText`          | `string`                           | `"Show &hidden"`                                  | Non-null caption for the hidden-entry toggle.                                |
+| `CancelText`              | `string`                           | `"&Cancel"`                                        | Non-null caption for the Cancel action.                                      |
+| `OpenText`                | `string?`                          | `null`                                             | Caption for the Open action; `null` lets the dialog pick its own mode-aware default (`"&Select"` in pure `Directories` mode, `"&Open"` otherwise). |
 
 Each setter validates its value before storing it. `FilePickerDialog` copies the
 complete options value during construction, so changing an options object
@@ -72,25 +83,8 @@ pickable; and typing a path that names an existing directory into the location
 input and pressing Enter selects that directory in `Directories` or
 `FilesAndDirectories` mode instead of navigating into it.
 
-| Style property            | Default | Applies to                                                                |
-| ------------------------- | ------- | ------------------------------------------------------------------------- |
-| `CancelButtonStyle`       | `null`  | The Cancel Button.                                                        |
-| `ShowHiddenCheckBoxStyle` | `null`  | The Show hidden CheckBox.                                                 |
-| `FileListScrollBarStyle`  | `null`  | The file ListView's generated scrollbars.                                 |
-| `FilterScrollBarStyle`    | `null`  | The filter ComboBox's generated scrollbar.                                |
-| `OpenButtonStyle`         | `null`  | The Open Button.                                                          |
-| `Style`                   | `null`  | The dialog's own frame and structural geometry (see [Theming](#theming)). |
-
 `null` for a style property lets the corresponding owned part use its own
 semantic input profile.
-
-| Text property          | Default                                       |
-| ---------------------- | --------------------------------------------- |
-| `ParentDirectoryText`  | `"↑"`                                         |
-| `DirectoryPlaceholder` | `"Directory path"`                            |
-| `ShowHiddenText`       | `"Show &hidden"`                              |
-| `CancelText`           | `"&Cancel"`                                   |
-| `OpenText`             | `"&Open"` (`"&Select"` in `Directories` mode) |
 
 Each setter rejects null. `FilePickerDialog` copies these values the same way it
 copies every other option (see [Text and localization](#text-and-localization)).
