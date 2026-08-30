@@ -140,7 +140,7 @@ internal sealed class FilePickerPane: CompositeControlBase
     private static Button CreateLocalizedSaveLauncher(Text status)
     {
         var directory = Path.Combine(Path.GetTempPath(), "SharpVision.Showcase");
-        Directory.CreateDirectory(directory);
+        _ = Directory.CreateDirectory(directory);
 
         const string fileName = "informe.txt";
         File.WriteAllText(Path.Combine(directory, fileName), "");
