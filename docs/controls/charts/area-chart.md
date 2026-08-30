@@ -38,6 +38,12 @@ chart's fill rasterizes; see [Expected behavior](#expected-behavior).
 The intrinsic desired size is a constraint-independent 30 by 10 cells; parent
 layout sizes the control normally beyond that.
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Example
 
 ![The AreaChart control rendered in the live showcase](../../images/controls/area-chart.png)

@@ -79,6 +79,14 @@ whether and how `Command` factors into its own semantics - `Button` and
 event; toggles and menu items that have not called `EnableCommand` simply never
 expose the property at all.
 
+## Keyboard
+
+| Key            | Behavior                                                                     |
+| -------------- | ---------------------------------------------------------------------------- |
+| Enter          | Activates immediately on the initial key press.                              |
+| Space          | Shows the pressed state on key down and activates on the matching key up.    |
+| Alt+access key | Focuses and activates the control when its caption declares that access key. |
+
 ## Interaction
 
 The owner's `UseMnemonic` value controls both marker rendering and automatic

@@ -67,6 +67,12 @@ classDiagram
 | \`Count\`   | \`int\`  | \`0\`     | The current count.  |
 | \`Reset()\` | \`void\` | —       | Resets the count.   |
 
+## Keyboard
+
+| Key | Behavior |
+| --- | -------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Example
 
 \`\`\`csharp
@@ -383,9 +389,10 @@ test("validateTierB_WhenAnInheritedCellNamesARealOrFakeAncestorMember_PassesOrFa
 });
 
 test("validateSectionSpine_WhenOrderIsCorrect_ReturnsNull", () => {
-  const headings = ["Overview", "Inheritance", "API", "Example", "Expected behavior"].map(
-    (text, line) => ({ text, line }),
-  );
+  const headings = ["Overview", "Inheritance", "API", "Keyboard", "Example", "Expected behavior"].map((text, line) => ({
+    text,
+    line,
+  }));
 
   assert.equal(validateSectionSpine(headings), null);
 });
@@ -460,6 +467,65 @@ test("validateControlDocStructure_WhenTheH2SpineIsOutOfOrder_ReportsASpineViolat
 
     assert.equal(result.errors.length, 1);
     assert.match(result.errors[0], /docs\/controls\/widget\.md: H2 spine violation/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validateControlDocStructure_WhenKeyboardSectionIsMissing_ReportsAViolation", async () => {
+  const broken = validWidgetPage.replace(/## Keyboard\n\n[\s\S]*?(?=## Example)/, "");
+  const root = await buildFixtureRoot(broken);
+
+  try {
+    const result = await validateControlDocStructure(root);
+
+    assert.equal(result.errors.length, 1);
+    assert.match(result.errors[0], /docs\/controls\/widget\.md: .*## Keyboard is required after ## API/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validateControlDocStructure_WhenKeyboardTableHeaderIsWrong_ReportsAViolation", async () => {
+  const broken = validWidgetPage.replace("| Key | Behavior |", "| Shortcut | Result |");
+  const root = await buildFixtureRoot(broken);
+
+  try {
+    const result = await validateControlDocStructure(root);
+
+    assert.equal(result.errors.length, 1);
+    assert.match(result.errors[0], /## Keyboard table header is .*expected "\| Key \| Behavior \|"/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validateControlDocStructure_WhenKeyboardTableIsMissing_ReportsAViolation", async () => {
+  const broken = validWidgetPage.replace(
+    /\| Key \| Behavior \|\n\| --- \| -------- \|\n\| —   \| This control has no control-specific keyboard commands\. \|/,
+    "Widget accepts Enter.",
+  );
+  const root = await buildFixtureRoot(broken);
+
+  try {
+    const result = await validateControlDocStructure(root);
+
+    assert.equal(result.errors.length, 1);
+    assert.match(result.errors[0], /## Keyboard has no Markdown table/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validateControlDocStructure_WhenKeyboardTableHasNoBehaviorRows_ReportsAViolation", async () => {
+  const broken = validWidgetPage.replace("| —   | This control has no control-specific keyboard commands. |\n", "");
+  const root = await buildFixtureRoot(broken);
+
+  try {
+    const result = await validateControlDocStructure(root);
+
+    assert.equal(result.errors.length, 1);
+    assert.match(result.errors[0], /## Keyboard table has no behavior rows/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

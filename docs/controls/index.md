@@ -4,10 +4,15 @@
 
 Every concrete control page answers the same practical questions: when to use
 the control, which properties and events change its behavior, their defaults and
-validation, how layout and input work, and how to construct it in C#. Properties
-inherited by every control are documented once in the
-[`ControlBase` property tables](control.md#api); each concrete page owns only
-its specialized API.
+validation, which keyboard commands it owns, how layout and input work, and how
+to construct it in C#. Properties inherited by every control are documented once
+in the [`ControlBase` property tables](control.md#api); each concrete page owns
+only its specialized API.
+
+The
+[general keyboard behavior](../concepts/input-routing.md#general-keyboard-behavior)
+applies when a focused control does not handle a key itself. Each control page's
+`Keyboard` table lists the commands that take precedence for that control.
 
 ```mermaid
 classDiagram

@@ -40,6 +40,12 @@ palette, `Glyphs`, `LineMode` (default `Quadrant`), and `LinePattern` (default
 The intrinsic desired size is a constraint-independent 30 by 10 cells; parent
 layout sizes the control normally beyond that.
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Example
 
 ![The LineChart control rendered in the live showcase](../../images/controls/line-chart.png)

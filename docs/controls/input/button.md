@@ -74,6 +74,14 @@ authoritative in every state. When the pointer hovers over a button, the face
 fill excludes the border cells; a Theme may change any border member per state,
 but a change to the face background alone never recolors the frame.
 
+## Keyboard
+
+| Key            | Behavior                                                                  |
+| -------------- | ------------------------------------------------------------------------- |
+| Enter          | Activates the button immediately.                                         |
+| Space          | Shows the pressed state on key down and activates on the matching key up. |
+| Alt+access key | Focuses and activates the button when `Text` declares that access key.    |
+
 ## Interaction
 
 Pressing Space while focused starts a press on key down and activates on the

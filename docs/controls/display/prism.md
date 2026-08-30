@@ -54,6 +54,12 @@ arranged bounds stay stable. Setting an effect property after disposal throws
 `ObjectDisposedException`, and mutating an attached control from off the
 dispatcher throws `InvalidOperationException`.
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Color calculation
 
 For the lead cell of each selected stored owner, Prism computes:

@@ -72,6 +72,16 @@ classDiagram
 | `ItemInvoked`                  | `EventHandler<ItemInvokedEventArgs>`           | No subscribers           | Raised after Enter or an eligible pointer invocation.                                                                                                                                       |
 | `ScrollChanged`                | `EventHandler<ScrollChangedEventArgs>`         | No subscribers           | Forwards the composed scroll container's committed offset changes.                                                                                                                          |
 
+## Keyboard
+
+| Key                 | Behavior                                                         |
+| ------------------- | ---------------------------------------------------------------- |
+| Arrow keys          | Moves the active row by one eligible item.                       |
+| Home / End          | Moves to the first or last eligible item.                        |
+| Page Up / Page Down | Moves by at least one item, otherwise by one visible page.       |
+| Space               | Applies the current selection gesture without invoking the item. |
+| Enter               | Invokes the active item without changing selection.              |
+
 ## Behavior
 
 - `Items` rejects a null replacement and copies the complete
@@ -162,18 +172,13 @@ the pending invocation instead of indexing its former position.
 
 ## Interaction and layout
 
-| Input                           | Result                                                                                                                                   |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Up / Down / Left / Right        | Move the active index by one eligible row, in stable realized order, skipping template controls that are effectively hidden or disabled. |
-| Home / End                      | Choose the first or last eligible item.                                                                                                  |
-| PageUp / PageDown               | Move by at least one item, otherwise by as many items as fill the committed viewport height minus `PageOverlap`.                         |
-| Mouse wheel                     | Scrolls the composed viewport by `LineSize` cells per notch; never changes the active index.                                             |
-| Space                           | Changes selection without invoking when only Control, Shift, or lock modifiers accompany it; larger chords remain unhandled.             |
-| Enter                           | Invokes without changing the selection.                                                                                                  |
-| Primary pointer release         | Selects and, subject to `ItemInvocation`, invokes.                                                                                       |
-| Control click (`Multiple` mode) | Toggles one index.                                                                                                                       |
-| Shift click (`Multiple` mode)   | Selects the inclusive range from the stable anchor, skipping unavailable rows.                                                           |
-| Unmodified click                | Replaces the selection in `Single` and `Multiple` modes; `None` mode still permits navigation and invocation without selecting.          |
+| Pointer action                  | Result                                                                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Mouse wheel                     | Scrolls the composed viewport by `LineSize` cells per notch; never changes the active index.                              |
+| Primary pointer release         | Selects and, subject to `ItemInvocation`, invokes.                                                                        |
+| Control click (`Multiple` mode) | Toggles one index.                                                                                                        |
+| Shift click (`Multiple` mode)   | Selects the inclusive range from the stable anchor, skipping unavailable rows.                                            |
+| Unmodified click                | Replaces the selection in `Single` and `Multiple` modes; `None` mode permits navigation and invocation without selecting. |
 
 Keyboard movement accepts incidental lock state but leaves Shift and every
 application-command-modified movement key unhandled.

@@ -243,6 +243,22 @@ graphemes, and disable, capture loss, unavailability, or terminal-focus loss
 cancels retained gesture state through non-virtual framework cleanup before any
 component lifecycle hook runs.
 
+## General keyboard behavior
+
+Controls receive a key first and may handle it themselves. When they do not, the
+application applies these shared commands:
+
+| Key            | Behavior                                                                              |
+| -------------- | ------------------------------------------------------------------------------------- |
+| Tab            | Moves focus to the next eligible tab stop.                                            |
+| Shift+Tab      | Moves focus to the previous eligible tab stop.                                        |
+| Alt+access key | Focuses or activates the matching control when its caption declares that access key.  |
+| Ctrl+C         | Copies from the nearest selected text or clipboard source around the focused control. |
+
+A control-specific table takes precedence over this table. For example, a
+`TextInput` with `AcceptsTab = true` inserts a tab instead of moving focus. Tab
+traversal and access-key lookup remain inside the active modal surface.
+
 ## Keyboard modifier policy
 
 Keyboard behavior distinguishes text-producing state from application-command

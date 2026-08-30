@@ -37,6 +37,12 @@ property: it never shows a legend or labels, regardless of series count. The
 palette, `Glyphs`, and `FillMode` (default `Fractional`), which governs how this
 chart's columns rasterize; see [Expected behavior](#expected-behavior).
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Example
 
 ![The Sparkline control rendered in the live showcase](../../images/controls/sparkline.png)

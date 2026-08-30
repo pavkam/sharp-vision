@@ -115,6 +115,20 @@ became themeable. A `with` expression creates a validated member-wise copy of
 presentation, and `ActualStyle` never returns null. A style difference in
 `CellPadding` invalidates measure; any other difference is render-only.
 
+## Keyboard
+
+| Key                 | Behavior                                                                                     |
+| ------------------- | -------------------------------------------------------------------------------------------- |
+| Arrow keys          | Moves the active cell by one row or column.                                                  |
+| Home / End          | Moves to the first or last cell.                                                             |
+| Page Up / Page Down | Moves by one visible page of rows.                                                           |
+| Enter               | Invokes the active row and begins editing an editable cell; while editing, commits the edit. |
+| F2                  | Begins editing the active editable cell.                                                     |
+| Escape              | Cancels the current edit and restores its original text.                                     |
+| Tab / Shift+Tab     | While editing, commits and moves to the next or previous cell.                               |
+| Ctrl+A              | Selects every row or cell when the selection mode supports it.                               |
+| Ctrl+C              | Copies the selected rows or cells as tab-separated text.                                     |
+
 ## Rows and columns
 
 `Columns` owns non-empty `TableColumn` definitions. Every column has a non-empty

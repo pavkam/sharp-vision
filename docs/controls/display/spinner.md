@@ -28,6 +28,12 @@ current frame. Changing `Interval` restarts the timer but keeps the current
 frame. The animation pauses while an ancestor is hidden or collapsed; disabling
 the control does not pause it.
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Frame presets
 
 `SpinnerStyle`, reached through `Style`/`ActualStyle`, holds a bounded immutable

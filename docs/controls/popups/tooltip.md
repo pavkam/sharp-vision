@@ -49,6 +49,12 @@ Every multi-argument overload validates all arguments before creating,
 reattaching, or mutating a Tooltip. A rejected placement or delay therefore
 preserves the existing anchor, content, placement, timing, and visibility.
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Triggers and timing
 
 An attached Tooltip listens to its anchor's pointer entry and exit, focus gain

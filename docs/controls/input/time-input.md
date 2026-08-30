@@ -75,6 +75,18 @@ content box is too narrow for everything, the segment layout shrinks first, then
 the end affix drops whole, then the start affix - never a partial cluster -
 re-evaluated against the control's actual bounds on every render.
 
+## Keyboard
+
+| Key          | Behavior                                                                       |
+| ------------ | ------------------------------------------------------------------------------ |
+| Left / Right | Moves to the previous or next editable segment.                                |
+| Home / End   | Moves to the first or last editable segment.                                   |
+| Up / Down    | Increases or decreases the active segment; the minute segment uses `TimeStep`. |
+| Digits       | Replaces or advances the active numeric segment.                               |
+| A / P        | Selects AM or PM when an AM/PM segment is present.                             |
+| Backspace    | Clears the active segment.                                                     |
+| Delete       | Clears the complete value when `AllowNull` is `true`.                          |
+
 ## Example
 
 ![The TimeInput control rendered in the live showcase](../../images/controls/time-input.png)

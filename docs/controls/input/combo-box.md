@@ -68,6 +68,21 @@ each other or from a separately assigned `ItemTemplate`. Leave it unset to keep
 the default `Convert.ToString(item, CultureInfo.InvariantCulture)` behavior for
 items whose `ToString` override is already display-ready.
 
+## Keyboard
+
+| Key                 | Behavior                                                                       |
+| ------------------- | ------------------------------------------------------------------------------ |
+| Enter               | Opens a closed ComboBox; while open, accepts the current item and closes it.   |
+| Space               | Opens or closes the ComboBox field; it does not accept the current popup item. |
+| Up / Left           | Moves to the previous available item while the popup is open.                  |
+| Down / Right        | Moves to the next available item while the popup is open.                      |
+| Home / End          | Moves to the first or last available item while the popup is open.             |
+| Page Up / Page Down | Moves by one visible popup page.                                               |
+| Printable text      | Selects the next matching item while the popup is open.                        |
+| Backspace / Delete  | Clears the selection when `AllowNull` is `true`.                               |
+| Escape              | Cancels the open popup and restores the opening selection.                     |
+| Tab / Shift+Tab     | Cancels the open popup, then continues focus traversal.                        |
+
 ## Default field chrome
 
 The closed field resolves the shared `InputStyle` (`styles.input`). Bundled
@@ -158,16 +173,6 @@ set on each instance. Replacing the Theme repaints every affected field.
 Enter, Space, or a primary pointer click toggles a closed list. During an open
 session, the following keys use the
 [shared focus-independent delegation rule](../../concepts/input-routing.md#popup-navigation-delegation):
-
-| Input                                     | Open-session behavior                                                                                        |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Up or Left, initial or repeat             | Moves the provisional current row to the previous available item.                                            |
-| Down or Right, initial or repeat          | Moves the provisional current row to the next available item.                                                |
-| Home or End, initial or repeat            | Moves the provisional current row to the first or last available item.                                       |
-| Page Up or Page Down, initial or repeat   | Moves by one visible page, bounded by the first or last available item.                                      |
-| Enter, initial activation-eligible press  | Accepts the current row, commits `SelectedIndex`, and closes the popup.                                      |
-| Space                                     | Remains field press activation rather than popup acceptance; it does not replace Enter's accept transaction. |
-| Escape, initial activation-eligible press | Cancels and closes the popup.                                                                                |
 
 The ComboBox normally keeps focus while the private list owns the delegated
 navigation semantics. Moving focus into the list does not double-apply a

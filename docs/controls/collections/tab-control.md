@@ -71,6 +71,14 @@ collection path. Its generated header and property-override lease leave with it
 without restoring values onto the disposing page, and selection repairs exactly
 as for `Items.Remove`.
 
+## Keyboard
+
+| Key          | Behavior                                                          |
+| ------------ | ----------------------------------------------------------------- |
+| Left / Right | Selects the previous or next eligible page, wrapping at the ends. |
+| Home / End   | Selects the first or last eligible page.                          |
+| Delete       | Requests closure of the selected page when it is closeable.       |
+
 ## Behavior
 
 - Inserting, removing, replacing, or moving a page preserves the identity of an
@@ -131,12 +139,9 @@ Intrinsic border and padding deflate the complete strip and page body. Header
 dividers and the selection underline use that same content box, including at
 tiny sizes, so the post-child overlay never overwrites border or padding cells.
 
-| Input                               | Result                                                                                                         |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Primary pointer release on a header | Selects that page.                                                                                             |
-| Unmodified Left / Right             | Moves and selects with wrapping, skipping pages that are effectively hidden or disabled.                       |
-| Unmodified Home / End               | Chooses the first or last eligible page.                                                                       |
-| Unmodified Delete                   | Requests closure of the selected closeable page, once per key hold — a held Delete never closes a second page. |
+| Pointer action              | Result             |
+| --------------------------- | ------------------ |
+| Primary release on a header | Selects that page. |
 
 Pointer focus resolves to the `TabControl`, while hover and pressed state stay
 local to the hit header. A selected header combines `VisualState.Selected` with

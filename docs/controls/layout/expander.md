@@ -103,6 +103,14 @@ Inherited disabled state applies to the Expander as the semantic header owner: a
 disabled header remains visible, but pointer, Space, and Enter input cannot
 change expansion.
 
+## Keyboard
+
+| Key                   | Behavior                                             |
+| --------------------- | ---------------------------------------------------- |
+| Enter                 | Toggles the expanded state immediately.              |
+| Space                 | Toggles the expanded state on key release.           |
+| Alt+header access key | Focuses the Expander and toggles the expanded state. |
+
 ## Example
 
 ![The Expander control rendered in the live showcase](../../images/controls/expander.png)

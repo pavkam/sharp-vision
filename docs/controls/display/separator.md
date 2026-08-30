@@ -35,6 +35,12 @@ participates in shared intrinsic chrome when border, body fill, or shadow
 properties are set, and draws its line across `Bounds`. It never handles pointer
 or keyboard input.
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Glyphs
 
 `SeparatorStyle`, reached through `Style`/`ActualStyle`, owns the required

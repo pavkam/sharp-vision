@@ -28,6 +28,12 @@ classDiagram
 Property changes follow the ordinary dispatcher-affinity, invalidation, and
 `PropertyChanged` rules, and assigning an equivalent value is a no-op.
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Measurement
 
 When a source is set and exact cell-pixel metrics are available, the desired

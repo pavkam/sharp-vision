@@ -88,6 +88,14 @@ CheckBox does not expose raw border, shadow, or state-appearance mutation. For
 third-party composition, inspect `ActualStyle`, `ActualBorder`, and
 `ActualShadow` instead.
 
+## Keyboard
+
+| Key            | Behavior                                                                |
+| -------------- | ----------------------------------------------------------------------- |
+| Enter          | Advances to the next checked state immediately.                         |
+| Space          | Advances to the next checked state on key release.                      |
+| Alt+access key | Focuses and advances the checkbox when `Text` declares that access key. |
+
 ## Behavior
 
 Two-state activation cycles between `false` and `true`; three-state activation

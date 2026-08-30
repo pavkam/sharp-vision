@@ -86,6 +86,23 @@ composition seam for virtual keyboards, clipboard adapters, input-method
 components, and find/replace UI that need to edit content without reconstructing
 `Text` externally and bypassing those guarantees.
 
+## Keyboard
+
+| Key                      | Behavior                                                                                              |
+| ------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Typed text               | Inserts text at the caret, replacing the selection.                                                   |
+| Left / Right             | Moves by one grapheme; Ctrl moves by one word and Shift extends the selection.                        |
+| Up / Down                | Moves to the nearest caret position on the previous or next visual line; Shift extends the selection. |
+| Home / End               | Moves to the start or end of the line; Shift extends the selection.                                   |
+| Page Up / Page Down      | Moves by one visible page; Shift extends the selection.                                               |
+| Backspace / Delete       | Removes the selection or one neighboring grapheme.                                                    |
+| Enter                    | Inserts a line break when `AcceptsReturn` is `true`; otherwise raises `Submitted`.                    |
+| Tab                      | Inserts a tab when `AcceptsTab` is `true`; otherwise moves focus to the next control.                 |
+| Shift+Tab                | Moves focus backward unless `AcceptsTab` handles it locally.                                          |
+| Ctrl+A                   | Selects all text.                                                                                     |
+| Ctrl+C / Ctrl+X / Ctrl+V | Copies, cuts, or pastes through the application clipboard.                                            |
+| Ctrl+Z / Ctrl+Y          | Undoes or redoes the last edit.                                                                       |
+
 ## Default field chrome
 
 `TextInputStyle : InputStyle` is a complete immutable presentation. It declares

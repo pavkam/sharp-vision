@@ -39,6 +39,16 @@ classDiagram
 | `Dispose()`                    | `void`                | —              | Closes the menu and disposes the owned popup and menu tree; the coordinator is unusable afterward.                                                                                                                        |
 | `Opening`, `Closing`, `Closed` | `EventHandler`        | No subscribers | Lifecycle notifications raised in order around visibility changes.                                                                                                                                                        |
 
+## Keyboard
+
+| Key                           | Behavior                                                            |
+| ----------------------------- | ------------------------------------------------------------------- |
+| Arrow keys                    | Moves through the open menu using the contained Menu's orientation. |
+| Tab / Shift+Tab               | Moves to the next or previous available menu item.                  |
+| Enter / Space                 | Activates the selected item and closes the context menu.            |
+| Escape                        | Closes the context menu without invoking an item.                   |
+| Item access key or `Shortcut` | Activates the matching item.                                        |
+
 ## Ownership
 
 Assigning a menu to `ControlBase.ContextMenu` gives that control ownership of

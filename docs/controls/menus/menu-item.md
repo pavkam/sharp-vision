@@ -41,6 +41,14 @@ classDiagram
 | `ResetSubmenuChrome()`       | `void`                                   | —                      | Returns the submenu popup's border and shadow to `PopupChrome` ownership.                   |
 | `Invoked`                    | `EventHandler<MenuItemInvokedEventArgs>` | No subscribers         | Raised after activation commits, once any check state has updated.                          |
 
+## Keyboard
+
+| Key                   | Behavior                                                             |
+| --------------------- | -------------------------------------------------------------------- |
+| Enter / Space         | Activates the item when it is selected in its owning Menu.           |
+| Alt+access key        | Selects and activates the item when `Text` declares that access key. |
+| Configured `Shortcut` | Activates the item through its application-wide key gesture.         |
+
 ## Behavior
 
 - `Kind` is one of command, check, or radio.

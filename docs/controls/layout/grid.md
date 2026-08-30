@@ -58,6 +58,12 @@ and span of every owned child; when any placement would fall out of range, the
 mutation throws `InvalidOperationException` and leaves the definitions and
 placements unchanged.
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## Layout algorithm
 
 1. Measure first asks each child for its unbounded intrinsic size. Non-spanning

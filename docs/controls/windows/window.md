@@ -54,6 +54,15 @@ classDiagram
 | Inherited `Closing`                                                                           | `EventHandler`                                 | —                                  | Raised when closure is requested or after family-specific closing state commits.                      |
 | Inherited `Closed`                                                                            | `EventHandler`                                 | —                                  | Raised only after the presented surface becomes unavailable and its bounds clear.                     |
 
+## Keyboard
+
+| Key                          | Behavior                                                                              |
+| ---------------------------- | ------------------------------------------------------------------------------------- |
+| Enter                        | Activates the first available descendant Button whose `IsDefault` property is `true`. |
+| Escape                       | Activates the first available descendant Button whose `IsCancel` property is `true`.  |
+| Escape with no cancel button | Closes the Window when `CloseOnEscape` and `CanClose` are both `true`.                |
+| Tab / Shift+Tab              | Moves focus within the Window; a modal Window confines traversal to its own surface.  |
+
 ## Layout and positioning
 
 The inherited `Content` slot uses managed capacity-one ownership, and the child

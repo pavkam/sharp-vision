@@ -80,6 +80,12 @@ classDiagram
 > logical plane. The popups `InputBase.EnablePopup` builds default `FocusOnOpen`
 > to `false`, with `Tooltip` setting it false again.
 
+## Keyboard
+
+| Key    | Behavior                                              |
+| ------ | ----------------------------------------------------- |
+| Escape | Closes the open popup when `CloseOnEscape` is `true`. |
+
 ## Content ownership
 
 The inherited `Content` uses managed capacity-one ownership and is collapsed

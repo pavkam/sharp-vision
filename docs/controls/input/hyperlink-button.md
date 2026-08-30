@@ -51,6 +51,14 @@ everything, the caption shrinks first, then the end affix drops whole, then the
 start affix - never a partial cluster - re-evaluated against the control's
 actual bounds on every render.
 
+## Keyboard
+
+| Key            | Behavior                                                                  |
+| -------------- | ------------------------------------------------------------------------- |
+| Enter          | Activates the link immediately.                                           |
+| Space          | Shows the pressed state on key down and activates on the matching key up. |
+| Alt+access key | Focuses and activates the link when `Text` declares that access key.      |
+
 ## Example
 
 ![The HyperlinkButton control rendered in the live showcase](../../images/controls/hyperlink-button.png)

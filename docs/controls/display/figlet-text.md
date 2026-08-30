@@ -35,6 +35,12 @@ classDiagram
 | Inherited `Face`              | `Face`          | Semantic normal face          | Complete local appearance authoring for generated cells.                                     |
 | Inherited `ActualFace`        | `Face`          | Resolved                      | Read-only; the fully composed current face.                                                  |
 
+## Keyboard
+
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
+
 ## FigletCatalog
 
 `FigletCatalog` and `FigletFontInfo` belong to the optional

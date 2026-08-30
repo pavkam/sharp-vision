@@ -64,6 +64,12 @@ false, so ordinary ampersands stay literal. Set it to true when a standalone
 [access-key syntax](../../concepts/access-keys.md#caption-syntax) is then
 applied before markup parsing and grapheme layout.
 
+## Keyboard
+
+| Key            | Behavior                                                                         |
+| -------------- | -------------------------------------------------------------------------------- |
+| Alt+access key | Focuses the configured access-key target when the text declares that access key. |
+
 ## Markup grammar
 
 A tag is `<name>`, `<name=value>`, `</name>`, or the generic close `</>`. Names,

@@ -67,6 +67,15 @@ selection marker is. `ActualStyle` reports the values actually applied to every
 covered retained part, including the separately normalized hue slider and the
 value-dependent status foreground.
 
+## Keyboard
+
+| Key          | Behavior                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------- |
+| Left / Right | Decreases or increases saturation by one percentage point while the color plane is focused. |
+| Down / Up    | Decreases or increases value by one percentage point while the color plane is focused.      |
+| Home / End   | Sets saturation to zero or one while the color plane is focused.                            |
+| Slider keys  | The hue and RGB sliders use the `Slider` keyboard contract.                                 |
+
 ## Color depth and presentation
 
 `Value` always stores the authored RGB (or `Color.Default`); only the presented
