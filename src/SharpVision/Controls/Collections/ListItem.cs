@@ -89,6 +89,11 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
     /// <summary>Gets whether content is effectively available for navigation and activation.</summary>
     public bool IsAvailable => Content is { EffectiveIsEnabled: true, EffectiveIsVisible: true };
 
+    /// <summary>Gets whether content is locally available while an owner deliberately keeps this
+    /// retained list hidden behind a collapsed popup.</summary>
+    internal bool IsLocallyAvailable =>
+        Content is { IsEnabled: true, Visibility: Visibility.Visible };
+
     /// <inheritdoc/>
     void IOwnedChildDisposalObserver.OnOwnedChildDisposalRequested(ControlBase child) =>
         FindList()?.OnItemContentDisposalRequested(this, child);

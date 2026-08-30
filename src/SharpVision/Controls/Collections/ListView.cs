@@ -1585,6 +1585,48 @@ public sealed class ListView: ItemsControl
             MoveCurrent(eventArgs.Stroke.Code);
     }
 
+    /// <summary>Resolves navigation for an owner that keeps this retained list collapsed.</summary>
+    /// <param name="eventArgs">The routed key record to interpret.</param>
+    /// <param name="currentIndex">The owner's current committed index.</param>
+    /// <returns>The locally available target index, or -1 when the stroke has no target.</returns>
+    /// <remarks>Collapsed popup ancestry must not make every semantic item unavailable, while an
+    /// item's own disabled or hidden state still excludes it from navigation.</remarks>
+    internal int ResolveCollapsedNavigationIndex(KeyEventArgs eventArgs, int currentIndex)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+
+        if (!eventArgs.IsKeyDown ||
+            !KeyboardModifierPolicy.IsScalarNavigationEligible(eventArgs.Stroke.Modifiers) ||
+            Items.Count == 0)
+        {
+            return -1;
+        }
+
+        var current = (uint) currentIndex < (uint) Items.Count && IsIndexLocallyAvailable(currentIndex)
+            ? currentIndex
+            : FindLocallyEligible(0, 1);
+
+        if (current < 0)
+        {
+            return -1;
+        }
+
+        var code = eventArgs.Stroke.Code;
+        var pageUpStart = Viewport.Height > 0 ? StepPage(current, -1) : current - 1;
+        var pageDownStart = Viewport.Height > 0 ? StepPage(current, 1) : current + 1;
+        return code is Code.Up or Code.Left
+            ? FindLocallyEligible(current - 1, -1)
+            : code is Code.Down or Code.Right
+            ? FindLocallyEligible(current + 1, 1)
+            : code == Code.Home
+            ? FindLocallyEligible(0, 1)
+            : code == Code.End
+            ? FindLocallyEligible(Items.Count - 1, -1)
+            : code == Code.PageUp
+            ? FindLocallyEligible(pageUpStart, -1)
+            : code == Code.PageDown ? FindLocallyEligible(pageDownStart, 1) : -1;
+    }
+
     /// <summary>Seeds or restores owner-controlled provisional current state without committing
     /// public selection.</summary>
     /// <param name="index">The requested current index, or -1 for no current item. A stale index
@@ -1611,6 +1653,30 @@ public sealed class ListView: ItemsControl
         {
             _ = BringIntoView(current);
         }
+    }
+
+    /// <summary>Moves the private visual selection used by an owner-controlled provisional
+    /// navigation session without starting a second current-item or reveal transaction.</summary>
+    /// <param name="index">The already-resolved available current index, or -1 to clear the
+    /// provisional selection.</param>
+    /// <remarks>This invariant exists so a mounted drop-down can visibly browse before its owner
+    /// commits the public selection. The owner has already resolved availability and scrolling by
+    /// moving current, so repeating those operations here could repair the current row backward.</remarks>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the
+    /// item range.</exception>
+    /// <exception cref="InvalidOperationException">The attached ListView is mutated
+    /// off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    internal void SetProvisionalSelectionIndex(int index)
+    {
+        if (index < -1 || index >= Items.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), index, "Provisional selection is outside Items.");
+        }
+
+        VerifyMutable();
+        HashSet<int> next = index < 0 ? [] : [index];
+        _ = ApplySelection(next, cancellable: false, requireAvailability: false);
     }
 
     /// <summary>Activates the owned current item without transferring focus to that item.</summary>
@@ -1978,6 +2044,15 @@ public sealed class ListView: ItemsControl
         return SingleSelectionIndex.FindLinear(clamped, direction, Items.Count, IsIndexAvailable);
     }
 
+    /// <summary>Scans for an item available by its own state while collapsed popup ancestry is
+    /// deliberately ignored.</summary>
+    [Pure]
+    private int FindLocallyEligible(int start, int direction)
+    {
+        var clamped = Math.Clamp(start, 0, Math.Max(0, Items.Count - 1));
+        return SingleSelectionIndex.FindLinear(clamped, direction, Items.Count, IsIndexLocallyAvailable);
+    }
+
     private void SetActiveIndex(int value)
     {
         RemapPendingSelectionReveal(value);
@@ -2055,6 +2130,16 @@ public sealed class ListView: ItemsControl
 
         var item = ItemAt(index);
         return item?.IsAvailable ?? (IsVirtualized && _availability[index] != false);
+    }
+
+    /// <summary>Answers semantic item availability without folding in the collapsed popup's
+    /// effective ancestor state.</summary>
+    [Pure]
+    private bool IsIndexLocallyAvailable(int index)
+    {
+        return index >= 0 &&
+               index < _items.Count &&
+               (ItemAt(index)?.IsLocallyAvailable ?? (_availability[index] != false));
     }
 
     /// <summary>Ensures a logical index is realized, scrolling it into view first if necessary.</summary>

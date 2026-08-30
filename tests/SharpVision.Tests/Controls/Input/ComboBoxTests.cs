@@ -634,6 +634,75 @@ public sealed class ComboBoxTests
         box.ShowScrollBars.ShouldBe(ShowScrollBars.WhenNeeded);
     }
 
+    /// <summary>Verifies closed navigation commits through the ComboBox selection transaction
+    /// without opening its retained popup.</summary>
+    [Theory]
+    [InlineData(Code.Up, KeyAction.Press, 2)]
+    [InlineData(Code.Down, KeyAction.Press, 4)]
+    [InlineData(Code.Left, KeyAction.Repeat, 2)]
+    [InlineData(Code.Right, KeyAction.Repeat, 4)]
+    [InlineData(Code.Home, KeyAction.Press, 0)]
+    [InlineData(Code.End, KeyAction.Repeat, 6)]
+    [InlineData(Code.PageUp, KeyAction.Press, 2)]
+    [InlineData(Code.PageDown, KeyAction.Repeat, 4)]
+    public void Dispatch_WhenClosedNavigationKeyIsRouted_CommitsSelection(
+        Code code,
+        KeyAction action,
+        int expectedIndex)
+    {
+        var box = new ComboBox
+        {
+            Items = ["Zero", "One", "Two", "Three", "Four", "Five", "Six"],
+            SelectedIndex = 3
+        };
+        var selectionChanges = 0;
+        box.SelectionChanged += (_, _) => selectionChanges++;
+
+        var result = Router.Route(box, Events.Key, Key(code, action));
+
+        result.IsHandled.ShouldBeTrue();
+        box.IsOpen.ShouldBeFalse();
+        box.SelectedIndex.ShouldBe(expectedIndex);
+        box.GetDropDownList().SelectedIndex.ShouldBe(expectedIndex);
+        box.GetDropDownList().ActiveIndex.ShouldBe(expectedIndex);
+        selectionChanges.ShouldBe(1);
+    }
+
+    /// <summary>Verifies closed navigation skips a locally disabled item even though the popup's
+    /// collapsed ancestry makes every retained row effectively unavailable.</summary>
+    [Fact]
+    public void Dispatch_WhenClosedNavigationMeetsDisabledItem_SkipsIt()
+    {
+        var box = new ComboBox
+        {
+            ItemTemplate = static item => new ControlText((string) item!)
+            {
+                IsEnabled = !Equals(item, "One")
+            },
+            Items = ["Zero", "One", "Two"],
+            SelectedIndex = 0
+        };
+
+        var result = Router.Route(box, Events.Key, Key(Code.Down));
+
+        result.IsHandled.ShouldBeTrue();
+        box.SelectedIndex.ShouldBe(2);
+        box.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a closed empty ComboBox leaves navigation unhandled.</summary>
+    [Fact]
+    public void Dispatch_WhenClosedListIsEmpty_LeavesNavigationUnhandled()
+    {
+        var box = new ComboBox();
+
+        var result = Router.Route(box, Events.Key, Key(Code.Down));
+
+        result.IsHandled.ShouldBeFalse();
+        box.SelectedIndex.ShouldBe(-1);
+        box.IsOpen.ShouldBeFalse();
+    }
+
     /// <summary>Verifies Enter opens the list while the composite owner retains focus for directional selection.</summary>
     [Fact]
     public async Task Dispatch_WhenEnterOpens_TransfersFocusAndInvokesSelectedListItemAsync()
@@ -686,8 +755,8 @@ public sealed class ComboBoxTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies every initial and repeated list-navigation key uses current-only browsing
-    /// while the committed ComboBox selection remains unchanged.</summary>
+    /// <summary>Verifies every initial and repeated list-navigation key moves the popup's visible
+    /// provisional selection while the committed ComboBox selection remains unchanged.</summary>
     [Theory]
     [InlineData(Code.Up, KeyAction.Press, 2)]
     [InlineData(Code.Down, KeyAction.Press, 4)]
@@ -697,7 +766,7 @@ public sealed class ComboBoxTests
     [InlineData(Code.End, KeyAction.Repeat, 6)]
     [InlineData(Code.PageUp, KeyAction.Press, 0)]
     [InlineData(Code.PageDown, KeyAction.Repeat, 6)]
-    public void Dispatch_WhenOpenNavigationKeyIsRouted_MovesOnlyCurrent(
+    public void Dispatch_WhenOpenNavigationKeyIsRouted_MovesPopupSelection(
         Code code,
         KeyAction action,
         int expectedCurrent)
@@ -712,19 +781,20 @@ public sealed class ComboBoxTests
         };
         new LayoutEngine().Layout(box, new Size(16, 8));
         var key = Key(code, action);
+        var list = box.GetDropDownList();
 
         var result = Router.Route(box, Events.Key, key);
 
         result.IsHandled.ShouldBeTrue();
         box.SelectedIndex.ShouldBe(3);
-        box.GetDropDownList().SelectedIndex.ShouldBe(3);
-        box.GetDropDownList().ActiveIndex.ShouldBe(expectedCurrent);
+        list.ActiveIndex.ShouldBe(expectedCurrent);
+        list.SelectedIndex.ShouldBe(expectedCurrent);
     }
 
     /// <summary>Verifies owner preview routing intercepts a popup-focused navigation key exactly
-    /// once, preventing the ListView's ordinary selecting route from committing it a second time.</summary>
+    /// once, moving the private provisional selection without committing the ComboBox value.</summary>
     [Fact]
-    public void Dispatch_WhenNavigationTargetsOpenPopupList_MovesCurrentExactlyOnceWithoutSelecting()
+    public void Dispatch_WhenNavigationTargetsOpenPopupList_MovesProvisionalSelectionExactlyOnce()
     {
         var box = new ComboBox
         {
@@ -741,7 +811,7 @@ public sealed class ComboBoxTests
 
         result.IsHandled.ShouldBeTrue();
         box.SelectedIndex.ShouldBe(1);
-        list.SelectedIndex.ShouldBe(1);
+        list.SelectedIndex.ShouldBe(2);
         list.ActiveIndex.ShouldBe(2);
     }
 

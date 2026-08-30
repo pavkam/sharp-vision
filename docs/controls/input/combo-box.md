@@ -70,18 +70,18 @@ items whose `ToString` override is already display-ready.
 
 ## Keyboard
 
-| Key                 | Behavior                                                                       |
-| ------------------- | ------------------------------------------------------------------------------ |
-| Enter               | Opens a closed ComboBox; while open, accepts the current item and closes it.   |
-| Space               | Opens or closes the ComboBox field; it does not accept the current popup item. |
-| Up / Left           | Moves to the previous available item while the popup is open.                  |
-| Down / Right        | Moves to the next available item while the popup is open.                      |
-| Home / End          | Moves to the first or last available item while the popup is open.             |
-| Page Up / Page Down | Moves by one visible popup page.                                               |
-| Printable text      | Selects the next matching item while the popup is open.                        |
-| Backspace / Delete  | Clears the selection when `AllowNull` is `true`.                               |
-| Escape              | Cancels the open popup and restores the opening selection.                     |
-| Tab / Shift+Tab     | Cancels the open popup, then continues focus traversal.                        |
+| Key                 | Behavior                                                                                                         |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Enter               | Opens a closed ComboBox; while open, accepts the current item and closes it.                                     |
+| Space               | Opens or closes the ComboBox field; it does not accept the current popup item.                                   |
+| Up / Left           | Selects the previous available item when closed; moves the visible provisional selection when open.              |
+| Down / Right        | Selects the next available item when closed; moves the visible provisional selection when open.                  |
+| Home / End          | Selects the first or last available item when closed or moves the visible provisional selection there when open. |
+| Page Up / Page Down | Selects by one popup page when closed or moves the visible provisional selection by a page when open.            |
+| Printable text      | Selects the next matching item while the popup is open.                                                          |
+| Backspace / Delete  | Clears the selection when `AllowNull` is `true`.                                                                 |
+| Escape              | Cancels the open popup and restores the opening selection.                                                       |
+| Tab / Shift+Tab     | Cancels the open popup, then continues focus traversal.                                                          |
 
 ## Default field chrome
 
@@ -108,8 +108,10 @@ ListView's selection, scrolling, and surface appearance inside the Popup.
   in range, so Escape cannot restore a cursor captured for different items.
 - Opening snapshots the accepted `SelectedIndex` and the popup list's current
   row, then seeds provisional current-row navigation from the accepted item.
-  Directional, endpoint, and page browsing does not change `SelectedIndex` or
-  `SelectedItem` until an activation accepts the current row.
+  Directional, endpoint, and page browsing moves the private list's selected
+  highlight with its current row, including across a scrolled viewport, but does
+  not change the ComboBox `SelectedIndex` or `SelectedItem` until an activation
+  accepts that row.
 - `SelectedIndex` is `-1` or an index within `Items`; a committed selection
   publishes `PropertyChanged(SelectedIndex)` before `SelectionChanged`.
   Publication is versioned under synchronous reentry: a `PropertyChanged`
@@ -170,8 +172,12 @@ set on each instance. Replacing the Theme repaints every affected field.
 
 ## Interaction
 
-Enter, Space, or a primary pointer click toggles a closed list. During an open
-session, the following keys use the
+Enter, Space, or a primary pointer click toggles a closed list. While the
+focused field remains closed, initial and repeated navigation keys immediately
+commit `SelectedIndex` and repaint its displayed value without opening the
+popup. Locally disabled or hidden item templates are skipped even though popup
+ancestry keeps every retained row effectively unavailable; an empty item list
+leaves navigation unhandled. During an open session, the same keys use the
 [shared focus-independent delegation rule](../../concepts/input-routing.md#popup-navigation-delegation):
 
 The ComboBox normally keeps focus while the private list owns the delegated
@@ -202,7 +208,7 @@ Super, Hyper, or Meta remains unhandled and leaves the popup open. The arrow
 keys (Up/Down/Left/Right), Home, End, Page Up, and Page Down move between items
 through the ListView's own keyboard handler. Initial and repeated key-down input
 share that path, so holding a navigation key continues moving the current row
-and keeps it visible while the ComboBox retains focus. Movement accepts
+and its selected highlight while the ComboBox retains focus. Movement accepts
 incidental lock state but leaves Shift and application-command-modified keys
 unhandled without changing the provisional current row.
 
@@ -239,9 +245,13 @@ var density = new ComboBox
 
 - Assigned items are copied, indices are validated, and the connected popup
   renders its exact cells in both below and above placement.
+- A focused closed field commits directional, endpoint, and paging navigation
+  immediately without opening its popup, skips locally unavailable items, and
+  repaints the selected value.
 - Initial and repeated list navigation is delivered exactly once regardless of
-  focus placement, remains provisional until Enter or pointer acceptance, and
-  restores the opening row on every cancelling close path.
+  focus placement, visibly moves the popup selection while remaining provisional
+  until Enter or pointer acceptance, and restores the opening row on every
+  cancelling close path.
 - The popup renders opaquely and hit tests only what is visible. Popup
   arrangement, Escape, and mouse selection through the Popup behave as
   documented, and keyboard focus, navigation, and activation follow the rules
