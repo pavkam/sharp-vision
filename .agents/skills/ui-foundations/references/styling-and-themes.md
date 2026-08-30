@@ -12,6 +12,7 @@ or bundled themes.
 - [Visual states](../../../../docs/concepts/styling.md#visual-states)
 - [Intrinsic chrome](../../../../docs/concepts/intrinsic-chrome.md#overview)
 - [Themes](../../../../docs/concepts/themes.md#overview)
+- [Style types](../../../../docs/concepts/themes.md#style-types)
 - [Theming controls](../../../../docs/concepts/theming-new-controls.md#overview)
 - [Invalidation impact](../../../../docs/concepts/invalidation.md#choosing-an-impact)
 
@@ -46,39 +47,15 @@ Retired as type vocabulary, and not to be reintroduced: **`Role`** anywhere,
 
 ## The model
 
-Every themeable value is an immutable record deriving from `ControlStyle`. A
-theme's `styles` object is closed to exactly six top-level sections, one per
-well-known base type — `ControlStyle` and its `InputStyle`, `ContainerStyle`,
-`WindowStyle`, `PopupStyle`, `TooltipStyle` siblings. Nothing else is a
-theme-visible key: not a leaf control's own name, not a namespaced vendor
-section.
-
-- `Theme.GetStyleSet<TStyle>(codeOwnedDefault)` — resolves one of the six
-  well-known types against its own `styles.*` section.
-- `StyleDefinitions.Control<TStyle, TFallback>(fallbackTo, complete, compare)` —
-  every leaf control style's one factory, with one declared one-hop fallback.
-  `fallbackTo` resolves one of the six well-known types' own per-state set (via
-  `Theme.GetStyleSet`) or one of `Theme`'s four derived interaction sets;
-  `complete` folds that fallback's contribution into this type's own shape. A
-  leaf declares no `styles.*` section of its own at all — its only sources of
-  appearance are this completion logic, the fallback's resolved states, and a
-  locally assigned `Style`. `complete` itself is shaped
-  `(TFallback, VisualState, Theme) -> TStyle`; the `Theme` parameter is how
-  completion reaches theme-level values beyond the fallback's own resolved
-  appearance — the glyph-aware styles (CheckBox, RadioButton, ScrollBar,
-  Spinner, ProgressBar, ChaseIndicator) read `theme.Glyphs` from it to complete
-  their own structural members.
-- `StyleDefinitions.Part<TStyle>(fallback, compare)` — a secondary style that
-  does not own its control's appearance states.
-
-A well-known type's key is **derived from its type name** by the internal
-`StyleKey`: drop a trailing `Style`, lower-case the first character — so
-`ControlStyle` owns `"control"`, `WindowStyle` owns `"window"`. That derivation
-only ever resolves for the six well-known roots; a leaf style's own derived key
-(`ButtonStyle` would derive `"button"`) is never looked up against a theme
-document, since `styles` admits only the six names regardless of what a leaf
-type's key would compute to. There is no registry, no vendor namespace, and no
-explicit-key overload for a leaf or third-party section.
+Six well-known `ControlStyle` siblings — `ControlStyle`, `InputStyle`,
+`ContainerStyle`, `WindowStyle`, `PopupStyle`, `TooltipStyle` — own the theme's
+closed `styles.*` sections; every leaf control style declares no section of its
+own and instead resolves through a declared one-hop fallback to one of the six,
+via `StyleDefinitions.Control<TStyle, TFallback>`. A well-known type's section
+key is derived from its type name, and that derivation never applies to a leaf.
+See [Style types](../../../../docs/concepts/themes.md#style-types) and
+[Where a section name comes from](../../../../docs/concepts/themes.md#where-a-section-name-comes-from)
+for the full resolution mechanics.
 
 ## Workflow
 
@@ -99,37 +76,16 @@ explicit-key overload for a leaf or third-party section.
 
 ## Current API model
 
-- Specialized controls expose nullable local `Style` and always-present
-  `ActualStyle`; `ButtonStyle.Filled` is the filled button presentation.
-- A control gets a typed style by declaring `IStyled<TStyle>` (a plain marker
-  interface, no default members) and forwarding `Style`/`ActualStyle` itself
-  over a private `StyleSlot<TStyle>` field returned by
-  `ControlBase.InitializeStyle<TStyle>(definition, changed)`. This works the
-  same regardless of the control's actual base (`ControlBase`, `InputBase`,
-  `CompositeControlBase`, `FloatingSurfaceBase`, or otherwise) - there is no
-  generic `Control<TStyle>`/`Pressable<TStyle>`/`CompositeControl<TStyle>`/
-  `FloatingSurface<TStyle>` layer to derive from. There is also no virtual
-  `OnStyleChanged` to override; pass a private method as `InitializeStyle`'s
-  optional `changed` callback instead.
-- Raw `Border` and `Shadow` authoring is public on `ControlBase` but throws
-  `InvalidOperationException` until a control calls the protected
-  `EnableChromeAuthoring()`.
-- Dock, Grid, Stack, Overlay, GroupBox, Window, Popup, TabControl,
-  NavigationView, NavigationViewGroup, and NavigationViewSeparator call it from
-  their own constructors. Do not add a `public new` hiding shim over `Border` or
-  `Shadow` on individual controls - call `EnableChromeAuthoring()` instead.
-- Use `BorderGlyphStyle` and `SemanticColor` tokens such as `ControlBorder` and
-  `ControlShadow`; retired `Glyphs` and `ButtonKind` APIs do not exist.
-- `ActualFace`/`ActualBorder`/`ActualShadow` are the **resolved** render-ready
-  appearance and carry concrete colors. A style's own `Face` still carries
-  semantic tokens. Never assert one against the other — compare each in its own
-  representation, or resolve explicitly with `theme.ResolveColor(...)`.
-- `ResolveAppearance(theme, visualState)` (public) previews the same resolved
-  appearance for an explicit Theme and state without attachment, cache writes,
-  or events. It models whole-tree inheritance — what `PropagateTheme` and a
-  mounted Application publish — not the single-control internal `SetTheme`,
-  which themes one control and reaches descendants only ambiently (pinned by
-  ControlBaseTests.Appearance).
+A control opts into themed styling by declaring `IStyled<TStyle>` and
+forwarding `Style`/`ActualStyle` itself over a private `StyleSlot<TStyle>`
+field returned by `ControlBase.InitializeStyle<TStyle>(definition, changed)`,
+the same way regardless of the control's actual base type. There is no virtual
+`OnStyleChanged` to override — pass a private method as `InitializeStyle`'s
+optional `changed` callback instead. See
+[Styling](../../../../docs/concepts/styling.md#overview) and
+[Visual states](../../../../docs/concepts/styling.md#visual-states) for the
+full API surface, including `ActualStyle`, chrome authoring, and
+`ResolveAppearance`.
 
 ## Traps that have already caused regressions
 
