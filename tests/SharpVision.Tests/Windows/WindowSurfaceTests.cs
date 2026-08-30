@@ -198,10 +198,7 @@ public sealed class WindowSurfaceTests
 
     /// <summary>Verifies focus and primary clicks switch Application activation without
     /// conflating keyboard focus, and that only the active Window's frame adopts its flat
-    /// ActiveBorder color while the inactive one keeps the passive Raised bezel -
-    /// Theme.BuildWindowStyleSet's code-owned "an active Window's border has always distinguished
-    /// itself from an inactive one" default, restored to visibility by the border-relief-vs-
-    /// authored-Foreground fix.</summary>
+    /// ActiveBorder color while the inactive one keeps its passive flat border color.</summary>
     [Fact]
     public async Task Activation_WhenFocusTargetSwitches_ChangesOwnershipWithoutStealingFocusAsync()
     {
