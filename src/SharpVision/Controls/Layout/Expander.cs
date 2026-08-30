@@ -19,6 +19,10 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
     // The header occupies one terminal row.
     private const int _headerHeightCells = 1;
 
+    private static readonly ThemeValueDependency<Color> _hotkeyThemeDependency = new(
+        static theme => theme.Hotkey,
+        InvalidationImpact.Render);
+
     private readonly PressBehavior _interaction;
     private readonly StyleSlot<ExpanderStyle> _style;
     private readonly CallbackTransitionStream _expandedTransitions = new();
@@ -231,7 +235,7 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
                 BackgroundMode.Transparent,
                 CellPolicy.AmbiguousWidth,
                 UseMnemonic,
-                EffectiveIsEnabled ? Theme?.Hotkey ?? Color.Default : null);
+                EffectiveIsEnabled ? ResolveThemeValue(_hotkeyThemeDependency) : null);
         }
     }
 

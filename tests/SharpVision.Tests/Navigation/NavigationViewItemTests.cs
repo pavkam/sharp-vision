@@ -252,4 +252,48 @@ public sealed class NavigationViewItemTests
 
         item.Pending.ShouldBe(Invalidation.Render);
     }
+
+    /// <summary>Verifies a rendered enabled item registers a render-only dependency on the root
+    /// theme's hotkey color, matching the fix Text's own hotkey resolution already carries.</summary>
+    [Fact]
+    public void Theme_WhenItemIsRenderedAndEnabled_InvalidatesOnlyRenderForHotkeyChange()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        using var item = new NavigationViewItem { Text = "&Page" };
+        item.SetTheme(mounted);
+        new LayoutEngine().Layout(item, new Size(40, 3));
+        using Frame frame = new(new Size(40, 3));
+        item.Render(frame.Canvas);
+        item.Clear(Invalidation.All);
+
+        // Act
+        item.SetTheme(replacement);
+
+        // Assert
+        item.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies a disabled item never resolves the hotkey color, so it does not subscribe
+    /// to an unrelated root hotkey-only change.</summary>
+    [Fact]
+    public void Theme_WhenItemIsRenderedAndDisabled_IgnoresHotkeyOnlyChange()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        using var item = new NavigationViewItem { Text = "&Page", IsEnabled = false };
+        item.SetTheme(mounted);
+        new LayoutEngine().Layout(item, new Size(40, 3));
+        using Frame frame = new(new Size(40, 3));
+        item.Render(frame.Canvas);
+        item.Clear(Invalidation.All);
+
+        // Act
+        item.SetTheme(replacement);
+
+        // Assert
+        item.Pending.ShouldBe(Invalidation.None);
+    }
 }

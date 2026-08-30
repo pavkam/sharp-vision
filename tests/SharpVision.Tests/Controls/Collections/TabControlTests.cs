@@ -1904,6 +1904,53 @@ public sealed class TabControlTests
         first.Content.ShouldNotBeNull().Bounds.Y.ShouldBe(int.MaxValue);
     }
 
+    /// <summary>Verifies a rendered enabled header registers a render-only dependency on the root
+    /// theme's hotkey color, matching the fix Text's own hotkey resolution already carries.</summary>
+    [Fact]
+    public void Theme_WhenHeaderIsRenderedAndEnabled_InvalidatesOnlyRenderForHotkeyChange()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var tabs = Create(Create("&One", "First"));
+        new LayoutEngine().Layout(tabs, new Size(20, 5));
+        using Frame frame = new(new Size(20, 5));
+        var header = tabs.HeaderAt(0);
+        header.SetTheme(mounted);
+        tabs.Render(frame.Canvas);
+        header.Clear(Invalidation.All);
+
+        // Act
+        header.SetTheme(replacement);
+
+        // Assert
+        header.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies a disabled header never resolves the hotkey color, so it does not
+    /// subscribe to an unrelated root hotkey-only change.</summary>
+    [Fact]
+    public void Theme_WhenHeaderIsRenderedAndDisabled_IgnoresHotkeyOnlyChange()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var tabs = Create(Create("&One", "First"));
+        tabs.IsEnabled = false;
+        new LayoutEngine().Layout(tabs, new Size(20, 5));
+        using Frame frame = new(new Size(20, 5));
+        var header = tabs.HeaderAt(0);
+        header.SetTheme(mounted);
+        tabs.Render(frame.Canvas);
+        header.Clear(Invalidation.All);
+
+        // Act
+        header.SetTheme(replacement);
+
+        // Assert
+        header.Pending.ShouldBe(Invalidation.None);
+    }
+
     private static TabControl Create(params TabItem[] items)
     {
         var result = new TabControl

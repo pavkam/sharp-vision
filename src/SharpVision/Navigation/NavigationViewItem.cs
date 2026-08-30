@@ -10,6 +10,10 @@ using SharpVision.Text;
 [PublicAPI]
 public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemStyle>
 {
+    private static readonly ThemeValueDependency<Color> _hotkeyThemeDependency = new(
+        static theme => theme.Hotkey,
+        InvalidationImpact.Render);
+
     private bool _isSelected;
     private readonly StyleSlot<NavigationViewItemStyle> _style;
 
@@ -209,7 +213,7 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
             BackgroundMode.Transparent,
             CellPolicy.AmbiguousWidth,
             UseMnemonic,
-            EffectiveIsEnabled ? Theme?.Hotkey ?? Color.Default : null);
+            EffectiveIsEnabled ? ResolveThemeValue(_hotkeyThemeDependency) : null);
     }
 
     /// <inheritdoc/>

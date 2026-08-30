@@ -8,6 +8,11 @@ internal sealed class TabHeader: InputBase
 {
     private const int _headerRowHeight = 1;
     private const int _headerHorizontalPadding = 1;
+
+    private static readonly ThemeValueDependency<Color> _hotkeyThemeDependency = new(
+        static theme => theme.Hotkey,
+        InvalidationImpact.Render);
+
     private bool _isSelected;
 
     /// <summary>Initializes one non-focusable header with validated text.</summary>
@@ -92,7 +97,7 @@ internal sealed class TabHeader: InputBase
             BackgroundMode.Transparent,
             CellPolicy.AmbiguousWidth,
             UseMnemonic,
-            EffectiveIsEnabled ? Theme?.Hotkey ?? Color.Default : null);
+            EffectiveIsEnabled ? ResolveThemeValue(_hotkeyThemeDependency) : null);
         _ = canvas.Draw(
             " ".AsSpan(),
             new Point(leading.Final.X + cells, leading.Final.Y),

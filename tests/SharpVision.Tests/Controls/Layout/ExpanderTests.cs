@@ -522,4 +522,48 @@ public sealed class ExpanderTests
 
         FrameOracle.Get(frame, new Point(2, 1)).ShouldBeEmpty();
     }
+
+    /// <summary>Verifies a rendered enabled header registers a render-only dependency on the root
+    /// theme's hotkey color, matching the fix Text's own hotkey resolution already carries.</summary>
+    [Fact]
+    public void Theme_WhenHeaderIsRenderedAndEnabled_InvalidatesOnlyRenderForHotkeyChange()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var expander = new Expander { HeaderText = "&Details", IsExpanded = true };
+        expander.SetTheme(mounted);
+        new LayoutEngine().Layout(expander, new Size(30, 8));
+        using Frame frame = new(new Size(30, 8));
+        expander.Render(frame.Canvas);
+        expander.Clear(Invalidation.All);
+
+        // Act
+        expander.SetTheme(replacement);
+
+        // Assert
+        expander.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies a disabled header never resolves the hotkey color, so it does not
+    /// subscribe to an unrelated root hotkey-only change.</summary>
+    [Fact]
+    public void Theme_WhenHeaderIsRenderedAndDisabled_IgnoresHotkeyOnlyChange()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var expander = new Expander { HeaderText = "&Details", IsExpanded = true, IsEnabled = false };
+        expander.SetTheme(mounted);
+        new LayoutEngine().Layout(expander, new Size(30, 8));
+        using Frame frame = new(new Size(30, 8));
+        expander.Render(frame.Canvas);
+        expander.Clear(Invalidation.All);
+
+        // Act
+        expander.SetTheme(replacement);
+
+        // Assert
+        expander.Pending.ShouldBe(Invalidation.None);
+    }
 }

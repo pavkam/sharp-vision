@@ -437,4 +437,48 @@ public sealed class GroupBoxTests
         group.EffectiveIsEnabled.ShouldBeFalse();
         content.EffectiveIsEnabled.ShouldBeFalse();
     }
+
+    /// <summary>Verifies a rendered enabled header registers a render-only dependency on the root
+    /// theme's hotkey color, matching the fix Text's own hotkey resolution already carries.</summary>
+    [Fact]
+    public void Theme_WhenHeaderIsRenderedAndEnabled_InvalidatesOnlyRenderForHotkeyChange()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var group = new GroupBox { HeaderText = "&Tools" };
+        group.SetTheme(mounted);
+        new LayoutEngine().Layout(group, new Size(20, 8));
+        using Frame frame = new(new Size(20, 8));
+        group.Render(frame.Canvas);
+        group.Clear(Invalidation.All);
+
+        // Act
+        group.SetTheme(replacement);
+
+        // Assert
+        group.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies a disabled header never resolves the hotkey color, so it does not
+    /// subscribe to an unrelated root hotkey-only change.</summary>
+    [Fact]
+    public void Theme_WhenHeaderIsRenderedAndDisabled_IgnoresHotkeyOnlyChange()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var group = new GroupBox { HeaderText = "&Tools", IsEnabled = false };
+        group.SetTheme(mounted);
+        new LayoutEngine().Layout(group, new Size(20, 8));
+        using Frame frame = new(new Size(20, 8));
+        group.Render(frame.Canvas);
+        group.Clear(Invalidation.All);
+
+        // Act
+        group.SetTheme(replacement);
+
+        // Assert
+        group.Pending.ShouldBe(Invalidation.None);
+    }
 }

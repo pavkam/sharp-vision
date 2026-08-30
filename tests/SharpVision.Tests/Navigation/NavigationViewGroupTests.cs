@@ -39,4 +39,48 @@ public sealed class NavigationViewGroupTests
         group.Items.Remove(item).ShouldBeTrue();
         item.Parent.ShouldBeNull();
     }
+
+    /// <summary>Verifies a rendered enabled group registers a render-only dependency on the root
+    /// theme's hotkey color, matching the fix Text's own hotkey resolution already carries.</summary>
+    [Fact]
+    public void Theme_WhenGroupIsRenderedAndEnabled_InvalidatesOnlyRenderForHotkeyChange()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var group = new NavigationViewGroup { Header = "&Tools" };
+        group.SetTheme(mounted);
+        new LayoutEngine().Layout(group, new Size(20, 8));
+        using Frame frame = new(new Size(20, 8));
+        group.Render(frame.Canvas);
+        group.Clear(Invalidation.All);
+
+        // Act
+        group.SetTheme(replacement);
+
+        // Assert
+        group.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies a disabled group never resolves the hotkey color, so it does not
+    /// subscribe to an unrelated root hotkey-only change.</summary>
+    [Fact]
+    public void Theme_WhenGroupIsRenderedAndDisabled_IgnoresHotkeyOnlyChange()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var group = new NavigationViewGroup { Header = "&Tools", IsEnabled = false };
+        group.SetTheme(mounted);
+        new LayoutEngine().Layout(group, new Size(20, 8));
+        using Frame frame = new(new Size(20, 8));
+        group.Render(frame.Canvas);
+        group.Clear(Invalidation.All);
+
+        // Act
+        group.SetTheme(replacement);
+
+        // Assert
+        group.Pending.ShouldBe(Invalidation.None);
+    }
 }
