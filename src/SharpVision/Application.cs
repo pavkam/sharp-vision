@@ -2540,8 +2540,18 @@ public sealed class Application:
         }
 
         // A frame render owns the writer; CompleteRender re-drains afterward.
-        if (IsRendering || _stopping || Suspended())
+        if (IsRendering || Suspended())
         {
+            return;
+        }
+
+        if (_stopping)
+        {
+            if (HasPendingOutOfBand())
+            {
+                FlushOutOfBandOnStop();
+            }
+
             return;
         }
 

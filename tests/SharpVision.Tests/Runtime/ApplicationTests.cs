@@ -3193,6 +3193,46 @@ public sealed class ApplicationTests
         application.LastCleanupException.ShouldBeNull();
     }
 
+    /// <summary>Verifies out-of-band bytes are still flushed to the wire when a forced stop commits
+    /// while DrainOutOfBand's own queued callback - not CompleteRender or PumpAfterWrite - is the
+    /// method that observes it. Unlike the sibling tests above, nothing is rendering and no other
+    /// out-of-band write is already in flight here, so this exercises DrainOutOfBand's own combined
+    /// <c>IsRendering || _stopping || Suspended()</c> short-circuit directly: it used to return
+    /// unconditionally once <c>_stopping</c> was set, silently and permanently stranding bytes
+    /// PostOutOfBand had already buffered, with <c>Failure</c> and <c>LastCleanupException</c> both
+    /// staying null.</summary>
+    [Fact]
+    public async Task DrainOutOfBand_WhenStopCommitsWhileOutOfBandIsBuffered_FlushesBufferedOutOfBandBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        using var release = new SemaphoreSlim(0, 1);
+
+        // Block the dispatcher on a placeholder so the Closed record and the out-of-band post
+        // below both land in the queue before either is processed - otherwise the dispatcher could
+        // latch _stopping from the Closed record before PostOutOfBand's own _stopping check (on
+        // this thread) runs, and the write would never even be buffered.
+        application.Dispatcher.Post(release.Wait);
+
+        // Commit a forced stop - its Closed record is queued behind the placeholder above - then
+        // buffer an out-of-band write. Posting it strictly after Shutdown() guarantees its own
+        // queued DrainOutOfBand callback lands behind the Closed record, so DrainOutOfBand is the
+        // first thing to observe _stopping once the placeholder releases below.
+        application.Shutdown();
+        application.PostOutOfBand(new byte[] { 0x07 });
+
+        _ = release.Release();
+
+        await application.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        terminal.Writes.ShouldContain(write => write.Length == 1 && write[0] == 0x07); // BUG (pre-fix): stranded
+        application.Failure.ShouldBeNull();
+        application.LastCleanupException.ShouldBeNull();
+    }
+
     /// <summary>Verifies a shortcut invokes its item without ever reaching Router.Route, so a
     /// focused TextInput neither consumes the chord nor sees it as typed text.</summary>
     [Fact]
