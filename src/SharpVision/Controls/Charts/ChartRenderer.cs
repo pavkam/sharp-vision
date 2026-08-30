@@ -239,7 +239,7 @@ internal static class ChartRenderer
 
         var value = point.Value.ToString("G", CultureInfo.InvariantCulture);
         var width = context.Chart.Control.MeasureCells(value.AsSpan());
-        var x = marker.X + 1;
+        var x = marker.X.Add(1);
 
         if (x + width > plot.Right)
         {
@@ -329,10 +329,10 @@ internal static class ChartRenderer
             : placement switch
             {
                 ChartLegendPlacement.Top => new ChartPlotLayout(
-                    new Rect(bounds.X, bounds.Y + 1, bounds.Width, bounds.Height - 1),
+                    new Rect(bounds.X, bounds.Y.Add(1), bounds.Width, bounds.Height - 1),
                     new Rect(bounds.X, bounds.Y, bounds.Width, 1)),
                 ChartLegendPlacement.Left when bounds.Width >= 8 => new ChartPlotLayout(
-                    new Rect(bounds.X + Math.Min(12, bounds.Width / 3), bounds.Y, bounds.Width - Math.Min(12, bounds.Width / 3), bounds.Height),
+                    new Rect(bounds.X.Add(Math.Min(12, bounds.Width / 3)), bounds.Y, bounds.Width - Math.Min(12, bounds.Width / 3), bounds.Height),
                     new Rect(bounds.X, bounds.Y, Math.Min(12, bounds.Width / 3), bounds.Height)),
                 ChartLegendPlacement.Right when bounds.Width >= 8 => new ChartPlotLayout(
                     new Rect(bounds.X, bounds.Y, bounds.Width - Math.Min(12, bounds.Width / 3), bounds.Height),
@@ -405,7 +405,7 @@ internal static class ChartRenderer
             var markerStyle = context.InheritedStyle.WithForeground(
                 ControlBase.ResolveColor(markerColor, context.Chart.Control.Theme));
 
-            if (x + 3 > bounds.Right)
+            if (x.Add(3) > bounds.Right)
             {
                 x = bounds.X;
                 y++;
@@ -417,7 +417,7 @@ internal static class ChartRenderer
             }
 
             canvas.DrawRune(context.Chart.ActualStyle.Glyphs.LegendMarker, new Point(x, y), markerStyle);
-            x += 2;
+            x = x.Add(2);
             var available = bounds.Right - x;
 
             if (available <= 0)
@@ -430,7 +430,7 @@ internal static class ChartRenderer
                 new Point(x, y),
                 ResolveLabelStyle(context),
                 background: BackgroundMode.Transparent);
-            x += Math.Min(written.Cells, available) + 1;
+            x = x.Add(Math.Min(written.Cells, available) + 1);
         }
     }
 }

@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Controls.Charts;
 
+using System.Reflection;
+
 /// <summary>Verifies chart rendering and live data through mounted terminal surfaces.</summary>
 public sealed class ChartSurfaceTests
 {
@@ -1183,6 +1185,126 @@ public sealed class ChartSurfaceTests
 
         // Assert
         surface.ShouldHaveState(chart, VisualState.Normal);
+    }
+
+    /// <summary>Verifies a Top legend's plot/legend split saturates the plot's vertical origin
+    /// instead of wrapping negative when the chart's own arranged bounds already sit at the
+    /// integer coordinate limit - a legitimate arrangement now that an upstream Dock saturates
+    /// instead of throwing at extreme coordinates.</summary>
+    [Fact]
+    public void CreateContext_WhenBoundsYIsNearIntMaxValueAndLegendIsTop_SaturatesInsteadOfWrapping()
+    {
+        // Arrange
+        var chart = new HorizontalBarChart
+        {
+            Series = CreateNamedSeries(),
+            LegendPlacement = ChartLegendPlacement.Top
+        };
+        chart.Measure(new Constraint(20, 10));
+        chart.Arrange(new Rect(0, int.MaxValue, 20, 10));
+        using var frame = new Frame(new Size(5, 5));
+
+        // Act
+        var context = ChartRenderer.CreateContext((IChartControl) chart, frame.Canvas, default);
+
+        // Assert
+        context.Layout.Plot.Y.ShouldBe(int.MaxValue);
+        context.Layout.Plot.Height.ShouldBe(9);
+    }
+
+    /// <summary>The horizontal twin of the above: a Left legend divides the bounds' X origin with
+    /// its own addition, which needs its own near-limit coverage.</summary>
+    [Fact]
+    public void CreateContext_WhenBoundsXIsNearIntMaxValueAndLegendIsLeft_SaturatesInsteadOfWrapping()
+    {
+        // Arrange
+        var chart = new HorizontalBarChart
+        {
+            Series = CreateNamedSeries(),
+            LegendPlacement = ChartLegendPlacement.Left
+        };
+        chart.Measure(new Constraint(20, 5));
+        chart.Arrange(new Rect(int.MaxValue - 5, 0, 20, 5));
+        using var frame = new Frame(new Size(5, 5));
+
+        // Act
+        var context = ChartRenderer.CreateContext((IChartControl) chart, frame.Canvas, default);
+
+        // Assert
+        context.Layout.Plot.X.ShouldBe(int.MaxValue);
+        context.Layout.Plot.Width.ShouldBe(14);
+    }
+
+    /// <summary>Verifies the horizontal category-label reservation saturates its axis boundary
+    /// instead of wrapping when the plot it reserves from already sits at the integer coordinate
+    /// limit.</summary>
+    [Fact]
+    public void ReserveLabels_WhenPlotXIsNearIntMaxValue_SaturatesInsteadOfWrapping()
+    {
+        // Arrange
+        var chart = new HorizontalBarChart
+        {
+            Series = [new ChartSeries("Revenue", [new ChartDataPoint("AB", 5)])]
+        };
+        var plot = new Rect(int.MaxValue - 1, 0, 20, 5);
+        var context = new ChartRenderContext(
+            (IChartControl) chart,
+            new ChartPlotLayout(plot, default),
+            new ChartScaleRange(0, 10),
+            default);
+        using var frame = new Frame(new Size(5, 5));
+        var reserveLabels = typeof(BarChartRenderer).GetMethod(
+            "ReserveLabels",
+            BindingFlags.NonPublic | BindingFlags.Static)!;
+
+        // Act: the "AB" label measures two cells, so the reserved plot starts three cells past
+        // the near-limit origin - a value that only fits once the intermediate addition saturates.
+        var reserved = (Rect) reserveLabels.Invoke(null, [context, frame.Canvas, Orientation.Horizontal])!;
+
+        // Assert
+        reserved.X.ShouldBe(int.MaxValue);
+        reserved.Width.ShouldBe(17);
+    }
+
+    /// <summary>Verifies the horizontal zero/value boundary saturates instead of wrapping when the
+    /// plot it maps into already sits at the integer coordinate limit.</summary>
+    [Fact]
+    public void BoundaryX_WhenPlotXIsNearIntMaxValue_SaturatesInsteadOfWrapping()
+    {
+        // Arrange
+        var range = new ChartScaleRange(0, 10);
+        var plot = new Rect(int.MaxValue - 5, 0, 20, 5);
+        var boundaryX = typeof(BarChartRenderer).GetMethod(
+            "BoundaryX",
+            BindingFlags.NonPublic | BindingFlags.Static)!;
+
+        // Act
+        var result = (int) boundaryX.Invoke(null, [range, 10.0, plot])!;
+
+        // Assert
+        result.ShouldBe(int.MaxValue);
+    }
+
+    /// <summary>Verifies a mounted chart renders without throwing when its own arranged bounds sit
+    /// at the integer coordinate limit on both axes - exercising the value-label and legend-wrap
+    /// arithmetic end to end alongside the plot/legend split and boundary math verified precisely
+    /// above.</summary>
+    [Fact]
+    public void Render_WhenBoundsAreNearIntMaxValue_CompletesWithoutThrowing()
+    {
+        // Arrange
+        var chart = new LineChart
+        {
+            Series = CreateNamedSeries(),
+            LegendPlacement = ChartLegendPlacement.Top,
+            ShowValueLabels = true
+        };
+        chart.Measure(new Constraint(20, 10));
+        chart.Arrange(new Rect(int.MaxValue - 20, int.MaxValue - 10, 20, 10));
+        using var frame = new Frame(new Size(20, 10));
+
+        // Act / Assert
+        Should.NotThrow(() => chart.Render(frame.Canvas));
     }
 
     private static IReadOnlyList<ChartSeries> CreateNamedSeries() => [

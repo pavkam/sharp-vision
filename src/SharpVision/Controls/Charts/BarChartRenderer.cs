@@ -257,13 +257,13 @@ internal static class BarChartRenderer
                         background: BackgroundMode.Transparent);
                 }
 
-                var axisX = plot.X + labelWidth;
+                var axisX = plot.X.Add(labelWidth);
                 canvas.DrawLine(
                     new Point(axisX, plot.Y),
                     new Point(axisX, plot.Bottom - 1),
                     ChartRenderer.ResolveVerticalAxisGlyph(context),
                     ChartRenderer.ResolveAxisStyle(context));
-                return new Rect(plot.X + labelWidth + 1, plot.Y, Math.Max(0, plot.Width - labelWidth - 1), plot.Height);
+                return new Rect(plot.X.Add(labelWidth + 1), plot.Y, Math.Max(0, plot.Width - labelWidth - 1), plot.Height);
             }
         }
 
@@ -354,7 +354,7 @@ internal static class BarChartRenderer
     private static int BoundaryX(ChartScaleRange range, double value, Rect plot)
     {
         var ratio = ChartRenderer.Ratio(range, value);
-        return plot.X + (int) Math.Round(ratio * plot.Width, MidpointRounding.AwayFromZero);
+        return plot.X.Add((int) Math.Round(ratio * plot.Width, MidpointRounding.AwayFromZero));
     }
 
     [Pure]
