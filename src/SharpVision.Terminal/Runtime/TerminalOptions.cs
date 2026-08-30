@@ -239,6 +239,6 @@ public sealed record TerminalOptions
         var environment = Negotiation?.Environment ?? _emptyEnvironment;
         var resolution = Profile.Resolve(environment);
 
-        return new TerminalContext(Profile, resolution.Backend);
+        return new TerminalContext(Profile, resolution.Backend, resolution.Evidence);
     }
 }

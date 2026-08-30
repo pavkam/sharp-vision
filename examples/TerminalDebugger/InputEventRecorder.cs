@@ -45,6 +45,13 @@ internal sealed class InputEventRecorder: IDisposable
         _registrations.Add(root.AddHandler(Events.Paste, OnPaste, handledEventsToo: true));
         _registrations.Add(root.AddHandler(Events.TerminalFocusChanged, OnFocus, handledEventsToo: true));
         application.Resize += OnResize;
+        application.Diagnostic += OnDiagnostic;
+        application.GraphicsDiagnostic += OnGraphicsDiagnostic;
+        application.ResponseReceived += OnResponse;
+        application.PaletteResponseReceived += OnPaletteResponse;
+        application.MetricsResponseReceived += OnMetricsResponse;
+        application.StatusResponseReceived += OnStatusResponse;
+        application.CapabilityResponseReceived += OnCapabilityResponse;
         application.Terminal.Clipboard.ClipboardPasteReceived += OnClipboardPaste;
         application.Terminal.Clipboard.KittyClipboardReplyReceived += OnClipboardReply;
     }
@@ -201,6 +208,135 @@ internal sealed class InputEventRecorder: IDisposable
                 ("Suspended", dimensions.Suspended.ToString(CultureInfo.InvariantCulture))));
     }
 
+    private void OnDiagnostic(object? sender, DiagnosticEventArgs eventArgs)
+    {
+        if (_log.IsPaused)
+        {
+            return;
+        }
+
+        var diagnostic = eventArgs.Diagnostic;
+        _log.Add(
+            DiagnosticEventKind.Diagnostic,
+            $"{diagnostic.Code} · {diagnostic.Kind}",
+            "The terminal runtime recovered at a bounded protocol boundary. No rejected payload bytes are retained.",
+            Fields(
+                ("Code", diagnostic.Code.ToString()),
+                ("Sequence family", diagnostic.Kind.ToString()),
+                ("Stream offset", diagnostic.Offset.ToString(CultureInfo.InvariantCulture)),
+                ("Discarded bytes", diagnostic.DiscardedBytes.ToString(CultureInfo.InvariantCulture))));
+    }
+
+    private void OnGraphicsDiagnostic(object? sender, GraphicsDiagnosticEventArgs eventArgs)
+    {
+        if (_log.IsPaused)
+        {
+            return;
+        }
+
+        foreach (var placement in eventArgs.Placements)
+        {
+            _log.Add(
+                DiagnosticEventKind.Graphics,
+                $"Image {placement.ImageIdentity} · {placement.Reason}",
+                "One image placement used ordinary-cell fallback instead of its selected terminal graphics backend.",
+                Fields(
+                    ("Image identity", placement.ImageIdentity.ToString(CultureInfo.InvariantCulture)),
+                    ("Reason", placement.Reason.ToString()),
+                    ("Selected backend", _application?.TerminalDiagnostics.GraphicsBackend.ToString() ?? "unknown")));
+        }
+    }
+
+    private void OnResponse(object? sender, ProtocolResponseEventArgs eventArgs)
+    {
+        if (_log.IsPaused)
+        {
+            return;
+        }
+
+        var response = eventArgs.Response;
+        _log.Add(
+            DiagnosticEventKind.Response,
+            response.Kind.ToString(),
+            "A typed xterm-compatible response reached the public application boundary.",
+            Fields(
+                ("Family", response.Kind.ToString()),
+                ("Values", string.Join(", ", response.Values.ToArray())),
+                ("Reports support", response.Supported.ToString(CultureInfo.InvariantCulture))));
+    }
+
+    private void OnPaletteResponse(object? sender, PaletteResponseEventArgs eventArgs)
+    {
+        if (_log.IsPaused)
+        {
+            return;
+        }
+
+        var response = eventArgs.Response;
+        _log.Add(
+            DiagnosticEventKind.Response,
+            $"{response.Kind} color",
+            "A bounded OSC color reply was decoded into normalized 16-bit components.",
+            Fields(
+                ("Family", response.Kind.ToString()),
+                ("Index", response.Index?.ToString(CultureInfo.InvariantCulture) ?? "—"),
+                ("RGB16", $"{response.Red:X4} {response.Green:X4} {response.Blue:X4}")));
+    }
+
+    private void OnMetricsResponse(object? sender, MetricsResponseEventArgs eventArgs)
+    {
+        if (_log.IsPaused)
+        {
+            return;
+        }
+
+        var response = eventArgs.Response;
+        _log.Add(
+            DiagnosticEventKind.Response,
+            $"{response.Kind} {response.Size.Width}×{response.Size.Height}",
+            "A bounded XTWINOPS geometry reply reached the application.",
+            Fields(
+                ("Family", response.Kind.ToString()),
+                ("Size", $"{response.Size.Width}×{response.Size.Height}")));
+    }
+
+    private void OnStatusResponse(object? sender, StatusResponseEventArgs eventArgs)
+    {
+        if (_log.IsPaused)
+        {
+            return;
+        }
+
+        var response = eventArgs.Response;
+        _log.Add(
+            DiagnosticEventKind.Response,
+            $"DECRQSS {response.Name}",
+            "A bounded status-string response was validated. Its raw CSI body is not retained here.",
+            Fields(
+                ("Name", response.Name.ToString()),
+                ("Valid", response.Valid.ToString(CultureInfo.InvariantCulture)),
+                ("Value bytes", response.Value.Length.ToString(CultureInfo.InvariantCulture))));
+    }
+
+    private void OnCapabilityResponse(object? sender, CapabilityResponseEventArgs eventArgs)
+    {
+        if (_log.IsPaused)
+        {
+            return;
+        }
+
+        var response = eventArgs.Response;
+        var inventory = string.Join(", ", response.Items.Select(
+            static item => $"{item.Key} ({item.Value.Length} bytes)"));
+        _log.Add(
+            DiagnosticEventKind.Response,
+            $"XTGETTCAP · {response.Items.Count} item(s)",
+            "A finite approved capability-string response was decoded. Values are summarized by length, not copied into history.",
+            Fields(
+                ("Valid", response.Valid.ToString(CultureInfo.InvariantCulture)),
+                ("Items", inventory.Length == 0 ? "none" : inventory)));
+    }
+
     private void OnClipboardPaste(object? sender, ClipboardPasteEventArgs eventArgs)
     {
         if (_log.IsPaused)
@@ -278,6 +414,13 @@ internal sealed class InputEventRecorder: IDisposable
         if (_application is { } application)
         {
             application.Resize -= OnResize;
+            application.Diagnostic -= OnDiagnostic;
+            application.GraphicsDiagnostic -= OnGraphicsDiagnostic;
+            application.ResponseReceived -= OnResponse;
+            application.PaletteResponseReceived -= OnPaletteResponse;
+            application.MetricsResponseReceived -= OnMetricsResponse;
+            application.StatusResponseReceived -= OnStatusResponse;
+            application.CapabilityResponseReceived -= OnCapabilityResponse;
             application.Terminal.Clipboard.ClipboardPasteReceived -= OnClipboardPaste;
             application.Terminal.Clipboard.KittyClipboardReplyReceived -= OnClipboardReply;
             _application = null;

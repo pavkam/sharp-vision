@@ -13,6 +13,8 @@ using Capabilities;
 /// </summary>
 internal sealed class TerminalContext
 {
+    private readonly ReadOnlyCollection<BackendEvidence> _backendEvidence;
+
     /// <summary>
     /// Initializes a context that owns immutable profile state and a canonical backend identity.
     /// </summary>
@@ -21,13 +23,27 @@ internal sealed class TerminalContext
     /// <exception cref="ArgumentNullException">
     /// <paramref name="profile"/> or <paramref name="backend"/> is <see langword="null"/>.
     /// </exception>
-    public TerminalContext(TerminalProfile profile, TerminalBackend backend)
+    public TerminalContext(TerminalProfile profile, TerminalBackend backend) : this(profile, backend, [])
+    {
+    }
+
+    /// <summary>Initializes a context with copied redacted backend-resolution evidence.</summary>
+    /// <param name="profile">The non-null immutable terminal profile.</param>
+    /// <param name="backend">The non-null fixed canonical backend identity.</param>
+    /// <param name="backendEvidence">The non-null ordered redacted identity evidence.</param>
+    /// <exception cref="ArgumentNullException">A required value is null.</exception>
+    internal TerminalContext(
+        TerminalProfile profile,
+        TerminalBackend backend,
+        IReadOnlyList<BackendEvidence> backendEvidence)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(backend);
+        ArgumentNullException.ThrowIfNull(backendEvidence);
 
         Profile = profile;
         Backend = backend;
+        _backendEvidence = Array.AsReadOnly(backendEvidence.ToArray());
     }
 
     /// <summary>Gets the immutable profile currently authorized for runtime behavior.</summary>
@@ -35,6 +51,9 @@ internal sealed class TerminalContext
 
     /// <summary>Gets the fixed canonical terminal backend identity.</summary>
     public TerminalBackend Backend { get; }
+
+    /// <summary>Gets copied ordered redacted evidence used to choose <see cref="Backend"/>.</summary>
+    internal IReadOnlyList<BackendEvidence> BackendEvidence => _backendEvidence;
 
     /// <summary>
     /// Creates a context with refined capability evidence while preserving the exact backend
@@ -48,6 +67,6 @@ internal sealed class TerminalContext
     {
         ArgumentNullException.ThrowIfNull(capabilities);
 
-        return new TerminalContext(Profile.WithCapabilities(capabilities), Backend);
+        return new TerminalContext(Profile.WithCapabilities(capabilities), Backend, BackendEvidence);
     }
 }

@@ -16,6 +16,7 @@ global using SharpVision.Layout;
 global using SharpVision.Scrolling;
 global using SharpVision.Styling;
 global using SharpVision.Terminal.Capabilities;
+global using SharpVision.Terminal.Diagnostics;
 global using SharpVision.Terminal.Geometry;
 global using SharpVision.Terminal.Input;
 global using SharpVision.Text;

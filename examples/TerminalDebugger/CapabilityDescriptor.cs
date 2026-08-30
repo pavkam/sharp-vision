@@ -6,6 +6,22 @@ namespace TerminalDebugger;
 /// <summary>Defines presentation metadata for one terminal protocol capability.</summary>
 internal readonly record struct CapabilityDescriptor
 {
+    /// <summary>Initializes metadata for one always-implemented protocol foundation.</summary>
+    /// <param name="group">The non-empty dashboard group.</param>
+    /// <param name="label">The non-empty display label.</param>
+    /// <param name="explanation">The non-empty plain-language explanation.</param>
+    /// <exception cref="ArgumentException">A text value is empty.</exception>
+    internal CapabilityDescriptor(string group, string label, string explanation)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(group);
+        ArgumentException.ThrowIfNullOrWhiteSpace(label);
+        ArgumentException.ThrowIfNullOrWhiteSpace(explanation);
+        Protocol = null;
+        Group = group;
+        Label = label;
+        Explanation = explanation;
+    }
+
     /// <summary>Initializes one validated capability descriptor.</summary>
     /// <param name="protocol">The represented terminal protocol.</param>
     /// <param name="group">The non-empty dashboard group.</param>
@@ -31,7 +47,10 @@ internal readonly record struct CapabilityDescriptor
     }
 
     /// <summary>Gets the represented terminal protocol.</summary>
-    internal TerminalProtocol Protocol { get; }
+    internal TerminalProtocol? Protocol { get; }
+
+    /// <summary>Gets whether support for this optional family is negotiated with the terminal.</summary>
+    internal bool IsNegotiated => Protocol.HasValue;
 
     /// <summary>Gets the dashboard group.</summary>
     internal string Group { get; }

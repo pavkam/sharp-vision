@@ -125,6 +125,7 @@ public sealed class Session: IAsyncDisposable
         _context = context ?? resolvedOptions.CreateContext();
         _timeProvider = timeProvider ?? TimeProvider.System;
         _programInterpreter = new Interpreter(resolvedOptions.Input.ProgramLimits);
+        Diagnostics = CreateDiagnostics(resolvedOptions, _context);
     }
 
     /// <summary>Gets the first cleanup failure without replacing the primary failure.</summary>
@@ -132,6 +133,9 @@ public sealed class Session: IAsyncDisposable
 
     /// <summary>Gets the fixed terminal backend identity selected when this session was created.</summary>
     internal TerminalBackend Backend => _context.Backend;
+
+    /// <summary>Gets the latest immutable, typed, and redacted terminal diagnostic snapshot.</summary>
+    public TerminalDiagnostics Diagnostics { get; private set; }
 
     /// <summary>Runs startup, ordered event delivery, and guaranteed reverse cleanup.</summary>
     /// <remarks>
@@ -188,8 +192,9 @@ public sealed class Session: IAsyncDisposable
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(
                 cancellationToken,
                 _lifetime.Token);
-            await StartAsync(linked.Token).ConfigureAwait(false);
-            await EventsAsync(linked.Token).ConfigureAwait(false);
+            var modes = await StartAsync(linked.Token).ConfigureAwait(false);
+            Diagnostics = Diagnostics.WithModes(modes);
+            await EventsAsync(modes, linked.Token).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
@@ -423,14 +428,17 @@ public sealed class Session: IAsyncDisposable
 
     #region Mode startup
 
-    private async ValueTask StartAsync(CancellationToken cancellationToken)
+    private async ValueTask<TerminalModeDiagnostics> StartAsync(CancellationToken cancellationToken)
     {
         Debug.Assert(_leases.Count == 0, "A new session run starts without retained terminal-mode leases.");
+        var alternateScreenActive = false;
+        var cursorHiddenActive = false;
 
         if (_options.AlternateScreen &&
             TryCreateDescriptionLease(CapabilityNames.Smcup, CapabilityNames.Rmcup, out var alternateScreen))
         {
             await EnableAsync(alternateScreen, cancellationToken).ConfigureAwait(false);
+            alternateScreenActive = true;
         }
         else if (_options.AlternateScreen)
         {
@@ -441,6 +449,7 @@ public sealed class Session: IAsyncDisposable
             TryCreateDescriptionLease(CapabilityNames.Civis, CapabilityNames.Cnorm, out var cursor))
         {
             await EnableAsync(cursor, cancellationToken).ConfigureAwait(false);
+            cursorHiddenActive = true;
         }
         else if (_options.HideCursor)
         {
@@ -452,18 +461,28 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(keypad, cancellationToken).ConfigureAwait(false);
         }
+
+        return Diagnostics.Modes.WithBaseActivation(alternateScreenActive, cursorHiddenActive);
     }
 
-    private async ValueTask EnableOptionalAsync(
+    private async ValueTask<TerminalModeDiagnostics> EnableOptionalAsync(
         TerminalCapabilities capabilities,
         ProtocolRouter router,
+        TerminalModeDiagnostics modes,
         CancellationToken cancellationToken)
     {
         Debug.Assert(capabilities is not null, "Session options always supply an immutable capability profile.");
+        var focusActive = false;
+        var pasteActive = false;
+        var clipboardPasteEventsActive = false;
+        var mouseActive = false;
+        var kittyKeyboardActive = false;
+        var modifyOtherKeysActive = false;
 
         if (_options.Focus && IsPermitted(capabilities.FocusReporting))
         {
             await EnableAsync(CreateFocusLease(), cancellationToken).ConfigureAwait(false);
+            focusActive = true;
         }
         else if (_options.Focus)
         {
@@ -473,6 +492,7 @@ public sealed class Session: IAsyncDisposable
         if (_options.Paste && IsPermitted(capabilities.BracketedPaste))
         {
             await EnableAsync(CreatePasteLease(), cancellationToken).ConfigureAwait(false);
+            pasteActive = true;
         }
         else if (_options.Paste)
         {
@@ -484,6 +504,7 @@ public sealed class Session: IAsyncDisposable
             TryCreateClipboardPasteEventsLease(out var clipboardPasteEvents))
         {
             await EnableAsync(clipboardPasteEvents, cancellationToken).ConfigureAwait(false);
+            clipboardPasteEventsActive = true;
         }
         else if (_options.ClipboardPasteEvents)
         {
@@ -497,6 +518,7 @@ public sealed class Session: IAsyncDisposable
         if (_options.Tracking.HasValue && MouseSupported(capabilities) && IsPermitted(mouse))
         {
             await EnableAsync(CreateMouseLease(), cancellationToken).ConfigureAwait(false);
+            mouseActive = true;
         }
         else if (_options.Tracking.HasValue)
         {
@@ -506,6 +528,7 @@ public sealed class Session: IAsyncDisposable
         if (_options.Keyboard.HasValue && IsPermitted(capabilities.KittyKeyboard))
         {
             await EnableAsync(CreateKeyboardLease(), cancellationToken).ConfigureAwait(false);
+            kittyKeyboardActive = true;
 
             if ((_options.Keyboard.Value &
                  (Kitty.Keyboard.KittyKeyboardEnhancement.Disambiguate |
@@ -522,11 +545,20 @@ public sealed class Session: IAsyncDisposable
             }
 
             await EnableAsync(CreateModifyOtherKeysLease(), cancellationToken).ConfigureAwait(false);
+            modifyOtherKeysActive = true;
         }
         else if (_options.Keyboard.HasValue || _options.ModifyOtherKeys.HasValue)
         {
             ReportAndPromote(DiagnosticPromotion.UnsupportedFeature, DiagnosticCode.Unsupported);
         }
+
+        return modes.WithOptionalActivation(
+            focusActive,
+            pasteActive,
+            mouseActive,
+            kittyKeyboardActive,
+            modifyOtherKeysActive,
+            clipboardPasteEventsActive);
     }
 
     private void ReportAndPromote(DiagnosticPromotion promotion, DiagnosticCode code)
@@ -666,7 +698,9 @@ public sealed class Session: IAsyncDisposable
 
     #region Event loop
 
-    private async ValueTask EventsAsync(CancellationToken cancellationToken)
+    private async ValueTask EventsAsync(
+        TerminalModeDiagnostics modes,
+        CancellationToken cancellationToken)
     {
         var inputOptions = (_options.Input with
         {
@@ -710,8 +744,13 @@ public sealed class Session: IAsyncDisposable
 
         if (negotiator is null)
         {
-            await EnableOptionalAsync(_context.Profile.Capabilities, router, cancellationToken)
+            modes = await EnableOptionalAsync(
+                    _context.Profile.Capabilities,
+                    router,
+                    modes,
+                    cancellationToken)
                 .ConfigureAwait(false);
+            PublishModes(modes);
         }
         else
         {
@@ -731,9 +770,7 @@ public sealed class Session: IAsyncDisposable
             }
             else
             {
-                var capabilities = negotiator.Capabilities;
-                _context = _context.WithCapabilities(capabilities);
-                _sink.Profile(capabilities);
+                _ = PublishNegotiation(negotiator);
             }
         }
 
@@ -836,11 +873,14 @@ public sealed class Session: IAsyncDisposable
                         continue;
                     }
 
-                    var capabilities = negotiator.Capabilities;
-                    _context = _context.WithCapabilities(capabilities);
-                    _sink.Profile(capabilities);
-                    await EnableOptionalAsync(capabilities, router, linked.Token)
+                    var capabilities = PublishNegotiation(negotiator);
+                    modes = await EnableOptionalAsync(
+                            capabilities,
+                            router,
+                            Diagnostics.Modes,
+                            linked.Token)
                         .ConfigureAwait(false);
+                    PublishModes(modes);
                     ready = true;
                     deadline = null;
 
@@ -899,9 +939,7 @@ public sealed class Session: IAsyncDisposable
                     if (!ready)
                     {
                         _ = negotiator!.Complete();
-                        var capabilities = negotiator.Capabilities;
-                        _context = _context.WithCapabilities(capabilities);
-                        _sink.Profile(capabilities);
+                        _ = PublishNegotiation(negotiator);
                         ready = true;
                         deadline = null;
 
@@ -952,11 +990,14 @@ public sealed class Session: IAsyncDisposable
 
                 if (!ready && negotiator!.Completed)
                 {
-                    var capabilities = negotiator.Capabilities;
-                    _context = _context.WithCapabilities(capabilities);
-                    _sink.Profile(capabilities);
-                    await EnableOptionalAsync(capabilities, router, linked.Token)
+                    var capabilities = PublishNegotiation(negotiator);
+                    modes = await EnableOptionalAsync(
+                            capabilities,
+                            router,
+                            Diagnostics.Modes,
+                            linked.Token)
                         .ConfigureAwait(false);
+                    PublishModes(modes);
                     ready = true;
                     deadline = null;
 
@@ -1132,6 +1173,82 @@ public sealed class Session: IAsyncDisposable
         return _options.Coordinates == MouseCoordinates.Pixel
             ? capabilities.PixelMouse.Supported
             : capabilities.CellMouse.Supported;
+    }
+
+    private TerminalCapabilities PublishNegotiation(Negotiator negotiator)
+    {
+        Debug.Assert(negotiator.Completed, "Only a completed negotiation can publish diagnostics.");
+        var capabilities = negotiator.Capabilities;
+        _context = _context.WithCapabilities(capabilities);
+        Diagnostics = Diagnostics.WithNegotiation(
+            TerminalNegotiationState.Completed,
+            negotiator.Results,
+            capabilities);
+        _sink.Diagnostics(Diagnostics);
+        _sink.Profile(capabilities);
+        return capabilities;
+    }
+
+    private void PublishModes(TerminalModeDiagnostics modes)
+    {
+        if (ReferenceEquals(Diagnostics.Modes, modes))
+        {
+            return;
+        }
+
+        Diagnostics = Diagnostics.WithModes(modes);
+        _sink.Diagnostics(Diagnostics);
+    }
+
+    private static TerminalDiagnostics CreateDiagnostics(
+        TerminalOptions options,
+        TerminalContext context)
+    {
+        var family = context.Backend.Kind switch
+        {
+            TerminalBackendKind.Vt => TerminalBackendFamily.Vt,
+            TerminalBackendKind.Xterm => TerminalBackendFamily.Xterm,
+            TerminalBackendKind.Kitty => TerminalBackendFamily.Kitty,
+            TerminalBackendKind.Iterm2 => TerminalBackendFamily.Iterm2,
+            _ => throw new UnreachableException("Backend resolution validates every terminal family.")
+        };
+        var evidence = context.BackendEvidence.Select(static item => new TerminalBackendEvidence(
+            item.Kind switch
+            {
+                TerminalBackendKind.Vt => TerminalBackendFamily.Vt,
+                TerminalBackendKind.Xterm => TerminalBackendFamily.Xterm,
+                TerminalBackendKind.Kitty => TerminalBackendFamily.Kitty,
+                TerminalBackendKind.Iterm2 => TerminalBackendFamily.Iterm2,
+                _ => throw new UnreachableException("Backend evidence validates every terminal family.")
+            },
+            item.Origin switch
+            {
+                BackendEvidenceOrigin.Description => TerminalBackendEvidenceSource.Description,
+                BackendEvidenceOrigin.Environment => TerminalBackendEvidenceSource.Environment,
+                _ => throw new UnreachableException("Backend evidence validates every source.")
+            })).ToArray();
+        var extensions = context.Backend.Extensions.Select(static extension => extension.Kind switch
+        {
+            ProtocolExtensionKind.Vt => TerminalProtocolExtension.Vt,
+            ProtocolExtensionKind.Xterm => TerminalProtocolExtension.Xterm,
+            ProtocolExtensionKind.Kitty => TerminalProtocolExtension.Kitty,
+            ProtocolExtensionKind.Iterm2 => TerminalProtocolExtension.Iterm2,
+            _ => throw new UnreachableException("Backend composition validates every extension.")
+        }).ToArray();
+        var policy = options.Multiplexing ?? options.Negotiation?.Multiplexing;
+
+        return new TerminalDiagnostics(
+            family,
+            context.Backend.Name,
+            evidence,
+            extensions,
+            options.Negotiation is null
+                ? TerminalNegotiationState.Disabled
+                : TerminalNegotiationState.Pending,
+            queryResults: null,
+            new TerminalRouteDiagnostics(policy),
+            new TerminalModeDiagnostics(options, context.Profile.Capabilities),
+            TerminalGraphicsBackend.CellFallback);
     }
 
     private static TerminalOptions RequireOptions(TerminalOptions options)

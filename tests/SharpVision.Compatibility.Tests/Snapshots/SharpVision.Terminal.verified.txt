@@ -60,6 +60,7 @@
     public interface ISink : SharpVision.Terminal.Abstractions.IInputSink, SharpVision.Terminal.Abstractions.IProtocolSink
     {
         void Closed();
+        void Diagnostics(SharpVision.Terminal.Diagnostics.TerminalDiagnostics value);
         void Fault(System.Exception exception);
         void Profile(SharpVision.Terminal.Capabilities.TerminalCapabilities value);
         void Resize(in SharpVision.Terminal.Geometry.Dimensions value);
@@ -429,6 +430,126 @@ namespace SharpVision.Terminal.Clipboard
         public int MaxClipboardBytes { get; init; }
         public int MaxMetadataBytes { get; init; }
         public static SharpVision.Terminal.Clipboard.TransferLimits Default { get; }
+    }
+}
+namespace SharpVision.Terminal.Diagnostics
+{
+    public readonly struct TerminalBackendEvidence : System.IEquatable<SharpVision.Terminal.Diagnostics.TerminalBackendEvidence>
+    {
+        public TerminalBackendEvidence(SharpVision.Terminal.Diagnostics.TerminalBackendFamily family, SharpVision.Terminal.Diagnostics.TerminalBackendEvidenceSource source) { }
+        public SharpVision.Terminal.Diagnostics.TerminalBackendFamily Family { get; }
+        public SharpVision.Terminal.Diagnostics.TerminalBackendEvidenceSource Source { get; }
+    }
+    public enum TerminalBackendEvidenceSource
+    {
+        Description = 0,
+        Environment = 1,
+    }
+    public enum TerminalBackendFamily
+    {
+        Vt = 0,
+        Xterm = 1,
+        Kitty = 2,
+        Iterm2 = 3,
+    }
+    public sealed class TerminalDiagnostics
+    {
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Diagnostics.TerminalBackendEvidence> BackendEvidence { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Diagnostics.TerminalProtocolExtension> BackendExtensions { get; }
+        public SharpVision.Terminal.Diagnostics.TerminalBackendFamily BackendFamily { get; }
+        public string BackendName { get; }
+        public SharpVision.Terminal.Diagnostics.TerminalGraphicsBackend GraphicsBackend { get; }
+        public SharpVision.Terminal.Diagnostics.TerminalModeDiagnostics Modes { get; }
+        public SharpVision.Terminal.Diagnostics.TerminalNegotiationState NegotiationState { get; }
+        public SharpVision.Terminal.Diagnostics.TerminalQueryDiagnostics? QueryResults { get; }
+        public SharpVision.Terminal.Diagnostics.TerminalRouteDiagnostics Route { get; }
+        public SharpVision.Terminal.Diagnostics.TerminalDiagnostics WithGraphicsBackend(SharpVision.Terminal.Diagnostics.TerminalGraphicsBackend graphicsBackend) { }
+    }
+    public enum TerminalGraphicsBackend
+    {
+        CellFallback = 0,
+        Kitty = 1,
+        NonRetained = 2,
+    }
+    public sealed class TerminalModeDiagnostics
+    {
+        public bool AlternateScreenActive { get; }
+        public bool AlternateScreenConfigured { get; }
+        public bool BracketedPasteActive { get; }
+        public bool BracketedPasteAuthorized { get; }
+        public bool BracketedPasteConfigured { get; }
+        public bool ClipboardPasteEventsActive { get; }
+        public bool ClipboardPasteEventsAuthorized { get; }
+        public bool ClipboardPasteEventsConfigured { get; }
+        public bool CursorHiddenActive { get; }
+        public bool CursorHiddenConfigured { get; }
+        public bool FocusReportingActive { get; }
+        public bool FocusReportingAuthorized { get; }
+        public bool FocusReportingConfigured { get; }
+        public bool KittyKeyboardActive { get; }
+        public bool KittyKeyboardAuthorized { get; }
+        public SharpVision.Terminal.Kitty.Keyboard.KittyKeyboardEnhancement? KittyKeyboardEnhancements { get; }
+        public bool ModifyOtherKeysActive { get; }
+        public bool ModifyOtherKeysAuthorized { get; }
+        public int? ModifyOtherKeysLevel { get; }
+        public bool MouseActive { get; }
+        public bool MouseAuthorized { get; }
+        public SharpVision.Terminal.Protocols.MouseCoordinates MouseCoordinates { get; }
+        public SharpVision.Terminal.Protocols.MouseTracking? MouseTracking { get; }
+    }
+    public enum TerminalNegotiationState
+    {
+        Disabled = 0,
+        Pending = 1,
+        Completed = 2,
+    }
+    public enum TerminalProtocolExtension
+    {
+        Vt = 0,
+        Xterm = 1,
+        Kitty = 2,
+        Iterm2 = 3,
+    }
+    public sealed class TerminalQueryDiagnostics
+    {
+        public SharpVision.Terminal.Xterm.PaletteResponse? BackgroundColor { get; }
+        public bool? BracketedPaste { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Xterm.CapabilityName> CapabilityNames { get; }
+        public bool? CapabilityResponseValid { get; }
+        public bool? CellMouse { get; }
+        public SharpVision.Terminal.Xterm.MetricsResponse? CellPixels { get; }
+        public bool? FocusReporting { get; }
+        public SharpVision.Terminal.Xterm.PaletteResponse? ForegroundColor { get; }
+        public bool? ItermImages { get; }
+        public bool? KittyClipboard { get; }
+        public bool? KittyGraphics { get; }
+        public bool? KittyKeyboard { get; }
+        public bool? Osc52 { get; }
+        public bool? Overline { get; }
+        public SharpVision.Terminal.Xterm.PaletteResponse? PaletteColor { get; }
+        public bool? PixelMouse { get; }
+        public bool? Sixel { get; }
+        public bool? StyledUnderlines { get; }
+        public bool? SynchronizedOutput { get; }
+        public bool? UnderlineColor { get; }
+        public SharpVision.Terminal.Xterm.MetricsResponse? WindowCells { get; }
+        public SharpVision.Terminal.Xterm.MetricsResponse? WindowPixels { get; }
+        public bool? XtermKeyboard { get; }
+    }
+    public sealed class TerminalRouteDiagnostics
+    {
+        public SharpVision.Terminal.Multiplexing.MultiplexingOperation ApprovedOperations { get; }
+        public bool CanRouteCapabilityQueries { get; }
+        public bool CanRouteClipboard { get; }
+        public bool CanRouteGraphics { get; }
+        public bool IsActive { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Multiplexing.MultiplexerKind> Layers { get; }
+        public int MaxDepth { get; }
+        public int MaxEnvelopeBytes { get; }
+        public SharpVision.Terminal.Capabilities.TerminalProfile? OuterProfile { get; }
+        public bool PaneVisible { get; }
+        public SharpVision.Terminal.Multiplexing.PassthroughMode Passthrough { get; }
+        public bool SupportsStringTerminatedQueries { get; }
     }
 }
 namespace SharpVision.Terminal.Geometry
@@ -1536,6 +1657,7 @@ namespace SharpVision.Terminal.Rendering
     {
         public Renderer(int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
         public Renderer(SharpVision.Terminal.Capabilities.TerminalCapabilities capabilities, SharpVision.Terminal.Multiplexing.MultiplexerRoute? route = null, int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null, SharpVision.Terminal.Terminfo.ProgramLimits? limits = null) { }
+        public SharpVision.Terminal.Diagnostics.TerminalGraphicsBackend GraphicsBackend { get; }
         public System.Exception? LastCleanupException { get; }
         public void AcceptKittyGraphicsResponse(SharpVision.Terminal.Kitty.Graphics.KittyGraphicsResponse response) { }
         public bool AttachCommittedFrame(SharpVision.Terminal.Rendering.Frame back) { }
@@ -1651,6 +1773,7 @@ namespace SharpVision.Terminal.Runtime
     public sealed class Session : System.IAsyncDisposable
     {
         public Session(SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Abstractions.IResizeSource resize, SharpVision.Terminal.Abstractions.ISink sink, SharpVision.Terminal.Runtime.TerminalOptions? options = null, System.TimeProvider? timeProvider = null) { }
+        public SharpVision.Terminal.Diagnostics.TerminalDiagnostics Diagnostics { get; }
         public System.Exception? LastCleanupException { get; }
         public System.Threading.Tasks.ValueTask DisposeAsync() { }
         public System.Threading.Tasks.ValueTask RunAsync(System.Threading.CancellationToken cancellationToken) { }

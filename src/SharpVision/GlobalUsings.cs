@@ -19,6 +19,7 @@ global using SharpVision.Styling;
 global using SharpVision.Terminal.Abstractions;
 global using SharpVision.Terminal.Capabilities;
 global using SharpVision.Terminal.Clipboard;
+global using SharpVision.Terminal.Diagnostics;
 global using SharpVision.Terminal.Geometry;
 global using SharpVision.Terminal.Protocols;
 global using SharpVision.Terminal.Rendering;

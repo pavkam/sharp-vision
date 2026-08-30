@@ -17,6 +17,7 @@ internal sealed class TerminalProbePanel: CompositeControlBase
     private readonly Button _notification;
     private readonly Button _clipboard;
     private readonly Button _showSpecimens;
+    private readonly Button _synchronizedOutput;
     private readonly Button _styledUnderlines;
     private readonly Button _underlineColor;
     private readonly Button _overline;
@@ -24,6 +25,7 @@ internal sealed class TerminalProbePanel: CompositeControlBase
     private readonly Button _pass;
     private readonly Button _fail;
     private readonly Stack _specimens;
+    private readonly Text _modeGuide;
     private readonly DiagnosticImage _image;
     private readonly ClipboardRoundTripProbe _clipboardProbe;
     private Application? _application;
@@ -51,6 +53,10 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         _clipboard.Click += (_, _) => _clipboardProbe.Start();
         _showSpecimens = new Button("Show &rendition + Unicode");
         _showSpecimens.Click += (_, _) => ShowSpecimens();
+        _synchronizedOutput = new Button("Check s&ync output");
+        _synchronizedOutput.Click += (_, _) => CheckRendition(
+            TerminalProtocol.SynchronizedOutput,
+            "Resize or switch tabs repeatedly and look for partial-frame tearing, then record the observed result.");
         _styledUnderlines = new Button("Check underline st&yles");
         _styledUnderlines.Click += (_, _) => CheckRendition(
             TerminalProtocol.StyledUnderlines,
@@ -79,6 +85,10 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         };
         _specimens = BuildSpecimens(_image);
         _specimens.Visibility = Visibility.Collapsed;
+        _modeGuide = new Text("<d>Runtime mode instructions will appear after attachment.</d>")
+        {
+            Overflow = Overflow.Wrap
+        };
 
         var actions = new Stack
         {
@@ -90,7 +100,7 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         {
             Orientation = Orientation.Horizontal,
             Spacing = 1,
-            Children = { _showSpecimens, _showGraphics }
+            Children = { _showSpecimens, _synchronizedOutput, _showGraphics }
         };
         var confirmationActions = new Stack
         {
@@ -113,6 +123,8 @@ internal sealed class TerminalProbePanel: CompositeControlBase
                          "These actions may ring, change the title, notify, modify the clipboard briefly, or emit image data."),
                 actions,
                 _status,
+                new Text("<accent><b>Passive input checks</b></accent>"),
+                _modeGuide,
                 new Text("<accent><b>Visual specimens</b></accent>\n" +
                          "Reveal the samples, then verify each optional rendition independently."),
                 visualActions,
@@ -152,7 +164,15 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         _styledUnderlines.IsEnabled = application.Capabilities.StyledUnderlines.Authoritative;
         _underlineColor.IsEnabled = application.Capabilities.UnderlineColor.Authoritative;
         _overline.IsEnabled = application.Capabilities.Overline.Authoritative;
+        _synchronizedOutput.IsEnabled = application.Capabilities.SynchronizedOutput.Authoritative;
         _showGraphics.IsEnabled = HasGraphicsSupport(application);
+        var modes = application.TerminalDiagnostics.Modes;
+        _modeGuide.Content =
+            $"Focus reporting: {Mode(modes.FocusReportingActive)} — switch to another terminal window and back.\n" +
+            $"Bracketed paste: {Mode(modes.BracketedPasteActive)} — paste text containing spaces or line breaks.\n" +
+            $"Mouse: {Mode(modes.MouseActive)} — click, drag, scroll, and inspect cell/pixel coordinates.\n" +
+            $"Kitty keyboard: {Mode(modes.KittyKeyboardActive)}; xterm modifyOtherKeys: {Mode(modes.ModifyOtherKeysActive)} — press modified keys, repeats, and releases.\n" +
+            "Open Input events to inspect the exact decoded values. Matching events mark optional protocols Observed automatically.";
     }
 
     private void RingBell()
@@ -217,9 +237,12 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         _specimens.Visibility = Visibility.Visible;
         _image.Source = CreateDiagnosticImage();
         _graphicsConfirmationPending = true;
+        var protocols = GraphicsProtocols(application);
         BeginConfirmation(
-            [],
-            "Inspect the generated checkerboard image. SharpVision's public image path does not expose which backend was selected.");
+            protocols,
+            protocols.Length == 0
+                ? "Inspect the checkerboard image. The shared non-retained backend may choose Sixel or iTerm2 per placement, so this result will not be attributed to either protocol."
+                : $"Inspect the generated checkerboard image. Selected backend: {application.TerminalDiagnostics.GraphicsBackend}.");
     }
 
     private void BeginConfirmation(TerminalProtocol[] protocols, string prompt)
@@ -232,6 +255,7 @@ internal sealed class TerminalProbePanel: CompositeControlBase
 
     private void Confirm(bool passed)
     {
+        var attributed = _pendingProtocols.Length > 0;
         var state = passed ? VerificationState.Passed : VerificationState.Failed;
         var detail = passed
             ? "The user confirmed the visible or audible result in this terminal session."
@@ -246,16 +270,30 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         _pendingProtocols = [];
         _pass.IsEnabled = false;
         _fail.IsEnabled = false;
-        SetStatus(passed ? "<success>Result recorded as passed.</success>" : "<error>Result recorded as failed.</error>");
+        SetStatus(attributed
+            ? passed
+                ? "<success>Result recorded as passed.</success>"
+                : "<error>Result recorded as failed.</error>"
+            : "<info>Visual result acknowledged without attributing the shared backend to one protocol.</info>");
     }
 
     private void OnGraphicsDiagnostic(object? sender, GraphicsDiagnosticEventArgs eventArgs)
     {
         var detail = string.Join(", ", eventArgs.Placements.Select(static placement => placement.Reason));
-        SetStatus($"<error>Graphics fell back to cells: {TextMarkup.Escape(detail)}.</error>");
+        var backend = _application?.TerminalDiagnostics.GraphicsBackend.ToString() ?? "unknown";
+        SetStatus(
+            $"<error>{TextMarkup.Escape(backend)} graphics fell back to cells: {TextMarkup.Escape(detail)}.</error>");
 
         if (_graphicsConfirmationPending)
         {
+            foreach (var protocol in _pendingProtocols)
+            {
+                _capabilities.SetVerification(
+                    protocol,
+                    VerificationState.Failed,
+                    $"The selected {backend} graphics path fell back to ordinary cells: {detail}.");
+            }
+
             _graphicsConfirmationPending = false;
             _pendingProtocols = [];
             _pass.IsEnabled = false;
@@ -264,6 +302,8 @@ internal sealed class TerminalProbePanel: CompositeControlBase
     }
 
     private void SetStatus(string value) => _status.Content = value;
+
+    private static string Mode(bool enabled) => enabled ? "<success>enabled</success>" : "<warning>not active</warning>";
 
     private static Stack BuildSpecimens(DiagnosticImage image) => new()
     {
@@ -333,6 +373,21 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         application.Capabilities.KittyGraphics.Authoritative ||
         application.Capabilities.Sixel.Authoritative ||
         application.Capabilities.ItermImages.Authoritative;
+
+    private static TerminalProtocol[] GraphicsProtocols(Application application) =>
+        application.TerminalDiagnostics.GraphicsBackend switch
+        {
+            TerminalGraphicsBackend.Kitty => [TerminalProtocol.KittyGraphics],
+            TerminalGraphicsBackend.NonRetained when application.Capabilities.Sixel.Authoritative &&
+                                                     !application.Capabilities.ItermImages.Authoritative =>
+                [TerminalProtocol.Sixel],
+            TerminalGraphicsBackend.NonRetained when application.Capabilities.ItermImages.Authoritative &&
+                                                     !application.Capabilities.Sixel.Authoritative =>
+                [TerminalProtocol.ItermImages],
+            TerminalGraphicsBackend.NonRetained => [],
+            TerminalGraphicsBackend.CellFallback => [],
+            _ => throw new InvalidOperationException("Terminal diagnostics contained an unknown graphics backend.")
+        };
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)

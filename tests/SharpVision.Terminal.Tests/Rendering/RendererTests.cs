@@ -6,6 +6,7 @@ namespace SharpVision.Terminal.Tests.Rendering;
 using System.Runtime.CompilerServices;
 
 using SharpVision.Terminal.Capabilities;
+using SharpVision.Terminal.Diagnostics;
 using SharpVision.Terminal.Graphics;
 using SharpVision.Terminal.Kitty.Graphics;
 
@@ -17,6 +18,26 @@ using SharpVision.Terminal.Kitty.Graphics;
 [Collection(PerformanceGroup.Name)]
 public sealed class RendererTests
 {
+    /// <summary>Verifies authoritative graphics evidence selects an observable backend family.</summary>
+    [Fact]
+    public void Constructor_WhenGraphicsEvidenceVaries_ReportsSelectedBackend()
+    {
+        // Arrange
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Query);
+        var kittyCapabilities = TerminalCapabilities.Conservative with { KittyGraphics = supported };
+        var sixelCapabilities = TerminalCapabilities.Conservative with { Sixel = supported };
+
+        // Act
+        using var fallback = new Renderer(TerminalCapabilities.Conservative);
+        using var kitty = new Renderer(kittyCapabilities);
+        using var nonRetained = new Renderer(sixelCapabilities);
+
+        // Assert
+        fallback.GraphicsBackend.ShouldBe(TerminalGraphicsBackend.CellFallback);
+        kitty.GraphicsBackend.ShouldBe(TerminalGraphicsBackend.Kitty);
+        nonRetained.GraphicsBackend.ShouldBe(TerminalGraphicsBackend.NonRetained);
+    }
+
     /// <summary>Verifies assigned Kitty images become exact-color placeholder cells after their virtual prelude.</summary>
     [Fact]
     public async Task RenderAsync_WhenKittyImageIdIsAssigned_WritesVirtualPlacementBeforePlaceholderCellsAsync()

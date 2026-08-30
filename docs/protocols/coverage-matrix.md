@@ -52,3 +52,11 @@ explicit 3.5+ contract override. `ITerminalServices` exposes no graphics member
 because graphics output is a renderer-owned `IGraphicsBackend` over semantic
 frame placements; it continues to expose only bell, window title, and clipboard
 services.
+
+`TerminalDiagnostics` is the runtime explanation surface over this matrix. It
+keeps backend identity, normalized redacted query results, authorized versus
+successfully active modes, multiplexer route decisions, and graphics-backend
+selection separate from the optional capability facade. The
+[Terminal Debugger](../../examples/TerminalDebugger/README.md#sharpvision-terminal-debugger)
+presents every matrix family alongside those live facts and bounded user
+verification; it does not create additional protocol-support claims.
