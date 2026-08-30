@@ -1348,8 +1348,17 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             LastWidthLimitBase = widthLimitBase;
             LastHeightLimitBase = heightLimitBase;
             var content = Padding.Deflate(BorderInset.Deflate(bounds));
-            ArrangeOverride(ResolveContentSlot(content));
-            ArrangeOverlays(content);
+            var contentSlot = ResolveContentSlot(content);
+
+            // ResolveContentSlot can already have let a subscriber to a control-specific event
+            // (e.g. Container's ScrollChanged) synchronously dispose this control - arranging
+            // owned/child state that disposal already tore down would throw ObjectDisposedException
+            // or ArgumentException from deep inside an override instead of this pass ending here.
+            if (!IsDisposed)
+            {
+                ArrangeOverride(contentSlot);
+                ArrangeOverlays(content);
+            }
 
             if (ContextMenu?.Presentation is { } contextMenuPresentation)
             {

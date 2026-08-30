@@ -2428,6 +2428,37 @@ public sealed class TableTests
         table.VerticalOffset.ShouldBe(0);
     }
 
+    /// <summary>Verifies a layout pass completes without throwing when a ScrollChanged subscriber
+    /// disposes the table from inside the row-shrink offset-clamp - the presenter's own arrange
+    /// step normally reaches into TableRow cells the cascading dispose already unparented, rather
+    /// than letting the general Arrange sequence run an override on an already-disposed
+    /// control.</summary>
+    [Fact]
+    public void Layout_WhenScrollChangedHandlerDisposesTableDuringArrange_CompletesWithoutThrowing()
+    {
+        var table = new Table();
+        table.Columns.Add(TableColumn.Fixed("Name", 5));
+        for (var index = 0; index < 40; index++)
+        {
+            table.Rows.Add(new TableRow([new ControlText($"Row{index}")]));
+        }
+        var engine = new LayoutEngine();
+        var size = new Size(10, 5);
+        engine.Layout(table, size);
+        _ = table.ScrollBy(0, int.MaxValue);
+        table.VerticalOffset.ShouldBeGreaterThan(0);
+
+        while (table.Rows.Count > 2)
+        {
+            table.Rows.RemoveAt(table.Rows.Count - 1);
+        }
+        table.ScrollChanged += (_, _) => table.Dispose();
+
+        Should.NotThrow(() => engine.Layout(table, size));
+
+        table.IsDisposed.ShouldBeTrue();
+    }
+
     /// <summary>Verifies BringIntoView rejects a null descendant.</summary>
     [Fact]
     public void BringIntoView_WhenDescendantIsNull_ThrowsArgumentNullException() =>
