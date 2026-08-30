@@ -456,6 +456,7 @@ public sealed class Session: IAsyncDisposable
 
     private async ValueTask EnableOptionalAsync(
         TerminalCapabilities capabilities,
+        ProtocolRouter router,
         CancellationToken cancellationToken)
     {
         Debug.Assert(capabilities is not null, "Session options always supply an immutable capability profile.");
@@ -505,6 +506,13 @@ public sealed class Session: IAsyncDisposable
         if (_options.Keyboard.HasValue && IsPermitted(capabilities.KittyKeyboard))
         {
             await EnableAsync(CreateKeyboardLease(), cancellationToken).ConfigureAwait(false);
+
+            if ((_options.Keyboard.Value &
+                 (Kitty.Keyboard.KittyKeyboardEnhancement.Disambiguate |
+                  Kitty.Keyboard.KittyKeyboardEnhancement.AllKeys)) != 0)
+            {
+                router.EnableKittyKeyboardDisambiguation();
+            }
         }
         else if (_options.ModifyOtherKeys.HasValue && IsPermitted(capabilities.XtermKeyboard))
         {
@@ -702,7 +710,7 @@ public sealed class Session: IAsyncDisposable
 
         if (negotiator is null)
         {
-            await EnableOptionalAsync(_context.Profile.Capabilities, cancellationToken)
+            await EnableOptionalAsync(_context.Profile.Capabilities, router, cancellationToken)
                 .ConfigureAwait(false);
         }
         else
@@ -831,7 +839,7 @@ public sealed class Session: IAsyncDisposable
                     var capabilities = negotiator.Capabilities;
                     _context = _context.WithCapabilities(capabilities);
                     _sink.Profile(capabilities);
-                    await EnableOptionalAsync(capabilities, linked.Token)
+                    await EnableOptionalAsync(capabilities, router, linked.Token)
                         .ConfigureAwait(false);
                     ready = true;
                     deadline = null;
@@ -947,7 +955,7 @@ public sealed class Session: IAsyncDisposable
                     var capabilities = negotiator.Capabilities;
                     _context = _context.WithCapabilities(capabilities);
                     _sink.Profile(capabilities);
-                    await EnableOptionalAsync(capabilities, linked.Token)
+                    await EnableOptionalAsync(capabilities, router, linked.Token)
                         .ConfigureAwait(false);
                     ready = true;
                     deadline = null;

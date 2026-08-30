@@ -414,6 +414,75 @@ public sealed class SessionTests
         sink.Strokes.ShouldHaveSingleItem().Code.ShouldBe(Code.F63);
     }
 
+    /// <summary>Verifies a Kitty cursor event reaches the typed sink after a described profile
+    /// leases progressive keyboard reporting without enabling generic ANSI fallback.</summary>
+    [Fact]
+    public async Task RunAsync_WhenDescribedProfileEnablesKittyKeyboard_RoutesCursorEventAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var profile = Profile(
+            new Dictionary<string, DescriptionProgram>(),
+            capabilities: TerminalCapabilities.Conservative with { KittyKeyboard = supported });
+        var options = TerminalOptions.Minimal with
+        {
+            Profile = profile,
+            Keyboard = KittyKeyboardEnhancement.Disambiguate | KittyKeyboardEnhancement.EventTypes
+        };
+        transport.Input("[B"u8.ToArray());
+        transport.Close();
+        await using Session session = new(transport, resize, sink, options);
+
+        // Act
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        sink.Strokes.ShouldBe(
+        [
+            new Stroke(Code.Down, null, 0, Modifiers.None, KeyAction.Press)
+        ]);
+        transport.JoinedWrites.ShouldBe("[>3u[<u");
+    }
+
+    /// <summary>Verifies a cursor press using Kitty's omitted default event type reaches the typed
+    /// sink after negotiation authorizes and enables enhanced keyboard reporting.</summary>
+    [Fact]
+    public async Task RunAsync_WhenNegotiationEnablesKittyKeyboard_RoutesDefaultCursorPressAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var profile = Profile(new Dictionary<string, DescriptionProgram>());
+        var options = TerminalOptions.Minimal with
+        {
+            Profile = profile,
+            Keyboard = KittyKeyboardEnhancement.Disambiguate | KittyKeyboardEnhancement.EventTypes,
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?>(),
+                limits: QueryLimits.Default with { MaxConcurrentQueries = 8 })
+        };
+        transport.Input(Encoding.ASCII.GetBytes(
+            "[?1016;1$y[?1006;1$y[?2004;1$y" +
+            "[?1004;1$y[?2026;1$y[?3u" +
+            "[>41;410;0c[?1;2c"));
+        transport.Input("[B"u8.ToArray());
+        transport.Close();
+        await using Session session = new(transport, resize, sink, options);
+
+        // Act
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        sink.Strokes.ShouldBe(
+        [
+            new Stroke(Code.Down, null, 0, Modifiers.None, KeyAction.Press)
+        ]);
+    }
+
     /// <summary>Verifies a lone Escape is delivered at its ambiguity deadline without any
     /// further input. The decoder held the pending Escape and its deadline, but nothing in the
     /// read loop ever woke to expire it - the Escape only surfaced when the NEXT byte arrived,

@@ -99,6 +99,11 @@ public sealed class ProtocolRouter: IDisposable
     /// possible instead of dispatched one byte at a time.</summary>
     internal int DecoderInvocationCount { get; private set; }
 
+    /// <summary>Enables the cursor and functional-key grammar guaranteed by a successfully acquired
+    /// Kitty disambiguation lease.</summary>
+    internal void EnableKittyKeyboardDisambiguation() =>
+        _decoder.EnableKittyKeyboardDisambiguation();
+
     private void InvokeDecoder(ReadOnlySpan<byte> input)
     {
         DecoderInvocationCount++;

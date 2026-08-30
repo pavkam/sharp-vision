@@ -1827,22 +1827,13 @@ public sealed class InputDecoderTests
 
     /// <summary>
     /// Verifies the built-in legacy CSI cursor/function-key grammar (bare finals such as
-    /// <c>CSI A</c> and their modifier/event-type spellings) is gated to profiles that describe
-    /// it: with UseAnsiKeyGrammar false and no matching terminal-description binding, these
-    /// sequences must not decode to strokes. Instead they report unsupported, the same fallback
-    /// the ANSI-grammar terminal handler already applies to every other unmatched CSI shape, so a
-    /// profile whose terminfo database never described these strings cannot have them silently
-    /// forged from the ANSI table.
+    /// <c>CSI A</c>) is gated to profiles that describe it: with UseAnsiKeyGrammar false and no
+    /// matching terminal-description binding, these sequences must not decode to strokes. Instead
+    /// they report unsupported, the same fallback the ANSI-grammar terminal handler already applies
+    /// to every other unmatched CSI shape, so a profile whose terminfo database never described
+    /// these strings cannot have them silently forged from the ANSI table.
     /// </summary>
     [Theory]
-    [InlineData("[1;1:1A")]
-    [InlineData("[1;1:3A")]
-    [InlineData("[1;1:1B")]
-    [InlineData("[1;1:1C")]
-    [InlineData("[1;1:1D")]
-    [InlineData("[1;1:1H")]
-    [InlineData("[1;1:1F")]
-    [InlineData("[1;5:1C")]
     [InlineData("[A")]
     [InlineData("[B")]
     public void Decode_WhenAnsiGrammarIsDisabled_DoesNotDecodeLegacyCsiKeys(string input)
@@ -1858,6 +1849,66 @@ public sealed class InputDecoderTests
 
         sink.Strokes.ShouldBeEmpty();
         sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Unsupported);
+    }
+
+    /// <summary>Verifies Kitty's event-typed cursor forms remain active at every transport split
+    /// when an exact terminal-description profile disables the unrelated ANSI compatibility
+    /// grammar.</summary>
+    [Theory]
+    [InlineData("[1;1:1A", Code.Up, KeyAction.Press)]
+    [InlineData("[1;1:2B", Code.Down, KeyAction.Repeat)]
+    [InlineData("[1;1:3C", Code.Right, KeyAction.Release)]
+    public void Decode_WhenAnsiGrammarIsDisabled_MapsKittyCursorEventAtEverySplit(
+        string input,
+        Code code,
+        KeyAction action)
+    {
+        var bytes = Encoding.UTF8.GetBytes(input);
+        var options = InputOptions.Default with { UseAnsiKeyGrammar = false };
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+
+            using (InputDecoder decoder = new(sink, options))
+            {
+                decoder.Decode(bytes.AsSpan(0, split));
+                decoder.Decode(bytes.AsSpan(split));
+                decoder.Complete();
+            }
+
+            sink.Strokes.ShouldBe(
+                [new Stroke(code, null, 0, Modifiers.None, action)],
+                $"split {split}");
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
+    /// <summary>Verifies Kitty's disambiguated cursor press with its default event type omitted
+    /// remains active at every transport split when generic ANSI compatibility is disabled.</summary>
+    [Fact]
+    public void Decode_WhenKittyDisambiguationIsEnabled_MapsDefaultCursorPressAtEverySplit()
+    {
+        var bytes = "[B"u8.ToArray();
+        var options = InputOptions.Default with { UseAnsiKeyGrammar = false };
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+
+            using (InputDecoder decoder = new(sink, options))
+            {
+                decoder.EnableKittyKeyboardDisambiguation();
+                decoder.Decode(bytes.AsSpan(0, split));
+                decoder.Decode(bytes.AsSpan(split));
+                decoder.Complete();
+            }
+
+            sink.Strokes.ShouldBe(
+                [new Stroke(Code.Down, null, 0, Modifiers.None, KeyAction.Press)],
+                $"split {split}");
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
     }
 
     #endregion

@@ -38,6 +38,7 @@ public sealed class InputDecoder: IDisposable
     private bool _completed;
     private bool _disposed;
     private bool _escapePending;
+    private bool _kittyKeyboardDisambiguationEnabled;
     private bool _ss3Pending;
 
     /// <summary>Initializes a decoder with a stable synchronous event sink.</summary>
@@ -98,6 +99,11 @@ public sealed class InputDecoder: IDisposable
             TryHandleProtocolDcs
         ];
     }
+
+    /// <summary>Enables the cursor and functional-key grammar guaranteed by a successfully acquired
+    /// Kitty disambiguation lease.</summary>
+    internal void EnableKittyKeyboardDisambiguation() =>
+        _kittyKeyboardDisambiguationEnabled = true;
 
     /// <summary>Consumes one borrowed transport fragment synchronously.</summary>
     /// <param name="input">The borrowed bytes.</param>
@@ -767,7 +773,21 @@ public sealed class InputDecoder: IDisposable
     }
 
     private bool TryHandleLegacyCsiKey(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final) =>
-        _options.UseAnsiKeyGrammar && intermediates.IsEmpty && TryHandleCsiKey(parameters, final);
+        intermediates.IsEmpty &&
+        (_options.UseAnsiKeyGrammar ||
+         _kittyKeyboardDisambiguationEnabled ||
+         HasKittyEventType(parameters)) &&
+        TryHandleCsiKey(parameters, final);
+
+    // Kitty reuses the legacy CSI cursor-key finals when progressive event reporting is active.
+    // Repeat and release carry a distinguishing event sub-parameter, while press may omit its
+    // default event type entirely. The Session therefore explicitly enables the ambiguous press
+    // grammar only after its disambiguation lease reaches the terminal.
+    private static bool HasKittyEventType(ReadOnlySpan<byte> parameters)
+    {
+        var separator = parameters.IndexOf((byte) ';');
+        return separator >= 0 && parameters[(separator + 1)..].IndexOf((byte) ':') >= 0;
+    }
 
     /// <summary>The terminal handler: always claims the sequence, either via the ANSI grammar
     /// fallback or by reporting it unsupported/malformed.</summary>

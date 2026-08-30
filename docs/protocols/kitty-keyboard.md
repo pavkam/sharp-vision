@@ -17,10 +17,15 @@ alternate keys, and text code points are bounded and validated. Legacy key
 sequences continue through the same high-level event model when the protocol is
 unavailable.
 
-Valid Kitty CSI `u` events are consumed before terminal-description key lookup,
-so a database string cannot shadow enhanced keyboard input. When Kitty is not
-active, the selected profile's exact key map is authoritative; only the explicit
-built-in ANSI profile supplements it with generic VT/xterm grammar.
+Valid Kitty CSI `u` events and cursor/function-key forms such as `CSI B` and
+`CSI 1;1:1B` are consumed before terminal-description key lookup, so a database
+string cannot shadow enhanced keyboard input. Repeat and release carry a
+colon-separated event type and are unambiguously Kitty-specific. Press has event
+type 1 by default and may omit that sub-field, so its otherwise ambiguous form
+is recognized only after the Session successfully acquires a Kitty
+disambiguation lease. When Kitty is not active, the selected profile's exact key
+map is authoritative; only the explicit built-in ANSI profile supplements it
+with generic VT/xterm grammar.
 
 ## Supported features
 
@@ -47,6 +52,13 @@ and Num Lock. Event 1/2/3 maps to press/repeat/release. The immutable `Stroke`
 preserves the main logical code, native number, optional shifted and PC-101
 base-layout Runes, modifiers, and action; up to 32 validated associated text
 scalars follow as ordered `Text` values.
+
+The decoder also recognizes Kitty's legacy-functional forms, including
+`CSI [ABCDEFHPQS]` for an unmodified press and
+`CSI 1;modifiers:event [ABCDEFHPQS]` when fields are present, independently of
+the built-in ANSI compatibility grammar while the negotiated lease is active.
+Press, repeat, and release remain distinct typed actions across arbitrary
+transport fragmentation.
 
 Escape, Enter, Tab, Backspace, lock keys, Print Screen, Pause, Menu, F13-F35,
 the keypad block, the media transport and volume keys, and the modifier-as-key
@@ -84,7 +96,7 @@ lifecycle tests own nesting and cleanup.
 - [Kitty comprehensive keyboard protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/)
   defines enhancement flags, CSI-u fields, functional keys, events, and text.
 
-Source accessed 2026-08-27.
+Source accessed 2026-08-30.
 
 ## Expected behavior
 
