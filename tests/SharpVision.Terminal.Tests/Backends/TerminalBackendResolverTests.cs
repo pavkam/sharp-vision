@@ -273,6 +273,22 @@ public sealed class TerminalBackendResolverTests
         resolution.Backend.ShouldBeSameAs(ItermBackend.Instance);
     }
 
+    /// <summary>Verifies a genuine TERM=kitty session wins over a stale TERM_PROGRAM=iTerm.app left
+    /// by an outer terminal, outside a multiplexer session where TERM is trustworthy.</summary>
+    [Fact]
+    public void Resolve_WhenKittyTermAndIterm2ProgramArePresentWithoutMultiplexer_ResolvesKitty()
+    {
+        var environment = new Dictionary<string, string?>
+        {
+            ["TERM"] = "xterm-kitty",
+            ["TERM_PROGRAM"] = "iTerm.app"
+        };
+
+        var resolution = TerminalProfile.Conservative.Resolve(environment);
+
+        resolution.Backend.ShouldBeSameAs(KittyBackend.Instance);
+    }
+
     /// <summary>Verifies typed backend evidence rejects undefined enum values.</summary>
     [Fact]
     public void Constructor_WhenEvidenceEnumIsUnknown_ThrowsArgumentOutOfRangeException()

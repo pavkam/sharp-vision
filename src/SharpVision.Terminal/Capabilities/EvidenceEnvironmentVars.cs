@@ -24,9 +24,8 @@ internal static class EvidenceEnvironmentVars
     public const string TermProgram = "TERM_PROGRAM";
 
     /// <summary>
-    /// The terminal application's self-reported version, used only to narrow (never grant)
-    /// iTerm2 multipart-image evidence below the iTerm2 3.5 introduction of the multipart
-    /// protocol — see <c>QueryEvidenceAdapter</c>.
+    /// The terminal application's self-reported version. Currently unused by evidence
+    /// detection; retained in the recognized-keys allowlist for forward compatibility.
     /// </summary>
     public const string TermProgramVersion = "TERM_PROGRAM_VERSION";
 

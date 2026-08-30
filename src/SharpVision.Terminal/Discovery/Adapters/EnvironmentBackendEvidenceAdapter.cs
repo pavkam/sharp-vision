@@ -41,15 +41,24 @@ internal sealed class EnvironmentBackendEvidenceAdapter: IBackendEvidenceAdapter
 
     private static BackendEvidence? Recognize(string? term, string? program, bool isMultiplexer)
     {
-        return string.Equals(program, "iTerm.app", StringComparison.OrdinalIgnoreCase)
-            ? new BackendEvidence(TerminalBackendKind.Iterm2, BackendEvidenceOrigin.Environment)
-            : string.IsNullOrEmpty(term) || isMultiplexer
-                ? null
-                : Contains(term, "kitty")
-                    ? new BackendEvidence(TerminalBackendKind.Kitty, BackendEvidenceOrigin.Environment)
-                    : Contains(term, "xterm")
-                        ? new BackendEvidence(TerminalBackendKind.Xterm, BackendEvidenceOrigin.Environment)
-                        : null;
+        // Checked before TERM_PROGRAM so a genuine TERM=kitty session isn't shadowed by a stale
+        // TERM_PROGRAM left over from an outer terminal — the resolver's Kitty-over-iTerm2
+        // specificity ranking only ever gets a chance to run if this adapter itself prefers Kitty.
+        if (!isMultiplexer && !string.IsNullOrEmpty(term) && Contains(term, "kitty"))
+        {
+            return new BackendEvidence(TerminalBackendKind.Kitty, BackendEvidenceOrigin.Environment);
+        }
+
+        if (string.Equals(program, "iTerm.app", StringComparison.OrdinalIgnoreCase))
+        {
+            return new BackendEvidence(TerminalBackendKind.Iterm2, BackendEvidenceOrigin.Environment);
+        }
+
+        return string.IsNullOrEmpty(term) || isMultiplexer
+            ? null
+            : Contains(term, "xterm")
+                ? new BackendEvidence(TerminalBackendKind.Xterm, BackendEvidenceOrigin.Environment)
+                : null;
     }
 
     private static bool Contains(string value, string fragment) =>
