@@ -1903,6 +1903,33 @@ public sealed class TextInputTests
         control.Text.ShouldBe("handler");
     }
 
+    /// <summary>Verifies a second TextChanging subscriber does not observe a proposal already
+    /// superseded by an earlier subscriber's reentrant commit.</summary>
+    [Fact]
+    public void TextChanging_WhenSubscriberReenters_SkipsSupersededProposalForLaterSubscriber()
+    {
+        // Arrange
+        var control = new TextInput { Text = "A" };
+        var reentered = false;
+        var observed = new List<string>();
+        control.TextChanging += (_, _) =>
+        {
+            if (!reentered)
+            {
+                reentered = true;
+                control.Text = "handler";
+            }
+        };
+        control.TextChanging += (_, eventArgs) => observed.Add(eventArgs.Proposal.Text);
+
+        // Act
+        control.Text = "outer";
+
+        // Assert
+        control.Text.ShouldBe("handler");
+        observed.ShouldBe(["handler"]);
+    }
+
     /// <summary>Verifies a replacement committed from TextChanging supersedes the outer
     /// replacement without adding an intermediate undo entry.</summary>
     [Fact]
