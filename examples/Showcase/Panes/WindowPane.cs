@@ -64,15 +64,19 @@ internal sealed class WindowPane: CompositeControlBase
         var activationStatus = new Text("Active Window: none");
         var reopenWindow = new Button { Text = "Reopen &window" };
         var closeWindow = new Button { Text = "C&lose via API" };
+        void ReportWindowStatus() => windowStatus.Content = draggable.IsOpen
+            ? "Window: open"
+            : "Window: closed";
+
         draggable.Closing += (_, _) =>
         {
             draggable.Visibility = Visibility.Collapsed;
-            windowStatus.Content = "Window: closed";
+            ReportWindowStatus();
         };
         reopenWindow.Click += (_, _) =>
         {
             draggable.Visibility = Visibility.Visible;
-            windowStatus.Content = "Window: open";
+            ReportWindowStatus();
         };
         closeWindow.Click += (_, _) => draggable.Close();
 
@@ -287,7 +291,7 @@ internal sealed class WindowPane: CompositeControlBase
                     "Active modeless Windows",
                     "Click either title to switch the active border without stealing focus, then drag, close, and reopen the retained settings Window.",
                     dragStage,
-                    "Window? active = application.ActiveWindow;\nbool isThisWindowActive = window.IsActive;\nwindow.Closing += (_, _) => window.Visibility = Visibility.Collapsed;")),
+                    "Window? active = application.ActiveWindow;\nbool isThisWindowActive = window.IsActive;\nbool isThisWindowOpen = window.IsOpen;\nwindow.Closing += (_, _) => window.Visibility = Visibility.Collapsed;")),
             new DocSection(
                 "◈",
                 "Modal dialog",
