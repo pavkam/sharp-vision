@@ -10,6 +10,7 @@
     <Project Path="examples/ProcessMonitor/ProcessMonitor.csproj"/>
     <Project Path="examples/Showcase/SharpVision.Showcase.csproj"/>
     <Project Path="examples/Snake/Snake.csproj"/>
+    <Project Path="examples/TerminalDebugger/TerminalDebugger.csproj"/>
     <Project Path="examples/TextEditor/TextEditor.csproj"/>
   </Folder>
   <Folder Name="/tests/">
