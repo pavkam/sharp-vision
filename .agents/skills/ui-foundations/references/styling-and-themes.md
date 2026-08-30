@@ -84,7 +84,10 @@ regardless of the control's actual base type. There is no virtual
 optional `changed` callback instead. See
 [Styling](../../../../docs/concepts/styling.md#overview) and
 [Visual states](../../../../docs/concepts/styling.md#visual-states) for the full
-API surface, including `ActualStyle`, chrome authoring, and `ResolveAppearance`.
+API surface, including `ActualStyle` and `ResolveAppearance`; see
+[Intrinsic chrome](../../../../docs/concepts/intrinsic-chrome.md#overview) for
+`EnableChromeAuthoring()` and raw `Border`/`Shadow` authoring, which live on
+`ControlBase` itself, not on the styling API.
 
 ## Traps that have already caused regressions
 

@@ -58,6 +58,10 @@ pattern is rooted, or a pattern contains a directory separator.
 | `ShowHiddenText`          | `string`                          | `"Show &hidden"`                                 | Non-null caption for the hidden-entry toggle.                                                                                                      |
 | `CancelText`              | `string`                          | `"&Cancel"`                                      | Non-null caption for the Cancel action.                                                                                                            |
 | `OpenText`                | `string?`                         | `null`                                           | Caption for the Open action; `null` lets the dialog pick its own mode-aware default (`"&Select"` in pure `Directories` mode, `"&Open"` otherwise). |
+| `ReadyText`               | `string?`                         | `null`                                           | Status text shown while no request is outstanding; `null` lets the dialog use its own default.                                                     |
+| `LoadingText`             | `string?`                         | `null`                                           | Status text shown while a directory request is outstanding; `null` lets the dialog use its own default.                                            |
+| `CountFormat`             | `Func<int, int, string>?`         | `null`                                           | Builds the folder/file count status text after a successful load; `null` lets the dialog use its own default.                                      |
+| `SelectionFormat`         | `Func<int, string>?`              | `null`                                           | Builds the status text while at least one file is selected; `null` lets the dialog use its own default.                                            |
 
 Each setter validates its value before storing it. `FilePickerDialog` copies the
 complete options value during construction, so changing an options object
