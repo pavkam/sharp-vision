@@ -4358,9 +4358,9 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 impact,
                 this.GetImpact(
                     previous,
-                    slot.GetAppearance(previousStyle, slot.LocalValue is not null, previous),
+                    ApplyAppearanceOverlay(slot.GetAppearance(previousStyle, slot.LocalValue is not null, previous)),
                     current,
-                    slot.GetAppearance(currentStyle, slot.LocalValue is not null, current),
+                    ApplyAppearanceOverlay(slot.GetAppearance(currentStyle, slot.LocalValue is not null, current)),
                     previousParentAmbientFace,
                     currentParentAmbientFace))
             : impact;
@@ -5378,9 +5378,9 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             currentParentAmbientFace) ??
             this.GetImpact(
                 previous,
-                GetDefaultAppearanceStates(previous),
+                ApplyAppearanceOverlay(GetDefaultAppearanceStates(previous)),
                 current,
-                GetDefaultAppearanceStates(current),
+                ApplyAppearanceOverlay(GetDefaultAppearanceStates(current)),
                 previousParentAmbientFace,
                 currentParentAmbientFace);
 
@@ -5429,6 +5429,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         ResolvedAppearance current) => previous.GetImpact(current);
 
     /// <summary>Collects the slots whose resolved values change across a prospective Theme transition.</summary>
+    // Deliberately overlay-blind: an overlay only ever contributes Face/Border/Shadow, already covered by
+    // the unconditional PublishAppearanceChanges(ResolvedAppearance, ResolvedAppearance) backstop elsewhere.
     private List<StyleSlotBase> GetThemeResolvedStyleSlots(Theme? previous, Theme? current)
     {
         if (_styleSlots is null)

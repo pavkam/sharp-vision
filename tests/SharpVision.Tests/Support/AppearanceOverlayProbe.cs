@@ -24,6 +24,10 @@ internal sealed class AppearanceOverlayProbe: ControlBase
     internal void CommitSelection(bool value) =>
         _ = SetVisualStateProperty(ref _isSelected, value, nameof(IsSelectedState));
 
+    /// <summary>Calculates the Theme-transition impact through the no-primary-style branch.</summary>
+    internal InvalidationImpact GetThemeImpact(Theme? previous, Theme? current) =>
+        GetThemeChangeImpact(previous, current, previousParentAmbientFace: null, currentParentAmbientFace: null);
+
     /// <inheritdoc/>
     protected override bool IsSelectedState => _isSelected;
 }

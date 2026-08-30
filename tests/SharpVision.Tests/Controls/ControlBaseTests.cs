@@ -3024,6 +3024,55 @@ public sealed class ControlBaseTests
         probe.Pending.ShouldBe(Invalidation.All);
     }
 
+    /// <summary>Verifies <c>GetThemeChangeImpact</c>'s no-primary-style branch composes the
+    /// registered overlay before comparing prospective Themes.</summary>
+    /// <remarks>
+    /// The two Themes deliberately resolve "control"'s own Normal face byte-identically - only
+    /// "accent" differs - so the raw, uncomposed default appearance states this branch used to
+    /// compare are indistinguishable and would report <see cref="InvalidationImpact.None"/>. The
+    /// registered overlay's foreground references that same "accent" role, so only composing it
+    /// (as <c>ApplyAppearanceOverlay</c> does) can make the two prospective states differ.
+    /// </remarks>
+    [Fact]
+    public void GetThemeChangeImpact_WhenOverlayDependsOnChangedRole_ReportsNonNoneImpact()
+    {
+        var overlay = new AppearanceStatesOverlay(
+            normal: new AppearanceOverlay(
+                face: new FaceOverlay(foreground: SemanticColor.Accent, background: Color.Transparent)));
+        var probe = new AppearanceOverlayProbe(overlay);
+        var previous = ThemeCatalog.Parse(ThemeJson.Create(accent: "#ff0000"));
+        var current = ThemeCatalog.Parse(ThemeJson.Create(accent: "#00ff00"));
+
+        var impact = probe.GetThemeImpact(previous, current);
+
+        impact.ShouldNotBe(InvalidationImpact.None);
+    }
+
+    /// <summary>Verifies <c>GetStyleThemeImpact</c>'s <c>OwnsAppearance</c> branch composes the
+    /// registered overlay before comparing prospective Themes.</summary>
+    /// <remarks>
+    /// Mirrors <see cref="GetThemeChangeImpact_WhenOverlayDependsOnChangedRole_ReportsNonNoneImpact"/>
+    /// one level deeper: the primary style slot's own resolved <see cref="TextStyle"/> and appearance
+    /// never reference "accent", so only composing the registered overlay - whose foreground does -
+    /// can make the two prospective appearance states differ. Neither current
+    /// <c>InitializeAppearanceOverlay</c> consumer (<c>TablePresenter</c>, <c>Prism</c>) owns a
+    /// primary style, so this branch has no existing production control to exercise it.
+    /// </remarks>
+    [Fact]
+    public void GetStyleThemeImpact_WhenOverlayDependsOnChangedRole_ReportsNonNoneImpact()
+    {
+        var overlay = new AppearanceStatesOverlay(
+            normal: new AppearanceOverlay(
+                face: new FaceOverlay(foreground: SemanticColor.Accent, background: Color.Transparent)));
+        var probe = new StyledAppearanceOverlayProbe(overlay);
+        var previous = ThemeCatalog.Parse(ThemeJson.Create(accent: "#ff0000"));
+        var current = ThemeCatalog.Parse(ThemeJson.Create(accent: "#00ff00"));
+
+        var impact = probe.Slot.GetThemeImpact(previous, current, previousParentAmbientFace: null, currentParentAmbientFace: null);
+
+        impact.ShouldNotBe(InvalidationImpact.None);
+    }
+
     #endregion
 
     #region Attachment participants
