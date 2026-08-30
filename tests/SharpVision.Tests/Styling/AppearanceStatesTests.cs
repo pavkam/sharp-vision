@@ -129,6 +129,35 @@ public sealed class AppearanceStatesTests
         }
     }
 
+    /// <summary>Verifies <see cref="AppearanceStates.StateAuthorsOwnRelief"/> reports true when any
+    /// one of the nine per-state slots - not only the currently active state - explicitly authors
+    /// <see cref="Border.Relief"/>, since visual states can overlap and every slot must be scanned
+    /// consistently. See <see cref="ResolvedBorderStyles.Create"/> for why this must suppress the
+    /// authored-Foreground bypass: a state that explicitly requests its own relief owns that state's
+    /// border feedback and must not have an incidentally-differing inherited Foreground reinterpreted
+    /// as deliberate authorship, which would silently flatten the relief it asked for.</summary>
+    [Fact]
+    public void StateAuthorsOwnRelief_WhenAPerStateSlotAuthorsRelief_ReportsTrue()
+    {
+        var states = new AppearanceStates(
+            CreateAppearance(),
+            pressed: new AppearanceOverlay(border: new BorderOverlay(relief: BorderRelief.Raised)));
+
+        states.StateAuthorsOwnRelief.ShouldBeTrue();
+    }
+
+    /// <summary>The counter-case: no per-state slot authors <see cref="Border.Relief"/>, even though
+    /// one authors an unrelated Border member - only Relief itself gates the bypass suppression.</summary>
+    [Fact]
+    public void StateAuthorsOwnRelief_WhenNoPerStateSlotAuthorsRelief_ReportsFalse()
+    {
+        var states = new AppearanceStates(
+            CreateAppearance(),
+            focused: new AppearanceOverlay(border: new BorderOverlay(foreground: SemanticColor.FocusedBorder)));
+
+        states.StateAuthorsOwnRelief.ShouldBeFalse();
+    }
+
     /// <summary>Verifies a programmatically constructed theme starts with usable role-specific chrome.</summary>
     [Fact]
     public void Constructor_WhenThemeIsNotLoaded_UsesStyleSpecificDefaults()

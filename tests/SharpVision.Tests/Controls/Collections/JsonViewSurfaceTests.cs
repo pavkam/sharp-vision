@@ -607,4 +607,46 @@ public sealed class JsonViewSurfaceTests
         focusedStyles.Bottom.Foreground.ShouldBe(ThemeColorHelper.FocusedBorder(theme));
         focusedStyles.Left.Foreground.ShouldBe(ThemeColorHelper.FocusedBorder(theme));
     }
+
+    /// <summary>Verifies a focused Turbo Vision JsonView shows the authored flat "focusedBorder"
+    /// color on every edge instead of the Sunken shade/highlight split its own geometry - inherited
+    /// from "container.normal.border.relief": "sunken", the only non-Flat relief left in any
+    /// bundled theme - would otherwise substitute. <see cref="Theme.GetFocusableContainerStyleSet"/>
+    /// rebases Input's Focused "border.foreground": "focusedBorder" delta onto Container's Normal
+    /// geometry (Sunken relief included), so this exercises the border-relief-vs-authored-Foreground
+    /// bypass at the one bundled-theme site where it is still observable.</summary>
+    [Fact]
+    public async Task Keyboard_WhenTurboVisionJsonViewReceivesFocus_ShowsFlatActiveFrameAsync()
+    {
+        // Arrange
+        var view = new JsonView
+        {
+            Json = /*lang=json,strict*/ "{\"key\":\"value\"}",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 5),
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(
+            () => surface.Application.Theme = ThemeCatalog.Load("turbo-vision"),
+            "apply the Turbo Vision theme");
+        var theme = view.Theme.ShouldNotBeNull();
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert
+        view.IsFocused.ShouldBeTrue();
+        view.ActualBorder.Foreground.Literal.ShouldBe(ThemeColorHelper.FocusedBorder(theme));
+
+        // Assert - every physical edge resolves to the flat focused color, not a Sunken split.
+        var focusedStyles = view.ResolveBorderStyles(view.GetAppearanceState());
+        focusedStyles.Top.Foreground.ShouldBe(ThemeColorHelper.FocusedBorder(theme));
+        focusedStyles.Right.Foreground.ShouldBe(ThemeColorHelper.FocusedBorder(theme));
+        focusedStyles.Bottom.Foreground.ShouldBe(ThemeColorHelper.FocusedBorder(theme));
+        focusedStyles.Left.Foreground.ShouldBe(ThemeColorHelper.FocusedBorder(theme));
+    }
 }
