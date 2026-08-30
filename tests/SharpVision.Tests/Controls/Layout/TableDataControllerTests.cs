@@ -1063,6 +1063,30 @@ public sealed class TableDataControllerTests
         table.ProgressiveController!.IsPlaceholder(0).ShouldBeFalse();
     }
 
+    /// <summary>Verifies disposal cancels progressive work without publishing a live load-state
+    /// transition to subscribers whose surrounding surface may already be disposed.</summary>
+    [Fact]
+    public async Task Dispose_WhenProgressiveFetchIsInFlight_DoesNotPublishLoadStateChangedAsync()
+    {
+        var table = CreateHost();
+        var source = CreateSource(20);
+        source.Gate();
+        var host = new Overlay { IsFocusable = true };
+        host.Children.Add(table);
+        await using var surface = await ComponentSurface.MountAsync(
+            host, new Size(20, 10), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
+        var loadStateChanges = 0;
+        table.LoadStateChanged += (_, _) => loadStateChanges++;
+        source.HeldCount.ShouldBe(1);
+
+        await surface.UpdateAsync(table.Dispose, "dispose progressive table mid-fetch");
+
+        loadStateChanges.ShouldBe(0);
+        table.IsDisposed.ShouldBeTrue();
+        source.HeldCount.ShouldBe(0);
+    }
+
     /// <summary>Verifies disposing a detached progressive table with realized rows leaves owned
     /// presenter-cell teardown to the table's active disposal transaction.</summary>
     [Fact]

@@ -879,15 +879,27 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
 
         // A table that merely left the tree keeps its progressive source, cache, and selection -
         // only genuinely in-flight fetches are cancelled, matching Dispatcher.Hold's contract that
-        // no work outlives the control that requested it. Disposal tears the controller down fully.
-        if (reason is ReleaseReason.Detached or ReleaseReason.Disposed)
+        // no work outlives the control that requested it. The resulting load-state transition remains
+        // observable because a detached table is still live and can be reattached.
+        if (reason == ReleaseReason.Detached)
         {
             Progressive?.CancelInFlight();
         }
 
         if (reason == ReleaseReason.Disposed)
         {
-            Progressive?.DisposeWithOwner();
+            var controller = Progressive;
+            if (controller is not null)
+            {
+                // Owner disposal cancels pending work without publishing a final load-state change.
+                // Sibling controls subscribed to the table may already have been disposed as part of
+                // the same surface teardown, so no public callback may escape this ownership boundary.
+                controller.LoadStateChanged -= OnControllerLoadStateChanged;
+                controller.LoadFailed -= OnControllerLoadFailed;
+                controller.SelectionChanged -= OnControllerSelectionChanged;
+                controller.DisposeWithOwner();
+            }
+
             Progressive = null;
             LoadStateChanged = null;
             LoadFailed = null;
@@ -936,7 +948,8 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     /// <see cref="TableLoadState.Idle"/> while not progressive.</summary>
     public TableLoadState LoadState => Progressive?.LoadState ?? TableLoadState.Idle;
 
-    /// <summary>Raised after <see cref="LoadState"/> actually changes.</summary>
+    /// <summary>Raised after <see cref="LoadState"/> actually changes while the table is live.
+    /// Disposal settles progressive work without publishing a transition.</summary>
     public event EventHandler<TableLoadStateChangedEventArgs>? LoadStateChanged;
 
     /// <summary>Raised after one progressive range exhausts its bounded retry attempts.</summary>

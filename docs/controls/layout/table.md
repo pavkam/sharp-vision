@@ -91,7 +91,7 @@ classDiagram
 | `RowInvoked`                                                                                      | `EventHandler<TableRowInvokedEventArgs>`       | —            | Raised after a row is activated by pointer or keyboard.                                                                           |
 | `SortChanged`                                                                                     | `EventHandler<TableSortChangedEventArgs>`      | —            | Raised after `SortColumnIndex` or `SortDirection` actually changes.                                                               |
 | `SortRequested`                                                                                   | `EventHandler<TableSortChangedEventArgs>`      | —            | Raised instead of `SortChanged` when a header is clicked while progressive; see [Progressive loading](#progressive-loading).      |
-| `LoadStateChanged`                                                                                | `EventHandler<TableLoadStateChangedEventArgs>` | —            | Raised after `LoadState` actually changes; progressive only.                                                                      |
+| `LoadStateChanged`                                                                                | `EventHandler<TableLoadStateChangedEventArgs>` | —            | Raised after `LoadState` actually changes while the table is live; disposal does not publish a final transition.                  |
 | `LoadFailed`                                                                                      | `EventHandler<TableLoadFailedEventArgs>`       | —            | Raised after one progressive range exhausts its bounded retry attempts.                                                           |
 | `ScrollChanged`                                                                                   | `EventHandler<ScrollChangedEventArgs>`         | —            | Raised after the private table viewport commits one or both offsets.                                                              |
 
@@ -292,7 +292,10 @@ recovers automatically once it scrolls far enough away and back (cache eviction
 clears its error), or explicitly through `Reload()`, which discards every cached
 row and re-fetches the current window from scratch. Requests coalesce: an
 already-cached or already-pending index is never re-requested, and at most four
-ranges fetch concurrently.
+ranges fetch concurrently. Detaching a live table cancels pending ranges and
+publishes the resulting load-state transition; disposal cancels and tears down
+the controller without publishing `LoadStateChanged` into a surface that may
+already be disposing sibling subscribers.
 
 Sorting a progressive table is entirely source-side: clicking a sortable header
 still cycles and commits `SortColumnIndex`/`SortDirection` the same way `SortBy`
