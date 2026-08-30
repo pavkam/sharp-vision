@@ -241,7 +241,7 @@ internal static class ChartRenderer
         var width = context.Chart.Control.MeasureCells(value.AsSpan());
         var x = marker.X.Add(1);
 
-        if (x + width > plot.Right)
+        if (x.Add(width) > plot.Right)
         {
             x = marker.X - width;
         }

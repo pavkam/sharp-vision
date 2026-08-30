@@ -111,7 +111,14 @@ public sealed class ComboBox: InputBase
                 SetSelectedIndex(-1);
             }
 
-            NotifyPropertyChanged(nameof(Items), InvalidationImpact.Measure);
+            // SetSelectedIndex above can run a caller's SelectionChanged handler synchronously,
+            // and that handler may dispose this control - skip the trailing notification rather
+            // than let NotifyPropertyChanged's VerifyMutable throw ObjectDisposedException out of
+            // an otherwise-completed assignment.
+            if (!IsDisposed)
+            {
+                NotifyPropertyChanged(nameof(Items), InvalidationImpact.Measure);
+            }
         }
     }
 
@@ -568,6 +575,14 @@ public sealed class ComboBox: InputBase
 
         if (!openingSnapshotIsCurrent)
         {
+            // Neither call below can run caller code (they don't touch the public
+            // SelectedIndex/SelectionChanged surface), but the guard is kept symmetric with the
+            // branch below so this method never depends on which path proves that in the future.
+            if (IsDisposed)
+            {
+                return;
+            }
+
             SynchronizeListProvisionalSelection(_selectedIndex);
             _list.SetProvisionalCurrentIndex(_selectedIndex);
             return;

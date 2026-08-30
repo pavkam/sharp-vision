@@ -95,7 +95,7 @@ internal static class BarChartRenderer
                     }
 
                     left = point.Value >= 0 ? zero : zero - ((eighths + 7) / 8);
-                    right = point.Value >= 0 ? zero + ((eighths + 7) / 8) : zero;
+                    right = point.Value >= 0 ? zero.Add((eighths + 7) / 8) : zero;
                     RenderHorizontalValueLabel(
                         context,
                         canvas,
@@ -410,7 +410,7 @@ internal static class BarChartRenderer
         // to lose its label entirely, which hid exactly the extreme value a reader most wants.
         // Clamping draws the label over the bar's tail instead.
         var x = Math.Clamp(
-            point.Value < 0 ? left - width - 1 : right + 1,
+            point.Value < 0 ? left - width - 1 : right.Add(1),
             plot.X,
             plot.Right - width);
 

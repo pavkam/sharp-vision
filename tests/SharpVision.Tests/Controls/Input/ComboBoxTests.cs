@@ -880,8 +880,12 @@ public sealed class ComboBoxTests
 
     /// <summary>Verifies cancelling a session whose committed selection changed while it was open
     /// (so the opening snapshot is stale relative to the live value) re-syncs the popup to that
-    /// live selection instead of reverting to the opening one, and stays safe with a
-    /// SelectionChanged subscriber wired to dispose the control still attached through the close.</summary>
+    /// live selection instead of reverting to the opening one. A SelectionChanged subscriber that
+    /// disposes the control is still attached through the close, but this specific stale-snapshot
+    /// path never re-commits SelectedIndex, so the subscriber is not expected to fire here - the
+    /// disposal-during-cancel hazard itself is covered by
+    /// <see cref="Dispatch_WhenClosedNavigationSelectionChangedDisposesControl_DoesNotThrow"/>,
+    /// the one path that can actually reach it.</summary>
     [Fact]
     public void Close_WhenCancelledAfterSelectionChangedWhileOpen_SyncsToLiveSelectionAndDoesNotThrow()
     {
@@ -897,7 +901,8 @@ public sealed class ComboBoxTests
         new LayoutEngine().Layout(box, new Size(16, 8));
         var list = box.GetDropDownList();
         box.SelectedIndex = 3;
-        box.SelectionChanged += (_, _) => box.Dispose();
+        var selectionChangedRaised = 0;
+        box.SelectionChanged += (_, _) => selectionChangedRaised++;
 
         _ = Should.NotThrow(() => Router.Route(box, Events.Key, Key(Code.Escape)));
 
@@ -905,7 +910,24 @@ public sealed class ComboBoxTests
         box.IsOpen.ShouldBeFalse();
         box.SelectedIndex.ShouldBe(3);
         list.SelectedIndex.ShouldBe(3);
+        selectionChangedRaised.ShouldBe(0);
         closed.ShouldBe(1);
+    }
+
+    /// <summary>Verifies the ComboBox.Items setter tolerates a SelectionChanged subscriber that
+    /// disposes the control during the setter's own auto-select-0 fallback: the trailing property
+    /// notification must not throw ObjectDisposedException out of an otherwise-completed
+    /// assignment.</summary>
+    [Fact]
+    public void Items_WhenSelectionChangedDisposesControlDuringAutoSelect_DoesNotThrow()
+    {
+        var box = new ComboBox();
+        box.SelectionChanged += (_, _) => box.Dispose();
+
+        _ = Should.NotThrow(() => box.Items = ["Zero", "One"]);
+
+        box.IsDisposed.ShouldBeTrue();
+        box.SelectedIndex.ShouldBe(0);
     }
 
     /// <summary>Verifies an empty session recognizes neither navigation nor Enter acceptance and
