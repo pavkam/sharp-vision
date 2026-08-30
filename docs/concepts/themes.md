@@ -218,11 +218,10 @@ custom theme may author an explicit hover contribution on any of the six
 sections that wants one.
 
 Every bundled `window` style uses `windowSurface` for its normal background and
-`windowText` for its foreground. `windowSurface` is raised away from the
-application `window` background, so a `Window`, `Dialog`, `MessageBox`, or file
-dialog remains visually distinct from the plane beneath it without requiring a
-local style. The bundled values follow each palette's existing raised-surface
-tier.
+`windowText` for its foreground. `windowSurface` contrasts with the application
+`window` background, so a `Window`, `Dialog`, `MessageBox`, or file dialog
+remains visually distinct from the plane beneath it without requiring a local
+style. The bundled values follow each palette's existing surface tier.
 
 `popup` and `tooltip` continue to use the `window`/`windowText` pair, and both
 are framed with an all-side border for visual containment over whatever sits
@@ -288,13 +287,15 @@ code-owned `complete` logic (semantic colors it resolves directly, such as
 The bundled `turbo-vision` theme is sourced from Turbo Vision's published
 `cpAppColor` BIOS palette. Its sixteen palette entries use the canonical CGA/VGA
 RGB values without interpolation. It combines the original blue application
-plane, gray raised surfaces, cyan selection, green press feedback, red access
-keys, black shadows, and line glyphs with semantic relief. Its `ReliefHighlight`
-and `ReliefShade` roles are exact white and black: Window, Popup, and Tooltip
-use raised edges, while Input and Container use the inverse sunken mapping.
-Buttons are raised at rest and reverse that same pair while pressed. Load it
-with `ThemeCatalog.Load("turbo-vision")`; the Showcase theme picker discovers it
-from the same catalog automatically.
+plane, gray contrasting surfaces, cyan selection, green press feedback, red
+access keys, black shadows, and line glyphs with semantic relief. Its
+`ReliefHighlight` and `ReliefShade` roles are exact white and black. Among
+built-in styles, only `ContainerStyle` opts into relief, using the sunken
+mapping; Input, Button, Window, Popup, and Tooltip borders remain flat in every
+state. The other bundled themes keep every built-in border flat.
+Application-authored complete borders may still opt into `Raised` or `Sunken`
+relief explicitly. Load the theme with `ThemeCatalog.Load("turbo-vision")`; the
+Showcase theme picker discovers it from the same catalog automatically.
 
 ### Glyph families
 

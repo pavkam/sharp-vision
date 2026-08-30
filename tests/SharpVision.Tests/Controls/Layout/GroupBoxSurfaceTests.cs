@@ -113,7 +113,7 @@ public sealed class GroupBoxSurfaceTests
             Height = Length.Cells(3)
         };
         group.SetTheme(ThemeCatalog.Dark);
-        var borderColor = ThemeCatalog.Dark.ResolveColor(SemanticColor.ReliefShade);
+        var borderColor = ThemeCatalog.Dark.ResolveColor(SemanticColor.ControlBorder);
         var size = new Size(10, 3);
         new LayoutEngine().Layout(group, size);
         using Frame frame = new(size);

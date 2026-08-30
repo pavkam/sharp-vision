@@ -114,10 +114,10 @@ internal sealed class BorderPane: CompositeControlBase
             new DocSection(
                 "◩",
                 "Raised and sunken edges",
-                "BorderRelief preserves semantic depth while the active theme owns the highlight and shade colors.",
+                "Application-authored BorderRelief preserves semantic depth while the active theme owns the highlight and shade colors.",
                 new DocExample(
-                    "Turbo Vision relief",
-                    "Raised highlights top and left; Sunken reverses the active theme's highlight and shade pair. Horizontal edges own corner colors.",
+                    "Explicit container relief",
+                    "Raised highlights top and left; Sunken reverses the active theme's highlight and shade pair. Turbo Vision is the only bundled theme that applies relief automatically, and only to containers.",
                     relief,
                     "control.Border = new Border(BorderSide.All, BorderGlyphStyle.Light, SemanticColor.ControlBorder, BorderRelief.Sunken, Color.Transparent, SemanticDecoration.Border);")));
     }

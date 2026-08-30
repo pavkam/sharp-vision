@@ -152,13 +152,12 @@ public sealed class CuratedThemesTests
         }
     }
 
-    /// <summary>Verifies the Turbo Vision theme retains the canonical BIOS palette roles and
-    /// semantic relief pair and raised/sunken intent shown by its original window chrome.</summary>
+    /// <summary>Verifies the Turbo Vision theme retains the canonical BIOS palette roles while
+    /// limiting semantic relief to container chrome.</summary>
     [Fact]
     public void TurboVision_WhenLoaded_UsesCanonicalPaletteAndReliefChrome()
     {
         var theme = ThemeCatalog.Load("turbo-vision");
-        var raised = theme.Window.Normal.Border;
         var sunken = theme.Container.Normal.Border;
 
         theme.ResolveColor(SemanticColor.Window).ShouldBe(Color.FromHex("#0000aa"));
@@ -168,12 +167,45 @@ public sealed class CuratedThemesTests
         theme.ResolveColor(SemanticColor.Hotkey).ShouldBe(Color.FromHex("#aa0000"));
         theme.ResolveColor(SemanticColor.ReliefHighlight).ShouldBe(Color.FromHex("#ffffff"));
         theme.ResolveColor(SemanticColor.ReliefShade).ShouldBe(Color.FromHex("#000000"));
-        raised.Relief.ShouldBe(BorderRelief.Raised);
         sunken.Relief.ShouldBe(BorderRelief.Sunken);
-        theme.Input.Resolve(VisualState.Focused).Border.Relief.ShouldBe(BorderRelief.Sunken);
-        theme.Input.Resolve(VisualState.Disabled).Border.Relief.ShouldBe(BorderRelief.Sunken);
-        theme.Window.Resolve(VisualState.FocusWithin).Border.Relief.ShouldBe(BorderRelief.Raised);
+        theme.Input.Resolve(VisualState.Focused).Border.Relief.ShouldBe(BorderRelief.Flat);
+        theme.Input.Resolve(VisualState.Disabled).Border.Relief.ShouldBe(BorderRelief.Flat);
+        theme.Window.Resolve(VisualState.FocusWithin).Border.Relief.ShouldBe(BorderRelief.Flat);
         theme.Resolve(theme.Window.Normal.Shadow.Foreground).ShouldBe(Color.FromHex("#000000"));
+    }
+
+    /// <summary>Verifies bundled themes never apply relief to interactive or floating chrome,
+    /// and only Turbo Vision applies it to containers.</summary>
+    [Fact]
+    public void EveryTheme_WhenBuiltInChromeResolves_UsesReliefOnlyForTurboVisionContainers()
+    {
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            var expectedContainerRelief = slug == "turbo-vision"
+                ? BorderRelief.Sunken
+                : BorderRelief.Flat;
+            using var button = new Button();
+            button.SetTheme(theme);
+
+            theme.Container.Normal.Border.Relief.ShouldBe(expectedContainerRelief, slug);
+
+            foreach (var state in new[]
+                     {
+                         VisualState.Normal,
+                         VisualState.IsPointerOver,
+                         VisualState.Focused,
+                         VisualState.Pressed,
+                         VisualState.Disabled
+                     })
+            {
+                theme.Input.Resolve(state).Border.Relief.ShouldBe(BorderRelief.Flat, $"{slug} input {state}");
+                theme.Window.Resolve(state).Border.Relief.ShouldBe(BorderRelief.Flat, $"{slug} window {state}");
+                theme.Popup.Resolve(state).Border.Relief.ShouldBe(BorderRelief.Flat, $"{slug} popup {state}");
+                theme.Tooltip.Resolve(state).Border.Relief.ShouldBe(BorderRelief.Flat, $"{slug} tooltip {state}");
+                button.GetActualBorder(state).Relief.ShouldBe(BorderRelief.Flat, $"{slug} button {state}");
+            }
+        }
     }
 
     /// <summary>Verifies every embedded theme publishes RGB colors in control state styles.</summary>

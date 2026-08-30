@@ -30,7 +30,7 @@ public record PopupStyle: ControlStyle
             BorderSide.All,
             BorderGlyphStyle.Rounded,
             Color.Default,
-            BorderRelief.Raised,
+            BorderRelief.Flat,
             Color.Transparent,
             TerminalAttributes.None),
         NoShadow);

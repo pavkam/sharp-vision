@@ -123,8 +123,7 @@
         },
         "border": {
           "sides": "all",
-          "glyphStyle": "light",
-          "relief": "sunken"
+          "glyphStyle": "light"
         }
       },
       "pointerOver": {
@@ -190,8 +189,7 @@
         },
         "border": {
           "sides": "all",
-          "glyphStyle": "paired",
-          "relief": "raised"
+          "glyphStyle": "paired"
         },
         "shadow": {
           "visible": true,
@@ -216,8 +214,7 @@
         },
         "border": {
           "sides": "all",
-          "glyphStyle": "paired",
-          "relief": "raised"
+          "glyphStyle": "paired"
         }
       }
     },
@@ -229,8 +226,7 @@
         },
         "border": {
           "sides": "all",
-          "glyphStyle": "light",
-          "relief": "raised"
+          "glyphStyle": "light"
         }
       }
     }

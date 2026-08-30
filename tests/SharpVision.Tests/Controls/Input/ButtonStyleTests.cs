@@ -14,7 +14,7 @@ public sealed class ButtonStyleTests
     public void Standard_ResolvesThemeInputStyleDefaultsWithOneCellPadding()
     {
         ButtonStyle.Standard.Face.ShouldBe(InputStyle.Default.Face);
-        ButtonStyle.Standard.Border.ShouldBe(InputStyle.Default.Border with { Relief = BorderRelief.Raised });
+        ButtonStyle.Standard.Border.ShouldBe(InputStyle.Default.Border);
         ButtonStyle.Standard.Shadow.ShouldBe(InputStyle.Default.Shadow);
         ButtonStyle.Standard.Padding.ShouldBe(new Thickness(horizontal: 1, vertical: 0));
     }

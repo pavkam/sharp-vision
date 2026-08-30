@@ -82,7 +82,7 @@ public record WindowStyle: ControlStyle
             BorderSide.All,
             BorderGlyphStyle.Paired,
             Color.Default,
-            BorderRelief.Raised,
+            BorderRelief.Flat,
             Color.Transparent,
             TerminalAttributes.None),
         new Shadow(true, ShadowMode.Composite, new Point(2, 1), ControlGlyphs.Chrome.Shadow.Value, Color.Default, Color.Transparent, TerminalAttributes.Dim),

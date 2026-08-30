@@ -32,12 +32,7 @@ public sealed record ButtonStyle: InputStyle
     private static ButtonStyle Complete(InputStyle input, VisualState state, Theme theme) =>
         new(
             input.Face,
-            input.Border with
-            {
-                Relief = (state & VisualState.Pressed) != 0
-                    ? BorderRelief.Sunken
-                    : BorderRelief.Raised
-            },
+            input.Border,
             input.Shadow,
             new Thickness(horizontal: 1, vertical: 0))
         {

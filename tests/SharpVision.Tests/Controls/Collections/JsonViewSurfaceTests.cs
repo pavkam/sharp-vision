@@ -585,15 +585,12 @@ public sealed class JsonViewSurfaceTests
         var theme = view.Theme.ShouldNotBeNull();
         view.ActualBorder.Foreground.Literal.ShouldBe(ThemeColorHelper.Border(theme));
 
-        // ContainerStyle's baseline Relief is Sunken and never changes by state, so the unfocused
-        // border still shows the two-tone highlight/shade bezel rather than a flat color.
-        var highlight = theme.ResolveColor(SemanticColor.ReliefHighlight);
-        var shade = theme.ResolveColor(SemanticColor.ReliefShade);
+        // Default Dark keeps built-in container borders flat.
         var normalStyles = view.ResolveBorderStyles(view.GetAppearanceState());
-        normalStyles.Top.Foreground.ShouldBe(shade);
-        normalStyles.Right.Foreground.ShouldBe(highlight);
-        normalStyles.Bottom.Foreground.ShouldBe(highlight);
-        normalStyles.Left.Foreground.ShouldBe(shade);
+        normalStyles.Top.Foreground.ShouldBe(ThemeColorHelper.Border(theme));
+        normalStyles.Right.Foreground.ShouldBe(ThemeColorHelper.Border(theme));
+        normalStyles.Bottom.Foreground.ShouldBe(ThemeColorHelper.Border(theme));
+        normalStyles.Left.Foreground.ShouldBe(ThemeColorHelper.Border(theme));
 
         // Act
         await surface.Keyboard.PressAsync(Code.Tab);
@@ -603,8 +600,7 @@ public sealed class JsonViewSurfaceTests
         view.ActualBorder.Foreground.Literal.ShouldBe(ThemeColorHelper.FocusedBorder(theme));
 
         // Assert - every physical edge, not just the logical value, paints the authored focused
-        // color: ContainerStyle's Sunken baseline relief must not substitute highlight/shade over
-        // this state's explicitly authored border foreground.
+        // color.
         var focusedStyles = view.ResolveBorderStyles(view.GetAppearanceState());
         focusedStyles.Top.Foreground.ShouldBe(ThemeColorHelper.FocusedBorder(theme));
         focusedStyles.Right.Foreground.ShouldBe(ThemeColorHelper.FocusedBorder(theme));

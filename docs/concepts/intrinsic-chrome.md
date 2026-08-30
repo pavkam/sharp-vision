@@ -74,10 +74,9 @@ edge exactly like `BorderRelief.Flat`, whatever the baseline `Relief` is.
 overlaid one - actually changes `Border.Foreground` away from the control's
 local border override when one is set, or otherwise away from the resolved
 `Normal` border; a state whose delta merely restates that color does not count.
-The one exception is a style whose own per-state completion already switches
-`Border.Relief` itself - currently only `Button`, which swaps `Raised`/`Sunken`
-while pressed - where that control's per-state foreground is never treated as
-authored for this purpose, so its Relief switch keeps working undisturbed.
+Built-in Button states keep the resolved baseline relief unchanged. A locally
+authored style can still assign a different complete border, including relief,
+to any state.
 
 ## Shadow API
 
