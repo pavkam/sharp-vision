@@ -65,6 +65,25 @@ public sealed record ConsoleRunOptions
     /// <summary>Gets whether Kitty OSC 5522 clipboard paste notifications are enabled. Default is false.</summary>
     public bool ClipboardPasteEvents { get; init; }
 
+    /// <summary>Gets the positive finite deadline for one clipboard operation. Default is 30 seconds.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not positive and finite.</exception>
+    public TimeSpan ClipboardOperationTimeout
+    {
+        get;
+        init
+        {
+            if (value <= TimeSpan.Zero || value == Timeout.InfiniteTimeSpan)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    value,
+                    "The clipboard operation timeout must be positive and finite.");
+            }
+
+            field = value;
+        }
+    } = TimeSpan.FromSeconds(30);
+
     /// <summary>Gets the Kitty keyboard flags to push when supported, or null to disable.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown bits.</exception>
     /// <exception cref="ArgumentException">Associated text is set without all-key reporting.</exception>
@@ -272,6 +291,7 @@ public sealed record ConsoleRunOptions
             Focus = FocusReporting,
             Paste = BracketedPaste,
             ClipboardPasteEvents = ClipboardPasteEvents,
+            ClipboardOperationTimeout = ClipboardOperationTimeout,
             Tracking = MouseTracking,
             Coordinates = MouseCoordinates,
             Keyboard = KeyboardEnhancement,

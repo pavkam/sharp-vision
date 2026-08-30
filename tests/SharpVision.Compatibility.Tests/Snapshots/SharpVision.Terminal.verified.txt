@@ -1798,6 +1798,7 @@ namespace SharpVision.Terminal.Runtime
         public bool AlternateScreen { get; init; }
         public SharpVision.Terminal.Capabilities.TerminalCapabilities Capabilities { get; init; }
         public System.TimeSpan CleanupTimeout { get; init; }
+        public System.TimeSpan ClipboardOperationTimeout { get; init; }
         public bool ClipboardPasteEvents { get; init; }
         public SharpVision.Terminal.Protocols.MouseCoordinates Coordinates { get; init; }
         public SharpVision.Terminal.Runtime.DiagnosticPromotion DiagnosticPromotions { get; init; }

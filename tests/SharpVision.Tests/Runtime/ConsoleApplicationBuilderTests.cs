@@ -18,11 +18,13 @@ public sealed class ConsoleApplicationBuilderTests
             .UseAlternateScreen(false)
             .WithoutMouse()
             .UseClipboardPasteEvents()
+            .WithClipboardOperationTimeout(TimeSpan.FromSeconds(45))
             .TreatControlCAsInput();
 
         builder.Options.AlternateScreen.ShouldBeFalse();
         builder.Options.MouseTracking.ShouldBeNull();
         builder.Options.ClipboardPasteEvents.ShouldBeTrue();
+        builder.Options.ClipboardOperationTimeout.ShouldBe(TimeSpan.FromSeconds(45));
         builder.Options.TreatControlCAsInput.ShouldBeTrue();
     }
 

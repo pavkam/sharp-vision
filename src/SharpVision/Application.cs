@@ -431,21 +431,23 @@ public sealed class Application:
     /// <summary>Gets the immutable Unicode cell policy used by the active tree and frame.</summary>
     public UnicodePolicy CellPolicy { get; private set; }
 
-    /// <summary>Gets the configured query limits bounding one outstanding clipboard query.</summary>
+    /// <summary>Gets the configured limits bounding one outstanding clipboard operation.</summary>
     /// <remarks>
-    /// Honors a caller-supplied <c>QueryLimits</c> from the negotiation options rather than always
-    /// using the default, so a host that widened its query budget for a slow terminal - or a test
-    /// that needs the deadline out of the way - gets the limits it configured.
+    /// Preserves non-time limits from startup negotiation while replacing its machine-scale query
+    /// deadline with the clipboard-specific human-interaction deadline.
     /// </remarks>
-    internal QueryLimits ClipboardQueryLimits => _options.Negotiation?.Limits ?? QueryLimits.Default;
+    internal QueryLimits ClipboardQueryLimits =>
+        (_options.Negotiation?.Limits ?? QueryLimits.Default) with
+        {
+            QueryTimeout = _options.ClipboardOperationTimeout
+        };
 
     /// <summary>Gets the deadline applied to one outstanding clipboard query.</summary>
     /// <remarks>
-    /// Honors a caller-supplied <c>QueryLimits</c> from the negotiation options rather than always
-    /// using the default, so a host that widened its query budget for a slow terminal - or a test
-    /// that needs the deadline out of the way - gets the timeout it configured.
+    /// Clipboard reads can display an interactive terminal permission prompt, so this deadline is
+    /// intentionally independent of the shorter startup capability-query deadline.
     /// </remarks>
-    internal TimeSpan ClipboardQueryTimeout => ClipboardQueryLimits.QueryTimeout;
+    internal TimeSpan ClipboardQueryTimeout => _options.ClipboardOperationTimeout;
 
     /// <summary>Gets the configured OSC 52 and Kitty OSC 5522 clipboard transfer limits.</summary>
     /// <remarks>

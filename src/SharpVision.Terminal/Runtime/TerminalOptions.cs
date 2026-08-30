@@ -114,6 +114,26 @@ public sealed record TerminalOptions
     /// <summary>Gets whether to enable proven Kitty OSC 5522 clipboard paste notifications.</summary>
     public bool ClipboardPasteEvents { get; init; }
 
+    /// <summary>Gets the positive finite deadline for one clipboard read or acknowledged write.</summary>
+    /// <remarks>The default is 30 seconds so an interactive terminal permission prompt can be answered.</remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not positive and finite.</exception>
+    public TimeSpan ClipboardOperationTimeout
+    {
+        get;
+        init
+        {
+            if (value <= TimeSpan.Zero || value == Timeout.InfiniteTimeSpan)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    value,
+                    "The clipboard operation timeout must be positive and finite.");
+            }
+
+            field = value;
+        }
+    } = TimeSpan.FromSeconds(30);
+
     /// <summary>Gets the optional proven mouse tracking level.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     public MouseTracking? Tracking

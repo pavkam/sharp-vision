@@ -157,6 +157,17 @@ public sealed class ConsoleApplicationBuilder
         return this;
     }
 
+    /// <summary>Sets the deadline for one clipboard read or acknowledged write.</summary>
+    /// <param name="timeout">The positive finite clipboard-operation timeout.</param>
+    /// <returns>This builder.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="timeout"/> is not positive and finite.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
+    public ConsoleApplicationBuilder WithClipboardOperationTimeout(TimeSpan timeout)
+    {
+        Options = Options with { ClipboardOperationTimeout = timeout };
+        return this;
+    }
+
     /// <summary>Sets the Kitty keyboard enhancement flags, or null to disable.</summary>
     /// <param name="enhancement">The enhancement flags, or null to disable.</param>
     /// <returns>This builder.</returns>

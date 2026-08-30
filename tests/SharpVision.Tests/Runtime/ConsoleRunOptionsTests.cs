@@ -25,6 +25,7 @@ public sealed class ConsoleRunOptionsTests
         options.BracketedPaste.ShouldBeTrue();
         options.FocusReporting.ShouldBeTrue();
         options.ClipboardPasteEvents.ShouldBeFalse();
+        options.ClipboardOperationTimeout.ShouldBe(TimeSpan.FromSeconds(30));
         options.TreatControlCAsInput.ShouldBeFalse();
         options.DiagnosticPromotions.ShouldBe(DiagnosticPromotion.None);
     }
@@ -127,6 +128,33 @@ public sealed class ConsoleRunOptionsTests
         var terminal = options.ToTerminalOptions(Ansi());
 
         terminal.ClipboardPasteEvents.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies the human-interaction deadline reaches terminal clipboard services
+    /// independently of startup negotiation limits.</summary>
+    [Fact]
+    public void ToTerminalOptions_WhenClipboardOperationTimeoutConfigured_PreservesDeadline()
+    {
+        var timeout = TimeSpan.FromSeconds(45);
+        var options = new ConsoleRunOptions { ClipboardOperationTimeout = timeout };
+
+        var terminal = options.ToTerminalOptions(Ansi());
+
+        terminal.ClipboardOperationTimeout.ShouldBe(timeout);
+    }
+
+    /// <summary>Verifies an unbounded or non-positive clipboard deadline is rejected before the
+    /// console is opened.</summary>
+    [Fact]
+    public void ClipboardOperationTimeout_WhenValueIsNotPositiveAndFinite_ThrowsArgumentOutOfRangeException()
+    {
+        var zero = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new ConsoleRunOptions { ClipboardOperationTimeout = TimeSpan.Zero });
+        var infinite = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new ConsoleRunOptions { ClipboardOperationTimeout = Timeout.InfiniteTimeSpan });
+
+        zero.ParamName.ShouldBe("value");
+        infinite.ParamName.ShouldBe("value");
     }
 
     /// <summary>Verifies opting into Ctrl+C as input maps to host control-key capture.</summary>

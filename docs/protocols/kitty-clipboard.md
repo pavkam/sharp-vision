@@ -34,6 +34,14 @@ Transactions enforce documented ordering, total-size, metadata-size, timeout,
 and concurrency limits. Invalid Base64 or ordering aborts only that transaction
 and preserves outer parsing.
 
+Application clipboard operations use the positive finite
+`TerminalOptions.ClipboardOperationTimeout`, which defaults to 30 seconds. This
+deadline is intentionally independent of the 750 ms startup capability-query
+deadline because Kitty asks the user for permission before a clipboard read; the
+correlated transaction remains live while that prompt is answered. Console hosts
+configure the same value through `ConsoleRunOptions` or
+`ConsoleApplicationBuilder.WithClipboardOperationTimeout(TimeSpan)`.
+
 `Kitty.Clipboard.KittyClipboardPacket` validates colon-separated metadata, all
 documented statuses, Base64 MIME/password/name values, optional primary
 location, and correlation IDs. Unknown metadata remains observable by key name

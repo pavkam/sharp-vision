@@ -59,4 +59,18 @@ public sealed class TerminalOptionsTests
 
         exception.ParamName.ShouldBe("value");
     }
+
+    /// <summary>Verifies an unbounded or non-positive clipboard deadline is rejected at the
+    /// terminal-session policy boundary.</summary>
+    [Fact]
+    public void ClipboardOperationTimeout_WhenValueIsNotPositiveAndFinite_ThrowsArgumentOutOfRangeException()
+    {
+        var zero = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new TerminalOptions { ClipboardOperationTimeout = TimeSpan.Zero });
+        var infinite = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new TerminalOptions { ClipboardOperationTimeout = Timeout.InfiniteTimeSpan });
+
+        zero.ParamName.ShouldBe("value");
+        infinite.ParamName.ShouldBe("value");
+    }
 }

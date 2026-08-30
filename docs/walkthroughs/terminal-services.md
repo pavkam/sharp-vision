@@ -57,6 +57,11 @@ defines no acknowledgement for a write, so there is no outcome to report. Check
 the Kitty clipboard capability before making a "copied" confirmation depend on
 the event.
 
+Clipboard reads may display a terminal-owned permission prompt. Their 30-second
+default deadline is therefore separate from the shorter startup query timeout;
+customize it with `ConsoleRunOptions.ClipboardOperationTimeout` or
+`ConsoleApplicationBuilder.WithClipboardOperationTimeout(TimeSpan)`.
+
 Terminal-initiated Kitty paste offers are a separate opt-in surface. Set
 `ConsoleRunOptions.ClipboardPasteEvents` or call `UseClipboardPasteEvents()` on
 the console builder. When authoritative mode 5522 support and the active route

@@ -111,6 +111,7 @@
         public SharpVision.ConsoleApplicationBuilder UseTerminalProfile(SharpVision.Terminal.Capabilities.TerminalProfile profile) { }
         public SharpVision.ConsoleApplicationBuilder UseTheme(SharpVision.Styling.Theme theme) { }
         public SharpVision.ConsoleApplicationBuilder WithCleanupTimeout(System.TimeSpan timeout) { }
+        public SharpVision.ConsoleApplicationBuilder WithClipboardOperationTimeout(System.TimeSpan timeout) { }
         public SharpVision.ConsoleApplicationBuilder WithReadBufferSize(int size) { }
         public SharpVision.ConsoleApplicationBuilder WithRedirectedMessage(string? message) { }
         public SharpVision.ConsoleApplicationBuilder WithResizeInterval(System.TimeSpan interval) { }
@@ -126,6 +127,7 @@
         public bool BracketedPaste { get; init; }
         public SharpVision.Terminal.Capabilities.TerminalCapabilities? Capabilities { get; init; }
         public System.TimeSpan CleanupTimeout { get; init; }
+        public System.TimeSpan ClipboardOperationTimeout { get; init; }
         public bool ClipboardPasteEvents { get; init; }
         public SharpVision.Terminal.Capabilities.ColorDepth? ColorDepth { get; init; }
         public SharpVision.Terminal.Runtime.DiagnosticPromotion DiagnosticPromotions { get; init; }

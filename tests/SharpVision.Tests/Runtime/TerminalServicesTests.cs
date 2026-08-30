@@ -418,6 +418,50 @@ public sealed class TerminalServicesTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies the default clipboard deadline leaves enough time for a user to approve
+    /// Kitty's required interactive read-permission prompt.</summary>
+    [Fact]
+    public async Task Clipboard_WhenKittyReadWaitsForPermission_RemainsPendingPastCapabilityQueryTimeoutAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported }
+        };
+        var reply = new TaskCompletionSource<KittyClipboardReplyEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var clock = new ManualTimeProvider();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            options,
+            timeProvider: clock);
+        application.Terminal.Clipboard.KittyClipboardReplyReceived += (_, args) => reply.TrySetResult(args);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.Clipboard.Request();
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+        clock.Advance(QueryLimits.Default.QueryTimeout);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        reply.Task.IsCompleted.ShouldBeFalse();
+
+        terminal.QueueInput("\u001b]5522;type=read:status=OK:id=sv1\u001b\\"u8);
+        terminal.QueueInput(
+            "\u001b]5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==:id=sv1;aGVsbG8=\u001b\\"u8);
+        terminal.QueueInput("\u001b]5522;type=read:status=DONE:id=sv1\u001b\\"u8);
+
+        var args = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        args.IsSucceeded.ShouldBeTrue();
+        Encoding.UTF8.GetString(args.KittyResult.ShouldNotBeNull().Items.ShouldHaveSingleItem().Data.Span)
+            .ShouldBe("hello");
+        args.KittyResult.Dispose();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies an id-less Kitty paste notification publishes its owned MIME inventory
     /// and one-time password separately from application-issued clipboard replies.</summary>
     [Fact]
@@ -577,7 +621,7 @@ public sealed class TerminalServicesTests
         clock.ActiveTimerCount.ShouldBe(baselineTimers + 1);
 
         clock.AdjustUtc(TimeSpan.FromSeconds(-1));
-        clock.Advance(QueryLimits.Default.QueryTimeout);
+        clock.Advance(options.ClipboardOperationTimeout);
         await FlushAsync(application);
         clock.ActiveTimerCount.ShouldBe(baselineTimers + 1);
 
@@ -756,7 +800,7 @@ public sealed class TerminalServicesTests
 
         application.Terminal.Clipboard.Request();
         await requestWritten.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        clock.Advance(QueryLimits.Default.QueryTimeout);
+        clock.Advance(options.ClipboardOperationTimeout);
 
         var args = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         args.IsSucceeded.ShouldBeFalse();
@@ -766,13 +810,11 @@ public sealed class TerminalServicesTests
     }
 
     /// <summary>
-    /// Verifies an unanswered Kitty request's deadline honors a configured negotiation
-    /// <see cref="QueryLimits.QueryTimeout"/> distinct from the hardcoded default: advancing the
-    /// clock to exactly the configured timeout - short of the hardcoded default - still raises the
-    /// failed reply, proving the transaction's deadline was built from the configured limits.
+    /// Verifies an unanswered Kitty request honors the clipboard-specific deadline independently
+    /// of the shorter startup capability-query deadline.
     /// </summary>
     [Fact]
-    public async Task Clipboard_WhenKittyRequestTimesOutUnderConfiguredLimit_RaisesFailedReplyAsync()
+    public async Task Clipboard_WhenKittyRequestTimesOutUnderConfiguredClipboardDeadline_RaisesFailedReplyAsync()
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
@@ -781,9 +823,10 @@ public sealed class TerminalServicesTests
         var options = TerminalOptions.Minimal with
         {
             Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported },
+            ClipboardOperationTimeout = configuredTimeout,
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
-                limits: QueryLimits.Default with { QueryTimeout = configuredTimeout })
+                limits: QueryLimits.Default with { QueryTimeout = TimeSpan.FromMilliseconds(25) })
         };
         var reply = new TaskCompletionSource<KittyClipboardReplyEventArgs>(
             TaskCreationOptions.RunContinuationsAsynchronously);
@@ -824,15 +867,14 @@ public sealed class TerminalServicesTests
         // clock-owned state rather than relying on scheduler timing.
         for (var attempt = 0; attempt < 10 && !starting.IsCompleted; attempt++)
         {
-            clock.Advance(configuredTimeout);
+            clock.Advance(QueryLimits.Default.QueryTimeout);
             await Task.Yield();
         }
         await starting.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         application.Terminal.Clipboard.Request();
         await requestWritten.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        // Configured timeout is well short of QueryLimits.Default.QueryTimeout (750ms); advancing to
-        // exactly it only raises the reply if the deadline was built from the configured limits.
+        // The clipboard deadline is independent of the 25 ms startup query deadline configured above.
         clock.Advance(configuredTimeout);
 
         var args = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
@@ -986,7 +1028,7 @@ public sealed class TerminalServicesTests
         // The deadline is armed inside the posted callback, so the write reaching the transport is
         // not by itself proof the timer exists; round-trip the dispatcher before advancing.
         await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
-        clock.Advance(QueryLimits.Default.QueryTimeout);
+        clock.Advance(options.ClipboardOperationTimeout);
 
         // The same shape the Kitty TimedOut arm reports: no data, no terminal-reported failure.
         var args = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
@@ -1120,7 +1162,7 @@ public sealed class TerminalServicesTests
         await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
         terminal.QueueInput("]52;c;aGVsbG8=\\"u8);
         _ = await reply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        clock.Advance(QueryLimits.Default.QueryTimeout * 2);
+        clock.Advance(options.ClipboardOperationTimeout * 2);
         await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
 
         replies.Count.ShouldBe(1, "a completed request must not also time out");
@@ -1188,7 +1230,7 @@ public sealed class TerminalServicesTests
         _ = start.SignalAndWait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         await Task.WhenAll(clipboard, primary);
         await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
-        clock.Advance(QueryLimits.Default.QueryTimeout);
+        clock.Advance(options.ClipboardOperationTimeout);
 
         var result = await timeout.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         queryCount.ShouldBe(2);
@@ -1242,7 +1284,7 @@ public sealed class TerminalServicesTests
 
         // The live request's own deadline was disarmed by completing normally, so advancing well
         // past the ordinary query timeout must not raise a second, spurious timeout event.
-        clock.Advance(QueryLimits.Default.QueryTimeout * 2);
+        clock.Advance(options.ClipboardOperationTimeout * 2);
         await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
 
         replies.Count.ShouldBe(1, "the stale reply must be dropped silently, not raise its own event");
@@ -1281,7 +1323,7 @@ public sealed class TerminalServicesTests
 
         application.Terminal.Clipboard.Request(ClipboardSelection.Clipboard);
         await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
-        clock.Advance(QueryLimits.Default.QueryTimeout * 2);
+        clock.Advance(options.ClipboardOperationTimeout * 2);
         var first = await firstReply.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         first.IsSucceeded.ShouldBeFalse("the first request must time out on its own");
 
@@ -1317,7 +1359,7 @@ public sealed class TerminalServicesTests
         await FlushAsync(application);
 
         clock.AdjustUtc(TimeSpan.FromSeconds(-1));
-        clock.Advance(QueryLimits.Default.QueryTimeout);
+        clock.Advance(TerminalOptions.Minimal.ClipboardOperationTimeout);
         await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
         replies.ShouldBeEmpty();
 
