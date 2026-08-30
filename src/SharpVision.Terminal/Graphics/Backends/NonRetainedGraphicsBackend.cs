@@ -98,7 +98,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             allowQuery: true));
         var enableIterm = _enableIterm && (context.Profile is null || GraphicsBackendSelector.Authoritative(
             context.Profile.Capabilities.ItermImages,
-            allowQuery: true));
+            allowQuery: false));
         var encodable = new bool[back.PlacementCount];
         var metricDependent = new bool[back.PlacementCount];
         var sixelImages = new ImageSource?[back.PlacementCount];

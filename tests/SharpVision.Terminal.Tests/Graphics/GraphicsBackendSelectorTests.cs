@@ -49,16 +49,17 @@ public sealed class GraphicsBackendSelectorTests
         backend.ShouldBeNull();
     }
 
-    /// <summary>Verifies authoritative query evidence now authorizes iTerm2 3.5 multipart, the same way it
-    /// already does for Kitty and sixel.</summary>
+    /// <summary>Verifies query evidence cannot authorize iTerm2 3.5 multipart, unlike Kitty and
+    /// sixel: OSC 1337 Capabilities Query's F reply code is ambiguous between FILE and
+    /// FOCUS_REPORTING support, so it can only ever demote iTerm2 to Unsupported, never promote it.</summary>
     [Fact]
-    public void Create_WhenItermEvidenceIsQuery_SelectsNonRetainedBackend()
+    public void Create_WhenItermEvidenceIsQuery_ReturnsFallback()
     {
         var profile = Profile(iterm: new Feature(CapabilitySupport.Supported, Origin.Query));
 
-        using var backend = GraphicsBackendSelector.Create(profile.Capabilities);
+        var backend = GraphicsBackendSelector.Create(profile.Capabilities);
 
-        _ = backend.ShouldBeOfType<NonRetainedGraphicsBackend>();
+        backend.ShouldBeNull();
     }
 
     /// <summary>Verifies environment and database origins cannot authorize Kitty or sixel output.</summary>

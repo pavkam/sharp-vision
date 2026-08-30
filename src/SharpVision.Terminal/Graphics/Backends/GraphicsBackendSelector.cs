@@ -44,7 +44,7 @@ internal static class GraphicsBackendSelector
         }
 
         var sixel = Authoritative(capabilities.Sixel, allowQuery: true);
-        var iterm = Authoritative(capabilities.ItermImages, allowQuery: true);
+        var iterm = Authoritative(capabilities.ItermImages, allowQuery: false);
 
         return sixel || iterm
             ? new NonRetainedGraphicsBackend(sixel, iterm, maxPreparedBytes, route)
