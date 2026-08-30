@@ -1042,12 +1042,12 @@ public readonly struct TerminalCanvas
                     case Edge.Clip:
                         cells = checked(cells + cellWidth);
                         clipped = checked(clipped + 1);
-                        x = checked(x + cellWidth);
+                        x = SaturatingAdd(x, cellWidth);
                         continue;
 
                     case Edge.Wrap:
                         x = _clip.X;
-                        y = checked(y + 1);
+                        y = SaturatingAdd(y, 1);
                         break;
 
                     case Edge.Replace:
@@ -1080,7 +1080,7 @@ public readonly struct TerminalCanvas
             if (!visible)
             {
                 clipped = checked(clipped + 1);
-                x = checked(x + cellWidth);
+                x = SaturatingAdd(x, cellWidth);
                 continue;
             }
 
@@ -1095,7 +1095,7 @@ public readonly struct TerminalCanvas
                 _frame.Write(point, stored, cellWidth, applied);
             }
 
-            x = checked(x + cellWidth);
+            x = SaturatingAdd(x, cellWidth);
         }
 
         return new DrawResult(new Point(x, y), graphemes, cells, clipped, replaced);
@@ -1113,7 +1113,7 @@ public readonly struct TerminalCanvas
             // reaches this method by itself and must not advance the row (canonical carriage
             // return returns to the line origin on the same row).
             x = lineOrigin;
-            y = checked(y + 1);
+            y = SaturatingAdd(y, 1);
         }
         else if (value.Contains('\r'))
         {
@@ -1122,9 +1122,16 @@ public readonly struct TerminalCanvas
         else if (value.Contains('\t'))
         {
             var relative = Math.Max(0, x - lineOrigin);
-            x = checked(x + (_tabWidth - (relative % _tabWidth)));
+            x = SaturatingAdd(x, _tabWidth - (relative % _tabWidth));
         }
     }
+
+    // The cursor keeps advancing past off-frame/off-clip glyphs so DrawResult's Final position
+    // stays a faithful logical end-of-text coordinate; a wrapped or thrown advance would corrupt
+    // that contract instead of just leaving the excess invisible.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int SaturatingAdd(int value, int delta) =>
+        (int) Math.Clamp((long) value + delta, int.MinValue, int.MaxValue);
 
     private int ValidateRune(Rune value, Span<char> buffer)
     {

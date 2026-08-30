@@ -1311,6 +1311,53 @@ public sealed class TerminalCanvasTests
         AssertBlank(frame);
     }
 
+    /// <summary>
+    /// Verifies drawing text whose origin sits at the integer maximum saturates the cursor advance
+    /// instead of throwing, even though every glyph is already off-frame and invisible.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenOriginIsNearIntMaxValue_DoesNotThrowAndClipsWholeText()
+    {
+        using Frame frame = new(new Size(6, 3));
+
+        var result = frame.Canvas.Draw("AB".AsSpan(), new Point(int.MaxValue - 1, 0));
+
+        result.Final.ShouldBe(new Point(int.MaxValue, 0));
+        result.Clipped.ShouldBe(2);
+        AssertBlank(frame);
+    }
+
+    /// <summary>
+    /// Verifies <see cref="Edge.Wrap"/> advancing to a row already at the integer maximum saturates
+    /// instead of throwing, when the wrapped row itself is already off-frame and invisible.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenEdgeWrapRowIsNearIntMaxValue_DoesNotThrow()
+    {
+        using Frame frame = new(new Size(2, 1));
+
+        var result = frame.Canvas.Draw("界".AsSpan(), new Point(1, int.MaxValue), edge: Edge.Wrap);
+
+        result.Final.ShouldBe(new Point(2, int.MaxValue));
+        result.Clipped.ShouldBe(1);
+        AssertBlank(frame);
+    }
+
+    /// <summary>
+    /// Verifies a tab control character advancing the cursor past the integer maximum saturates
+    /// instead of throwing, when the resulting tab stop is already off-frame and invisible.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenTabAdvanceIsNearIntMaxValue_DoesNotThrow()
+    {
+        using Frame frame = new(new Size(2, 1));
+
+        var result = frame.Canvas.Draw("\t".AsSpan(), new Point(int.MaxValue - 2, 0));
+
+        result.Final.ShouldBe(new Point(int.MaxValue, 0));
+        AssertBlank(frame);
+    }
+
     private static void AssertBlank(Frame frame)
     {
         for (var y = 0; y < frame.Size.Height; y++)
