@@ -510,6 +510,21 @@ public sealed class KittyGraphicsWriterTests
         output.WrittenSpan.ToArray().ShouldBe("\u001b_Ga=a,i=7,s=3,q=2\u001b\\"u8.ToArray());
     }
 
+    /// <summary>Verifies a number-addressed animation command emits the 'I' number key, not the
+    /// id-addressed 'i' key, matching every other action.</summary>
+    [Fact]
+    public void Write_WhenNumberAddressedAnimationRuns_EmitsNumberAddressedBytes()
+    {
+        var output = new ArrayBufferWriter<byte>();
+
+        KittyGraphicsWriter.Write(
+            KittyGraphicsCommand.Animate(7, KittyGraphicsAnimationControl.Run).WithImageNumber(),
+            [],
+            output);
+
+        output.WrittenSpan.ToArray().ShouldBe("\u001b_Ga=a,I=7,s=3,q=2\u001b\\"u8.ToArray());
+    }
+
     /// <summary>Verifies a nonzero loop count and suppressed quiet mode both encode exactly.</summary>
     [Fact]
     public void Write_WhenAnimationStopsWithLoopCountAndByteQuiet_EmitsExactBytes()

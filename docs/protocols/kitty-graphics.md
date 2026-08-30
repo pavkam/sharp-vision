@@ -206,12 +206,13 @@ where zero is ignored and a negative value creates a gapless frame. Every
 `TransmitFrame` call creates a new frame; editing an already-transmitted frame
 (the protocol's `r` key) is not exposed.
 
-`Animate` always emits `i` (image identifier) and `s` (the playback sub-action:
-`1` stops, `2` runs but waits for new frames, `3` runs), and emits `v` (the raw
-Kitty loop count — zero is ignored, one plays infinitely, and a larger value
-plays that many loops minus one) only when nonzero. Selecting a specific frame
-as current (the protocol's `a=a` `c` key) is not exposed. `Animate` never
-carries payload data, matching `Place` and `Delete`.
+`Animate` emits `i` (image identifier) or `I` (image number) depending on
+`UsesImageNumber`, exactly like every other action, alongside `s` (the playback
+sub-action: `1` stops, `2` runs but waits for new frames, `3` runs), and emits
+`v` (the raw Kitty loop count — zero is ignored, one plays infinitely, and a
+larger value plays that many loops minus one) only when nonzero. Selecting a
+specific frame as current (the protocol's `a=a` `c` key) is not exposed.
+`Animate` never carries payload data, matching `Place` and `Delete`.
 
 Primary source for frame and animation key semantics: the "Animation" section of
 the
