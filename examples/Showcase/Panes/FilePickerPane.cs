@@ -20,9 +20,11 @@ internal sealed class FilePickerPane: CompositeControlBase
         var status = new Text("Result: no picker opened");
         var single = CreateLauncher(status, "&Open one file", allowMultiple: false, showHidden: false);
         var multiple = CreateLauncher(status, "Open &multiple files", allowMultiple: true, showHidden: true);
+        var directory = CreateDirectoryLauncher(status);
         var save = CreateSaveLauncher(status);
         var localized = CreateLocalizedLauncher(status);
-        var launchers = new DocRow(single, multiple, save, localized) { Spacing = 1 };
+        var localizedSave = CreateLocalizedSaveLauncher(status);
+        var launchers = new DocRow(single, multiple, directory, save, localized, localizedSave) { Spacing = 1 };
 
         return new DocPage(
             Title,
@@ -61,6 +63,24 @@ internal sealed class FilePickerPane: CompositeControlBase
                         new FilePickerFilter("Documents", "*.md", "*.txt"),
                         FilePickerFilter.AllFiles
                     ]
+                });
+            ShowcasePaneHelpers.PostStatus(status, "FilePickerDialog", () => status.Content = FormatResult(result));
+        };
+        return launcher;
+    }
+
+    private static Button CreateDirectoryLauncher(Text status)
+    {
+        var launcher = new Button { Text = "Choose a &directory" };
+        launcher.Click += async (_, _) =>
+        {
+            var result = await FilePickerDialog.ShowAsync(
+                launcher,
+                new FilePickerOptions
+                {
+                    Title = "Choose a directory",
+                    InitialDirectory = Environment.CurrentDirectory,
+                    SelectionMode = FileSelectionMode.Directories
                 });
             ShowcasePaneHelpers.PostStatus(status, "FilePickerDialog", () => status.Content = FormatResult(result));
         };
@@ -106,9 +126,51 @@ internal sealed class FilePickerPane: CompositeControlBase
                     ShowHiddenText = "Mostrar &ocultos",
                     CancelText = "&Cancelar",
                     OpenText = "&Abrir",
+                    ReadyText = "Listo.",
+                    LoadingText = "Cargando…",
+                    CountFormat = (folders, files) => $"{folders} carpetas · {files} archivos",
+                    SelectionFormat = count => $"{count} seleccionados",
                     Style = FilePickerDialogStyle.Default with { ContentSpacing = 2 }
                 });
             ShowcasePaneHelpers.PostStatus(status, "FilePickerDialog", () => status.Content = FormatResult(result));
+        };
+        return launcher;
+    }
+
+    private static Button CreateLocalizedSaveLauncher(Text status)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "SharpVision.Showcase");
+        Directory.CreateDirectory(directory);
+
+        const string fileName = "informe.txt";
+        File.WriteAllText(Path.Combine(directory, fileName), "");
+
+        var launcher = new Button { Text = "Guardar &localizado" };
+        launcher.Click += async (_, _) =>
+        {
+            var result = await SaveFileDialog.ShowAsync(
+                launcher,
+                new SaveFileOptions
+                {
+                    Title = "Guardar como",
+                    InitialDirectory = directory,
+                    InitialFileName = fileName,
+                    ParentDirectoryText = "«",
+                    DirectoryPlaceholder = "Ruta del directorio",
+                    ShowHiddenText = "Mostrar &ocultos",
+                    CancelText = "&Cancelar",
+                    SaveText = "&Guardar",
+                    FileNameLabel = "Nombre:",
+                    FileNamePlaceholder = "Nombre de archivo",
+                    ReadyText = "Listo.",
+                    LoadingText = "Cargando…",
+                    CountFormat = (folders, files) => $"{folders} carpetas · {files} archivos",
+                    OverwriteTitle = "Confirmar guardado",
+                    OverwriteMessageFormat = existing => $"«{existing}» ya existe. ¿Deseas reemplazarlo?",
+                    OverwriteYesText = "&Sí",
+                    OverwriteNoText = "&No"
+                });
+            ShowcasePaneHelpers.PostStatus(status, "SaveFileDialog", () => status.Content = FormatSaveResult(result));
         };
         return launcher;
     }
