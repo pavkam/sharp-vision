@@ -17,7 +17,7 @@ public sealed class ProtocolRouter: IDisposable
     private readonly MultiplexerRoute? _multiplexerRoute;
     private byte[]? _multiplexerCandidate;
     private int _multiplexerLength;
-    private int _multiplexerDiscardEscapes;
+    private long _multiplexerDiscardEscapes;
     private int _multiplexerDiscardTerminators;
     private long _multiplexerCandidateStart;
     private long _multiplexerDiscardStart;
@@ -346,7 +346,7 @@ public sealed class ProtocolRouter: IDisposable
 
         if (value == ControlBytes.Escape)
         {
-            _multiplexerDiscardEscapes++;
+            _multiplexerDiscardEscapes = checked(_multiplexerDiscardEscapes + 1);
             return;
         }
 

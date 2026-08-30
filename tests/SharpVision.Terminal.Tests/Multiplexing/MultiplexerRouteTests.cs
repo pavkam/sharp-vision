@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Tests.Multiplexing;
 
+using System.Reflection;
+
 using Capabilities;
 
 using SharpVision.Terminal.Capabilities;
@@ -669,6 +671,50 @@ public sealed class MultiplexerRouteTests
             sink.Text.ShouldBeEmpty($"split {split}");
             sink.Sequences.ShouldBeEmpty($"split {split}");
         }
+    }
+
+    /// <summary>Verifies the discard-recovery escape run counter survives crossing the 32-bit
+    /// boundary without going negative — a run this long is otherwise implausible, but the
+    /// counter widened from <see langword="int"/> to <see langword="long"/> specifically so an
+    /// unbounded run of Escape bytes can never wrap the positive-escape terminator guard back to
+    /// a value that looks unset, which would silently defeat discard recovery.</summary>
+    [Fact]
+    public void DiscardMultiplexerByte_WhenEscapeRunCrossesInt32Boundary_StillRecognizesTerminator()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Screen],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.CapabilityQueries,
+            maxDepth: 4,
+            maxEnvelopeBytes: 8);
+        var route = new MultiplexerRoute(policy);
+        var sink = new RecordingProtocolSink();
+        using var router = new ProtocolRouter(sink, route: route);
+
+        router.Route([
+            ControlBytes.Escape, (byte) 'P', ControlBytes.Escape,
+            (byte) 'a', (byte) 'a', (byte) 'a', (byte) 'a', (byte) 'a',
+            (byte) 'b'
+        ]);
+        sink.Diagnostics.ShouldBeEmpty("discard recovery has not yet met its terminator.");
+
+        var escapesField = typeof(ProtocolRouter).GetField(
+            "_multiplexerDiscardEscapes",
+            BindingFlags.NonPublic | BindingFlags.Instance)!;
+        escapesField.FieldType.ShouldBe(typeof(long));
+        escapesField.SetValue(router, (long) int.MaxValue - 1);
+
+        router.Route([ControlBytes.Escape, ControlBytes.Escape, ControlBytes.Escape]);
+        ((long) escapesField.GetValue(router)!).ShouldBeGreaterThan(int.MaxValue);
+
+        router.Route([(byte) '\\']);
+
+        var diagnostic = sink.Diagnostics.ShouldHaveSingleItem();
+        diagnostic.Code.ShouldBe(DiagnosticCode.Unsupported);
+        diagnostic.Offset.ShouldBe(0);
+        diagnostic.DiscardedBytes.ShouldBe(13);
     }
 
     /// <summary>Verifies a complete Screen-wrapped CSI reply still reaches correlation at every split.</summary>
