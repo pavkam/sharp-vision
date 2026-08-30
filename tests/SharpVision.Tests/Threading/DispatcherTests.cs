@@ -622,7 +622,7 @@ public sealed class DispatcherTests
         }).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
         exited.ShouldBeTrue("the background thread must exit rather than leak");
-        Should.Throw<ObjectDisposedException>(() => dispatcher.Post(static () => { }));
+        _ = Should.Throw<ObjectDisposedException>(() => dispatcher.Post(static () => { }));
     }
 
     #region Background completion

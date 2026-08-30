@@ -3036,7 +3036,7 @@ public sealed class ApplicationTests
         {
             _ = renderingProbe; // unused: the hook only needs to run on the dispatcher thread
             application.PostOutOfBand(new byte[] { 0x07 });
-            _ = application.StopAsync();
+            _ = application.StopAsync().AsTask();
         };
 
         await application.Dispatcher.InvokeAsync(
