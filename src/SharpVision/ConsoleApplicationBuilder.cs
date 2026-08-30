@@ -432,7 +432,14 @@ public sealed class ConsoleApplicationBuilder
         {
             if (application is not null)
             {
-                application.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                try
+                {
+                    application.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                }
+                catch
+                {
+                    // Suppress cleanup errors so the original exception propagates.
+                }
             }
             else
             {

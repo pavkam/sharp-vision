@@ -549,4 +549,84 @@ public sealed class ConsoleApplicationBuilderTests
 
         protected override void OnAttach(Application application) => application.Theme = _theme;
     }
+
+    /// <summary>Verifies Build()'s failure-cleanup catch preserves the ORIGINAL attach failure
+    /// instead of letting the ensuing <c>Application.DisposeAsync()</c> cleanup call replace it
+    /// with a disposal failure, when the owning dispatcher's queue is still saturated and never
+    /// drains within <see cref="ConsoleRunOptions.CleanupTimeout"/> - the exact race that made
+    /// <c>Application.DisposeAsync()</c> throw a fresh exception in place of the one Build() was
+    /// already failing with.</summary>
+    [Fact]
+    public async Task Build_WhenAttachFailsAndDisposalAlsoFailsFromQueueExhaustion_PreservesOriginalFailureAsync()
+    {
+        var screen = new QueueSaturatingAttachFailureScreen();
+        var builder = new ConsoleApplicationBuilder(
+            screen,
+            static () => true,
+            _ => new ConsoleConnection(
+                new ConsoleApplicationTransport(),
+                new ConsoleApplicationResizeSource(),
+                new ConsoleApplicationRestoreLease()),
+            _ => { },
+            _ => { })
+            .UseTerminalProfile(TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative))
+            .WithCleanupTimeout(TimeSpan.FromMilliseconds(50));
+
+        // Build() calls Application.DisposeAsync() synchronously from its failure-cleanup catch,
+        // which blocks the calling thread until the bounded retry (Application's own
+        // InvokeWithQueueRetryAsync) exhausts CleanupTimeout - so Build() itself must run on a
+        // background thread while this method controls when the saturated queue is released.
+        var buildTask = Task.Run(() => builder.Build());
+
+        // Give the bounded disposal retry room to observe the queue still full for the entire
+        // CleanupTimeout window and give up, before the dispatcher thread is freed.
+        await Task.Delay(TimeSpan.FromMilliseconds(300), TestContext.Current.CancellationToken);
+        screen.Release();
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            () => buildTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        thrown.Message.ShouldBe("The original attach failure.");
+    }
+
+    /// <summary>Fails from OnAttach - which already runs on the dispatcher thread being attached
+    /// to - after first saturating that same dispatcher's queue with a permanently blocked
+    /// callback, matching <c>ApplicationTests.SaturateQueueAsync</c>'s recipe but issued from
+    /// inside the callback itself since OnAttach already runs on the dispatcher thread. Used to
+    /// force <c>ConsoleApplicationBuilder.Build()</c>'s subsequent <c>Application.DisposeAsync()</c>
+    /// cleanup call to fail too, so a test can verify the original attach failure still wins.</summary>
+    private sealed class QueueSaturatingAttachFailureScreen: Screen
+    {
+        private readonly ManualResetEventSlim _release = new();
+
+        internal QueueSaturatingAttachFailureScreen() => InitializeContent(new ProbeControl());
+
+        /// <summary>Frees the dispatcher thread blocked behind this screen's attach failure.</summary>
+        internal void Release() => _release.Set();
+
+        /// <inheritdoc/>
+        protected override void OnAttach(Application application)
+        {
+            var dispatcher = application.Dispatcher;
+
+            // Blocks the dispatcher thread on the very next queued item, then fills the
+            // remaining capacity, so the queue stays permanently full - and every cleanup post
+            // Application.DisposeAsync attempts keeps failing - until the test calls Release().
+            dispatcher.Post(_release.Wait);
+
+            while (true)
+            {
+                try
+                {
+                    dispatcher.Post(static () => { });
+                }
+                catch (InvalidOperationException)
+                {
+                    break;
+                }
+            }
+
+            throw new InvalidOperationException("The original attach failure.");
+        }
+    }
 }
