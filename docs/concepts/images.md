@@ -42,7 +42,10 @@ render's `Metrics.GraphicsDiagnostics`. Reasons distinguish an unsupported image
 representation, a deauthorized protocol, and otherwise-supported image data
 whose crop, geometry, or placement mode cannot be encoded. A placement that only
 fails the remaining bounded frame output budget reports that limit separately.
-Diagnostic construction rejects the empty image identity and undefined reasons.
+A placement that was itself encodable but was forced to fall back solely
+because a later, higher-stacked overlapping placement could not be encoded
+reports that overlap block separately. Diagnostic construction rejects the
+empty image identity and undefined reasons.
 The valid default `Metrics` value exposes an empty diagnostic snapshot, never
 null.
 
