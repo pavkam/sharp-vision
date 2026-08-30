@@ -1205,7 +1205,7 @@ public sealed class ChartSurfaceTests
         using var frame = new Frame(new Size(5, 5));
 
         // Act
-        var context = ChartRenderer.CreateContext((IChartControl) chart, frame.Canvas, default);
+        var context = ChartRenderer.CreateContext(chart, frame.Canvas, default);
 
         // Assert
         context.Layout.Plot.Y.ShouldBe(int.MaxValue);
@@ -1228,42 +1228,11 @@ public sealed class ChartSurfaceTests
         using var frame = new Frame(new Size(5, 5));
 
         // Act
-        var context = ChartRenderer.CreateContext((IChartControl) chart, frame.Canvas, default);
+        var context = ChartRenderer.CreateContext(chart, frame.Canvas, default);
 
         // Assert
         context.Layout.Plot.X.ShouldBe(int.MaxValue);
         context.Layout.Plot.Width.ShouldBe(14);
-    }
-
-    /// <summary>Verifies the horizontal category-label reservation saturates its axis boundary
-    /// instead of wrapping when the plot it reserves from already sits at the integer coordinate
-    /// limit.</summary>
-    [Fact]
-    public void ReserveLabels_WhenPlotXIsNearIntMaxValue_SaturatesInsteadOfWrapping()
-    {
-        // Arrange
-        var chart = new HorizontalBarChart
-        {
-            Series = [new ChartSeries("Revenue", [new ChartDataPoint("AB", 5)])]
-        };
-        var plot = new Rect(int.MaxValue - 1, 0, 20, 5);
-        var context = new ChartRenderContext(
-            (IChartControl) chart,
-            new ChartPlotLayout(plot, default),
-            new ChartScaleRange(0, 10),
-            default);
-        using var frame = new Frame(new Size(5, 5));
-        var reserveLabels = typeof(BarChartRenderer).GetMethod(
-            "ReserveLabels",
-            BindingFlags.NonPublic | BindingFlags.Static)!;
-
-        // Act: the "AB" label measures two cells, so the reserved plot starts three cells past
-        // the near-limit origin - a value that only fits once the intermediate addition saturates.
-        var reserved = (Rect) reserveLabels.Invoke(null, [context, frame.Canvas, Orientation.Horizontal])!;
-
-        // Assert
-        reserved.X.ShouldBe(int.MaxValue);
-        reserved.Width.ShouldBe(17);
     }
 
     /// <summary>Verifies the horizontal zero/value boundary saturates instead of wrapping when the

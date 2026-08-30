@@ -899,7 +899,7 @@ public sealed class ComboBoxTests
         box.SelectedIndex = 3;
         box.SelectionChanged += (_, _) => box.Dispose();
 
-        Should.NotThrow(() => Router.Route(box, Events.Key, Key(Code.Escape)));
+        _ = Should.NotThrow(() => Router.Route(box, Events.Key, Key(Code.Escape)));
 
         box.IsDisposed.ShouldBeFalse();
         box.IsOpen.ShouldBeFalse();
