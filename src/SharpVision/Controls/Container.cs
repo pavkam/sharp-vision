@@ -994,7 +994,11 @@ public abstract class Container: ControlBase
     /// <inheritdoc/>
     internal override void ArrangeOverlays(Rect padded)
     {
-        if (!AutoScroll || _scroll.Bars is null)
+        // ResolveContentSlot above can already have let a caller's ScrollChanged handler
+        // synchronously dispose this container - its own scroll parts (including _scroll.Bars)
+        // are disposed right along with it, so arranging them here would throw
+        // ObjectDisposedException instead of this arrange pass simply ending early.
+        if (IsDisposed || !AutoScroll || _scroll.Bars is null)
         {
             return;
         }
