@@ -23,7 +23,7 @@ public record ContainerStyle: ControlStyle
             BorderSide.All,
             BorderGlyphStyle.Light,
             Color.Default,
-            BorderRelief.Sunken,
+            BorderRelief.Flat,
             Color.Transparent,
             TerminalAttributes.None),
         NoShadow);

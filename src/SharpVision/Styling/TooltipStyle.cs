@@ -25,7 +25,7 @@ public record TooltipStyle: ControlStyle
             BorderSide.All,
             BorderGlyphStyle.Light,
             Color.Default,
-            BorderRelief.Raised,
+            BorderRelief.Flat,
             Color.Transparent,
             TerminalAttributes.None),
         NoShadow);

@@ -29,7 +29,7 @@ public record InputStyle: ControlStyle
             BorderSide.All,
             BorderGlyphStyle.Heavy,
             Color.Default,
-            BorderRelief.Sunken,
+            BorderRelief.Flat,
             Color.Transparent,
             TerminalAttributes.None),
         NoShadow,

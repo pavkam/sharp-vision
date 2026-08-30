@@ -361,7 +361,7 @@ dropdown=false
 for _ in {1..50}; do
   tmux capture-pane -t "$session" -p -J >"$plain"
 
-  if grep -q 'Classy' "$plain"; then
+  if grep -Eq '│script[[:space:]]+│' "$plain"; then
     dropdown=true
     break
   fi
@@ -374,7 +374,7 @@ if [[ "$dropdown" != true ]]; then
   exit 1
 fi
 
-font_row="$(find_row 'Classy')"
+font_row="$(find_row '│script')"
 
 if [[ -z "$font_row" ]]; then
   printf 'The first Figlet font option is not visible.\n' >&2
@@ -389,7 +389,7 @@ font=false
 for _ in {1..50}; do
   tmux capture-pane -t "$session" -p -J >"$plain"
 
-  if grep -q 'Previewing Classy' "$plain"; then
+  if grep -q 'Previewing script' "$plain"; then
     font=true
     break
   fi

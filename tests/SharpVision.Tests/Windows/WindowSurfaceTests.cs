@@ -228,7 +228,9 @@ public sealed class WindowSurfaceTests
             TestContext.Current.CancellationToken);
         var theme = surface.Application.Theme;
         var activeBorder = TerminalPalette.Project(theme.ResolveColor(SemanticColor.ActiveBorder), ColorDepth.Basic16);
-        var passiveBezel = TerminalPalette.Project(theme.ResolveColor(SemanticColor.ReliefHighlight), ColorDepth.Basic16);
+        var passiveBorder = TerminalPalette.Project(
+            theme.Resolve(second.GetActualBorder(VisualState.Normal).Foreground),
+            ColorDepth.Basic16);
 
         await surface.UpdateAsync(
             () => surface.Application.Focus.Focus(firstAction).ShouldBeTrue(),
@@ -241,7 +243,7 @@ public sealed class WindowSurfaceTests
         var firstBorderPoint = new Point(first.Bounds.X, first.Bounds.Y);
         var secondBorderPoint = new Point(second.Bounds.X, second.Bounds.Y);
         surface.Cell(firstBorderPoint).Style.Foreground.ShouldBe(activeBorder);
-        surface.Cell(secondBorderPoint).Style.Foreground.ShouldBe(passiveBezel);
+        surface.Cell(secondBorderPoint).Style.Foreground.ShouldBe(passiveBorder);
 
         await surface.Pointer.MoveToAsync(second, new Point(1, 0));
         surface.Application.Capture.Hovered.ShouldBeSameAs(second);
@@ -257,7 +259,7 @@ public sealed class WindowSurfaceTests
         first.ContainsFocus.ShouldBeTrue();
         second.ContainsFocus.ShouldBeFalse();
         surface.ShouldHaveFocus(firstAction);
-        surface.Cell(firstBorderPoint).Style.Foreground.ShouldBe(passiveBezel);
+        surface.Cell(firstBorderPoint).Style.Foreground.ShouldBe(passiveBorder);
         surface.Cell(secondBorderPoint).Style.Foreground.ShouldBe(activeBorder);
     }
 

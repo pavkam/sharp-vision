@@ -8,10 +8,10 @@ using System.Buffers;
 /// <summary>Verifies Button appearance and interaction through a mounted terminal surface.</summary>
 public sealed class ButtonSurfaceTests
 {
-    /// <summary>Verifies Turbo Vision Button relief is raised at rest, sunken for pointer and
-    /// Space holds, and raised again after release or pointer cancellation.</summary>
+    /// <summary>Verifies Turbo Vision Button chrome remains flat while pointer and Space holds
+    /// change the authored face and border colors.</summary>
     [Fact]
-    public async Task Input_WhenTurboVisionButtonIsHeld_InvertsSemanticReliefAsync()
+    public async Task Input_WhenTurboVisionButtonIsHeld_KeepsFlatBorderAsync()
     {
         var button = new Button("Run")
         {
@@ -24,18 +24,17 @@ public sealed class ButtonSurfaceTests
             ThemeCatalog.Load("turbo-vision"),
             TestContext.Current.CancellationToken);
 
-        AssertRaisedRelief(surface);
+        AssertFlatBorder(button, surface);
 
         await surface.Pointer.MoveToAsync(button);
         await surface.Pointer.PressAsync();
 
-        button.GetActualBorder(button.GetAppearanceState()).Relief.ShouldBe(BorderRelief.Sunken);
-        button.ResolveBorderStyles(button.GetAppearanceState()).Top.Foreground.ShouldBe(ReferenceColors.Get(0));
-        AssertSunkenRelief(surface);
+        button.GetActualBorder(button.GetAppearanceState()).Relief.ShouldBe(BorderRelief.Flat);
+        AssertFlatBorder(button, surface);
 
         await surface.Pointer.MovePressedToAsync(new Point(20, 20));
 
-        AssertRaisedRelief(surface);
+        AssertFlatBorder(button, surface);
         button.IsFocused.ShouldBeTrue();
         await surface.UpdateAsync(
             () => button.SetCapabilities(TestCapabilities.WithKeyReleases),
@@ -43,11 +42,11 @@ public sealed class ButtonSurfaceTests
 
         await surface.Keyboard.PressCharacterAsync(new Rune(' '));
 
-        AssertSunkenRelief(surface);
+        AssertFlatBorder(button, surface);
 
         await surface.Keyboard.ReleaseCharacterAsync(new Rune(' '));
 
-        AssertRaisedRelief(surface);
+        AssertFlatBorder(button, surface);
     }
 
     /// <summary>Verifies mounted Theme swaps use Button-specific shadow layout impact.</summary>
@@ -415,7 +414,7 @@ public sealed class ButtonSurfaceTests
                              ┗━━━━━━┛
 
                              """);
-        AssertRaisedRelief(surface);
+        AssertFlatBorder(button, surface);
         surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(ReferenceColors.Get(0));
         surface.Cell(new Point(1, 1)).Style.Background.ShouldBe(ReferenceColors.Get(0));
         surface.Cell(new Point(8, 1)).Text.ShouldBe(" ");
@@ -775,7 +774,7 @@ public sealed class ButtonSurfaceTests
         var hoveredForeground = TerminalPalette.Project(ThemeColorHelper.HoveredForeground(ThemeCatalog.Dark), ColorDepth.Basic16);
         TerminalPalette.Project(ThemeColorHelper.HoveredBorder(ThemeCatalog.Dark), ColorDepth.Basic16)
             .ShouldNotBe(inactiveBorderColor);
-        AssertRaisedRelief(surface);
+        AssertFlatBorder(button, surface);
         var contentForeground = surface.Cell(new Point(2, 1)).Style.Foreground;
         contentForeground.ShouldBe(hoveredForeground);
         surface.Cell(new Point(2, 1)).Style.Background.ShouldBe(ReferenceColors.Get(0));
@@ -844,7 +843,7 @@ public sealed class ButtonSurfaceTests
         // Assert
         surface.ShouldHaveState(button, VisualState.IsPointerOver);
         button.CanFocus.ShouldBeFalse();
-        AssertRaisedRelief(surface);
+        AssertFlatBorder(button, surface);
         surface.Cell(new Point(2, 1)).Style.Foreground.ShouldBe(
             TerminalPalette.Project(ThemeColorHelper.HoveredForeground(ThemeCatalog.Dark), ColorDepth.Basic16));
     }
@@ -880,7 +879,7 @@ public sealed class ButtonSurfaceTests
 
                              """);
         surface.Cell(new Point(0, 0)).Text.ShouldBe("┏");
-        AssertSunkenRelief(surface);
+        AssertFlatBorder(button, surface);
         surface.Cell(new Point(2, 1)).Text.ShouldBe("S");
         // Pointer press focuses the button, so its access-key cell keeps the focused hotkey cue
         // while the surrounding button face composes pointer, focus, and press states.
@@ -1039,7 +1038,7 @@ public sealed class ButtonSurfaceTests
                              ┗━━━━━━┛
 
                              """);
-        AssertRaisedRelief(surface);
+        AssertFlatBorder(button, surface);
 
         // The caption's transparent Text child inherits the button's ambient focused face, so the
         // cell carries the input set's focused foreground and background.
@@ -1081,7 +1080,7 @@ public sealed class ButtonSurfaceTests
                              ┗━━━━━━┛
 
                              """);
-        AssertRaisedRelief(surface);
+        AssertFlatBorder(button, surface);
         surface.Cell(new Point(8, 1)).Style.Attributes.ShouldBe(TerminalAttributes.None);
     }
 
@@ -1216,28 +1215,17 @@ public sealed class ButtonSurfaceTests
 
     #region Test fixtures
 
-    private static void AssertRaisedRelief(ComponentSurface surface)
+    private static void AssertFlatBorder(Button button, ComponentSurface surface)
     {
-        var highlight = TerminalPalette.Project(
-            surface.Application.Theme.ResolveColor(SemanticColor.ReliefHighlight),
+        var border = button.GetActualBorder(button.GetAppearanceState());
+        border.Relief.ShouldBe(BorderRelief.Flat);
+        var foreground = TerminalPalette.Project(
+            surface.Application.Theme.Resolve(border.Foreground),
             ColorDepth.Basic16);
-        var shade = TerminalPalette.Project(
-            surface.Application.Theme.ResolveColor(SemanticColor.ReliefShade),
-            ColorDepth.Basic16);
-        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(highlight);
-        surface.Cell(new Point(7, 1)).Style.Foreground.ShouldBe(shade);
-    }
-
-    private static void AssertSunkenRelief(ComponentSurface surface)
-    {
-        var highlight = TerminalPalette.Project(
-            surface.Application.Theme.ResolveColor(SemanticColor.ReliefHighlight),
-            ColorDepth.Basic16);
-        var shade = TerminalPalette.Project(
-            surface.Application.Theme.ResolveColor(SemanticColor.ReliefShade),
-            ColorDepth.Basic16);
-        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(shade);
-        surface.Cell(new Point(7, 1)).Style.Foreground.ShouldBe(highlight);
+        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(foreground);
+        surface.Cell(new Point(7, 1)).Style.Foreground.ShouldBe(foreground);
+        surface.Cell(new Point(1, 2)).Style.Foreground.ShouldBe(foreground);
+        surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(foreground);
     }
 
     // A leaf declares no theme section of its own any more: Button's Border/Shadow pass through
