@@ -9,7 +9,10 @@ internal sealed class TerminalDebuggerScreen: Screen
     private readonly Text _identity;
     private readonly Text _summary;
     private readonly Text _status;
+    private readonly OverviewPanel _overview;
     private readonly CapabilityDashboard _capabilities;
+    private readonly DiscoveryPanel _discovery;
+    private readonly RoutingPanel _routing;
     private readonly DiagnosticEventLog _eventLog;
     private readonly InputEventInspector _input;
     private readonly TerminalProbePanel _probes;
@@ -21,11 +24,14 @@ internal sealed class TerminalDebuggerScreen: Screen
         var header = BuildHeader(out _identity);
         _summary = new Text("<d>Waiting for terminal discovery…</d>") { Padding = new Thickness(1, 0) };
         _status = new Text("Ready") { Overflow = Overflow.Ellipsis };
+        _overview = new OverviewPanel();
         _capabilities = new CapabilityDashboard();
         _capabilities.SummaryChanged += OnSummaryChanged;
         _eventLog = new DiagnosticEventLog();
         _input = new InputEventInspector(_eventLog);
         _probes = new TerminalProbePanel(_capabilities);
+        _discovery = new DiscoveryPanel();
+        _routing = new RoutingPanel();
 
         var tabs = new TabControl
         {
@@ -33,9 +39,12 @@ internal sealed class TerminalDebuggerScreen: Screen
             VerticalAlignment = VerticalAlignment.Stretch,
             HeaderOverflowPolicy = TabHeaderOverflowPolicy.Scroll
         };
-        tabs.Items.Add(new TabItem { HeaderText = "&Capabilities", Content = _capabilities });
+        tabs.Items.Add(new TabItem { HeaderText = "&Overview", Content = _overview });
+        tabs.Items.Add(new TabItem { HeaderText = "&Protocols", Content = _capabilities });
+        tabs.Items.Add(new TabItem { HeaderText = "&Discovery", Content = _discovery });
+        tabs.Items.Add(new TabItem { HeaderText = "&Routing", Content = _routing });
         tabs.Items.Add(new TabItem { HeaderText = "&Input events", Content = _input });
-        tabs.Items.Add(new TabItem { HeaderText = "&Tests", Content = _probes });
+        tabs.Items.Add(new TabItem { HeaderText = "Pro&bes", Content = _probes });
 
         var statusBar = new StatusBar { Padding = new Thickness(1, 0) };
         statusBar.Items.Add(new StatusBarItem { Content = _status });
@@ -84,11 +93,13 @@ internal sealed class TerminalDebuggerScreen: Screen
         application.Theme = ThemeCatalog.Dark;
         CapabilityCatalog.Validate(application.Capabilities);
         _capabilities.Initialize(application);
+        RefreshDiagnostics(application);
         _probes.Attach(application);
         _input.Attach(application);
         _recorder = new InputEventRecorder(_eventLog, _capabilities.SetVerification);
         _recorder.Attach(application, this);
         application.CapabilitiesChanged += OnCapabilitiesChanged;
+        application.TerminalDiagnosticsChanged += OnTerminalDiagnosticsChanged;
         application.Resize += OnApplicationResize;
         UpdateResponsiveLayout(application.Size.Width);
         _identity.Content = $"{TextMarkup.Escape(application.Terminal.Description.Name)} · {application.Size.Width}×{application.Size.Height}";
@@ -113,6 +124,23 @@ internal sealed class TerminalDebuggerScreen: Screen
 
         _capabilities.UpdateCapabilities(application);
         _probes.RefreshAvailability(application);
+        RefreshDiagnostics(application);
+    }
+
+    private void OnTerminalDiagnosticsChanged(object? sender, TerminalDiagnosticsChangedEventArgs eventArgs)
+    {
+        if (Application is { } application)
+        {
+            RefreshDiagnostics(application);
+        }
+    }
+
+    private void RefreshDiagnostics(Application application)
+    {
+        _overview.Refresh(application);
+        _discovery.Refresh(application.TerminalDiagnostics);
+        _routing.Refresh(application.TerminalDiagnostics);
+        _capabilities.RefreshEnvironment(application);
     }
 
     private void OnApplicationResize(object? sender, ResizeEventArgs eventArgs)
@@ -122,6 +150,7 @@ internal sealed class TerminalDebuggerScreen: Screen
             var width = eventArgs.Dimensions.Cells.Width;
             _identity.Content = $"{TextMarkup.Escape(application.Terminal.Description.Name)} · {width}×{eventArgs.Dimensions.Cells.Height}";
             _capabilities.RefreshEnvironment(application);
+            _overview.Refresh(application);
             UpdateResponsiveLayout(width);
         }
     }
@@ -153,6 +182,7 @@ internal sealed class TerminalDebuggerScreen: Screen
         if (Application is { } application)
         {
             application.CapabilitiesChanged -= OnCapabilitiesChanged;
+            application.TerminalDiagnosticsChanged -= OnTerminalDiagnosticsChanged;
             application.Resize -= OnApplicationResize;
         }
 

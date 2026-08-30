@@ -9,10 +9,10 @@ internal sealed class CapabilityStatus
     /// <summary>Initializes one capability status row.</summary>
     /// <param name="descriptor">The presentation metadata.</param>
     /// <param name="feature">The detected feature evidence.</param>
-    internal CapabilityStatus(CapabilityDescriptor descriptor, Feature feature)
+    internal CapabilityStatus(CapabilityDescriptor descriptor, Feature? feature)
     {
         Descriptor = descriptor;
-        Feature = feature;
+        Feature = feature ?? new Feature(CapabilitySupport.Supported, Origin.Default);
     }
 
     /// <summary>Gets the presentation metadata.</summary>
@@ -46,7 +46,9 @@ internal sealed class CapabilityStatus
 
     /// <summary>Gets the compact row text without relying on color alone.</summary>
     internal string RowText =>
-        $"{SupportGlyph(Feature.State)} {Descriptor.Label,-22} {Feature.State,-11} {Feature.Origin,-11} {VerificationGlyph(Verification)} {VerificationLabel(Verification)}";
+        Descriptor.IsNegotiated
+            ? $"{SupportGlyph(Feature.State)} {Descriptor.Label,-24} {Feature.State,-11} {Feature.Origin,-11} {VerificationGlyph(Verification)} {VerificationLabel(Verification)}"
+            : $"◆ {Descriptor.Label,-24} Implemented  Built-in";
 
     /// <inheritdoc/>
     public override string ToString() => RowText;

@@ -62,6 +62,35 @@ names. Backend evidence contains only the typed origin and resolved kind.
 Environment values, terminal payloads, clipboard data, native buffers, and raw
 command programs MUST NOT enter diagnostics or backend evidence.
 
+## Runtime diagnostics snapshot
+
+`TerminalDiagnostics` preserves the discovery facts needed to explain runtime
+behavior after the startup negotiator has retired. The immutable snapshot
+contains the fixed canonical backend family and protocol-extension composition,
+typed redacted backend-evidence sources, negotiation state and final normalized
+`TerminalQueryDiagnostics`, configured, evidence-authorized, and successfully
+activated terminal modes, multiplexer topology and effective typed route
+decisions, and renderer graphics-backend selection. XTGETTCAP diagnostics retain
+only approved capability names, never their response bytes. The snapshot
+contains no raw environment values, query bytes, clipboard content, or unbounded
+response history.
+
+`Session.Diagnostics` is available immediately: it reports `Pending` while an
+active batch is outstanding and `Disabled` when the caller pinned a profile.
+Every completion path—matched replies, the fence, deadline expiry, input EOF, or
+atomic route failure—replaces it with one `Completed` snapshot before the
+matching capability profile is published. `ISink.Diagnostics` carries that
+ordered replacement and defaults to a validated no-op for sinks that do not
+consume diagnostics. Successful mode leases publish a later snapshot so
+authorization cannot be mistaken for activation.
+
+`Application.TerminalDiagnostics` republishes the snapshot on the UI dispatcher
+through `TerminalDiagnosticsChanged`. The application adds the renderer-owned
+`CellFallback`, `Kitty`, or `NonRetained` graphics selection without changing
+session identity or query evidence. A diagnostics event is raised before the
+corresponding `CapabilitiesChanged` event so consumers never explain a new
+profile with stale discovery facts.
+
 ## Identity resolution
 
 `TerminalBackendResolver` combines description and environment identity evidence

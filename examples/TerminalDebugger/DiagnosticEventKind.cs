@@ -28,5 +28,11 @@ internal enum DiagnosticEventKind
     Clipboard,
 
     /// <summary>An application diagnostic.</summary>
-    Diagnostic
+    Diagnostic,
+
+    /// <summary>A graphics placement fallback.</summary>
+    Graphics,
+
+    /// <summary>A typed terminal query response.</summary>
+    Response
 }

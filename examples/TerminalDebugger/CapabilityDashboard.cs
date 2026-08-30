@@ -11,7 +11,7 @@ internal sealed class CapabilityDashboard: CompositeControlBase
     private readonly Text _detail;
     private readonly Grid _matrix;
     private readonly GroupBox _detailGroup;
-    private readonly Dictionary<TerminalProtocol, CapabilityStatus> _statuses = [];
+    private readonly List<CapabilityStatus> _statuses = [];
     private bool _isCompact;
 
     /// <summary>Initializes the retained capability dashboard.</summary>
@@ -77,21 +77,24 @@ internal sealed class CapabilityDashboard: CompositeControlBase
     internal event EventHandler? SummaryChanged;
 
     /// <summary>Gets the number of detected supported optional protocols.</summary>
-    internal int SupportedCount => _statuses.Values.Count(static status => status.Feature.State == CapabilitySupport.Supported);
+    internal int SupportedCount => _statuses.Count(
+        static status => status.Descriptor.IsNegotiated && status.Feature.State == CapabilitySupport.Supported);
 
     /// <summary>Gets the number of detected unsupported optional protocols.</summary>
-    internal int UnsupportedCount => _statuses.Values.Count(static status => status.Feature.State == CapabilitySupport.Unsupported);
+    internal int UnsupportedCount => _statuses.Count(
+        static status => status.Descriptor.IsNegotiated && status.Feature.State == CapabilitySupport.Unsupported);
 
     /// <summary>Gets the number of optional protocols with unknown support.</summary>
-    internal int UnknownCount => _statuses.Values.Count(
-        static status => status.Feature.State is CapabilitySupport.Unknown or CapabilitySupport.Tentative);
+    internal int UnknownCount => _statuses.Count(
+        static status => status.Descriptor.IsNegotiated &&
+                         status.Feature.State is CapabilitySupport.Unknown or CapabilitySupport.Tentative);
 
     /// <summary>Gets the number of observed or passed session checks.</summary>
-    internal int VerifiedCount => _statuses.Values.Count(
+    internal int VerifiedCount => _statuses.Count(
         static status => status.Verification is VerificationState.Observed or VerificationState.Passed);
 
     /// <summary>Gets the number of failed session checks.</summary>
-    internal int FailedCount => _statuses.Values.Count(static status => status.Verification == VerificationState.Failed);
+    internal int FailedCount => _statuses.Count(static status => status.Verification == VerificationState.Failed);
 
     /// <summary>Loads one active terminal profile and service inventory.</summary>
     /// <param name="application">The non-null running application.</param>
@@ -103,9 +106,11 @@ internal sealed class CapabilityDashboard: CompositeControlBase
 
         foreach (var descriptor in CapabilityCatalog.All)
         {
-            _statuses.Add(descriptor.Protocol, new CapabilityStatus(
+            _statuses.Add(new CapabilityStatus(
                 descriptor,
-                application.Capabilities.Support(descriptor.Protocol)));
+                descriptor.Protocol is { } protocol
+                    ? application.Capabilities.Support(protocol)
+                    : null));
         }
 
         UpdateEnvironment(application);
@@ -119,9 +124,12 @@ internal sealed class CapabilityDashboard: CompositeControlBase
         ArgumentNullException.ThrowIfNull(application);
         CapabilityCatalog.Validate(application.Capabilities);
 
-        foreach (var status in _statuses.Values)
+        foreach (var status in _statuses)
         {
-            status.UpdateFeature(application.Capabilities.Support(status.Descriptor.Protocol));
+            if (status.Descriptor.Protocol is { } protocol)
+            {
+                status.UpdateFeature(application.Capabilities.Support(protocol));
+            }
         }
 
         UpdateEnvironment(application);
@@ -172,8 +180,10 @@ internal sealed class CapabilityDashboard: CompositeControlBase
     private void UpdateEnvironment(Application application)
     {
         var description = application.Terminal.Description;
+        var diagnostics = application.TerminalDiagnostics;
         _environment.Content =
             $"<accent><b>{TextMarkup.Escape(description.Name)}</b></accent> · source {description.Origin} · " +
+            $"backend <info>{TextMarkup.Escape(diagnostics.BackendName)}</info> · graphics {diagnostics.GraphicsBackend} · " +
             $"<info>{application.Size.Width}×{application.Size.Height}</info> cells · " +
             $"{application.Capabilities.ColorDepth} color ({application.Capabilities.ColorOrigin}) · " +
             $"Unicode {application.Capabilities.UnicodeVersion} · ambiguous width {application.Capabilities.AmbiguousWidth}\n" +
@@ -187,10 +197,11 @@ internal sealed class CapabilityDashboard: CompositeControlBase
     /// <param name="detail">The non-empty evidence explanation.</param>
     internal void SetVerification(TerminalProtocol protocol, VerificationState verification, string detail)
     {
-        if (!_statuses.TryGetValue(protocol, out var status))
-        {
-            throw new ArgumentOutOfRangeException(nameof(protocol), protocol, "The protocol has no dashboard row.");
-        }
+        var status = _statuses.FirstOrDefault(item => item.Descriptor.Protocol == protocol) ??
+                     throw new ArgumentOutOfRangeException(
+                         nameof(protocol),
+                         protocol,
+                         "The protocol has no dashboard row.");
 
         status.SetVerification(verification, detail);
         var selected = _list.SelectedIndex;
@@ -205,11 +216,12 @@ internal sealed class CapabilityDashboard: CompositeControlBase
 
     private void RefreshItems(bool selectFirst)
     {
-        _list.Items = _statuses.Values.Cast<object?>().ToArray();
+        _list.Items = _statuses.Cast<object?>().ToArray();
 
         if (selectFirst && _list.Items.Count > 0)
         {
             _list.SelectedIndex = 0;
+            ShowDetail(_statuses[0]);
         }
 
         SummaryChanged?.Invoke(this, EventArgs.Empty);
@@ -225,7 +237,8 @@ internal sealed class CapabilityDashboard: CompositeControlBase
 
     private void ShowDetail(CapabilityStatus status)
     {
-        _detail.Content =
+        _detail.Content = status.Descriptor.IsNegotiated
+            ?
             $"<accent><b>{status.Descriptor.Label}</b></accent>\n" +
             $"Group: <info>{status.Descriptor.Group}</info>\n\n" +
             $"Detected: {SupportMarkup(status.Feature.State)}\n" +
@@ -233,7 +246,12 @@ internal sealed class CapabilityDashboard: CompositeControlBase
             $"Authoritative for output: {YesNo(status.Feature.Authoritative)}\n\n" +
             $"Live check: {VerificationMarkup(status.Verification)}\n" +
             $"{status.VerificationDetail}\n\n" +
-            status.Descriptor.Explanation;
+            status.Descriptor.Explanation
+            : $"<accent><b>{status.Descriptor.Label}</b></accent>\n" +
+              $"Group: <info>{status.Descriptor.Group}</info>\n\n" +
+              "SharpVision support: <success>Implemented</success>\n" +
+              "Terminal evidence: <d>not separately negotiated</d>\n\n" +
+              status.Descriptor.Explanation;
     }
 
     private static string YesNo(bool value) => value ? "<success>yes</success>" : "<d>no</d>";

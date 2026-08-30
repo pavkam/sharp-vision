@@ -19,10 +19,19 @@ dotnet run --project examples/TerminalDebugger/TerminalDebugger.csproj
 The host treats Ctrl+C as decoded input so the keyboard inspector can display
 it. Press Ctrl+Q to quit.
 
-## Dashboard
+## Debugger views
 
-The **Capabilities** tab lists every optional protocol in the active
-`TerminalCapabilities` profile. Each row shows:
+The **Overview** tab reports the terminal description separately from the fixed
+VT, xterm, Kitty, or iTerm2 backend identity. It includes the redacted identity
+evidence, backend protocol-extension composition, renderer graphics backend,
+Unicode/color policy, service availability, and configured, authorized, versus
+successfully activated runtime modes.
+
+The **Protocols** tab lists the complete protocol surface implemented by
+SharpVision. This includes the description database, ECMA-48/ANSI/VT framing,
+CSI, OSC, DCS and other bounded strings, DEC modes, SGR, Unicode, key maps,
+active query families, tmux and GNU screen routing, plus every optional protocol
+in `TerminalCapabilities`. Optional rows show:
 
 - detected state: Supported, Tentative, Unsupported, or Unknown;
 - evidence origin: default, environment, terminal database, active query, or
@@ -31,9 +40,17 @@ The **Capabilities** tab lists every optional protocol in the active
 - live verification: Not run, Observed, Passed, or Failed;
 - a plain-language description of what the protocol does.
 
-The header also reports the terminal-description identity, cell size, color
-depth, Unicode version, ambiguous-width policy, and public title, bell,
-clipboard, and notification service availability.
+The **Discovery** tab shows every final normalized `TerminalQueryDiagnostics`
+field. A missing reply remains a dash rather than being rewritten as
+unsupported. Color, geometry, private-mode, keyboard, clipboard, rendition, and
+graphics results stay visible after startup instead of disappearing with the
+negotiator. XTGETTCAP values are reduced to approved capability names before
+publication.
+
+The **Routing** tab explains detected multiplexer layers, the explicit outer
+profile, passthrough visibility, approved operation families, route bounds, and
+the effective decisions for capability queries, clipboard, string terminators,
+and graphics. Detecting tmux or GNU screen never silently enables passthrough.
 
 ## Input events
 
@@ -48,7 +65,10 @@ SharpVision control tree:
 - bracketed-paste payloads with byte and rune counts, escaped controls, and a
   hexadecimal/UTF-8 representation;
 - terminal focus changes and committed cell/pixel resize information;
-- Kitty clipboard paste notifications and completed clipboard replies.
+- Kitty clipboard paste notifications and completed clipboard replies;
+- redacted runtime recovery diagnostics and graphics fallback reasons;
+- typed device-attribute, private-mode, palette, geometry, status-string, and
+  capability-string replies observed after attachment.
 
 Control characters are written as explained tokens such as `\e [ESC]`,
 `\r [CR]`, and `\n [LF]`. Dynamic values are escaped before entering SharpVision
@@ -66,7 +86,7 @@ its references when the restoration check finishes.
 
 ## Explicit tests
 
-Nothing in the **Tests** tab runs on startup. Buttons explicitly request:
+Nothing in the **Probes** tab runs on startup. Buttons explicitly request:
 
 - the terminal bell;
 - a window-title change, with an explicit warning that the previous title cannot
@@ -74,7 +94,13 @@ Nothing in the **Tests** tab runs on startup. Buttons explicitly request:
 - a desktop notification when authoritatively enabled;
 - a clipboard write/read round trip after first reading content for restoration;
 - color, rendition, underline, and Unicode cell-geometry specimens;
+- a synchronized-output observation while resizing or switching views;
 - a generated RGBA checkerboard through SharpVision's public `Image` control.
+
+The same view gives exact passive test instructions for focus, bracketed paste,
+cell/pixel mouse, Kitty keyboard, and xterm modifyOtherKeys. Their active state
+comes from the runtime diagnostics snapshot, and matching decoded events update
+the protocol row to Observed.
 
 Optional underline styles, underline color, and overline each have an
 independent Pass or Fail confirmation. Clipboard compares a unique marker
@@ -82,9 +108,17 @@ automatically, restores the previous text when the initial read succeeded, and
 reads it back before claiming restoration. If the initial clipboard read fails,
 the debugger refuses to overwrite the clipboard. Graphics fallback reasons are
 reported through the public application diagnostic event rather than inferred
-from a missing image. The public image path does not expose the selected
-backend, so a visual result is not misattributed to Kitty, Sixel, or iTerm
-images.
+from a missing image. The selected `CellFallback`, `Kitty`, or `NonRetained`
+renderer backend is reported directly by `Application.TerminalDiagnostics`.
+
+## tmux
+
+Inside tmux the debugger diagnoses the inner `tmux-256color` terminal by default
+and shows the detected `Tmux` layer in Routing. That detected layer is not an
+outer-terminal identity: capability-query, clipboard, and graphics passthrough
+remain visibly blocked unless the host supplied an explicit outer profile and
+approved operations. This distinction makes “the terminal supports it” and “the
+current route can safely carry it” independently inspectable.
 
 ## Status meanings
 
@@ -96,5 +130,5 @@ images.
 | Failed   | A comparison failed, the terminal rejected it, or the user did. |
 
 Terminal Debugger uses only public SharpVision APIs. It does not sniff raw
-escape bytes, bypass capability authorization, or turn uncertain evidence into a
-claim of support.
+escape bytes, bypass capability authorization, expose environment values or
+clipboard payloads, or turn uncertain evidence into a claim of support.

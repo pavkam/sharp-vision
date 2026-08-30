@@ -3,6 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Runtime;
 
+using SharpVision.Terminal.Diagnostics;
 using SharpVision.Terminal.Input;
 
 /// <summary>Records terminal session callbacks and injected text failures.</summary>
@@ -19,6 +20,9 @@ internal sealed class RuntimeSink: ISink
 
     /// <summary>Gets immutable capability profiles in publication order.</summary>
     internal List<TerminalCapabilities> Profiles { get; } = [];
+
+    /// <summary>Gets immutable terminal diagnostic snapshots in publication order.</summary>
+    internal List<TerminalDiagnostics> DiagnosticSnapshots { get; } = [];
 
     /// <summary>Gets recognized terminal responses.</summary>
     internal List<XtermCapabilitiesResponse> Responses { get; } = [];
@@ -146,6 +150,14 @@ internal sealed class RuntimeSink: ISink
         Profiles.Add(value);
         Order.Add("profile");
         _ = ProfileReceived.TrySetResult();
+    }
+
+    /// <inheritdoc/>
+    void ISink.Diagnostics(TerminalDiagnostics value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        DiagnosticSnapshots.Add(value);
+        Order.Add("diagnostics");
     }
 
     /// <inheritdoc/>

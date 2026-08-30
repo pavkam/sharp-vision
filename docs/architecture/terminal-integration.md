@@ -35,6 +35,8 @@ arrives, but replacing a snapshot cannot silently change the backend.
 | `Application.Terminal`                                            | Exposes `ITerminalServices`.                                                 | Unsupported operations are byte-quiet unless the public method documents argument rejection.  |
 | `Application.Capabilities`                                        | Exposes the current immutable semantic profile.                              | Replaced atomically after accepted discovery evidence.                                        |
 | `Application.TerminalProfile`                                     | Exposes description plus current capabilities.                               | Description programs and key maps remain fixed across semantic refinement.                    |
+| `Session.Diagnostics`                                             | Exposes typed backend, query, mode, and route facts.                         | Immutable and redacted; replaced when bounded negotiation completes.                          |
+| `Application.TerminalDiagnostics`                                 | Adds dispatcher-published diagnostics and renderer graphics selection.       | Changes before the matching capability event and retains no raw terminal payloads.            |
 
 See [Hosting](../concepts/hosting.md#overview) for every builder option and
 status. See [Terminal capabilities](capabilities.md#overview) for the complete

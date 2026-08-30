@@ -9,6 +9,7 @@ using Kitty.Keyboard;
 
 using SharpVision.Terminal.Backends;
 using SharpVision.Terminal.Capabilities;
+using SharpVision.Terminal.Diagnostics;
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Multiplexing;
 
@@ -80,13 +81,64 @@ public sealed class SessionTests
         await using Session session = new(transport, resize, sink, options);
         var backend = session.Backend;
 
+        session.Diagnostics.BackendFamily.ShouldBe(TerminalBackendFamily.Kitty);
+        session.Diagnostics.BackendName.ShouldBe("Kitty");
+        session.Diagnostics.BackendEvidence.ShouldBe(
+        [
+            new TerminalBackendEvidence(
+                TerminalBackendFamily.Kitty,
+                TerminalBackendEvidenceSource.Environment)
+        ]);
+        session.Diagnostics.NegotiationState.ShouldBe(TerminalNegotiationState.Pending);
+        session.Diagnostics.QueryResults.ShouldBeNull();
+
         await session.RunAsync(TestContext.Current.CancellationToken);
 
         backend.ShouldBeSameAs(KittyBackend.Instance);
         session.Backend.ShouldBeSameAs(backend);
         sink.Profiles.ShouldHaveSingleItem().KittyKeyboard.ShouldBe(
             new Feature(CapabilitySupport.Tentative, Origin.Environment));
-        sink.Order.ShouldBe(["profile", "closed"]);
+        session.Diagnostics.NegotiationState.ShouldBe(TerminalNegotiationState.Completed);
+        _ = session.Diagnostics.QueryResults.ShouldNotBeNull();
+        sink.DiagnosticSnapshots.ShouldHaveSingleItem().ShouldBeSameAs(session.Diagnostics);
+        sink.Order.ShouldBe(["diagnostics", "profile", "closed"]);
+    }
+
+    /// <summary>Verifies sessions without negotiation still expose backend, route, and mode facts immediately.</summary>
+    [Fact]
+    public async Task Constructor_WhenNegotiationIsDisabled_ExposesCompleteInitialDiagnosticsAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var options = TerminalOptions.Minimal with
+        {
+            Profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
+            {
+                FocusReporting = new Feature(CapabilitySupport.Supported, Origin.Override)
+            }),
+            Focus = true
+        };
+        transport.Close();
+
+        // Act
+        await using Session session = new(transport, resize, sink, options);
+        session.Diagnostics.Modes.FocusReportingAuthorized.ShouldBeTrue();
+        session.Diagnostics.Modes.FocusReportingActive.ShouldBeFalse();
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        session.Diagnostics.BackendFamily.ShouldBe(TerminalBackendFamily.Vt);
+        session.Diagnostics.BackendExtensions.ShouldBe([TerminalProtocolExtension.Vt]);
+        session.Diagnostics.NegotiationState.ShouldBe(TerminalNegotiationState.Disabled);
+        session.Diagnostics.QueryResults.ShouldBeNull();
+        session.Diagnostics.Route.Layers.ShouldBeEmpty();
+        session.Diagnostics.Modes.FocusReportingConfigured.ShouldBeTrue();
+        session.Diagnostics.Modes.FocusReportingAuthorized.ShouldBeTrue();
+        session.Diagnostics.Modes.FocusReportingActive.ShouldBeTrue();
+        sink.DiagnosticSnapshots.ShouldHaveSingleItem().ShouldBeSameAs(session.Diagnostics);
+        sink.Order.ShouldBe(["diagnostics", "closed"]);
     }
 
     /// <summary>Verifies atomic route failure publishes immediately without transport output or deadline work.</summary>
@@ -197,7 +249,7 @@ public sealed class SessionTests
         sink.Responses.ShouldHaveSingleItem().Kind.ShouldBe(ResponseKind.PrimaryAttributes);
         sink.Profiles.ShouldHaveSingleItem().KittyGraphics.ShouldBe(supported);
         sink.Profiles.ShouldHaveSingleItem().Sixel.ShouldBe(supported);
-        sink.Order.ShouldBe(["response", "profile", "closed"]);
+        sink.Order.ShouldBe(["response", "diagnostics", "profile", "closed"]);
     }
 
     /// <summary>Verifies a safe Screen-wrapped CSI reply unwraps before the originating query is retired.</summary>
@@ -241,7 +293,7 @@ public sealed class SessionTests
         transport.JoinedWrites.ShouldBe("\u001bP\u001b[c\u001b\\");
         sink.Responses.ShouldHaveSingleItem().Kind.ShouldBe(ResponseKind.PrimaryAttributes);
         sink.Profiles.ShouldHaveSingleItem().Sixel.ShouldBe(supported);
-        sink.Order.ShouldBe(["response", "profile", "closed"]);
+        sink.Order.ShouldBe(["response", "diagnostics", "profile", "closed"]);
     }
 
     /// <summary>Verifies both complete and compatibility profile setters reject null.</summary>
@@ -572,7 +624,7 @@ public sealed class SessionTests
         // Assert
         sink.Profiles.ShouldHaveSingleItem().KittyKeyboard.ShouldBe(
             new Feature(CapabilitySupport.Tentative, Origin.Environment));
-        sink.Order.ShouldBe(["profile", "closed"]);
+        sink.Order.ShouldBe(["diagnostics", "profile", "closed"]);
         transport.JoinedWrites.ShouldBe(
             "\u001b[?u\u001b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\u001b\\" +
             "\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
@@ -663,7 +715,7 @@ public sealed class SessionTests
         // Assert
         transport.JoinedWrites.ShouldBe("\u001b[c");
         _ = sink.Profiles.ShouldHaveSingleItem();
-        sink.Order.ShouldBe(["response", "profile", "closed"]);
+        sink.Order.ShouldBe(["response", "diagnostics", "profile", "closed"]);
     }
 
     /// <summary>Verifies a pre-publication resize storm retains only its newest value.</summary>
@@ -735,7 +787,13 @@ public sealed class SessionTests
 
         // Assert
         sink.Profiles.ShouldHaveSingleItem().SynchronizedOutput.Supported.ShouldBeTrue();
+        var queryResults = session.Diagnostics.QueryResults.ShouldNotBeNull();
+        queryResults.SynchronizedOutput.ShouldBe(true);
+        queryResults.FocusReporting.ShouldBe(true);
+        queryResults.BracketedPaste.ShouldBe(true);
+        sink.DiagnosticSnapshots.ShouldHaveSingleItem().ShouldBeSameAs(session.Diagnostics);
         sink.Order.IndexOf("text").ShouldBeLessThan(sink.Order.IndexOf("profile"));
+        sink.Order.IndexOf("diagnostics").ShouldBeLessThan(sink.Order.IndexOf("profile"));
         sink.Order.IndexOf("profile").ShouldBeLessThan(sink.Order.IndexOf("resize"));
         sink.Resizes.ShouldBe([dimensions]);
         transport.JoinedWrites.ShouldStartWith(
@@ -923,6 +981,8 @@ public sealed class SessionTests
         // Assert
         thrown.ShouldBeSameAs(transport.WriteFailure);
         _ = sink.Profiles.ShouldHaveSingleItem();
+        session.Diagnostics.Modes.FocusReportingAuthorized.ShouldBeTrue();
+        session.Diagnostics.Modes.FocusReportingActive.ShouldBeFalse();
         transport.JoinedWrites.ShouldEndWith("\u001b[?1004l");
     }
 
@@ -1437,6 +1497,8 @@ public sealed class SessionTests
 
         thrown.ShouldBeSameAs(transport.WriteFailure);
         transport.JoinedWrites.ShouldBe("\u001b[>4m");
+        session.Diagnostics.Modes.ModifyOtherKeysAuthorized.ShouldBeTrue();
+        session.Diagnostics.Modes.ModifyOtherKeysActive.ShouldBeFalse();
     }
 
     /// <summary>

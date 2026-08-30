@@ -7,6 +7,8 @@ using Buffers;
 
 using Capabilities;
 
+using Diagnostics;
+
 using Graphics;
 using Graphics.Backends;
 
@@ -148,6 +150,15 @@ public sealed class Renderer: IDisposable
     /// cleared or replaced by later successful work or secondary cleanup failures.
     /// </remarks>
     public Exception? LastCleanupException { get; private set; }
+
+    /// <summary>Gets the graphics backend selected for the current or next frame.</summary>
+    public TerminalGraphicsBackend GraphicsBackend => (_pendingBackend ?? _backend) switch
+    {
+        KittyGraphicsBackend => TerminalGraphicsBackend.Kitty,
+        NonRetainedGraphicsBackend => TerminalGraphicsBackend.NonRetained,
+        null => TerminalGraphicsBackend.CellFallback,
+        _ => TerminalGraphicsBackend.CellFallback
+    };
 
     /// <summary>Gets graphics placements that fell back to ordinary cells during the most recent prepare.</summary>
     /// <remarks>

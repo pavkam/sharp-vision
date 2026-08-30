@@ -18,6 +18,7 @@
         public SharpVision.Controls.ControlBase Root { get; }
         public SharpVision.Terminal.Geometry.Size Size { get; }
         public SharpVision.ITerminalServices Terminal { get; }
+        public SharpVision.Terminal.Diagnostics.TerminalDiagnostics TerminalDiagnostics { get; }
         public SharpVision.Terminal.Capabilities.TerminalProfile TerminalProfile { get; }
         public SharpVision.Styling.Theme Theme { get; set; }
         public event System.EventHandler<SharpVision.CapabilitiesChangedEventArgs>? CapabilitiesChanged;
@@ -35,6 +36,7 @@
         public event System.EventHandler<SharpVision.StatusResponseEventArgs>? StatusResponseReceived;
         public event System.EventHandler? Stopped;
         public event System.EventHandler<SharpVision.StoppingEventArgs>? Stopping;
+        public event System.EventHandler<SharpVision.TerminalDiagnosticsChangedEventArgs>? TerminalDiagnosticsChanged;
         public event System.EventHandler<SharpVision.Threading.UnhandledEventArgs>? UnhandledException;
         public void Closed() { }
         public System.Threading.Tasks.ValueTask DisposeAsync() { }
@@ -247,6 +249,12 @@
     {
         public StoppingEventArgs() { }
         public bool Cancel { get; set; }
+    }
+    public sealed class TerminalDiagnosticsChangedEventArgs : System.EventArgs
+    {
+        public TerminalDiagnosticsChangedEventArgs(SharpVision.Terminal.Diagnostics.TerminalDiagnostics previous, SharpVision.Terminal.Diagnostics.TerminalDiagnostics current) { }
+        public SharpVision.Terminal.Diagnostics.TerminalDiagnostics Current { get; }
+        public SharpVision.Terminal.Diagnostics.TerminalDiagnostics Previous { get; }
     }
     public sealed class UnsupportedTerminalException : System.NotSupportedException
     {

@@ -18,6 +18,14 @@ public interface ISink: IProtocolSink
         throw new NotSupportedException(
             "This runtime sink does not accept capability profiles.");
 
+    /// <summary>Publishes one immutable redacted terminal diagnostic refinement.</summary>
+    /// <param name="value">The non-null diagnostic snapshot.</param>
+    /// <remarks>
+    /// The default implementation accepts and ignores diagnostics so an existing runtime sink
+    /// does not need to opt into observability it does not consume.
+    /// </remarks>
+    public void Diagnostics(TerminalDiagnostics value) => ArgumentNullException.ThrowIfNull(value);
+
     /// <summary>Receives one immutable terminal dimension change.</summary>
     /// <param name="value">The new cell and optional pixel dimensions.</param>
     public void Resize(in Dimensions value);

@@ -71,10 +71,12 @@ public sealed class Application:
     private Dimensions _latestResize;
     private TerminalCellMetrics? _cellMetrics;
     private TerminalCapabilities? _pendingProfile;
+    private TerminalDiagnostics? _pendingTerminalDiagnostics;
     private Task _sessionTask = Task.CompletedTask;
     private Task _renderTask = Task.CompletedTask;
     private bool _inputWake;
     private bool _profileWake;
+    private bool _diagnosticsWake;
     private bool _resizeWake;
     private bool _outOfBandWake;
     private bool _initialized;
@@ -218,6 +220,7 @@ public sealed class Application:
                 this,
                 _options,
                 _timeProvider);
+            TerminalDiagnostics = Session.Diagnostics;
             _initializeModalKey = InitializeModalKey;
             Dispatcher.Idle += OnIdle;
             Dispatcher.UnhandledException += OnDispatcherUnhandled;
@@ -298,6 +301,9 @@ public sealed class Application:
 
     /// <summary>Raised on the dispatcher after one capability profile becomes active.</summary>
     public event EventHandler<CapabilitiesChangedEventArgs>? CapabilitiesChanged;
+
+    /// <summary>Raised on the dispatcher after immutable terminal diagnostics change.</summary>
+    public event EventHandler<TerminalDiagnosticsChangedEventArgs>? TerminalDiagnosticsChanged;
 
     /// <summary>Gets the application-owned UI dispatcher.</summary>
     public Dispatcher Dispatcher { get; }
@@ -401,6 +407,9 @@ public sealed class Application:
 
     /// <summary>Gets the active immutable terminal description, programs, key map, and capabilities.</summary>
     public TerminalProfile TerminalProfile { get; private set; }
+
+    /// <summary>Gets the latest immutable, typed, and redacted terminal runtime diagnostics.</summary>
+    public TerminalDiagnostics TerminalDiagnostics { get; private set; }
 
     /// <summary>Gets the owned session, exposed only for test seams that need its identity.</summary>
     internal Session Session { get; }
@@ -866,6 +875,31 @@ public sealed class Application:
         }
 
         PostOrResetWake(DrainProfile, () => _profileWake = false);
+    }
+
+    /// <inheritdoc/>
+    void ISink.Diagnostics(TerminalDiagnostics value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        lock (_gate)
+        {
+            if (_stopping)
+            {
+                return;
+            }
+
+            _pendingTerminalDiagnostics = value;
+
+            if (_diagnosticsWake)
+            {
+                return;
+            }
+
+            _diagnosticsWake = true;
+        }
+
+        PostOrResetWake(DrainTerminalDiagnostics, () => _diagnosticsWake = false);
     }
 
     /// <inheritdoc/>
@@ -1725,6 +1759,7 @@ public sealed class Application:
     {
         Dispatcher.VerifyAccess();
         TerminalCapabilities? value;
+        TerminalDiagnostics? diagnostics;
 
         lock (_gate)
         {
@@ -1737,6 +1772,9 @@ public sealed class Application:
 
             value = _pendingProfile;
             _pendingProfile = null;
+            diagnostics = _pendingTerminalDiagnostics;
+            _pendingTerminalDiagnostics = null;
+            _diagnosticsWake = false;
         }
 
         if (_stopping || value is null)
@@ -1744,7 +1782,25 @@ public sealed class Application:
             return;
         }
 
-        ApplyCapabilities(value);
+        ApplyCapabilities(value, diagnostics);
+    }
+
+    private void DrainTerminalDiagnostics()
+    {
+        Dispatcher.VerifyAccess();
+        TerminalDiagnostics? value;
+
+        lock (_gate)
+        {
+            _diagnosticsWake = false;
+            value = _pendingTerminalDiagnostics;
+            _pendingTerminalDiagnostics = null;
+        }
+
+        if (!_stopping && value is not null)
+        {
+            ApplyTerminalDiagnostics(value);
+        }
     }
 
     private void DrainResize()
@@ -1752,6 +1808,7 @@ public sealed class Application:
         Dispatcher.VerifyAccess();
         Dimensions value;
         TerminalCapabilities? profile;
+        TerminalDiagnostics? diagnostics;
 
         lock (_gate)
         {
@@ -1759,6 +1816,9 @@ public sealed class Application:
             _resizeWake = false;
             profile = _pendingProfile;
             _pendingProfile = null;
+            diagnostics = _pendingTerminalDiagnostics;
+            _pendingTerminalDiagnostics = null;
+            _diagnosticsWake = false;
             _profileWake = false;
         }
 
@@ -1769,7 +1829,7 @@ public sealed class Application:
 
         if (profile is not null)
         {
-            ApplyCapabilities(profile);
+            ApplyCapabilities(profile, diagnostics);
 
             // A CapabilitiesChanged handler failing unhandled forces shutdown from inside that
             // call. Nothing below may advance a tearing-down application, and before these
@@ -1912,9 +1972,16 @@ public sealed class Application:
         PostOrResetWake(DrainInput, () => _inputWake = false);
     }
 
-    private void ApplyCapabilities(TerminalCapabilities value)
+    private void ApplyCapabilities(
+        TerminalCapabilities value,
+        TerminalDiagnostics? diagnostics)
     {
         Dispatcher.VerifyAccess();
+
+        if (diagnostics is not null)
+        {
+            ApplyTerminalDiagnostics(diagnostics);
+        }
 
         if (ReferenceEquals(Capabilities, value))
         {
@@ -1939,6 +2006,7 @@ public sealed class Application:
             // still forces a full redraw at the next render boundary either way.
             _ = _renderer.UpdateGraphicsBackend(Capabilities, _multiplexerRoute);
             _rendererInvalidationPending = true;
+            ApplyTerminalDiagnostics(TerminalDiagnostics);
         }
 
         if (_initialized)
@@ -1960,6 +2028,34 @@ public sealed class Application:
 
         Root.Invalidate(measure ? Invalidation.Measure : Invalidation.Render);
         ProcessInvalidation();
+    }
+
+    private void ApplyTerminalDiagnostics(
+        TerminalDiagnostics value,
+        TerminalGraphicsBackend? selectedGraphics = null)
+    {
+        Dispatcher.VerifyAccess();
+        var graphics = selectedGraphics ??
+                       _renderer?.GraphicsBackend ??
+                       TerminalGraphicsBackend.CellFallback;
+        var current = value.GraphicsBackend == graphics
+            ? value
+            : value.WithGraphicsBackend(graphics);
+
+        if (ReferenceEquals(TerminalDiagnostics, current))
+        {
+            return;
+        }
+
+        var previous = TerminalDiagnostics;
+        TerminalDiagnostics = current;
+
+        if (RaiseIsolated(
+                TerminalDiagnosticsChanged,
+                new TerminalDiagnosticsChangedEventArgs(previous, current)) is { } callbackFailure)
+        {
+            Report(callbackFailure);
+        }
     }
 
     private async Task FinishWithoutSessionAsync()
@@ -2718,11 +2814,14 @@ public sealed class Application:
 
     private Renderer CreateRenderer()
     {
-        return new Renderer(
+        var renderer = new Renderer(
             Capabilities,
             _multiplexerRoute,
             cleanupTimeout: _options.CleanupTimeout,
             timeProvider: _timeProvider);
+        var diagnostics = TerminalDiagnostics.WithGraphicsBackend(renderer.GraphicsBackend);
+        ApplyTerminalDiagnostics(diagnostics, renderer.GraphicsBackend);
+        return renderer;
     }
 
     private async Task<Exception?> DisposeTerminalResourcesAsync()

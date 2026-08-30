@@ -9,6 +9,7 @@ using SharpVision.Runtime;
 using SharpVision.Tests.Controls;
 
 using Terminal.Capabilities;
+using Terminal.Diagnostics;
 using Terminal.Graphics;
 using Terminal.Kitty.Graphics;
 using Terminal.Multiplexing;
@@ -21,6 +22,96 @@ using TargetInvocationException = System.Reflection.TargetInvocationException;
 /// <summary>Verifies application startup, frame completion, suspension, and shutdown.</summary>
 public sealed class ApplicationTests
 {
+    /// <summary>Verifies successful mode acquisition republishes activation without a capability change.</summary>
+    [Fact]
+    public async Task StartAsync_WhenConfiguredModeActivates_PublishesActiveDiagnosticsAsync()
+    {
+        // Arrange
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(8, 3)));
+        var options = TerminalOptions.Minimal with
+        {
+            Profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
+            {
+                FocusReporting = new Feature(CapabilitySupport.Supported, Origin.Override)
+            }),
+            Focus = true
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        var changes = new List<TerminalDiagnosticsChangedEventArgs>();
+        application.TerminalDiagnosticsChanged += (_, eventArgs) => changes.Add(eventArgs);
+
+        application.TerminalDiagnostics.Modes.FocusReportingAuthorized.ShouldBeTrue();
+        application.TerminalDiagnostics.Modes.FocusReportingActive.ShouldBeFalse();
+
+        // Act
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        application.TerminalDiagnostics.Modes.FocusReportingActive.ShouldBeTrue();
+        changes.ShouldContain(change =>
+            !change.Previous.Modes.FocusReportingActive &&
+            change.Current.Modes.FocusReportingActive);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies terminal diagnostics refine on the dispatcher before their matching capability event.</summary>
+    [Fact]
+    public async Task StartAsync_WhenNegotiationCompletes_PublishesDiagnosticsBeforeCapabilitiesAsync()
+    {
+        // Arrange
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(8, 3), new Size(80, 60)));
+        var options = TerminalOptions.Minimal with
+        {
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
+                new CapabilityOverrides { Sixel = true })
+        };
+        var queried = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += value =>
+        {
+            if (value.Span.IndexOf("\u001b[c"u8) >= 0)
+            {
+                _ = queried.TrySetResult();
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        var order = new List<string>();
+        var changes = new List<TerminalDiagnosticsChangedEventArgs>();
+        application.TerminalDiagnosticsChanged += (_, eventArgs) =>
+        {
+            application.Dispatcher.CheckAccess().ShouldBeTrue();
+            changes.Add(eventArgs);
+            order.Add("diagnostics");
+        };
+        application.CapabilitiesChanged += (_, _) => order.Add("capabilities");
+
+        application.TerminalDiagnostics.NegotiationState.ShouldBe(TerminalNegotiationState.Pending);
+        application.TerminalDiagnostics.BackendFamily.ShouldBe(TerminalBackendFamily.Kitty);
+        application.TerminalDiagnostics.GraphicsBackend.ShouldBe(TerminalGraphicsBackend.CellFallback);
+
+        // Act
+        var starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
+        await queried.Task.WaitAsync(TestContext.Current.CancellationToken);
+        terminal.QueueInput(NegotiationReplies());
+        await starting;
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        changes.Count.ShouldBe(2);
+        changes[0].Previous.NegotiationState.ShouldBe(TerminalNegotiationState.Pending);
+        changes[0].Current.NegotiationState.ShouldBe(TerminalNegotiationState.Completed);
+        changes[^1].Current.ShouldBeSameAs(application.TerminalDiagnostics);
+        application.TerminalDiagnostics.NegotiationState.ShouldBe(TerminalNegotiationState.Completed);
+        application.TerminalDiagnostics.QueryResults.ShouldNotBeNull().FocusReporting.ShouldBe(true);
+        application.TerminalDiagnostics.GraphicsBackend.ShouldBe(TerminalGraphicsBackend.NonRetained);
+        order[0].ShouldBe("diagnostics");
+        order.IndexOf("diagnostics").ShouldBeLessThan(order.IndexOf("capabilities"));
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies hosted Kitty graphics acknowledgements reach the renderer backend so a
     /// terminal-assigned image id replaces the temporary client image number.</summary>
     [Fact]
