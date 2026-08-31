@@ -761,13 +761,15 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         !SplitsWideGrapheme(back, state.Placement.Destination);
 
     /// <summary>
-    /// Reports whether a placeholder destination's left or right edge would fall in the middle
-    /// of a wide (two-column) grapheme: the left edge landing on a continuation cell, or the
-    /// right edge landing on a wide lead cell whose trailing continuation cell sits outside the
-    /// rect. A Kitty placeholder is exactly one protocol column wide regardless of the frame
-    /// content it replaces, so either case would desynchronize the encoder's per-row emitted
-    /// column count from the frame width - see <see cref="GraphicsCellOverlay.Paint"/>, which
-    /// blind-fills every destination cell with no continuation-boundary awareness of its own.
+    /// Reports whether any column of a placeholder destination would fall in the middle of a
+    /// wide (two-column) grapheme: any interior or edge column landing on a continuation cell -
+    /// which the encoder silently skips regardless of an active overlay, desynchronizing the
+    /// row's emitted column count from every column after it - or the right edge landing on a
+    /// wide lead cell whose trailing continuation cell sits outside the rect and would be left
+    /// orphaned with no lead. A Kitty placeholder is exactly one protocol column wide regardless
+    /// of the frame content it replaces, so either case corrupts the row - see
+    /// <see cref="GraphicsCellOverlay.Paint"/>, which blind-fills every destination cell with no
+    /// continuation-boundary awareness of its own.
     /// </summary>
     private static bool SplitsWideGrapheme(Frame back, Rect destination)
     {
@@ -782,18 +784,20 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         for (var row = destination.Y; row < destination.Bottom; row++)
         {
             var rowStart = checked(row * back.Size.Width);
-            var leftCell = back.GetCellByIndex(checked(rowStart + leftColumn));
 
-            if (leftCell.IsContinuation)
+            for (var column = leftColumn; column <= rightColumn; column++)
             {
-                return true;
-            }
+                var cell = back.GetCellByIndex(checked(rowStart + column));
 
-            var rightCell = back.GetCellByIndex(checked(rowStart + rightColumn));
+                if (cell.IsContinuation)
+                {
+                    return true;
+                }
 
-            if (!rightCell.IsContinuation && rightCell.Width == 2)
-            {
-                return true;
+                if (column == rightColumn && cell.Width == 2)
+                {
+                    return true;
+                }
             }
         }
 

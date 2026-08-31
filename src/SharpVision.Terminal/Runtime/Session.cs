@@ -607,6 +607,14 @@ public sealed class Session: IAsyncDisposable
 
     private void ReportAndPromote(DiagnosticPromotion promotion, DiagnosticCode code)
     {
+        // When the sink is an Application, _sink.Input enqueues the same diagnostic record for
+        // its own dispatcher-thread promotion classifier (ApplicationDiagnosticPromotionClassifier
+        // .ThrowIfConfigured) in addition to the throw below - a pre-existing double-fault
+        // exposure for every promoted family, not one this method's own report-then-throw shape
+        // creates or changes. Reporting was already unconditional for every promoted family before
+        // this method stopped gating it: the old early-return only ever suppressed the unpromoted
+        // case, which never threw either way. Resolving which of the two sites should defer is a
+        // separate, cross-cutting design decision outside this method's own scope.
         var diagnostic = new Diagnostic(code, SequenceKind.None, offset: 0, discardedBytes: 0);
         _sink.Input(in diagnostic);
 
@@ -807,13 +815,18 @@ public sealed class Session: IAsyncDisposable
 
             if (started)
             {
-                // The written batch may or may not have room for the CSI 6n cursor-position
-                // fence (a low caller-supplied query budget can crowd it out), but the decoder
-                // has no per-query visibility into that budget. Gating on the whole negotiation
-                // window instead of the exact fence query is a conservative approximation: it
-                // never misses a genuine reply, and DisableCursorPositionQuery below always runs
-                // before this modified-F3 grammar could otherwise stay swallowed indefinitely.
-                router.EnableCursorPositionQuery();
+                // A low caller-supplied query budget can crowd the CSI 6n cursor-position fence
+                // out of the written batch entirely (it is registered last, after every other
+                // family). Gating only on FenceQueried - not on the whole negotiation window -
+                // matters: a modified F3 keystroke arriving while the flag is set is classified
+                // as a query reply instead of a key, so enabling this when no fence was actually
+                // sent would misclassify and silently swallow the keystroke for no reason, one
+                // the fix this flag exists for was written to eliminate.
+                if (negotiator.FenceQueried)
+                {
+                    router.EnableCursorPositionQuery();
+                }
+
                 await _transport.WriteAsync(queries.WrittenMemory, cancellationToken)
                     .ConfigureAwait(false);
                 await _transport.FlushAsync(cancellationToken).ConfigureAwait(false);

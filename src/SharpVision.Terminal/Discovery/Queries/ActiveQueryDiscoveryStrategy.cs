@@ -39,7 +39,6 @@ internal sealed class ActiveQueryDiscoveryStrategy
     private bool? _itermImages;
     private bool _keyboardQueried;
     private bool _graphicsQueried;
-    private bool _fenceQueried;
     private bool _usesExplicitOuterProfile;
     private string? _planningTerminalName;
     private PaletteResponse? _paletteColor;
@@ -87,6 +86,15 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
     /// <summary>Gets whether the query batch was emitted.</summary>
     public bool Started { get; private set; }
+
+    /// <summary>
+    /// Gets whether the written batch included the CSI 6n cursor-position completion fence. A
+    /// low caller-supplied <see cref="QueryLimits.MaxConcurrentQueries"/> budget can crowd the
+    /// fence out of the batch entirely; callers that gate CSI 1;&lt;mod&gt;R disambiguation on the
+    /// negotiation window must also gate on this, or a modified F3 keystroke arriving during that
+    /// window would be misclassified as a reply to a query that was never actually sent.
+    /// </summary>
+    public bool FenceQueried { get; private set; }
 
     /// <summary>Gets whether one immutable profile was published.</summary>
     public bool Completed { get; private set; }
@@ -357,9 +365,9 @@ internal sealed class ActiveQueryDiscoveryStrategy
         // every other still-outstanding family stayed silent, because an unsolicited keystroke
         // would then falsely retire all of them. Every other silent family still resolves,
         // through its own matching reply or the shared deadline below.
-        _fenceQueried = TryRegister(QueryKind.CursorPosition, ref remaining);
+        FenceQueried = TryRegister(QueryKind.CursorPosition, ref remaining);
 
-        if (_fenceQueried)
+        if (FenceQueried)
         {
             Csi.ReportCursorPosition(writer);
         }

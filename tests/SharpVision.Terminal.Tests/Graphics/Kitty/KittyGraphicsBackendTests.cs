@@ -152,6 +152,58 @@ public sealed class KittyGraphicsBackendTests
         Encoding.ASCII.GetString(assigned.Placements).ShouldContain("a=p,i=42,p=1");
     }
 
+    /// <summary>Verifies a multi-column destination that fully contains a wide (two-column)
+    /// grapheme's lead and continuation cells - neither edge column - still stays cursor-anchored
+    /// rather than using a placeholder. The encoder skips output for any continuation cell
+    /// regardless of an active overlay, so a placeholder over this rect would emit one fewer
+    /// column than the destination's width, shifting every cell after it in the row.</summary>
+    [Fact]
+    public void Prepare_WhenAssignedPlacementDestinationInteriorContainsWideGlyph_KeepsCursorPlacement()
+    {
+        using var backend = new KittyGraphicsBackend();
+        var image = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        using var first = new RenderFrame(new Size(8, 1));
+        first.Canvas.DrawImage(image, new Rect(0, 0, 1, 1), PlacementMode.Contain);
+        using var moved = new RenderFrame(new Size(8, 1));
+        _ = moved.Canvas.Draw("界", new Point(3, 0));
+        moved.Canvas.DrawImage(image, new Rect(2, 0, 3, 1), PlacementMode.Contain);
+        _ = backend.Prepare(null, first, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=42,I=1;OK"u8));
+
+        _ = backend.Prepare(first, moved, full: false);
+        var assigned = WritePrepared(backend);
+
+        assigned.CellPreludes.ShouldBeEmpty();
+        backend.PreparedCellOverlay.ShouldBeNull();
+        Encoding.ASCII.GetString(assigned.Placements).ShouldContain("a=p,i=42,p=1");
+    }
+
+    /// <summary>Verifies a placement 290 cells wide - beyond the previous, truncated 283-entry
+    /// diacritics table's ceiling but within the corrected 297-entry table - is placeholder
+    /// eligible rather than falling back to cursor-anchored real placement.</summary>
+    [Fact]
+    public void Prepare_WhenAssignedPlacementDestinationIs290CellsWide_UsesPlaceholder()
+    {
+        using var backend = new KittyGraphicsBackend();
+        var image = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        using var first = new RenderFrame(new Size(300, 1));
+        first.Canvas.DrawImage(image, new Rect(0, 0, 1, 1), PlacementMode.Contain);
+        using var moved = new RenderFrame(new Size(300, 1));
+        moved.Canvas.DrawImage(image, new Rect(0, 0, 290, 1), PlacementMode.Contain);
+        _ = backend.Prepare(null, first, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=42,I=1;OK"u8));
+
+        _ = backend.Prepare(first, moved, full: false);
+        var assigned = WritePrepared(backend);
+
+        assigned.CellPreludes.ShouldNotBeEmpty();
+        assigned.Placements.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies a placement that was rendered through a virtual placeholder in the
     /// previously committed frame, and loses that eligibility on a later frame purely because the
     /// color depth dropped - with identical placement identity and geometry, and no full

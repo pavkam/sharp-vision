@@ -814,6 +814,39 @@ public sealed class SessionTests
         sink.Order.ShouldBe(["response", "diagnostics", "profile", "closed"]);
     }
 
+    /// <summary>Verifies a capacity too low to include the CSI 6n completion fence in the written
+    /// batch does not enable cursor-position-reply disambiguation, so a modified F3 keystroke
+    /// (byte-identical to a CSI 6n reply) still decodes as a key rather than a bogus, unmatched
+    /// capability response. Enabling disambiguation for the whole negotiation window regardless
+    /// of whether the fence itself was actually queried would misclassify and silently swallow
+    /// the keystroke for no reason - the exact defect this gating exists to prevent.</summary>
+    [Fact]
+    public async Task RunAsync_WhenCapacityCrowdsOutCursorPositionFence_StillDecodesModifiedF3AsKeyAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var options = TerminalOptions.Minimal with
+        {
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?>(),
+                limits: QueryLimits.Default with { MaxConcurrentQueries = 1 })
+        };
+        transport.Input(Encoding.ASCII.GetBytes("[1;2R"));
+        transport.Close();
+        await using Session session = new(transport, resize, sink, options);
+
+        // Act
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert: only the DA1 query fits the capacity, so the fence was never sent.
+        sink.Responses.ShouldBeEmpty();
+        var stroke = sink.Strokes.ShouldHaveSingleItem();
+        stroke.Code.ShouldBe(Code.F3);
+        stroke.Modifiers.ShouldBe(Modifiers.Shift);
+    }
+
     /// <summary>Verifies a pre-publication resize storm retains only its newest value.</summary>
     [Fact]
     public async Task RunAsync_WhenResizeStormPrecedesDeadline_ForwardsOnlyNewestAsync()
