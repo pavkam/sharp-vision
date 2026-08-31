@@ -130,6 +130,8 @@ offset reset, generated parts, and both axis reservation values.
 > and refine one axis after, never the reverse. Re-assigning an equal
 > `ShowScrollBars` value is inert and preserves per-axis refinements.
 
+<!-- -->
+
 > [!NOTE]
 >
 > `ScrollChanged` fires synchronously and in-line from the offset-committing
