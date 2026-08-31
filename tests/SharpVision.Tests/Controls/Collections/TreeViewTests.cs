@@ -542,7 +542,7 @@ public sealed class TreeViewTests
     [Fact]
     public void IsExpanded_WhenExpandedChangedDisposesTree_DoesNotThrow()
     {
-        var item = new TreeViewItem { Header = "Parent" };
+        var item = new TreeViewItem { Header = "Parent", IsExpanded = false };
         item.Children.Add(new TreeViewItem { Header = "Child" });
         var tree = new TreeView { Items = { item } };
         item.ExpandedChanged += (_, _) => tree.Dispose();
