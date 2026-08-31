@@ -49,7 +49,7 @@ wiring, or repository-wide evidence policy.
   friend assemblies, and an `internal` member is excluded from the API snapshot,
   so it is not production surface.
 - Do not hand-write API-shape assertions. `SharpVision.Compatibility.Tests`
-  already freezes all three public surfaces; a shape test duplicates it and
+  already freezes all five public surfaces; a shape test duplicates it and
   covers less. Assert shape only alongside the behavior it protects, and only
   for accessibility the snapshot cannot express.
 

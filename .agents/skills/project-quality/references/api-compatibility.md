@@ -27,15 +27,17 @@ review, assembly selection, or breaking-change evidence.
    changes, signatures, visibility, defaults represented by types, and protected
    extensibility. Attribute-only lines never appear in the compared text (see
    below), so every surviving diff line is a genuine signature or shape change.
-3. Snapshot the three bundled libraries: `SharpVision.Terminal`, `SharpVision`,
-   and `SharpVision.FigletFonts`.
+3. Snapshot the five bundled libraries: `SharpVision.Terminal`, `SharpVision`,
+   `SharpVision.Document`, `SharpVision.FigletFonts`, and
+   `SharpVision.SyntaxHighlighting`.
 4. Decide, from the diff, whether the change is the kind that warrants bumping
    that assembly's own version property (`SharpVisionTerminalVersion`,
-   `SharpVisionVersion`, or `SharpVisionFigletFontsVersion`) in
-   `Directory.Build.props` before or alongside accepting the new baseline - this
-   gate is the maintainer's own signal for that decision, not an automated
+   `SharpVisionVersion`, `SharpVisionDocumentVersion`,
+   `SharpVisionFigletFontsVersion`, or `SharpVisionSyntaxHighlightingVersion`)
+   in `Directory.Build.props` before or alongside accepting the new baseline -
+   this gate is the maintainer's own signal for that decision, not an automated
    release gate keyed to a shared version number. A signature change in one
-   library never requires bumping the other two.
+   library never requires bumping the other four.
 5. Accept a baseline manually after review by overwriting the `.verified.txt`
    file with its paired `.received.txt` file; CI never rewrites verified files.
 

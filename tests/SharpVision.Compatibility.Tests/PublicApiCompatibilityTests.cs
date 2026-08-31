@@ -13,8 +13,9 @@ namespace SharpVision.Compatibility.Tests;
 /// diff here is the maintainer's own signal for whether the change is a documented breaking
 /// change that warrants bumping that assembly's own version property in
 /// <c>Directory.Build.props</c> - not an automated release gate keyed to a shared version.
-/// SharpVision.Terminal, SharpVision, SharpVision.Document, and SharpVision.FigletFonts each version and publish
-/// independently, so a signature change in one never requires bumping the others. Accepting the
+/// SharpVision.Terminal, SharpVision, SharpVision.Document, SharpVision.FigletFonts, and
+/// SharpVision.SyntaxHighlighting each version and publish independently, so a signature change in one library
+/// never requires bumping the others. Accepting the
 /// new snapshot is a deliberate, reviewed decision, not a mechanical bookkeeping step.
 ///
 /// Attributes are excluded from the compared text: they are metadata annotations rather than

@@ -30,7 +30,7 @@ Every `dotnet test` command must use supported filter grammar and
 `--minimum-expected-tests 1`, including exact-class refinements.
 
 Assert observable output and state, not private call graphs or member shape.
-`SharpVision.Compatibility.Tests` already freezes all three public surfaces; a
+`SharpVision.Compatibility.Tests` already freezes all five public surfaces; a
 hand-written shape assertion duplicates it and covers less. When a test needs
 state a control does not expose, add a documented `internal` seam rather than
 reflecting into private state — see
