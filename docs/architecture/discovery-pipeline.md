@@ -122,7 +122,7 @@ stateDiagram-v2
     Planned --> PublishedAbsent: Route encoding fails
     Active --> Active: Accept matched reply
     Active --> Active: Observe duplicate or unknown reply
-    Active --> Published: All families retire or fence arrives
+    Active --> Published: All families resolve
     Active --> Published: Exclusive deadline expires
     PublishedAbsent --> [*]
     Published --> [*]
@@ -164,19 +164,26 @@ encoding fails, the batch is retired and absent evidence is published atomically
 — no partial bytes, no flush, no active optional modes, and no scheduled
 deadline work. A route never changes backend identity.
 
-The batch retires outstanding families in three ways:
+The batch retires outstanding families in two ways:
 
 1. `Keyboard` and `KittyGraphics` piggyback on primary device attributes (DA1).
    If DA1 arrives without their reply, they retire immediately instead of
    waiting for the deadline.
-2. The last standard query is `CSI 6n`, a cursor-position request used as a
-   completion fence. Its reply retires every family still outstanding without
-   adding evidence for them.
-3. The one shared exclusive deadline retires the batch when no fence reply
-   arrives.
+2. The one shared exclusive deadline retires the batch when no reply arrives for
+   a still-outstanding family.
 
-Silence never means unsupported. A family retired by the fence or deadline stays
-absent because neither event proves what that feature can do.
+The last standard query is `CSI 6n`, a cursor-position request used as a
+completion fence, but its reply resolves only its own tracked family. It
+deliberately does not retire any other still-outstanding family: the reply
+grammar is byte-identical to a modified F3 keystroke, which a user or replayed
+typeahead can deliver at any point in the shared deadline window, so a match is
+never trustworthy proof that every other family stayed silent. The batch still
+publishes once every family has resolved — through its own matching reply, DA1
+piggyback, or the fence's own resolution when it happens to be the last
+outstanding family — or once the shared deadline expires.
+
+Silence never means unsupported. A family retired by the deadline stays absent
+because that alone never proves what that feature can do.
 
 Query planning consults a temporary projection of the baseline with environment
 evidence applied. The projection affects only these decisions:
