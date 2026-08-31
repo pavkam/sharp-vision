@@ -743,4 +743,69 @@ public sealed class SplitPaneTests
         wrap.DesiredSize.ShouldBe(new Size(2, 3));
         wrap.Bounds.ShouldBe(new Rect(0, 0, 4, 3));
     }
+
+    /// <summary>Verifies a cross-scrolling split commits reflowed height before its viewport becomes scrollable.</summary>
+    [Fact]
+    public void Arrange_WhenCrossScrollingSplitNarrows_CommitsReflowedExtentBeforeScrolling()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Never
+        };
+        var text = new ControlText("abcdefghij") { Overflow = Overflow.WrapAnywhere };
+        pane.Children.Add(text);
+        pane.Children.Add(new ProbeControl());
+        pane.Measure(new Constraint(11, 2));
+        text.DesiredSize.ShouldBe(new Size(5, 2));
+
+        // Act
+        pane.Arrange(new Rect(0, 0, 7, 2), widthResolved: true, heightResolved: true);
+
+        // Assert
+        pane.Viewport.ShouldBe(new Size(7, 2));
+        pane.Extent.ShouldBe(new Size(7, 4));
+        text.DesiredSize.ShouldBe(new Size(3, 4));
+        pane.ScrollBy(0, 1).ShouldBeTrue();
+        pane.VerticalOffset.ShouldBe(1);
+    }
+
+    /// <summary>Verifies primary scrolling refreshes a trailing intrinsic track after cross-axis contraction.</summary>
+    [Fact]
+    public void Arrange_WhenPrimaryScrollingSplitContractsCrossAxis_RefreshesTrailingStarAndExtent()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Horizontal,
+            ShowScrollBars = ShowScrollBars.Never,
+            FirstPaneLength = Length.Percent(100)
+        };
+        var first = new ProbeControl();
+        var trailing = new Wrap { Orientation = Orientation.Vertical };
+
+        for (var index = 0; index < 4; index++)
+        {
+            trailing.Children.Add(new ProbeControl(new Size(1, 1)));
+        }
+
+        pane.Children.Add(first);
+        pane.Children.Add(trailing);
+        pane.Measure(new Constraint(6, 4));
+        trailing.DesiredSize.ShouldBe(new Size(1, 4));
+
+        // Act
+        pane.Arrange(new Rect(0, 0, 6, 2), widthResolved: true, heightResolved: true);
+
+        // Assert
+        pane.Viewport.ShouldBe(new Size(6, 2));
+        pane.Extent.ShouldBe(new Size(8, 2));
+        first.Bounds.ShouldBe(new Rect(0, 0, 5, 2));
+        trailing.DesiredSize.ShouldBe(new Size(2, 2));
+        trailing.Bounds.ShouldBe(new Rect(6, 0, 2, 2));
+        pane.ScrollBy(1, 0).ShouldBeTrue();
+    }
 }

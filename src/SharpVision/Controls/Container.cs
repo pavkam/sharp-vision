@@ -204,6 +204,13 @@ public abstract class Container: ControlBase
     /// beginning of every measure transaction.</remarks>
     private Size? _autoSizeCorrectedContentExtent;
 
+    /// <summary>Gets whether arrange-time scrollbar resolution first remeasures content against
+    /// its final padded host size before committing the extent and viewport.</summary>
+    /// <remarks>Auto-sized containers retain the existing reconciliation pass. A specialized
+    /// container whose track allocation couples one final axis to content measured on the other
+    /// can opt in so its initial scrollbar candidate never consumes stale desired geometry.</remarks>
+    private protected virtual bool RemeasureInitialScrollContent => AutoSize;
+
     /// <summary>Gets the finite content constraint that supplied the current scroll measurement.
     /// Specialized containers use this candidate viewport to resolve viewport-relative child
     /// requests while their scroll axis remains unbounded for extent discovery. It is valid only
@@ -1004,7 +1011,7 @@ public abstract class Container: ControlBase
                 new Size(padded.Width, padded.Height),
                 horizontal,
                 vertical),
-            remeasureInitial: AutoSize);
+            remeasureInitial: RemeasureInitialScrollContent);
         var extent = resolved.Extent;
         var viewport = resolved.Viewport;
         _scroll.ViewportBounds = new Rect(padded.X, padded.Y, viewport.Width, viewport.Height);

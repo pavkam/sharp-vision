@@ -124,6 +124,9 @@ public sealed class SplitPane: Container
     /// <summary>Gets the largest jointly feasible leading-pane border-box extent from the latest arrangement.</summary>
     internal int MaximumFirstPaneExtent { get; private set; }
 
+    /// <inheritdoc/>
+    private protected override bool RemeasureInitialScrollContent => true;
+
     #region Layout
 
     /// <inheritdoc/>
