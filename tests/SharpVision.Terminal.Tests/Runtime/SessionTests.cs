@@ -230,8 +230,11 @@ public sealed class SessionTests
         session.Diagnostics.Modes.FocusReportingConfigured.ShouldBeTrue();
         session.Diagnostics.Modes.FocusReportingAuthorized.ShouldBeTrue();
         session.Diagnostics.Modes.FocusReportingActive.ShouldBeTrue();
-        sink.DiagnosticSnapshots.ShouldHaveSingleItem().ShouldBeSameAs(session.Diagnostics);
-        sink.Order.ShouldBe(["diagnostics", "closed"]);
+        // Focus activation now publishes its own incremental snapshot as soon as it succeeds, in
+        // addition to the final snapshot published once RunAsync's startup walk completes.
+        sink.DiagnosticSnapshots.Count.ShouldBe(2);
+        sink.DiagnosticSnapshots[^1].ShouldBeSameAs(session.Diagnostics);
+        sink.Order.ShouldBe(["diagnostics", "diagnostics", "closed"]);
     }
 
     /// <summary>Verifies atomic route failure publishes immediately without transport output or deadline work.</summary>

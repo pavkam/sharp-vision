@@ -485,7 +485,8 @@ public sealed class ActiveQueryDiscoveryStrategyTests
 
         foreach (var mode in new[] { 1004, 2004, 1006, 1016, 5522 })
         {
-            negotiator.Accept(in PrivateMode(mode, state: 1)).ShouldBe(QueryMatch.Matched);
+            var privateMode = PrivateMode(mode, state: 1);
+            negotiator.Accept(in privateMode).ShouldBe(QueryMatch.Matched);
         }
 
         foreach (var response in new[]
@@ -525,7 +526,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
             new Feature(CapabilitySupport.Supported, Origin.Query));
         negotiator.Capabilities.KittyKeyboard.ShouldBe(
             new Feature(CapabilitySupport.Supported, Origin.Query));
-        negotiator.Results.WindowPixels.ShouldNotBeNull();
+        _ = negotiator.Results.WindowPixels.ShouldNotBeNull();
     }
 
     /// <summary>Verifies a read winning at or after the deadline atomically rejects the whole batch.</summary>

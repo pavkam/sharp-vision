@@ -2744,8 +2744,8 @@ public sealed class InputDecoderTests
     /// <summary>Verifies a modified F3 keystroke (<c>CSI 1;&lt;mod&gt;R</c>) is decoded as a key
     /// event rather than claimed as a DSR cursor-position reply when no cursor-position query is
     /// outstanding. The two are byte-identical, so a reply-shaped match here would otherwise
-    /// swallow the keystroke permanently: this shape has no further CSI fallback beyond
-    /// <see cref="TryHandleLegacyCsiKey"/> once the xterm response handler stops claiming it.
+    /// swallow the keystroke permanently: this shape has no further CSI fallback beyond the legacy
+    /// key handler once the xterm response handler stops claiming it.
     /// </summary>
     [Fact]
     public void Decode_WhenModifiedF3ArrivesWithNoQueryOutstanding_IsDecodedAsKeyNotReply()

@@ -301,6 +301,11 @@ public sealed class MultiplexerRoute
     {
         var sink = new ReplyValidationSink();
         using var decoder = new InputDecoder(sink);
+
+        // This decoder only ever validates bytes already unwrapped from an authorized route
+        // reply, never live keyboard input, so a CSI 1;<n>R shape here is always a genuine
+        // cursor-position reply and never a modified-F3 keystroke to disambiguate.
+        decoder.EnableCursorPositionQuery();
         decoder.Decode(reply);
         decoder.Complete();
         return sink.Valid && sink.Operation switch

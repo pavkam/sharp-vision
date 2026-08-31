@@ -553,12 +553,18 @@ public sealed class RendererTests
         first.Full.ShouldBeTrue();
         first.Writes.ShouldBe(1);
         first.Bytes.ShouldBeGreaterThan(0);
+
+        // TerminalCapabilities.Conservative has no authoritative synchronized-output support, so
+        // the zero-damage path correctly reports UsedFallback the same way the byte-producing
+        // path above already does for the identical session state.
         second.ShouldBe(new RenderMetrics(
             0,
             0,
             0,
             false,
-            second.Elapsed));
+            second.Elapsed,
+            usedFallback: true,
+            []));
         transport.Writes.Count.ShouldBe(1);
     }
 

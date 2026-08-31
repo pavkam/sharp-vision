@@ -854,7 +854,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         GraphicsCellOverlay? right) =>
         left is null ? right is null : left.SemanticallyEquals(right);
 
-    private void WriteVirtualPlacement(
+    private static void WriteVirtualPlacement(
         KittyGraphicsPlacementState state,
         int zIndex,
         IBufferWriter<byte> destination)

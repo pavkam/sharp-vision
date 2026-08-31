@@ -553,8 +553,8 @@ public sealed class KittyGraphicsBackendTests
         // one unwrap, and a second TryUnwrapEnvelope call would succeed on it. Single-wrapped, the
         // first unwrap already exposes the bare Kitty APC ("ESC _ G ..."), so the second byte must
         // be '_' rather than 'P', and a second unwrap attempt must fail.
-        unwrappedBytes[0].ShouldBe((byte)0x1b);
-        unwrappedBytes[1].ShouldBe((byte)'_');
+        unwrappedBytes[0].ShouldBe((byte) 0x1b);
+        unwrappedBytes[1].ShouldBe((byte) '_');
         TmuxWriter.TryUnwrapEnvelope(unwrappedBytes, new ArrayBufferWriter<byte>()).ShouldBeFalse();
     }
 

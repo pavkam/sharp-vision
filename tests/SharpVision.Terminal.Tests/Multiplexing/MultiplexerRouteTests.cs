@@ -911,11 +911,12 @@ public sealed class MultiplexerRouteTests
         negotiator.Capabilities.KittyGraphics.State.ShouldNotBe(CapabilitySupport.Supported);
     }
 
-    /// <summary>Verifies a routed fence CPR reply retires every still-outstanding family and
-    /// completes negotiation immediately, exercising the real router wire path instead of calling
-    /// the negotiator directly.</summary>
+    /// <summary>Verifies a routed fence CPR reply resolves only its own tracked family and does
+    /// not retire any other still-outstanding family, exercising the real router wire path instead
+    /// of calling the negotiator directly. The reply grammar is byte-identical to a modified F3
+    /// keystroke, so it is never trustworthy proof that every other family stayed silent.</summary>
     [Fact]
-    public void Route_WhenFenceCprArrivesWrapped_RetiresOutstandingFamiliesBeforeDeadline()
+    public void Route_WhenFenceCprArrivesWrapped_ResolvesOnlyItsOwnFamily()
     {
         var policy = ActivePolicy([MultiplexerKind.Tmux]);
         var route = new MultiplexerRoute(policy);
@@ -935,8 +936,8 @@ public sealed class MultiplexerRouteTests
 
         router.Route(wrapped.WrittenSpan);
 
-        negotiator.Completed.ShouldBeTrue();
-        negotiator.HasPendingWork.ShouldBeFalse();
+        negotiator.Completed.ShouldBeFalse();
+        negotiator.HasPendingWork.ShouldBeTrue();
     }
 
     /// <summary>Creates one query-only explicit outer-terminal route.</summary>
