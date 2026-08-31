@@ -1202,6 +1202,96 @@ public sealed class SessionTests
     }
 
     /// <summary>
+    /// Verifies a resize that is already live-completed when negotiation completes from routed
+    /// input supersedes an earlier value buffered while startup was still pending - newest wins -
+    /// and is not re-forwarded a second time by the ordinary resize branch afterward.
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenResizeIsReadyAtTheSameTickAsNegotiationCompletesFromInput_ForwardsOnlyNewestAsync()
+    {
+        var stale = new Dimensions(new Size(80, 24));
+        var newest = new Dimensions(new Size(120, 40));
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new() { Current = stale };
+        var sink = new RuntimeSink();
+        var options = TerminalOptions.Minimal with
+        {
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?>(),
+                limits: QueryLimits.Default with { MaxConcurrentQueries = 1 })
+        };
+
+        // A single device-attributes reply completes negotiation from the very first read, and
+        // the resize is queued before the loop starts so it is already live-completed at that
+        // same first check - racing the negotiator's own routed-input completion rather than
+        // being drained first through the ordinary resize branch. TryReadCurrent's synchronous
+        // snapshot buffers the stale value ahead of the loop, exactly as a genuinely earlier
+        // resize would have.
+        transport.Input("\u001b[?1;2c"u8.ToArray());
+        transport.Close();
+        resize.Resize(newest);
+
+        await using Session session = new(transport, resize, sink, options);
+
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        sink.Resizes.ShouldBe([newest]);
+        sink.ClosedCount.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies a resize that becomes live-completed while the negotiation-deadline branch is
+    /// still writing its optional-mode enables supersedes an earlier value buffered while startup
+    /// was still pending - newest wins - and is not re-forwarded a second time by the ordinary
+    /// resize branch afterward.
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenResizeIsReadyDuringDeadlineExpiryOptionalEnable_ForwardsOnlyNewestAsync()
+    {
+        var stale = new Dimensions(new Size(80, 24));
+        var newest = new Dimensions(new Size(120, 40));
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new() { Current = stale, SignalAfterReads = 1 };
+        var sink = new RuntimeSink();
+        var clock = new ManualTimeProvider();
+        var limits = QueryLimits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
+        var options = TerminalOptions.Minimal with
+        {
+            Focus = true,
+            Capabilities = Supported(),
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?>(),
+                limits: limits)
+        };
+        await using Session session = new(transport, resize, sink, options, clock);
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Focus reporting is already an authoritative override, so it is never queried and
+        // survives untouched into the expired negotiation's published profile - letting the
+        // deadline branch's own EnableOptionalAsync genuinely write (and, armed here, stall)
+        // rather than reporting the feature unsupported and doing nothing at all. The stall
+        // opens a real window, mid-branch, before the branch reaches its own resize check.
+        transport.StallNextWrite = true;
+        clock.Advance(limits.QueryTimeout);
+
+        // The resize is delivered - and confirmed genuinely delivered via the read-count signal -
+        // while the branch is still parked inside the stalled write, so it is unambiguously
+        // live-completed by the time the branch reaches its own check, rather than racing it.
+        resize.Resize(newest);
+        await resize.ReadsObserved.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        await sink.ResizeReceived.Task.WaitAsync(
+            TimeSpan.FromSeconds(10),
+            TestContext.Current.CancellationToken);
+        transport.Close();
+        await running;
+
+        sink.Resizes.ShouldBe([newest]);
+        sink.ClosedCount.ShouldBe(1);
+    }
+
+    /// <summary>
     /// Verifies partial startup failure restores attempted modes and preserves identity.
     /// </summary>
     [Fact]

@@ -884,9 +884,22 @@ public sealed class Session: IAsyncDisposable
                     ready = true;
                     deadline = null;
 
-                    if (hasPendingResize)
+                    Dimensions? forwardedDimensions;
+                    bool forwardedIsLive;
+                    (forwardedDimensions, forwardedIsLive, resize) = await ResolveReadyResizeAsync(
+                        resize,
+                        hasPendingResize,
+                        pendingResize,
+                        linked.Token).ConfigureAwait(false);
+
+                    if (forwardedDimensions is { } dimensions)
                     {
-                        _sink.Resize(in pendingResize);
+                        if (forwardedIsLive)
+                        {
+                            router.SetGeometry(dimensions.Cells, dimensions.Pixels);
+                        }
+
+                        _sink.Resize(in dimensions);
                         hasPendingResize = false;
                     }
 
@@ -1001,9 +1014,22 @@ public sealed class Session: IAsyncDisposable
                     ready = true;
                     deadline = null;
 
-                    if (hasPendingResize)
+                    Dimensions? forwardedDimensions;
+                    bool forwardedIsLive;
+                    (forwardedDimensions, forwardedIsLive, resize) = await ResolveReadyResizeAsync(
+                        resize,
+                        hasPendingResize,
+                        pendingResize,
+                        linked.Token).ConfigureAwait(false);
+
+                    if (forwardedDimensions is { } dimensions)
                     {
-                        _sink.Resize(in pendingResize);
+                        if (forwardedIsLive)
+                        {
+                            router.SetGeometry(dimensions.Cells, dimensions.Pixels);
+                        }
+
+                        _sink.Resize(in dimensions);
                         hasPendingResize = false;
                     }
                 }
@@ -1033,6 +1059,31 @@ public sealed class Session: IAsyncDisposable
                 ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
             }
         }
+    }
+
+    /// <summary>
+    /// Resolves which resize to forward when a not-yet-ready startup transitions to ready.
+    /// </summary>
+    /// <remarks>
+    /// A resize that already completed live, while the caller was awaiting the work that flips
+    /// readiness, supersedes anything buffered earlier: newest wins. When the live task is the
+    /// one consumed, its read is reissued here so the ordinary resize branch does not see the
+    /// same already-completed task a second time on the next loop iteration and double-process
+    /// it via <c>ReferenceEquals(completed, resize)</c>.
+    /// </remarks>
+    private async ValueTask<(Dimensions? Dimensions, bool IsLive, Task<Dimensions> Resize)> ResolveReadyResizeAsync(
+        Task<Dimensions> resize,
+        bool hasPendingResize,
+        Dimensions pendingResize,
+        CancellationToken cancellationToken)
+    {
+        if (resize.IsCompleted)
+        {
+            var dimensions = await resize.ConfigureAwait(false);
+            return (dimensions, true, _resize.ReadAsync(cancellationToken).AsTask());
+        }
+
+        return hasPendingResize ? (pendingResize, false, resize) : (null, false, resize);
     }
 
     private async ValueTask<bool> DrainAsync(Task<int>? read)
