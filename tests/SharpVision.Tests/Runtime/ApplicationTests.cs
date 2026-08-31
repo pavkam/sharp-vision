@@ -5172,6 +5172,109 @@ public sealed class ApplicationTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a throwing layout pass inside DrainInput's finally block does not strand
+    /// the input wake latch. Once <see cref="Application.UnhandledException"/> marks the failure
+    /// handled, a record that raced its way into the queue during that same drain pass - exactly
+    /// like <see cref="Input_WhenEnqueueRacesDrainFinally_DeliversStrandedRecordAsync"/> above -
+    /// must still be delivered by the reposted <c>DrainInput</c>, instead of the application going
+    /// permanently and silently deaf because the throw skipped the repost entirely.</summary>
+    [Fact]
+    public async Task Input_WhenDrainFinallyLayoutPassThrows_StillDeliversLaterInputAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var root = new ProbeContainer();
+        var child = new ProbeControl { IsFocusable = true };
+        root.Children.Add(child);
+        await using Application application = new(
+            root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+
+        var unhandled = 0;
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            unhandled++;
+            eventArgs.IsHandled = true;
+        };
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        List<Code> codes = [];
+        var delivered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            application.Focus.Focus(child).ShouldBeTrue();
+            _ = child.AddHandler(Events.Key, (_, eventArgs) =>
+            {
+                if (eventArgs.Phase != RoutingPhase.Bubble)
+                {
+                    return;
+                }
+
+                codes.Add(eventArgs.Stroke.Code);
+
+                if (eventArgs.Stroke.Code == Code.Enter)
+                {
+                    // Arm the next measure pass to throw and invalidate measure so
+                    // ProcessInvalidation - called from DrainInput's finally block below - has a
+                    // real layout pass pending to run and blow up on.
+                    child.Measuring = _ => throw new InvalidOperationException(
+                        "The probe measure pass failed.");
+                    child.InvalidateKernel(InvalidationImpact.Measure);
+                }
+
+                if (codes.Count == 2)
+                {
+                    _ = delivered.TrySetResult();
+                }
+            });
+        }, TestContext.Current.CancellationToken);
+        var strokeA = new Stroke(Code.Enter, character: null, nativeCode: 0, Modifiers.None, KeyAction.Press);
+        var strokeB = new Stroke(Code.Escape, character: null, nativeCode: 0, Modifiers.None, KeyAction.Press);
+        var hookReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new();
+        application.DrainInputRaceHookForTests = () =>
+        {
+            hookReached.SetResult();
+            release.Wait();
+        };
+
+        // strokeA's Enqueue arms the latch and posts DrainInput, which dequeues strokeA, dispatches
+        // it (arming the child's next measure pass to throw and invalidating it), observes the
+        // queue empty, releases the dequeue lock, and then parks in the hook above - latch still
+        // true, finally's reset/ProcessInvalidation not yet run.
+        application.Input(in strokeA);
+        await hookReached.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // strokeB's Enqueue now races the parked drain: it observes _inputWake already true and
+        // returns without posting a repost, exactly like the sibling race test above - so only the
+        // finally block's own repost decision can ever schedule delivery for it.
+        await Task.Run(() => application.Input(in strokeB), TestContext.Current.CancellationToken);
+
+        // Clear the hook before releasing the drain so the reposted DrainInput this triggers does
+        // not re-enter a hook that already fired.
+        application.DrainInputRaceHookForTests = null;
+        release.Set();
+
+        // The reset/repost decision now sees strokeB queued and sets repost = true, then
+        // ProcessInvalidation() runs the pending measure pass and throws. Before the fix, that
+        // throw escaped past the repost call entirely, leaving _inputWake stuck true with strokeB
+        // stranded forever and the application silently deaf from then on. The fix's inner
+        // try/finally around ProcessInvalidation runs the repost regardless of the throw, so
+        // strokeB still arrives once UnhandledException marks the resulting failure handled.
+        await delivered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        unhandled.ShouldBe(1);
+        codes.ShouldBe([Code.Enter, Code.Escape]);
+
+        // Handling UnhandledException lets the dispatcher continue but does not erase Failure
+        // (docs/architecture/error-handling.md), so StopAsync still surfaces the original throw.
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("The probe measure pass failed.");
+    }
+
     /// <summary>Verifies DrainInput's finally-block repost tolerates a dispatcher disposal landing
     /// in the same handful-of-CPU-instructions window the stranded-record test above targets, so
     /// the resulting ObjectDisposedException from Dispatcher.Post is silently swallowed instead of

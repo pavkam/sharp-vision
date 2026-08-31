@@ -1729,11 +1729,20 @@ public sealed class Application:
                 }
             }
 
-            ProcessInvalidation();
-
-            if (repost)
+            // ProcessInvalidation runs arbitrary consumer layout/render code and can throw. The
+            // repost below must still run in that case - otherwise a throwing pass leaves
+            // _inputWake stuck true (re-armed above because a record was already queued) with no
+            // drain scheduled to ever clear it, permanently starving Enqueue's early-return path.
+            try
             {
-                PostOrResetWake(DrainInput, () => _inputWake = false);
+                ProcessInvalidation();
+            }
+            finally
+            {
+                if (repost)
+                {
+                    PostOrResetWake(DrainInput, () => _inputWake = false);
+                }
             }
         }
     }
