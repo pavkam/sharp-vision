@@ -151,6 +151,73 @@ public sealed class ApplicationTests
         application.Theme.ShouldBeSameAs(ThemeCatalog.Dark);
     }
 
+    /// <summary>Verifies a plan-phase publication failure, with no reentrancy involved, rolls
+    /// Application.Theme back to the theme the tree still shows instead of committing the rejected value.</summary>
+    [Fact]
+    public async Task Theme_WhenPlanPhaseThrows_RollsBackToPreviousThemeAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var root = new StyledProbe { AppearanceStatesFailureTheme = ThemeCatalog.White };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+
+        _ = await application.Dispatcher.InvokeAsync(
+            () => Should.Throw<InvalidOperationException>(() => application.Theme = ThemeCatalog.White),
+            TestContext.Current.CancellationToken);
+
+        application.Theme.ShouldBeSameAs(ThemeCatalog.Dark);
+        root.Theme.ShouldBeNull();
+    }
+
+    /// <summary>Verifies a subscriber that throws after the tree has already committed the new theme
+    /// does not roll Application.Theme back, since the tree genuinely moved.</summary>
+    [Fact]
+    public async Task Theme_WhenPostCommitSubscriberThrows_KeepsNewThemeAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var root = new StyledProbe();
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        root.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(root.Theme))
+            {
+                throw new InvalidOperationException("post-commit");
+            }
+        };
+
+        _ = await application.Dispatcher.InvokeAsync(
+            () => Should.Throw<InvalidOperationException>(() => application.Theme = ThemeCatalog.White),
+            TestContext.Current.CancellationToken);
+
+        application.Theme.ShouldBeSameAs(ThemeCatalog.White);
+        root.Theme.ShouldBeSameAs(ThemeCatalog.White);
+    }
+
+    /// <summary>Verifies reassigning the same theme that a failed publish rejected is no longer a
+    /// silent no-op, and now actually converges the tree.</summary>
+    [Fact]
+    public async Task Theme_WhenSameThemeReassignedAfterFailedPublish_ConvergesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var root = new StyledProbe { AppearanceStatesFailureTheme = ThemeCatalog.White };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+
+        _ = await application.Dispatcher.InvokeAsync(
+            () => Should.Throw<InvalidOperationException>(() => application.Theme = ThemeCatalog.White),
+            TestContext.Current.CancellationToken);
+
+        application.Theme.ShouldBeSameAs(ThemeCatalog.Dark);
+        root.Theme.ShouldBeNull();
+
+        root.AppearanceStatesFailureTheme = null;
+
+        _ = await application.Dispatcher.InvokeAsync(
+            () => application.Theme = ThemeCatalog.White,
+            TestContext.Current.CancellationToken);
+
+        application.Theme.ShouldBeSameAs(ThemeCatalog.White);
+        root.Theme.ShouldBeSameAs(ThemeCatalog.White);
+    }
+
     /// <summary>Verifies Window activation is an empty read model before the control tree initializes.</summary>
     [Fact]
     public async Task ActiveWindow_WhenApplicationIsNotStarted_IsNullAsync()

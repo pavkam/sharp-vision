@@ -345,8 +345,22 @@ public sealed class Application:
         }
 
         ObjectDisposedException.ThrowIf(_stopping, this);
+        var previous = _theme;
         _theme = value;
-        PublishTheme();
+
+        try
+        {
+            PublishTheme();
+        }
+        catch
+        {
+            if (!ReferenceEquals(Root.InheritedTheme, value))
+            {
+                _theme = previous;
+            }
+
+            throw;
+        }
 
         if (!_initialized)
         {
