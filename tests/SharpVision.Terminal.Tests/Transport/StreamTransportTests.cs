@@ -130,6 +130,14 @@ public sealed class StreamTransportTests
         await input.FirstStarted;
 
         var disposal = transport.DisposeAsync().AsTask();
+        await Task.Delay(TimeSpan.FromMilliseconds(200), TestContext.Current.CancellationToken);
+
+        // Disposal must still be blocked on the read admission here: an implementation that
+        // disposes the streams without waiting for in-flight reads would already show completed,
+        // regardless of what Release does next.
+        disposal.IsCompleted.ShouldBeFalse();
+        input.DisposeCount.ShouldBe(0);
+
         input.Release(4);
 
         (await read.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).ShouldBe(4);
@@ -155,10 +163,16 @@ public sealed class StreamTransportTests
         var read = transport.ReadAsync(new byte[4], TestContext.Current.CancellationToken).AsTask();
         await input.FirstStarted;
 
+        var watch = Stopwatch.StartNew();
         await transport.DisposeAsync().AsTask().WaitAsync(
             TimeSpan.FromSeconds(5),
             TestContext.Current.CancellationToken);
+        watch.Stop();
 
+        // An implementation that never waits for in-flight reads would dispose near-instantly;
+        // this bounds disposal from below to prove it genuinely waited out the drain budget
+        // before abandoning the non-cooperative read, not just abandoned it immediately.
+        watch.Elapsed.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(30));
         input.DisposeCount.ShouldBe(1);
         read.IsCompleted.ShouldBeFalse();
     }
