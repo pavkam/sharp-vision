@@ -8,6 +8,7 @@ using Text = SharpVision.Controls.Display.Text;
 /// <summary>Documents Wrap with source-order rows, columns, gaps, reflow, and participation states.</summary>
 internal sealed class WrapPane: CompositeControlBase
 {
+    /// <summary>Initializes the retained Wrap showcase content.</summary>
     internal WrapPane() => InitializeContent(CreateContent());
 
     /// <summary>The exact catalog/page name.</summary>
