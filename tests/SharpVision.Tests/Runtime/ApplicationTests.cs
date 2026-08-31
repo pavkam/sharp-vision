@@ -1725,6 +1725,59 @@ public sealed class ApplicationTests
         application.Failure.ShouldBeSameAs(thrown);
     }
 
+    /// <summary>Verifies a throwing Diagnostic subscriber does not skip the promotion check that
+    /// follows it. The raise site used to be a bare <c>?.Invoke</c>, so a throwing handler
+    /// propagated straight out of Dispatch and
+    /// ApplicationDiagnosticPromotionClassifier.ThrowIfConfigured never ran for that occurrence -
+    /// the promotion still has to fire even though the subscriber blew up first.</summary>
+    [Fact]
+    public async Task Input_WhenADiagnosticHandlerThrowsAndPromotionIsConfigured_StillPromotesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var options = TerminalOptions.Minimal with
+        {
+            DiagnosticPromotions = DiagnosticPromotion.MalformedInput
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        List<Exception> reported = [];
+        var promoted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+
+            if (eventArgs.Exception is TerminalDiagnosticException)
+            {
+                _ = promoted.TrySetResult();
+            }
+        };
+        application.Diagnostic += (_, _) => throw new InvalidOperationException("diagnostic-boom");
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+        var diagnostic = new Diagnostic(
+            DiagnosticCode.Malformed,
+            SequenceKind.Csi,
+            offset: 4,
+            discardedBytes: 2);
+
+        application.Input(in diagnostic);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without
+        // the fix, ThrowIfConfigured never runs and promoted.Task never settles, so this test
+        // must fail on a timeout instead of hanging.
+        await promoted.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "diagnostic-boom");
+        var promotedException = reported.OfType<TerminalDiagnosticException>().ShouldHaveSingleItem();
+        promotedException.Promotion.ShouldBe(DiagnosticPromotion.MalformedInput);
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("diagnostic-boom");
+    }
+
     /// <summary>Verifies unavailable synchronized output is a frame fallback promoted after commit.</summary>
     [Fact]
     public async Task StartAsync_WhenSynchronizedOutputIsUnavailableAndFallbackPromoted_StopsAfterFrameAsync()
@@ -2171,6 +2224,58 @@ public sealed class ApplicationTests
 
         thrown.Promotion.ShouldBe(DiagnosticPromotion.Fallback);
         application.Failure.ShouldBeSameAs(thrown);
+    }
+
+    /// <summary>Verifies a throwing GraphicsDiagnostic subscriber does not skip the promotion
+    /// check that follows it, mirroring the Diagnostic regression test above for the fallback
+    /// raise site.</summary>
+    [Fact]
+    public async Task StartAsync_WhenAGraphicsDiagnosticHandlerThrowsAndPromotionIsConfigured_StillPromotesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(2, 1), new Size(5, 3)));
+        var image = new Image
+        {
+            Source = UndecodablePng(),
+            AlternateText = "PN",
+            Width = Length.Cells(2),
+            Height = Length.Cells(1)
+        };
+        var options = Options(sixel: true) with
+        {
+            DiagnosticPromotions = DiagnosticPromotion.Fallback
+        };
+        await using Application application = new(image, terminal, terminal, options);
+        List<Exception> reported = [];
+        var promoted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+
+            if (eventArgs.Exception is TerminalDiagnosticException)
+            {
+                _ = promoted.TrySetResult();
+            }
+        };
+        application.GraphicsDiagnostic += (_, _) => throw new InvalidOperationException("graphics-diagnostic-boom");
+
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without
+        // the fix, ThrowIfConfigured never runs and promoted.Task never settles, so this test
+        // must fail on a timeout instead of hanging.
+        await promoted.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "graphics-diagnostic-boom");
+        var promotedException = reported.OfType<TerminalDiagnosticException>().ShouldHaveSingleItem();
+        promotedException.Promotion.ShouldBe(DiagnosticPromotion.Fallback);
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("graphics-diagnostic-boom");
     }
 
     /// <summary>

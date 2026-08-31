@@ -1445,7 +1445,11 @@ public sealed class Application:
                     new TerminalFocusEventArgs(record.Focus));
                 break;
             case RecordKind.Diagnostic:
-                Diagnostic?.Invoke(this, new DiagnosticEventArgs(record.Diagnostic));
+                if (RaiseIsolated(Diagnostic, new DiagnosticEventArgs(record.Diagnostic)) is { } diagnosticFailure)
+                {
+                    Report(diagnosticFailure);
+                }
+
                 ApplicationDiagnosticPromotionClassifier.ThrowIfConfigured(
                     _options.DiagnosticPromotions,
                     ApplicationDiagnosticPromotionClassifier.Classify(record.Diagnostic.Code));
@@ -1483,7 +1487,12 @@ public sealed class Application:
                 _terminalServices.ReceiveKittyClipboardPacket(record.KittyClipboardPacket!);
                 break;
             case RecordKind.GraphicsDiagnostic:
-                GraphicsDiagnostic?.Invoke(this, new GraphicsDiagnosticEventArgs(record.GraphicsDiagnostics));
+                if (RaiseIsolated(GraphicsDiagnostic, new GraphicsDiagnosticEventArgs(record.GraphicsDiagnostics))
+                    is { } graphicsDiagnosticFailure)
+                {
+                    Report(graphicsDiagnosticFailure);
+                }
+
                 ApplicationDiagnosticPromotionClassifier.ThrowIfConfigured(
                     _options.DiagnosticPromotions,
                     DiagnosticPromotion.Fallback);
