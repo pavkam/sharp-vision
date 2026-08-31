@@ -93,11 +93,13 @@ public sealed class AppearanceResolverTests
     }
 
     /// <summary>Verifies a Face whose theme-referenced attributes only conflict with its typed
-    /// underline once the theme resolves them still throws, and that the exception now names the
-    /// offending semantic roles instead of only the generic decoration-conflict message, because
-    /// Face's own constructor cannot catch this: the attribute channel isn't literal yet.</summary>
+    /// underline once the theme resolves them no longer throws: <c>ResolveFace</c> reconciles the
+    /// triple against the already-resolved literals - a typed underline clears the legacy attribute
+    /// flag - exactly as every other <see cref="DecorationResolver.Resolve"/> call site already
+    /// does, instead of deferring to Face's constructor, which can only see the conflict once every
+    /// channel happens to be literal.</summary>
     [Fact]
-    public void ResolveSnapshot_WhenThemeResolvedAttributesConflictWithUnderline_ThrowsWithOffendingRoles()
+    public void ResolveSnapshot_WhenThemeResolvedAttributesConflictWithUnderline_ReconcilesInsteadOfThrowing()
     {
         var theme = new Theme();
         theme.SetAttributes(SemanticDecoration.NormalText, TerminalAttributes.Underline);
@@ -114,11 +116,37 @@ public sealed class AppearanceResolverTests
                 AppearanceTestValues.Shadow(visible: false)));
         var control = new StyledProbe { AppearanceStatesOverride = profile };
 
-        var exception = Should.Throw<ArgumentException>(
-            () => control.ResolveSnapshot(VisualState.Normal, theme, profile, parentAmbientFace: null));
+        var resolved = control.ResolveSnapshot(VisualState.Normal, theme, profile, parentAmbientFace: null);
 
-        exception.Message.ShouldContain("SemanticDecoration.NormalText");
-        exception.Message.ShouldContain("Straight");
+        resolved.Face.Attributes.Literal.ShouldBe(TerminalAttributes.None);
+        resolved.Face.Underline.ShouldBe(Underline.Straight);
+        resolved.Face.UnderlineColor.Literal.ShouldBe(Color.Rgb(3, 3, 3));
+    }
+
+    /// <summary>Verifies the funnel's second reachable route: ordinary application code setting a
+    /// semantic <see cref="Face.UnderlineColor"/> with no active underline at all - no typed
+    /// underline and no legacy attribute flag. The color is cleared to <see cref="Color.Default"/>
+    /// once resolved, per <see cref="DecorationResolver.Resolve"/>'s third rule, rather than the
+    /// resolved Face construction throwing because the channel only becomes literal - and only
+    /// conflicts - once the theme resolves it.</summary>
+    [Fact]
+    public void ResolveSnapshot_WhenSemanticUnderlineColorHasNoActiveUnderline_ClearsItInsteadOfThrowing()
+    {
+        var theme = new Theme();
+        theme.SetColor(SemanticColor.Accent, Color.Rgb(3, 3, 3));
+        var face = AppearanceTestValues.Face(underlineColor: SemanticColor.Accent);
+        var profile = new AppearanceStates(
+            new ControlAppearance(
+                face,
+                AppearanceTestValues.Border(BorderSide.None),
+                AppearanceTestValues.Shadow(visible: false)));
+        var control = new StyledProbe { AppearanceStatesOverride = profile };
+
+        var resolved = control.ResolveSnapshot(VisualState.Normal, theme, profile, parentAmbientFace: null);
+
+        resolved.Face.Attributes.Literal.ShouldBe(TerminalAttributes.None);
+        resolved.Face.Underline.ShouldBe(Underline.None);
+        resolved.Face.UnderlineColor.Literal.ShouldBe(Color.Default);
     }
 
     /// <summary>Verifies mode is treated as geometry by the resolved-value comparison, alongside
