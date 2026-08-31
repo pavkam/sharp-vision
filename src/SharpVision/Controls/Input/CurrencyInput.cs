@@ -44,7 +44,8 @@ public sealed class CurrencyInput: InputBase
         "($n)", "-$n", "$-n", "$n-",
         "(n$)", "-n$", "n-$", "n$-",
         "-n $", "-$ n", "n $-", "$ n-",
-        "$ -n", "n- $", "($ n)", "(n $)"
+        "$ -n", "n- $", "($ n)", "(n $)",
+        "$- n"
     ];
 
     private readonly NumericEditBuffer _buffer = new();
