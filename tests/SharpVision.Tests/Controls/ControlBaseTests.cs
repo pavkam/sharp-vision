@@ -3871,6 +3871,98 @@ public sealed class ControlBaseTests
         Row(second, 0).ShouldBe("Z");
     }
 
+    /// <summary>Verifies a focused, render-clean <see cref="NumberInput"/> re-asserts its terminal
+    /// cursor through the copy path instead of losing it: <see cref="TerminalCanvas.SetCursor"/> is
+    /// authored inside <c>OnRenderContent</c>'s focused branch, which the reuse path's cell copy
+    /// alone never replays, so <c>NumberInput.OnReuseCleanRender</c> must recompute the caret
+    /// column from the control's own current buffer state and reassert it.</summary>
+    [Fact]
+    public async Task Render_WhenNumberInputIsRenderClean_PreservesCursorThroughTheCopyPathAsync()
+    {
+        var input = new NumberInput { Value = 42m, DecimalPlaces = 0 };
+        input.SetFocused(true);
+        var size = new Size(12, 3);
+        new LayoutEngine().Layout(input, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
+        using var first = new Frame(size);
+        input.Render(first.Canvas);
+        first.Cursor.Visible.ShouldBeTrue();
+        var expectedPosition = first.Cursor.Position;
+        _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
+
+        using var second = new Frame(size);
+        _ = renderer.AttachCommittedFrame(second);
+        second.Canvas.HasPreviousFrame.ShouldBeTrue();
+        input.Render(second.Canvas);
+
+        second.Cursor.Visible.ShouldBeTrue();
+        second.Cursor.Position.ShouldBe(expectedPosition);
+    }
+
+    /// <summary>Verifies a focused, render-clean <see cref="CurrencyInput"/> re-asserts its
+    /// terminal cursor through the copy path instead of losing it, exactly like
+    /// <see cref="NumberInput"/> above but exercising the sign-aware
+    /// <c>BuildFocusedDisplay</c>-derived caret math that <c>CurrencyInput.OnReuseCleanRender</c>
+    /// must reproduce identically to the focused branch of <c>OnRenderContent</c>.</summary>
+    [Fact]
+    public async Task Render_WhenCurrencyInputIsRenderClean_PreservesCursorThroughTheCopyPathAsync()
+    {
+        var input = new CurrencyInput { Value = -12.5m, DecimalPlaces = 2 };
+        input.SetFocused(true);
+        var size = new Size(16, 3);
+        new LayoutEngine().Layout(input, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
+        using var first = new Frame(size);
+        input.Render(first.Canvas);
+        first.Cursor.Visible.ShouldBeTrue();
+        var expectedPosition = first.Cursor.Position;
+        _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
+
+        using var second = new Frame(size);
+        _ = renderer.AttachCommittedFrame(second);
+        second.Canvas.HasPreviousFrame.ShouldBeTrue();
+        input.Render(second.Canvas);
+
+        second.Cursor.Visible.ShouldBeTrue();
+        second.Cursor.Position.ShouldBe(expectedPosition);
+    }
+
+    /// <summary>Verifies a focused <see cref="TextInput"/>'s cursor survives the identical
+    /// attach-and-render-again sequence that strands <see cref="NumberInput"/> and
+    /// <see cref="CurrencyInput"/>'s cursor above - not by any cursor-specific protection of its
+    /// own, but because owning two scroll bars keeps <c>OwnedControlCount</c> above zero and
+    /// disqualifies it from the clean-subtree-reuse path entirely, so its cursor is freshly
+    /// recomputed by a real <c>OnRenderContent</c> on every render. This locks in that protection
+    /// as a regression guard so it stops being merely incidental.</summary>
+    [Fact]
+    public async Task Render_WhenTextInputIsRenderClean_KeepsCursorBecauseItIsReuseIneligibleAsync()
+    {
+        var input = new TextInput { Text = "AB" };
+        input.SetFocused(true);
+        var size = new Size(12, 3);
+        new LayoutEngine().Layout(input, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
+        using var first = new Frame(size);
+        input.Render(first.Canvas);
+        first.Cursor.Visible.ShouldBeTrue();
+        var expectedPosition = first.Cursor.Position;
+        _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
+
+        using var second = new Frame(size);
+        _ = renderer.AttachCommittedFrame(second);
+        second.Canvas.HasPreviousFrame.ShouldBeTrue();
+        input.Render(second.Canvas);
+
+        second.Cursor.Visible.ShouldBeTrue();
+        second.Cursor.Position.ShouldBe(expectedPosition);
+    }
+
     /// <summary>Verifies a Source change invalidates render and produces a fresh, updated
     /// placement instead of one carried forward through reuse - a regression guard that removing
     /// Image's unconditional full-render requirement did not weaken ordinary invalidation.</summary>

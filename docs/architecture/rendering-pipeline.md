@@ -253,9 +253,10 @@ by construction, a frame where no control application-wide has a previous frame
 to copy from.
 
 A control whose own paint has an effect a cell copy alone cannot reproduce -
-currently only [`Image`](../controls/display/image.md#overview)'s semantic
-`DrawImage` placement, recorded outside the frame's cell arena - re-asserts that
-effect through `OnReuseCleanRender`, called at the exact traversal position
+[`Image`](../controls/display/image.md#overview)'s semantic `DrawImage`
+placement, recorded outside the frame's cell arena, or a focused input's
+authored terminal cursor, likewise recorded outside the cell arena - re-asserts
+that effect through `OnReuseCleanRender`, called at the exact traversal position
 `OnRenderContent` would otherwise run. It reads the control's own current
 properties, never a cached prior value, so the reasserted state is provably
 identical to what a fresh paint would have produced: an unset render bit already

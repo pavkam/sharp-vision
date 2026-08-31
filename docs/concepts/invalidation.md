@@ -182,8 +182,8 @@ Unicode cell ownership rules still repair any copied boundary that would split a
 wide grapheme. See the
 [control rendering](../architecture/rendering-pipeline.md#control-rendering)
 section for the exact eligibility predicate and what a control whose paint has
-an effect outside the cell arena - currently only `Image`'s placement - must do
-to participate.
+an effect outside the cell arena - `Image`'s placement, or a focused control's
+authored terminal cursor - must do to participate.
 
 ## Choosing an impact
 

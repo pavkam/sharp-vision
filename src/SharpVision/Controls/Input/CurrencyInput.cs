@@ -626,6 +626,45 @@ public sealed class CurrencyInput: InputBase
             return;
         }
 
+        SetCaretCursor(canvas, valueBox, displayText, caretIndex);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Canvas.CopyFromPrevious already restored this control's affixes and value-text cells;
+    /// <see cref="TerminalCanvas.SetCursor"/> is the one thing a cell copy can never replay, since
+    /// cursor placement lives outside the frame's cell arena exactly like Image's DrawImage
+    /// placement. An unset render bit already proves the buffer text, sign, and caret are
+    /// unchanged since the last real paint, so recomputing the caret column from this control's
+    /// own CURRENT state - including the sign-aware <see cref="BuildFocusedDisplay"/> layout -
+    /// here is provably identical to what that paint recorded.
+    /// </remarks>
+    internal override void OnReuseCleanRender(TerminalCanvas canvas)
+    {
+        if (!IsFocused)
+        {
+            return;
+        }
+
+        var content = ContentBounds;
+
+        if (content.Width == 0 || content.Height == 0)
+        {
+            return;
+        }
+
+        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
+        var valueBox = DeflateForAffixes(content, affixes);
+        var focused = BuildFocusedDisplay();
+        var displayText = focused.Text;
+        var caretInCore = Math.Clamp(_buffer.Selection.Caret - focused.SignLength, 0, focused.Magnitude.Length);
+        var caretIndex = focused.CoreStart + caretInCore;
+
+        SetCaretCursor(canvas, valueBox, displayText, caretIndex);
+    }
+
+    private void SetCaretCursor(TerminalCanvas canvas, Rect valueBox, string displayText, int caretIndex)
+    {
         var caretColumn = MeasureCells(displayText.AsSpan(0, Math.Min(caretIndex, displayText.Length)));
         var position = new Point(valueBox.X + caretColumn, valueBox.Y);
 
