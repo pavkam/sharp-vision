@@ -475,7 +475,7 @@ public sealed class Renderer: IDisposable
                     encoded.Spans,
                     encoded.Full,
                     _timeProvider.GetElapsedTime(started),
-                    encoded.UsedFallback || LastGraphicsDiagnostics.Count != 0,
+                    encoded.UsedFallback || !synchronized || LastGraphicsDiagnostics.Count != 0,
                     LastGraphicsDiagnostics));
             }
 

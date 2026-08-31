@@ -949,6 +949,34 @@ public sealed class RendererTests
     }
 
     /// <summary>
+    /// Verifies the zero-damage early exit folds in unavailable synchronized output the same way
+    /// the byte-producing path does, so an unchanged frame does not under-report fallback fidelity.
+    /// </summary>
+    [Fact]
+    public async Task RenderAsync_WhenFrameIsUnchangedAndSynchronizedOutputIsUnavailable_ReportsUsedFallbackAsync()
+    {
+        using Renderer renderer = new();
+        await using FakeTransport transport = new();
+        using var frame = Create("unchanged");
+        var first = await renderer.RenderAsync(
+            frame,
+            transport,
+            TerminalCapabilities.Conservative,
+            TestContext.Current.CancellationToken);
+
+        var second = await renderer.RenderAsync(
+            frame,
+            transport,
+            TerminalCapabilities.Conservative,
+            TestContext.Current.CancellationToken);
+
+        first.UsedFallback.ShouldBeTrue();
+        second.Bytes.ShouldBe(0);
+        second.Writes.ShouldBe(0);
+        second.UsedFallback.ShouldBeTrue();
+    }
+
+    /// <summary>
     /// Verifies renderer disposal is idempotent and never assumes transport ownership.
     /// </summary>
     [Fact]
