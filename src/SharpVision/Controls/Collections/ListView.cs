@@ -764,6 +764,13 @@ public sealed class ListView: ItemsControl
         var selectionVersion = _selectionVersion;
         var applied = ApplySelection(normalized, cancellable: false, requireAvailability: false);
 
+        // ApplySelection can synchronously reach a subscriber that disposes the control - matches
+        // the guard the SelectedIndex setter already applies before this same continuation.
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (_selectionVersion == selectionVersion + (applied ? 1 : 0))
         {
             SetActiveIndex(nextActiveIndex);
@@ -846,6 +853,13 @@ public sealed class ListView: ItemsControl
             cancellable: false,
             requireAvailability: false,
             afterSelectionInstalled: RebuildVirtualizedPresentation);
+
+        // ApplySelection can synchronously reach a subscriber that disposes the control - matches
+        // the guard the SelectedIndex setter already applies before this same continuation.
+        if (IsDisposed)
+        {
+            return;
+        }
 
         if (_selectionVersion == selectionVersion + (applied ? 1 : 0))
         {
@@ -1209,6 +1223,14 @@ public sealed class ListView: ItemsControl
         // now-stale continuation must be skipped rather than overwriting that newer state.
         var selectionVersion = _selectionVersion;
         var applied = ApplySelection(shifted, cancellable: false, added, removed, requireAvailability: false);
+
+        // ApplySelection can synchronously reach a subscriber that disposes the control - matches
+        // the guard the SelectedIndex setter already applies before this same continuation.
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var nextActiveIndex = ActiveIndex > index
             ? ActiveIndex - 1
             : ActiveIndex >= _items.Count
@@ -1310,6 +1332,13 @@ public sealed class ListView: ItemsControl
         // now-stale continuation must be skipped rather than overwriting that newer state.
         var selectionVersion = _selectionVersion;
         var applied = ApplySelection(normalized, cancellable: false, requireAvailability: false);
+
+        // ApplySelection can synchronously reach a subscriber that disposes the control - matches
+        // the guard the SelectedIndex setter already applies before this same continuation.
+        if (IsDisposed)
+        {
+            return;
+        }
 
         if (_selectionVersion == selectionVersion + (applied ? 1 : 0))
         {
@@ -1827,6 +1856,13 @@ public sealed class ListView: ItemsControl
         _ = normalized.Remove(index);
         _ = ApplySelection(normalized, cancellable: false, requireAvailability: false);
 
+        // ApplySelection can synchronously reach a subscriber that disposes the control - matches
+        // the guard the SelectedIndex setter already applies before this same continuation.
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (_selectionAnchor == index)
         {
             _selectionAnchor = _selection.Contains(ActiveIndex) ? ActiveIndex : -1;
@@ -1858,6 +1894,13 @@ public sealed class ListView: ItemsControl
             ShiftEligibleRange);
 
         var accepted = ApplySelection(next, cancellable: true) || _selection.SetEquals(next);
+
+        // ApplySelection can synchronously reach a subscriber that disposes the control - matches
+        // the guard the SelectedIndex setter already applies before this same continuation.
+        if (IsDisposed)
+        {
+            return accepted;
+        }
 
         if (accepted)
         {
