@@ -380,6 +380,6 @@ internal sealed class ScrollBarPairController
         bar.ViewportSize = viewport;
         bar.SmallChange = smallChange;
         bar.LargeChange = largeChange;
-        bar.Value = value;
+        bar.Value = Math.Clamp(value, 0, maximum);
     }
 }

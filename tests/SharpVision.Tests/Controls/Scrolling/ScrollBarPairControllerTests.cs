@@ -51,6 +51,24 @@ public sealed class ScrollBarPairControllerTests
         forwarded.ShouldBe(0);
     }
 
+    /// <summary>Verifies synchronizing a stale value against a freshly-lowered maximum of zero
+    /// clamps the rail value instead of throwing.</summary>
+    [Fact]
+    public void Synchronize_WhenValueExceedsFreshlyLoweredMaximum_ClampsWithoutThrowing()
+    {
+        // Arrange
+        var controller = CreateController();
+        controller.EnsureBars();
+        controller.Synchronize(10, 10, 3, 3, 10, 10, 1, 1, 3, 3);
+
+        // Act
+        Should.NotThrow(() => controller.Synchronize(0, 0, 3, 3, 10, 10, 1, 1, 3, 3));
+
+        // Assert
+        controller.Horizontal!.Value.ShouldBe(0);
+        controller.Vertical!.Value.ShouldBe(0);
+    }
+
     /// <summary>Verifies a newer synchronization requested from a rail property callback replaces
     /// the outer request after its current publication completes.</summary>
     [Fact]
