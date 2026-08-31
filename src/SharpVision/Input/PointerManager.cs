@@ -482,6 +482,7 @@ public sealed class PointerManager: IDisposable
     public void TerminalFocusLost()
     {
         VerifyAccess();
+        _lastPointerCells = null;
         Cancel(ReleaseReason.TerminalFocusLost, Root);
     }
 
@@ -499,13 +500,15 @@ public sealed class PointerManager: IDisposable
         }
 
         Root.VerifyMutable();
+
         Captured = null;
-        SetPointerPath(control: null, boundary: null);
         ClearPressState();
         _lastClickTarget = null;
         Root.SetCaptureOwner(null);
         IsDisposed = true;
         GC.SuppressFinalize(this);
+
+        SetPointerPath(control: null, boundary: null);
     }
 
     /// <summary>Cancels state owned within one unavailable subtree.</summary>
@@ -529,6 +532,8 @@ public sealed class PointerManager: IDisposable
         {
             _lastClickTarget = null;
         }
+
+        ReconcileHover();
     }
 
     /// <summary>Constrains retained pointer state to one newly active modal plane.</summary>
