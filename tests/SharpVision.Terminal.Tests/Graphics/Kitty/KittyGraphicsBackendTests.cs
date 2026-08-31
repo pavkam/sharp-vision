@@ -452,6 +452,57 @@ public sealed class KittyGraphicsBackendTests
         placement.ShouldEndWith("\u001b\u001b\\\u001b\\\u001b[1;1H");
     }
 
+    /// <summary>Verifies the cell-prelude phase's Unicode-placeholder placement is wrapped in tmux
+    /// passthrough exactly once. <c>WriteVirtualPlacement</c> must write its APC raw and let the
+    /// phase's own <c>FinishApcPhase</c> call perform the single route wrap - mirroring the upload
+    /// phase's pattern - rather than routing the command itself and then handing the
+    /// already-wrapped buffer to <c>FinishApcPhase</c> for a second wrap.</summary>
+    [Fact]
+    public void Prepare_WhenTmuxRouteIsAuthorizedAndPlacementBecomesPrelude_RoutesCellPreludeOnce()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Graphics);
+        using var backend = new KittyGraphicsBackend(route: new MultiplexerRoute(policy));
+        var image = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        using var first = Frame(image, new Rect(0, 0, 1, 1), PlacementMode.Contain);
+        using var moved = Frame(image, new Rect(1, 0, 1, 1), PlacementMode.Contain);
+
+        _ = backend.Prepare(null, first, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+
+        // Assigns a terminal-owned image id, which is a precondition for placeholder eligibility
+        // (CanUsePlaceholder requires !UsesImageNumber), so the next Prepare renders the moved
+        // placement through the cell-prelude phase instead of a real placement.
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=99,I=1;OK"u8));
+        _ = backend.Prepare(first, moved, full: false);
+        var bytes = WritePrepared(backend);
+
+        bytes.CellPreludes.ShouldNotBeEmpty();
+        bytes.Placements.ShouldBeEmpty();
+
+        var unwrapped = new ArrayBufferWriter<byte>();
+        TmuxWriter.TryUnwrapEnvelope(bytes.CellPreludes, unwrapped).ShouldBeTrue();
+
+        var unwrappedBytes = unwrapped.WrittenSpan.ToArray();
+        var unwrappedText = Encoding.ASCII.GetString(unwrappedBytes);
+        unwrappedText.ShouldStartWith("\u001b_Ga=p,i=99,p=1");
+        unwrappedText.ShouldContain("U=1");
+        unwrappedText.ShouldEndWith("\u001b\\");
+
+        // A double-wrapped prelude would still start with a nested "ESC P" envelope header after
+        // one unwrap, and a second TryUnwrapEnvelope call would succeed on it. Single-wrapped, the
+        // first unwrap already exposes the bare Kitty APC ("ESC _ G ..."), so the second byte must
+        // be '_' rather than 'P', and a second unwrap attempt must fail.
+        unwrappedBytes[0].ShouldBe((byte)0x1b);
+        unwrappedBytes[1].ShouldBe((byte)'_');
+        TmuxWriter.TryUnwrapEnvelope(unwrappedBytes, new ArrayBufferWriter<byte>()).ShouldBeFalse();
+    }
+
     /// <summary>Verifies screen topology disables Kitty backend selection atomically.</summary>
     [Fact]
     public void Constructor_WhenRouteContainsScreen_RejectsBackendSelection()

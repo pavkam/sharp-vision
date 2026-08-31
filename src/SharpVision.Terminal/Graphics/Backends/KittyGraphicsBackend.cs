@@ -824,7 +824,13 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             zIndex,
             unicodePlaceholder: true);
 
-        WritePlacementCommand(command, destination);
+        // Written raw, unlike the sibling real-placement phase's WritePlacementCommand call: the
+        // cell-prelude phase contains only APC frames (no interleaved raw CSI cursor moves) and is
+        // finalized by the caller's own FinishApcPhase call, which performs the single tmux-route
+        // wrap. Routing through WritePlacementCommand here would wrap this command through _route
+        // a first time and then FinishApcPhase would wrap the already-wrapped buffer a second time,
+        // leaving the outer terminal with a nested envelope instead of the Kitty APC.
+        KittyGraphicsWriter.Write(command, [], destination);
     }
 
     private void WritePlacement(KittyGraphicsPlacementState state, int zIndex, IBufferWriter<byte> destination)
