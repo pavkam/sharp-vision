@@ -36,9 +36,12 @@ selectors 9 and 777 for desktop notifications, selector 4 palette queries,
 selectors 10 and 11 default-color queries, and the selector 1337 iTerm2
 capability query. `Osc.Notify(writer, body)` writes a bare OSC 9 payload;
 `Osc.Notify(writer, title, body)` writes an OSC 777 payload framed as
-`notify;title;body`, the urxvt/foot convention. The raw `ProtocolWriter`
-validates the complete payload before advancing an `IBufferWriter<byte>` and
-always emits ST.
+`notify;title;body`, the urxvt/foot convention. Because the urxvt/foot receiver
+splits that payload once after the `notify;` prefix, `title` rejects a literal
+`;` byte with an `ArgumentException` to avoid shifting the title/body boundary
+and truncating the title; `body` permits `;`, since everything after the first
+split is treated as body. The raw `ProtocolWriter` validates the complete
+payload before advancing an `IBufferWriter<byte>` and always emits ST.
 
 `XtermResponses.TryOsc` decodes one bounded OSC 4 index/color pair or one OSC
 10/11 default color into an immutable `PaletteResponse`. Palette indices are
