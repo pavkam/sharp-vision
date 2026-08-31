@@ -1157,10 +1157,12 @@ namespace SharpVision.Terminal.Multiplexing
         public MultiplexerRoute(SharpVision.Terminal.Multiplexing.MultiplexingPolicy policy) { }
         public bool CanRouteClipboard { get; }
         public bool CanRouteNotifications { get; }
+        public bool CanRouteTitle { get; }
         public SharpVision.Terminal.Multiplexing.MultiplexingPolicy Policy { get; }
         public bool TryUnwrapReply(System.ReadOnlySpan<byte> envelope, out System.ReadOnlyMemory<byte> reply) { }
         public bool TryWriteClipboard(System.Buffers.IBufferWriter<byte> destination, System.ReadOnlySpan<byte> commands) { }
         public bool TryWriteNotification(System.Buffers.IBufferWriter<byte> destination, System.ReadOnlySpan<byte> command) { }
+        public bool TryWriteTitle(System.Buffers.IBufferWriter<byte> destination, System.ReadOnlySpan<byte> command) { }
     }
     public enum MultiplexingOperation
     {
@@ -1169,6 +1171,7 @@ namespace SharpVision.Terminal.Multiplexing
         Clipboard = 2,
         Graphics = 4,
         Notifications = 8,
+        Title = 16,
     }
     public sealed class MultiplexingPolicy
     {
