@@ -196,4 +196,127 @@ public sealed class WrapTests
         // Assert
         wrap.DesiredSize.ShouldBe(new Size(7, 2));
     }
+
+    /// <summary>Verifies a child collapsed after an initial layout releases its former arranged slot.</summary>
+    [Fact]
+    public void Layout_WhenPreviouslyVisibleChildBecomesCollapsed_ClearsItsArrangedBounds()
+    {
+        // Arrange
+        var wrap = new Wrap { Spacing = 1 };
+        var first = new ProbeControl(new Size(2, 1));
+        var second = new ProbeControl(new Size(2, 1));
+        wrap.Children.Add(first);
+        wrap.Children.Add(second);
+        var layout = new LayoutEngine();
+        layout.Layout(wrap, new Size(5, 2));
+
+        // Act
+        first.Visibility = Visibility.Collapsed;
+        layout.Layout(wrap, new Size(5, 2));
+
+        // Assert
+        first.Bounds.ShouldBe(default);
+        second.Bounds.ShouldBe(new Rect(0, 0, 2, 1));
+    }
+
+    /// <summary>Verifies primary-axis scrolling preserves one unbounded packed row rather than
+    /// treating the viewport as a wrap lane.</summary>
+    [Fact]
+    public void Layout_WhenHorizontalWrapAutoScrolls_UsesAnUnboundedPrimaryLane()
+    {
+        // Arrange
+        var wrap = new Wrap
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Horizontal,
+            ShowScrollBars = ShowScrollBars.Never,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var first = new ProbeControl(new Size(4, 1));
+        var second = new ProbeControl(new Size(4, 1));
+        wrap.Children.Add(first);
+        wrap.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(wrap, new Size(5, 1));
+
+        // Assert
+        first.Bounds.ShouldBe(new Rect(0, 0, 4, 1));
+        second.Bounds.ShouldBe(new Rect(4, 0, 4, 1));
+        wrap.Extent.ShouldBe(new Size(8, 1));
+    }
+
+    /// <summary>Verifies fixed-seed mixed participants produce deterministic, contained, ordered
+    /// rectangles without overlap.</summary>
+    [Fact]
+    public void Layout_WhenRandomizedParticipantsArePacked_ProducesDeterministicContainedRows()
+    {
+        // Arrange
+        const int seed = 8128;
+        var first = CreateRandomWrap(seed);
+        var second = CreateRandomWrap(seed);
+        var layout = new LayoutEngine();
+
+        // Act
+        layout.Layout(first.Wrap, new Size(12, 40));
+        layout.Layout(second.Wrap, new Size(12, 40));
+
+        // Assert
+        for (var index = 0; index < first.Children.Count; index++)
+        {
+            var bounds = first.Children[index].Bounds;
+            bounds.ShouldBe(second.Children[index].Bounds);
+            bounds.Width.ShouldBeGreaterThanOrEqualTo(0);
+            bounds.Height.ShouldBeGreaterThanOrEqualTo(0);
+            bounds.Right.ShouldBeLessThanOrEqualTo(12);
+            bounds.Bottom.ShouldBeLessThanOrEqualTo(40);
+
+            if (first.Children[index].Visibility == Visibility.Collapsed)
+            {
+                continue;
+            }
+
+            for (var other = index + 1; other < first.Children.Count; other++)
+            {
+                if (first.Children[other].Visibility == Visibility.Collapsed)
+                {
+                    continue;
+                }
+
+                var intersection = bounds.Intersect(first.Children[other].Bounds);
+                (intersection.Width == 0 || intersection.Height == 0).ShouldBeTrue();
+            }
+        }
+
+        var participants = first.Children.Where(child => child.Visibility != Visibility.Collapsed).ToArray();
+        for (var index = 1; index < participants.Length; index++)
+        {
+            participants[index].Bounds.Y.ShouldBeGreaterThanOrEqualTo(participants[index - 1].Bounds.Y);
+            if (participants[index].Bounds.Y == participants[index - 1].Bounds.Y)
+            {
+                participants[index].Bounds.X.ShouldBeGreaterThan(participants[index - 1].Bounds.X);
+            }
+        }
+    }
+
+    private static (Wrap Wrap, List<ProbeControl> Children) CreateRandomWrap(int seed)
+    {
+        var random = new Random(seed);
+        var wrap = new Wrap { Spacing = random.Next(0, 3), LineSpacing = random.Next(0, 3) };
+        var children = new List<ProbeControl>();
+
+        for (var index = 0; index < 12; index++)
+        {
+            var child = new ProbeControl(new Size(random.Next(1, 5), random.Next(1, 3)))
+            {
+                Margin = new Thickness(random.Next(0, 2), 0, random.Next(0, 2), 0),
+                Visibility = random.Next(0, 4) == 0 ? Visibility.Collapsed : Visibility.Visible
+            };
+            wrap.Children.Add(child);
+            children.Add(child);
+        }
+
+        return (wrap, children);
+    }
 }
