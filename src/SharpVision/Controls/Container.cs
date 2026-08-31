@@ -199,12 +199,18 @@ public abstract class Container: ControlBase
     /// <summary>The corrected content-box size from the second AutoSize measure pass, or null
     /// when no axis was clamped below its natural size and the first, unbounded pass's
     /// <see cref="ControlBase.ContentExtent"/> remains authoritative. That property itself
-    /// always retains the first pass's value - <see cref="ControlBase.Measure"/> commits it
+    /// always retains the first pass's value - <see cref="ControlBase.Measure(Constraint)"/> commits it
     /// immediately after <see cref="ControlBase.MeasureOverride"/> returns, before
     /// <see cref="OnMeasuredDesired"/> ever runs - so this field is the only place the corrected
     /// value can live for <see cref="ResolveContentSlot"/> to consult afterward.
     /// Reset at the start of every measure pass.</summary>
     private Size? _autoSizeCorrectedContentExtent;
+
+    /// <summary>Gets the finite content constraint that supplied the current scroll measurement.
+    /// Specialized containers use this value to resolve viewport-relative child requests while
+    /// their scroll axis remains unbounded for extent discovery. The value is internal to one
+    /// synchronous measure transaction and must not be retained after an override returns.</summary>
+    private protected Constraint ScrollMeasureViewport { get; private set; }
 
     // AutoSize sizes to content on both axes, so content is measured unbounded
     // (unclamped by an explicit Width/Height) to discover its natural size.
@@ -212,6 +218,7 @@ public abstract class Container: ControlBase
     internal override Constraint OnMeasuringContent(Constraint content)
     {
         _autoSizeCorrectedContentExtent = null;
+        ScrollMeasureViewport = default;
 
         if (AutoSize)
         {
@@ -238,6 +245,9 @@ public abstract class Container: ControlBase
         var height = scrollsVertically
             ? null
             : ReserveBarCell(content.Height, scrollsHorizontally && HorizontalBarVisibility == ScrollBarVisibility.Always);
+        ScrollMeasureViewport = new Constraint(
+            ReserveBarCell(content.Width, scrollsVertically && VerticalBarVisibility == ScrollBarVisibility.Always),
+            ReserveBarCell(content.Height, scrollsHorizontally && HorizontalBarVisibility == ScrollBarVisibility.Always));
         return new Constraint(width, height);
     }
 
@@ -1157,6 +1167,9 @@ public abstract class Container: ControlBase
     {
         var width = (ScrollBars & ScrollBars.Horizontal) != 0 ? null : ReserveBarCell(available.Width, vertical);
         var height = (ScrollBars & ScrollBars.Vertical) != 0 ? null : ReserveBarCell(available.Height, horizontal);
+        ScrollMeasureViewport = new Constraint(
+            ReserveBarCell(available.Width, vertical),
+            ReserveBarCell(available.Height, horizontal));
         return MeasureOverride(new Constraint(width, height));
     }
 

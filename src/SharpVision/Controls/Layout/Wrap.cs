@@ -123,7 +123,7 @@ public sealed class Wrap: Container
             FillMeasuredParticipants(children, outerSizes, constraint);
             _ = WrapLayout.Pack(
                 outerSizes,
-                Primary(bounds),
+                PrimaryPackingLimit(bounds),
                 Orientation,
                 Spacing,
                 LineSpacing,
@@ -132,10 +132,24 @@ public sealed class Wrap: Container
             for (var index = 0; index < count; index++)
             {
                 var slot = outerSlots[index];
+                var contained = ContainCrossAxis(slot, bounds);
+                var resolvedAxes = Orientation == Orientation.Horizontal ? ResolvedAxes.Width : ResolvedAxes.Height;
+
+                if (contained != slot)
+                {
+                    resolvedAxes |= Orientation == Orientation.Horizontal ? ResolvedAxes.Height : ResolvedAxes.Width;
+                }
+
                 ArrangeChild(
                     children[index],
-                    new Rect(bounds.X.Add(slot.X), bounds.Y.Add(slot.Y), slot.Width, slot.Height),
-                    Orientation == Orientation.Horizontal ? ResolvedAxes.Width : ResolvedAxes.Height);
+                    new Rect(bounds.X.Add(contained.X), bounds.Y.Add(contained.Y), contained.Width, contained.Height),
+                    resolvedAxes,
+                    widthLimitBase: Orientation == Orientation.Horizontal
+                        ? PrimaryLimitBase(bounds)
+                        : null,
+                    heightLimitBase: Orientation == Orientation.Vertical
+                        ? PrimaryLimitBase(bounds)
+                        : null);
             }
         }
         finally
@@ -182,7 +196,8 @@ public sealed class Wrap: Container
             }
 
             children[index] = child;
-            var desired = MeasureChild(child, constraint);
+            var desired = MeasureChild(child, ChildMeasureConstraint(child, constraint));
+            desired = RemeasureViewportRelativeLimits(child, constraint, desired);
             outerSizes[index] = new Size(
                 desired.Width.Add(child.Margin.Horizontal),
                 desired.Height.Add(child.Margin.Vertical));
@@ -199,4 +214,81 @@ public sealed class Wrap: Container
     [Pure]
     private int Primary(Rect bounds) =>
         Orientation == Orientation.Horizontal ? bounds.Width : bounds.Height;
+
+    [Pure]
+    private Constraint ChildMeasureConstraint(ControlBase child, Constraint constraint) =>
+        !ScrollsPrimary()
+            ? constraint
+            : UsesViewportPrimaryLength(child)
+                ? Orientation == Orientation.Horizontal
+                    ? new Constraint(ScrollMeasureViewport.Width, constraint.Height)
+                    : new Constraint(constraint.Width, ScrollMeasureViewport.Height)
+                : Orientation == Orientation.Horizontal
+                    ? new Constraint(width: null, constraint.Height)
+                    : new Constraint(constraint.Width, height: null);
+
+    [Pure]
+    private int? PrimaryPackingLimit(Rect bounds) =>
+        ScrollsPrimary() ? null : Primary(bounds);
+
+    [Pure]
+    private int? PrimaryLimitBase(Rect bounds) =>
+        ScrollsPrimary()
+            ? Orientation == Orientation.Horizontal ? Viewport.Width : Viewport.Height
+            : Primary(bounds);
+
+    [Pure]
+    private Rect ContainCrossAxis(Rect slot, Rect bounds)
+    {
+        var crossLimit = Orientation == Orientation.Horizontal ? bounds.Height : bounds.Width;
+        var crossOrigin = Orientation == Orientation.Horizontal ? slot.Y : slot.X;
+        var crossExtent = Orientation == Orientation.Horizontal ? slot.Height : slot.Width;
+        var containedOrigin = Math.Min(crossOrigin, crossLimit);
+        var containedExtent = Math.Min(crossExtent, Math.Max(0, crossLimit - containedOrigin));
+
+        return Orientation == Orientation.Horizontal
+            ? new Rect(slot.X, containedOrigin, slot.Width, containedExtent)
+            : new Rect(containedOrigin, slot.Y, containedExtent, slot.Height);
+    }
+
+    [Pure]
+    private bool ScrollsPrimary() =>
+        AutoScroll &&
+        (ScrollBars & (Orientation == Orientation.Horizontal ? ScrollBars.Horizontal : ScrollBars.Vertical)) != 0;
+
+    [Pure]
+    private bool UsesViewportPrimaryLength(ControlBase child)
+    {
+        var length = Orientation == Orientation.Horizontal ? child.Width : child.Height;
+        return length.Kind == LengthKind.Percent;
+    }
+
+    private Size RemeasureViewportRelativeLimits(ControlBase child, Constraint constraint, Size desired)
+    {
+        if (!ScrollsPrimary() || !HasViewportRelativePrimaryLimit(child))
+        {
+            return desired;
+        }
+
+        if (Orientation == Orientation.Horizontal)
+        {
+            child.ResolveWidthLimits(ScrollMeasureViewport.Width, out var minimum, out var maximum);
+            var width = Math.Clamp(desired.Width, minimum, maximum);
+            return width == desired.Width
+                ? desired
+                : MeasureChild(child, new Constraint(width.Add(child.Margin.Horizontal), constraint.Height), ScrollMeasureViewport.Width, null);
+        }
+
+        child.ResolveHeightLimits(ScrollMeasureViewport.Height, out var minimumHeight, out var maximumHeight);
+        var height = Math.Clamp(desired.Height, minimumHeight, maximumHeight);
+        return height == desired.Height
+            ? desired
+            : MeasureChild(child, new Constraint(constraint.Width, height.Add(child.Margin.Vertical)), null, ScrollMeasureViewport.Height);
+    }
+
+    [Pure]
+    private bool HasViewportRelativePrimaryLimit(ControlBase child) =>
+        Orientation == Orientation.Horizontal
+            ? child.MinWidth.Kind == LengthKind.Percent || child.MaxWidth is { Kind: LengthKind.Percent }
+            : child.MinHeight.Kind == LengthKind.Percent || child.MaxHeight is { Kind: LengthKind.Percent };
 }
