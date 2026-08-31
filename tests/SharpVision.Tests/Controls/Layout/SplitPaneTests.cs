@@ -209,4 +209,462 @@ public sealed class SplitPaneTests
             pane.Dispose,
             TestContext.Current.CancellationToken);
     }
+
+    /// <summary>Verifies a horizontal split allocates border boxes around one retained divider cell.</summary>
+    [Fact]
+    public void Layout_WhenHorizontalWithTwoPanes_ArrangesAroundDivider()
+    {
+        // Arrange
+        var pane = new SplitPane();
+        var first = new ProbeControl(new Size(1, 1));
+        var second = new ProbeControl(new Size(1, 1));
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(pane, new Size(11, 3));
+
+        // Assert
+        first.Bounds.ShouldBe(new Rect(0, 0, 5, 3));
+        second.Bounds.ShouldBe(new Rect(6, 0, 5, 3));
+        pane.LogicalDividerBounds.ShouldBe(new Rect(5, 0, 1, 3));
+        pane.VisibleDividerBounds.ShouldBe(pane.LogicalDividerBounds);
+    }
+
+    /// <summary>Verifies vertical orientation maps the same two-track allocation onto height.</summary>
+    [Fact]
+    public void Layout_WhenVerticalWithTwoPanes_ArrangesFirstAboveSecond()
+    {
+        // Arrange
+        var pane = new SplitPane { Orientation = Orientation.Vertical };
+        var first = new ProbeControl(new Size(1, 1));
+        var second = new ProbeControl(new Size(1, 1));
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(pane, new Size(3, 11));
+
+        // Assert
+        first.Bounds.ShouldBe(new Rect(0, 0, 3, 5));
+        second.Bounds.ShouldBe(new Rect(0, 6, 3, 5));
+        pane.LogicalDividerBounds.ShouldBe(new Rect(0, 5, 3, 1));
+    }
+
+    /// <summary>Verifies cells size a border box while pane margins move the divider outside it.</summary>
+    [Fact]
+    public void Layout_WhenCellLengthAndMarginsAreAuthored_KeepsMarginsOutsideBorderBoxes()
+    {
+        // Arrange
+        var pane = new SplitPane { FirstPaneLength = Length.Cells(5) };
+        var first = new ProbeControl { Margin = new Thickness(1, 0, 1, 0) };
+        var second = new ProbeControl { Margin = new Thickness(1, 0, 0, 0) };
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(pane, new Size(11, 2));
+
+        // Assert
+        first.Bounds.ShouldBe(new Rect(1, 0, 5, 2));
+        pane.LogicalDividerBounds.ShouldBe(new Rect(7, 0, 1, 2));
+        second.Bounds.ShouldBe(new Rect(9, 0, 2, 2));
+    }
+
+    /// <summary>Verifies percentage and cell requests respond differently to a larger finite slot.</summary>
+    [Theory]
+    [InlineData(true, 50d, 5, 10)]
+    [InlineData(false, 4d, 4, 4)]
+    public void Layout_WhenWidthChanges_OnlyPercentageLengthTracksThePool(
+        bool percentage,
+        double value,
+        int expectedAtEleven,
+        int expectedAtTwentyOne)
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            FirstPaneLength = percentage
+                ? Length.Percent(value)
+                : Length.Cells((int) value)
+        };
+        var first = new ProbeControl();
+        pane.Children.Add(first);
+        pane.Children.Add(new ProbeControl());
+        var engine = new LayoutEngine();
+
+        // Act and assert
+        engine.Layout(pane, new Size(11, 1));
+        first.Bounds.Width.ShouldBe(expectedAtEleven);
+
+        engine.Layout(pane, new Size(21, 1));
+        first.Bounds.Width.ShouldBe(expectedAtTwentyOne);
+    }
+
+    /// <summary>Verifies each pane's limits constrain the shared pool and the retained feasible range.</summary>
+    [Fact]
+    public void Layout_WhenBothPanesHaveLimits_UsesTheirJointFeasibleAllocation()
+    {
+        // Arrange
+        var pane = new SplitPane { FirstPaneLength = Length.Percent(80) };
+        var first = new ProbeControl { MinWidth = Length.Cells(3), MaxWidth = Length.Cells(7) };
+        var second = new ProbeControl { MinWidth = Length.Cells(4), MaxWidth = Length.Cells(6) };
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(pane, new Size(11, 1));
+
+        // Assert
+        first.Bounds.Width.ShouldBe(6);
+        second.Bounds.Width.ShouldBe(4);
+        pane.MinimumFirstPaneExtent.ShouldBe(4);
+        pane.MaximumFirstPaneExtent.ShouldBe(6);
+    }
+
+    /// <summary>Verifies percentage limits use the divider-excluded pool as their containing axis.</summary>
+    [Fact]
+    public void Layout_WhenPaneMaximumIsPercentage_UsesDividerExcludedPoolAsLimitBase()
+    {
+        // Arrange
+        var pane = new SplitPane { FirstPaneLength = Length.Percent(100) };
+        var first = new ProbeControl { MaxWidth = Length.Percent(50) };
+        var second = new ProbeControl();
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(pane, new Size(11, 1));
+
+        // Assert
+        first.Bounds.Width.ShouldBe(5);
+        second.Bounds.Width.ShouldBe(5);
+    }
+
+    /// <summary>Verifies Hidden remains a participant while Collapsed removes its track and divider.</summary>
+    [Fact]
+    public void Layout_WhenVisibilityChanges_HiddenParticipatesAndCollapsedDoesNot()
+    {
+        // Arrange
+        var pane = new SplitPane();
+        var first = new ProbeControl { Visibility = Visibility.Hidden };
+        var second = new ProbeControl();
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+        var engine = new LayoutEngine();
+
+        // Act and assert
+        engine.Layout(pane, new Size(11, 2));
+        first.Bounds.Width.ShouldBe(5);
+        second.Bounds.ShouldBe(new Rect(6, 0, 5, 2));
+
+        first.Visibility = Visibility.Collapsed;
+        engine.Layout(pane, new Size(11, 2));
+        first.Bounds.ShouldBe(default);
+        second.Bounds.ShouldBe(new Rect(0, 0, 11, 2));
+        pane.LogicalDividerBounds.ShouldBe(default);
+    }
+
+    /// <summary>Verifies an unbounded split uses both intrinsic requests and one divider cell.</summary>
+    [Fact]
+    public void Measure_WhenPrimaryAxisIsUnbounded_UsesIntrinsicPaneRequests()
+    {
+        // Arrange
+        var pane = new SplitPane();
+        pane.Children.Add(new ProbeControl(new Size(3, 2)));
+        pane.Children.Add(new ProbeControl(new Size(4, 1)));
+
+        // Act
+        pane.Measure(new Constraint(width: null, height: null));
+
+        // Assert
+        pane.DesiredSize.ShouldBe(new Size(8, 2));
+    }
+
+    /// <summary>Verifies a single participant gets the complete outer slot and no divider.</summary>
+    [Fact]
+    public void Layout_WhenOnlyOnePaneParticipates_FillsContentWithoutDivider()
+    {
+        // Arrange
+        var pane = new SplitPane();
+        var only = new ProbeControl(new Size(3, 2)) { Margin = new Thickness(1) };
+        pane.Children.Add(only);
+
+        // Act
+        new LayoutEngine().Layout(pane, new Size(8, 4));
+
+        // Assert
+        only.Bounds.ShouldBe(new Rect(1, 1, 6, 2));
+        pane.LogicalDividerBounds.ShouldBe(default);
+    }
+
+    /// <summary>Verifies an empty split contributes no intrinsic extent.</summary>
+    [Fact]
+    public void Measure_WhenNoPaneParticipates_ReturnsZeroDesiredSize()
+    {
+        // Arrange
+        var pane = new SplitPane();
+
+        // Act
+        pane.Measure(new Constraint(width: null, height: null));
+
+        // Assert
+        pane.DesiredSize.ShouldBe(default);
+    }
+
+    /// <summary>Verifies finite margin oversubscription produces contained zero-width border boxes.</summary>
+    [Fact]
+    public void Layout_WhenMarginsConsumeFinitePool_TruncatesThemWithoutEscapingBounds()
+    {
+        // Arrange
+        var pane = new SplitPane { FirstPaneLength = Length.Cells(2) };
+        var first = new ProbeControl { Margin = new Thickness(4, 0, 0, 0) };
+        var second = new ProbeControl { Margin = new Thickness(4, 0, 0, 0) };
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(pane, new Size(4, 1));
+
+        // Assert
+        first.Bounds.ShouldBe(new Rect(3, 0, 0, 1));
+        pane.LogicalDividerBounds.ShouldBe(new Rect(3, 0, 1, 1));
+        second.Bounds.ShouldBe(new Rect(4, 0, 0, 1));
+    }
+
+    /// <summary>Verifies a one-cell primary box preserves the divider and contains zero-width panes.</summary>
+    [Fact]
+    public void Layout_WhenPrimaryBoxIsOneCell_DividerConsumesTheOnlyCell()
+    {
+        // Arrange
+        var pane = new SplitPane();
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(pane, new Size(1, 2));
+
+        // Assert
+        first.Bounds.ShouldBe(new Rect(0, 0, 0, 2));
+        pane.LogicalDividerBounds.ShouldBe(new Rect(0, 0, 1, 2));
+        second.Bounds.ShouldBe(new Rect(1, 0, 0, 2));
+    }
+
+    /// <summary>Verifies zero primary bounds produce neither divider geometry nor escaping slots.</summary>
+    [Fact]
+    public void Layout_WhenPrimaryBoxIsEmpty_ProducesEmptyContainedGeometry()
+    {
+        // Arrange
+        var pane = new SplitPane();
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(pane, new Size(0, 2));
+
+        // Assert
+        first.Bounds.ShouldBe(new Rect(0, 0, 0, 2));
+        second.Bounds.ShouldBe(new Rect(0, 0, 0, 2));
+        pane.LogicalDividerBounds.ShouldBe(default);
+    }
+
+    /// <summary>Verifies a zero cross axis suppresses the logical divider despite finite track allocation.</summary>
+    [Fact]
+    public void Layout_WhenCrossBoxIsEmpty_ProducesNoDividerGeometry()
+    {
+        // Arrange
+        var pane = new SplitPane();
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(pane, new Size(11, 0));
+
+        // Assert
+        first.Bounds.ShouldBe(new Rect(0, 0, 5, 0));
+        second.Bounds.ShouldBe(new Rect(6, 0, 5, 0));
+        pane.LogicalDividerBounds.ShouldBe(default);
+    }
+
+    /// <summary>Verifies intrinsic owner sizing performs the same unbounded two-track allocation.</summary>
+    [Fact]
+    public void Measure_WhenOwnerAutoSizes_UsesNaturalMarginInclusiveSplitExtent()
+    {
+        // Arrange
+        var pane = new SplitPane { AutoSize = true };
+        pane.Children.Add(new ProbeControl(new Size(3, 2)) { Margin = new Thickness(1, 0) });
+        pane.Children.Add(new ProbeControl(new Size(4, 1)));
+
+        // Act
+        pane.Measure(new Constraint(20, 10));
+
+        // Assert
+        pane.DesiredSize.ShouldBe(new Size(10, 2));
+    }
+
+    /// <summary>Verifies owner border and padding keep tracks inside the content box.</summary>
+    [Fact]
+    public void Layout_WhenOwnerHasChrome_ArrangesDividerAndPanesInsideContentBox()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            Border = AppearanceTestValues.Border(BorderSide.All),
+            Padding = new Thickness(1)
+        };
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(pane, new Size(11, 5));
+
+        // Assert
+        first.Bounds.ShouldBe(new Rect(2, 2, 3, 1));
+        pane.LogicalDividerBounds.ShouldBe(new Rect(5, 2, 1, 1));
+        second.Bounds.ShouldBe(new Rect(6, 2, 3, 1));
+    }
+
+    /// <summary>Verifies primary scrolling keeps percentage sizing viewport-based while trailing Star stays intrinsic.</summary>
+    [Fact]
+    public void Layout_WhenPrimaryAxisScrolls_UsesViewportPoolAndRetainsTrailingIntrinsicExtent()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Horizontal,
+            ShowScrollBars = ShowScrollBars.Never,
+            FirstPaneLength = Length.Percent(100)
+        };
+        var first = new ProbeControl(new Size(1, 1));
+        var second = new ProbeControl(new Size(2, 1));
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(pane, new Size(6, 2));
+
+        // Assert
+        pane.Viewport.ShouldBe(new Size(6, 2));
+        pane.Extent.ShouldBe(new Size(8, 1));
+        first.Bounds.ShouldBe(new Rect(0, 0, 5, 2));
+        second.Bounds.ShouldBe(new Rect(6, 0, 2, 2));
+    }
+
+    /// <summary>Verifies a zero-width scrolling viewport still discovers intrinsic trailing extent safely.</summary>
+    [Fact]
+    public void Layout_WhenPrimaryScrollViewportIsEmpty_UsesZeroPercentageBase()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Horizontal,
+            ShowScrollBars = ShowScrollBars.Never,
+            FirstPaneLength = Length.Percent(100)
+        };
+        var first = new ProbeControl();
+        var second = new ProbeControl(new Size(2, 1));
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(pane, new Size(0, 2));
+
+        // Assert
+        pane.Viewport.Width.ShouldBe(0);
+        pane.Extent.Width.ShouldBe(3);
+        first.Bounds.Width.ShouldBe(0);
+        second.Bounds.ShouldBe(new Rect(1, 0, 2, 2));
+        pane.VisibleDividerBounds.Width.ShouldBe(0);
+    }
+
+    /// <summary>Verifies an always-visible opposite rail narrows the percentage viewport base before extent discovery.</summary>
+    [Fact]
+    public void Layout_WhenOppositeRailIsAlwaysVisible_UsesReservedViewportForPrimaryPercentage()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Always,
+            FirstPaneLength = Length.Percent(100)
+        };
+        var first = new ProbeControl(new Size(1, 1));
+        var second = new ProbeControl(new Size(1, 1));
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(pane, new Size(6, 2));
+
+        // Assert
+        pane.Viewport.Width.ShouldBe(5);
+        pane.Extent.Width.ShouldBe(6);
+        first.Bounds.Width.ShouldBe(4);
+        second.Bounds.ShouldBe(new Rect(5, 0, 1, 2));
+    }
+
+    /// <summary>Verifies an automatically induced opposite rail reruns allocation at its narrower viewport.</summary>
+    [Fact]
+    public void Layout_WhenOppositeRailIsInduced_UsesSettledViewportForPrimaryPercentage()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Auto,
+            FirstPaneLength = Length.Percent(100)
+        };
+        var first = new ProbeControl(new Size(1, 3));
+        var second = new ProbeControl(new Size(1, 3));
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(pane, new Size(6, 2));
+
+        // Assert
+        pane.Viewport.Width.ShouldBe(5);
+        pane.Extent.ShouldBe(new Size(6, 3));
+        first.Bounds.Width.ShouldBe(4);
+        second.Bounds.X.ShouldBe(5);
+    }
+
+    /// <summary>Verifies cross-axis scrolling does not turn the finite split axis into an unbounded allocation.</summary>
+    [Fact]
+    public void Layout_WhenOnlyCrossAxisScrolls_PreservesFinitePrimaryAllocation()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Never
+        };
+        var first = new ProbeControl(new Size(1, 3));
+        var second = new ProbeControl(new Size(1, 3));
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(pane, new Size(11, 1));
+
+        // Assert
+        pane.Extent.ShouldBe(new Size(11, 3));
+        first.Bounds.ShouldBe(new Rect(0, 0, 5, 3));
+        second.Bounds.ShouldBe(new Rect(6, 0, 5, 3));
+    }
 }
