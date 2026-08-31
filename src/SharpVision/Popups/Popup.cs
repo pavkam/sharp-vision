@@ -976,7 +976,19 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                     else if (IsSurfacePresented)
                     {
                         ClearAvailabilityAncestor();
-                        _ = CloseSurface(CommitClosedState, CollapseContent);
+                        // Release the reentrancy guard the moment the closed state actually
+                        // commits, rather than waiting for the whole close transaction (through
+                        // Closing, content collapse, and the final Closed notification) to
+                        // return. Closed observers run after this delegate has already released
+                        // the guard, so a handler that reopens the popup synchronously does not
+                        // hit the throw below.
+                        _ = CloseSurface(
+                            () =>
+                            {
+                                CommitClosedState();
+                                IsOpenTransitioning = false;
+                            },
+                            CollapseContent);
                     }
                     else
                     {
@@ -1329,12 +1341,22 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
             return;
         }
 
+        // Captured before any mutation below so a Closing handler that disposes the popup
+        // synchronously (nulling the live Closed field) cannot strand this invocation list -
+        // mirroring CloseSurfaceCore's identical capture-ahead-of-time treatment for the
+        // presented path.
+        var closedHandlers = CaptureClosedHandlers();
+
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(CommitClosedState, ref failure);
+        // Release the reentrancy guard the moment the closed state actually commits, mirroring
+        // the presented close path, so a Closed observer that reopens the popup synchronously
+        // does not hit SetOpen's reentrancy throw.
+        ExceptionAggregation.Capture(() => IsOpenTransitioning = false, ref failure);
         ExceptionAggregation.Capture(RaiseSurfaceClosing, ref failure);
         ExceptionAggregation.Capture(CollapseContent, ref failure);
         SurfaceBounds = default;
-        ExceptionAggregation.Capture(RaiseSurfaceClosed, ref failure);
+        ExceptionAggregation.Capture(() => closedHandlers?.Invoke(this, EventArgs.Empty), ref failure);
         failure?.Throw();
     }
 

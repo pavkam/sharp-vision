@@ -966,6 +966,80 @@ public sealed class PopupTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies Closed still fires exactly once when a Closing handler disposes a
+    /// staged-detached Popup synchronously, mirroring the presented path's identical contract for
+    /// the CloseUnpresented route: the invocation list must be captured before Closing can null it
+    /// out from under the close transaction.</summary>
+    [Fact]
+    public void Closed_WhenClosingHandlerDisposesStagedDetachedPopupSynchronously_FiresOnce()
+    {
+        var popup = new Popup { Content = new ProbeControl(), IsOpen = true };
+        var closed = 0;
+        popup.Closing += (_, _) => popup.Dispose();
+        popup.Closed += (_, _) => closed++;
+
+        popup.IsOpen = false;
+
+        closed.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a Closed handler can reopen the Popup synchronously instead of being
+    /// rejected by SetOpen's reentrancy guard - the guard now releases as soon as the closed state
+    /// commits rather than staying armed for the rest of the close transaction, so it is no longer
+    /// armed by the time Closed observers run.</summary>
+    [Fact]
+    public async Task IsOpen_WhenClosedHandlerReopensSynchronously_ReopensWithoutThrowingAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var popup = new Popup { Content = new ProbeControl() };
+            var root = new Overlay();
+            root.Children.Add(popup);
+            root.Attach(dispatcher);
+            popup.IsOpen = true;
+            new LayoutEngine().Layout(root, new Size(12, 6));
+            var reopened = false;
+            popup.Closed += (_, _) =>
+            {
+                if (!reopened)
+                {
+                    reopened = true;
+                    popup.IsOpen = true;
+                }
+            };
+
+            popup.IsOpen = false;
+
+            reopened.ShouldBeTrue();
+            popup.IsOpen.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a Closed handler can reopen a staged-detached Popup synchronously through
+    /// the CloseUnpresented route instead of being rejected by SetOpen's reentrancy guard, mirroring
+    /// the presented path's identical relaxation.</summary>
+    [Fact]
+    public void IsOpen_WhenClosedHandlerReopensStagedDetachedPopupSynchronously_ReopensWithoutThrowing()
+    {
+        var popup = new Popup { Content = new ProbeControl(), IsOpen = true };
+        var reopened = false;
+        popup.Closed += (_, _) =>
+        {
+            if (!reopened)
+            {
+                reopened = true;
+                popup.IsOpen = true;
+            }
+        };
+
+        popup.IsOpen = false;
+
+        reopened.ShouldBeTrue();
+        popup.IsOpen.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a CloseRequested handler that repeats the same close request synchronously
     /// is a documented no-op instead of reentering the open-state transition, mirroring Window's
     /// equivalent contract.</summary>
