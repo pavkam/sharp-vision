@@ -609,7 +609,7 @@ public sealed class FocusManager: IDisposable
 
                         if (IsCommittedTargetValid(control))
                         {
-                            Lost?.Invoke(this, changed);
+                            RaisePerSubscriber(Lost, changed, () => IsCommittedTargetValid(control));
                         }
                     }
 
@@ -631,7 +631,7 @@ public sealed class FocusManager: IDisposable
 
                         if (IsCommittedTargetValid(control))
                         {
-                            Gained?.Invoke(this, changed);
+                            RaisePerSubscriber(Gained, changed, () => IsCommittedTargetValid(control));
                         }
                     }
                     else if (control is null)
@@ -938,6 +938,27 @@ public sealed class FocusManager: IDisposable
 
             var handler = (EventHandler<FocusChangingEventArgs>) subscriber;
             handler(this, eventArgs);
+        }
+    }
+
+    private void RaisePerSubscriber<TEventArgs>(
+        EventHandler<TEventArgs>? handlers,
+        TEventArgs eventArgs,
+        Func<bool> isStillValid)
+    {
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var subscriber in handlers.GetInvocationList())
+        {
+            if (!isStillValid())
+            {
+                break;
+            }
+
+            ((EventHandler<TEventArgs>) subscriber)(this, eventArgs);
         }
     }
 

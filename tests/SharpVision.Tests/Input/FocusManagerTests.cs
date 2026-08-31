@@ -657,6 +657,61 @@ public sealed class FocusManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a Lost subscriber that invalidates the committed target stops later
+    /// subscribers on the same publication from running.</summary>
+    [Fact]
+    public async Task Focus_WhenLostSubscriberDisposesManager_SkipsRemainingSubscribersAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var first = new ProbeControl { IsFocusable = true };
+            var second = new ProbeControl { IsFocusable = true };
+            root.Children.Add(first);
+            root.Children.Add(second);
+            root.Attach(dispatcher);
+            var manager = new FocusManager(root);
+            manager.Focus(first).ShouldBeTrue();
+            var secondSubscriberCalls = 0;
+
+            manager.Lost += (_, _) => manager.Dispose();
+            manager.Lost += (_, _) => secondSubscriberCalls++;
+
+            manager.Focus(second).ShouldBeFalse();
+
+            secondSubscriberCalls.ShouldBe(0);
+            manager.IsDisposed.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a Gained subscriber that invalidates the committed target stops later
+    /// subscribers on the same publication from running.</summary>
+    [Fact]
+    public async Task Focus_WhenGainedSubscriberDisposesManager_SkipsRemainingSubscribersAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var target = new ProbeControl { IsFocusable = true };
+            root.Children.Add(target);
+            root.Attach(dispatcher);
+            var manager = new FocusManager(root);
+            var secondSubscriberCalls = 0;
+
+            manager.Gained += (_, _) => manager.Dispose();
+            manager.Gained += (_, _) => secondSubscriberCalls++;
+
+            manager.Focus(target).ShouldBeFalse();
+
+            secondSubscriberCalls.ShouldBe(0);
+            manager.IsDisposed.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies target invalidation from GotFocus stops reveal and manager-level gained
     /// publication and reports that the requested focus did not survive.</summary>
     [Fact]
