@@ -1493,4 +1493,31 @@ public sealed class DateInputTests
         action));
 
     #endregion
+
+    /// <summary>Verifies both the digit and increment segment-editing paths recover from a null
+    /// value (e.g. after a Delete, since AllowNull defaults to true) by seeding today's date,
+    /// instead of refusing to act because there is no value to mutate.</summary>
+    [Fact]
+    public void SegmentEdit_WhenValueIsNullAfterClear_SeedsTodayForDigitAndIncrement()
+    {
+        // Arrange - InvariantCulture's short date pattern orders segments Month/Day/Year, so
+        // focus starts on Month (segment 0).
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 7, 19),
+            Culture = CultureInfo.InvariantCulture
+        };
+
+        // Act and assert - a digit typed right after a clear lands on a seeded date instead of
+        // being silently dropped.
+        control.Value = null;
+        TypeCharacter(control, '9');
+        _ = control.Value.ShouldNotBeNull();
+        control.Value.Value.Month.ShouldBe(9);
+
+        // Act and assert - Up after a clear seeds today's date instead of refusing to act.
+        control.Value = null;
+        PressKey(control, Code.Up);
+        _ = control.Value.ShouldNotBeNull();
+    }
 }

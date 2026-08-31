@@ -537,7 +537,11 @@ public sealed class DateInput: InputBase
     {
         if (_state.Value is not { } date)
         {
-            return false;
+            // AllowNull defaults to true, so a prior Delete (or an explicit Value = null) can
+            // leave the value unset. Rather than refusing the increment outright, seed today's
+            // date - the same seed DateInput resolves lazily at construction - so Up/Down starts
+            // producing a value instead of silently doing nothing forever.
+            return CommitSegmentValue(_state.Clamp(DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime)));
         }
 
         if (kind == TemporalSegmentKind.Year)
@@ -584,7 +588,16 @@ public sealed class DateInput: InputBase
     {
         if (_state.Value is not { } date)
         {
-            return false;
+            // Same rationale as ApplySegmentIncrement: seed today's date instead of refusing,
+            // so a digit typed after Delete lands on a real value rather than being dropped.
+            _ = _state.SetValue(_state.Clamp(DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime)));
+
+            if (_state.Value is not { } seeded)
+            {
+                return false;
+            }
+
+            date = seeded;
         }
 
         try

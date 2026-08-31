@@ -909,4 +909,26 @@ public sealed class TimeInputTests
         KeyAction.Press));
 
     #endregion
+
+    /// <summary>Verifies TimeInput's digit and increment segment-editing paths already seed a
+    /// value after Value is cleared to null (e.g. via Delete), instead of refusing to act -
+    /// confirming existing correct behavior, unlike DateInput's equivalent paths before they were
+    /// fixed to do the same.</summary>
+    [Fact]
+    public void SegmentEdit_WhenValueIsNullAfterClear_SeedsForDigitAndIncrement()
+    {
+        // Arrange
+        using var control = new TimeInput { Value = new TimeOnly(9, 30) };
+
+        // Act and assert - a digit typed right after a clear lands on a seeded value instead of
+        // being silently dropped.
+        control.Value = null;
+        TypeCharacter(control, '5');
+        _ = control.Value.ShouldNotBeNull();
+
+        // Act and assert - Up after a clear seeds a value instead of refusing to act.
+        control.Value = null;
+        _ = Router.Route(control, Events.Key, Key(Code.Up));
+        _ = control.Value.ShouldNotBeNull();
+    }
 }
