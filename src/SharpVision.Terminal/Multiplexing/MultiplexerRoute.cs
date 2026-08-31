@@ -44,6 +44,9 @@ public sealed class MultiplexerRoute
     /// <summary>Gets whether a bounded notification OSC string can reach the explicit outer terminal.</summary>
     public bool CanRouteNotifications => Policy.Allows(MultiplexingOperation.Notifications) && !Policy.ContainsScreen;
 
+    /// <summary>Gets whether a bounded title command can reach the explicit outer terminal.</summary>
+    public bool CanRouteTitle => Policy.Allows(MultiplexingOperation.Title) && !Policy.ContainsScreen;
+
     /// <summary>Gets the exact largest inner graphics frame for a known ESC count.</summary>
     /// <param name="escapeBytes">The non-negative ESC byte count in the complete inner frame.</param>
     /// <returns>A positive inner byte bound, or zero when graphics cannot be routed.</returns>
@@ -126,6 +129,20 @@ public sealed class MultiplexerRoute
         ArgumentNullException.ThrowIfNull(destination);
 
         return CanRouteNotifications &&
+               !command.IsEmpty &&
+               command.Length <= Policy.MaxEnvelopeBytes &&
+               TryWritePassthrough(destination, command, allowScreen: false);
+    }
+
+    /// <summary>Writes one complete bounded title command through authorized tmux layers.</summary>
+    /// <param name="destination">The non-null synchronous destination.</param>
+    /// <param name="command">The complete OSC 2/0 title string or described terminfo title program.</param>
+    /// <returns>True on complete atomic encoding; otherwise false without destination mutation.</returns>
+    public bool TryWriteTitle(IBufferWriter<byte> destination, ReadOnlySpan<byte> command)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+
+        return CanRouteTitle &&
                !command.IsEmpty &&
                command.Length <= Policy.MaxEnvelopeBytes &&
                TryWritePassthrough(destination, command, allowScreen: false);
@@ -312,7 +329,8 @@ public sealed class MultiplexerRoute
         {
             MultiplexingOperation.CapabilityQueries => CanRouteCapabilityQueries,
             MultiplexingOperation.Clipboard => CanRouteClipboard,
-            MultiplexingOperation.None or MultiplexingOperation.Graphics or MultiplexingOperation.Notifications => false,
+            MultiplexingOperation.None or MultiplexingOperation.Graphics or
+                MultiplexingOperation.Notifications or MultiplexingOperation.Title => false,
             _ => throw new UnreachableException("Reply validation emits only defined operation families.")
         };
     }

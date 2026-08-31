@@ -203,6 +203,164 @@ public sealed class TerminalServicesTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies the OSC 2 title path emits unwrapped bytes when no multiplexer route is
+    /// configured, matching today's default behavior for a route-free session.</summary>
+    [Fact]
+    public async Task SetTitle_WhenNoMultiplexerRoute_EmitsUnwrappedAnsiTitleBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var title = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += memory =>
+        {
+            if (memory.Span.SequenceEqual("]2;hi\\"u8))
+            {
+                _ = title.TrySetResult();
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.IsTitleSupported.ShouldBeTrue();
+        application.Terminal.SetTitle("hi");
+
+        await title.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an explicitly authorized tmux title route wraps the OSC 2 string in DCS
+    /// passthrough before the ordered out-of-band write reaches the transport, matching the
+    /// existing clipboard and notification routing precedent instead of posting bare bytes that
+    /// tmux would otherwise swallow.</summary>
+    [Fact]
+    public async Task SetTitle_WhenTmuxRouteApprovesTitleFamily_WrapsAnsiTitleBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Title);
+        var options = TerminalOptions.Minimal with { Multiplexing = policy };
+        var written = new TaskCompletionSource<ReadOnlyMemory<byte>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += bytes =>
+        {
+            if (bytes.Span.IndexOf("Ptmux;"u8) >= 0)
+            {
+                _ = written.TrySetResult(bytes.ToArray());
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.SetTitle("hi");
+
+        var bytes = await written.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        bytes.ToArray().ShouldBe(
+            "Ptmux;]2;hi\\\\"u8.ToArray());
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a configured multiplexer route that has not approved the title family
+    /// suppresses the OSC 2 title entirely rather than posting an unwrapped OSC that the
+    /// multiplexer would otherwise consume and never forward.</summary>
+    [Fact]
+    public async Task SetTitle_WhenTmuxRouteDoesNotApproveTitleFamily_AnsiPathIsSuppressedAndByteQuietAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var options = TerminalOptions.Minimal with { Multiplexing = policy };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var before = terminal.Writes.Count;
+
+        application.Terminal.IsTitleSupported.ShouldBeTrue();
+        application.Terminal.SetTitle("hi");
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        terminal.Writes.Count.ShouldBe(before);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an explicitly authorized tmux title route also wraps the described TS/fsl
+    /// title program's bytes, matching the OSC 2 path's routing exactly.</summary>
+    [Fact]
+    public async Task SetTitle_WhenTmuxRouteApprovesTitleFamily_WrapsDescribedTitleBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var profile = CreateProfile(new Dictionary<string, DescriptionProgram>
+        {
+            ["TS"] = new DescriptionProgram("PREFIX:"u8),
+            ["fsl"] = new DescriptionProgram(":SUFFIX"u8)
+        });
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            profile,
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Title);
+        var options = TerminalOptions.Minimal with { Profile = profile, Multiplexing = policy };
+        var written = new TaskCompletionSource<ReadOnlyMemory<byte>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += bytes =>
+        {
+            if (bytes.Span.IndexOf("Ptmux;"u8) >= 0)
+            {
+                _ = written.TrySetResult(bytes.ToArray());
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.IsTitleSupported.ShouldBeTrue();
+        application.Terminal.SetTitle("hi");
+
+        var bytes = await written.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        bytes.ToArray().ShouldBe("Ptmux;PREFIX:hi:SUFFIX\\"u8.ToArray());
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a configured multiplexer route that has not approved the title family
+    /// suppresses the described TS/fsl title program's bytes as well, matching the OSC 2 path.</summary>
+    [Fact]
+    public async Task SetTitle_WhenTmuxRouteDoesNotApproveTitleFamily_DescribedPathIsSuppressedAndByteQuietAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var profile = CreateProfile(new Dictionary<string, DescriptionProgram>
+        {
+            ["TS"] = new DescriptionProgram("PREFIX:"u8),
+            ["fsl"] = new DescriptionProgram(":SUFFIX"u8)
+        });
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            profile,
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var options = TerminalOptions.Minimal with { Profile = profile, Multiplexing = policy };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var before = terminal.Writes.Count;
+
+        application.Terminal.IsTitleSupported.ShouldBeTrue();
+        application.Terminal.SetTitle("hi");
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        terminal.Writes.Count.ShouldBe(before);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies non-executable described bell programs are unsupported and byte-quiet.</summary>
     /// <param name="source">The bell program with a broken zero-parameter contract.</param>
     [Theory]

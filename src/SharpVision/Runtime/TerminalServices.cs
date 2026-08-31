@@ -147,9 +147,9 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
             {
                 WriteDescribedTitle(rented.AsSpan(0, written));
             }
-            else
+            else if (TryRouteTitle(destination.WrittenMemory, out var routed))
             {
-                _application.PostOutOfBand(destination.WrittenMemory);
+                _application.PostOutOfBand(routed);
             }
         }
         finally
@@ -175,7 +175,11 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
         destination.Write(prefix.Span);
         destination.Write(title);
         destination.Write(suffix.Span);
-        _application.PostOutOfBand(destination.WrittenMemory);
+
+        if (TryRouteTitle(destination.WrittenMemory, out var routed))
+        {
+            _application.PostOutOfBand(routed);
+        }
     }
 
     /// <inheritdoc/>
@@ -882,6 +886,26 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
         var destination = new ArrayBufferWriter<byte>(command.Length + 16);
 
         if (!_multiplexerRoute.TryWriteNotification(destination, command.Span))
+        {
+            routed = default;
+            return false;
+        }
+
+        routed = destination.WrittenMemory.ToArray();
+        return true;
+    }
+
+    private bool TryRouteTitle(ReadOnlyMemory<byte> command, out ReadOnlyMemory<byte> routed)
+    {
+        if (_multiplexerRoute is null)
+        {
+            routed = command;
+            return true;
+        }
+
+        var destination = new ArrayBufferWriter<byte>(command.Length + 16);
+
+        if (!_multiplexerRoute.TryWriteTitle(destination, command.Span))
         {
             routed = default;
             return false;

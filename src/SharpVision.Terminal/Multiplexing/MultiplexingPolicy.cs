@@ -21,7 +21,8 @@ public sealed class MultiplexingPolicy
     private const MultiplexingOperation _allOperations = MultiplexingOperation.CapabilityQueries |
                                              MultiplexingOperation.Clipboard |
                                              MultiplexingOperation.Graphics |
-                                             MultiplexingOperation.Notifications;
+                                             MultiplexingOperation.Notifications |
+                                             MultiplexingOperation.Title;
     private readonly ReadOnlyCollection<MultiplexerKind> _layers;
 
     /// <summary>Initializes one explicit multiplexer routing policy.</summary>
@@ -196,6 +197,8 @@ public sealed class MultiplexingPolicy
             MultiplexingOperation.Graphics =>
                 Active && (ApprovedOperations & operation) == operation,
             MultiplexingOperation.Notifications =>
+                Active && (ApprovedOperations & operation) == operation,
+            MultiplexingOperation.Title =>
                 Active && (ApprovedOperations & operation) == operation,
             _ => throw InvalidOperation(operation)
         };

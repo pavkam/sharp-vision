@@ -21,5 +21,8 @@ public enum MultiplexingOperation
     Graphics = 4,
 
     /// <summary>Typed desktop notification commands may bypass the multiplexer.</summary>
-    Notifications = 8
+    Notifications = 8,
+
+    /// <summary>Typed terminal title commands may bypass the multiplexer.</summary>
+    Title = 16
 }
