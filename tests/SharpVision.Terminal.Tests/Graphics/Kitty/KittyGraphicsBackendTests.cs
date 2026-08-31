@@ -97,6 +97,61 @@ public sealed class KittyGraphicsBackendTests
         Encoding.ASCII.GetString(assigned.Placements).ShouldContain("a=p,i=42,p=1");
     }
 
+    /// <summary>Verifies a one-column destination that lands exactly on a wide (two-column)
+    /// grapheme's lead cell stays cursor-anchored rather than using a placeholder. A placeholder
+    /// is always exactly one protocol column wide, so replacing the lead alone would leave the
+    /// glyph's trailing continuation column - one cell outside the destination - unaccounted
+    /// for, corrupting the emitted row's column count.</summary>
+    [Fact]
+    public void Prepare_WhenAssignedPlacementDestinationRightEdgeIsWideGlyphLead_KeepsCursorPlacement()
+    {
+        using var backend = new KittyGraphicsBackend();
+        var image = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        using var first = new RenderFrame(new Size(6, 1));
+        first.Canvas.DrawImage(image, new Rect(0, 0, 1, 1), PlacementMode.Contain);
+        using var moved = new RenderFrame(new Size(6, 1));
+        _ = moved.Canvas.Draw("界", new Point(3, 0));
+        moved.Canvas.DrawImage(image, new Rect(3, 0, 1, 1), PlacementMode.Contain);
+        _ = backend.Prepare(null, first, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=42,I=1;OK"u8));
+
+        _ = backend.Prepare(first, moved, full: false);
+        var assigned = WritePrepared(backend);
+
+        assigned.CellPreludes.ShouldBeEmpty();
+        backend.PreparedCellOverlay.ShouldBeNull();
+        Encoding.ASCII.GetString(assigned.Placements).ShouldContain("a=p,i=42,p=1");
+    }
+
+    /// <summary>Verifies a one-column destination that lands exactly on a wide (two-column)
+    /// grapheme's continuation cell stays cursor-anchored rather than using a placeholder. The
+    /// glyph's lead already advances the terminal cursor two columns; a placeholder replacing
+    /// only the continuation would advance it a third time, shifting the rest of the row.</summary>
+    [Fact]
+    public void Prepare_WhenAssignedPlacementDestinationLeftEdgeIsWideGlyphContinuation_KeepsCursorPlacement()
+    {
+        using var backend = new KittyGraphicsBackend();
+        var image = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        using var first = new RenderFrame(new Size(6, 1));
+        first.Canvas.DrawImage(image, new Rect(0, 0, 1, 1), PlacementMode.Contain);
+        using var moved = new RenderFrame(new Size(6, 1));
+        _ = moved.Canvas.Draw("界", new Point(3, 0));
+        moved.Canvas.DrawImage(image, new Rect(4, 0, 1, 1), PlacementMode.Contain);
+        _ = backend.Prepare(null, first, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=42,I=1;OK"u8));
+
+        _ = backend.Prepare(first, moved, full: false);
+        var assigned = WritePrepared(backend);
+
+        assigned.CellPreludes.ShouldBeEmpty();
+        backend.PreparedCellOverlay.ShouldBeNull();
+        Encoding.ASCII.GetString(assigned.Placements).ShouldContain("a=p,i=42,p=1");
+    }
+
     /// <summary>Verifies a placement that was rendered through a virtual placeholder in the
     /// previously committed frame, and loses that eligibility on a later frame purely because the
     /// color depth dropped - with identical placement identity and geometry, and no full

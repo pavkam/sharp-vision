@@ -644,6 +644,33 @@ public sealed class FrameEncoderTests
         screen.ShouldMatch(frame);
     }
 
+    /// <summary>Verifies the continuation-cell check runs before the overlay branch, so a cell
+    /// overlay that (incorrectly) lands on a wide glyph's continuation cell is skipped instead of
+    /// emitting a spurious placeholder column. A placeholder is always exactly one protocol
+    /// column wide; letting one fire on a continuation cell - whose glyph lead already advanced
+    /// the cursor two columns - would desynchronize the row's emitted column count from the frame
+    /// width. This is the defensive backstop behind KittyGraphicsBackend's own CanUsePlaceholder
+    /// rejection, which is expected to keep such an overlay from ever being constructed in
+    /// practice.</summary>
+    [Fact]
+    public void Encode_WhenCellOverlayIsActiveOnContinuationCell_SkipsPlaceholderEmission()
+    {
+        using Frame frame = new(new Size(4, 1));
+        _ = frame.Canvas.Draw("界A", default);
+        var overlay = new GraphicsCellOverlay(frame);
+        overlay.Paint(frame, new Rect(1, 0, 1, 1), imageId: 1, placementId: 1, identityColorDepth: ColorDepth.TrueColor);
+        var profile = CreateProfile(ColorDepth.Monochrome, CorePrograms());
+        var interpreter = new Interpreter(ProgramLimits.Default);
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = FrameEncoder.Encode(null, frame, destination, profile, interpreter, full: true, backOverlay: overlay);
+
+        destination.WrittenSpan.IndexOf("\U0010EEEE"u8).ShouldBe(-1);
+        var screen = new VirtualScreen(frame.Size);
+        screen.Apply(destination.WrittenSpan);
+        screen.ShouldMatch(frame);
+    }
+
     /// <summary>Verifies described blink deliberately degrades rapid blink to the supported rendition.</summary>
     [Fact]
     public void Encode_WhenOnlySlowBlinkIsDescribed_DegradesRapidBlinkState()

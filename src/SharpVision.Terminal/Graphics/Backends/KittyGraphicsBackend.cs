@@ -342,7 +342,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                 // flag captured on _placements[index] once this state is committed — see the
                 // placeholder-eligibility checks below and in PlaceholderEligibilityChanged.
                 placementState = placementState.WithUsedPlaceholder(
-                    CanUsePlaceholder(placementState, placeholderColorDepth));
+                    CanUsePlaceholder(back, placementState, placeholderColorDepth));
                 placements.Add(placementState);
             }
 
@@ -357,6 +357,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             if (!virtualPlacementsChanged)
             {
                 virtualPlacementsChanged = PlacementsChanged(
+                    back,
                     placements,
                     placeholderColorDepth,
                     placeholders: true);
@@ -378,7 +379,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                 {
                     var placementState = placements[index];
 
-                    if (CanUsePlaceholder(placementState, placeholderColorDepth))
+                    if (CanUsePlaceholder(back, placementState, placeholderColorDepth))
                     {
                         WriteVirtualPlacement(placementState, index, output);
                         cellPreludeCount++;
@@ -724,7 +725,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
         foreach (var state in placements)
         {
-            if (!CanUsePlaceholder(state, colorDepth))
+            if (!CanUsePlaceholder(back, state, colorDepth))
             {
                 continue;
             }
@@ -742,6 +743,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     }
 
     private static bool CanUsePlaceholder(
+        Frame back,
         KittyGraphicsPlacementState state,
         ColorDepth colorDepth) =>
         !state.UsesImageNumber &&
@@ -755,9 +757,51 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                 nameof(colorDepth), colorDepth, "The color depth is unknown.")
         }) &&
         state.Placement.Destination.Width <= KittyGraphicsPlaceholderWriter.CoordinateLimit &&
-        state.Placement.Destination.Height <= KittyGraphicsPlaceholderWriter.CoordinateLimit;
+        state.Placement.Destination.Height <= KittyGraphicsPlaceholderWriter.CoordinateLimit &&
+        !SplitsWideGrapheme(back, state.Placement.Destination);
+
+    /// <summary>
+    /// Reports whether a placeholder destination's left or right edge would fall in the middle
+    /// of a wide (two-column) grapheme: the left edge landing on a continuation cell, or the
+    /// right edge landing on a wide lead cell whose trailing continuation cell sits outside the
+    /// rect. A Kitty placeholder is exactly one protocol column wide regardless of the frame
+    /// content it replaces, so either case would desynchronize the encoder's per-row emitted
+    /// column count from the frame width - see <see cref="GraphicsCellOverlay.Paint"/>, which
+    /// blind-fills every destination cell with no continuation-boundary awareness of its own.
+    /// </summary>
+    private static bool SplitsWideGrapheme(Frame back, Rect destination)
+    {
+        if (destination.Width <= 0 || destination.Height <= 0)
+        {
+            return false;
+        }
+
+        var leftColumn = destination.X;
+        var rightColumn = destination.Right - 1;
+
+        for (var row = destination.Y; row < destination.Bottom; row++)
+        {
+            var rowStart = checked(row * back.Size.Width);
+            var leftCell = back.GetCellByIndex(checked(rowStart + leftColumn));
+
+            if (leftCell.IsContinuation)
+            {
+                return true;
+            }
+
+            var rightCell = back.GetCellByIndex(checked(rowStart + rightColumn));
+
+            if (!rightCell.IsContinuation && rightCell.Width == 2)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private bool PlacementsChanged(
+        Frame back,
         List<KittyGraphicsPlacementState> placements,
         ColorDepth colorDepth,
         bool placeholders)
@@ -769,7 +813,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
         for (var index = 0; index < placements.Count; index++)
         {
-            if (CanUsePlaceholder(placements[index], colorDepth) == placeholders &&
+            if (CanUsePlaceholder(back, placements[index], colorDepth) == placeholders &&
                 placements[index].Placement != _placements[index].Placement)
             {
                 return true;

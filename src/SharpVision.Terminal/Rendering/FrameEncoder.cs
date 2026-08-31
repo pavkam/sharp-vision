@@ -229,6 +229,20 @@ public static class FrameEncoder
                 var cell = back.GetCellByIndex(index);
                 var overlay = backOverlay?.GetCell(index) ?? default;
 
+                // A continuation cell owns no independent output - it is a wide glyph's second
+                // column, folded into its lead's single emission below. This is checked before
+                // the overlay branch, not after it, so an overlay destination that (should
+                // never, but might) still land on a continuation cell can't emit a placeholder
+                // there: a placeholder is always exactly one protocol column wide, and letting
+                // one fire on a continuation cell would desynchronize the row's emitted column
+                // count from the frame width even though CanUsePlaceholder is meant to reject
+                // such placements upstream.
+                if (cell.IsContinuation)
+                {
+                    placeholderStyle = default;
+                    continue;
+                }
+
                 if (overlay.IsActive)
                 {
                     if (!PlaceholderStylesEqual(placeholderStyle, overlay))
@@ -249,11 +263,6 @@ public static class FrameEncoder
                 }
 
                 placeholderStyle = default;
-
-                if (cell.IsContinuation)
-                {
-                    continue;
-                }
 
                 var projected = styleCacheValid && cell.Style == semanticStyle
                     ? style
