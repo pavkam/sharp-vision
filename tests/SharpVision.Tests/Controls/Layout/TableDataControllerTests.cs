@@ -1113,6 +1113,25 @@ public sealed class TableDataControllerTests
         realizedCell.IsDisposed.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a LoadStateChanged subscriber that disposes the table synchronously, from
+    /// inside the very first progressive fetch a Rewindow issues, does not leave later Rewindow steps
+    /// to mutate the now-disposed owned presenter.</summary>
+    [Fact]
+    public async Task Dispose_WhenLoadStateChangedSubscriberDisposesMidRewindow_DoesNotThrowAsync()
+    {
+        var table = CreateHost();
+        var source = CreateSource(20);
+        var host = new Overlay { IsFocusable = true };
+        host.Children.Add(table);
+        await using var surface = await ComponentSurface.MountAsync(
+            host, new Size(20, 10), TestContext.Current.CancellationToken);
+        table.LoadStateChanged += (_, _) => table.Dispose();
+
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
+
+        table.IsDisposed.ShouldBeTrue();
+    }
+
     #endregion
 
     #region Eager-only members while progressive

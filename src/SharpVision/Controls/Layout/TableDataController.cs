@@ -175,7 +175,26 @@ internal sealed class TableDataController: IDisposable
         }
 
         IssueFetchesForGaps(first, last);
+
+        // IssueFetchesForGaps can synchronously raise LoadStateChanged (relayed to the public
+        // Table.LoadStateChanged event with no dispatcher marshaling), and a subscriber that
+        // disposes the table runs entirely synchronously too, tearing down this controller and its
+        // owned presenter before control returns here. Re-check disposal before touching anything
+        // further so the rest of this rewindow doesn't mutate an already-disposed presenter.
+        if (_disposed)
+        {
+            return;
+        }
+
         CancelOutOfRangePending(first, last);
+
+        // CancelOutOfRangePending ends with its own UpdateLoadState() call, which can synchronously
+        // raise LoadStateChanged the same way - re-check disposal again before realizing the window.
+        if (_disposed)
+        {
+            return;
+        }
+
         RealizeWindow(first, last);
         ApplyCellStates();
         EvictCache(first, last, viewportRows);
@@ -560,6 +579,15 @@ internal sealed class TableDataController: IDisposable
 
         foreach (var (start, count) in ordered)
         {
+            // IssueFetch's own UpdateLoadState() call can synchronously raise LoadStateChanged, and a
+            // subscriber that disposes the table on an early gap must stop this loop from reaching
+            // IssueFetch for a later gap - it would otherwise touch this controller's already-disposed
+            // _lifetime.
+            if (_disposed)
+            {
+                return;
+            }
+
             IssueFetch(start, count);
         }
     }
