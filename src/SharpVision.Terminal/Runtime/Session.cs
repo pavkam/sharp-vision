@@ -439,6 +439,7 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(alternateScreen, cancellationToken).ConfigureAwait(false);
             alternateScreenActive = true;
+            PublishModes(Diagnostics.Modes.WithBaseActivation(alternateScreenActive, cursorHiddenActive));
         }
         else if (_options.AlternateScreen)
         {
@@ -450,6 +451,7 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(cursor, cancellationToken).ConfigureAwait(false);
             cursorHiddenActive = true;
+            PublishModes(Diagnostics.Modes.WithBaseActivation(alternateScreenActive, cursorHiddenActive));
         }
         else if (_options.HideCursor)
         {
@@ -483,6 +485,13 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(CreateFocusLease(), cancellationToken).ConfigureAwait(false);
             focusActive = true;
+            PublishModes(Diagnostics.Modes.WithOptionalActivation(
+                focusActive,
+                pasteActive,
+                mouseActive,
+                kittyKeyboardActive,
+                modifyOtherKeysActive,
+                clipboardPasteEventsActive));
         }
         else if (_options.Focus)
         {
@@ -493,6 +502,13 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(CreatePasteLease(), cancellationToken).ConfigureAwait(false);
             pasteActive = true;
+            PublishModes(Diagnostics.Modes.WithOptionalActivation(
+                focusActive,
+                pasteActive,
+                mouseActive,
+                kittyKeyboardActive,
+                modifyOtherKeysActive,
+                clipboardPasteEventsActive));
         }
         else if (_options.Paste)
         {
@@ -505,6 +521,13 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(clipboardPasteEvents, cancellationToken).ConfigureAwait(false);
             clipboardPasteEventsActive = true;
+            PublishModes(Diagnostics.Modes.WithOptionalActivation(
+                focusActive,
+                pasteActive,
+                mouseActive,
+                kittyKeyboardActive,
+                modifyOtherKeysActive,
+                clipboardPasteEventsActive));
         }
         else if (_options.ClipboardPasteEvents)
         {
@@ -519,6 +542,13 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(CreateMouseLease(), cancellationToken).ConfigureAwait(false);
             mouseActive = true;
+            PublishModes(Diagnostics.Modes.WithOptionalActivation(
+                focusActive,
+                pasteActive,
+                mouseActive,
+                kittyKeyboardActive,
+                modifyOtherKeysActive,
+                clipboardPasteEventsActive));
         }
         else if (_options.Tracking.HasValue)
         {
@@ -529,6 +559,13 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(CreateKeyboardLease(), cancellationToken).ConfigureAwait(false);
             kittyKeyboardActive = true;
+            PublishModes(Diagnostics.Modes.WithOptionalActivation(
+                focusActive,
+                pasteActive,
+                mouseActive,
+                kittyKeyboardActive,
+                modifyOtherKeysActive,
+                clipboardPasteEventsActive));
 
             if ((_options.Keyboard.Value &
                  (Kitty.Keyboard.KittyKeyboardEnhancement.Disambiguate |
@@ -546,6 +583,13 @@ public sealed class Session: IAsyncDisposable
 
             await EnableAsync(CreateModifyOtherKeysLease(), cancellationToken).ConfigureAwait(false);
             modifyOtherKeysActive = true;
+            PublishModes(Diagnostics.Modes.WithOptionalActivation(
+                focusActive,
+                pasteActive,
+                mouseActive,
+                kittyKeyboardActive,
+                modifyOtherKeysActive,
+                clipboardPasteEventsActive));
         }
         else if (_options.Keyboard.HasValue || _options.ModifyOtherKeys.HasValue)
         {

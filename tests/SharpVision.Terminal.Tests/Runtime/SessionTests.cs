@@ -62,6 +62,79 @@ public sealed class SessionTests
         sink.Faults.ShouldBeEmpty();
     }
 
+    /// <summary>
+    /// Verifies a later optional mode's promoted diagnostic does not discard an earlier optional
+    /// mode's already-successful activation from the published diagnostics snapshot.
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenLaterOptionalModePromotionThrows_PublishesEarlierActivationAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var options = TerminalOptions.Minimal with
+        {
+            Focus = true,
+            Paste = true,
+            Profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
+            {
+                FocusReporting = new Feature(CapabilitySupport.Supported, Origin.Override)
+            }),
+            DiagnosticPromotions = DiagnosticPromotion.UnsupportedFeature
+        };
+        await using Session session = new(transport, resize, sink, options);
+
+        // Act
+        var thrown = await Should.ThrowAsync<TerminalDiagnosticException>(async () =>
+            await session.RunAsync(TestContext.Current.CancellationToken));
+
+        // Assert
+        thrown.Promotion.ShouldBe(DiagnosticPromotion.UnsupportedFeature);
+        session.Diagnostics.Modes.FocusReportingActive.ShouldBeTrue();
+        sink.DiagnosticSnapshots.ShouldNotBeEmpty();
+        sink.DiagnosticSnapshots[^1].Modes.FocusReportingActive.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies a later base mode's promoted diagnostic does not discard an earlier base mode's
+    /// already-successful activation from the published diagnostics snapshot.
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenCursorHidingPromotionThrows_PublishesAlternateScreenActivationAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
+        {
+            ["smcup"] = new DescriptionProgram("enter"u8),
+            ["rmcup"] = new DescriptionProgram("exit"u8)
+        });
+        await using Session session = new(
+            transport,
+            resize,
+            sink,
+            TerminalOptions.Minimal with
+            {
+                Profile = profile,
+                AlternateScreen = true,
+                HideCursor = true,
+                DiagnosticPromotions = DiagnosticPromotion.UnsupportedFeature
+            });
+
+        // Act
+        var thrown = await Should.ThrowAsync<TerminalDiagnosticException>(async () =>
+            await session.RunAsync(TestContext.Current.CancellationToken));
+
+        // Assert
+        thrown.Promotion.ShouldBe(DiagnosticPromotion.UnsupportedFeature);
+        session.Diagnostics.Modes.AlternateScreenActive.ShouldBeTrue();
+        sink.DiagnosticSnapshots.ShouldNotBeEmpty();
+        sink.DiagnosticSnapshots[^1].Modes.AlternateScreenActive.ShouldBeTrue();
+    }
+
     /// <summary>Verifies cleanup promotion wraps the exact restoration failure after cleanup finishes.</summary>
     [Fact]
     public async Task RunAsync_WhenCleanupFailureIsPromoted_ThrowsTypedExceptionWithCauseAsync()
