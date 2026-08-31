@@ -1081,6 +1081,14 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
             return false;
         }
 
+        // A SelectionChanging subscriber may have disposed the control synchronously while
+        // TryCommit was raising the event above - bail out before touching any mutable state
+        // that ThrowIfDisposed()-guarded members (like NotifyPropertyChanged) would reject.
+        if (IsDisposed)
+        {
+            return true;
+        }
+
         var selectionVersion = _selectionVersion;
 
         _ = selection.RemoveWhere(item => item.IsDisposed || !_ownedItemsSet.Contains(item));

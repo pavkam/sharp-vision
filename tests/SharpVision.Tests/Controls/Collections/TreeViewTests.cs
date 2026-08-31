@@ -2777,6 +2777,22 @@ public sealed class TreeViewTests
     }
 
     /// <summary>
+    /// Verifies a SelectionChanging subscriber that disposes the tree synchronously mid-commit
+    /// does not leave the rest of CommitSelection running against disposed-guarded members.
+    /// </summary>
+    [Fact]
+    public void SetSelected_WhenChangingSubscriberDisposesTree_DoesNotThrow()
+    {
+        var tree = Build(out var first, out _, out _);
+        tree.SelectionChanging += (_, _) => tree.Dispose();
+
+        var changed = Should.NotThrow(() => tree.SetSelected(first, true));
+
+        changed.ShouldBeTrue();
+        tree.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>
     /// Verifies a handler that changes the selection itself abandons the proposal it was shown,
     /// so a stale delta is never committed on top of the handler's own decision.
     /// </summary>
