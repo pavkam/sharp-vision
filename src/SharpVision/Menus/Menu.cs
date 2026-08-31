@@ -138,12 +138,13 @@ public sealed class Menu: ItemsControl
     /// <exception cref="ObjectDisposedException">The menu is disposed.</exception>
     public MenuItem? SelectedItem
     {
-        // A hard cast assumed the selected slot always holds a MenuItem, an invariant every
-        // ordinary selection path (Select, SingleSelectionIndex.FindWrapped/FindNearest) upholds
-        // by construction - but a disposed sibling's slot can be reclaimed by a MenuSeparator
-        // through OnItemControlsChanged without going through any of them, which used to leave
-        // this getter one read away from InvalidCastException instead of reporting the absence
-        // of a selectable item.
+        // A hard cast assumed the selected slot always holds a MenuItem. That invariant does not
+        // hold by construction: a disposed sibling's slot can be reclaimed by a MenuSeparator
+        // through OnItemControlsChanged, and RemoveEntry's own pre-repair shift can leave a
+        // MenuSeparator in the selected slot before Select/CommitSelectionPresentation ever read
+        // it - which used to leave this getter, Select, and CommitSelectionPresentation each one
+        // read away from InvalidCastException instead of reporting the absence of a selectable
+        // item.
         get => _selectedIndex < 0 ? null : ItemAt(_selectedIndex) as MenuItem;
         set => SelectedIndex = value is null ? -1 : IndexOfItem(value);
     }
@@ -527,6 +528,34 @@ public sealed class Menu: ItemsControl
         else if (index == _selectedIndex)
         {
             Select(SingleSelectionIndex.FindNearest(Math.Min(index, ItemControlCount - 1), ItemControlCount, Available), focus: false);
+
+            // Select's "_selectedIndex == index" guard is a no-op precisely when FindNearest's
+            // inclusive forward scan lands an available MenuItem successor in the very slot the
+            // removed entry vacated - the collision this repair exists for. Detect the identity
+            // change Select's early return skipped the same way OnItemControlsChanged's disposal
+            // branch does: compare the slot's current occupant against the retained
+            // _selectedEntry rather than trusting index equality, then finish the work Select
+            // would otherwise have done.
+            if (_selectedIndex >= 0 && _selectedIndex < ItemControlCount)
+            {
+                var current = ItemAt(_selectedIndex);
+
+                if (!ReferenceEquals(current, _selectedEntry))
+                {
+                    if (item is MenuItem outgoing)
+                    {
+                        outgoing.CommitSelection(false);
+                    }
+
+                    _selectedEntry = current;
+                    NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
+                }
+
+                if (current is MenuItem incoming)
+                {
+                    incoming.CommitSelection(ContainsFocus);
+                }
+            }
         }
 
         return true;
@@ -1315,9 +1344,9 @@ public sealed class Menu: ItemsControl
             return;
         }
 
-        if (_selectedIndex >= 0 && _selectedIndex < ItemControlCount)
+        if (_selectedIndex >= 0 && _selectedIndex < ItemControlCount && ItemAt(_selectedIndex) is MenuItem outgoing)
         {
-            ((MenuItem) ItemAt(_selectedIndex)).CommitSelection(false);
+            outgoing.CommitSelection(false);
         }
 
         _selectedIndex = index;
@@ -1368,9 +1397,9 @@ public sealed class Menu: ItemsControl
 
     private void CommitSelectionPresentation(bool value)
     {
-        if (_selectedIndex >= 0 && _selectedIndex < ItemControlCount)
+        if (_selectedIndex >= 0 && _selectedIndex < ItemControlCount && ItemAt(_selectedIndex) is MenuItem outgoing)
         {
-            ((MenuItem) ItemAt(_selectedIndex)).CommitSelection(value);
+            outgoing.CommitSelection(value);
         }
     }
 

@@ -1711,6 +1711,31 @@ public sealed class MenuTests
         notifications.ShouldContain(nameof(Menu.SelectedItem));
     }
 
+    /// <summary>Verifies removing the selected entry, where a MenuSeparator slides into its vacated
+    /// slot, does not throw - the same reclaimed-slot hazard as
+    /// <see cref="Dispose_WhenReclaimedSelectedSlotHoldsASeparator_StillNotifiesSelectedItem"/>, but
+    /// reached through the ordinary Items.Remove API instead of MenuItem.Dispose(), which exercises
+    /// Select's own outgoing-slot read directly rather than OnItemControlsChanged's disposal branch.
+    /// Before this fix, Select's hard cast of the outgoing slot threw InvalidCastException the
+    /// moment a plain removal left a separator in the old selected index.</summary>
+    [Fact]
+    public void Remove_WhenSuccessorSeparatorSlidesIntoSelectedSlot_DoesNotThrowAndRepairsSelection()
+    {
+        var a = new MenuItem { Text = "A" };
+        var separator = new MenuSeparator();
+        var b = new MenuItem { Text = "B" };
+        var menu = new Menu();
+        menu.Items.Add(a);
+        menu.Items.Add(separator);
+        menu.Items.Add(b);
+        menu.SelectedIndex = 0;
+
+        _ = Should.NotThrow(() => menu.Items.Remove(a));
+
+        menu.Items.ShouldBe([separator, b]);
+        menu.SelectedItem.ShouldBeSameAs(b);
+    }
+
     /// <summary>Verifies an authored Width survives attachment: only Height is a semantic requirement
     /// (menu rows are exactly one cell tall), so Width must never be clobbered to Auto.</summary>
     [Fact]
@@ -1823,6 +1848,38 @@ public sealed class MenuTests
 
         menu.Items.ShouldBe([first, successor, fourth]);
         menu.SelectedItem.ShouldBeSameAs(successor);
+    }
+
+    /// <summary>Verifies that when a removed selected entry's successor slides into the exact same
+    /// index - the collision FindNearest's inclusive scan produces whenever an available MenuItem
+    /// takes the vacated slot - the identity change is still committed and published. Select's own
+    /// "_selectedIndex == index" guard treats that collision as a no-op, so before this fix
+    /// SelectedItem's identity moved from the removed entry to its successor with no
+    /// PropertyChanged(SelectedItem), no CommitSelection(false) on the outgoing entry, and no
+    /// CommitSelection(true) on the incoming one - only the co-located index-based SelectedItem
+    /// assertion in RemoveAt_WhenSelectedEntryIsRemoved_RepairsSelectionToNearestAvailable passed,
+    /// masking the gap.</summary>
+    [Fact]
+    public void RemoveAt_WhenSuccessorSlidesIntoSelectedSlot_PublishesIdentityChangeAndCommitsSelection()
+    {
+        var first = new MenuItem { Text = "First" };
+        var selected = new MenuItem { Text = "Selected" };
+        var successor = new MenuItem { Text = "Successor" };
+        var fourth = new MenuItem { Text = "Fourth" };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(selected);
+        menu.Items.Add(successor);
+        menu.Items.Add(fourth);
+        menu.SelectedIndex = 1;
+        var notifications = new List<string>();
+        menu.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName!);
+
+        menu.Items.RemoveAt(1);
+
+        menu.Items.ShouldBe([first, successor, fourth]);
+        menu.SelectedItem.ShouldBeSameAs(successor);
+        notifications.ShouldContain(nameof(Menu.SelectedItem));
     }
 
     /// <summary>Verifies removing the last entry while it is selected falls back to the nearest
