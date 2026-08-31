@@ -75,6 +75,18 @@ never also typed into whatever currently has focus. See
 [MenuItem shortcut dispatch](../controls/menus/menu-item.md#shortcut-dispatch)
 for its discovery rules, which mirror this section's precisely.
 
+```mermaid
+flowchart TD
+    A[Stroke arrives] --> B{Matches a MenuItem.Shortcut chord?}
+    B -->|Yes| C[Invoke matching MenuItem; never reaches routing]
+    B -->|No| D[Ordinary preview/bubble route + control defaults run]
+    D --> E{Route handled the stroke?}
+    E -->|Yes| F[Stroke consumed; access-key discovery never runs]
+    E -->|No| G{Alt+Character, only Shift/CapsLock/NumLock modifiers?}
+    G -->|No| H[Not eligible for access-key dispatch]
+    G -->|Yes| I[Access-key discovery runs]
+```
+
 ## Discovery eligibility and duplicates
 
 Discovery and `MenuItem.Shortcut` dispatch share one interaction-plane walker.
@@ -99,6 +111,27 @@ declining action may synchronously remove, dispose, reparent, hide, disable, or
 change the active modal plane before a later snapshot entry is reached, every
 candidate is revalidated against the current interaction plane and caller-owned
 matching policy before invocation. Stale or foreign entries are skipped.
+
+```mermaid
+flowchart TD
+    A[Discovery runs] --> B[Snapshot current ownership tree]
+    B --> C{Modal plane active?}
+    C -->|Yes| D[Roots = insertion-ordered plane roots]
+    C -->|No| E[Root = application root]
+    D --> F[Deterministic preorder walk over eligible candidates]
+    E --> F
+    F --> G{Focus inside a matching candidate?}
+    G -->|Yes| H[That candidate is the cycle anchor; select next match, wrap at end]
+    G -->|No| I[Select first match]
+    H --> J[Revalidate candidate against current plane and matching policy]
+    I --> J
+    J --> K{Still valid?}
+    K -->|No, stale or foreign| L[Skip; try next match]
+    L --> J
+    K -->|Yes| M{Candidate declines the action?}
+    M -->|Yes| L
+    M -->|No| N[Invoke the candidate's access-key action]
+```
 
 ## Focus and semantic actions
 
