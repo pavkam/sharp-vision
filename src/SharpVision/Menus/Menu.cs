@@ -549,6 +549,16 @@ public sealed class Menu: ItemsControl
 
                     _selectedEntry = current;
                     NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
+
+                    // NotifyPropertyChanged raises SelectedItem synchronously, so a reentrant
+                    // subscriber may have mutated this menu again from inside it - e.g. removing
+                    // `current` itself, which would already have re-run this same repair against
+                    // whatever slid into its place. Committing `current` below in that case would
+                    // wrongly re-select an entry a nested call has already moved on from.
+                    if (!ReferenceEquals(_selectedEntry, current))
+                    {
+                        return true;
+                    }
                 }
 
                 if (current is MenuItem incoming)

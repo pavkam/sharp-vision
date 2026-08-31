@@ -1029,6 +1029,48 @@ public sealed class PopupTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a CloseRequested handler that repeats the same close request
+    /// synchronously is a documented no-op on the UNPRESENTED close path too (never attached to
+    /// a live Dispatcher, so SetOpen(false) takes CloseUnpresented rather than CloseSurfaceCore) -
+    /// only CloseSurfaceCore armed IsRequestingClose before this fix, leaving CloseUnpresented's
+    /// own reentrant close to fall through to the "cannot be reentered" throw.</summary>
+    [Fact]
+    public void CloseRequested_WhenHandlerRepeatsTheCloseReentrantlyOnAnUnpresentedPopup_IsANoOp()
+    {
+        var popup = new Popup { Content = new ProbeControl(), IsOpen = true };
+        var requestedCalls = 0;
+        popup.CloseRequested += (_, _) =>
+        {
+            requestedCalls++;
+
+            if (requestedCalls == 1)
+            {
+                popup.IsOpen = false;
+            }
+        };
+
+        _ = Should.NotThrow(() => popup.IsOpen = false);
+
+        requestedCalls.ShouldBe(1);
+        popup.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies disposing an UNPRESENTED Popup from its own CloseRequested handler
+    /// completes the close without throwing ObjectDisposedException - OnUnavailable(Disposed)
+    /// performs the full close since IsOpen is still true at that point, so CloseUnpresented's own
+    /// resumed CommitClosedState must recognize the disposal and stop rather than commit again.</summary>
+    [Fact]
+    public void CloseRequested_WhenHandlerDisposesAnUnpresentedPopupSynchronously_ClosesWithoutThrowing()
+    {
+        var popup = new Popup { Content = new ProbeControl(), IsOpen = true };
+        popup.CloseRequested += (_, _) => popup.Dispose();
+
+        _ = Should.NotThrow(() => popup.IsOpen = false);
+
+        popup.IsDisposed.ShouldBeTrue();
+        popup.IsOpen.ShouldBeFalse();
+    }
+
     /// <summary>Verifies a callback cannot reverse an active open-state transaction.</summary>
     [Fact]
     public void IsOpen_WhenPropertyCallbackReenters_RejectsNestedTransitionAndKeepsOuterStateCoherent()

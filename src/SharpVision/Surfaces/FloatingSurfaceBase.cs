@@ -106,6 +106,27 @@ public abstract class FloatingSurfaceBase: ContentControl
         return !requestArgs.Cancel;
     }
 
+    /// <summary>Raises <see cref="CloseRequested"/> with <see cref="IsRequestingClose"/> armed for
+    /// its duration, so a reentrant close landing synchronously from the handler can recognize the
+    /// request phase and no-op instead of throwing. Every close path that publishes
+    /// <see cref="CloseRequested"/> - presented or not - must use this rather than
+    /// <see cref="RaiseCloseRequested"/> directly, or reentry during its own request phase throws
+    /// instead of the documented no-op.</summary>
+    /// <returns>False when a handler vetoed the request; otherwise true.</returns>
+    private protected bool RaiseCloseRequestedInRequestPhase()
+    {
+        IsRequestingClose = true;
+
+        try
+        {
+            return RaiseCloseRequested();
+        }
+        finally
+        {
+            IsRequestingClose = false;
+        }
+    }
+
     /// <summary>
     /// Captures the current <see cref="Closed"/> invocation list so it can still be raised after a
     /// synchronous <see cref="Closing"/> handler disposes the surface, which otherwise nulls the field
@@ -313,18 +334,9 @@ public abstract class FloatingSurfaceBase: ContentControl
             return false;
         }
 
-        IsRequestingClose = true;
-
-        try
+        if (publishCloseRequested && !RaiseCloseRequestedInRequestPhase())
         {
-            if (publishCloseRequested && !RaiseCloseRequested())
-            {
-                return false;
-            }
-        }
-        finally
-        {
-            IsRequestingClose = false;
+            return false;
         }
 
         // A CloseRequested subscriber may have disposed the surface synchronously while the event

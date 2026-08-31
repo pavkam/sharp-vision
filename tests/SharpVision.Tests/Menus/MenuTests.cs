@@ -1882,6 +1882,62 @@ public sealed class MenuTests
         notifications.ShouldContain(nameof(Menu.SelectedItem));
     }
 
+    /// <summary>Verifies a reentrant SelectedItem subscriber that removes the very successor which
+    /// just slid into the selected slot does not leave RemoveEntry's outer frame re-selecting that
+    /// now-detached entry off a stale local reference. The nested RemoveEntry call correctly moves
+    /// selection on to a third entry and decommits the successor; before this fix, the outer frame
+    /// would resume afterward and unconditionally call CommitSelection(ContainsFocus) on its own
+    /// stale `current` (the successor), re-marking a detached zombie entry as selected. Requires a
+    /// focused menu - ContainsFocus is false for an unmounted one, which would make the incorrect
+    /// re-commit indistinguishable from a correct no-op.</summary>
+    [Fact]
+    public async Task RemoveAt_WhenSelectedItemSubscriberReentrantlyRemovesTheSuccessor_DoesNotReselectTheDetachedEntryAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var first = new MenuItem { Text = "First" };
+            var selected = new MenuItem { Text = "Selected" };
+            var successor = new MenuItem { Text = "Successor" };
+            var fourth = new MenuItem { Text = "Fourth" };
+            var menu = new Menu();
+            menu.Items.Add(first);
+            menu.Items.Add(selected);
+            menu.Items.Add(successor);
+            menu.Items.Add(fourth);
+            menu.SelectedIndex = 1;
+            new LayoutEngine().Layout(menu, new Size(12, 4));
+            menu.Attach(dispatcher);
+            using FocusManager focus = new(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            var reentered = false;
+            menu.PropertyChanged += (_, eventArgs) =>
+            {
+                if (reentered ||
+                    eventArgs.PropertyName != nameof(Menu.SelectedItem) ||
+                    !ReferenceEquals(menu.SelectedItem, successor))
+                {
+                    return;
+                }
+
+                reentered = true;
+                _ = menu.Items.Remove(successor);
+            };
+
+            menu.Items.RemoveAt(1);
+
+            reentered.ShouldBeTrue();
+            menu.Items.ShouldBe([first, fourth]);
+            menu.SelectedItem.ShouldBeSameAs(fourth);
+            var isSelectedFact = typeof(ControlBase).GetProperty(
+                "IsSelectedFact",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            _ = isSelectedFact.ShouldNotBeNull();
+            ((bool) isSelectedFact.GetValue(successor)!).ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies removing the last entry while it is selected falls back to the nearest
     /// predecessor instead of wrapping to the first entry in the menu.</summary>
     [Fact]

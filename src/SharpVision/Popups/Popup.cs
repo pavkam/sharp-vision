@@ -1308,8 +1308,23 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     {
         // CommitClosedState is the first mutation on this path (SetOpen never assigns
         // _isOpen), so a veto here leaves _isOpen == true untouched - matching the presented
-        // path, where CloseSurfaceCore returns before committing.
-        if (!RaiseCloseRequested())
+        // path, where CloseSurfaceCore returns before committing. Raised through the
+        // request-phase helper - not RaiseCloseRequested directly - so a handler that repeats
+        // this same close reentrantly hits SetOpen's IsRequestingClose no-op instead of the
+        // reentrancy throw; this path has its own IsOpenTransitioning armed by SetOpen already,
+        // but nothing arms IsRequestingClose for it otherwise, since only CloseSurfaceCore did.
+        if (!RaiseCloseRequestedInRequestPhase())
+        {
+            return;
+        }
+
+        // A CloseRequested subscriber may have disposed the surface synchronously while the event
+        // above was raising - bail out before touching any mutable state that ThrowIfDisposed()-
+        // guarded members (like CommitClosedState's NotifyPropertyChanged) would reject. By this
+        // point OnUnavailable(Disposed) has already performed the full close (IsOpen was still
+        // true, since SetOpen never assigns _isOpen on this path), so there is nothing left for
+        // this transaction to commit - mirroring CloseSurfaceCore's identical guard.
+        if (IsDisposed)
         {
             return;
         }
