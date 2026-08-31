@@ -34,6 +34,7 @@ public sealed class WrapSurfaceTests
         second.Bounds.ShouldBe(new Rect(3, 0, 2, 1));
         surface.Cell(default).Text.ShouldBe("A");
         surface.Cell(new Point(3, 0)).Text.ShouldBe("B");
+        surface.Cell(new Point(4, 0)).Style.Background.ShouldBe(ReferenceColors.Get(1));
         wrap.HitTest(new Point(0, 0)).ShouldBeSameAs(first);
         await surface.Pointer.MoveToAsync(first);
 
@@ -44,6 +45,7 @@ public sealed class WrapSurfaceTests
         second.Bounds.ShouldBe(new Rect(3, 0, 2, 1));
         surface.Cell(default).Text.ShouldBe(" ");
         surface.Cell(new Point(3, 0)).Text.ShouldBe("B");
+        surface.Cell(new Point(4, 0)).Style.Background.ShouldBe(ReferenceColors.Get(1));
         wrap.HitTest(new Point(0, 0)).ShouldBeSameAs(wrap);
 
         // Act - collapsed no longer participates in packing.
@@ -53,6 +55,7 @@ public sealed class WrapSurfaceTests
         first.Bounds.ShouldBe(default);
         second.Bounds.ShouldBe(new Rect(0, 0, 2, 1));
         surface.Cell(default).Text.ShouldBe("B");
+        surface.Cell(new Point(1, 0)).Style.Background.ShouldBe(ReferenceColors.Get(1));
         wrap.HitTest(default).ShouldBeSameAs(second);
 
         // Act - visible restoration returns the original packed slot and pointer target.
@@ -63,6 +66,7 @@ public sealed class WrapSurfaceTests
         second.Bounds.ShouldBe(new Rect(3, 0, 2, 1));
         surface.Cell(default).Text.ShouldBe("A");
         surface.Cell(new Point(3, 0)).Text.ShouldBe("B");
+        surface.Cell(new Point(4, 0)).Style.Background.ShouldBe(ReferenceColors.Get(1));
         wrap.HitTest(new Point(0, 0)).ShouldBeSameAs(first);
     }
 
@@ -183,15 +187,7 @@ public sealed class WrapSurfaceTests
     {
         // Arrange
         var child = new ControlText("A") { Width = Length.Cells(2), Height = Length.Cells(1) };
-        var wrap = new Wrap
-        {
-            AutoScroll = true,
-            ScrollBars = ScrollBars.Vertical,
-            ShowScrollBars = ShowScrollBars.Never,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            Children = { child, new ControlText("Z") { Width = Length.Cells(3), Height = Length.Cells(2) } }
-        };
+        var wrap = new Wrap { Children = { child } };
         await using var surface = await ComponentSurface.MountAsync(
             wrap,
             new Size(3, 1),
@@ -224,11 +220,20 @@ public sealed class WrapSurfaceTests
         child.Children.Add(new ControlText("A") { Height = Length.Cells(1) });
         child.Children.Add(new ControlText("B") { Height = Length.Cells(1) });
         child.Children.Add(new ControlText("C") { Height = Length.Cells(1) });
-        var wrap = new Wrap { Children = { child } };
+        var wrap = new Wrap
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Never,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Children = { child, new ControlText("Z") { Width = Length.Cells(3), Height = Length.Cells(2) } }
+        };
         await using var surface = await ComponentSurface.MountAsync(
             wrap,
             new Size(3, 2),
             TestContext.Current.CancellationToken);
+        wrap.Extent.Height.ShouldBeGreaterThan(2);
 
         // Act
         await surface.Pointer.WheelAsync(child, default, wheelY: -1);
