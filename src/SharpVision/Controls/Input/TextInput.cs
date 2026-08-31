@@ -1531,11 +1531,11 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
             if (IsFocused)
             {
                 Position(CommittedTextSelection.Caret, out _, out var y);
-                VerticalOffset = Offset(VerticalOffset, y, bounds.Height, _contentHeight);
+                VerticalOffset = Offset(VerticalOffset, y, bounds.Height, _contentHeight, slack: 0);
             }
             else
             {
-                VerticalOffset = ClampOffset(VerticalOffset, bounds.Height, _contentHeight);
+                VerticalOffset = ClampOffset(VerticalOffset, bounds.Height, _contentHeight, slack: 0);
             }
 
             return;
@@ -1562,34 +1562,41 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
             Position(CommittedTextSelection.Caret, out var x, out var caretY);
 
             HorizontalOffset = AlignToClusterStart(
-                Offset(HorizontalOffset, x, bounds.Width, _contentWidth),
+                Offset(HorizontalOffset, x, bounds.Width, _contentWidth, slack: 1),
                 caretY);
-            VerticalOffset = Offset(VerticalOffset, caretY, bounds.Height, _contentHeight);
+            VerticalOffset = Offset(VerticalOffset, caretY, bounds.Height, _contentHeight, slack: 0);
         }
         else
         {
             Position(CommittedTextSelection.Caret, out _, out var caretY);
 
             HorizontalOffset = AlignToClusterStart(
-                ClampOffset(HorizontalOffset, bounds.Width, _contentWidth),
+                ClampOffset(HorizontalOffset, bounds.Width, _contentWidth, slack: 1),
                 caretY);
-            VerticalOffset = ClampOffset(VerticalOffset, bounds.Height, _contentHeight);
+            VerticalOffset = ClampOffset(VerticalOffset, bounds.Height, _contentHeight, slack: 0);
         }
     }
 
     /// <summary>Clamps an offset into the valid scroll range for a given viewport and content
     /// size without chasing any caret position - the unfocused counterpart of <see
-    /// cref="Offset(int, int, int, int)"/>. Keeps an offset left behind by a wheel scroll (or any
-    /// prior focused chase) in range after the viewport or content size changes, without pulling
-    /// it toward a caret nobody can currently see.</summary>
+    /// cref="Offset(int, int, int, int, int)"/>. Keeps an offset left behind by a wheel scroll (or
+    /// any prior focused chase) in range after the viewport or content size changes, without
+    /// pulling it toward a caret nobody can currently see.</summary>
+    /// <param name="current">The current offset.</param>
+    /// <param name="viewport">The viewport extent along this axis.</param>
+    /// <param name="content">The content extent along this axis.</param>
+    /// <param name="slack">Extra columns/rows of range beyond the last content cell. The
+    /// horizontal axis passes 1 because the caret can legitimately rest one column past the
+    /// widest line; the vertical axis passes 0 because there is no equivalent "one past" row - the
+    /// caret always stays within <c>[0, content - 1]</c> vertically.</param>
     [Pure]
-    private static int ClampOffset(int current, int viewport, int content) =>
-        viewport <= 0 ? 0 : Math.Clamp(current, 0, Math.Max(0, content - viewport + 1));
+    private static int ClampOffset(int current, int viewport, int content, int slack) =>
+        viewport <= 0 ? 0 : Math.Clamp(current, 0, Math.Max(0, content - viewport + slack));
 
     /// <summary>Snaps a rightward-scrolled horizontal offset down to the start of whichever cluster
     /// it lands inside, on the given row.</summary>
     /// <remarks>
-    /// The leftward branch of <see cref="Offset(int, int, int, int)"/> always assigns the caret's own
+    /// The leftward branch of <see cref="Offset(int, int, int, int, int)"/> always assigns the caret's own
     /// cell x, which is inherently a cluster start; only the rightward branch's viewport-relative
     /// arithmetic (<c>caret - viewport + 1</c>) can land mid-cluster. Re-snapping unconditionally is
     /// therefore a no-op for every already-aligned value and only changes the one case that needs it.
@@ -1713,12 +1720,13 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
         var bounds = _editorBounds;
         var nextHorizontal = WordWrap
             ? HorizontalOffset
-            : Move(HorizontalOffset, horizontal, bounds.Width, _contentWidth);
+            : Move(HorizontalOffset, horizontal, bounds.Width, _contentWidth, slack: 1);
         var nextVertical = Move(
             VerticalOffset,
             vertical,
             bounds.Height,
-            _contentHeight);
+            _contentHeight,
+            slack: 0);
 
         if (nextHorizontal == HorizontalOffset && nextVertical == VerticalOffset)
         {
@@ -1787,7 +1795,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
         _editorBounds = viewport;
         _scroll.Arrange(bounds, viewport, resolved.Horizontal, resolved.Vertical);
         var horizontalMaximum = WordWrap ? 0 : Math.Max(0, _contentWidth - viewport.Width + 1);
-        var verticalMaximum = Math.Max(0, _contentHeight - viewport.Height + 1);
+        var verticalMaximum = Math.Max(0, _contentHeight - viewport.Height);
         _scroll.Synchronize(
             horizontalMaximum,
             verticalMaximum,
@@ -2005,7 +2013,14 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
     private static bool IsLineBreak(ReadOnlySpan<char> cluster) =>
         cluster.IndexOfAny('\r', '\n') >= 0;
 
-    private static int Offset(int current, int caret, int viewport, int content)
+    /// <param name="current">The current offset.</param>
+    /// <param name="caret">The caret's position along this axis.</param>
+    /// <param name="viewport">The viewport extent along this axis.</param>
+    /// <param name="content">The content extent along this axis.</param>
+    /// <param name="slack">Extra columns/rows of range beyond the last content cell - see <see
+    /// cref="ClampOffset(int, int, int, int)"/> for why the horizontal and vertical axes pass
+    /// different values.</param>
+    private static int Offset(int current, int caret, int viewport, int content, int slack)
     {
         if (viewport <= 0)
         {
@@ -2017,10 +2032,17 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
             : caret >= current + viewport
                 ? caret - viewport + 1
                 : current;
-        return Math.Clamp(next, 0, Math.Max(0, content - viewport + 1));
+        return Math.Clamp(next, 0, Math.Max(0, content - viewport + slack));
     }
 
-    private static int Move(int current, int delta, int viewport, int content)
+    /// <param name="current">The current offset.</param>
+    /// <param name="delta">The signed change to apply to the current offset.</param>
+    /// <param name="viewport">The viewport extent along this axis.</param>
+    /// <param name="content">The content extent along this axis.</param>
+    /// <param name="slack">Extra columns/rows of range beyond the last content cell - see <see
+    /// cref="ClampOffset(int, int, int, int)"/> for why the horizontal and vertical axes pass
+    /// different values.</param>
+    private static int Move(int current, int delta, int viewport, int content, int slack)
     {
         if (viewport <= 0)
         {
@@ -2028,7 +2050,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
         }
 
         var next = (int) Math.Clamp((long) current + delta, 0, int.MaxValue);
-        return Math.Clamp(next, 0, Math.Max(0, content - viewport + 1));
+        return Math.Clamp(next, 0, Math.Max(0, content - viewport + slack));
     }
 
     private static void Draw(

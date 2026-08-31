@@ -1660,12 +1660,48 @@ public sealed class TextInputTests
 
         Route(control, Wheel(wheelX: 100, wheelY: -100), Events.Pointer);
         control.HorizontalOffset.ShouldBe(4);
-        control.VerticalOffset.ShouldBe(4);
+        control.VerticalOffset.ShouldBe(3);
 
         var endpoint = Wheel(wheelX: 1, wheelY: -1);
         Route(control, endpoint, Events.Pointer);
 
         endpoint.IsHandled.ShouldBeFalse();
+    }
+
+    /// <summary>Regression test for the vertical scroll-offset clamp off-by-one: reusing the
+    /// horizontal axis's "+1" trailing-caret-column slack for the vertical axis let
+    /// <see cref="TextInput.VerticalOffset"/> land one row past the true maximum. Every content row
+    /// is positioned at <c>bounds.Y + row - VerticalOffset</c> inside a canvas clipped to the
+    /// editor's bounds, so an out-of-range offset pushed every row outside the clip and rendered
+    /// the editor completely blank. This asserts the actual rendered cell content, not just that
+    /// the numeric offset stopped advancing, so a fix that merely picks a different wrong number
+    /// cannot pass it.</summary>
+    [Fact]
+    public void Render_WhenScrolledToVerticalMaximum_StillShowsLastContentRow()
+    {
+        var control = new TextInput
+        {
+            Width = Length.Cells(6),
+            Height = Length.Cells(1),
+            AcceptsReturn = true,
+            Text = "one\ntwo\nsix\nlast",
+            CaretIndex = 0
+        };
+        control.SetTheme(TestThemes.BorderlessInput);
+        new LayoutEngine().Layout(control, new Size(6, 1));
+
+        Route(control, Wheel(wheelX: 0, wheelY: -100), Events.Pointer);
+
+        control.HorizontalOffset.ShouldBe(0);
+        control.VerticalOffset.ShouldBe(3);
+
+        using Frame frame = new(new Size(6, 1));
+        control.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("l");
+        FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("a");
+        FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("s");
+        FrameOracle.Get(frame, new Point(3, 0)).ShouldBe("t");
     }
 
     /// <summary>Verifies overflowing multiline input exposes a configured canonical vertical scrollbar.</summary>
@@ -1716,7 +1752,7 @@ public sealed class TextInputTests
         new LayoutEngine().Layout(outer, new Size(5, 3));
 
         Route(input, Wheel(wheelX: 0, wheelY: -100), Events.Pointer);
-        input.VerticalOffset.ShouldBe(4);
+        input.VerticalOffset.ShouldBe(3);
         outer.VerticalOffset.ShouldBe(0);
 
         var endpoint = Wheel(wheelX: 0, wheelY: -1);
