@@ -1155,11 +1155,13 @@ namespace SharpVision.Terminal.Multiplexing
     public sealed class MultiplexerRoute
     {
         public MultiplexerRoute(SharpVision.Terminal.Multiplexing.MultiplexingPolicy policy) { }
+        public bool CanRouteBell { get; }
         public bool CanRouteClipboard { get; }
         public bool CanRouteNotifications { get; }
         public bool CanRouteTitle { get; }
         public SharpVision.Terminal.Multiplexing.MultiplexingPolicy Policy { get; }
         public bool TryUnwrapReply(System.ReadOnlySpan<byte> envelope, out System.ReadOnlyMemory<byte> reply) { }
+        public bool TryWriteBell(System.Buffers.IBufferWriter<byte> destination, System.ReadOnlySpan<byte> command) { }
         public bool TryWriteClipboard(System.Buffers.IBufferWriter<byte> destination, System.ReadOnlySpan<byte> commands) { }
         public bool TryWriteNotification(System.Buffers.IBufferWriter<byte> destination, System.ReadOnlySpan<byte> command) { }
         public bool TryWriteTitle(System.Buffers.IBufferWriter<byte> destination, System.ReadOnlySpan<byte> command) { }
@@ -1172,6 +1174,7 @@ namespace SharpVision.Terminal.Multiplexing
         Graphics = 4,
         Notifications = 8,
         Title = 16,
+        Bell = 32,
     }
     public sealed class MultiplexingPolicy
     {

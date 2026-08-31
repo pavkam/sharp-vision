@@ -24,5 +24,8 @@ public enum MultiplexingOperation
     Notifications = 8,
 
     /// <summary>Typed terminal title commands may bypass the multiplexer.</summary>
-    Title = 16
+    Title = 16,
+
+    /// <summary>Typed terminal bell commands may bypass the multiplexer.</summary>
+    Bell = 32
 }

@@ -1946,6 +1946,67 @@ public sealed class TerminalServicesTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an explicitly authorized tmux bell route wraps the BEL byte in DCS
+    /// passthrough before the ordered out-of-band write reaches the transport, matching the
+    /// existing clipboard, notification, and title routing precedent instead of posting a bare
+    /// byte that tmux would otherwise swallow.</summary>
+    [Fact]
+    public async Task Bell_WhenTmuxRouteApprovesBellFamily_WrapsBelByteAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Bell);
+        var options = TerminalOptions.Minimal with { Multiplexing = policy };
+        var written = new TaskCompletionSource<ReadOnlyMemory<byte>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += bytes =>
+        {
+            if (bytes.Span.IndexOf("Ptmux;"u8) >= 0)
+            {
+                _ = written.TrySetResult(bytes.ToArray());
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.Bell.Ring();
+
+        var bytes = await written.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        bytes.ToArray().ShouldBe("Ptmux;\\"u8.ToArray());
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a configured multiplexer route that has not approved the bell family
+    /// suppresses the BEL byte entirely rather than posting a bare byte that the multiplexer
+    /// would otherwise consume and never forward.</summary>
+    [Fact]
+    public async Task Bell_WhenTmuxRouteDoesNotApproveBellFamily_IsSuppressedAndByteQuietAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var options = TerminalOptions.Minimal with { Multiplexing = policy };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var before = terminal.Writes.Count;
+
+        application.Terminal.Bell.Ring();
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        terminal.Writes.Count.ShouldBe(before);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>
     /// Verifies notifications are wired through <see cref="INotifications"/> and gated on an
     /// explicit opt-in override: since there is no reliable environment or query signal for OSC 9

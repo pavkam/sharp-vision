@@ -307,6 +307,53 @@ public sealed class MultiplexerRouteTests
         destination.WrittenCount.ShouldBe(0);
     }
 
+    /// <summary>Verifies bell commands use the same single-layer tmux wrapping and ESC doubling as
+    /// every other explicitly authorized passthrough family.</summary>
+    [Fact]
+    public void TryWriteBell_WhenRouteHasTmux_WritesExactEnvelope()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Bell);
+        var route = new MultiplexerRoute(policy);
+        var destination = new ArrayBufferWriter<byte>();
+
+        var written = route.TryWriteBell(destination, "\u0007"u8);
+
+        written.ShouldBeTrue();
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001bPtmux;\u0007\u001b\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies a route approved only for clipboard traffic cannot carry bell bytes, and
+    /// that a Screen-containing route cannot carry bells either, leaving the destination untouched
+    /// in both cases.</summary>
+    [Theory]
+    [InlineData(new[] { MultiplexerKind.Tmux }, MultiplexingOperation.Clipboard)]
+    [InlineData(new[] { MultiplexerKind.Screen }, MultiplexingOperation.Bell)]
+    public void TryWriteBell_WhenRouteCannotCarryTheFamily_RejectsAtomically(
+        MultiplexerKind[] layers,
+        MultiplexingOperation approved)
+    {
+        var policy = new MultiplexingPolicy(
+            layers,
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            approved);
+        var destination = new ArrayBufferWriter<byte>();
+
+        var written = new MultiplexerRoute(policy).TryWriteBell(
+            destination,
+            "\u0007"u8);
+
+        written.ShouldBeFalse();
+        destination.WrittenCount.ShouldBe(0);
+    }
+
     /// <summary>Verifies an authorized clipboard route unwraps one exact OSC 5522 packet for the
     /// ordinary decoder rather than restricting inbound envelopes to capability replies.</summary>
     [Fact]

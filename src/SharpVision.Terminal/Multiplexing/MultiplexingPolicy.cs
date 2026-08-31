@@ -22,7 +22,8 @@ public sealed class MultiplexingPolicy
                                              MultiplexingOperation.Clipboard |
                                              MultiplexingOperation.Graphics |
                                              MultiplexingOperation.Notifications |
-                                             MultiplexingOperation.Title;
+                                             MultiplexingOperation.Title |
+                                             MultiplexingOperation.Bell;
     private readonly ReadOnlyCollection<MultiplexerKind> _layers;
 
     /// <summary>Initializes one explicit multiplexer routing policy.</summary>
@@ -199,6 +200,8 @@ public sealed class MultiplexingPolicy
             MultiplexingOperation.Notifications =>
                 Active && (ApprovedOperations & operation) == operation,
             MultiplexingOperation.Title =>
+                Active && (ApprovedOperations & operation) == operation,
+            MultiplexingOperation.Bell =>
                 Active && (ApprovedOperations & operation) == operation,
             _ => throw InvalidOperation(operation)
         };
