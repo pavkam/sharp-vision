@@ -190,10 +190,12 @@ through each intervening `Container { AutoScroll: true }` first, innermost to
 outermost, before computing its own offset; the return value reports whether the
 descendant's complete bounds are actually contained within the receiver's own
 viewport afterward, not merely whether some offset changed, so a boundary clamp
-that still leaves it partially hidden reports `false`. Content and resize
-changes clamp offsets before the typed `ScrollChanged` event is raised (carrying
-the previous and committed offsets, `Extent`, `Viewport`, and the typed
-`ScrollCause`) and before the translated arrangement runs.
+that still leaves it partially hidden reports `false`. The same `false` result
+covers a `ScrollChanged` subscriber disposing the container or an intervening
+ancestor mid-walk. Content and resize changes clamp offsets before the typed
+`ScrollChanged` event is raised (carrying the previous and committed offsets,
+`Extent`, `Viewport`, and the typed `ScrollCause`) and before the translated
+arrangement runs.
 
 When a descendant is larger than the viewport, full containment is impossible.
 `BringIntoView` exposes the nearest edge when the target is wholly outside, then

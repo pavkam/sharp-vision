@@ -49,7 +49,7 @@ classDiagram
 | `ScrollBy(int x, int y, ScrollCause cause = Programmatic)` | `bool`                                 | —                            | Adds signed axis deltas with saturation and endpoint clamping.                                                                                     |
 | `BringIntoView(ControlBase descendant)`                    | `bool`                                 | —                            | Scrolls minimally to expose one descendant, walking through any intervening armed container.                                                       |
 | `GetSelectableTextSnapshot()`                              | `SelectableTextSnapshot`               | —                            | Override; aggregates children's semantic text and visible grapheme geometry as an owned control-local snapshot.                                    |
-| `ScrollChanged`                                            | `EventHandler<ScrollChangedEventArgs>` | —                            | Raised after one or both offsets commit.                                                                                                           |
+| `ScrollChanged`                                            | `EventHandler<ScrollChangedEventArgs>` | —                            | Raised after one or both offsets commit; fires synchronously and may safely dispose the container (see note below).                                |
 
 Concrete controls normally use the unbounded parameterless constructor;
 specialized presenters may impose a finite semantic limit through
@@ -129,6 +129,18 @@ offset reset, generated parts, and both axis reservation values.
 > Assignment order therefore decides the outcome — set `ShowScrollBars` first
 > and refine one axis after, never the reverse. Re-assigning an equal
 > `ShowScrollBars` value is inert and preserves per-axis refinements.
+
+> [!NOTE]
+>
+> `ScrollChanged` fires synchronously and in-line from the offset-committing
+> `Apply` call, so a subscriber may dispose the container (or, during
+> `BringIntoView`, an intervening armed ancestor) from inside its own handler —
+> for example, closing a region once the user scrolls past a threshold. Each
+> scroll entry point treats that disposal as its own outcome rather than
+> re-reading offsets on a disposed control: `ScrollBy` reports the scroll as
+> handled, `BringIntoView` reports the reveal as incomplete (`false`), and the
+> in-flight `Arrange` pass skips `ArrangeOverride` and `ArrangeOverlays`
+> entirely for the disposed control.
 
 ## Example
 
