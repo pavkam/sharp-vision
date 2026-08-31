@@ -595,7 +595,11 @@ public sealed class TextTests
     public void EnsureLayout_WhenEllipsisArrangeWidensPastTruncation_ShowsFullText()
     {
         const string content = "The quick brown fox jumps over the lazy dog";
-        var text = new ControlText(content) { Overflow = Overflow.Ellipsis };
+        var text = new ControlText(content)
+        {
+            Overflow = Overflow.Ellipsis,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
 
         text.Measure(new Constraint(width: 12, height: 1));
 
@@ -621,7 +625,11 @@ public sealed class TextTests
     public void EnsureLayout_WhenClipArrangeWidensPastTruncation_ShowsFullText()
     {
         const string content = "ab界c";
-        var text = new ControlText(content) { Overflow = Overflow.Clip };
+        var text = new ControlText(content)
+        {
+            Overflow = Overflow.Clip,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
 
         text.Measure(new Constraint(width: 3, height: 1));
 
@@ -647,7 +655,11 @@ public sealed class TextTests
     public void EnsureLayout_WhenEllipsisArrangeWidensRepeatedly_ReformatsAtEachWidth()
     {
         const string content = "The quick brown fox jumps over the lazy dog";
-        var text = new ControlText(content) { Overflow = Overflow.Ellipsis };
+        var text = new ControlText(content)
+        {
+            Overflow = Overflow.Ellipsis,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
 
         text.Measure(new Constraint(width: 12, height: 1));
         content.AsSpan(text.Lines.Span[0].Offset, text.Lines.Span[0].Length)

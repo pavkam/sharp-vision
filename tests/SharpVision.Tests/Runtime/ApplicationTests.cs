@@ -5250,9 +5250,8 @@ public sealed class ApplicationTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        var root = new ProbeContainer();
         var child = new ProbeControl { IsFocusable = true };
-        root.Children.Add(child);
+        var root = new Stack { Children = { child } };
         await using Application application = new(
             root,
             terminal,
@@ -5285,9 +5284,15 @@ public sealed class ApplicationTests
                 {
                     // Arm the next measure pass to throw and invalidate measure so
                     // ProcessInvalidation - called from DrainInput's finally block below - has a
-                    // real layout pass pending to run and blow up on.
-                    child.Measuring = _ => throw new InvalidOperationException(
-                        "The probe measure pass failed.");
+                    // real layout pass pending to run and blow up on. ControlBase.Measure's catch
+                    // block re-invalidates Measure before rethrowing, so this must disarm itself
+                    // on the way out - otherwise the still-dirty flag makes the reposted drain's
+                    // own ProcessInvalidation() measure (and throw) a second time.
+                    child.Measuring = probe =>
+                    {
+                        probe.Measuring = null;
+                        throw new InvalidOperationException("The probe measure pass failed.");
+                    };
                     child.InvalidateKernel(InvalidationImpact.Measure);
                 }
 
