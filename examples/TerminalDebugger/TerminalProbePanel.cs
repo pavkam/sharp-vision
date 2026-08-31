@@ -7,7 +7,7 @@ using SharpVision.Terminal.Graphics;
 
 using DiagnosticImage = Image;
 
-/// <summary>Hosts explicit terminal-service probes and visual rendering specimens.</summary>
+/// <summary>Hosts explicit terminal-service tests and always-visible rendering specimens.</summary>
 internal sealed class TerminalProbePanel: CompositeControlBase
 {
     private readonly CapabilityDashboard _capabilities;
@@ -16,33 +16,37 @@ internal sealed class TerminalProbePanel: CompositeControlBase
     private readonly Button _title;
     private readonly Button _notification;
     private readonly Button _clipboard;
-    private readonly Button _showSpecimens;
-    private readonly Button _synchronizedOutput;
-    private readonly Button _styledUnderlines;
-    private readonly Button _underlineColor;
-    private readonly Button _overline;
-    private readonly Button _showGraphics;
-    private readonly Button _pass;
-    private readonly Button _fail;
-    private readonly Stack _specimens;
-    private readonly Text _modeGuide;
+    private readonly Dictionary<string, Text> _modeStates = [];
+    private readonly Text _paletteState;
+    private readonly Text _paletteExpected;
+    private readonly Text _rgbState;
+    private readonly Text _rgbExpected;
+    private readonly Text _synchronizedOutputState;
+    private readonly Text _styledUnderlinesState;
+    private readonly Text _underlineColorState;
+    private readonly Text _overlineState;
+    private readonly Text _graphicsState;
     private readonly DiagnosticImage _image;
+    private readonly ImageSource _diagnosticImage;
     private readonly ClipboardRoundTripProbe _clipboardProbe;
     private Application? _application;
-    private TerminalProtocol[] _pendingProtocols = [];
-    private bool _graphicsConfirmationPending;
+    private (TerminalGraphicsBackend Backend, bool Kitty, bool Sixel, bool Iterm)? _graphicsSelection;
+    private bool _graphicsFallbackHandled;
 
-    /// <summary>Initializes the explicit test panel.</summary>
+    /// <summary>Initializes the live terminal test lab.</summary>
     /// <param name="capabilities">The non-null capability dashboard to update.</param>
     internal TerminalProbePanel(CapabilityDashboard capabilities)
     {
         ArgumentNullException.ThrowIfNull(capabilities);
         _capabilities = capabilities;
         _clipboardProbe = new ClipboardRoundTripProbe(SetStatus, _capabilities.SetVerification);
-        _status = new Text("<d>Select a test. Nothing on this page runs automatically.</d>")
+        _status = new Text(
+            "<info>Visual specimens are already live.</info> " +
+            "Use the buttons only for tests that need an intentional side effect.")
         {
             Overflow = Overflow.Wrap
         };
+
         _bell = new Button("&Ring bell");
         _bell.Click += (_, _) => RingBell();
         _title = new Button("Test &title");
@@ -51,63 +55,29 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         _notification.Click += (_, _) => TestNotification();
         _clipboard = new Button("Clipboard &round trip");
         _clipboard.Click += (_, _) => _clipboardProbe.Start();
-        _showSpecimens = new Button("Show &rendition + Unicode");
-        _showSpecimens.Click += (_, _) => ShowSpecimens();
-        _synchronizedOutput = new Button("Check s&ync output");
-        _synchronizedOutput.Click += (_, _) => CheckRendition(
-            TerminalProtocol.SynchronizedOutput,
-            "Resize or switch tabs repeatedly and look for partial-frame tearing, then record the observed result.");
-        _styledUnderlines = new Button("Check underline st&yles");
-        _styledUnderlines.Click += (_, _) => CheckRendition(
-            TerminalProtocol.StyledUnderlines,
-            "Inspect straight, double, curly, dotted, and dashed underline shapes.");
-        _underlineColor = new Button("Check underline &color");
-        _underlineColor.Click += (_, _) => CheckRendition(
-            TerminalProtocol.UnderlineColor,
-            "Inspect whether the curly underline under 'curly yellow' is yellow.");
-        _overline = new Button("Check &overline");
-        _overline.Click += (_, _) => CheckRendition(
-            TerminalProtocol.Overline,
-            "Inspect whether 'overline' has a line above its glyphs.");
-        _showGraphics = new Button("Show &graphics sample");
-        _showGraphics.Click += (_, _) => ShowGraphics();
-        _pass = new Button("✓ &Pass") { IsEnabled = false };
-        _pass.Click += (_, _) => Confirm(passed: true);
-        _fail = new Button("! &Fail") { IsEnabled = false };
-        _fail.Click += (_, _) => Confirm(passed: false);
 
+        var actions = CreateActionsTable();
+        var passiveChecks = CreatePassiveChecksTable();
+        _paletteState = WaitingState();
+        _paletteExpected = new Text("Waiting for the active color policy…") { Overflow = Overflow.Wrap };
+        _rgbState = WaitingState();
+        _rgbExpected = new Text("Waiting for the active color policy…") { Overflow = Overflow.Wrap };
+        _synchronizedOutputState = WaitingState();
+        _styledUnderlinesState = WaitingState();
+        _underlineColorState = WaitingState();
+        _overlineState = WaitingState();
+        _graphicsState = WaitingState();
+        _diagnosticImage = CreateDiagnosticImage();
         _image = new DiagnosticImage
         {
             Width = Length.Cells(30),
             Height = Length.Cells(8),
-            AlternateText = "[graphics fallback]",
+            AlternateText = "[graphics unavailable]",
             Stretch = ImageStretch.Contain
         };
-        _specimens = BuildSpecimens(_image);
-        _specimens.Visibility = Visibility.Collapsed;
-        _modeGuide = new Text("<d>Runtime mode instructions will appear after attachment.</d>")
-        {
-            Overflow = Overflow.Wrap
-        };
+        var rendition = CreateRenditionTable();
+        var unicode = CreateUnicodeTable();
 
-        var actions = new Stack
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 1,
-            Children = { _bell, _title, _notification, _clipboard }
-        };
-        var visualActions = new Stack
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 1,
-            Children = { _showSpecimens, _synchronizedOutput, _showGraphics }
-        };
-        var confirmationActions = new Stack
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 1,
-            Children = { _styledUnderlines, _underlineColor, _overline, _pass, _fail }
-        };
         var content = new Stack
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -119,17 +89,15 @@ internal sealed class TerminalProbePanel: CompositeControlBase
             Spacing = 1,
             Children =
             {
-                new Text("<accent><b>Explicit terminal checks</b></accent>\n" +
-                         "These actions may ring, change the title, notify, modify the clipboard briefly, or emit image data."),
-                actions,
-                _status,
-                new Text("<accent><b>Passive input checks</b></accent>"),
-                _modeGuide,
-                new Text("<accent><b>Visual specimens</b></accent>\n" +
-                         "Reveal the samples, then verify each optional rendition independently."),
-                visualActions,
-                confirmationActions,
-                _specimens
+                new Text(
+                    "<accent><b>Terminal test lab</b></accent> · " +
+                    "Samples below render immediately so broken output is visible, not hidden behind a button."),
+                Card("Explicit service tests", actions),
+                Card("Latest test result", _status),
+                Card("Live input checks", passiveChecks),
+                Card("Rendition — rendered now", rendition),
+                Card("Unicode cell geometry — rendered now", unicode),
+                Card("Graphics backend — rendered when supported", CreateGraphicsContent())
             }
         };
         InitializeContent(content);
@@ -152,7 +120,7 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         application.GraphicsDiagnostic += OnGraphicsDiagnostic;
     }
 
-    /// <summary>Refreshes service and protocol action availability after capability refinement.</summary>
+    /// <summary>Refreshes service, mode, and specimen availability after capability refinement.</summary>
     /// <param name="application">The non-null running application.</param>
     internal void RefreshAvailability(Application application)
     {
@@ -161,18 +129,286 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         _title.IsEnabled = application.Terminal.IsTitleSupported;
         _notification.IsEnabled = application.Terminal.Notifications.IsSupported;
         _clipboard.IsEnabled = application.Terminal.Clipboard.IsSupported;
-        _styledUnderlines.IsEnabled = application.Capabilities.StyledUnderlines.Authoritative;
-        _underlineColor.IsEnabled = application.Capabilities.UnderlineColor.Authoritative;
-        _overline.IsEnabled = application.Capabilities.Overline.Authoritative;
-        _synchronizedOutput.IsEnabled = application.Capabilities.SynchronizedOutput.Authoritative;
-        _showGraphics.IsEnabled = HasGraphicsSupport(application);
+
         var modes = application.TerminalDiagnostics.Modes;
-        _modeGuide.Content =
-            $"Focus reporting: {Mode(modes.FocusReportingActive)} — switch to another terminal window and back.\n" +
-            $"Bracketed paste: {Mode(modes.BracketedPasteActive)} — paste text containing spaces or line breaks.\n" +
-            $"Mouse: {Mode(modes.MouseActive)} — click, drag, scroll, and inspect cell/pixel coordinates.\n" +
-            $"Kitty keyboard: {Mode(modes.KittyKeyboardActive)}; xterm modifyOtherKeys: {Mode(modes.ModifyOtherKeysActive)} — press modified keys, repeats, and releases.\n" +
-            "Open Input events to inspect the exact decoded values. Matching events mark optional protocols Observed automatically.";
+        SetMode("Focus reporting", modes.FocusReportingActive);
+        SetMode("Bracketed paste", modes.BracketedPasteActive);
+        SetMode("Mouse", modes.MouseActive);
+        SetMode("Kitty keyboard", modes.KittyKeyboardActive);
+        SetMode("xterm modifyOtherKeys", modes.ModifyOtherKeysActive);
+
+        _synchronizedOutputState.Content = SupportMarkup(application.Capabilities.SynchronizedOutput);
+        _styledUnderlinesState.Content = SupportMarkup(application.Capabilities.StyledUnderlines);
+        _underlineColorState.Content = SupportMarkup(application.Capabilities.UnderlineColor);
+        _overlineState.Content = SupportMarkup(application.Capabilities.Overline);
+        UpdateColorSpecimenState(application.Capabilities.ColorDepth);
+
+        var graphicsSelection = (
+            application.TerminalDiagnostics.GraphicsBackend,
+            application.Capabilities.KittyGraphics.Authoritative,
+            application.Capabilities.Sixel.Authoritative,
+            application.Capabilities.ItermImages.Authoritative);
+
+        if (_graphicsSelection is { } previousSelection && previousSelection != graphicsSelection)
+        {
+            // A refined capability set or backend is a new route, so the always-visible specimen
+            // gets one fresh attempt. An unchanged failed route remains stable and cannot loop.
+            _graphicsFallbackHandled = false;
+        }
+
+        _graphicsSelection = graphicsSelection;
+        var hasGraphics = HasGraphicsSupport(application);
+
+        if (_graphicsFallbackHandled)
+        {
+            _graphicsState.Content = "<error>× Fell back to cells</error>";
+            _image.AlternateText = "[graphics fallback]";
+            _image.Source = null;
+        }
+        else
+        {
+            _graphicsState.Content = hasGraphics
+                ? $"<success>✓ {application.TerminalDiagnostics.GraphicsBackend}</success>"
+                : "<d>— No authorized image protocol</d>";
+            _image.AlternateText = hasGraphics ? "[graphics cell fallback]" : "[graphics unavailable]";
+            _image.Source = hasGraphics ? _diagnosticImage : null;
+        }
+    }
+
+    private Table CreateActionsTable()
+    {
+        var table = new Table
+        {
+            IsFocusable = false,
+            IsTabStop = false,
+            SelectionMode = TableSelectionMode.None,
+            ShowGridLines = false,
+            ColumnSpacing = 1,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        table.Columns.Add(TableColumn.Fixed("Test", 18));
+        table.Columns.Add(TableColumn.Fixed("Action", 24));
+        table.Columns.Add(TableColumn.Fill("What happens"));
+        table.Rows.Add(ActionRow(
+            "Clipboard",
+            _clipboard,
+            "Reads, writes a unique marker, compares it, then restores and verifies the previous text."));
+        table.Rows.Add(ActionRow("Audible alert", _bell, "Requests the terminal bell; listen for or observe its configured alert."));
+        table.Rows.Add(ActionRow("Window title", _title, "Changes the title to identify this test; the previous title cannot be read back."));
+        table.Rows.Add(ActionRow("Desktop alert", _notification, "Requests a desktop notification through the authorized terminal service."));
+        return table;
+    }
+
+    private Table CreatePassiveChecksTable()
+    {
+        var table = new Table
+        {
+            IsFocusable = false,
+            IsTabStop = false,
+            SelectionMode = TableSelectionMode.None,
+            ShowGridLines = true,
+            ColumnSpacing = 1,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        table.Columns.Add(TableColumn.Fixed("Input", 22));
+        table.Columns.Add(TableColumn.Fixed("Runtime", 13));
+        table.Columns.Add(TableColumn.Fill("Try it now"));
+        AddPassiveRow(table, "Focus reporting", "Switch to another terminal window and back.");
+        AddPassiveRow(table, "Bracketed paste", "Paste text containing spaces or line breaks.");
+        AddPassiveRow(table, "Mouse", "Click, drag, and scroll; Input events shows cell and pixel coordinates.");
+        AddPassiveRow(table, "Kitty keyboard", "Press modified keys, repeats, and releases.");
+        AddPassiveRow(table, "xterm modifyOtherKeys", "Press modified keys and compare the decoded identity.");
+        return table;
+    }
+
+    private Table CreateRenditionTable()
+    {
+        var table = new Table
+        {
+            IsFocusable = false,
+            IsTabStop = false,
+            SelectionMode = TableSelectionMode.None,
+            ShowGridLines = true,
+            ScrollBars = ScrollBars.Horizontal,
+            ShowScrollBars = ShowScrollBars.WhenNeeded,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        table.Columns.Add(TableColumn.Fixed("Feature", 20));
+        table.Columns.Add(TableColumn.Fixed("Detected", 24));
+        table.Columns.Add(TableColumn.Fixed("Live sample", 38));
+        table.Columns.Add(TableColumn.Fill("Expected"));
+        table.Rows.Add(SpecimenRow(
+            "16-color palette",
+            _paletteState,
+            "<black>██</black><red>██</red><green>██</green><yellow>██</yellow><blue>██</blue><magenta>██</magenta><cyan>██</cyan><white>██</white> " +
+                "<brightblack>██</brightblack><brightred>██</brightred><brightgreen>██</brightgreen><brightyellow>██</brightyellow><brightblue>██</brightblue><brightmagenta>██</brightmagenta><brightcyan>██</brightcyan><brightwhite>██</brightwhite>",
+            _paletteExpected));
+        table.Rows.Add(SpecimenRow(
+            "RGB color",
+            _rgbState,
+            "<fg=#ff3b30>██</fg><fg=#ff9500>██</fg><fg=#ffcc00>██</fg><fg=#34c759>██</fg><fg=#00c7be>██</fg><fg=#007aff>██</fg><fg=#5856d6>██</fg><fg=#af52de>██</fg>",
+            _rgbExpected));
+        table.Rows.Add(SpecimenRow(
+            "Synchronized output",
+            _synchronizedOutputState,
+            "Resize and switch tabs",
+            "Frames remain whole without partial-frame tearing."));
+        table.Rows.Add(SpecimenRow(
+            "Underline styles",
+            _styledUnderlinesState,
+            "<u=straight>straight</u> <u=double>double</u> <u=curly>curly</u> <u=dotted>dotted</u> <u=dashed>dashed</u>",
+            "Five visibly distinct underline shapes."));
+        table.Rows.Add(SpecimenRow(
+            "Underline color",
+            _underlineColorState,
+            "<u=curly><uc=brightyellow>curly yellow</uc></u>",
+            "The curly underline is yellow."));
+        table.Rows.Add(SpecimenRow(
+            "Overline",
+            _overlineState,
+            "<overline>overline</overline>",
+            "A line appears above the glyphs."));
+        table.Rows.Add(SpecimenRow(
+            "Core attributes",
+            new Text("<success>✓ Built in</success>"),
+            "<b>bold</b> <i>italic</i> <strike>strike</strike> <reverse>reverse</reverse>",
+            "Weight, slant, strike, and reverse are visibly different."));
+        return table;
+    }
+
+    private static Table CreateUnicodeTable()
+    {
+        var table = new Table
+        {
+            IsFocusable = false,
+            IsTabStop = false,
+            SelectionMode = TableSelectionMode.None,
+            ShowGridLines = true,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        table.Columns.Add(TableColumn.Fixed("Case", 18));
+        table.Columns.Add(TableColumn.Fixed("Live cells", 32));
+        table.Columns.Add(TableColumn.Fill("Expected"));
+        table.Rows.Add(UnicodeRow("Cell guide", "|0|1|2|3|4|5|6|7|8|9|", "Every separator aligns."));
+        table.Rows.Add(UnicodeRow("Combining mark", "|é|x|", "e + U+0301 occupies one cell."));
+        table.Rows.Add(UnicodeRow("Wide CJK", "|界 |x|", "界 owns two cells; x remains aligned."));
+        table.Rows.Add(UnicodeRow("Emoji ZWJ", "|👩‍💻 |x|", "One grapheme with terminal-dependent width."));
+        table.Rows.Add(UnicodeRow("Variation selector", "|✈️ |x|", "Text plus VS16 remains one grapheme."));
+        table.Rows.Add(UnicodeRow("Ambiguous width", "|·|Ω|—|", "Widths follow the detected profile policy."));
+        return table;
+    }
+
+    private Stack CreateGraphicsContent() => new()
+    {
+        Spacing = 1,
+        Children =
+        {
+            new Stack
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 1,
+                Children =
+                {
+                    new Text("Detected backend:"),
+                    _graphicsState
+                }
+            },
+            _image,
+            new Text("A cyan-and-coral checkerboard should fill this area. A labeled cell preview means the image path fell back.")
+            {
+                Overflow = Overflow.Wrap
+            }
+        }
+    };
+
+    private void AddPassiveRow(Table table, string label, string instruction)
+    {
+        var state = WaitingState();
+        _modeStates.Add(label, state);
+        table.Rows.Add(new TableRow([
+            new Text(label),
+            state,
+            new Text(instruction) { Overflow = Overflow.Wrap }
+        ]));
+    }
+
+    private static TableRow ActionRow(string label, Button action, string explanation) => new([
+        new Text(label),
+        action,
+        new Text(explanation) { Overflow = Overflow.Wrap }
+    ]);
+
+    private static TableRow SpecimenRow(string label, Text state, string sample, string expected) => new([
+        new Text(label),
+        state,
+        new Text(sample) { Overflow = Overflow.Ellipsis },
+        new Text(expected) { Overflow = Overflow.Wrap }
+    ]);
+
+    private static TableRow SpecimenRow(string label, Text state, string sample, Text expected) => new([
+        new Text(label),
+        state,
+        new Text(sample) { Overflow = Overflow.Ellipsis },
+        expected
+    ]);
+
+    private static TableRow UnicodeRow(string label, string sample, string expected) => new([
+        new Text(label),
+        new Text(sample),
+        new Text(expected) { Overflow = Overflow.Wrap }
+    ]);
+
+    private static GroupBox Card(string title, ControlBase content) => new()
+    {
+        HeaderText = title,
+        HorizontalAlignment = HorizontalAlignment.Stretch,
+        Content = content
+    };
+
+    private static Text WaitingState() => new("<d>Waiting…</d>");
+
+    private void SetMode(string label, bool active) => _modeStates[label].Content = active
+        ? "<success>● Active</success>"
+        : "<warning>○ Inactive</warning>";
+
+    private void UpdateColorSpecimenState(ColorDepth colorDepth)
+    {
+        switch (colorDepth)
+        {
+            case ColorDepth.Monochrome:
+                _paletteState.Content = "<error>× Monochrome</error>";
+                _paletteExpected.Content = "Color is intentionally not relied on; swatches may be indistinguishable.";
+                _rgbState.Content = "<error>× Monochrome</error>";
+                _rgbExpected.Content = "The ramp is rendered without relying on color.";
+                break;
+
+            case ColorDepth.Basic16:
+                _paletteState.Content = "<success>✓ Basic 16</success>";
+                _paletteExpected.Content = "Sixteen palette swatches should be distinct.";
+                _rgbState.Content = "<warning>○ Projected to 16</warning>";
+                _rgbExpected.Content = "The RGB ramp is projected into the 16-color palette; banding is expected.";
+                break;
+
+            case ColorDepth.Indexed256:
+                _paletteState.Content = "<success>✓ Indexed 256</success>";
+                _paletteExpected.Content = "Sixteen palette swatches should be distinct.";
+                _rgbState.Content = "<warning>○ Projected to 256</warning>";
+                _rgbExpected.Content = "The RGB ramp is quantized into the indexed palette.";
+                break;
+
+            case ColorDepth.TrueColor:
+                _paletteState.Content = "<success>✓ True color</success>";
+                _paletteExpected.Content = "Sixteen palette swatches should be distinct.";
+                _rgbState.Content = "<success>✓ True color</success>";
+                _rgbExpected.Content = "A smooth red-to-violet ramp without palette projection.";
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException(
+                    nameof(colorDepth),
+                    colorDepth,
+                    "The terminal color depth is unknown.");
+        }
     }
 
     private void RingBell()
@@ -183,7 +419,7 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         }
 
         application.Terminal.Bell.Ring();
-        BeginConfirmation([], "Did you hear or otherwise perceive the terminal alert?");
+        SetStatus("<info>Bell requested.</info> Listen for or observe the terminal's configured alert.");
     }
 
     private void TestTitle()
@@ -194,9 +430,8 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         }
 
         application.Terminal.SetTitle("SharpVision Terminal Debugger — title test");
-        BeginConfirmation(
-            [],
-            "Did the terminal window title change? The previous title cannot be read or restored by this API.");
+        SetStatus(
+            "<info>Title change requested.</info> The terminal title should now identify the SharpVision test; the previous title cannot be read back.");
     }
 
     private void TestNotification()
@@ -209,142 +444,50 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         application.Terminal.Notifications.Notify(
             "SharpVision Terminal Debugger",
             "Explicit desktop-notification test");
-        BeginConfirmation([TerminalProtocol.Notifications], "Did a desktop notification appear?");
-    }
-
-    private void ShowSpecimens()
-    {
-        _specimens.Visibility = Visibility.Visible;
-        _pendingProtocols = [];
-        _pass.IsEnabled = false;
-        _fail.IsEnabled = false;
-        SetStatus("<info>Specimens revealed. Use the three focused checks to record optional rendition results.</info>");
-    }
-
-    private void CheckRendition(TerminalProtocol protocol, string prompt)
-    {
-        _specimens.Visibility = Visibility.Visible;
-        BeginConfirmation([protocol], prompt);
-    }
-
-    private void ShowGraphics()
-    {
-        if (_application is not { } application || !HasGraphicsSupport(application))
-        {
-            return;
-        }
-
-        _specimens.Visibility = Visibility.Visible;
-        _image.Source = CreateDiagnosticImage();
-        _graphicsConfirmationPending = true;
-        var protocols = GraphicsProtocols(application);
-        BeginConfirmation(
-            protocols,
-            protocols.Length == 0
-                ? "Inspect the checkerboard image. The shared non-retained backend may choose Sixel or iTerm2 per placement, so this result will not be attributed to either protocol."
-                : $"Inspect the generated checkerboard image. Selected backend: {application.TerminalDiagnostics.GraphicsBackend}.");
-    }
-
-    private void BeginConfirmation(TerminalProtocol[] protocols, string prompt)
-    {
-        _pendingProtocols = protocols;
-        _pass.IsEnabled = true;
-        _fail.IsEnabled = true;
-        SetStatus($"<warning>{TextMarkup.Escape(prompt)}</warning> Choose Pass or Fail.");
-    }
-
-    private void Confirm(bool passed)
-    {
-        var attributed = _pendingProtocols.Length > 0;
-        var state = passed ? VerificationState.Passed : VerificationState.Failed;
-        var detail = passed
-            ? "The user confirmed the visible or audible result in this terminal session."
-            : "The user reported that the visible or audible result was incorrect or absent.";
-
-        foreach (var protocol in _pendingProtocols)
-        {
-            _capabilities.SetVerification(protocol, state, detail);
-        }
-
-        _graphicsConfirmationPending = false;
-        _pendingProtocols = [];
-        _pass.IsEnabled = false;
-        _fail.IsEnabled = false;
-        SetStatus(attributed
-            ? passed
-                ? "<success>Result recorded as passed.</success>"
-                : "<error>Result recorded as failed.</error>"
-            : "<info>Visual result acknowledged without attributing the shared backend to one protocol.</info>");
+        SetStatus("<info>Desktop notification requested.</info> Look for the terminal's notification surface.");
     }
 
     private void OnGraphicsDiagnostic(object? sender, GraphicsDiagnosticEventArgs eventArgs)
     {
+        if (_graphicsFallbackHandled)
+        {
+            return;
+        }
+
+        // A retained Image records a placement on every frame. Once its selected protocol falls
+        // back, replace it with stable cell content before publishing UI state so the diagnostic
+        // cannot invalidate another frame and feed itself indefinitely.
+        _graphicsFallbackHandled = true;
+        _image.Source = null;
+        _image.AlternateText = "[graphics fallback]";
+        _graphicsState.Content = "<error>× Fell back to cells</error>";
         var detail = string.Join(", ", eventArgs.Placements.Select(static placement => placement.Reason));
         var backend = _application?.TerminalDiagnostics.GraphicsBackend.ToString() ?? "unknown";
         SetStatus(
             $"<error>{TextMarkup.Escape(backend)} graphics fell back to cells: {TextMarkup.Escape(detail)}.</error>");
 
-        if (_graphicsConfirmationPending)
+        if (_application is { } application)
         {
-            foreach (var protocol in _pendingProtocols)
+            foreach (var protocol in GraphicsProtocols(application))
             {
                 _capabilities.SetVerification(
                     protocol,
                     VerificationState.Failed,
                     $"The selected {backend} graphics path fell back to ordinary cells: {detail}.");
             }
-
-            _graphicsConfirmationPending = false;
-            _pendingProtocols = [];
-            _pass.IsEnabled = false;
-            _fail.IsEnabled = false;
         }
     }
 
     private void SetStatus(string value) => _status.Content = value;
 
-    private static string Mode(bool enabled) => enabled ? "<success>enabled</success>" : "<warning>not active</warning>";
-
-    private static Stack BuildSpecimens(DiagnosticImage image) => new()
+    private static string SupportMarkup(Feature feature) => feature.State switch
     {
-        Spacing = 1,
-        Children =
-        {
-            new GroupBox
-            {
-                HeaderText = "Color and rendition",
-                Content = new Text(
-                    "16 colors  <black>██</black><red>██</red><green>██</green><yellow>██</yellow><blue>██</blue><magenta>██</magenta><cyan>██</cyan><white>██</white>  " +
-                    "<brightblack>██</brightblack><brightred>██</brightred><brightgreen>██</brightgreen><brightyellow>██</brightyellow><brightblue>██</brightblue><brightmagenta>██</brightmagenta><brightcyan>██</brightcyan><brightwhite>██</brightwhite>\n" +
-                    "RGB ramp   <fg=#ff3b30>██</fg><fg=#ff9500>██</fg><fg=#ffcc00>██</fg><fg=#34c759>██</fg><fg=#00c7be>██</fg><fg=#007aff>██</fg><fg=#5856d6>██</fg><fg=#af52de>██</fg>\n" +
-                    "Underline  <u=straight>straight</u>  <u=double>double</u>  <u=curly><uc=brightyellow>curly yellow</uc></u>  <u=dotted>dotted</u>  <u=dashed>dashed</u>\n" +
-                    "Attributes <b>bold</b> <i>italic</i> <strike>strike</strike> <overline>overline</overline> <reverse>reverse</reverse>")
-                {
-                    Padding = new Thickness(1),
-                    Overflow = Overflow.Wrap
-                }
-            },
-            new GroupBox
-            {
-                HeaderText = "Unicode cell geometry",
-                Content = new Text(
-                    "Cell guide  |0|1|2|3|4|5|6|7|8|9|\n" +
-                    "Combining   |é|x|  e + U+0301 should occupy one cell\n" +
-                    "Wide CJK   |界 |x|  the glyph owns two cells\n" +
-                    "Emoji ZWJ  |👩‍💻 |x|  one grapheme, terminal-dependent width\n" +
-                    "Variation   |✈️ |x|  text plus VS16 stays one grapheme\n" +
-                    "Ambiguous   |·|Ω|—|  compare with the profile policy")
-                {
-                    Padding = new Thickness(1),
-                    Overflow = Overflow.Wrap
-                }
-            },
-            new GroupBox
-            {
-                HeaderText = "Graphics backend",
-                Content = image
-            }
-        }
+        CapabilitySupport.Supported when feature.Authoritative => "<success>✓ Supported</success>",
+        CapabilitySupport.Supported => "<warning>○ Detected, not authorized</warning>",
+        CapabilitySupport.Tentative => "<warning>○ Tentative</warning>",
+        CapabilitySupport.Unsupported => "<error>× Unsupported</error>",
+        CapabilitySupport.Unknown => "<d>— Unknown</d>",
+        _ => throw new ArgumentOutOfRangeException(nameof(feature), feature.State, "The capability support state is unknown.")
     };
 
     private static ImageSource CreateDiagnosticImage()

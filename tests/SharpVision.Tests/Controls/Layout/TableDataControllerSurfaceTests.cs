@@ -215,17 +215,14 @@ public sealed class TableDataControllerSurfaceTests
         await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
         var cell = table.ProgressiveController!.RowAt(0)!.Cells[0];
 
-        // The default theme does not paint plain text content differently for IsSelected/Current -
-        // the same as eager Table's own cells, proven identical to progressive's by the
-        // equivalence test below - so the rendering-driving VisualState itself is the actual,
-        // theme-independent proof that selecting a progressive row reaches the cell at all
-        // (regression for defect b: this state never reached the cell before the fix).
+        var restingBackground = surface.Cell(new Point(0, 0)).Style.Background;
         cell.GetAppearanceState().HasFlag(VisualState.Selected).ShouldBeFalse();
 
         await surface.UpdateAsync(() => table.SelectIndex(0), "select the first row");
 
         cell.GetAppearanceState().HasFlag(VisualState.Selected).ShouldBeTrue();
         cell.GetAppearanceState().HasFlag(VisualState.Current).ShouldBeTrue();
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldNotBe(restingBackground);
     }
 
     /// <summary>Verifies moving the active index without selecting marks the current row's cell's

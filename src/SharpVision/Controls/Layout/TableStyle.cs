@@ -18,17 +18,15 @@ using System.Diagnostics.CodeAnalysis;
 [PublicAPI]
 public sealed record TableStyle: ControlStyle
 {
-    /// <summary>Gets the primary table-style definition. Falls back through
-    /// <see cref="Theme.GetFocusableControlStyleSet"/> rather than the bare "control" role
-    /// section so a directly focused Table gets a visible cue instead of none at all - Table is a
-    /// focus target in its own right, unlike a merely passive panel. Deliberately narrower than
-    /// <see cref="Theme.GetInteractiveControlStyleSet"/>: Table's own hover and per-row/cell
-    /// selection are already handled more specifically by its cells, so only Focused/FocusWithin
-    /// are rebased here, leaving hover and press exactly as the passive "control" role section
-    /// resolves them (unchanged). The grid glyphs, the three part colors, and the cell padding
-    /// are all code-owned.</summary>
+    /// <summary>Gets the primary table-style definition. Falls back through the theme's focused
+    /// tabular control set rather than the bare "control" role section so a directly focused
+    /// Table gets the theme's focused text cue instead of none at all. The tabular set deliberately
+    /// omits the generic borderless reverse-video fallback because Table paints one large owner
+    /// surface behind independently styled cells; row and cell selection own its strong filled
+    /// cue. Hover and press remain exactly as the passive "control" role resolves them. The grid
+    /// glyphs, the three part colors, and the cell padding are all code-owned.</summary>
     internal static StyleDefinition<TableStyle> Definition { get; } = StyleDefinitions.Control(
-        static theme => theme.GetFocusableControlStyleSet(),
+        static theme => theme.GetTabularControlStyleSet(),
         Complete,
         static (previous, previousTheme, current, currentTheme) =>
             previous.CellPadding != current.CellPadding

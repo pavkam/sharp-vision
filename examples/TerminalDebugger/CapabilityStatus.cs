@@ -44,38 +44,4 @@ internal sealed class CapabilityStatus
         VerificationDetail = detail;
     }
 
-    /// <summary>Gets the compact row text without relying on color alone.</summary>
-    internal string RowText =>
-        Descriptor.IsNegotiated
-            ? $"{SupportGlyph(Feature.State)} {Descriptor.Label,-24} {Feature.State,-11} {Feature.Origin,-11} {VerificationGlyph(Verification)} {VerificationLabel(Verification)}"
-            : $"◆ {Descriptor.Label,-24} Implemented  Built-in";
-
-    /// <inheritdoc/>
-    public override string ToString() => RowText;
-
-    private static string SupportGlyph(CapabilitySupport support) => support switch
-    {
-        CapabilitySupport.Supported => "✓",
-        CapabilitySupport.Unsupported => "×",
-        CapabilitySupport.Tentative => "~",
-        CapabilitySupport.Unknown => "?",
-        _ => throw new ArgumentOutOfRangeException(nameof(support), support, "The capability support state is unknown.")
-    };
-
-    private static string VerificationGlyph(VerificationState verification) => verification switch
-    {
-        VerificationState.Observed or VerificationState.Passed => "●",
-        VerificationState.Failed => "!",
-        VerificationState.NotRun => "○",
-        _ => throw new ArgumentOutOfRangeException(nameof(verification), verification, "The verification state is unknown.")
-    };
-
-    private static string VerificationLabel(VerificationState verification) => verification switch
-    {
-        VerificationState.NotRun => "Not run",
-        VerificationState.Observed => "Observed",
-        VerificationState.Passed => "Passed",
-        VerificationState.Failed => "Failed",
-        _ => throw new ArgumentOutOfRangeException(nameof(verification), verification, "The verification state is unknown.")
-    };
 }

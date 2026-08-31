@@ -342,6 +342,11 @@ handled-events observers still receive the record. These rules follow the shared
 [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy)
 and routed handled-state contract.
 
+Focus retains the table's normal surface and applies the theme's focused text
+decoration. It does not reverse the whole owner surface: independently styled
+cells would otherwise remain normal-colored islands inside a reversed slab.
+Selected rows or cells retain the stronger filled selection cue.
+
 `SelectRow`, `SelectCell`, `ClearSelection`, and `SelectAll` commit selection
 state and raise `SelectionChanged`. `SelectedRows` and `SelectedCells` property
 notifications are transaction boundaries: a callback that commits a newer

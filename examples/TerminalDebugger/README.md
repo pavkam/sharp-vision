@@ -4,7 +4,7 @@ Terminal Debugger is a live, interactive dashboard for answering two different
 questions about the terminal in which it runs:
 
 1. What does SharpVision's discovery pipeline believe the terminal supports?
-2. What has this session actually observed or confirmed working?
+2. What has this session actually observed or compared automatically?
 
 Those answers deliberately remain separate. An environment hint can be useful
 without being authoritative, and advertised support can still be broken by a
@@ -21,24 +21,25 @@ it. Press Ctrl+Q to quit.
 
 ## Debugger views
 
-The **Overview** tab reports the terminal description separately from the fixed
-VT, xterm, Kitty, or iTerm2 backend identity. It includes the redacted identity
-evidence, backend protocol-extension composition, renderer graphics backend,
-Unicode/color policy, service availability, and configured, authorized, versus
-successfully activated runtime modes.
+The **Dashboard** tab presents connection, backend, live input-mode, and public
+service cards. Each card is a real `Table`, so labels and values remain aligned
+without padding one large formatted string. It separates the terminal
+description from the fixed VT, xterm, Kitty, or iTerm2 backend identity and
+shows configured, authorized, versus successfully activated runtime modes.
 
-The **Protocols** tab lists the complete protocol surface implemented by
+The **Features** tab lists the complete protocol surface implemented by
 SharpVision. This includes the description database, ECMA-48/ANSI/VT framing,
 CSI, OSC, DCS and other bounded strings, DEC modes, SGR, Unicode, key maps,
 active query families, tmux and GNU screen routing, plus every optional protocol
-in `TerminalCapabilities`. Optional rows show:
+in `TerminalCapabilities`. A selectable `Table` shows:
 
 - detected state: Supported, Tentative, Unsupported, or Unknown;
 - evidence origin: default, environment, terminal database, active query, or
   caller override;
-- whether the evidence authorizes optional output;
-- live verification: Not run, Observed, Passed, or Failed;
-- a plain-language description of what the protocol does.
+- whether the session observed the feature or compared it automatically.
+
+Selecting a row opens a semantic `Document` with authorization, session
+evidence, and a plain-language explanation of the feature.
 
 The **Discovery** tab shows every final normalized `TerminalQueryDiagnostics`
 field. A missing reply remains a dash rather than being rewritten as
@@ -84,32 +85,37 @@ selection, MIME type, byte count, result, and diagnostics without retaining the
 payload. The explicit round-trip test compares text only in memory and clears
 its references when the restoration check finishes.
 
-## Explicit tests
+## Test lab
 
-Nothing in the **Probes** tab runs on startup. Buttons explicitly request:
+The **Test lab** renders its visual specimens immediately. Color swatches,
+rendition attributes, styled and colored underlines, overline, Unicode cell
+geometry, and the generated graphics sample appear beside detected support and
+an exact description of the expected result. Synchronized output is already in
+use when authorized, so resizing and switching tabs is the test—there is no
+separate “show” action.
+
+Buttons remain only for tests that intentionally cause a side effect:
 
 - the terminal bell;
 - a window-title change, with an explicit warning that the previous title cannot
   be read or restored through the public API;
 - a desktop notification when authoritatively enabled;
-- a clipboard write/read round trip after first reading content for restoration;
-- color, rendition, underline, and Unicode cell-geometry specimens;
-- a synchronized-output observation while resizing or switching views;
-- a generated RGBA checkerboard through SharpVision's public `Image` control.
+- a clipboard write/read round trip after first reading content for restoration.
 
 The same view gives exact passive test instructions for focus, bracketed paste,
 cell/pixel mouse, Kitty keyboard, and xterm modifyOtherKeys. Their active state
 comes from the runtime diagnostics snapshot, and matching decoded events update
 the protocol row to Observed.
 
-Optional underline styles, underline color, and overline each have an
-independent Pass or Fail confirmation. Clipboard compares a unique marker
-automatically, restores the previous text when the initial read succeeded, and
-reads it back before claiming restoration. If the initial clipboard read fails,
-the debugger refuses to overwrite the clipboard. Graphics fallback reasons are
-reported through the public application diagnostic event rather than inferred
-from a missing image. The selected `CellFallback`, `Kitty`, or `NonRetained`
-renderer backend is reported directly by `Application.TerminalDiagnostics`.
+Visual inspection is deliberately not stored as a synthetic Pass or Fail state:
+the specimen and its expectation stay visible, so the human can judge the output
+directly. Clipboard compares a unique marker automatically, restores the
+previous text when the initial read succeeded, and reads it back before claiming
+restoration. If the initial clipboard read fails, the debugger refuses to
+overwrite the clipboard. Graphics fallback reasons come from the public
+application diagnostic event and become automatic failure evidence. The selected
+`CellFallback`, `Kitty`, or `NonRetained` renderer backend is reported directly
+by `Application.TerminalDiagnostics`.
 
 ## tmux
 
@@ -120,14 +126,14 @@ remain visibly blocked unless the host supplied an explicit outer profile and
 approved operations. This distinction makes “the terminal supports it” and “the
 current route can safely carry it” independently inspectable.
 
-## Status meanings
+## Session evidence meanings
 
-| Status   | Meaning                                                         |
-| -------- | --------------------------------------------------------------- |
-| Not run  | No event, automatic comparison, or user confirmation exists.    |
-| Observed | A matching passive decoded event arrived in this session.       |
-| Passed   | An exact comparison or explicit user confirmation succeeded.    |
-| Failed   | A comparison failed, the terminal rejected it, or the user did. |
+| Status                 | Meaning                                                   |
+| ---------------------- | --------------------------------------------------------- |
+| Not exercised          | No matching event or automatic comparison exists.         |
+| Observed live          | A matching passive decoded event arrived in this session. |
+| Compared successfully  | An exact automatic comparison succeeded.                  |
+| Automatic check failed | A comparison, request, or selected graphics route failed. |
 
 Terminal Debugger uses only public SharpVision APIs. It does not sniff raw
 escape bytes, bypass capability authorization, expose environment values or

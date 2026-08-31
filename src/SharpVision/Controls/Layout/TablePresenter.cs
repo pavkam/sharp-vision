@@ -25,6 +25,13 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
     // sort to a new column also resize that column's header, jittering the whole row.
     private const int _sortIndicatorWidth = 1;
 
+    private static readonly ThemeValueDependency<TerminalStyle> _selectedStyleThemeDependency = new(
+        static theme => ResolveSelectedStyle(theme, VisualState.Selected),
+        InvalidationImpact.Render);
+    private static readonly ThemeValueDependency<TerminalStyle> _disabledSelectedStyleThemeDependency = new(
+        static theme => ResolveSelectedStyle(theme, VisualState.Selected | VisualState.Disabled),
+        InvalidationImpact.Render);
+
     // A complete constructor Face outranks every theme state contribution and disables ambient
     // inheritance, permanently opting this presenter out of visual-state feedback. Only the
     // transparent background is presenter-specific; the rest matches the ControlBase role's own
@@ -400,6 +407,165 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
             DrawHorizontalGridLine(canvas, y, horizontalGlyph, crossGlyph, grid);
             y = y.Add(RowGap);
         }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnRenderAdornment(TerminalCanvas canvas)
+    {
+        if (HasSelectedCells())
+        {
+            RenderSelectionAdornment(
+                canvas,
+                ResolveThemeValue(_selectedStyleThemeDependency),
+                ResolveThemeValue(_disabledSelectedStyleThemeDependency));
+        }
+
+        base.OnRenderAdornment(canvas);
+    }
+
+    // Applies the owner's final selected-row or selected-cell face over realized cell content while
+    // preserving each cell's hyperlink. It lives on this private presenter rather than public Table
+    // so the final-after-cell rendering seam does not become part of Table's protected API surface.
+    private void RenderSelectionAdornment(
+        TerminalCanvas canvas,
+        TerminalStyle selectedStyle,
+        TerminalStyle disabledSelectedStyle)
+    {
+        TerminalStyle ApplySelectedStyle(Point _, TerminalStyle current) => new(
+            selectedStyle.Foreground,
+            selectedStyle.Background,
+            selectedStyle.Attributes,
+            current.Hyperlink,
+            selectedStyle.Underline,
+            selectedStyle.UnderlineColor);
+        TerminalStyle ApplyDisabledSelectedStyle(Point _, TerminalStyle current) => new(
+            disabledSelectedStyle.Foreground,
+            disabledSelectedStyle.Background,
+            disabledSelectedStyle.Attributes,
+            current.Hyperlink,
+            disabledSelectedStyle.Underline,
+            disabledSelectedStyle.UnderlineColor);
+
+        if (_owner.IsProgressive)
+        {
+            RenderProgressiveSelectionAdornment(canvas, ApplySelectedStyle, ApplyDisabledSelectedStyle);
+            return;
+        }
+
+        var y = ContentSlot.Y;
+
+        if (_owner is { ShowHeader: true, Columns.Count: > 0 })
+        {
+            y = y.Add(_owner.ActualStyle.CellPadding.Vertical.Add(_headerTextHeight));
+
+            if (_owner.Rows.Count > 0)
+            {
+                y = y.Add(RowGap);
+            }
+        }
+
+        for (var rowIndex = 0; rowIndex < _owner.Rows.Count; rowIndex++)
+        {
+            RenderSelectedCells(
+                canvas,
+                _owner.Rows[rowIndex],
+                ContentSlot.X,
+                y,
+                RowHeights[rowIndex],
+                ApplySelectedStyle,
+                ApplyDisabledSelectedStyle);
+            y = y.Add(RowHeights[rowIndex].Add(RowGap));
+        }
+    }
+
+    private void RenderProgressiveSelectionAdornment(
+        TerminalCanvas canvas,
+        Func<Point, TerminalStyle, TerminalStyle> applySelectedStyle,
+        Func<Point, TerminalStyle, TerminalStyle> applyDisabledSelectedStyle)
+    {
+        var controller = _owner.ProgressiveController!;
+        var baseX = ProgressiveOrigin.X - HorizontalOffset;
+        var baseY = ProgressiveOrigin.Y.Add(-VerticalOffset).Add(ProgressiveHeaderHeight);
+
+        for (var position = 0; position < controller.WindowCount; position++)
+        {
+            var logicalIndex = controller.WindowStart.Add(position);
+
+            if (controller.RowAt(logicalIndex) is not { } row)
+            {
+                continue;
+            }
+
+            var y = baseY.Add(logicalIndex.Multiply(controller.RowHeight.Add(RowGap)));
+            RenderSelectedCells(
+                canvas,
+                row,
+                baseX,
+                y,
+                controller.RowHeight,
+                applySelectedStyle,
+                applyDisabledSelectedStyle);
+        }
+    }
+
+    private void RenderSelectedCells(
+        TerminalCanvas canvas,
+        TableRow row,
+        int x,
+        int y,
+        int height,
+        Func<Point, TerminalStyle, TerminalStyle> applySelectedStyle,
+        Func<Point, TerminalStyle, TerminalStyle> applyDisabledSelectedStyle)
+    {
+        for (var column = 0; column < row.Cells.Count && column < ColumnWidths.Length; column++)
+        {
+            if (row.Cells[column].GetAppearanceState().HasFlag(VisualState.Selected))
+            {
+                canvas.ApplyCellStyle(
+                    new Rect(x, y, ColumnWidths[column], height),
+                    row.Cells[column].EffectiveIsEnabled
+                        ? applySelectedStyle
+                        : applyDisabledSelectedStyle);
+            }
+
+            x = x.Add(ColumnWidths[column].Add(ColumnGap));
+        }
+    }
+
+    private bool HasSelectedCells()
+    {
+        if (_owner.IsProgressive)
+        {
+            var controller = _owner.ProgressiveController!;
+
+            for (var position = 0; position < controller.WindowCount; position++)
+            {
+                var logicalIndex = controller.WindowStart.Add(position);
+
+                if (controller.RowAt(logicalIndex) is { } row && RowHasSelectedCell(row))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return _owner.Rows.Any(RowHasSelectedCell);
+    }
+
+    private static bool RowHasSelectedCell(TableRow row) =>
+        row.Cells.Any(static cell => cell.GetAppearanceState().HasFlag(VisualState.Selected));
+
+    private static TerminalStyle ResolveSelectedStyle(Theme theme, VisualState state)
+    {
+        var selected = theme.GetInteractiveRowStyleSet().ToAppearanceStates().Resolve(state).Face;
+        return new TerminalStyle(
+            ResolveColor(selected.Foreground, theme),
+            ResolveColor(selected.Background, theme),
+            selected.Attributes.Resolve(theme),
+            underline: selected.Underline,
+            underlineColor: ResolveColor(selected.UnderlineColor, theme));
     }
 
     // Only realized-window separators are drawn - the whole point of progressive windowing is

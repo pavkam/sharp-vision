@@ -39,12 +39,12 @@ internal sealed class TerminalDebuggerScreen: Screen
             VerticalAlignment = VerticalAlignment.Stretch,
             HeaderOverflowPolicy = TabHeaderOverflowPolicy.Scroll
         };
-        tabs.Items.Add(new TabItem { HeaderText = "&Overview", Content = _overview });
-        tabs.Items.Add(new TabItem { HeaderText = "&Protocols", Content = _capabilities });
+        tabs.Items.Add(new TabItem { HeaderText = "&Dashboard", Content = _overview });
+        tabs.Items.Add(new TabItem { HeaderText = "&Features", Content = _capabilities });
+        tabs.Items.Add(new TabItem { HeaderText = "Test &lab", Content = _probes });
         tabs.Items.Add(new TabItem { HeaderText = "&Discovery", Content = _discovery });
         tabs.Items.Add(new TabItem { HeaderText = "&Routing", Content = _routing });
         tabs.Items.Add(new TabItem { HeaderText = "&Input events", Content = _input });
-        tabs.Items.Add(new TabItem { HeaderText = "Pro&bes", Content = _probes });
 
         var statusBar = new StatusBar { Padding = new Thickness(1, 0) };
         statusBar.Items.Add(new StatusBarItem { Content = _status });
@@ -132,6 +132,7 @@ internal sealed class TerminalDebuggerScreen: Screen
         if (Application is { } application)
         {
             RefreshDiagnostics(application);
+            _probes.RefreshAvailability(application);
         }
     }
 
@@ -158,7 +159,9 @@ internal sealed class TerminalDebuggerScreen: Screen
     private void UpdateResponsiveLayout(int width)
     {
         var isCompact = width < 100;
+        _overview.SetCompact(isCompact);
         _capabilities.SetCompact(isCompact);
+        _routing.SetCompact(isCompact);
         _input.SetCompact(isCompact);
     }
 

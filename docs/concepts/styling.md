@@ -164,10 +164,13 @@ without inventing a frame. A control that is a direct Tab-stop and focus target
 in its own right - a Table, TreeView, or JsonView, none of which read their own
 resolved appearance for hover, press, selection, or current-item cues that their
 own content already owns more specifically - instead rebases only
-Focused/FocusWithin through `Theme.GetFocusableControlStyleSet` (onto borderless
-geometry) or `Theme.GetFocusableContainerStyleSet` (onto Container's all-sides
-light border, recoloring it without changing its sides). Falling back to the
-bare passive `control`/`container` key here would leave literally no visual
+Focused/FocusWithin. TreeView and JsonView use
+`Theme.GetFocusableContainerStyleSet` onto Container's all-sides light border,
+recoloring it without changing its sides. Table uses the same focused text delta
+over borderless control geometry but omits the generic reverse-video fallback:
+its selected row or cell owns the strong filled cue, while reversing the large
+owner surface would conflict with independently styled cells. Falling back to
+the bare passive `control`/`container` key here would leave literally no visual
 difference between focused and unfocused, since no bundled theme authors a
 `focused`/`focusWithin` delta for either key. A custom theme may explicitly add
 hover styling to any passive type.

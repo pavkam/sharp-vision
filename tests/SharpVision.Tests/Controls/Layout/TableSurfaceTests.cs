@@ -150,13 +150,11 @@ public sealed class TableSurfaceTests
             .ShouldBe(restingCells);
     }
 
-    /// <summary>Verifies keyboard focus is genuinely observable on Table's own rendered shell -
-    /// GetFocusableControlStyleSet's whole reason to exist, since a Table has no border by
-    /// default to recolor: an unstyled Table rebased onto the passive "control" key alone (as it
-    /// did before) left literally no visible difference between focused and unfocused, so a
-    /// keyboard user tabbing onto a Table had no cue it had happened.</summary>
+    /// <summary>Verifies keyboard focus is genuinely observable on Table's own rendered shell
+    /// through focused text without reversing the entire tabular surface behind independently
+    /// styled cells.</summary>
     [Fact]
-    public async Task Input_WhenMountedTableReceivesFocus_AppliesFocusedTextAttributeAsync()
+    public async Task Input_WhenMountedTableReceivesFocus_UsesTextCueWithoutReversingSurfaceAsync()
     {
         // Arrange
         var table = new Table
@@ -171,21 +169,123 @@ public sealed class TableSurfaceTests
             table,
             new Size(9, 3),
             TestContext.Current.CancellationToken);
-        (surface.Cell(default).Style.Attributes & TerminalAttributes.Bold).ShouldBe(TerminalAttributes.None);
+        var restingStyle = surface.Cell(default).Style;
+        (restingStyle.Attributes & TerminalAttributes.Bold).ShouldBe(TerminalAttributes.None);
 
         // Act
         await surface.Keyboard.PressAsync(Code.Tab);
 
         // Assert
         table.IsFocused.ShouldBeTrue();
-        (surface.Cell(default).Style.Attributes & TerminalAttributes.Bold).ShouldBe(TerminalAttributes.Bold);
+        var focusedStyle = surface.Cell(default).Style;
+        (focusedStyle.Attributes & TerminalAttributes.Bold).ShouldBe(TerminalAttributes.Bold);
+        (focusedStyle.Attributes & TerminalAttributes.Reverse).ShouldBe(TerminalAttributes.None);
+        focusedStyle.Foreground.ShouldBe(restingStyle.Foreground);
+        focusedStyle.Background.ShouldBe(restingStyle.Background);
     }
 
-    /// <summary>Verifies a Table's own hover, press, selection, and current-cell cues - all owned
-    /// more specifically by its cells - stay exactly as GetFocusableControlStyleSet leaves them:
-    /// untouched. Only Focused/FocusWithin are rebased from "input"; hover in particular must
-    /// remain inert here, since lighting up a data-dense grid's entire shell on mere mouse-over
-    /// (the way <see cref="Theme.GetInteractiveControlStyleSet"/> would) would be noise, not signal.</summary>
+    /// <summary>Verifies a selected row receives the theme's filled selection treatment even when
+    /// its arbitrary cell controls use passive styles that do not paint Selected themselves.</summary>
+    [Fact]
+    public async Task Input_WhenPlainTextRowIsSelected_PaintsFilledSelectionCueAsync()
+    {
+        // Arrange
+        var table = new Table
+        {
+            ShowHeader = false,
+            ShowGridLines = false,
+            SelectionMode = TableSelectionMode.Row,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        table.Columns.Add(TableColumn.Fixed("Value", 3));
+        table.Columns.Add(TableColumn.Fixed("State", 3));
+        table.Rows.Add(new TableRow([new ControlText("One"), new ControlText("A")]));
+        table.Rows.Add(new TableRow([new ControlText("Two"), new ControlText("B")]));
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(6, 2),
+            TestContext.Current.CancellationToken);
+        var restingBackground = surface.Cell(new Point(0, 1)).Style.Background;
+
+        // Act
+        await surface.Pointer.ClickAsync(table, new Point(0, 1));
+
+        // Assert
+        table.SelectedRows.ShouldBe([table.Rows[1]]);
+        surface.Cell(new Point(0, 1)).Style.Background.ShouldNotBe(restingBackground);
+        surface.Cell(new Point(3, 1)).Style.Background.ShouldBe(surface.Cell(new Point(0, 1)).Style.Background);
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(restingBackground);
+    }
+
+    /// <summary>Verifies an already-selected row repaints from a replacement Theme whose only
+    /// relevant difference is the semantic selected-control color.</summary>
+    [Fact]
+    public async Task Theme_WhenSelectedControlColorChanges_RepaintsSelectedRowAsync()
+    {
+        // Arrange
+        var firstTheme = WithColor(SemanticColor.SelectedControl, Color.Rgb(0x00, 0x00, 0xee));
+        var secondTheme = WithColor(SemanticColor.SelectedControl, Color.Rgb(0xee, 0x00, 0x00));
+        var table = new Table
+        {
+            ShowHeader = false,
+            ShowGridLines = false,
+            SelectionMode = TableSelectionMode.Row
+        };
+        table.Columns.Add(TableColumn.Fixed("Value", 4));
+        table.Rows.Add(new TableRow([new ControlText("Row")]));
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(4, 1),
+            firstTheme,
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.ClickAsync(table, new Point(0, 0));
+        var firstBackground = surface.Cell(default).Style.Background;
+
+        // Act
+        await surface.UpdateAsync(() => surface.Application.Theme = secondTheme, "swap selected-row color");
+
+        // Assert
+        table.SelectedRows.ShouldBe([table.Rows[0]]);
+        surface.Cell(default).Style.Background.ShouldNotBe(firstBackground);
+    }
+
+    /// <summary>Verifies row selection composes with each cell's effective enabled state instead
+    /// of repainting a disabled cell with the enabled selected-item face.</summary>
+    [Fact]
+    public async Task Input_WhenSelectedRowContainsDisabledCell_ComposesDisabledSelectionFaceAsync()
+    {
+        // Arrange
+        var disabledCell = new ControlText("Off") { IsEnabled = false };
+        var table = new Table
+        {
+            ShowHeader = false,
+            ShowGridLines = false,
+            SelectionMode = TableSelectionMode.Row
+        };
+        table.Columns.Add(TableColumn.Fixed("Enabled", 4));
+        table.Columns.Add(TableColumn.Fixed("Disabled", 4));
+        table.Rows.Add(new TableRow([new ControlText("On"), disabledCell]));
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(8, 1),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.ClickAsync(table, new Point(0, 0));
+
+        // Assert
+        table.SelectedRows.ShouldBe([table.Rows[0]]);
+        surface.Cell(new Point(4, 0)).Style.Background.ShouldBe(
+            TerminalPalette.Project(
+                ThemeCatalog.Dark.ResolveColor(SemanticColor.DisabledControl),
+                ColorDepth.Basic16));
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldNotBe(surface.Cell(new Point(4, 0)).Style.Background);
+    }
+
+    /// <summary>Verifies a Table's shell hover remains inert under the tabular focus style set.
+    /// Selection is painted separately by the private presenter over selected cell content;
+    /// lighting up the whole data-dense shell on mere mouse-over would be noise, not signal.</summary>
     [Fact]
     public async Task Input_WhenMountedTableIsFocusedAndHovered_OnlyFocusChangesAppearanceAsync()
     {

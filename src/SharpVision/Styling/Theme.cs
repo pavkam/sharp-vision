@@ -1036,7 +1036,29 @@ public sealed class Theme
                 LazyThreadSafetyMode.ExecutionAndPublication),
             this).Value;
 
-    private StyleStates<TGeometry> BuildFocusableStyleSet<TGeometry>(StyleStates<TGeometry> geometry)
+    /// <summary>Gets the focused control deltas rebased onto passive borderless geometry without
+    /// the reverse-video safety net used by a generic borderless focus target.</summary>
+    /// <remarks>
+    /// A table paints one large owner surface behind independently styled cells. Reversing that
+    /// surface produces a solid focus slab with normal-background islands wherever cells paint
+    /// their own faces. The table retains the theme's focused text decoration and authored colors;
+    /// it merely omits the synthetic reverse fallback while row or cell selection owns the strong
+    /// filled cue.
+    /// </remarks>
+    /// <returns>The cached complete per-state control-style set for tabular surfaces.</returns>
+    internal StyleStates<ControlStyle> GetTabularControlStyleSet() =>
+        (StyleStates<ControlStyle>) _styleSets.GetOrAdd(
+            (typeof(ControlStyle), "$tabularControl", ControlStyle.Default),
+            static (_, theme) => new Lazy<object>(
+                () => theme.BuildFocusableStyleSet(
+                    theme.GetStyleSet(ControlStyle.Default),
+                    applyBorderlessFocusFallback: false),
+                LazyThreadSafetyMode.ExecutionAndPublication),
+            this).Value;
+
+    private StyleStates<TGeometry> BuildFocusableStyleSet<TGeometry>(
+        StyleStates<TGeometry> geometry,
+        bool applyBorderlessFocusFallback = true)
         where TGeometry : ControlStyle
     {
         var input = GetStyleSet(InputStyle.Default);
@@ -1049,7 +1071,9 @@ public sealed class Theme
             }
 
             var rebased = Cascade(geometry.Normal, StyleStatesExtensions.Diff(input.Normal, state, input.AuthoredFor(stateName)));
-            return ApplyBorderlessFocusFallback(rebased, geometry.Normal);
+            return applyBorderlessFocusFallback
+                ? ApplyBorderlessFocusFallback(rebased, geometry.Normal)
+                : rebased;
         }
 
         // Every other slot passes through geometry's own resolution untouched - most notably

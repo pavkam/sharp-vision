@@ -12,9 +12,9 @@ internal enum VerificationState
     /// <summary>A matching passive event has been observed.</summary>
     Observed,
 
-    /// <summary>An automatic comparison or user confirmation passed.</summary>
+    /// <summary>An automatic comparison passed.</summary>
     Passed,
 
-    /// <summary>An automatic comparison or user confirmation failed.</summary>
+    /// <summary>An automatic comparison, request, or selected route failed.</summary>
     Failed
 }

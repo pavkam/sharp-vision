@@ -6,41 +6,62 @@ namespace TerminalDebugger;
 /// <summary>Displays terminal identity, detected capability evidence, and live verification.</summary>
 internal sealed class CapabilityDashboard: CompositeControlBase
 {
-    private readonly Text _environment;
-    private readonly ListView _list;
-    private readonly Text _detail;
+    private readonly Text _terminalSummary;
+    private readonly Text _serviceSummary;
+    private readonly Table _table;
+    private readonly Document _detail;
     private readonly Grid _matrix;
     private readonly GroupBox _detailGroup;
     private readonly List<CapabilityStatus> _statuses = [];
+    private readonly Dictionary<TableRow, CapabilityStatus> _rowStatuses = [];
+    private readonly Dictionary<CapabilityStatus, Text> _detectedCells = [];
+    private readonly Dictionary<CapabilityStatus, Text> _evidenceCells = [];
+    private readonly Dictionary<CapabilityStatus, Text> _sessionCells = [];
     private bool _isCompact;
 
     /// <summary>Initializes the retained capability dashboard.</summary>
     internal CapabilityDashboard()
     {
-        _environment = new Text("<d>Waiting for terminal profile…</d>")
+        _terminalSummary = new Text("Waiting for terminal profile…") { Overflow = Overflow.Wrap };
+        _serviceSummary = new Text("Waiting for public services…") { Overflow = Overflow.Wrap };
+
+        var environment = new Table
         {
-            Padding = new Thickness(1),
-            Overflow = Overflow.Wrap
+            IsFocusable = false,
+            IsTabStop = false,
+            SelectionMode = TableSelectionMode.None,
+            ShowHeader = false,
+            ShowGridLines = false,
+            ColumnSpacing = 2,
+            HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        _list = new ListView
+        environment.Columns.Add(TableColumn.Fixed("Context", 12));
+        environment.Columns.Add(TableColumn.Fill("Value"));
+        environment.Rows.Add(CreateSummaryRow("Terminal", _terminalSummary));
+        environment.Rows.Add(CreateSummaryRow("Services", _serviceSummary));
+
+        _table = new Table
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
-            ScrollBars = ScrollBars.Vertical,
+            ScrollBars = ScrollBars.Both,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
-            RowHeight = Length.Cells(1),
-            ItemTemplate = item => new Text(((CapabilityStatus) item!).RowText)
-            {
-                Overflow = Overflow.Ellipsis,
-                Padding = new Thickness(1, 0)
-            }
+            SelectionMode = TableSelectionMode.Row,
+            ShowGridLines = true
         };
-        _detail = new Text("Select a capability for evidence and verification details.")
+        _table.Columns.Add(TableColumn.Fixed("Feature", 25));
+        _table.Columns.Add(TableColumn.Fixed("Detected", 12));
+        _table.Columns.Add(TableColumn.Fixed("Evidence", 12));
+        _table.Columns.Add(TableColumn.Fill("Session"));
+        _table.SelectionChanged += OnSelectionChanged;
+
+        _detail = new Document
         {
             Padding = new Thickness(1),
-            Overflow = Overflow.Wrap
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
         };
-        _list.SelectionChanged += OnSelectionChanged;
+        ShowEmptyDetail();
 
         _matrix = new Grid
         {
@@ -50,25 +71,26 @@ internal sealed class CapabilityDashboard: CompositeControlBase
         };
         _matrix.Columns.Add(Track.Star(3));
         _matrix.Columns.Add(Track.Star(2));
-        Grid.SetColumn(_list, 0);
+        Grid.SetColumn(_table, 0);
         _detailGroup = new GroupBox
         {
-            HeaderText = "Evidence",
+            HeaderText = "What this means",
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
             Content = _detail
         };
         Grid.SetColumn(_detailGroup, 1);
-        _matrix.Children.Add(_list);
+        _matrix.Children.Add(_table);
         _matrix.Children.Add(_detailGroup);
 
         var root = new Dock
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Padding = new Thickness(1)
         };
-        Dock.SetSide(_environment, DockSide.Top);
-        root.Children.Add(_environment);
+        Dock.SetSide(environment, DockSide.Top);
+        root.Children.Add(environment);
         root.Children.Add(_matrix);
         InitializeContent(root);
     }
@@ -89,11 +111,11 @@ internal sealed class CapabilityDashboard: CompositeControlBase
         static status => status.Descriptor.IsNegotiated &&
                          status.Feature.State is CapabilitySupport.Unknown or CapabilitySupport.Tentative);
 
-    /// <summary>Gets the number of observed or passed session checks.</summary>
+    /// <summary>Gets the number of automatically observed or compared session checks.</summary>
     internal int VerifiedCount => _statuses.Count(
         static status => status.Verification is VerificationState.Observed or VerificationState.Passed);
 
-    /// <summary>Gets the number of failed session checks.</summary>
+    /// <summary>Gets the number of failed automatic comparisons.</summary>
     internal int FailedCount => _statuses.Count(static status => status.Verification == VerificationState.Failed);
 
     /// <summary>Loads one active terminal profile and service inventory.</summary>
@@ -114,7 +136,7 @@ internal sealed class CapabilityDashboard: CompositeControlBase
         }
 
         UpdateEnvironment(application);
-        RefreshItems(selectFirst: true);
+        BuildRows();
     }
 
     /// <summary>Updates detected evidence without losing live verification state.</summary>
@@ -130,10 +152,18 @@ internal sealed class CapabilityDashboard: CompositeControlBase
             {
                 status.UpdateFeature(application.Capabilities.Support(protocol));
             }
+
+            UpdateRow(status);
         }
 
         UpdateEnvironment(application);
-        RefreshItems(selectFirst: false);
+
+        if (SelectedStatus() is { } selected)
+        {
+            ShowDetail(selected);
+        }
+
+        SummaryChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Refreshes terminal identity, dimensions, and public service availability.</summary>
@@ -177,21 +207,7 @@ internal sealed class CapabilityDashboard: CompositeControlBase
         _matrix.RowSpacing = 0;
     }
 
-    private void UpdateEnvironment(Application application)
-    {
-        var description = application.Terminal.Description;
-        var diagnostics = application.TerminalDiagnostics;
-        _environment.Content =
-            $"<accent><b>{TextMarkup.Escape(description.Name)}</b></accent> · source {description.Origin} · " +
-            $"backend <info>{TextMarkup.Escape(diagnostics.BackendName)}</info> · graphics {diagnostics.GraphicsBackend} · " +
-            $"<info>{application.Size.Width}×{application.Size.Height}</info> cells · " +
-            $"{application.Capabilities.ColorDepth} color ({application.Capabilities.ColorOrigin}) · " +
-            $"Unicode {application.Capabilities.UnicodeVersion} · ambiguous width {application.Capabilities.AmbiguousWidth}\n" +
-            $"Services: title {YesNo(application.Terminal.IsTitleSupported)}, bell {YesNo(application.Terminal.Bell.IsSupported)}, " +
-            $"clipboard {YesNo(application.Terminal.Clipboard.IsSupported)}, notifications {YesNo(application.Terminal.Notifications.IsSupported)}";
-    }
-
-    /// <summary>Records live verification for one protocol.</summary>
+    /// <summary>Records automatic live verification for one protocol.</summary>
     /// <param name="protocol">The verified protocol.</param>
     /// <param name="verification">The new verification state.</param>
     /// <param name="detail">The non-empty evidence explanation.</param>
@@ -204,55 +220,144 @@ internal sealed class CapabilityDashboard: CompositeControlBase
                          "The protocol has no dashboard row.");
 
         status.SetVerification(verification, detail);
-        var selected = _list.SelectedIndex;
-        RefreshItems(selectFirst: false);
+        UpdateRow(status);
 
-        if (selected >= 0 && selected < _list.Items.Count)
+        if (ReferenceEquals(SelectedStatus(), status))
         {
-            _list.SelectedIndex = selected;
-            ShowDetail((CapabilityStatus) _list.Items[selected]!);
-        }
-    }
-
-    private void RefreshItems(bool selectFirst)
-    {
-        _list.Items = _statuses.Cast<object?>().ToArray();
-
-        if (selectFirst && _list.Items.Count > 0)
-        {
-            _list.SelectedIndex = 0;
-            ShowDetail(_statuses[0]);
+            ShowDetail(status);
         }
 
         SummaryChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    private void OnSelectionChanged(object? sender, ListSelectionChangedEventArgs eventArgs)
+    private static TableRow CreateSummaryRow(string label, ControlBase value) => new([
+        new Text($"<d>{label}</d>"),
+        value
+    ]);
+
+    private void UpdateEnvironment(Application application)
     {
-        if (_list.SelectedItem is CapabilityStatus status)
+        var description = application.Terminal.Description;
+        var diagnostics = application.TerminalDiagnostics;
+        _terminalSummary.Content =
+            $"<accent><b>{TextMarkup.Escape(description.Name)}</b></accent> · {description.Origin} · " +
+            $"<info>{TextMarkup.Escape(diagnostics.BackendName)}</info> · {diagnostics.GraphicsBackend} graphics · " +
+            $"{application.Size.Width}×{application.Size.Height} · {application.Capabilities.ColorDepth} color · " +
+            $"Unicode {application.Capabilities.UnicodeVersion}";
+        _serviceSummary.Content =
+            $"Title {Availability(application.Terminal.IsTitleSupported)}   " +
+            $"Bell {Availability(application.Terminal.Bell.IsSupported)}   " +
+            $"Clipboard {Availability(application.Terminal.Clipboard.IsSupported)}   " +
+            $"Notifications {Availability(application.Terminal.Notifications.IsSupported)}";
+    }
+
+    private void BuildRows()
+    {
+        _rowStatuses.Clear();
+        _detectedCells.Clear();
+        _evidenceCells.Clear();
+        _sessionCells.Clear();
+        _table.Rows.Clear();
+
+        foreach (var status in _statuses)
+        {
+            var detected = new Text(DetectedMarkup(status));
+            var evidence = new Text(status.Descriptor.IsNegotiated ? status.Feature.Origin.ToString() : "Built-in");
+            var session = new Text(SessionMarkup(status)) { Overflow = Overflow.Ellipsis };
+            var row = new TableRow([
+                new Text(status.Descriptor.Label) { Overflow = Overflow.Ellipsis },
+                detected,
+                evidence,
+                session
+            ]);
+            _table.Rows.Add(row);
+            _rowStatuses.Add(row, status);
+            _detectedCells.Add(status, detected);
+            _evidenceCells.Add(status, evidence);
+            _sessionCells.Add(status, session);
+        }
+
+        if (_table.Rows.Count > 0)
+        {
+            _table.SelectRow(_table.Rows[0]);
+            ShowDetail(_rowStatuses[_table.Rows[0]]);
+        }
+
+        SummaryChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private CapabilityStatus? SelectedStatus() =>
+        _table.SelectedRows.Count == 1 && _rowStatuses.TryGetValue(_table.SelectedRows[0], out var status)
+            ? status
+            : null;
+
+    private void UpdateRow(CapabilityStatus status)
+    {
+        _detectedCells[status].Content = DetectedMarkup(status);
+        _evidenceCells[status].Content = status.Descriptor.IsNegotiated
+            ? status.Feature.Origin.ToString()
+            : "Built-in";
+        _sessionCells[status].Content = SessionMarkup(status);
+    }
+
+    private void OnSelectionChanged(object? sender, TableSelectionChangedEventArgs eventArgs)
+    {
+        if (_table.SelectedRows.Count == 1 && _rowStatuses.TryGetValue(_table.SelectedRows[0], out var status))
         {
             ShowDetail(status);
         }
     }
 
+    private void ShowEmptyDetail()
+    {
+        _detail.Blocks.Clear();
+        _detail.Blocks.Add(new DocumentHeading(2, "Feature evidence"));
+        _detail.Blocks.Add(new DocumentParagraph("Select a feature to see what was detected and why."));
+    }
+
     private void ShowDetail(CapabilityStatus status)
     {
-        _detail.Content = status.Descriptor.IsNegotiated
-            ?
-            $"<accent><b>{status.Descriptor.Label}</b></accent>\n" +
-            $"Group: <info>{status.Descriptor.Group}</info>\n\n" +
-            $"Detected: {SupportMarkup(status.Feature.State)}\n" +
-            $"Evidence origin: <info>{status.Feature.Origin}</info>\n" +
-            $"Authoritative for output: {YesNo(status.Feature.Authoritative)}\n\n" +
-            $"Live check: {VerificationMarkup(status.Verification)}\n" +
-            $"{status.VerificationDetail}\n\n" +
-            status.Descriptor.Explanation
-            : $"<accent><b>{status.Descriptor.Label}</b></accent>\n" +
-              $"Group: <info>{status.Descriptor.Group}</info>\n\n" +
-              "SharpVision support: <success>Implemented</success>\n" +
-              "Terminal evidence: <d>not separately negotiated</d>\n\n" +
-              status.Descriptor.Explanation;
+        _detail.Blocks.Clear();
+        _detail.Blocks.Add(new DocumentHeading(2, TextMarkup.Escape(status.Descriptor.Label)));
+
+        if (status.Descriptor.IsNegotiated)
+        {
+            _detail.Blocks.Add(new DocumentParagraph(
+                $"Detected: {SupportMarkup(status.Feature.State)}\n" +
+                $"Evidence: <info>{status.Feature.Origin}</info>\n" +
+                $"Output authorized: {YesNo(status.Feature.Authoritative)}"));
+            _detail.Blocks.Add(new DocumentHeading(3, "This session"));
+            _detail.Blocks.Add(new DocumentParagraph(
+                $"{VerificationMarkup(status.Verification)} — {TextMarkup.Escape(status.VerificationDetail)}"));
+        }
+        else
+        {
+            _detail.Blocks.Add(new DocumentParagraph(
+                "SharpVision support: <success>implemented</success>\n" +
+                "Terminal evidence: <d>not separately negotiated</d>"));
+        }
+
+        _detail.Blocks.Add(new DocumentHeading(3, "Purpose"));
+        _detail.Blocks.Add(new DocumentParagraph(TextMarkup.Escape(status.Descriptor.Explanation)));
     }
+
+    private static string DetectedMarkup(CapabilityStatus status) => status.Descriptor.IsNegotiated
+        ? SupportMarkup(status.Feature.State)
+        : "<success>Implemented</success>";
+
+    private static string SessionMarkup(CapabilityStatus status) => status.Verification switch
+    {
+        VerificationState.Observed => "<info>Observed live</info>",
+        VerificationState.Passed => "<success>Compared successfully</success>",
+        VerificationState.Failed => "<error>Automatic check failed</error>",
+        VerificationState.NotRun => status.Descriptor.IsNegotiated ? "<d>Not exercised</d>" : "<d>Built-in</d>",
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(status),
+            status.Verification,
+            "The verification state is unknown.")
+    };
+
+    private static string Availability(bool value) => value ? "<success>available</success>" : "<d>unavailable</d>";
 
     private static string YesNo(bool value) => value ? "<success>yes</success>" : "<d>no</d>";
 
@@ -267,10 +372,13 @@ internal sealed class CapabilityDashboard: CompositeControlBase
 
     private static string VerificationMarkup(VerificationState verification) => verification switch
     {
-        VerificationState.Observed => "<info>Observed</info>",
-        VerificationState.Passed => "<success>Passed</success>",
-        VerificationState.Failed => "<error>Failed</error>",
-        VerificationState.NotRun => "<d>Not run</d>",
-        _ => throw new ArgumentOutOfRangeException(nameof(verification), verification, "The verification state is unknown.")
+        VerificationState.Observed => "<info>Observed live</info>",
+        VerificationState.Passed => "<success>Automatic comparison passed</success>",
+        VerificationState.Failed => "<error>Automatic comparison failed</error>",
+        VerificationState.NotRun => "<d>Not exercised</d>",
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(verification),
+            verification,
+            "The verification state is unknown.")
     };
 }
