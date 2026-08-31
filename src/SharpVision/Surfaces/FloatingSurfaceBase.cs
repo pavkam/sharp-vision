@@ -69,6 +69,18 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <summary>Gets whether this surface currently owns one active application modality scope.</summary>
     protected bool HasActiveSurfaceModal => _modalSession.IsActive;
 
+    /// <summary>
+    /// Gets whether the common close transaction is currently inside its <see cref="CloseRequested"/>
+    /// request phase.
+    /// </summary>
+    /// <remarks>
+    /// This is narrower than the whole close transaction: it clears before the family-specific
+    /// closing state commits and before <see cref="Closing"/> runs, so a family can special-case
+    /// only a reentrant call that lands synchronously from a <see cref="CloseRequested"/> handler
+    /// without also swallowing reentry from those later phases.
+    /// </remarks>
+    private protected bool IsRequestingClose => _isRequestingClose;
+
     /// <summary>Gets the identity of the current common presentation transaction.</summary>
     internal long SurfacePresentationVersion { get; private set; }
 
@@ -314,6 +326,16 @@ public abstract class FloatingSurfaceBase: ContentControl
         finally
         {
             _isRequestingClose = false;
+        }
+
+        // A CloseRequested subscriber may have disposed the surface synchronously while the event
+        // above was raising - bail out before touching any mutable state that ThrowIfDisposed()-
+        // guarded members (like the family's closing-state commit) would reject. By this point
+        // OnUnavailable(Disposed) has already performed the full close, so there is nothing left
+        // for this transaction to commit.
+        if (IsDisposed)
+        {
+            return false;
         }
 
         _isClosing = true;

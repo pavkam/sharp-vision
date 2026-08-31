@@ -927,6 +927,16 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
         if (IsOpenTransitioning)
         {
+            // A CloseRequested handler repeating the same close request synchronously is a
+            // documented no-op: the outer request remains authoritative, and this call has
+            // nothing left to contribute. IsRequestingClose narrows this to exactly that phase -
+            // it clears before the family's closing state commits and before Closing runs, so
+            // reentry from those later phases still falls through to the throw below.
+            if (!value && IsRequestingClose)
+            {
+                return;
+            }
+
             throw new InvalidOperationException("Popup open-state transitions cannot be reentered.");
         }
 
@@ -936,6 +946,15 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         }
 
         var wasOpen = _isOpen;
+        // Captured before the transaction so the post-transaction check below can tell whether a
+        // close was actually committed here - mirroring IsCurrentClosedState's before/after version
+        // comparison - instead of unconditionally trusting the field's current value. A reentrant
+        // disposal from CloseRequested (see OnUnavailable) can commit its own close and publish
+        // CloseTransitionCompleted for it before this call resumes; RaiseCloseTransitionCompleted's
+        // own exact-once guard is what actually prevents republishing that version, but gating the
+        // call on a version change keeps this call site from assuming it owns whichever commit
+        // produced the current value.
+        var precedingCloseCommitVersion = _closeCommitVersion;
         IsOpenTransitioning = true;
         ExceptionDispatchInfo? failure = null;
         try
@@ -972,7 +991,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
             IsOpenTransitioning = false;
         }
 
-        if (wasOpen && !_isOpen)
+        if (wasOpen && !_isOpen && _closeCommitVersion != precedingCloseCommitVersion)
         {
             ExceptionAggregation.Capture(() => RaiseCloseTransitionCompleted(_closeCommitVersion), ref failure);
         }

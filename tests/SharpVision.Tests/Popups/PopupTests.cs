@@ -966,6 +966,69 @@ public sealed class PopupTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a CloseRequested handler that repeats the same close request synchronously
+    /// is a documented no-op instead of reentering the open-state transition, mirroring Window's
+    /// equivalent contract.</summary>
+    [Fact]
+    public async Task CloseRequested_WhenHandlerRepeatsTheCloseReentrantly_IsANoOpAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var popup = new Popup { Content = new ProbeControl() };
+            var root = new Overlay();
+            root.Children.Add(popup);
+            root.Attach(dispatcher);
+            popup.IsOpen = true;
+            new LayoutEngine().Layout(root, new Size(12, 6));
+            var requestedCalls = 0;
+            popup.CloseRequested += (_, _) =>
+            {
+                requestedCalls++;
+
+                if (requestedCalls == 1)
+                {
+                    popup.IsOpen = false;
+                }
+            };
+
+            popup.IsOpen = false;
+
+            requestedCalls.ShouldBe(1);
+            popup.IsOpen.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies disposing the Popup from a CloseRequested handler completes the close
+    /// without throwing ObjectDisposedException, and that the internal CloseTransitionCompleted
+    /// boundary - which private composite owners rely on to finish their own lifecycle exactly
+    /// once - still publishes exactly once for that one logical close.</summary>
+    [Fact]
+    public async Task CloseRequested_WhenHandlerDisposesPopupSynchronously_ClosesWithoutThrowingAndPublishesTransitionOnceAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var popup = new Popup { Content = new ProbeControl() };
+            var root = new Overlay();
+            root.Children.Add(popup);
+            root.Attach(dispatcher);
+            popup.IsOpen = true;
+            new LayoutEngine().Layout(root, new Size(12, 6));
+            var transitionCompletedCalls = 0;
+            popup.CloseRequested += (_, _) => popup.Dispose();
+            popup.CloseTransitionCompleted += (_, _) => transitionCompletedCalls++;
+
+            popup.IsOpen = false;
+
+            popup.IsDisposed.ShouldBeTrue();
+            popup.IsOpen.ShouldBeFalse();
+            transitionCompletedCalls.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a callback cannot reverse an active open-state transaction.</summary>
     [Fact]
     public void IsOpen_WhenPropertyCallbackReenters_RejectsNestedTransitionAndKeepsOuterStateCoherent()
