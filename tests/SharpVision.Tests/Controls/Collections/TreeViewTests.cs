@@ -536,6 +536,22 @@ public sealed class TreeViewTests
         captured.ShouldBe([false, true]);
     }
 
+    /// <summary>Verifies an ExpandedChanged subscriber that disposes the owning tree cannot reach
+    /// a structural rebuild against the now-disposed tree - the item itself is left untouched by
+    /// the tree's dispose, so it still finds and calls back into the disposed tree.</summary>
+    [Fact]
+    public void IsExpanded_WhenExpandedChangedDisposesTree_DoesNotThrow()
+    {
+        var item = new TreeViewItem { Header = "Parent" };
+        item.Children.Add(new TreeViewItem { Header = "Child" });
+        var tree = new TreeView { Items = { item } };
+        item.ExpandedChanged += (_, _) => tree.Dispose();
+
+        _ = Should.NotThrow(() => item.IsExpanded = true);
+
+        tree.IsDisposed.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a newer expansion committed by the public callback owns all structural
     /// and loading work, so the superseded outer transition cannot start a hidden request.</summary>
     [Fact]

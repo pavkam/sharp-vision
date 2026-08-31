@@ -686,6 +686,11 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     /// <summary>Notifies the tree that a structural change requires rebuilding the flat list.</summary>
     internal void NotifyStructureChanged()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (_batchUpdateDepth > 0)
         {
             _ownedItemsStale = true;
