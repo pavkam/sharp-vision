@@ -142,7 +142,11 @@ offset reset, generated parts, and both axis reservation values.
 > re-reading offsets on a disposed control: `ScrollBy` reports the scroll as
 > handled, `BringIntoView` reports the reveal as incomplete (`false`), and the
 > in-flight `Arrange` pass skips `ArrangeOverride` and `ArrangeOverlays`
-> entirely for the disposed control.
+> entirely for the disposed control. The same pass also re-checks disposal after
+> `ArrangeOverride` runs and before its trailing steps, so a container disposed
+> from inside its own override skips the rest of `Arrange` too — including the
+> context menu arrange, collapsed-child bounds cleanup, and the `BoundsChanged`
+> notification.
 
 ## Example
 

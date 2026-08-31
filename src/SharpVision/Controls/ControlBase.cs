@@ -1357,20 +1357,30 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             if (!IsDisposed)
             {
                 ArrangeOverride(contentSlot);
-                ArrangeOverlays(content);
+
+                // ArrangeOverride can synchronously dispose `this` via a subscriber-owned event.
+                if (!IsDisposed)
+                {
+                    ArrangeOverlays(content);
+                }
             }
 
-            if (ContextMenu?.Presentation is { } contextMenuPresentation)
+            // ArrangeOverride can synchronously dispose `this` via a subscriber-owned event, and
+            // this block has no early exit between its own statements to catch that on its own.
+            if (!IsDisposed)
             {
-                _ = MeasureChild(contextMenuPresentation, new Constraint(null, null));
-                ArrangeChild(contextMenuPresentation, RootBounds(bounds), ResolvedAxes.Both);
-            }
+                if (ContextMenu?.Presentation is { } contextMenuPresentation)
+                {
+                    _ = MeasureChild(contextMenuPresentation, new Constraint(null, null));
+                    ArrangeChild(contextMenuPresentation, RootBounds(bounds), ResolvedAxes.Both);
+                }
 
-            ClearCollapsedOwnedChildBounds();
+                ClearCollapsedOwnedChildBounds();
 
-            if (bounds != previousBounds)
-            {
-                BoundsChanged?.Invoke(this, EventArgs.Empty);
+                if (bounds != previousBounds)
+                {
+                    BoundsChanged?.Invoke(this, EventArgs.Empty);
+                }
             }
         }
         catch

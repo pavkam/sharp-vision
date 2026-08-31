@@ -2152,6 +2152,28 @@ public sealed class ControlBaseTests
         disabledChild.DesiredSize.ShouldBe(enabledChild.DesiredSize);
     }
 
+    /// <summary>Verifies a layout pass completes without throwing when a control's own
+    /// ArrangeOverride synchronously disposes it - unlike the ScrollChanged cases elsewhere, the
+    /// disposing event here fires from inside the override itself, so the pass must also skip the
+    /// trailing context menu arrange, collapsed-child cleanup, and BoundsChanged notification that
+    /// follow ArrangeOverride with no early exit of their own.</summary>
+    [Fact]
+    public void Layout_WhenArrangeOverrideDisposesControl_SkipsTrailingArrangeStepsWithoutThrowing()
+    {
+        var contextMenu = new ContextMenu();
+        var control = new ProbeControl(new Size(2, 1)) { ContextMenu = contextMenu };
+        var presentation = contextMenu.Presentation;
+        var boundsChanged = 0;
+        control.BoundsChanged += (_, _) => boundsChanged++;
+        control.Arranging = self => self.Dispose();
+
+        Should.NotThrow(() => new LayoutEngine().Layout(control, new Size(4, 3)));
+
+        control.IsDisposed.ShouldBeTrue();
+        boundsChanged.ShouldBe(0);
+        presentation.Bounds.ShouldBe(default);
+    }
+
     /// <summary>Verifies non-specialized controls resolve the universal ControlStyle appearance.</summary>
     [Fact]
     public void ActualAppearance_WhenControlIsNotSpecialized_UsesTheUniversalControlStyle()
