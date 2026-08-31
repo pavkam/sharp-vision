@@ -240,11 +240,33 @@ public sealed class SplitPane: Container
             out var minimum,
             out var maximum);
 
+        var firstOuterExtent = extents[0].Add(margins[0]);
+        var secondOuterExtent = extents[1].Add(margins[1]);
+        var crossContainingBase = CrossContainingBase(bounds);
+        var percentageBase = Orientation == Orientation.Horizontal
+            ? new Constraint(primaryPercentBase, crossContainingBase)
+            : new Constraint(crossContainingBase, primaryPercentBase);
+        var constraint = new Constraint(bounds.Width, bounds.Height);
+
+        // Arrange can receive a different slot from the preceding measure. Refresh both panes at
+        // their final outer tracks so width-dependent content and nested scroll extents describe
+        // the geometry that will actually be arranged, while leaving this resolved allocation fixed.
+        _ = MeasureParticipantInSlot(
+            first!,
+            firstOuterExtent,
+            constraint,
+            percentageBase,
+            primaryPercentBase);
+        _ = MeasureParticipantInSlot(
+            second!,
+            secondOuterExtent,
+            constraint,
+            percentageBase,
+            primaryPercentBase);
+
         MinimumFirstPaneExtent = minimum;
         MaximumFirstPaneExtent = maximum;
 
-        var firstOuterExtent = extents[0].Add(margins[0]);
-        var secondOuterExtent = extents[1].Add(margins[1]);
         var dividerOrigin = PrimaryOrigin(bounds).Add(firstOuterExtent);
         var secondOrigin = dividerOrigin.Add(dividerExtent);
         var firstSlot = OrientedRect(bounds, PrimaryOrigin(bounds), firstOuterExtent);
@@ -257,7 +279,6 @@ public sealed class SplitPane: Container
                 : new Rect(bounds.X, dividerOrigin, bounds.Width, dividerExtent);
         }
 
-        var crossContainingBase = CrossContainingBase(bounds);
         ArrangeParticipant(first!, firstSlot, primaryPercentBase, crossContainingBase);
         ArrangeParticipant(second!, secondSlot, primaryPercentBase, crossContainingBase);
     }

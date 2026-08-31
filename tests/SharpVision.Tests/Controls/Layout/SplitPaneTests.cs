@@ -667,4 +667,80 @@ public sealed class SplitPaneTests
         first.Bounds.ShouldBe(new Rect(0, 0, 5, 3));
         second.Bounds.ShouldBe(new Rect(6, 0, 5, 3));
     }
+
+    /// <summary>Verifies final arrangement remeasures a scrolling pane whose text height depends on its width.</summary>
+    [Fact]
+    public void Arrange_WhenFinalHorizontalSlotNarrows_RemeasuresScrollablePaneExtent()
+    {
+        // Arrange
+        var pane = new SplitPane();
+        var scrollable = new Stack
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Never
+        };
+        var text = new ControlText("abcdefghij") { Overflow = Overflow.WrapAnywhere };
+        scrollable.Children.Add(text);
+        pane.Children.Add(scrollable);
+        pane.Children.Add(new ProbeControl());
+        pane.Measure(new Constraint(11, 4));
+        text.DesiredSize.ShouldBe(new Size(5, 2));
+
+        // Act
+        pane.Arrange(new Rect(0, 0, 7, 4), widthResolved: true, heightResolved: true);
+
+        // Assert
+        scrollable.Bounds.ShouldBe(new Rect(0, 0, 3, 4));
+        scrollable.Viewport.ShouldBe(new Size(3, 4));
+        scrollable.Extent.ShouldBe(new Size(3, 4));
+        text.DesiredSize.ShouldBe(new Size(3, 4));
+        text.Bounds.ShouldBe(new Rect(0, 0, 3, 4));
+    }
+
+    /// <summary>Verifies a direct width-dependent pane refreshes desired geometry for its final slot.</summary>
+    [Fact]
+    public void Arrange_WhenFinalHorizontalSlotNarrows_RemeasuresWrappingText()
+    {
+        // Arrange
+        var pane = new SplitPane();
+        var text = new ControlText("abcdefghij") { Overflow = Overflow.WrapAnywhere };
+        pane.Children.Add(text);
+        pane.Children.Add(new ProbeControl());
+        pane.Measure(new Constraint(11, 4));
+        text.DesiredSize.ShouldBe(new Size(5, 2));
+
+        // Act
+        pane.Arrange(new Rect(0, 0, 7, 4), widthResolved: true, heightResolved: true);
+
+        // Assert
+        text.DesiredSize.ShouldBe(new Size(3, 4));
+        text.Bounds.ShouldBe(new Rect(0, 0, 3, 4));
+    }
+
+    /// <summary>Verifies vertical splits remeasure a Wrap whose cross extent depends on final height.</summary>
+    [Fact]
+    public void Arrange_WhenFinalVerticalSlotNarrows_RemeasuresVerticalWrap()
+    {
+        // Arrange
+        var pane = new SplitPane { Orientation = Orientation.Vertical };
+        var wrap = new Wrap { Orientation = Orientation.Vertical };
+
+        for (var index = 0; index < 4; index++)
+        {
+            wrap.Children.Add(new ProbeControl(new Size(1, 1)));
+        }
+
+        pane.Children.Add(wrap);
+        pane.Children.Add(new ProbeControl());
+        pane.Measure(new Constraint(4, 11));
+        wrap.DesiredSize.ShouldBe(new Size(1, 4));
+
+        // Act
+        pane.Arrange(new Rect(0, 0, 4, 7), widthResolved: true, heightResolved: true);
+
+        // Assert
+        wrap.DesiredSize.ShouldBe(new Size(2, 3));
+        wrap.Bounds.ShouldBe(new Rect(0, 0, 4, 3));
+    }
 }
