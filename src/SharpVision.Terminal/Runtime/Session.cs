@@ -764,13 +764,20 @@ public sealed class Session: IAsyncDisposable
 
             if (started)
             {
+                // The written batch may or may not have room for the CSI 6n cursor-position
+                // fence (a low caller-supplied query budget can crowd it out), but the decoder
+                // has no per-query visibility into that budget. Gating on the whole negotiation
+                // window instead of the exact fence query is a conservative approximation: it
+                // never misses a genuine reply, and DisableCursorPositionQuery below always runs
+                // before this modified-F3 grammar could otherwise stay swallowed indefinitely.
+                router.EnableCursorPositionQuery();
                 await _transport.WriteAsync(queries.WrittenMemory, cancellationToken)
                     .ConfigureAwait(false);
                 await _transport.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
             else
             {
-                _ = PublishNegotiation(negotiator);
+                _ = PublishNegotiation(negotiator, router);
             }
         }
 
@@ -873,7 +880,7 @@ public sealed class Session: IAsyncDisposable
                         continue;
                     }
 
-                    var capabilities = PublishNegotiation(negotiator);
+                    var capabilities = PublishNegotiation(negotiator, router);
                     modes = await EnableOptionalAsync(
                             capabilities,
                             router,
@@ -952,7 +959,7 @@ public sealed class Session: IAsyncDisposable
                     if (!ready)
                     {
                         _ = negotiator!.Complete();
-                        _ = PublishNegotiation(negotiator);
+                        _ = PublishNegotiation(negotiator, router);
                         ready = true;
                         deadline = null;
 
@@ -1003,7 +1010,7 @@ public sealed class Session: IAsyncDisposable
 
                 if (!ready && negotiator!.Completed)
                 {
-                    var capabilities = PublishNegotiation(negotiator);
+                    var capabilities = PublishNegotiation(negotiator, router);
                     modes = await EnableOptionalAsync(
                             capabilities,
                             router,
@@ -1226,9 +1233,15 @@ public sealed class Session: IAsyncDisposable
             : capabilities.CellMouse.Supported;
     }
 
-    private TerminalCapabilities PublishNegotiation(Negotiator negotiator)
+    private TerminalCapabilities PublishNegotiation(Negotiator negotiator, ProtocolRouter router)
     {
         Debug.Assert(negotiator.Completed, "Only a completed negotiation can publish diagnostics.");
+
+        // Every completion path funnels through here, so this is the one place that reliably
+        // closes the cursor-position query window regardless of which of the four routes above
+        // (route-encoding failure, deadline expiry, transport EOF, or an in-band match) actually
+        // finished negotiation.
+        router.DisableCursorPositionQuery();
         var capabilities = negotiator.Capabilities;
         _context = _context.WithCapabilities(capabilities);
         Diagnostics = Diagnostics.WithNegotiation(

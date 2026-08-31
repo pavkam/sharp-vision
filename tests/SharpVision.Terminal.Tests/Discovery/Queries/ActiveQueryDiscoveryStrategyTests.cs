@@ -454,6 +454,80 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         negotiator.Completed.ShouldBeTrue();
     }
 
+    /// <summary>
+    /// Verifies a cursor-position-shaped reply arriving before any other family has answered does
+    /// not retire them. <c>CSI 6n</c>'s reply grammar (<c>CSI &lt;row&gt;;&lt;col&gt;R</c>) is
+    /// byte-identical to a modified F3 keystroke, so an unsolicited or replayed keystroke landing
+    /// early in the startup window must not be trusted as proof every other family stayed silent:
+    /// it only resolves its own tracked family, and every other family must still be answerable
+    /// afterward and complete with real query evidence rather than being wiped absent.
+    /// </summary>
+    [Fact]
+    public void Accept_WhenCursorPositionReplyArrivesFirst_DoesNotRetireOtherOutstandingFamilies()
+    {
+        // Arrange
+        var negotiator = new ActiveQueryDiscoveryStrategy(
+            new NegotiationOptions(new Dictionary<string, string?>()));
+        _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
+
+        // Act: the fence-shaped reply is the very first byte sequence observed, before the real
+        // terminal (or any other family) has had a chance to answer anything.
+        var cursorPosition = Response("1;2"u8, [], (byte) 'R');
+        negotiator.Accept(in cursorPosition).ShouldBe(QueryMatch.Matched);
+
+        // Assert: negotiation must not have collapsed - every other family is still active and
+        // answerable rather than retired with absent evidence.
+        negotiator.Completed.ShouldBeFalse();
+        negotiator.HasPendingWork.ShouldBeTrue();
+
+        var synchronizedOutput = PrivateMode(2026, state: 1);
+        negotiator.Accept(in synchronizedOutput).ShouldBe(QueryMatch.Matched);
+
+        foreach (var mode in new[] { 1004, 2004, 1006, 1016, 5522 })
+        {
+            negotiator.Accept(in PrivateMode(mode, state: 1)).ShouldBe(QueryMatch.Matched);
+        }
+
+        foreach (var response in new[]
+                 {
+                     Metrics("4;800;1200"u8),
+                     Metrics("6;20;10"u8),
+                     Metrics("8;40;120"u8)
+                 })
+        {
+            negotiator.Accept(in response).ShouldBe(QueryMatch.Matched);
+        }
+
+        foreach (var response in new[]
+                 {
+                     Palette("4;0;rgb:1111/2222/3333"u8),
+                     Palette("10;rgb:ffff/eeee/0000"u8),
+                     Palette("11;rgb:0000/1111/ffff"u8)
+                 })
+        {
+            negotiator.Accept(in response).ShouldBe(QueryMatch.Matched);
+        }
+
+        var keyboard = Response("?3"u8, [], (byte) 'u');
+        negotiator.Accept(in keyboard).ShouldBe(QueryMatch.Matched);
+        var secondary = Response(">41;410;0"u8, [], (byte) 'c');
+        negotiator.Accept(in secondary).ShouldBe(QueryMatch.Matched);
+        var primary = Response("?1;2"u8, [], (byte) 'c');
+        negotiator.Accept(in primary).ShouldBe(QueryMatch.Matched);
+        _ = XtermResponses.TryOscItermCapabilities("1337;Capabilities=F"u8, out var capabilities);
+        negotiator.Accept(capabilities).ShouldBe(QueryMatch.Matched);
+
+        // Only once every genuine family has actually answered does negotiation complete, and it
+        // carries real query evidence rather than the absent fields a blind retirement would have
+        // published the instant the fence-shaped reply arrived above.
+        negotiator.Completed.ShouldBeTrue();
+        negotiator.Capabilities.SynchronizedOutput.ShouldBe(
+            new Feature(CapabilitySupport.Supported, Origin.Query));
+        negotiator.Capabilities.KittyKeyboard.ShouldBe(
+            new Feature(CapabilitySupport.Supported, Origin.Query));
+        negotiator.Results.WindowPixels.ShouldNotBeNull();
+    }
+
     /// <summary>Verifies a read winning at or after the deadline atomically rejects the whole batch.</summary>
     /// <param name="ticksAfterDeadline">Ticks at or after the exact deadline.</param>
     [Theory]

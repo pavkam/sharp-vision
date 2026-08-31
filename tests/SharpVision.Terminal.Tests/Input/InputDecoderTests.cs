@@ -2741,6 +2741,64 @@ public sealed class InputDecoderTests
         stroke.Character.ShouldBe(new Rune('a'));
     }
 
+    /// <summary>Verifies a modified F3 keystroke (<c>CSI 1;&lt;mod&gt;R</c>) is decoded as a key
+    /// event rather than claimed as a DSR cursor-position reply when no cursor-position query is
+    /// outstanding. The two are byte-identical, so a reply-shaped match here would otherwise
+    /// swallow the keystroke permanently: this shape has no further CSI fallback beyond
+    /// <see cref="TryHandleLegacyCsiKey"/> once the xterm response handler stops claiming it.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenModifiedF3ArrivesWithNoQueryOutstanding_IsDecodedAsKeyNotReply()
+    {
+        var sink = new RecordingProtocolSink();
+        using var decoder = new InputDecoder(sink);
+
+        decoder.Decode("[1;2R"u8);
+
+        sink.Responses.ShouldBeEmpty();
+        var stroke = sink.Strokes.ShouldHaveSingleItem();
+        stroke.Code.ShouldBe(Code.F3);
+        stroke.Modifiers.ShouldBe(Modifiers.Shift);
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies the same shape is still claimed as the genuine reply while a
+    /// cursor-position query is outstanding, so <see cref="InputDecoder.EnableCursorPositionQuery"/>
+    /// preserves correlation during active negotiation instead of always preferring the key
+    /// grammar.</summary>
+    [Fact]
+    public void Decode_WhenModifiedF3ArrivesWithQueryOutstanding_IsClaimedAsReplyNotKey()
+    {
+        var sink = new RecordingProtocolSink();
+        using var decoder = new InputDecoder(sink);
+        decoder.EnableCursorPositionQuery();
+
+        decoder.Decode("[1;2R"u8);
+
+        var response = sink.Responses.ShouldHaveSingleItem();
+        response.Kind.ShouldBe(ResponseKind.CursorPosition);
+        response.Values.ToArray().ShouldBe([1, 2]);
+        sink.Strokes.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies disabling the cursor-position query restores modified F3 key delivery,
+    /// mirroring the lifecycle Session drives around a completed negotiation.</summary>
+    [Fact]
+    public void Decode_WhenCursorPositionQueryIsDisabledAfterEnabling_RestoresKeyDelivery()
+    {
+        var sink = new RecordingProtocolSink();
+        using var decoder = new InputDecoder(sink);
+        decoder.EnableCursorPositionQuery();
+        decoder.DisableCursorPositionQuery();
+
+        decoder.Decode("[1;5R"u8);
+
+        sink.Responses.ShouldBeEmpty();
+        var stroke = sink.Strokes.ShouldHaveSingleItem();
+        stroke.Code.ShouldBe(Code.F3);
+        stroke.Modifiers.ShouldBe(Modifiers.Control);
+    }
+
     #endregion
 
     #region xterm modifyOtherKeys

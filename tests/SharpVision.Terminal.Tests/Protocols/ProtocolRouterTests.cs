@@ -34,7 +34,6 @@ public sealed class ProtocolRouterTests
     [Theory]
     [InlineData("\u001b[?1;2c", ResponseKind.PrimaryAttributes)]
     [InlineData("\u001b[>41;410;0c", ResponseKind.SecondaryAttributes)]
-    [InlineData("\u001b[12;34R", ResponseKind.CursorPosition)]
     [InlineData("\u001b[?2026;1$y", ResponseKind.PrivateMode)]
     [InlineData("\u001b[?3u", ResponseKind.Keyboard)]
     public void Route_WhenReplyIsFragmented_DeliversTypedResponse(
@@ -56,6 +55,62 @@ public sealed class ProtocolRouterTests
             sink.Sequences.ShouldBeEmpty();
             sink.Strokes.ShouldBeEmpty();
             sink.Text.ShouldBeEmpty();
+        }
+    }
+
+    /// <summary>
+    /// Verifies a DSR cursor-position reply (<c>CSI &lt;row&gt;;&lt;col&gt;R</c>) is still claimed
+    /// as a typed response at every transport split once
+    /// <see cref="ProtocolRouter.EnableCursorPositionQuery"/> marks a query outstanding. Unlike the
+    /// other shapes in <see cref="Route_WhenReplyIsFragmented_DeliversTypedResponse"/>, this one is
+    /// byte-identical to a modified F3 keystroke and is therefore excluded from that shared theory:
+    /// by default, with no query outstanding, it decodes as a key instead.
+    /// </summary>
+    [Fact]
+    public void Route_WhenCursorPositionReplyIsFragmentedAndQueryIsOutstanding_DeliversTypedResponse()
+    {
+        // Arrange
+        var bytes = Encoding.UTF8.GetBytes("\u001b[12;34R");
+
+        // Act / Assert
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingProtocolSink();
+            using ProtocolRouter router = new(sink);
+            router.EnableCursorPositionQuery();
+            router.Route(bytes.AsSpan(0, split));
+            router.Route(bytes.AsSpan(split));
+
+            sink.Responses.ShouldHaveSingleItem($"The reply differed at split {split}.")
+                .Kind.ShouldBe(ResponseKind.CursorPosition);
+            sink.Sequences.ShouldBeEmpty();
+            sink.Strokes.ShouldBeEmpty();
+            sink.Text.ShouldBeEmpty();
+        }
+    }
+
+    /// <summary>
+    /// Verifies the same byte-identical shape decodes as a modified F3 key event, not a typed
+    /// response, when no cursor-position query is outstanding - the default state for the whole
+    /// session outside an active negotiation window.
+    /// </summary>
+    [Fact]
+    public void Route_WhenCursorPositionShapeArrivesWithNoQueryOutstanding_DeliversKeyNotResponse()
+    {
+        // Arrange
+        var bytes = Encoding.UTF8.GetBytes("\u001b[12;34R");
+
+        // Act / Assert
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingProtocolSink();
+            using ProtocolRouter router = new(sink);
+            router.Route(bytes.AsSpan(0, split));
+            router.Route(bytes.AsSpan(split));
+
+            sink.Responses.ShouldBeEmpty($"The key differed at split {split}.");
+            var stroke = sink.Strokes.ShouldHaveSingleItem($"The key differed at split {split}.");
+            stroke.Code.ShouldBe(Code.F3);
         }
     }
 

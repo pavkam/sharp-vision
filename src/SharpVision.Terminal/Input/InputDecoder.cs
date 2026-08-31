@@ -39,6 +39,7 @@ public sealed class InputDecoder: IDisposable
     private bool _disposed;
     private bool _escapePending;
     private bool _kittyKeyboardDisambiguationEnabled;
+    private bool _cursorPositionQueryPending;
     private bool _ss3Pending;
 
     /// <summary>Initializes a decoder with a stable synchronous event sink.</summary>
@@ -104,6 +105,18 @@ public sealed class InputDecoder: IDisposable
     /// Kitty disambiguation lease.</summary>
     internal void EnableKittyKeyboardDisambiguation() =>
         _kittyKeyboardDisambiguationEnabled = true;
+
+    /// <summary>Marks a DSR cursor-position query (<c>CSI 6n</c>) as genuinely outstanding, so the
+    /// byte-identical <c>CSI 1;&lt;mod&gt;R</c> shape is trusted as that reply instead of the
+    /// legacy-grammar encoding of a modified F3 keystroke.</summary>
+    internal void EnableCursorPositionQuery() =>
+        _cursorPositionQueryPending = true;
+
+    /// <summary>Marks the outstanding DSR cursor-position query as no longer pending, so
+    /// <c>CSI 1;&lt;mod&gt;R</c> is decoded as a modified F3 keystroke again instead of being
+    /// claimed as a cursor-position reply.</summary>
+    internal void DisableCursorPositionQuery() =>
+        _cursorPositionQueryPending = false;
 
     /// <summary>Consumes one borrowed transport fragment synchronously.</summary>
     /// <param name="input">The borrowed bytes.</param>
@@ -658,7 +671,11 @@ public sealed class InputDecoder: IDisposable
     /// enhancement-flags query reply, <c>CSI ? &lt;flags&gt; u</c>) and
     /// <see cref="TryHandleKittyCsi"/> (a Kitty keyboard event report, <c>CSI &lt;code&gt;u</c>
     /// with no private marker) — the former runs first and only claims its own marker/shape, so
-    /// the latter still sees every report the former does not recognize.
+    /// the latter still sees every report the former does not recognize. A CSI ending in
+    /// <c>R</c> with no private marker and exactly two positive parameters is likewise
+    /// byte-identical between a DSR cursor-position reply and a modified F3 keystroke;
+    /// <see cref="TryHandleXtermCsi"/> only claims that shape while a cursor-position query is
+    /// genuinely outstanding, so <see cref="TryHandleLegacyCsiKey"/> still sees it otherwise.
     /// </summary>
     private readonly CsiHandler[] _csiHandlers;
 
@@ -703,6 +720,16 @@ public sealed class InputDecoder: IDisposable
     private bool TryHandleXtermCsi(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final)
     {
         if (!XtermResponses.TryCsi(parameters, intermediates, final, out var response))
+        {
+            return false;
+        }
+
+        // CSI 1;<mod>R is byte-identical between a real DSR cursor-position reply and the
+        // legacy-grammar encoding of a modified F3 keystroke (Shift/Ctrl/Alt+F3). No parse-level
+        // discriminator can tell them apart, so this only trusts the shape as a reply while a
+        // cursor-position query is genuinely outstanding; otherwise it falls through to
+        // TryHandleLegacyCsiKey below, which maps the same final byte to Code.F3.
+        if (response.Kind == ResponseKind.CursorPosition && !_cursorPositionQueryPending)
         {
             return false;
         }
