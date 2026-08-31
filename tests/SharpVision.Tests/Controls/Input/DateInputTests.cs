@@ -1520,4 +1520,104 @@ public sealed class DateInputTests
         PressKey(control, Code.Up);
         _ = control.Value.ShouldNotBeNull();
     }
+
+    #region Name-run segments
+
+    /// <summary>Verifies a month-name run (MMMM) is skipped entirely by segment entry: the first
+    /// active segment lands on the following numeric Day run instead of the name, so typing digits
+    /// there edits Day - not the Month the name run displays - proving the fix for the weekday/
+    /// month-name corruption bug.</summary>
+    [Fact]
+    public void TypeDigit_WhenFormatStartsWithMonthNameRun_EditsFollowingNumericDaySegment()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 8, 1),
+            Culture = CultureInfo.InvariantCulture,
+            Format = "MMMM d yyyy"
+        };
+
+        // Act: no navigation - the MMMM run must not be the initial active segment.
+        TypeCharacter(control, '1');
+        TypeCharacter(control, '5');
+
+        // Assert: Day was edited, and Month (implied by the skipped name run) is untouched.
+        control.Value.ShouldBe(new DateOnly(2026, 8, 15));
+    }
+
+    /// <summary>Verifies a weekday-name run (dddd) is likewise skipped, using a format whose first
+    /// run is the weekday name so any failure to exclude it would edit Day - the same kind the
+    /// name run itself carries - through a segment that displays text, not digits.</summary>
+    [Fact]
+    public void TypeDigit_WhenFormatStartsWithWeekdayNameRun_EditsFollowingNumericMonthSegment()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 8, 1),
+            Culture = CultureInfo.InvariantCulture,
+            Format = "dddd, MM/dd/yyyy"
+        };
+
+        // Act: no navigation - the dddd run must not be the initial active segment.
+        TypeCharacter(control, '4');
+
+        // Assert: the numeric Month segment (single-digit "4" overflows a two-digit month, so it
+        // auto-commits at once) was edited instead of Day being corrupted through the weekday text.
+        control.Value.ShouldBe(new DateOnly(2026, 4, 1));
+    }
+
+    /// <summary>Verifies Right navigation moves directly between the two real editable segments
+    /// (Day, Year) without ever landing on the interstitial MMMM name run, and that a further Right
+    /// past Year is a no-op - proving the name run does not occupy a navigable slot.</summary>
+    [Fact]
+    public void MoveSegment_WhenFormatContainsMonthNameRun_NavigatesOnlyRealEditableSegments()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 8, 1),
+            Culture = CultureInfo.InvariantCulture,
+            Format = "MMMM d yyyy"
+        };
+
+        // Act: one Right reaches Year (the only other editable segment); a second Right must not
+        // move further, since MMMM contributes no editable slot to move into.
+        PressKey(control, Code.Right);
+        TypeCharacter(control, '2');
+        TypeCharacter(control, '0');
+        TypeCharacter(control, '2');
+        TypeCharacter(control, '5');
+        PressKey(control, Code.Right);
+        PressKey(control, Code.Up);
+
+        // Assert: the second Right stayed on Year (2025 -> 2026 via the trailing Up), so
+        // navigation never landed on - or passed through - a phantom Month-name segment.
+        control.Value.ShouldNotBeNull().Year.ShouldBe(2026);
+    }
+
+    /// <summary>Verifies Up/Down increment is inert on a month-name run: with the name run as the
+    /// only prior segment, Up on the first active segment increments the real numeric Day segment
+    /// it lands on, never the Month a stray increment through the name run would have changed.</summary>
+    [Fact]
+    public void Increment_WhenFormatStartsWithMonthNameRun_AdjustsFollowingNumericDaySegment()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 8, 1),
+            Culture = CultureInfo.InvariantCulture,
+            Format = "MMMM d yyyy"
+        };
+
+        // Act
+        PressKey(control, Code.Up);
+
+        // Assert: Day incremented; Month - which a reachable name run would have exposed to
+        // Increment instead - is untouched.
+        control.Value.ShouldBe(new DateOnly(2026, 8, 2));
+    }
+
+    #endregion
 }

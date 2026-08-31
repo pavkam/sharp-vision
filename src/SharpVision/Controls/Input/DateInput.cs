@@ -719,7 +719,14 @@ public sealed class DateInput: InputBase
         {
             var token = tokens[index];
 
-            descriptors[index] = token.Kind is not { } kind
+            // A weekday (dddd) or month-name (MMMM) run of length >= 3 is a name, not a
+            // zero-padded number: rendering it as an ordinary editable segment would let a typed
+            // digit be misinterpreted as a day-of-month or month-number and corrupt the date.
+            // Building it as a literal instead makes it inert for digit entry, tab/arrow
+            // traversal, and Increment alike, since SegmentFieldBehavior gates all three purely
+            // on SegmentDescriptor.IsEditable.
+            descriptors[index] = token.Kind is not { } kind ||
+                (kind is TemporalSegmentKind.Month or TemporalSegmentKind.Day && token.RunLength >= 3)
                 ? new SegmentDescriptor(text[index])
                 : new SegmentDescriptor(
                     text[index],

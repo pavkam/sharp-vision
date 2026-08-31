@@ -1437,4 +1437,99 @@ public sealed class DateTimeInputTests
         _ = Router.Route(control, Events.Key, Key(Code.Up));
         _ = control.Value.ShouldNotBeNull();
     }
+
+    #region Name-run segments
+
+    /// <summary>Verifies a month-name run (MMMM) is skipped entirely by segment entry: the first
+    /// active segment lands on the following numeric Day run instead of the name, so typing digits
+    /// there edits Day - not the Month the name run displays - proving the fix for the weekday/
+    /// month-name corruption bug.</summary>
+    [Fact]
+    public void TypeDigit_WhenFormatStartsWithMonthNameRun_EditsFollowingNumericDaySegment()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Value = new DateTime(2026, 8, 1, 10, 30, 0),
+            Format = "MMMM d yyyy HH:mm"
+        };
+
+        // Act: no navigation - the MMMM run must not be the initial active segment.
+        _ = Router.Route(control, Events.Key, CharacterKey('1'));
+        _ = Router.Route(control, Events.Key, CharacterKey('5'));
+
+        // Assert: Day was edited, and Month (implied by the skipped name run) is untouched.
+        control.Value.ShouldBe(new DateTime(2026, 8, 15, 10, 30, 0));
+    }
+
+    /// <summary>Verifies a weekday-name run (dddd) is likewise skipped, using a format whose first
+    /// run is the weekday name so any failure to exclude it would edit Day - the same kind the
+    /// name run itself carries - through a segment that displays text, not digits.</summary>
+    [Fact]
+    public void TypeDigit_WhenFormatStartsWithWeekdayNameRun_EditsFollowingNumericMonthSegment()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Value = new DateTime(2026, 8, 1, 10, 30, 0),
+            Format = "dddd, MM/dd/yyyy HH:mm"
+        };
+
+        // Act: no navigation - the dddd run must not be the initial active segment.
+        _ = Router.Route(control, Events.Key, CharacterKey('4'));
+
+        // Assert: the numeric Month segment (single-digit "4" overflows a two-digit month, so it
+        // auto-commits at once) was edited instead of Day being corrupted through the weekday text.
+        control.Value.ShouldBe(new DateTime(2026, 4, 1, 10, 30, 0));
+    }
+
+    /// <summary>Verifies Right navigation moves directly across the real editable segments (Day,
+    /// Year, Hour, Minute) without ever landing on the interstitial MMMM name run, and that a
+    /// further Right past Minute is a no-op - proving the name run does not occupy a navigable
+    /// slot.</summary>
+    [Fact]
+    public void MoveSegment_WhenFormatContainsMonthNameRun_NavigatesOnlyRealEditableSegments()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Value = new DateTime(2026, 8, 1, 10, 30, 0),
+            Format = "MMMM d yyyy HH:mm"
+        };
+
+        // Act: three Right presses reach Minute (Day -> Year -> Hour -> Minute); a fourth must not
+        // move past it, since MMMM contributes no editable slot to move into.
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Up));
+
+        // Assert: Up still incremented Minute - not Month or Day, which a phantom name-run slot
+        // ahead of or after Minute would have redirected navigation onto.
+        control.Value.ShouldBe(new DateTime(2026, 8, 1, 10, 31, 0));
+    }
+
+    /// <summary>Verifies Up/Down increment is inert on a month-name run: with the name run as the
+    /// only prior segment, Up on the first active segment increments the real numeric Day segment
+    /// it lands on, never the Month a stray increment through the name run would have changed.</summary>
+    [Fact]
+    public void Increment_WhenFormatStartsWithMonthNameRun_AdjustsFollowingNumericDaySegment()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Value = new DateTime(2026, 8, 1, 10, 30, 0),
+            Format = "MMMM d yyyy HH:mm"
+        };
+
+        // Act
+        _ = Router.Route(control, Events.Key, Key(Code.Up));
+
+        // Assert: Day incremented; Month - which a reachable name run would have exposed to
+        // Increment instead - is untouched.
+        control.Value.ShouldBe(new DateTime(2026, 8, 2, 10, 30, 0));
+    }
+
+    #endregion
 }
