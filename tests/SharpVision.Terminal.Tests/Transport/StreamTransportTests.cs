@@ -111,6 +111,59 @@ public sealed class StreamTransportTests
     }
 
     /// <summary>
+    /// Verifies disposal waits for a read that is still in flight and only disposes the input
+    /// stream once that read has genuinely completed, even though the stream never honors the
+    /// cancellation disposal requests of it.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenReadIsQueued_WaitsForReadBeforeStreamDisposalAsync()
+    {
+        var input = new BlockingReadStream(ignoresCancellation: true);
+        var transport = new StreamTransport(
+            input,
+            Stream.Null,
+            leaveInputOpen: false,
+            leaveOutputOpen: true,
+            readDrainTimeout: TimeSpan.FromSeconds(5));
+        var destination = new byte[4];
+        var read = transport.ReadAsync(destination, TestContext.Current.CancellationToken).AsTask();
+        await input.FirstStarted;
+
+        var disposal = transport.DisposeAsync().AsTask();
+        input.Release(4);
+
+        (await read.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).ShouldBe(4);
+        await disposal.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        input.DisposeCount.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies a read that neither completes nor honors the disposal-triggered cancellation
+    /// cannot stall disposal past the configured read drain timeout: the streams are disposed
+    /// out from under the abandoned read rather than blocking forever.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenReadIgnoresCancellation_AbandonsItAfterReadDrainTimeoutAsync()
+    {
+        var input = new BlockingReadStream(ignoresCancellation: true);
+        var transport = new StreamTransport(
+            input,
+            Stream.Null,
+            leaveInputOpen: false,
+            leaveOutputOpen: true,
+            readDrainTimeout: TimeSpan.FromMilliseconds(50));
+        var read = transport.ReadAsync(new byte[4], TestContext.Current.CancellationToken).AsTask();
+        await input.FirstStarted;
+
+        await transport.DisposeAsync().AsTask().WaitAsync(
+            TimeSpan.FromSeconds(5),
+            TestContext.Current.CancellationToken);
+
+        input.DisposeCount.ShouldBe(1);
+        read.IsCompleted.ShouldBeFalse();
+    }
+
+    /// <summary>
     /// Verifies leave-open controls stream ownership and disposal is idempotent.
     /// </summary>
     [Fact]

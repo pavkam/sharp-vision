@@ -21,12 +21,22 @@ public sealed class StreamTransport: ITransport
     private readonly TaskCompletionSource _operationsDrained =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+    // Reads are drained separately from writes/flushes: a read can legitimately block
+    // forever waiting on terminal input, so DisposeAsync must not join it unconditionally the
+    // way it joins _operationsDrained. This source lets DisposeAsync ask a live read to
+    // cancel, and _readsDrained is only ever waited on with a bound (see DisposeAsync).
+    private readonly CancellationTokenSource _disposalCancellation = new();
+    private readonly TaskCompletionSource _readsDrained =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TimeSpan _readDrainTimeout;
+
     // POSIX EIO. .NET maps a failing Unix read to IOException carrying the raw errno in
     // HResult, so this compares against the errno value rather than an HRESULT.
     private const int _inputOutputErrorNumber = 5;
 
     private int _disposed;
     private int _activeOperations;
+    private int _activeReads;
 
     /// <summary>Initializes a validated stream transport with one shared ownership decision.</summary>
     /// <remarks>
@@ -60,11 +70,24 @@ public sealed class StreamTransport: ITransport
     /// <param name="output">The writable output stream.</param>
     /// <param name="leaveInputOpen">Whether disposal leaves <paramref name="input"/> open.</param>
     /// <param name="leaveOutputOpen">Whether disposal leaves <paramref name="output"/> open.</param>
+    /// <param name="readDrainTimeout">
+    /// How long <see cref="DisposeAsync"/> waits for an in-flight <see cref="ReadAsync"/> to
+    /// leave before abandoning it and disposing the streams anyway. Defaults to one second when
+    /// null.
+    /// </param>
     /// <exception cref="ArgumentNullException">A stream is null.</exception>
     /// <exception cref="ArgumentException">
     /// <paramref name="input"/> is unreadable or <paramref name="output"/> is unwritable.
     /// </exception>
-    public StreamTransport(Stream input, Stream output, bool leaveInputOpen, bool leaveOutputOpen)
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="readDrainTimeout"/> is not positive and finite.
+    /// </exception>
+    public StreamTransport(
+        Stream input,
+        Stream output,
+        bool leaveInputOpen,
+        bool leaveOutputOpen,
+        TimeSpan? readDrainTimeout = null)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(output);
@@ -79,10 +102,19 @@ public sealed class StreamTransport: ITransport
             throw new ArgumentException("The output stream must be writable.", nameof(output));
         }
 
+        if (readDrainTimeout is { } timeout && (timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(readDrainTimeout),
+                readDrainTimeout,
+                "The read drain timeout must be positive and finite.");
+        }
+
         _input = input;
         _output = output;
         _leaveInputOpen = leaveInputOpen;
         _leaveOutputOpen = leaveOutputOpen;
+        _readDrainTimeout = readDrainTimeout ?? TimeSpan.FromSeconds(1);
     }
 
     /// <inheritdoc/>
@@ -101,17 +133,32 @@ public sealed class StreamTransport: ITransport
     /// </para>
     /// </remarks>
     /// <exception cref="ObjectDisposedException">The transport is disposed.</exception>
-    public ValueTask<int> ReadAsync(
+    public async ValueTask<int> ReadAsync(
         Memory<byte> destination,
         CancellationToken cancellationToken)
     {
-        ThrowIfDisposed();
+        EnterRead();
 
-        // Windows never reports a hang-up this way, and HResult 5 means something unrelated there,
-        // so it keeps the untranslated read and pays nothing for the state machine below.
-        return OperatingSystem.IsWindows()
-            ? _input.ReadAsync(destination, cancellationToken)
-            : ReadUnixAsync(destination, cancellationToken);
+        try
+        {
+            // Linked so a concurrent DisposeAsync can nudge a live read to cancel cooperatively
+            // before the streams underneath it go away, rather than leaving it to run against
+            // them unconditionally. See the abandon-on-timeout comment in DisposeAsync for what
+            // happens when the read does not honor this.
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken,
+                _disposalCancellation.Token);
+
+            // Windows never reports a hang-up this way, and HResult 5 means something unrelated
+            // there, so it keeps the untranslated read.
+            return OperatingSystem.IsWindows()
+                ? await _input.ReadAsync(destination, linked.Token).ConfigureAwait(false)
+                : await ReadUnixAsync(destination, linked.Token).ConfigureAwait(false);
+        }
+        finally
+        {
+            ExitRead();
+        }
     }
 
     private async ValueTask<int> ReadUnixAsync(
@@ -200,9 +247,46 @@ public sealed class StreamTransport: ITransport
             {
                 _ = _operationsDrained.TrySetResult();
             }
+
+            if (_activeReads == 0)
+            {
+                _ = _readsDrained.TrySetResult();
+            }
         }
 
         await _operationsDrained.Task.ConfigureAwait(false);
+
+        // Ask any in-flight read to cancel, then give it one bounded chance to leave before
+        // disposing the streams out from under it. A read can legitimately block forever
+        // waiting on terminal input, and if the underlying stream's cancellation support is
+        // imperfect, joining it unconditionally (like the write/flush drain above) would trade
+        // a rare use-after-dispose race for a much more common indefinite hang here. A read that
+        // outlives the budget is abandoned instead: it keeps running against already-disposed
+        // streams and is left to fault or complete on its own, mirroring the same
+        // abandon-on-timeout tradeoff Session.DrainAsync makes for its own read loop.
+        await _disposalCancellation.CancelAsync().ConfigureAwait(false);
+
+        using (var expiry = new CancellationTokenSource())
+        {
+            var budget = Task.Delay(_readDrainTimeout, expiry.Token);
+            _ = await Task.WhenAny(_readsDrained.Task, budget).ConfigureAwait(false);
+            await expiry.CancelAsync().ConfigureAwait(false);
+
+            // A canceled Task.Delay is never reported as unobserved, but the exception is
+            // touched anyway to mirror Session.DrainAsync's own budget cleanup exactly.
+            if (budget.IsCompleted)
+            {
+                _ = budget.Exception;
+            }
+            else
+            {
+                _ = budget.ContinueWith(
+                    static completed => _ = completed.Exception,
+                    CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
+            }
+        }
 
         try
         {
@@ -248,6 +332,7 @@ public sealed class StreamTransport: ITransport
         finally
         {
             _writeGate.Dispose();
+            _disposalCancellation.Dispose();
         }
     }
 
@@ -270,6 +355,29 @@ public sealed class StreamTransport: ITransport
             if (_activeOperations == 0 && Volatile.Read(ref _disposed) != 0)
             {
                 _ = _operationsDrained.TrySetResult();
+            }
+        }
+    }
+
+    private void EnterRead()
+    {
+        lock (_lifecycleGate)
+        {
+            ThrowIfDisposed();
+            _activeReads = checked(_activeReads + 1);
+        }
+    }
+
+    private void ExitRead()
+    {
+        lock (_lifecycleGate)
+        {
+            _activeReads--;
+            Debug.Assert(_activeReads >= 0, "Every admitted read exits exactly once.");
+
+            if (_activeReads == 0 && Volatile.Read(ref _disposed) != 0)
+            {
+                _ = _readsDrained.TrySetResult();
             }
         }
     }
