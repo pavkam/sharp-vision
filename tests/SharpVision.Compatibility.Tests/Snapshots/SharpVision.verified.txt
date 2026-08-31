@@ -2283,6 +2283,15 @@ namespace SharpVision.Controls.Layout
         public required SharpVision.Styling.ControlColor PlaceholderForeground { get; init; }
         public new static SharpVision.Controls.Layout.TableStyle Default { get; }
     }
+    public sealed class Wrap : SharpVision.Controls.Container
+    {
+        public Wrap() { }
+        public int LineSpacing { get; set; }
+        public SharpVision.Layout.Orientation Orientation { get; set; }
+        public int Spacing { get; set; }
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+    }
 }
 namespace SharpVision.Controls.Scrolling
 {

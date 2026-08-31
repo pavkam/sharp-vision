@@ -112,6 +112,7 @@ export const controls = [
     { doc: "layout/group-box", page: "GroupBox" },
     { doc: "layout/overlay", page: "Overlay" },
     { doc: "layout/stack", page: "Stack" },
+    { doc: "layout/wrap", page: "Wrap" },
     { doc: "scrolling/scroll-bar", page: "ScrollBar" },
     { doc: "display/chase-indicator", page: "ChaseIndicator", animated: true },
     { doc: "display/figlet-text", page: "FigletText" },

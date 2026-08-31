@@ -42,6 +42,7 @@ classDiagram
     HeaderedContentControl <|-- Expander
     CompositeControlBase <|-- Screen
     Container <|-- Stack
+    Container <|-- Wrap
     Container <|-- Grid
     Container <|-- Dock
     Container <|-- Overlay
@@ -149,6 +150,7 @@ See the [intrinsic appearance rules](../concepts/styling.md#shared-chrome).
 ### Layout
 
 - [Stack](layout/stack.md#overview)
+- [Wrap](layout/wrap.md#overview)
 - [Grid](layout/grid.md#overview)
 - [Dock](layout/dock.md#overview)
 - [Overlay](layout/overlay.md#overview)

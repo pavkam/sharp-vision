@@ -78,6 +78,7 @@ public sealed class Gallery: Screen
         ("Progress", SpinnerPane.Title, static () => new SpinnerPane()),
         ("Windows", ToastPane.Title, static () => new ToastPane()),
         ("Layout", StackPane.Title, static () => new StackPane()),
+        ("Layout", WrapPane.Title, static () => new WrapPane()),
         ("Collections", TabControlPane.Title, static () => new TabControlPane()),
         ("Collections", TablePane.Title, static () => new TablePane()),
         ("Collections", TreeViewPane.Title, static () => new TreeViewPane()),
