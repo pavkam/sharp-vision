@@ -311,7 +311,8 @@ public sealed class WrapTests
             var child = new ProbeControl(new Size(random.Next(1, 5), random.Next(1, 3)))
             {
                 Margin = new Thickness(random.Next(0, 2), 0, random.Next(0, 2), 0),
-                Visibility = random.Next(0, 4) == 0 ? Visibility.Collapsed : Visibility.Visible
+                Visibility = random.Next(0, 4) == 0 ? Visibility.Collapsed : Visibility.Visible,
+                Width = CreateRandomWidth(random, index)
             };
             wrap.Children.Add(child);
             children.Add(child);
@@ -319,4 +320,12 @@ public sealed class WrapTests
 
         return (wrap, children);
     }
+
+    private static Length CreateRandomWidth(Random random, int index) => (index % 4) switch
+    {
+        0 => Length.Auto,
+        1 => Length.Cells(random.Next(1, 5)),
+        2 => Length.Percent(random.Next(10, 51)),
+        _ => Length.Star(random.Next(1, 3))
+    };
 }
