@@ -15,9 +15,28 @@ contracts as the surfaces your application builds itself.
 
 `Dialog<TResult>` derives directly from `Window`, so the dialog object you
 construct is the same object that is retained, drawn, made modal, and disposed.
-Each dialog's asynchronous helper publishes `Closing` and `Closed`, removes the
-dialog from its presentation host, disposes it, and only then settles the result
-task. Built-in dialogs also share the base action-bar composition: a horizontal
+Each dialog's asynchronous helper publishes `Closing`, removes the dialog from
+its presentation host, publishes `Closed`, disposes it, and only then settles
+the result task:
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant Dialog
+    participant FloatingSurfaceBase
+    participant PresentationHost
+    participant Awaiter
+    Caller->>Dialog: Complete(result) / Cancel()
+    Dialog->>FloatingSurfaceBase: CloseSurface(...)
+    FloatingSurfaceBase->>FloatingSurfaceBase: RaiseSurfaceClosing() [Closing]
+    FloatingSurfaceBase->>PresentationHost: Remove(dialog)
+    FloatingSurfaceBase->>FloatingSurfaceBase: RaiseSurfaceClosed() [Closed]
+    FloatingSurfaceBase-->>Dialog: closure completed
+    Dialog->>Dialog: Dispose()
+    Dialog->>Awaiter: TrySetResult(result) / TrySetCanceled()
+```
+
+Built-in dialogs also share the base action-bar composition: a horizontal
 separator sits directly above a shadow-aware action host, while each concrete
 dialog retains control of its own Button alignment and semantics.
 
