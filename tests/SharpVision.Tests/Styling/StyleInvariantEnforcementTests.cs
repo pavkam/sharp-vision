@@ -4,6 +4,7 @@
 namespace SharpVision.Tests.Styling;
 
 using System.Text.Json;
+
 using SharpVision.Tests.Controls;
 
 /// <summary>Verifies a style value cannot be brought into existence in a state its own constructor

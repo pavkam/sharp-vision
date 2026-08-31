@@ -386,7 +386,7 @@ public sealed class NumberInput: InputBase
     /// <inheritdoc/>
     /// <remarks>
     /// Canvas.CopyFromPrevious already restored this control's affixes and value-text cells;
-    /// <see cref="TerminalCanvas.SetCursor"/> is the one thing a cell copy can never replay, since
+    /// <see cref="TerminalCanvas.SetCursor(Point, bool, CursorShape)"/> is the one thing a cell copy can never replay, since
     /// cursor placement lives outside the frame's cell arena exactly like Image's DrawImage
     /// placement. An unset render bit already proves the buffer text and caret are unchanged since
     /// the last real paint, so recomputing the caret column from this control's own CURRENT state

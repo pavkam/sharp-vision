@@ -20,7 +20,6 @@ public abstract class FloatingSurfaceBase: ContentControl
 {
     private readonly ModalSession _modalSession;
     private bool _isClosing;
-    private bool _isRequestingClose;
     private bool _isEnteringModal;
     private bool _isOpening;
     private bool _allowsOpeningDuringClosing;
@@ -79,7 +78,7 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// only a reentrant call that lands synchronously from a <see cref="CloseRequested"/> handler
     /// without also swallowing reentry from those later phases.
     /// </remarks>
-    private protected bool IsRequestingClose => _isRequestingClose;
+    private protected bool IsRequestingClose { get; private set; }
 
     /// <summary>Gets the identity of the current common presentation transaction.</summary>
     internal long SurfacePresentationVersion { get; private set; }
@@ -309,12 +308,12 @@ public abstract class FloatingSurfaceBase: ContentControl
             return false;
         }
 
-        if (_isRequestingClose)
+        if (IsRequestingClose)
         {
             return false;
         }
 
-        _isRequestingClose = true;
+        IsRequestingClose = true;
 
         try
         {
@@ -325,7 +324,7 @@ public abstract class FloatingSurfaceBase: ContentControl
         }
         finally
         {
-            _isRequestingClose = false;
+            IsRequestingClose = false;
         }
 
         // A CloseRequested subscriber may have disposed the surface synchronously while the event

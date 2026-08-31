@@ -3872,7 +3872,7 @@ public sealed class ControlBaseTests
     }
 
     /// <summary>Verifies a focused, render-clean <see cref="NumberInput"/> re-asserts its terminal
-    /// cursor through the copy path instead of losing it: <see cref="TerminalCanvas.SetCursor"/> is
+    /// cursor through the copy path instead of losing it: <see cref="TerminalCanvas.SetCursor(Point, bool, CursorShape)"/> is
     /// authored inside <c>OnRenderContent</c>'s focused branch, which the reuse path's cell copy
     /// alone never replays, so <c>NumberInput.OnReuseCleanRender</c> must recompute the caret
     /// column from the control's own current buffer state and reassert it.</summary>
