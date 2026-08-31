@@ -19,7 +19,7 @@ internal sealed class MenuPane: CompositeControlBase
         var barStatus = new Text("Select a menu entry to see the invoked action.");
 
         // File menu with nested Open Recent submenu.
-        var fileNew = new MenuItem { Text = "&New" };
+        var fileNew = new MenuItem { Text = "Ne&w" };
         var fileOpen = new MenuItem { Text = "&Open" };
         var fileRecentToday = new MenuItem { Text = "&Today" };
         var fileRecentArchive = new MenuItem { Text = "Ar&chive" };
@@ -31,7 +31,7 @@ internal sealed class MenuPane: CompositeControlBase
         };
         fileRecentSubmenu.Items.Add(fileRecentToday);
         fileRecentSubmenu.Items.Add(fileRecentArchive);
-        var fileOpenRecent = new MenuItem { Text = "Open &Recent", Submenu = fileRecentSubmenu };
+        var fileOpenRecent = new MenuItem { Text = "O&pen Recent", Submenu = fileRecentSubmenu };
         var fileSave = new MenuItem { Text = "&Save", ShortcutText = "Ctrl+S" };
         var fileSaveAs = new MenuItem { Text = "Save &As..." };
         var fileExit = new MenuItem { Text = "E&xit", ShortcutText = "Ctrl+Q" };
@@ -47,8 +47,8 @@ internal sealed class MenuPane: CompositeControlBase
         fileSubmenu.Items.Add(fileExit);
 
         // Edit menu with shortcut hints.
-        var editUndo = new MenuItem { Text = "&Undo", ShortcutText = "Ctrl+Z" };
-        var editRedo = new MenuItem { Text = "&Redo", ShortcutText = "Ctrl+Y" };
+        var editUndo = new MenuItem { Text = "Un&do", ShortcutText = "Ctrl+Z" };
+        var editRedo = new MenuItem { Text = "Red&o", ShortcutText = "Ctrl+Y" };
         var editCut = new MenuItem { Text = "Cu&t" };
         var editCopy = new MenuItem { Text = "&Copy" };
         var editPaste = new MenuItem { Text = "&Paste" };
@@ -177,7 +177,7 @@ internal sealed class MenuPane: CompositeControlBase
                 onInvoke: () => builderStatus.Content = "Invoked: Show hidden files")
             .Separator()
             .Submenu(
-                "&Sort by",
+                "Sort b&y",
                 sortBy => sortBy
                     .Radio(
                         "N&ame",
@@ -202,7 +202,7 @@ internal sealed class MenuPane: CompositeControlBase
         var contextMenu = new Menu { Orientation = Orientation.Vertical };
         contextMenu.Items.Add(new MenuItem { Text = "&Inspect" });
         contextMenu.Items.Add(new MenuItem { Text = "R&un", ShortcutText = "F5" });
-        contextMenu.Items.Add(new MenuItem { Text = "&Debug", ShortcutText = "F9" });
+        contextMenu.Items.Add(new MenuItem { Text = "De&bug", ShortcutText = "F9" });
         contextMenu.Items.Add(new MenuSeparator());
         contextMenu.Items.Add(new MenuItem { Text = "De&ploy", IsEnabled = false });
         contextMenu.ItemInvoked += (_, e) =>
@@ -234,7 +234,7 @@ internal sealed class MenuPane: CompositeControlBase
                     "Application menu bar",
                     "Click or press <reverse>Enter</reverse> on File, Edit, View, or Help, then hover another heading to switch without leaving the menu plane. <reverse>Tab</reverse> and arrows move selection; Open Recent extends the same plane to the right.",
                     new DocColumn(barFrame, barStatus),
-                    "var file = new MenuItem { Text = \"&File\" };\nvar openRecentMenu = new Menu\n{\n    Orientation = Orientation.Vertical,\n    MinWidth = Length.Cells(14),\n    MaxWidth = Length.Percent(75),\n};\nopenRecentMenu.Items.Add(new MenuItem { Text = \"&Today\" });\nvar openRecent = new MenuItem { Text = \"Open &Recent\", Submenu = openRecentMenu };\nvar fileMenu = new Menu { Orientation = Orientation.Vertical };\nfileMenu.Items.Add(new MenuItem { Text = \"&New\" });\nfileMenu.Items.Add(openRecent);\nfile.Submenu = fileMenu;")),
+                    "var file = new MenuItem { Text = \"&File\" };\nvar openRecentMenu = new Menu\n{\n    Orientation = Orientation.Vertical,\n    MinWidth = Length.Cells(14),\n    MaxWidth = Length.Percent(75),\n};\nopenRecentMenu.Items.Add(new MenuItem { Text = \"&Today\" });\nvar openRecent = new MenuItem { Text = \"O&pen Recent\", Submenu = openRecentMenu };\nvar fileMenu = new Menu { Orientation = Orientation.Vertical };\nfileMenu.Items.Add(new MenuItem { Text = \"Ne&w\" });\nfileMenu.Items.Add(openRecent);\nfile.Submenu = fileMenu;")),
             new DocSection(
                 "🧰",
                 "Building a menu with MenuBuilder",
@@ -243,7 +243,7 @@ internal sealed class MenuPane: CompositeControlBase
                     "Fluent builder chain",
                     "Navigate with <reverse>Up</reverse>/<reverse>Down</reverse> arrows and <reverse>Enter</reverse> to invoke. <reverse>Right</reverse> opens Sort by; the three entries share one radio group.",
                     new DocColumn(builderFrame, builderStatus),
-                    "var menu = MenuBuilder.Vertical()\n    .Item(\"&Refresh\", shortcut: \"F5\", onInvoke: Refresh)\n    .Item(\"Re&name\", onInvoke: Rename)\n    .Check(\"Show hidden fi&les\", onInvoke: ToggleHidden)\n    .Separator()\n    .Submenu(\"&Sort by\", sortBy => sortBy\n        .Radio(\"N&ame\", groupName: \"sort\", isChecked: true, onInvoke: SortByName)\n        .Radio(\"Da&te\", groupName: \"sort\", onInvoke: SortByDate)\n        .Radio(\"Si&ze\", groupName: \"sort\", onInvoke: SortBySize))\n    .Build();")),
+                    "var menu = MenuBuilder.Vertical()\n    .Item(\"&Refresh\", shortcut: \"F5\", onInvoke: Refresh)\n    .Item(\"Re&name\", onInvoke: Rename)\n    .Check(\"Show hidden fi&les\", onInvoke: ToggleHidden)\n    .Separator()\n    .Submenu(\"Sort b&y\", sortBy => sortBy\n        .Radio(\"N&ame\", groupName: \"sort\", isChecked: true, onInvoke: SortByName)\n        .Radio(\"Da&te\", groupName: \"sort\", onInvoke: SortByDate)\n        .Radio(\"Si&ze\", groupName: \"sort\", onInvoke: SortBySize))\n    .Build();")),
             new DocSection(
                 "📑",
                 "Context menu",
