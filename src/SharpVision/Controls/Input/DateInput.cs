@@ -55,7 +55,8 @@ public sealed class DateInput: InputBase
             () => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime),
             RaiseValueChanged,
             SynchronizeCalendarValue,
-            SyncCalendarBounds);
+            SyncCalendarBounds,
+            resolveValueImpact: ResolveValueWidthImpact);
         _calendarDropDown = new CalendarDropDownCoordinator<DateOnly>(
             _culture,
             EnsureSeeded,
@@ -675,14 +676,16 @@ public sealed class DateInput: InputBase
 
     #region Rendering helpers
 
-    private SegmentDescriptor[] BuildSegments()
+    private SegmentDescriptor[] BuildSegments() => BuildSegments(_state.Value);
+
+    private SegmentDescriptor[] BuildSegments(DateOnly? value)
     {
         var pattern = ResolveDatePattern();
         var tokens = TemporalPatternSegmenter.ParseTokens(pattern, _tokenKinds, _culture);
 
         IReadOnlyList<string> text;
 
-        if (_state.Value is { } date)
+        if (value is { } date)
         {
             var renderingCulture = Format.Length == 1 && Format[0] is 'r' or 'R'
                 ? CultureInfo.InvariantCulture
@@ -746,17 +749,31 @@ public sealed class DateInput: InputBase
         return descriptors;
     }
 
-    private string FormatValue()
+    private string FormatValue() => FormatValue(_state.Value);
+
+    private string FormatValue(DateOnly? value)
     {
         var builder = new StringBuilder();
 
-        foreach (var segment in BuildSegments())
+        foreach (var segment in BuildSegments(value))
         {
             _ = builder.Append(segment.Text);
         }
 
         return builder.ToString();
     }
+
+    /// <summary>Grades a value transition by its resolved display-width delta, mirroring
+    /// <see cref="ControlBase.GetAffixChangeImpact"/> for affixes: a same-width transition (for
+    /// example incrementing a zero-padded day segment) needs only
+    /// <see cref="InvalidationImpact.Render"/>, while a transition that widens or narrows the
+    /// formatted text (a single-digit month or day widening to two digits under a non-padded
+    /// <see cref="Format"/>) needs <see cref="InvalidationImpact.Measure"/> so the field box is
+    /// remeasured instead of leaving stale geometry behind.</summary>
+    private InvalidationImpact ResolveValueWidthImpact(DateOnly? previous, DateOnly? candidate) =>
+        MeasureCells(FormatValue(previous)) == MeasureCells(FormatValue(candidate))
+            ? InvalidationImpact.Render
+            : InvalidationImpact.Measure;
 
     [Pure]
     private static TerminalStyle SegmentHighlightStyle(TerminalStyle source) => new(

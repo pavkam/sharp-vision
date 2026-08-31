@@ -1532,4 +1532,79 @@ public sealed class DateTimeInputTests
     }
 
     #endregion
+
+    #region Value width invalidation
+
+    /// <summary>Verifies a value transition that changes the resolved formatted width invalidates
+    /// Measure, not just Render, since the field's reserved geometry depends on that width.</summary>
+    [Fact]
+    public void Value_WhenFormattedWidthChanges_InvalidatesMeasure()
+    {
+        // Arrange - en-US's non-padded 'M/d/yyyy' date portion renders a single-digit month or
+        // day one cell narrower than a double-digit one; the fixed-width 'HH:mm' time portion
+        // never varies.
+        using var control = new DateTimeInput
+        {
+            Culture = new CultureInfo("en-US"),
+            Value = new DateTime(2026, 9, 1, 10, 0, 0)
+        };
+        control.Clear(Invalidation.All);
+
+        // Act
+        control.Value = new DateTime(2026, 12, 31, 10, 0, 0);
+
+        // Assert
+        control.Pending.ShouldBe(Invalidation.All);
+    }
+
+    /// <summary>Verifies a value transition that keeps the same resolved formatted width
+    /// invalidates rendering only.</summary>
+    [Fact]
+    public void Value_WhenFormattedWidthIsUnchanged_InvalidatesRenderOnly()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Culture = new CultureInfo("en-US"),
+            Value = new DateTime(2026, 9, 1, 10, 0, 0)
+        };
+        control.Clear(Invalidation.All);
+
+        // Act - both dates render with a single-digit month and day under 'M/d/yyyy'.
+        control.Value = new DateTime(2026, 9, 2, 10, 0, 0);
+
+        // Assert
+        control.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies a Measure-impact value transition actually remeasures the field: the
+    /// relaid-out DesiredSize matches a fresh control constructed directly with the new value,
+    /// rather than leaving geometry sized for the previous, narrower value.</summary>
+    [Fact]
+    public void Value_WhenFormattedWidthChanges_RelayoutProducesFreshDesiredSize()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Culture = new CultureInfo("en-US"),
+            Value = new DateTime(2026, 9, 1, 10, 0, 0)
+        };
+        new LayoutEngine().Layout(control, new Size(40, 3));
+
+        // Act
+        control.Value = new DateTime(2026, 12, 31, 10, 0, 0);
+        new LayoutEngine().Layout(control, new Size(40, 3));
+
+        using var fresh = new DateTimeInput
+        {
+            Culture = new CultureInfo("en-US"),
+            Value = new DateTime(2026, 12, 31, 10, 0, 0)
+        };
+        new LayoutEngine().Layout(fresh, new Size(40, 3));
+
+        // Assert
+        control.DesiredSize.ShouldBe(fresh.DesiredSize);
+    }
+
+    #endregion
 }

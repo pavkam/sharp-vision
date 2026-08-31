@@ -66,7 +66,8 @@ public sealed class DateTimeInput: InputBase
             () => TimeProvider.GetLocalNow().DateTime,
             PublishValueChanged,
             SynchronizeCalendarValue,
-            SyncCalendarBounds);
+            SyncCalendarBounds,
+            resolveValueImpact: ResolveValueWidthImpact);
         _calendarDropDown = new CalendarDropDownCoordinator<DateTime>(
             _culture,
             EnsureSeeded,
@@ -800,7 +801,9 @@ public sealed class DateTimeInput: InputBase
         return $"{datePattern} {timePattern}";
     }
 
-    private SegmentDescriptor[] BuildSegments()
+    private SegmentDescriptor[] BuildSegments() => BuildSegments(_state.Value);
+
+    private SegmentDescriptor[] BuildSegments(DateTime? value)
     {
         var pattern = ResolveDateTimePattern();
         var tokens = TemporalPatternSegmenter.ParseTokens(pattern, _tokenKinds, _culture);
@@ -817,7 +820,7 @@ public sealed class DateTimeInput: InputBase
 
         IReadOnlyList<string> text;
 
-        if (_state.Value is { } dt)
+        if (value is { } dt)
         {
             var renderingPattern = hasAmPm ? pattern : NormalizeDesignatorlessHourPattern(pattern);
             text = TemporalPatternSegmenter.FormatSegments(
@@ -903,6 +906,32 @@ public sealed class DateTimeInput: InputBase
 
         return normalized.ToString();
     }
+
+    /// <summary>Sums the resolved cell width of every rendered segment for a candidate value,
+    /// without committing it, so a value transition can be graded before it is applied.</summary>
+    private int MeasureFormattedWidth(DateTime? value)
+    {
+        var width = 0;
+
+        foreach (var segment in BuildSegments(value))
+        {
+            width += MeasureCells(segment.Text);
+        }
+
+        return width;
+    }
+
+    /// <summary>Grades a value transition by its resolved display-width delta, mirroring
+    /// <see cref="ControlBase.GetAffixChangeImpact"/> for affixes: a same-width transition (for
+    /// example incrementing a zero-padded minute segment) needs only
+    /// <see cref="InvalidationImpact.Render"/>, while a transition that widens or narrows the
+    /// formatted text (a single-digit month or day widening to two digits under a non-padded
+    /// <see cref="Culture"/> pattern) needs <see cref="InvalidationImpact.Measure"/> so the field
+    /// box is remeasured instead of leaving stale geometry behind.</summary>
+    private InvalidationImpact ResolveValueWidthImpact(DateTime? previous, DateTime? candidate) =>
+        MeasureFormattedWidth(previous) == MeasureFormattedWidth(candidate)
+            ? InvalidationImpact.Render
+            : InvalidationImpact.Measure;
 
 #pragma warning disable IDE0072 // Every segment kind is individually handled.
     [Pure]

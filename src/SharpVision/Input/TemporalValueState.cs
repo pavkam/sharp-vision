@@ -23,6 +23,7 @@ internal sealed class TemporalValueState<T>
     private readonly TemporalValueChangedPublisher<T> _publishValueChanged;
     private readonly Action<T?>? _synchronizeValue;
     private readonly Action? _synchronizeBounds;
+    private readonly Func<T?, T?, InvalidationImpact>? _resolveValueImpact;
     private T _minimum;
     private T _maximum;
 
@@ -36,6 +37,12 @@ internal sealed class TemporalValueState<T>
     /// <param name="publishValueChanged">Publishes the owning control's typed value event.</param>
     /// <param name="synchronizeValue">Optionally synchronizes a connected presentation after a value commit.</param>
     /// <param name="synchronizeBounds">Optionally synchronizes connected range presentation after a bound commit.</param>
+    /// <param name="resolveValueImpact">Optionally grades a value transition's resolved display-width
+    /// delta into the earliest invalidation phase it requires, mirroring
+    /// <see cref="ControlBase.GetAffixChangeImpact"/> for affixes. Receives the previously committed
+    /// and newly committed values and returns <see cref="InvalidationImpact.Measure"/> when the
+    /// owner's formatted width changes and <see cref="InvalidationImpact.Render"/> otherwise. A null
+    /// delegate keeps the prior unconditional <see cref="InvalidationImpact.Render"/> behavior.</param>
     /// <exception cref="ArgumentException"><paramref name="minimum"/> exceeds <paramref name="maximum"/>.</exception>
     /// <exception cref="ArgumentNullException">Any required callback is null.</exception>
     public TemporalValueState(
@@ -47,7 +54,8 @@ internal sealed class TemporalValueState<T>
         Func<T> resolveSeed,
         TemporalValueChangedPublisher<T> publishValueChanged,
         Action<T?>? synchronizeValue = null,
-        Action? synchronizeBounds = null)
+        Action? synchronizeBounds = null,
+        Func<T?, T?, InvalidationImpact>? resolveValueImpact = null)
     {
         if (minimum.CompareTo(maximum) > 0)
         {
@@ -69,6 +77,7 @@ internal sealed class TemporalValueState<T>
         _publishValueChanged = publishValueChanged;
         _synchronizeValue = synchronizeValue;
         _synchronizeBounds = synchronizeBounds;
+        _resolveValueImpact = resolveValueImpact;
     }
 
     /// <summary>Gets the current value without forcing lazy clock seeding.</summary>
@@ -124,11 +133,12 @@ internal sealed class TemporalValueState<T>
         }
 
         var previous = Value;
+        var impact = _resolveValueImpact?.Invoke(previous, candidate) ?? InvalidationImpact.Render;
         Value = candidate;
         ValueVersion++;
         var transition = _owner.BeginCallbackPropertyTransition(
             _valueTransitions,
-            InvalidationImpact.Render,
+            impact,
             nameof(Value));
         transition.CaptureIfCurrent(() => _synchronizeValue?.Invoke(candidate));
         _publishValueChanged(ref transition, previous, candidate);
