@@ -296,6 +296,20 @@ internal static class KittyGraphicsPlaceholderWriter
         0xFE24,
         0xFE25,
         0xFE26,
+        0x10A0F,
+        0x10A38,
+        0x1D185,
+        0x1D186,
+        0x1D187,
+        0x1D188,
+        0x1D189,
+        0x1D1AA,
+        0x1D1AB,
+        0x1D1AC,
+        0x1D1AD,
+        0x1D242,
+        0x1D243,
+        0x1D244,
     ];
 
     /// <summary>Writes one single-cell placeholder grapheme with explicit row, column, and high image-id byte.</summary>

@@ -129,7 +129,7 @@ placement id as exact RGB underline color. An indexed-256 profile uses the exact
 low-byte palette indexes for both identifiers. These are protocol fields, so
 they bypass ordinary color projection: SharpVision never quantizes them.
 Basic-16 and monochrome profiles, indexed identifiers above 255, placement
-identifiers above the representable range, or dimensions beyond the 283-entry
+identifiers above the representable range, or dimensions beyond the 297-entry
 coordinate table retain cursor-anchored placement.
 
 The placeholder projection is transactional overlay state rather than semantic
