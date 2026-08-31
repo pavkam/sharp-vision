@@ -2055,6 +2055,24 @@ namespace SharpVision.Controls.Layout
         public static void SetTop(SharpVision.Controls.ControlBase control, SharpVision.Layout.Length? value) { }
         public static void SetZIndex(SharpVision.Controls.ControlBase control, int value) { }
     }
+    public sealed class SplitChangedEventArgs : System.EventArgs
+    {
+        public SplitChangedEventArgs(SharpVision.Layout.Length previousLength, SharpVision.Layout.Length length) { }
+        public SharpVision.Layout.Length Length { get; }
+        public SharpVision.Layout.Length PreviousLength { get; }
+    }
+    public sealed class SplitPane : SharpVision.Controls.Container
+    {
+        public SplitPane() { }
+        public SharpVision.Layout.Length FirstPaneLength { get; set; }
+        public bool IsResizable { get; set; }
+        public int LargeChange { get; set; }
+        public SharpVision.Layout.Orientation Orientation { get; set; }
+        public int SmallChange { get; set; }
+        public event System.EventHandler<SharpVision.Controls.Layout.SplitChangedEventArgs>? SplitChanged;
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+    }
     public sealed class Stack : SharpVision.Controls.Container
     {
         public Stack() { }
