@@ -20,28 +20,28 @@ classDiagram
 
 ## API
 
-| Member | Type | Default | Description |
-| --- | --- | --- | --- |
-| Inherited `Children` | `ControlCollection` | Empty | Owns normal-layer children in stable packing, rendering, and navigation order. |
-| `Orientation` | `Orientation` | `Orientation.Horizontal` | Chooses horizontal rows or vertical columns; undefined values are rejected. |
-| `Spacing` | `int` | `0` | Non-negative cells between adjacent non-collapsed children in a line. |
-| `LineSpacing` | `int` | `0` | Non-negative cells between non-empty wrapped lines. |
-| Inherited `Border` | `Border` | Theme `control` profile (borderless) | Public complete local frame authoring enabled by `EnableChromeAuthoring()`. |
-| Inherited `ResetBorder()` | `void` | — | Returns the local border to Theme ownership. |
-| Inherited `Shadow` | `Shadow` | Theme `control` profile (none) | Public complete local shadow authoring enabled by `EnableChromeAuthoring()`. |
-| Inherited `ResetShadow()` | `void` | — | Returns the local shadow to Theme ownership. |
+| Member                    | Type                | Default                              | Description                                                                    |
+| ------------------------- | ------------------- | ------------------------------------ | ------------------------------------------------------------------------------ |
+| Inherited `Children`      | `ControlCollection` | Empty                                | Owns normal-layer children in stable packing, rendering, and navigation order. |
+| `Orientation`             | `Orientation`       | `Orientation.Horizontal`             | Chooses horizontal rows or vertical columns; undefined values are rejected.    |
+| `Spacing`                 | `int`               | `0`                                  | Non-negative cells between adjacent non-collapsed children in a line.          |
+| `LineSpacing`             | `int`               | `0`                                  | Non-negative cells between non-empty wrapped lines.                            |
+| Inherited `Border`        | `Border`            | Theme `control` profile (borderless) | Public complete local frame authoring enabled by `EnableChromeAuthoring()`.    |
+| Inherited `ResetBorder()` | `void`              | —                                    | Returns the local border to Theme ownership.                                   |
+| Inherited `Shadow`        | `Shadow`            | Theme `control` profile (none)       | Public complete local shadow authoring enabled by `EnableChromeAuthoring()`.   |
+| Inherited `ResetShadow()` | `void`              | —                                    | Returns the local shadow to Theme ownership.                                   |
 
-`Children` rejects nulls, duplicate ownership, cycles, and controls that
-already have a parent. `Spacing` and `LineSpacing` reject negative values
-without changing their prior value. Wrap has no reverse or per-line
-justification setting: source order remains the packing, render, and ordinary
-focus-navigation order.
+`Children` rejects nulls, duplicate ownership, cycles, and controls that already
+have a parent. `Spacing` and `LineSpacing` reject negative values without
+changing their prior value. Wrap has no reverse or per-line justification
+setting: source order remains the packing, render, and ordinary focus-navigation
+order.
 
 ## Keyboard
 
-| Key | Behavior |
-| --- | --- |
-| — | This control has no control-specific keyboard commands. |
+| Key | Behavior                                                |
+| --- | ------------------------------------------------------- |
+| —   | This control has no control-specific keyboard commands. |
 
 ## Packing and scrolling
 
@@ -53,10 +53,10 @@ contained line, and an unbounded primary lane keeps all participants on one
 line.
 
 Percentage and proportional child lengths resolve against that complete finite
-lane. A child that requests the full lane therefore occupies its own line;
-Wrap does not divide a line's remainder among proportional children. Hidden
-children keep their measured slot but do not render or receive input. Collapsed
-children consume neither a slot nor either adjacent gap.
+lane. A child that requests the full lane therefore occupies its own line; Wrap
+does not divide a line's remainder among proportional children. Hidden children
+keep their measured slot but do not render or receive input. Collapsed children
+consume neither a slot nor either adjacent gap.
 
 When inherited scrolling arms the primary axis, that axis is unbounded for
 packing and forms one scrollable line or column. The viewport is not used as a
@@ -76,11 +76,11 @@ commands.Children.Add(new Button { Text = "Cancel" });
 
 ## Expected behavior
 
-| Scope | Observable evidence |
-| --- | --- |
-| Public API | Defaults, validation, source-order packing, and deterministic contained geometry. |
-| Integrated behavior | Mounted child rendering, focus traversal, visibility transitions, popup routing, and inherited scrolling. |
-| Complete runtime path | Final semantic cells preserve Unicode continuation ownership after resize reflow. |
+| Scope                 | Observable evidence                                                                                       |
+| --------------------- | --------------------------------------------------------------------------------------------------------- |
+| Public API            | Defaults, validation, source-order packing, and deterministic contained geometry.                         |
+| Integrated behavior   | Mounted child rendering, focus traversal, visibility transitions, popup routing, and inherited scrolling. |
+| Complete runtime path | Final semantic cells preserve Unicode continuation ownership after resize reflow.                         |
 
 - Children pack deterministically in source order for both orientations, with
   margins, item gaps, and line gaps included in their correct cell positions.

@@ -195,12 +195,12 @@ child layout passes. `Wrap` packs direct children in source order into rows or
 columns, breaking only when the next margin-inclusive child cannot fit in its
 finite primary lane. Its percentage and proportional children measure against
 that full lane; a primary scroll axis is unbounded and therefore forms one
-scrollable line or column rather than wrapping at the viewport. `Stack` uses
-the common track allocator along its sequential axis and the base box model
-across it. Reversing the order affects
-geometry, rendering, and default focus traversal together. Setting `Border` on
-any panel reserves the enabled edges before the panel-specific arrangement runs,
-so no wrapper control is needed for layout reservation.
+scrollable line or column rather than wrapping at the viewport. `Stack` uses the
+common track allocator along its sequential axis and the base box model across
+it. Reversing the order affects geometry, rendering, and default focus traversal
+together. Setting `Border` on any panel reserves the enabled edges before the
+panel-specific arrangement runs, so no wrapper control is needed for layout
+reservation.
 
 `Grid` supports fixed, percentage, automatic, and proportional tracks, plus
 spacing, spans, and an implicit automatic track when no definitions are given.
