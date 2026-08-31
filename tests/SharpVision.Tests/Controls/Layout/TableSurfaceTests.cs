@@ -46,6 +46,128 @@ public sealed class TableSurfaceTests
         invoked.ShouldBe(0);
     }
 
+    /// <summary>Verifies a selection callback that disables or detaches an eager Table during
+    /// keyboard-driven active-cell navigation does not let MoveActive, MovePage, or MoveToEndpoint
+    /// bring a no-longer-available cell into view - the keyboard counterpart of the pointer
+    /// regression above, covering every navigation keystroke that funnels through one of those
+    /// three methods.</summary>
+    [Theory]
+    [InlineData(Code.Up, false)]
+    [InlineData(Code.Up, true)]
+    [InlineData(Code.Down, false)]
+    [InlineData(Code.Down, true)]
+    [InlineData(Code.Left, false)]
+    [InlineData(Code.Left, true)]
+    [InlineData(Code.Right, false)]
+    [InlineData(Code.Right, true)]
+    [InlineData(Code.PageUp, false)]
+    [InlineData(Code.PageUp, true)]
+    [InlineData(Code.PageDown, false)]
+    [InlineData(Code.PageDown, true)]
+    [InlineData(Code.Home, false)]
+    [InlineData(Code.Home, true)]
+    [InlineData(Code.End, false)]
+    [InlineData(Code.End, true)]
+    public async Task Keyboard_WhenSelectionCallbackMakesTableUnavailableDuringNavigation_DoesNotThrowAsync(
+        Code code,
+        bool detach)
+    {
+        // Arrange
+        var row = new TableRow([new ControlText("One")]);
+        var table = new Table { ShowHeader = false, ShowGridLines = false };
+        table.Columns.Add(TableColumn.Fixed("Name", 5));
+        table.Rows.Add(row);
+        var root = new Overlay { Children = { table } };
+        table.SelectionChanged += (_, _) =>
+        {
+            if (detach)
+            {
+                _ = root.Children.Remove(table);
+            }
+            else
+            {
+                table.IsEnabled = false;
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(8, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(table);
+
+        // Act
+        await Should.NotThrowAsync(() => surface.Keyboard.PressAsync(code));
+
+        // Assert - the callback above actually ran and made the table unavailable, so the
+        // preceding line exercised the guard rather than passing vacuously.
+        if (detach)
+        {
+            root.Children.ShouldNotContain(table);
+        }
+        else
+        {
+            table.IsEnabled.ShouldBeFalse();
+        }
+    }
+
+    /// <summary>Verifies a PropertyChanged subscriber that removes the active row, or disposes the
+    /// table outright, while ActivateCurrent's own SetActive call is still publishing that
+    /// transition, stops ActivateCurrent from touching the now-stale row afterward - matching the
+    /// pointer path's equivalent guard against a subscriber tearing down its target mid-gesture.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Keyboard_WhenActiveRowChangeCallbackMakesRowUnavailable_DoesNotInvokeRowAsync(bool disposeTable)
+    {
+        // Arrange
+        var first = new TableRow([new ControlText("One")]);
+        var table = new Table { ShowHeader = false, ShowGridLines = false };
+        table.Columns.Add(TableColumn.Fixed("Name", 5));
+        table.Rows.Add(first);
+        var root = new Overlay { Children = { table } };
+        var invoked = 0;
+        table.RowInvoked += (_, _) => invoked++;
+        table.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName != nameof(Table.ActiveRow))
+            {
+                return;
+            }
+
+            if (disposeTable)
+            {
+                table.Dispose();
+            }
+            else
+            {
+                _ = table.Rows.Remove(first);
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(8, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(table);
+        table.ActiveRow.ShouldBeNull();
+
+        // Act
+        await Should.NotThrowAsync(() => surface.Keyboard.PressAsync(Code.Enter));
+
+        // Assert
+        invoked.ShouldBe(0);
+
+        if (disposeTable)
+        {
+            table.IsDisposed.ShouldBeTrue();
+        }
+        else
+        {
+            table.Rows.ShouldNotContain(first);
+        }
+    }
+
     /// <summary>Verifies every column kind aligns headers, grid lines, combining text, and wide cells exactly.</summary>
     [Fact]
     public async Task Render_WhenColumnsMixKinds_DrawsExactHeaderGridAndUnicodeCellsAsync()

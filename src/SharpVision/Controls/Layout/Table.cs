@@ -1489,8 +1489,15 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         TableRow row,
         [NonNegativeValue] int columnIndex,
         Dispatcher? dispatcher) =>
+        ReferenceEquals(Dispatcher, dispatcher) && IsRowCellLive(row, columnIndex);
+
+    // Shared liveness/ownership/bounds check for a row/column pair that a caller captured before
+    // publishing a notification a subscriber could react to synchronously - the dispatcher-identity
+    // check above is pointer-transaction-specific and does not belong here, but every other
+    // condition applies equally to the keyboard navigation paths below.
+    [Pure]
+    private bool IsRowCellLive(TableRow row, [NonNegativeValue] int columnIndex) =>
         !IsDisposed &&
-        ReferenceEquals(Dispatcher, dispatcher) &&
         EffectiveIsVisible &&
         EffectiveIsEnabled &&
         Rows.IndexOf(row) >= 0 &&
@@ -1656,6 +1663,15 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             SelectCell(row, targetColumn);
         }
 
+        // SelectRowCore/SelectCell above publish property-changed notifications synchronously, and a
+        // subscriber can react by removing the row or disposing the table before control returns
+        // here - re-check liveness before touching the possibly-stale captured row, matching the
+        // pointer path's equivalent guard.
+        if (!IsRowCellLive(row, targetColumn))
+        {
+            return true;
+        }
+
         _ = BringIntoView(row.Cells[targetColumn]);
         return true;
     }
@@ -1685,6 +1701,15 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         else
         {
             SelectCell(row, columnIndex);
+        }
+
+        // SelectRowCore/SelectCell above publish property-changed notifications synchronously, and a
+        // subscriber can react by removing the row or disposing the table before control returns
+        // here - re-check liveness before touching the possibly-stale captured row, matching the
+        // pointer path's equivalent guard.
+        if (!IsRowCellLive(row, columnIndex))
+        {
+            return true;
         }
 
         _ = BringIntoView(row.Cells[columnIndex]);
@@ -1723,6 +1748,15 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             SelectCell(row, column);
         }
 
+        // SelectRowCore/SelectCell above publish property-changed notifications synchronously, and a
+        // subscriber can react by removing the row or disposing the table before control returns
+        // here - re-check liveness before touching the possibly-stale captured row, matching the
+        // pointer path's equivalent guard.
+        if (!IsRowCellLive(row, column))
+        {
+            return true;
+        }
+
         // Home/End select the endpoint row but previously left the viewport pinned, unlike every
         // other navigation path here.
         _ = BringIntoView(row.Cells[column]);
@@ -1740,9 +1774,25 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         var column = ActiveColumnIndex < 0 ? 0 : ActiveColumnIndex;
         SetActive(row, column);
 
+        // SetActive above publishes property-changed notifications synchronously, and a subscriber
+        // can react by removing the row or disposing the table before control returns here - unlike
+        // MoveActive/MovePage/MoveToEndpoint, a stale row is not just an unsafe BringIntoView call
+        // away, it is also unsafe to probe for TextInput or hand to BeginEdit/RowInvoked, so the
+        // re-check gates the rest of the method entirely, matching the pointer path's equivalent
+        // guards.
+        if (!IsRowCellLive(row, column))
+        {
+            return false;
+        }
+
         if (row.Cells[column] is TextInput && BeginEdit(row, column))
         {
             return true;
+        }
+
+        if (!IsRowCellLive(row, column))
+        {
+            return false;
         }
 
         RowInvoked?.Invoke(this, new TableRowInvokedEventArgs(row, Rows.IndexOf(row), ActivationCause.Keyboard));
