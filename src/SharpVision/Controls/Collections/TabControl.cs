@@ -995,14 +995,14 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             HeaderAt(_selectedIndex).CommitSelection(true);
         }
 
-        if (selectionVersion != _selectionVersion)
+        if (IsDisposed || selectionVersion != _selectionVersion)
         {
             return;
         }
 
         ApplyPresentation();
 
-        if (selectionVersion != _selectionVersion)
+        if (IsDisposed || selectionVersion != _selectionVersion)
         {
             return;
         }
@@ -1016,14 +1016,14 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
         NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure);
 
-        if (selectionVersion != _selectionVersion)
+        if (IsDisposed || selectionVersion != _selectionVersion)
         {
             return;
         }
 
         NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Measure);
 
-        if (selectionVersion != _selectionVersion)
+        if (IsDisposed || selectionVersion != _selectionVersion)
         {
             return;
         }

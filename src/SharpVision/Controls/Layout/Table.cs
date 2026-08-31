@@ -1245,8 +1245,28 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     {
         _ = sender;
         SelectionChanged?.Invoke(this, eventArgs);
+
+        // SelectionChanged (and each NotifyPropertyChanged call below) can synchronously reach a
+        // subscriber that disposes the table - re-check before every further disposed-guarded call.
+        if (IsDisposed)
+        {
+            return;
+        }
+
         NotifyPropertyChanged(nameof(ActiveIndex), InvalidationImpact.None);
+
+        if (IsDisposed)
+        {
+            return;
+        }
+
         NotifyPropertyChanged(nameof(ActiveKey), InvalidationImpact.None);
+
+        if (IsDisposed)
+        {
+            return;
+        }
+
         NotifyPropertyChanged(nameof(SelectedKeys), InvalidationImpact.None);
     }
 
@@ -1777,9 +1797,21 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             NotifyPropertyChanged(nameof(ActiveRow), InvalidationImpact.None);
         }
 
+        // Each NotifyPropertyChanged call above can synchronously reach a PropertyChanged
+        // subscriber that disposes the table - re-check before every further disposed-guarded call.
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (columnChanged)
         {
             NotifyPropertyChanged(nameof(ActiveColumnIndex), InvalidationImpact.None);
+        }
+
+        if (IsDisposed)
+        {
+            return;
         }
 
         NotifyPropertyChanged(nameof(ActiveCell), InvalidationImpact.None);
@@ -1789,6 +1821,14 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         IEnumerable<TableRow> rows,
         IEnumerable<TableCellReference> cells)
     {
+        // A caller earlier in the same gesture (e.g. SelectRowCore's preceding SetActive call) may
+        // have already let a PropertyChanged subscriber dispose the table - every call site must be
+        // safe to reach post-disposal rather than relying on each caller to re-check first.
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var nextRows = new HashSet<TableRow>(rows);
         var nextCells = new HashSet<TableCellReference>(cells);
         var oldRows = new HashSet<TableRow>(_selectedRows);
@@ -1817,14 +1857,17 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         ApplyCellStateDelta(addedRows, removedRows, addedCells, removedCells);
         NotifyPropertyChanged(nameof(SelectedRows), InvalidationImpact.None);
 
-        if (_selectionVersion != selectionVersion)
+        // NotifyPropertyChanged above can synchronously reach a PropertyChanged subscriber that
+        // disposes the table - the version check alone only catches a reentrant selection change,
+        // not disposal, so both must be checked before the next disposed-guarded call.
+        if (IsDisposed || _selectionVersion != selectionVersion)
         {
             return;
         }
 
         NotifyPropertyChanged(nameof(SelectedCells), InvalidationImpact.None);
 
-        if (_selectionVersion != selectionVersion)
+        if (IsDisposed || _selectionVersion != selectionVersion)
         {
             return;
         }

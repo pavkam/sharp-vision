@@ -515,6 +515,13 @@ public sealed class ListView: ItemsControl
 
         var changed = ApplySelection(next, cancellable: true);
 
+        // ApplySelection can synchronously reach a subscriber that disposes the control - matches
+        // the guard the SelectedIndex setter already applies before this same continuation.
+        if (IsDisposed)
+        {
+            return changed;
+        }
+
         if (changed && selected && _selection.SetEquals(next))
         {
             CommitProgrammaticSelectionTarget(index);
@@ -1505,7 +1512,11 @@ public sealed class ListView: ItemsControl
         // realized window, so every newly created wrapper reflects the commit before observers run.
         afterSelectionInstalled?.Invoke();
 
-        if (_selectionVersion != selectionVersion)
+        // Each step below can synchronously reach a PropertyChanged/SelectionChanged subscriber
+        // (or, for afterSelectionInstalled, caller-supplied logic) that disposes the control - the
+        // version check alone only catches a reentrant selection change, not disposal, so both must
+        // be checked before the next disposed-guarded call.
+        if (IsDisposed || _selectionVersion != selectionVersion)
         {
             return true;
         }
@@ -1513,21 +1524,21 @@ public sealed class ListView: ItemsControl
         RefreshSelectedItems();
         NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Render);
 
-        if (_selectionVersion != selectionVersion)
+        if (IsDisposed || _selectionVersion != selectionVersion)
         {
             return true;
         }
 
         NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
 
-        if (_selectionVersion != selectionVersion)
+        if (IsDisposed || _selectionVersion != selectionVersion)
         {
             return true;
         }
 
         NotifyPropertyChanged(nameof(SelectedItems), InvalidationImpact.Render);
 
-        if (_selectionVersion != selectionVersion)
+        if (IsDisposed || _selectionVersion != selectionVersion)
         {
             return true;
         }

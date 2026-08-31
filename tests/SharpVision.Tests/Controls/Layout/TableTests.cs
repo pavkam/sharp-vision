@@ -220,6 +220,60 @@ public sealed class TableTests
         table.IsEditing.ShouldBeFalse();
     }
 
+    /// <summary>
+    /// Verifies a PropertyChanged subscriber that disposes the table on ActiveRow (raised by the
+    /// SetActive step SelectRow runs before its own selection commit) does not leave the rest of
+    /// the gesture - including the CommitSelection call that follows - running against
+    /// disposed-guarded members.
+    /// </summary>
+    [Fact]
+    public void SelectRow_WhenPropertyChangedSubscriberDisposesTableOnActiveRow_DoesNotThrow()
+    {
+        var first = new TableRow([new TextInput { Text = "A" }]);
+        var table = new Table { SelectionMode = TableSelectionMode.MultipleRows };
+        table.Columns.Add(TableColumn.Auto("Name"));
+        table.Rows.Add(first);
+        table.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Table.ActiveRow))
+            {
+                table.Dispose();
+            }
+        };
+
+        Should.NotThrow(() => table.SelectRow(first));
+
+        table.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies a PropertyChanged subscriber that disposes the table on SelectedRows does not leave
+    /// CommitSelection's remaining SelectedCells notification and SelectionChanged raise running
+    /// against disposed-guarded members.
+    /// </summary>
+    [Fact]
+    public void SelectRow_WhenPropertyChangedSubscriberDisposesTableOnSelectedRows_DoesNotThrow()
+    {
+        var first = new TableRow([new TextInput { Text = "A" }]);
+        var second = new TableRow([new TextInput { Text = "B" }]);
+        var table = new Table { SelectionMode = TableSelectionMode.MultipleRows };
+        table.Columns.Add(TableColumn.Auto("Name"));
+        table.Rows.Add(first);
+        table.Rows.Add(second);
+        table.SelectRow(first);
+        table.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Table.SelectedRows))
+            {
+                table.Dispose();
+            }
+        };
+
+        Should.NotThrow(() => table.SelectRow(second, Modifiers.Control));
+
+        table.IsDisposed.ShouldBeTrue();
+    }
+
     /// <summary>Verifies the presenter-forwarding scroll properties publish PropertyChanged only
     /// when the committed value actually changes.</summary>
     [Fact]

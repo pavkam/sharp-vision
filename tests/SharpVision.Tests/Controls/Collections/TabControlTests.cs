@@ -238,6 +238,30 @@ public sealed class TabControlTests
         tabs.SelectedItem.ShouldBeSameAs(first);
     }
 
+    /// <summary>
+    /// Verifies a PropertyChanged subscriber that disposes the control on SelectedIndex does not
+    /// leave the rest of CommitSelection - including the SelectedItem notification and the
+    /// SelectionChanged raise - running against disposed-guarded members.
+    /// </summary>
+    [Fact]
+    public void SelectedIndex_WhenPropertyChangedSubscriberDisposesControl_DoesNotThrow()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        var tabs = Create(first, second);
+        tabs.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(TabControl.SelectedIndex))
+            {
+                tabs.Dispose();
+            }
+        };
+
+        _ = Should.NotThrow(() => tabs.SelectedIndex = 1);
+
+        tabs.IsDisposed.ShouldBeTrue();
+    }
+
     /// <summary>Verifies generated headers receive the newest reentrant HeaderWidth value.</summary>
     [Fact]
     public void HeaderWidth_WhenPropertyObserverCommitsNewerWidth_UpdatesEveryHeader()

@@ -958,6 +958,25 @@ public sealed class TableDataControllerTests
         propertyNotifications.ShouldNotContain(nameof(Table.SelectedKeys));
     }
 
+    /// <summary>Verifies a SelectionChanged subscriber that disposes a progressive table
+    /// synchronously does not leave OnControllerSelectionChanged's remaining ActiveIndex/ActiveKey/
+    /// SelectedKeys notifications running against disposed-guarded members.</summary>
+    [Fact]
+    public async Task SelectIndex_WhenSelectionChangedSubscriberDisposesTable_DoesNotThrowAsync()
+    {
+        var table = CreateHost();
+        var source = CreateSource(20);
+        await using var surface = await ComponentSurface.MountAsync(
+            table, new Size(20, 10), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
+        table.SelectionChanged += (_, _) => table.Dispose();
+
+        await Should.NotThrowAsync(
+            () => surface.UpdateAsync(() => table.SelectIndex(2), "select index 2"));
+
+        table.IsDisposed.ShouldBeTrue();
+    }
+
     /// <summary>Verifies SelectAll respects SelectionMode instead of always selecting every cached
     /// key (regression for defect d).</summary>
     [Theory]
@@ -1130,6 +1149,11 @@ public sealed class TableDataControllerTests
         await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
 
         table.IsDisposed.ShouldBeTrue();
+
+        // The disposing handler runs from inside IssueFetch's own UpdateLoadState call, before
+        // RunFetchAsync is started - confirms the fetch is never actually issued against the
+        // already-disposed range Cts, rather than being issued and silently faulting instead.
+        source.LoadCallCount.ShouldBe(0);
     }
 
     #endregion

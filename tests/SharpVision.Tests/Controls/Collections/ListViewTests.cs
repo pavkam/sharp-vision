@@ -1406,6 +1406,29 @@ public sealed class ListViewTests
         control.IsDisposed.ShouldBeTrue();
     }
 
+    /// <summary>
+    /// Verifies a PropertyChanged subscriber that disposes the control between the SelectedIndex,
+    /// SelectedItem, and SelectedItems notifications does not leave the rest of ApplySelection
+    /// running against disposed-guarded members.
+    /// </summary>
+    [Fact]
+    public void SetSelected_WhenPropertyChangedSubscriberDisposesControl_DoesNotThrow()
+    {
+        var control = new UiListView { Items = ["Zero", "One"] };
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiListView.SelectedIndex))
+            {
+                control.Dispose();
+            }
+        };
+
+        var changed = Should.NotThrow(() => control.SetSelected(0, selected: true));
+
+        changed.ShouldBeTrue();
+        control.IsDisposed.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a reentrant selection change wins the complete active-row and visibility
     /// transaction instead of letting the outer assignment reveal its now-unselected target.</summary>
     [Fact]

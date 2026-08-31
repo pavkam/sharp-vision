@@ -620,6 +620,15 @@ internal sealed class TableDataController: IDisposable
         var range = new PendingRange(start, count, _generation, CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token));
         _pending.Add(range);
         UpdateLoadState();
+
+        // UpdateLoadState can synchronously raise LoadStateChanged, and a subscriber that disposes
+        // the table cancels and disposes every pending range's Cts (including the one just added)
+        // and clears _pending - starting the fetch here would touch that already-disposed Cts.
+        if (_disposed)
+        {
+            return;
+        }
+
         _ = RunFetchAsync(range);
     }
 

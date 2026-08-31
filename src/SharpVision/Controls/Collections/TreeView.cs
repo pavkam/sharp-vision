@@ -1116,14 +1116,17 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
         _selectedItem = FindFirstInTreeOrder(selection);
         NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
 
-        if (_selectionVersion != selectionVersion)
+        // NotifyPropertyChanged above can synchronously reach a PropertyChanged subscriber that
+        // disposes the tree - the version check alone only catches a reentrant selection change,
+        // not disposal, so both must be checked before the next disposed-guarded call.
+        if (IsDisposed || _selectionVersion != selectionVersion)
         {
             return true;
         }
 
         NotifyPropertyChanged(nameof(SelectedItems), InvalidationImpact.Render);
 
-        if (_selectionVersion != selectionVersion)
+        if (IsDisposed || _selectionVersion != selectionVersion)
         {
             return true;
         }

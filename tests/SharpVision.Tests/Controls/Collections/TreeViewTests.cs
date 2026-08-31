@@ -2809,6 +2809,29 @@ public sealed class TreeViewTests
     }
 
     /// <summary>
+    /// Verifies a PropertyChanged subscriber that disposes the tree between the SelectedItem and
+    /// SelectedItems notifications does not leave the rest of CommitSelection running against
+    /// disposed-guarded members.
+    /// </summary>
+    [Fact]
+    public void SetSelected_WhenPropertyChangedSubscriberDisposesTree_DoesNotThrow()
+    {
+        var tree = Build(out var first, out _, out _);
+        tree.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(TreeView.SelectedItem))
+            {
+                tree.Dispose();
+            }
+        };
+
+        var changed = Should.NotThrow(() => tree.SetSelected(first, true));
+
+        changed.ShouldBeTrue();
+        tree.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>
     /// Verifies a handler that changes the selection itself abandons the proposal it was shown,
     /// so a stale delta is never committed on top of the handler's own decision.
     /// </summary>
