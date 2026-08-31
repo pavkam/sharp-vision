@@ -118,9 +118,9 @@ public sealed class CommandPaletteTests
         {
             Resolver = (searchTerms, _) => searchTerms == "late"
                 ? new ValueTask<IReadOnlyList<object?>>(completion.Task)
-                : ValueTask.FromResult<IReadOnlyList<object?>>(["initial"])
+                : ValueTask.FromResult<IReadOnlyList<object?>>(["initial"]),
+            Text = "late"
         };
-        palette.Text = "late";
         palette.IsResolving.ShouldBeTrue();
         var resultsChanged = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         palette.ResultsChanged += (_, _) => resultsChanged.TrySetResult();

@@ -712,17 +712,15 @@ public sealed class PointerTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
-            var child = new ProbeControl
-            {
-                Bounds = new Rect(0, 0, 10, 10),
-                ThrowOnPointerOverChanged = true
-            };
+            var child = new ProbeControl { Bounds = new Rect(0, 0, 10, 10) };
             root.Children.Add(child);
             root.Attach(dispatcher);
             var manager = new PointerManager(root);
 
             _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Move));
             manager.Hovered.ShouldBeSameAs(child);
+
+            child.ThrowOnPointerOverChanged = true;
 
             _ = Should.Throw<InvalidOperationException>(manager.Dispose);
 

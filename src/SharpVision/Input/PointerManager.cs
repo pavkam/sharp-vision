@@ -533,7 +533,14 @@ public sealed class PointerManager: IDisposable
             _lastClickTarget = null;
         }
 
-        ReconcileHover();
+        // Only Disabled/Hidden leave the subtree attached with unchanged tree structure, so
+        // re-hit-testing here is safe. Detached/Disposed/TerminalFocusLost/Transferred fire mid-
+        // teardown or off a structural change already in flight; hit-testing then would reenter
+        // the very mutation this callback is running inside of.
+        if (reason is ReleaseReason.Disabled or ReleaseReason.Hidden)
+        {
+            ReconcileHover();
+        }
     }
 
     /// <summary>Constrains retained pointer state to one newly active modal plane.</summary>

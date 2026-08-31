@@ -1445,7 +1445,7 @@ public sealed class ListViewTests
             }
         };
 
-        Should.NotThrow(() => control.Items = ["Two", "Three"]);
+        _ = Should.NotThrow(() => control.Items = ["Two", "Three"]);
 
         control.IsDisposed.ShouldBeTrue();
     }
@@ -1472,7 +1472,7 @@ public sealed class ListViewTests
             }
         };
 
-        Should.NotThrow(() => control.Items = ["Two", "Three"]);
+        _ = Should.NotThrow(() => control.Items = ["Two", "Three"]);
 
         control.IsDisposed.ShouldBeTrue();
     }
@@ -1542,7 +1542,7 @@ public sealed class ListViewTests
             }
         };
 
-        Should.NotThrow(() => realized.Single(item => item.Content == "B").IsEnabled = false);
+        _ = Should.NotThrow(() => realized.Single(item => item.Content == "B").IsEnabled = false);
 
         control.IsDisposed.ShouldBeTrue();
     }
