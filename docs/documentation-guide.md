@@ -303,12 +303,13 @@ true or already carried by ordinary prose.
 - Relative links include the section anchor when the target is a specific rule.
 - The [coverage matrix](protocols/coverage-matrix.md#coverage) is the only
   summary of currently verified terminal support.
-- Protocol pages cite primary standards or terminal-author documentation and
-  record an edition, version, or access date.
+- Protocol pages cite primary standards or terminal-author documentation.
 - Paths, commands, type names, and member names match the current repository.
-- Reference pages contain no placeholder markers, delivery plans, internal
-  milestone names, issue identifiers, vague edge-case promises, or speculative
-  support claims.
+- Reference pages contain no issue identifiers or issue URLs (enforced by
+  `test:docs`). Reviewers also confirm reference pages avoid placeholder
+  markers, delivery plans, internal milestone names, vague edge-case promises,
+  and speculative support claims, and that protocol pages record a citation
+  edition, version, or access date — none of this is currently automated.
 - Multi-step lifetimes and ordered behavior use sequence or state diagrams.
   Ownership, inheritance, and graph relationships use class or flow diagrams.
 - Shared behavior such as invalidation, layout, rendering, input routing, and
