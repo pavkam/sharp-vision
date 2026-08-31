@@ -18,5 +18,8 @@ public enum MultiplexingOperation
     Clipboard = 2,
 
     /// <summary>Typed graphics commands may bypass the multiplexer.</summary>
-    Graphics = 4
+    Graphics = 4,
+
+    /// <summary>Typed desktop notification commands may bypass the multiplexer.</summary>
+    Notifications = 8
 }

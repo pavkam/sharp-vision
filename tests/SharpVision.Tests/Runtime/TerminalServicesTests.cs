@@ -1917,6 +1917,82 @@ public sealed class TerminalServicesTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an explicitly authorized tmux notification route wraps the OSC 777 string
+    /// in DCS passthrough before the ordered out-of-band write reaches the transport, matching the
+    /// existing clipboard and graphics routing precedent instead of posting bare bytes that tmux
+    /// would otherwise swallow.</summary>
+    [Fact]
+    public async Task Notify_WhenTmuxRouteApprovesFamily_WrapsNotificationBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var capabilities = TerminalCapabilities.Conservative with { Notifications = supported };
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(capabilities),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Notifications);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = capabilities,
+            Multiplexing = policy
+        };
+        var written = new TaskCompletionSource<ReadOnlyMemory<byte>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += bytes =>
+        {
+            if (bytes.Span.IndexOf("\u001bPtmux;"u8) >= 0)
+            {
+                _ = written.TrySetResult(bytes.ToArray());
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.Notifications.Notify("hi");
+
+        var bytes = await written.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        bytes.ToArray().ShouldBe(
+            "\u001bPtmux;\u001b\u001b]9;hi\u001b\u001b\\\u001b\\"u8.ToArray());
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a configured multiplexer route that has not approved the notification
+    /// family suppresses the notification entirely rather than posting an unwrapped OSC that the
+    /// multiplexer would otherwise consume and never forward.</summary>
+    [Fact]
+    public async Task Notify_WhenTmuxRouteDoesNotApproveFamily_IsSuppressedAndByteQuietAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var capabilities = TerminalCapabilities.Conservative with { Notifications = supported };
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(capabilities),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = capabilities,
+            Multiplexing = policy
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var before = terminal.Writes.Count;
+
+        application.Terminal.Notifications.IsSupported.ShouldBeTrue();
+        application.Terminal.Notifications.Notify("hi");
+        application.Terminal.Notifications.Notify("title", "hi");
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        terminal.Writes.Count.ShouldBe(before);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies both notify overloads validate their string arguments unconditionally,
     /// even when notifications are unsupported, matching <c>SetTitle</c>'s null-check ordering.</summary>
     [Fact]

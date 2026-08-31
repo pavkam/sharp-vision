@@ -213,6 +213,53 @@ public sealed class MultiplexerRouteTests
         destination.WrittenCount.ShouldBe(0);
     }
 
+    /// <summary>Verifies notification OSC strings use the same single-layer tmux wrapping and ESC
+    /// doubling as every other explicitly authorized passthrough family.</summary>
+    [Fact]
+    public void TryWriteNotification_WhenRouteHasTmux_WritesExactEnvelope()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Notifications);
+        var route = new MultiplexerRoute(policy);
+        var destination = new ArrayBufferWriter<byte>();
+
+        var written = route.TryWriteNotification(destination, "\u001b]9;hi\u001b\\"u8);
+
+        written.ShouldBeTrue();
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001bPtmux;\u001b\u001b]9;hi\u001b\u001b\\\u001b\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies a route approved only for clipboard traffic cannot carry notification
+    /// bytes, and that a Screen-containing route cannot carry notifications either, leaving the
+    /// destination untouched in both cases.</summary>
+    [Theory]
+    [InlineData(new[] { MultiplexerKind.Tmux }, MultiplexingOperation.Clipboard)]
+    [InlineData(new[] { MultiplexerKind.Screen }, MultiplexingOperation.Notifications)]
+    public void TryWriteNotification_WhenRouteCannotCarryTheFamily_RejectsAtomically(
+        MultiplexerKind[] layers,
+        MultiplexingOperation approved)
+    {
+        var policy = new MultiplexingPolicy(
+            layers,
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            approved);
+        var destination = new ArrayBufferWriter<byte>();
+
+        var written = new MultiplexerRoute(policy).TryWriteNotification(
+            destination,
+            "\u001b]9;hi\u001b\\"u8);
+
+        written.ShouldBeFalse();
+        destination.WrittenCount.ShouldBe(0);
+    }
+
     /// <summary>Verifies an authorized clipboard route unwraps one exact OSC 5522 packet for the
     /// ordinary decoder rather than restricting inbound envelopes to capability replies.</summary>
     [Fact]

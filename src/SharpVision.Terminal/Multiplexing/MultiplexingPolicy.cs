@@ -20,7 +20,8 @@ public sealed class MultiplexingPolicy
     private const int _maximumEnvelopeBytes = 16_777_216;
     private const MultiplexingOperation _allOperations = MultiplexingOperation.CapabilityQueries |
                                              MultiplexingOperation.Clipboard |
-                                             MultiplexingOperation.Graphics;
+                                             MultiplexingOperation.Graphics |
+                                             MultiplexingOperation.Notifications;
     private readonly ReadOnlyCollection<MultiplexerKind> _layers;
 
     /// <summary>Initializes one explicit multiplexer routing policy.</summary>
@@ -193,6 +194,8 @@ public sealed class MultiplexingPolicy
             MultiplexingOperation.Clipboard =>
                 Active && (ApprovedOperations & operation) == operation,
             MultiplexingOperation.Graphics =>
+                Active && (ApprovedOperations & operation) == operation,
+            MultiplexingOperation.Notifications =>
                 Active && (ApprovedOperations & operation) == operation,
             _ => throw InvalidOperation(operation)
         };

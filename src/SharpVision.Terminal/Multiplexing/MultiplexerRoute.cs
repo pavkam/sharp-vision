@@ -41,6 +41,9 @@ public sealed class MultiplexerRoute
     /// <summary>Gets whether bounded clipboard OSC strings can reach the explicit outer terminal.</summary>
     public bool CanRouteClipboard => Policy.Allows(MultiplexingOperation.Clipboard) && !Policy.ContainsScreen;
 
+    /// <summary>Gets whether a bounded notification OSC string can reach the explicit outer terminal.</summary>
+    public bool CanRouteNotifications => Policy.Allows(MultiplexingOperation.Notifications) && !Policy.ContainsScreen;
+
     /// <summary>Gets the exact largest inner graphics frame for a known ESC count.</summary>
     /// <param name="escapeBytes">The non-negative ESC byte count in the complete inner frame.</param>
     /// <returns>A positive inner byte bound, or zero when graphics cannot be routed.</returns>
@@ -112,6 +115,20 @@ public sealed class MultiplexerRoute
                !commands.IsEmpty &&
                commands.Length <= Policy.MaxEnvelopeBytes &&
                TryWritePassthrough(destination, commands, allowScreen: false);
+    }
+
+    /// <summary>Writes one complete bounded notification OSC string through authorized tmux layers.</summary>
+    /// <param name="destination">The non-null synchronous destination.</param>
+    /// <param name="command">The complete OSC 9 or OSC 777 notification string.</param>
+    /// <returns>True on complete atomic encoding; otherwise false without destination mutation.</returns>
+    public bool TryWriteNotification(IBufferWriter<byte> destination, ReadOnlySpan<byte> command)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+
+        return CanRouteNotifications &&
+               !command.IsEmpty &&
+               command.Length <= Policy.MaxEnvelopeBytes &&
+               TryWritePassthrough(destination, command, allowScreen: false);
     }
 
     private bool TryWritePassthrough(
@@ -290,7 +307,7 @@ public sealed class MultiplexerRoute
         {
             MultiplexingOperation.CapabilityQueries => CanRouteCapabilityQueries,
             MultiplexingOperation.Clipboard => CanRouteClipboard,
-            MultiplexingOperation.None or MultiplexingOperation.Graphics => false,
+            MultiplexingOperation.None or MultiplexingOperation.Graphics or MultiplexingOperation.Notifications => false,
             _ => throw new UnreachableException("Reply validation emits only defined operation families.")
         };
     }
