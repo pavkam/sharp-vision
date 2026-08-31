@@ -196,20 +196,18 @@ public abstract class Container: ControlBase
     /// <inheritdoc/>
     internal override bool ShrinkWrapsHeight => AutoSize;
 
-    /// <summary>The corrected content-box size from the second AutoSize measure pass, or null
-    /// when no axis was clamped below its natural size and the first, unbounded pass's
-    /// <see cref="ControlBase.ContentExtent"/> remains authoritative. That property itself
-    /// always retains the first pass's value - <see cref="ControlBase.Measure(Constraint)"/> commits it
-    /// immediately after <see cref="ControlBase.MeasureOverride"/> returns, before
-    /// <see cref="OnMeasuredDesired"/> ever runs - so this field is the only place the corrected
-    /// value can live for <see cref="ResolveContentSlot"/> to consult afterward.
-    /// Reset at the start of every measure pass.</summary>
+    /// <summary>Gets the content-box extent settled by AutoSize after finite clamps and scrollbar candidates.
+    /// </summary>
+    /// <remarks><see cref="ControlBase.ContentExtent"/> records only the first unbounded measure pass.
+    /// AutoSize may then remeasure at a clamped or rail-reserved viewport before its desired size commits;
+    /// this field preserves that settled extent for <see cref="ResolveContentSlot"/>. It resets at the
+    /// beginning of every measure transaction.</remarks>
     private Size? _autoSizeCorrectedContentExtent;
 
     /// <summary>Gets the finite content constraint that supplied the current scroll measurement.
-    /// Specialized containers use this value to resolve viewport-relative child requests while
-    /// their scroll axis remains unbounded for extent discovery. The value is internal to one
-    /// synchronous measure transaction and must not be retained after an override returns.</summary>
+    /// Specialized containers use this candidate viewport to resolve viewport-relative child
+    /// requests while their scroll axis remains unbounded for extent discovery. It is valid only
+    /// during the current measure override; arrange overrides must use the committed <see cref="Viewport"/>.</summary>
     private protected Constraint ScrollMeasureViewport { get; private set; }
 
     // AutoSize sizes to content on both axes, so content is measured unbounded
@@ -270,6 +268,20 @@ public abstract class Container: ControlBase
             return result;
         }
 
+        if (AutoSize)
+        {
+            // An unbounded AutoSize probe cannot resolve a viewport-relative child request. Settle
+            // the content against the tentative content box before deciding whether automatic
+            // rails consume another cell; otherwise the first arrange can discover unreachable
+            // extent after the container has already committed its own size.
+            _autoSizeCorrectedContentExtent = MeasureContent(
+                new Size(
+                    Math.Max(0, result.Width - horizontalInset),
+                    Math.Max(0, result.Height - verticalInset)),
+                horizontal: false,
+                vertical: false);
+        }
+
         // ContentExtent is a content-box measurement, but result is the border-box size the bar
         // cell gets added to. Comparing the two directly under-detects overflow by exactly the
         // padding and border inset, so the content-box extent of result is computed here instead
@@ -281,17 +293,40 @@ public abstract class Container: ControlBase
         var needsVertical = verticalEligible && VerticalBarVisibility == ScrollBarVisibility.Always;
         var needsHorizontal = horizontalEligible && HorizontalBarVisibility == ScrollBarVisibility.Always;
 
-        // Automatic bars are added monotonically because one reserved axis can induce overflow on
-        // the other - see Resolve's identical two-probe rationale, which this mirrors. Two
-        // additions are the finite maximum. Unlike Resolve, no content re-measure happens between
-        // probes: this is only re-checking an already-final extent against a narrower viewport, not
-        // revisiting content, so folding this into Resolve's own loop would need a re-measure hook
-        // it never uses plus the AutoSize-or-Auto-Length eligibility gate Resolve has no notion of -
-        // not a clean shared extraction.
+        if (AutoSize && (needsHorizontal || needsVertical))
+        {
+            extent = MeasureContent(
+                new Size(
+                    Math.Max(0, (needsVertical ? Math.Clamp(result.Width.Add(1), minimumWidth, maximumWidth) : result.Width) - horizontalInset),
+                    Math.Max(0, (needsHorizontal ? Math.Clamp(result.Height.Add(1), minimumHeight, maximumHeight) : result.Height) - verticalInset)),
+                needsHorizontal,
+                needsVertical);
+            _autoSizeCorrectedContentExtent = extent;
+            result = new Size(
+                needsVertical
+                    ? result.Width
+                    : AutoSizeAxis(extent.Width, horizontalInset, Width, minimumWidth, maximumWidth),
+                needsHorizontal
+                    ? result.Height
+                    : AutoSizeAxis(extent.Height, verticalInset, Height, minimumHeight, maximumHeight));
+        }
+
+        // Automatic rails are monotonic: each new reservation can only reduce a viewport and expose
+        // the other overflow. A rail may preserve the viewport by growing its physical axis only as
+        // far as the resolved limits permit; when a maximum blocks that growth, the candidate must
+        // use the actually narrowed viewport or it can suppress an induced rail on the other axis.
+        // Resolve repeats the actual candidate remeasure after this size decision; this bounded pass
+        // determines the owner cells those rails reserve.
         for (var probe = 0; probe < 2; probe++)
         {
-            var viewportWidth = Math.Max(0, result.Width - horizontalInset - (needsVertical ? 1 : 0));
-            var viewportHeight = Math.Max(0, result.Height - verticalInset - (needsHorizontal ? 1 : 0));
+            var physicalWidth = needsVertical
+                ? Math.Clamp(result.Width.Add(1), minimumWidth, maximumWidth)
+                : result.Width;
+            var physicalHeight = needsHorizontal
+                ? Math.Clamp(result.Height.Add(1), minimumHeight, maximumHeight)
+                : result.Height;
+            var viewportWidth = Math.Max(0, physicalWidth - horizontalInset - (needsVertical ? 1 : 0));
+            var viewportHeight = Math.Max(0, physicalHeight - verticalInset - (needsHorizontal ? 1 : 0));
             var addVertical = verticalEligible &&
                               VerticalBarVisibility == ScrollBarVisibility.Auto &&
                               extent.Height > viewportHeight;
@@ -315,9 +350,8 @@ public abstract class Container: ControlBase
             needsHorizontal ? Math.Clamp(result.Height.Add(1), minimumHeight, maximumHeight) : result.Height);
     }
 
-    /// <summary>Resolves the AutoSize border-box size, re-measuring content once at a clamped
-    /// width when Min/Max or the incoming slot shrinks it below the natural width the first,
-    /// unbounded measure pass discovered.</summary>
+    /// <summary>Resolves the AutoSize border-box size, remeasuring content when either finite axis
+    /// clamps the natural unbounded extent.</summary>
     /// <remarks>
     /// The first pass measures unbounded specifically to discover natural size, so a wrap-capable
     /// child never reports its true wrapped height along a clamped width - it reports the single
@@ -328,15 +362,10 @@ public abstract class Container: ControlBase
     /// the clamp is not merely mis-sized, it is unreachable, because AutoScroll's own overflow
     /// detection compares against that same wrong, too-small ContentExtent.
     /// <para/>
-    /// Only a clamped width triggers the re-measure, mirroring Grid's own row-after-column
-    /// remeasure: height depends on width through wrapping in this framework, never the reverse,
-    /// so a clamped height alone (typically a scrollable axis's own MaxHeight, capping how tall
-    /// the container itself gets while content simply scrolls) needs no correction. The re-measure
-    /// height constraint stays unbounded regardless of MaxHeight for the same reason - bounding it
-    /// would clamp the child's own reported size to that bound too
-    /// (<see cref="ControlBase.MeasureOverride"/>'s slot already does this), which is
-    /// exactly the artificially small figure this fix exists to avoid; only the final reported
-    /// border-box height, not the measured content, is capped by MaxHeight.
+    /// A finite width can reflow height, while a finite height can make a vertical Wrap create new
+    /// columns. The correction therefore carries both clamped content axes. The bounded candidate
+    /// settlement in <see cref="OnMeasuredDesired"/> then accounts for any scrollbar rail that further
+    /// changes one of those bases before the extent is committed.
     /// </remarks>
     private Size ResolveAutoSizeDesired(
         int horizontalInset,
@@ -350,16 +379,21 @@ public abstract class Container: ControlBase
         var width = AutoSizeAxis(natural.Width, horizontalInset, Width, minimumWidth, maximumWidth);
         var height = AutoSizeAxis(natural.Height, verticalInset, Height, minimumHeight, maximumHeight);
         var clampedContentWidth = Math.Max(0, width - horizontalInset);
+        var clampedContentHeight = Math.Max(0, height - verticalInset);
 
-        if (clampedContentWidth >= natural.Width)
+        if (clampedContentWidth >= natural.Width && clampedContentHeight >= natural.Height)
         {
             return new Size(width, height);
         }
 
-        var corrected = MeasureOverride(new Constraint(clampedContentWidth, null));
+        var corrected = AutoScroll
+            ? MeasureContent(new Size(clampedContentWidth, clampedContentHeight), horizontal: false, vertical: false)
+            : MeasureOverride(new Constraint(clampedContentWidth, clampedContentHeight));
         _autoSizeCorrectedContentExtent = corrected;
 
-        return new Size(width, AutoSizeAxis(corrected.Height, verticalInset, Height, minimumHeight, maximumHeight));
+        return new Size(
+            AutoSizeAxis(corrected.Width, horizontalInset, Width, minimumWidth, maximumWidth),
+            AutoSizeAxis(corrected.Height, verticalInset, Height, minimumHeight, maximumHeight));
     }
 
     // GrowAndShrink fits content exactly; GrowOnly never shrinks below an explicit
@@ -969,7 +1003,8 @@ public abstract class Container: ControlBase
             (horizontal, vertical) => MeasureContent(
                 new Size(padded.Width, padded.Height),
                 horizontal,
-                vertical));
+                vertical),
+            remeasureInitial: AutoSize);
         var extent = resolved.Extent;
         var viewport = resolved.Viewport;
         _scroll.ViewportBounds = new Rect(padded.X, padded.Y, viewport.Width, viewport.Height);

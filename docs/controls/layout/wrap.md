@@ -61,7 +61,9 @@ consume neither a slot nor either adjacent gap.
 When inherited scrolling arms the primary axis, that axis is unbounded for
 packing and forms one scrollable line or column. The viewport is not used as a
 wrap lane; percentages on the scrolling axis continue to resolve from the
-visible viewport. Cross-axis overflow follows the ordinary
+visible viewport. Cross-axis percentage requests and limits resolve once from
+their containing lane, or from the committed viewport when that cross axis also
+scrolls. Cross-axis overflow follows the ordinary
 [scrolling contract](../../concepts/scrolling.md#overview).
 
 ## Example

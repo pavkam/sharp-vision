@@ -925,6 +925,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <remarks>Derived overlay-owned controls use this viewport record when their own resolved box is intentionally smaller than the host.</remarks>
     internal Constraint? LastMeasureConstraint { get; private set; }
 
+    private int? LastMeasureWidthRequestBase { get; set; }
+
+    private int? LastMeasureHeightRequestBase { get; set; }
+
     private int? LastMeasureWidthLimitBase { get; set; }
 
     private int? LastMeasureHeightLimitBase { get; set; }
@@ -934,6 +938,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     private bool LastWidthResolved { get; set; }
 
     private bool LastHeightResolved { get; set; }
+
+    private int? LastArrangeWidthRequestBase { get; set; }
+
+    private int? LastArrangeHeightRequestBase { get; set; }
 
     private int? LastWidthLimitBase { get; set; }
 
@@ -1208,15 +1216,22 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// The attached control is accessed off-dispatcher or measure is reentered.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    internal void Measure(Constraint constraint) => Measure(constraint, null, null);
+    internal void Measure(Constraint constraint) => Measure(constraint, null, null, null, null);
 
-    /// <summary>Measures within a slot while retaining the parent's relative-limit bases.</summary>
-    /// <param name="constraint">The non-negative outer constraint used for the requested size.</param>
+    /// <summary>Measures within a slot while retaining the parent's relative request and limit bases.</summary>
+    /// <param name="constraint">The non-negative outer constraint used to contain the requested size.</param>
+    /// <param name="widthRequestBase">The containing width used to resolve a relative width request.</param>
+    /// <param name="heightRequestBase">The containing height used to resolve a relative height request.</param>
     /// <param name="widthLimitBase">The containing width used to resolve relative width limits.</param>
     /// <param name="heightLimitBase">The containing height used to resolve relative height limits.</param>
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher or measure is reentered.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    internal void Measure(Constraint constraint, int? widthLimitBase, int? heightLimitBase)
+    internal void Measure(
+        Constraint constraint,
+        int? widthRequestBase,
+        int? heightRequestBase,
+        int? widthLimitBase,
+        int? heightLimitBase)
     {
         VerifyMutable();
 
@@ -1226,6 +1241,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         }
 
         if ((Pending & Invalidation.Measure) == 0 && LastMeasureConstraint == constraint &&
+            LastMeasureWidthRequestBase == widthRequestBase && LastMeasureHeightRequestBase == heightRequestBase &&
             LastMeasureWidthLimitBase == widthLimitBase && LastMeasureHeightLimitBase == heightLimitBase)
         {
             return;
@@ -1240,19 +1256,34 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             {
                 DesiredSize = default;
                 LastMeasureConstraint = constraint;
+                LastMeasureWidthRequestBase = widthRequestBase;
+                LastMeasureHeightRequestBase = heightRequestBase;
                 LastMeasureWidthLimitBase = widthLimitBase;
                 LastMeasureHeightLimitBase = heightLimitBase;
                 Invalidate(Invalidation.Arrange);
                 return;
             }
 
-            var contentConstraint = OnMeasuringContent(CreateContentConstraint(constraint, widthLimitBase, heightLimitBase));
+            var contentConstraint = OnMeasuringContent(CreateContentConstraint(
+                constraint,
+                widthRequestBase,
+                heightRequestBase,
+                widthLimitBase,
+                heightLimitBase));
             var content = MeasureOverride(contentConstraint);
             ContentExtent = content;
-            var desired = OnMeasuredDesired(constraint, ResolveDesiredSize(constraint, content, widthLimitBase, heightLimitBase));
+            var desired = OnMeasuredDesired(constraint, ResolveDesiredSize(
+                constraint,
+                content,
+                widthRequestBase,
+                heightRequestBase,
+                widthLimitBase,
+                heightLimitBase));
 
             DesiredSize = desired;
             LastMeasureConstraint = constraint;
+            LastMeasureWidthRequestBase = widthRequestBase;
+            LastMeasureHeightRequestBase = heightRequestBase;
             LastMeasureWidthLimitBase = widthLimitBase;
             LastMeasureHeightLimitBase = heightLimitBase;
             Invalidate(Invalidation.Arrange);
@@ -1274,7 +1305,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// The attached control is accessed off-dispatcher or arrange is reentered.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    internal void Arrange(Rect slot) => Arrange(slot, widthResolved: false, heightResolved: false);
+    internal void Arrange(Rect slot) => Arrange(slot, widthResolved: false, heightResolved: false, null, null, null, null);
 
     /// <summary>Arranges with optional parent-resolved border-box axes.</summary>
     /// <param name="slot">The final non-negative outer rectangle including margin.</param>
@@ -1291,7 +1322,27 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         bool widthResolved,
         bool heightResolved,
         int? widthLimitBase = null,
-        int? heightLimitBase = null)
+        int? heightLimitBase = null) =>
+        Arrange(slot, widthResolved, heightResolved, null, null, widthLimitBase, heightLimitBase);
+
+    /// <summary>Arranges with optional parent-resolved border-box axes and relative request and limit bases.</summary>
+    /// <param name="slot">The final non-negative outer rectangle including margin.</param>
+    /// <param name="widthResolved">Whether the parent already resolved the border-box width.</param>
+    /// <param name="heightResolved">Whether the parent already resolved the border-box height.</param>
+    /// <param name="widthRequestBase">The containing width used to resolve a relative width request.</param>
+    /// <param name="heightRequestBase">The containing height used to resolve a relative height request.</param>
+    /// <param name="widthLimitBase">The containing width used when the parent resolved relative limits.</param>
+    /// <param name="heightLimitBase">The containing height used when the parent resolved relative limits.</param>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher or arrange is reentered.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    internal void Arrange(
+        Rect slot,
+        bool widthResolved,
+        bool heightResolved,
+        int? widthRequestBase,
+        int? heightRequestBase,
+        int? widthLimitBase,
+        int? heightLimitBase)
     {
         VerifyMutable();
 
@@ -1304,6 +1355,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             LastArrangeSlot == slot &&
             LastWidthResolved == widthResolved &&
             LastHeightResolved == heightResolved &&
+            LastArrangeWidthRequestBase == widthRequestBase &&
+            LastArrangeHeightRequestBase == heightRequestBase &&
             LastWidthLimitBase == widthLimitBase &&
             LastHeightLimitBase == heightLimitBase)
         {
@@ -1321,6 +1374,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 LastArrangeSlot = slot;
                 LastWidthResolved = widthResolved;
                 LastHeightResolved = heightResolved;
+                LastArrangeWidthRequestBase = widthRequestBase;
+                LastArrangeHeightRequestBase = heightRequestBase;
                 LastWidthLimitBase = widthLimitBase;
                 LastHeightLimitBase = heightLimitBase;
                 return;
@@ -1337,6 +1392,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                         Width,
                         HorizontalAlignment == HorizontalAlignment.Stretch,
                         slot.Width,
+                        widthRequestBase,
                         available.Width,
                         DesiredSize.Width,
                         minimumWidth,
@@ -1349,6 +1405,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                         Height,
                         VerticalAlignment == VerticalAlignment.Stretch,
                         slot.Height,
+                        heightRequestBase,
                         available.Height,
                         DesiredSize.Height,
                         minimumHeight,
@@ -1362,6 +1419,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             LastArrangeSlot = slot;
             LastWidthResolved = widthResolved;
             LastHeightResolved = heightResolved;
+            LastArrangeWidthRequestBase = widthRequestBase;
+            LastArrangeHeightRequestBase = heightRequestBase;
             LastWidthLimitBase = widthLimitBase;
             LastHeightLimitBase = heightLimitBase;
             var content = Padding.Deflate(BorderInset.Deflate(bounds));
@@ -1433,11 +1492,14 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// The attached child is accessed off-dispatcher or measure is reentered.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The child is disposed.</exception>
-    protected Size MeasureChild(ControlBase child, Constraint constraint) => MeasureChild(child, constraint, null, null);
+    protected Size MeasureChild(ControlBase child, Constraint constraint) =>
+        MeasureChild(child, constraint, null, null, null, null);
 
-    /// <summary>Measures one direct child with parent-resolved relative-limit bases.</summary>
+    /// <summary>Measures one direct child with parent-resolved relative request and limit bases.</summary>
     /// <param name="child">The non-null direct child owned by this control.</param>
     /// <param name="constraint">The non-negative content constraint supplied to the child.</param>
+    /// <param name="widthRequestBase">The containing width used to resolve a relative width request.</param>
+    /// <param name="heightRequestBase">The containing height used to resolve a relative height request.</param>
     /// <param name="widthLimitBase">The containing width used to resolve relative width limits.</param>
     /// <param name="heightLimitBase">The containing height used to resolve relative height limits.</param>
     /// <returns>The child's committed desired border-box size.</returns>
@@ -1445,11 +1507,17 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <exception cref="ArgumentException"><paramref name="child"/> is not directly owned by this control.</exception>
     /// <exception cref="InvalidOperationException">The attached child is accessed off-dispatcher or measure is reentered.</exception>
     /// <exception cref="ObjectDisposedException">The child is disposed.</exception>
-    private protected Size MeasureChild(ControlBase child, Constraint constraint, int? widthLimitBase, int? heightLimitBase)
+    private protected Size MeasureChild(
+        ControlBase child,
+        Constraint constraint,
+        int? widthRequestBase,
+        int? heightRequestBase,
+        int? widthLimitBase,
+        int? heightLimitBase)
     {
         ArgumentNullException.ThrowIfNull(child);
         EnsureDirectOwnedChild(child);
-        child.Measure(constraint, widthLimitBase, heightLimitBase);
+        child.Measure(constraint, widthRequestBase, heightRequestBase, widthLimitBase, heightLimitBase);
         return child.DesiredSize;
     }
 
@@ -1483,6 +1551,29 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         Rect slot,
         ResolvedAxes resolvedAxes,
         int? widthLimitBase,
+        int? heightLimitBase) =>
+        ArrangeChild(child, slot, resolvedAxes, null, null, widthLimitBase, heightLimitBase);
+
+    /// <summary>Arranges one direct child with parent-resolved relative request and limit bases.</summary>
+    /// <param name="child">The non-null direct child owned by this control.</param>
+    /// <param name="slot">The final non-negative outer slot assigned to the child.</param>
+    /// <param name="resolvedAxes">Axes whose border-box sizes were already resolved by this parent.</param>
+    /// <param name="widthRequestBase">The containing width used to resolve a relative width request.</param>
+    /// <param name="heightRequestBase">The containing height used to resolve a relative height request.</param>
+    /// <param name="widthLimitBase">The containing width used when the parent resolved relative limits.</param>
+    /// <param name="heightLimitBase">The containing height used when the parent resolved relative height limits.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="child"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="resolvedAxes"/> contains an unknown flag.</exception>
+    /// <exception cref="ArgumentException"><paramref name="child"/> is not directly owned by this control.</exception>
+    /// <exception cref="InvalidOperationException">The attached child is accessed off-dispatcher or arrange is reentered.</exception>
+    /// <exception cref="ObjectDisposedException">The child is disposed.</exception>
+    private protected void ArrangeChild(
+        ControlBase child,
+        Rect slot,
+        ResolvedAxes resolvedAxes,
+        int? widthRequestBase,
+        int? heightRequestBase,
+        int? widthLimitBase,
         int? heightLimitBase)
     {
         ArgumentNullException.ThrowIfNull(child);
@@ -1494,6 +1585,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             slot,
             widthResolved: (resolvedAxes & ResolvedAxes.Width) != 0,
             heightResolved: (resolvedAxes & ResolvedAxes.Height) != 0,
+            widthRequestBase,
+            heightRequestBase,
             widthLimitBase,
             heightLimitBase);
     }
@@ -3500,6 +3593,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         Length length,
         bool stretch,
         int slot,
+        int? requestBase,
         int available,
         int desired,
         int minimum,
@@ -3510,7 +3604,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             LengthKind.Auto when stretch => available,
             LengthKind.Auto => desired,
             LengthKind.Cells => (int) length.Value,
-            LengthKind.Percent => ResolvePercent(slot, length.Value),
+            LengthKind.Percent => ResolvePercent(requestBase ?? slot, length.Value),
             LengthKind.Star => available,
             _ => throw new UnreachableException()
         };
@@ -3522,6 +3616,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     private static int ResolveMeasureAxis(
         Length length,
         int? slot,
+        int? requestBase,
         int? limitBase,
         int margin,
         int inset,
@@ -3534,8 +3629,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         {
             LengthKind.Auto => intrinsic.SaturatingAdd(inset),
             LengthKind.Cells => (int) length.Value,
-            LengthKind.Percent => slot.HasValue
-                ? ResolvePercent(slot.Value, length.Value)
+            LengthKind.Percent => (requestBase ?? slot).HasValue
+                ? ResolvePercent((requestBase ?? slot)!.Value, length.Value)
                 : intrinsic.SaturatingAdd(inset),
             LengthKind.Star => slot.HasValue
                 ? Math.Max(0, slot.Value - margin)
@@ -3553,6 +3648,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     private static int? ResolveContentAxis(
         Length length,
         int? slot,
+        int? requestBase,
         int? limitBase,
         int margin,
         int inset,
@@ -3564,7 +3660,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         {
             LengthKind.Auto => slot.HasValue ? Math.Max(0, slot.Value - margin) : null,
             LengthKind.Cells => (int) length.Value,
-            LengthKind.Percent => slot.HasValue ? ResolvePercent(slot.Value, length.Value) : null,
+            LengthKind.Percent => (requestBase ?? slot) is { } percentageBase ? ResolvePercent(percentageBase, length.Value) : null,
             LengthKind.Star => slot.HasValue ? Math.Max(0, slot.Value - margin) : null,
             _ => throw new UnreachableException()
         };
@@ -4731,16 +4827,27 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     internal void PublishLostPointerCapture(PointerCaptureLossReason reason) =>
         LostPointerCapture?.Invoke(this, new PointerCaptureLostEventArgs(reason));
 
-    private Constraint CreateContentConstraint(Constraint constraint, int? widthLimitBase, int? heightLimitBase)
+    private Constraint CreateContentConstraint(
+        Constraint constraint,
+        int? widthRequestBase,
+        int? heightRequestBase,
+        int? widthLimitBase,
+        int? heightLimitBase)
     {
         var horizontalInset = Padding.Horizontal.SaturatingAdd(BorderInset.Horizontal);
         var verticalInset = Padding.Vertical.SaturatingAdd(BorderInset.Vertical);
         return new Constraint(
-            ResolveContentAxis(Width, constraint.Width, widthLimitBase ?? constraint.Width, Margin.Horizontal, horizontalInset, MinWidth, MaxWidth),
-            ResolveContentAxis(Height, constraint.Height, heightLimitBase ?? constraint.Height, Margin.Vertical, verticalInset, MinHeight, MaxHeight));
+            ResolveContentAxis(Width, constraint.Width, widthRequestBase, widthLimitBase ?? constraint.Width, Margin.Horizontal, horizontalInset, MinWidth, MaxWidth),
+            ResolveContentAxis(Height, constraint.Height, heightRequestBase, heightLimitBase ?? constraint.Height, Margin.Vertical, verticalInset, MinHeight, MaxHeight));
     }
 
-    private Size ResolveDesiredSize(Constraint constraint, Size content, int? widthLimitBase, int? heightLimitBase)
+    private Size ResolveDesiredSize(
+        Constraint constraint,
+        Size content,
+        int? widthRequestBase,
+        int? heightRequestBase,
+        int? widthLimitBase,
+        int? heightLimitBase)
     {
         var horizontalInset = Padding.Horizontal.SaturatingAdd(BorderInset.Horizontal);
         var verticalInset = Padding.Vertical.SaturatingAdd(BorderInset.Vertical);
@@ -4748,6 +4855,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             ResolveMeasureAxis(
                 Width,
                 constraint.Width,
+                widthRequestBase,
                 widthLimitBase ?? constraint.Width,
                 Margin.Horizontal,
                 horizontalInset,
@@ -4757,6 +4865,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             ResolveMeasureAxis(
                 Height,
                 constraint.Height,
+                heightRequestBase,
                 heightLimitBase ?? constraint.Height,
                 Margin.Vertical,
                 verticalInset,

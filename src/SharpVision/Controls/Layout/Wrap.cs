@@ -80,10 +80,10 @@ public sealed class Wrap: Container
 
         try
         {
-            FillMeasuredParticipants(children, outerSizes, constraint);
+            FillMeasuredParticipants(children, outerSizes, constraint, PercentageBase(constraint));
             return WrapLayout.Pack(
                 outerSizes,
-                Primary(constraint),
+                PrimaryPackingLimit(constraint),
                 Orientation,
                 Spacing,
                 LineSpacing,
@@ -120,7 +120,7 @@ public sealed class Wrap: Container
 
         try
         {
-            FillMeasuredParticipants(children, outerSizes, constraint);
+            FillMeasuredParticipants(children, outerSizes, constraint, new Constraint(Viewport.Width, Viewport.Height));
             _ = WrapLayout.Pack(
                 outerSizes,
                 PrimaryPackingLimit(bounds),
@@ -144,12 +144,10 @@ public sealed class Wrap: Container
                     children[index],
                     new Rect(bounds.X.Add(contained.X), bounds.Y.Add(contained.Y), contained.Width, contained.Height),
                     resolvedAxes,
-                    widthLimitBase: Orientation == Orientation.Horizontal
-                        ? PrimaryLimitBase(bounds)
-                        : null,
-                    heightLimitBase: Orientation == Orientation.Vertical
-                        ? PrimaryLimitBase(bounds)
-                        : null);
+                    widthRequestBase: WidthRequestBase(bounds),
+                    heightRequestBase: HeightRequestBase(bounds),
+                    widthLimitBase: WidthLimitBase(bounds),
+                    heightLimitBase: HeightLimitBase(bounds));
             }
         }
         finally
@@ -182,7 +180,8 @@ public sealed class Wrap: Container
     private void FillMeasuredParticipants(
         Span<ControlBase> children,
         Span<Size> outerSizes,
-        Constraint constraint)
+        Constraint constraint,
+        Constraint percentageBase)
     {
         Debug.Assert(children.Length == outerSizes.Length, "Every wrap participant has one outer size.");
 
@@ -196,8 +195,7 @@ public sealed class Wrap: Container
             }
 
             children[index] = child;
-            var desired = MeasureChild(child, ChildMeasureConstraint(child, constraint));
-            desired = RemeasureViewportRelativeLimits(child, constraint, desired);
+            var desired = MeasureParticipant(child, constraint, percentageBase);
             outerSizes[index] = new Size(
                 desired.Width.Add(child.Margin.Horizontal),
                 desired.Height.Add(child.Margin.Vertical));
@@ -208,34 +206,48 @@ public sealed class Wrap: Container
     }
 
     [Pure]
-    private int? Primary(Constraint constraint) =>
-        Orientation == Orientation.Horizontal ? constraint.Width : constraint.Height;
+    private Constraint PercentageBase(Constraint constraint) => new(
+        ScrollMeasureViewport.Width ?? constraint.Width,
+        ScrollMeasureViewport.Height ?? constraint.Height);
+
+    [Pure]
+    private int? PrimaryPackingLimit(Constraint constraint) =>
+        ScrollsPrimary() ? null : Orientation == Orientation.Horizontal ? constraint.Width : constraint.Height;
 
     [Pure]
     private int Primary(Rect bounds) =>
         Orientation == Orientation.Horizontal ? bounds.Width : bounds.Height;
 
-    [Pure]
-    private Constraint ChildMeasureConstraint(ControlBase child, Constraint constraint) =>
-        !ScrollsPrimary()
-            ? constraint
-            : UsesViewportPrimaryLength(child)
-                ? Orientation == Orientation.Horizontal
-                    ? new Constraint(ScrollMeasureViewport.Width, constraint.Height)
-                    : new Constraint(constraint.Width, ScrollMeasureViewport.Height)
-                : Orientation == Orientation.Horizontal
-                    ? new Constraint(width: null, constraint.Height)
-                    : new Constraint(constraint.Width, height: null);
+    private Size MeasureParticipant(ControlBase child, Constraint constraint, Constraint percentageBase) =>
+        MeasureChild(
+            child,
+            new Constraint(
+                ScrollsHorizontally() ? null : constraint.Width,
+                ScrollsVertically() ? null : constraint.Height),
+            ScrollsHorizontally() ? percentageBase.Width : null,
+            ScrollsVertically() ? percentageBase.Height : null,
+            ScrollsHorizontally() ? percentageBase.Width : null,
+            ScrollsVertically() ? percentageBase.Height : null);
 
     [Pure]
     private int? PrimaryPackingLimit(Rect bounds) =>
         ScrollsPrimary() ? null : Primary(bounds);
 
     [Pure]
-    private int? PrimaryLimitBase(Rect bounds) =>
-        ScrollsPrimary()
-            ? Orientation == Orientation.Horizontal ? Viewport.Width : Viewport.Height
-            : Primary(bounds);
+    private int? WidthLimitBase(Rect bounds) =>
+        ScrollsHorizontally() ? Viewport.Width : bounds.Width;
+
+    [Pure]
+    private int WidthRequestBase(Rect bounds) =>
+        ScrollsHorizontally() ? Viewport.Width : bounds.Width;
+
+    [Pure]
+    private int? HeightLimitBase(Rect bounds) =>
+        ScrollsVertically() ? Viewport.Height : bounds.Height;
+
+    [Pure]
+    private int HeightRequestBase(Rect bounds) =>
+        ScrollsVertically() ? Viewport.Height : bounds.Height;
 
     [Pure]
     private Rect ContainCrossAxis(Rect slot, Rect bounds)
@@ -253,42 +265,12 @@ public sealed class Wrap: Container
 
     [Pure]
     private bool ScrollsPrimary() =>
-        AutoScroll &&
-        (ScrollBars & (Orientation == Orientation.Horizontal ? ScrollBars.Horizontal : ScrollBars.Vertical)) != 0;
+        Orientation == Orientation.Horizontal ? ScrollsHorizontally() : ScrollsVertically();
 
     [Pure]
-    private bool UsesViewportPrimaryLength(ControlBase child)
-    {
-        var length = Orientation == Orientation.Horizontal ? child.Width : child.Height;
-        return length.Kind == LengthKind.Percent;
-    }
-
-    private Size RemeasureViewportRelativeLimits(ControlBase child, Constraint constraint, Size desired)
-    {
-        if (!ScrollsPrimary() || !HasViewportRelativePrimaryLimit(child))
-        {
-            return desired;
-        }
-
-        if (Orientation == Orientation.Horizontal)
-        {
-            child.ResolveWidthLimits(ScrollMeasureViewport.Width, out var minimum, out var maximum);
-            var width = Math.Clamp(desired.Width, minimum, maximum);
-            return width == desired.Width
-                ? desired
-                : MeasureChild(child, new Constraint(width.Add(child.Margin.Horizontal), constraint.Height), ScrollMeasureViewport.Width, null);
-        }
-
-        child.ResolveHeightLimits(ScrollMeasureViewport.Height, out var minimumHeight, out var maximumHeight);
-        var height = Math.Clamp(desired.Height, minimumHeight, maximumHeight);
-        return height == desired.Height
-            ? desired
-            : MeasureChild(child, new Constraint(constraint.Width, height.Add(child.Margin.Vertical)), null, ScrollMeasureViewport.Height);
-    }
+    private bool ScrollsHorizontally() => AutoScroll && (ScrollBars & ScrollBars.Horizontal) != 0;
 
     [Pure]
-    private bool HasViewportRelativePrimaryLimit(ControlBase child) =>
-        Orientation == Orientation.Horizontal
-            ? child.MinWidth.Kind == LengthKind.Percent || child.MaxWidth is { Kind: LengthKind.Percent }
-            : child.MinHeight.Kind == LengthKind.Percent || child.MaxHeight is { Kind: LengthKind.Percent };
+    private bool ScrollsVertically() => AutoScroll && (ScrollBars & ScrollBars.Vertical) != 0;
+
 }

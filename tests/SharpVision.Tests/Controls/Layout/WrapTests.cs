@@ -275,6 +275,52 @@ public sealed class WrapTests
         wrap.Extent.ShouldBe(new Size(10, 1));
     }
 
+    /// <summary>Verifies a viewport-relative percentage border request does not spend its own margin.</summary>
+    [Fact]
+    public void Layout_WhenHorizontalScrollPercentChildHasMargin_PreservesItsViewportBorderRequest()
+    {
+        // Arrange
+        var wrap = new Wrap { AutoScroll = true, ScrollBars = ScrollBars.Horizontal, ShowScrollBars = ShowScrollBars.Never };
+        var fixedChild = new ProbeControl(new Size(5, 1)) { Width = Length.Cells(5) };
+        var percentChild = new ProbeControl(new Size(1, 1))
+        {
+            Width = Length.Percent(100),
+            Margin = new Thickness(left: 1, top: 0, right: 0, bottom: 0)
+        };
+        wrap.Children.Add(fixedChild);
+        wrap.Children.Add(percentChild);
+
+        // Act
+        new LayoutEngine().Layout(wrap, new Size(5, 1));
+
+        // Assert
+        percentChild.Bounds.ShouldBe(new Rect(6, 0, 5, 1));
+        wrap.Extent.ShouldBe(new Size(11, 1));
+    }
+
+    /// <summary>Verifies a percentage request resolves against the viewport rather than the margin-expanded outer slot.</summary>
+    [Fact]
+    public void Layout_WhenHorizontalScrollPercentChildHasMargin_UsesTheViewportAsItsPercentageBase()
+    {
+        // Arrange
+        var wrap = new Wrap { AutoScroll = true, ScrollBars = ScrollBars.Horizontal, ShowScrollBars = ShowScrollBars.Never };
+        var fixedChild = new ProbeControl(new Size(5, 1)) { Width = Length.Cells(5) };
+        var percentChild = new ProbeControl(new Size(1, 1))
+        {
+            Width = Length.Percent(80),
+            Margin = new Thickness(left: 1, top: 0, right: 0, bottom: 0)
+        };
+        wrap.Children.Add(fixedChild);
+        wrap.Children.Add(percentChild);
+
+        // Act
+        new LayoutEngine().Layout(wrap, new Size(5, 1));
+
+        // Assert
+        percentChild.Bounds.ShouldBe(new Rect(6, 0, 4, 1));
+        wrap.Extent.ShouldBe(new Size(10, 1));
+    }
+
     /// <summary>Verifies an always-visible opposite scrollbar reserves its rail before
     /// viewport-relative primary percentage requests are measured.</summary>
     [Fact]
@@ -329,6 +375,67 @@ public sealed class WrapTests
         wrap.Extent.Width.ShouldBe(8);
     }
 
+    /// <summary>Verifies a scrolling cross axis supplies its committed viewport as the percentage request base.</summary>
+    [Fact]
+    public void Layout_WhenHorizontalWrapScrollsItsCrossAxis_UsesTheViewportForPercentHeight()
+    {
+        // Arrange
+        var wrap = new Wrap { AutoScroll = true, ScrollBars = ScrollBars.Vertical, ShowScrollBars = ShowScrollBars.Never };
+        var child = new ProbeControl(new Size(1, 1)) { Width = Length.Cells(1), Height = Length.Percent(100) };
+        wrap.Children.Add(child);
+
+        // Act
+        new LayoutEngine().Layout(wrap, new Size(5, 3));
+
+        // Assert
+        child.Bounds.ShouldBe(new Rect(0, 0, 1, 3));
+        wrap.Extent.ShouldBe(new Size(1, 3));
+    }
+
+    /// <summary>Verifies an ordinary horizontal Wrap resolves cross-axis percentage requests and limits once against its containing height.</summary>
+    [Fact]
+    public void Layout_WhenHorizontalWrapHasCrossAxisPercentageLimit_UsesTheCompleteContainingHeight()
+    {
+        // Arrange
+        var wrap = new Wrap();
+        var child = new ProbeControl(new Size(1, 1))
+        {
+            Width = Length.Cells(1),
+            Height = Length.Percent(100),
+            MaxHeight = Length.Percent(50)
+        };
+        wrap.Children.Add(child);
+
+        // Act
+        new LayoutEngine().Layout(wrap, new Size(5, 10));
+
+        // Assert
+        child.Bounds.ShouldBe(new Rect(0, 0, 1, 5));
+        wrap.Extent.ShouldBe(new Size(5, 10));
+    }
+
+    /// <summary>Verifies an ordinary vertical Wrap resolves cross-axis percentage requests and limits once against its containing width.</summary>
+    [Fact]
+    public void Layout_WhenVerticalWrapHasCrossAxisPercentageLimit_UsesTheCompleteContainingWidth()
+    {
+        // Arrange
+        var wrap = new Wrap { Orientation = Orientation.Vertical };
+        var child = new ProbeControl(new Size(1, 1))
+        {
+            Width = Length.Percent(100),
+            MaxWidth = Length.Percent(50),
+            Height = Length.Cells(1)
+        };
+        wrap.Children.Add(child);
+
+        // Act
+        new LayoutEngine().Layout(wrap, new Size(10, 5));
+
+        // Assert
+        child.Bounds.ShouldBe(new Rect(0, 0, 5, 1));
+        wrap.Extent.ShouldBe(new Size(10, 5));
+    }
+
     /// <summary>Verifies a zero scrolling primary viewport resolves percentage requests to zero without negative geometry.</summary>
     [Fact]
     public void Layout_WhenHorizontalWrapHasZeroScrollViewport_ResolvesPercentToZero()
@@ -347,16 +454,18 @@ public sealed class WrapTests
         wrap.Extent.ShouldBe(new Size(0, 1));
     }
 
-    /// <summary>Verifies a scrolling viewport resize remeasures and repacks percentage children.</summary>
+    /// <summary>Verifies a scrolling viewport resize remeasures percentage content at its new width and cross extent.</summary>
     [Fact]
     public void Layout_WhenHorizontalScrollViewportResizes_ReflowsPercentageChild()
     {
         // Arrange
         var wrap = new Wrap { AutoScroll = true, ScrollBars = ScrollBars.Horizontal, ShowScrollBars = ShowScrollBars.Never };
-        var child = new ProbeControl(new Size(1, 1)) { Width = Length.Percent(100) };
+        var child = new ControlText("abcdefg") { Width = Length.Percent(100), Overflow = Overflow.WrapAnywhere };
         wrap.Children.Add(child);
         var layout = new LayoutEngine();
-        layout.Layout(wrap, new Size(5, 1));
+        layout.Layout(wrap, new Size(5, 2));
+
+        child.Bounds.ShouldBe(new Rect(0, 0, 5, 2));
 
         // Act
         layout.Layout(wrap, new Size(7, 1));
@@ -366,13 +475,240 @@ public sealed class WrapTests
         wrap.Extent.ShouldBe(new Size(7, 1));
     }
 
+    /// <summary>Verifies AutoSize's finite correction preserves the scrolling primary lane's unbounded packing.</summary>
+    [Fact]
+    public void Layout_WhenAutoSizeCorrectsHorizontalScrollWidth_KeepsThePrimaryLineUnbounded()
+    {
+        // Arrange
+        var wrap = new Wrap
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowOnly,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Horizontal,
+            ShowScrollBars = ShowScrollBars.Never,
+            Width = Length.Cells(5),
+            MaxWidth = Length.Cells(5)
+        };
+        var first = new ProbeControl(new Size(3, 1)) { Width = Length.Cells(3) };
+        var second = new ProbeControl(new Size(3, 1)) { Width = Length.Cells(3) };
+        wrap.Children.Add(first);
+        wrap.Children.Add(second);
+
+        // Act
+        new LayoutEngine().Layout(wrap, new Size(5, 3));
+
+        // Assert
+        wrap.Bounds.ShouldBe(new Rect(0, 0, 5, 1));
+        first.Bounds.ShouldBe(new Rect(0, 0, 3, 1));
+        second.Bounds.ShouldBe(new Rect(3, 0, 3, 1));
+        wrap.Extent.ShouldBe(new Size(6, 1));
+    }
+
+    /// <summary>Verifies AutoSize remeasures viewport-relative scroll content before committing the reachable extent.</summary>
+    [Fact]
+    public void Layout_WhenAutoSizeHorizontalScrollResolvesPercentWidth_CommitsTheViewportResolvedExtent()
+    {
+        // Arrange
+        var wrap = new Wrap
+        {
+            AutoSize = true,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Horizontal,
+            ShowScrollBars = ShowScrollBars.Never
+        };
+        var fixedChild = new ProbeControl(new Size(5, 1)) { Width = Length.Cells(5) };
+        var percentChild = new ProbeControl(new Size(1, 1)) { Width = Length.Percent(100) };
+        wrap.Children.Add(fixedChild);
+        wrap.Children.Add(percentChild);
+
+        // Act
+        new LayoutEngine().Layout(wrap, new Size(20, 3));
+
+        // Assert
+        wrap.Bounds.ShouldBe(new Rect(0, 0, 6, 1));
+        percentChild.Bounds.ShouldBe(new Rect(5, 0, 6, 1));
+        wrap.Extent.ShouldBe(new Size(11, 1));
+    }
+
+    /// <summary>Verifies AutoSize reserves an automatic horizontal rail after settling a viewport-relative extent.</summary>
+    [Fact]
+    public void Layout_WhenAutoSizeHorizontalScrollNeedsAutomaticRail_RetainsItsContentRow()
+    {
+        // Arrange
+        var wrap = new Wrap { AutoSize = true, AutoScroll = true, ScrollBars = ScrollBars.Horizontal };
+        var fixedChild = new ProbeControl(new Size(5, 1)) { Width = Length.Cells(5) };
+        var percentChild = new ProbeControl(new Size(1, 1)) { Width = Length.Percent(100) };
+        wrap.Children.Add(fixedChild);
+        wrap.Children.Add(percentChild);
+
+        // Act
+        new LayoutEngine().Layout(wrap, new Size(20, 3));
+
+        // Assert
+        wrap.Bounds.ShouldBe(new Rect(0, 0, 6, 2));
+        wrap.Viewport.ShouldBe(new Size(6, 1));
+        wrap.Extent.ShouldBe(new Size(11, 1));
+        percentChild.Bounds.ShouldBe(new Rect(5, 0, 6, 1));
+    }
+
+    /// <summary>Verifies AutoSize remeasures a vertical Wrap when a height clamp creates additional columns.</summary>
+    [Fact]
+    public void Layout_WhenAutoSizeVerticalWrapHeightClamps_ReflowsItsWidth()
+    {
+        // Arrange
+        var wrap = new Wrap { Orientation = Orientation.Vertical, AutoSize = true, MaxHeight = Length.Cells(2) };
+        var first = new ProbeControl(new Size(1, 1));
+        var second = new ProbeControl(new Size(1, 1));
+        var third = new ProbeControl(new Size(1, 1));
+        wrap.Children.Add(first);
+        wrap.Children.Add(second);
+        wrap.Children.Add(third);
+
+        // Act
+        new LayoutEngine().Layout(wrap, new Size(10, 10));
+
+        // Assert
+        wrap.Bounds.ShouldBe(new Rect(0, 0, 2, 2));
+        third.Bounds.ShouldBe(new Rect(1, 0, 1, 1));
+    }
+
+    /// <summary>Verifies an always-visible opposite rail participates in AutoSize's width-dependent height settlement.</summary>
+    [Fact]
+    public void Layout_WhenAutoSizeHasAlwaysVisibleOppositeRail_ReflowsAtTheReservedViewportWidth()
+    {
+        // Arrange
+        var wrap = new Wrap
+        {
+            AutoSize = true,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            VerticalBarVisibility = ScrollBarVisibility.Always,
+            MaxWidth = Length.Cells(5)
+        };
+        wrap.Children.Add(new ControlText("abcde") { Overflow = Overflow.WrapAnywhere });
+
+        // Act
+        new LayoutEngine().Layout(wrap, new Size(10, 10));
+
+        // Assert
+        wrap.Bounds.ShouldBe(new Rect(0, 0, 5, 2));
+        wrap.Viewport.ShouldBe(new Size(4, 2));
+    }
+
+    /// <summary>Verifies automatic two-axis rail feedback remeasures viewport-relative content after the opposite rail narrows its base.</summary>
+    [Fact]
+    public void Layout_WhenAutoSizeNeedsBothAutomaticRails_ConvergesToTheClampedViewport()
+    {
+        // Arrange
+        var wrap = new Wrap
+        {
+            AutoSize = true,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            MaxWidth = Length.Cells(6),
+            MaxHeight = Length.Cells(1)
+        };
+        wrap.Children.Add(new ProbeControl(new Size(5, 1)) { Width = Length.Cells(5) });
+        wrap.Children.Add(new ControlText("abcdef") { Width = Length.Percent(100), Overflow = Overflow.WrapAnywhere });
+
+        // Act
+        new LayoutEngine().Layout(wrap, new Size(10, 10));
+
+        // Assert
+        wrap.Bounds.ShouldBe(new Rect(0, 0, 6, 1));
+        wrap.Viewport.ShouldBe(new Size(5, 0));
+        wrap.Extent.ShouldBe(new Size(10, 2));
+    }
+
+    /// <summary>Verifies an opposite always-visible rail does not make AutoSize chase a primary scrolling extent.</summary>
+    [Fact]
+    public void Layout_WhenAutoSizeHasOppositeAlwaysRail_PreservesThePrimaryScrollingSize()
+    {
+        // Arrange
+        var wrap = new Wrap
+        {
+            AutoSize = true,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Always
+        };
+        wrap.Children.Add(new ProbeControl(new Size(5, 1)) { Width = Length.Cells(5) });
+        wrap.Children.Add(new ProbeControl(new Size(1, 1)) { Width = Length.Percent(100) });
+
+        // Act
+        new LayoutEngine().Layout(wrap, new Size(20, 3));
+
+        // Assert
+        wrap.Bounds.Width.ShouldBe(7);
+        wrap.Viewport.Width.ShouldBe(6);
+        wrap.Extent.Width.ShouldBe(11);
+    }
+
+    /// <summary>Verifies a primary scrolling percentage does not make AutoSize grow after an opposite always-visible rail narrows its base.</summary>
+    [Fact]
+    public void Layout_WhenAutoSizePrimaryPercentHasOppositeAlwaysRail_PreservesThePrimarySize()
+    {
+        // Arrange
+        var wrap = new Wrap
+        {
+            AutoSize = true,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Always
+        };
+        wrap.Children.Add(new ProbeControl(new Size(5, 1)) { Width = Length.Percent(100) });
+
+        // Act
+        new LayoutEngine().Layout(wrap, new Size(20, 3));
+
+        // Assert
+        wrap.Bounds.Width.ShouldBe(6);
+        wrap.Viewport.Width.ShouldBe(5);
+        wrap.Extent.Width.ShouldBe(5);
+    }
+
+    /// <summary>Verifies primary AutoSize preservation remains in border-box units when padding surrounds a scrolling percentage request.</summary>
+    [Fact]
+    public void Layout_WhenPaddedAutoSizePrimaryPercentHasOppositeAlwaysRail_PreservesThePrimarySize()
+    {
+        // Arrange
+        var wrap = new Wrap
+        {
+            AutoSize = true,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Always,
+            Padding = new Thickness(left: 1, top: 0, right: 1, bottom: 0)
+        };
+        wrap.Children.Add(new ProbeControl(new Size(5, 1)) { Width = Length.Percent(100) });
+
+        // Act
+        new LayoutEngine().Layout(wrap, new Size(20, 3));
+
+        // Assert
+        wrap.Bounds.Width.ShouldBe(8);
+        wrap.Viewport.Width.ShouldBe(5);
+        wrap.Extent.Width.ShouldBe(5);
+    }
+
     /// <summary>Verifies a parent-resolved relative-limit measure cannot satisfy a later ordinary measure cache lookup.</summary>
     [Fact]
     public void Measure_WhenResolvedLimitBaseChangesToOrdinary_RemeasuresTheChild()
     {
         // Arrange
-        var child = new ProbeControl(new Size(1, 1)) { Width = Length.Star(1) };
-        child.Measure(new Constraint(3, 1), widthLimitBase: 5, heightLimitBase: null);
+        var child = new ProbeControl(new Size(1, 1)) { Width = Length.Star(1), MaxWidth = Length.Percent(50) };
+        child.Measure(
+            new Constraint(3, 1),
+            widthRequestBase: null,
+            heightRequestBase: null,
+            widthLimitBase: 5,
+            heightLimitBase: null);
+
+        child.DesiredSize.ShouldBe(new Size(3, 1));
 
         // Act
         child.Measure(new Constraint(3, 1));
@@ -380,7 +716,8 @@ public sealed class WrapTests
         // Assert
         child.MeasureConstraints.Count.ShouldBe(2);
         child.MeasureConstraints[0].ShouldBe(new Constraint(3, 1));
-        child.MeasureConstraints[1].ShouldBe(new Constraint(3, 1));
+        child.MeasureConstraints[1].ShouldBe(new Constraint(2, 1));
+        child.DesiredSize.ShouldBe(new Size(2, 1));
     }
 
     /// <summary>Verifies a proportional primary-axis child retains its intrinsic request while
@@ -466,6 +803,36 @@ public sealed class WrapTests
         // Assert
         text.Bounds.ShouldBe(new Rect(5, 0, 3, 2));
         wrap.Extent.ShouldBe(new Size(8, 2));
+    }
+
+    /// <summary>Verifies a capped viewport-relative remeasure retains the primary margin outside its resolved border box.</summary>
+    [Fact]
+    public void Layout_WhenScrollingStarHasPercentageMaximumAndMargin_ReflowsAtTheCappedBorderWidth()
+    {
+        // Arrange
+        var wrap = new Wrap
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Horizontal,
+            ShowScrollBars = ShowScrollBars.Never
+        };
+        var fixedChild = new ProbeControl(new Size(5, 1)) { Width = Length.Cells(5) };
+        var text = new ControlText("abcdef")
+        {
+            Width = Length.Star(1),
+            MaxWidth = Length.Percent(50),
+            Margin = new Thickness(left: 1, top: 0, right: 0, bottom: 0),
+            Overflow = Overflow.WrapAnywhere
+        };
+        wrap.Children.Add(fixedChild);
+        wrap.Children.Add(text);
+
+        // Act
+        new LayoutEngine().Layout(wrap, new Size(5, 3));
+
+        // Assert
+        text.Bounds.ShouldBe(new Rect(6, 0, 3, 2));
+        wrap.Extent.ShouldBe(new Size(9, 2));
     }
 
     /// <summary>Verifies fixed and automatic overflowing children retain their unbounded
