@@ -157,6 +157,59 @@ public sealed class RendererTests
         trailing.ShouldBeGreaterThan(0);
     }
 
+    /// <summary>
+    /// Verifies a back-color-erase span landing between two rows of the same Kitty placeholder run
+    /// does not leave the placeholder identity cache stale: the row that follows the erase must still
+    /// re-emit the identity SGR instead of silently reusing state the erase just invalidated on the
+    /// real terminal.
+    /// </summary>
+    [Fact]
+    public void EncodeWithState_WhenBackColorEraseSpanSplitsAKittyPlaceholderRun_ReemitsIdentitySgrForLaterRow()
+    {
+        var profile = CreateBackColorEraseKittyProfile();
+        var interpreter = new Interpreter(ProgramLimits.Default);
+        const uint imageId = 66051; // 0x010203 -> rgb(1,2,3)
+        const uint placementId = 1; // -> rgb(0,0,1)
+
+        // Row 0 and row 2 each carry two placeholder columns for the same image/placement, with
+        // row 1 in between wholly erased via the back-color-erase fast path. Columns 2-5 stay
+        // identical between `front` and `back` on rows 0 and 2 so only the placeholder columns are
+        // damaged there, keeping each row's damage in its own span.
+        using var front = new Frame(new Size(6, 3));
+        _ = front.Canvas.Draw("cccc", new Point(2, 0));
+        _ = front.Canvas.Draw("dddddd", new Point(0, 1));
+        _ = front.Canvas.Draw("cccc", new Point(2, 2));
+
+        using var back = new Frame(new Size(6, 3));
+        _ = back.Canvas.Draw("cccc", new Point(2, 0));
+        _ = back.Canvas.Draw("cccc", new Point(2, 2));
+        var backOverlay = new GraphicsCellOverlay(back);
+        backOverlay.Paint(back, new Rect(0, 0, 2, 1), imageId, placementId, ColorDepth.TrueColor);
+        backOverlay.Paint(back, new Rect(0, 2, 2, 1), imageId, placementId, ColorDepth.TrueColor);
+
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = FrameEncoder.Encode(
+            front,
+            back,
+            destination,
+            profile,
+            interpreter,
+            full: false,
+            frontOverlay: null,
+            backOverlay: backOverlay);
+
+        var bytes = destination.WrittenSpan;
+        var identity = "[38;2;1;2;3m"u8;
+        var erase = "[0K"u8;
+        var firstIdentity = bytes.IndexOf(identity);
+        firstIdentity.ShouldBeGreaterThanOrEqualTo(0);
+        var eraseIndex = bytes.IndexOf(erase);
+        eraseIndex.ShouldBeGreaterThan(firstIdentity);
+        var secondIdentity = bytes[(eraseIndex + erase.Length)..].IndexOf(identity);
+        secondIdentity.ShouldBeGreaterThanOrEqualTo(0);
+    }
+
     /// <summary>Verifies virtual image cells participate in the same scroll-shaped damage transaction.</summary>
     [Fact]
     public async Task RenderAsync_WhenKittyPlaceholderRowsScroll_UsesDecstbmWithOrdinaryCellsAsync()
@@ -2191,6 +2244,28 @@ public sealed class RendererTests
 
     private static GraphicsImage CreateImage(byte value) =>
         GraphicsImage.FromRgba(new Size(1, 1), [value, value, value, 255]);
+
+    /// <summary>
+    /// Creates a profile with back-color-erase and <c>el</c> both available, so the encoder's
+    /// erase fast path is reachable. <see cref="TerminalProfile.CreateAnsi"/> cannot be used for
+    /// this: its built-in description always reports back-color-erase as unavailable.
+    /// </summary>
+    private static TerminalProfile CreateBackColorEraseKittyProfile() => new(
+        new Description(
+            "description-test",
+            DescriptionOrigin.Database,
+            Suitability.Usable,
+            colors: 256,
+            backColorErase: true),
+        TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor },
+        new Programs(new Dictionary<string, DescriptionProgram>
+        {
+            ["cup"] = new DescriptionProgram("[%i%p1%d;%p2%dH"u8),
+            ["sgr0"] = new DescriptionProgram("[0m"u8),
+            ["clear"] = new DescriptionProgram("[2J"u8),
+            ["el"] = new DescriptionProgram("[0K"u8)
+        }),
+        KeyMap.Empty);
 
     private static TerminalProfile CreateSynchronizedProfile(ColorDepth depth) =>
         TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with

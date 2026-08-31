@@ -217,6 +217,7 @@ public static class FrameEncoder
                     ref semanticStyle,
                     ref style,
                     ref usedFallback,
+                    ref placeholderStyle,
                     backOverlay))
             {
                 continue;
@@ -329,6 +330,7 @@ public static class FrameEncoder
         ref CellStyle semanticStyle,
         ref CellStyle style,
         ref bool usedFallback,
+        ref GraphicsCellOverlayValue placeholderStyle,
         GraphicsCellOverlay? overlay)
     {
         if (!profile.Description.BackColorErase ||
@@ -377,6 +379,12 @@ public static class FrameEncoder
             return false;
         }
 
+        // This path can emit sgr0 (via ApplyStyle, when the current style still carries a
+        // placeholder's identity foreground) without going through the ordinary-text branch
+        // that normally invalidates the placeholder cache. Clear it here too, or the next
+        // placeholder cell with the same identity hits the cache fast path and never
+        // re-emits the SGR the terminal just had reset.
+        placeholderStyle = default;
         style = ApplyStyle(destination, style, projected, profile, interpreter);
         semanticStyle = semantic.Value;
         return profile.Programs.TryWrite("el", [], interpreter, destination);
@@ -413,6 +421,13 @@ public static class FrameEncoder
         var writer = new ProtocolWriter(destination);
         Color foreground;
 
+        // The underline-color channel below carries the placement identity, not a real
+        // underline decoration, so it cannot be folded into the returned CellStyle's
+        // UnderlineColor: the constructor rejects a non-default underline color unless the
+        // style also declares an actual underline, and this style declares none. Tracking it
+        // faithfully would require a typed or legacy underline flag that was never actually
+        // emitted, which would corrupt the encoder's model of the terminal's real underline
+        // state for whatever cell follows.
         if (placeholder.IdentityColorDepth == ColorDepth.Indexed256)
         {
             Sgr.ForegroundPalette(writer, (int) placeholder.ImageId);
