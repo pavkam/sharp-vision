@@ -106,6 +106,36 @@ public sealed class CommandPaletteTests
         callbacks.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies a resolution that began while detached still commits its result once the
+    /// palette attaches before the pending resolver completes, instead of silently discarding it.</summary>
+    [Fact]
+    public async Task Resolver_WhenAttachedAfterResolutionStartedDetached_CommitsCompletionAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var palette = new CommandPalette
+        {
+            Resolver = (searchTerms, _) => searchTerms == "late"
+                ? new ValueTask<IReadOnlyList<object?>>(completion.Task)
+                : ValueTask.FromResult<IReadOnlyList<object?>>(["initial"])
+        };
+        palette.Text = "late";
+        palette.IsResolving.ShouldBeTrue();
+        var resultsChanged = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        palette.ResultsChanged += (_, _) => resultsChanged.TrySetResult();
+        await using var dispatcher = Dispatcher.Start();
+        await dispatcher.InvokeAsync(() => palette.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        // Act
+        await Task.Run(() => completion.SetResult(["resolved"]), TestContext.Current.CancellationToken);
+        await resultsChanged.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        // Assert
+        palette.Items.ShouldBe(["resolved"]);
+        palette.IsResolving.ShouldBeFalse();
+    }
+
     /// <summary>Verifies transient local availability changes do not cancel the live request for
     /// the palette's still-current text.</summary>
     [Theory]

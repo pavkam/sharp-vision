@@ -31,6 +31,7 @@ public sealed class CommandPalette: CompositeControlBase
     private ulong _pendingFirstSelectionSessionGeneration;
     private Dispatcher? _pendingFirstSelectionDispatcher;
     private PopupItemActivationIdentity? _itemActivation;
+    private int _itemActivationResolutionGeneration;
     private bool _wantsOpen;
 
     #region Construction and events
@@ -270,11 +271,14 @@ public sealed class CommandPalette: CompositeControlBase
     }
 
     /// <summary>Gets or sets the complete local editor border.</summary>
-    /// <remarks>Assigning either <see cref="FieldBorder"/> or <see cref="FieldShadow"/> snapshots
-    /// the editor's whole resolved presentation into a local <see cref="TextInputStyle"/>, so a
-    /// theme-authored facet neither property names (its affix gap, for instance) is pinned to the
-    /// value it resolved to at assignment time and stops tracking a later theme swap until both
-    /// <see cref="ResetFieldBorder"/> and <see cref="ResetFieldShadow"/> have been called.</remarks>
+    /// <remarks>Assigning either <see cref="FieldBorder"/> or <see cref="FieldShadow"/> sets the
+    /// editor's complete local style: it snapshots the editor's whole resolved presentation into a
+    /// local <see cref="TextInputStyle"/>, immediately and permanently disabling the editor's
+    /// focused, hovered, and disabled state-reactivity for its ENTIRE appearance, not just the
+    /// assigned facet, until both <see cref="ResetFieldBorder"/> and <see cref="ResetFieldShadow"/>
+    /// have been called. A theme-authored facet neither property names (its affix gap, for
+    /// instance) is likewise pinned to the value it resolved to at assignment time and stops
+    /// tracking a later theme swap until both resets have been called.</remarks>
     /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public Border FieldBorder
@@ -318,6 +322,14 @@ public sealed class CommandPalette: CompositeControlBase
     }
 
     /// <summary>Gets or sets the complete local editor shadow.</summary>
+    /// <remarks>Assigning either <see cref="FieldShadow"/> or <see cref="FieldBorder"/> sets the
+    /// editor's complete local style: it snapshots the editor's whole resolved presentation into a
+    /// local <see cref="TextInputStyle"/>, immediately and permanently disabling the editor's
+    /// focused, hovered, and disabled state-reactivity for its ENTIRE appearance, not just the
+    /// assigned facet, until both <see cref="ResetFieldShadow"/> and <see cref="ResetFieldBorder"/>
+    /// have been called. A theme-authored facet neither property names is likewise pinned to the
+    /// value it resolved to at assignment time and stops tracking a later theme swap until both
+    /// resets have been called.</remarks>
     /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public Shadow FieldShadow
@@ -688,9 +700,28 @@ public sealed class CommandPalette: CompositeControlBase
     {
         if (attachment is not { } token)
         {
-            if (Dispatcher is null && IsCurrentResolution(lease))
+            if (Dispatcher is null)
             {
-                action();
+                if (IsCurrentResolution(lease))
+                {
+                    action();
+                }
+
+                return;
+            }
+
+            // The resolution began while detached, but the control has since attached: the
+            // originally captured (null) attachment can no longer deliver this completion, so a
+            // freshly captured attachment is required or the result silently vanishes.
+            if (TryCaptureAttachment(out var recovered) && IsCurrentResolution(lease))
+            {
+                try
+                {
+                    PostForCurrentAttachment(recovered, action, () => IsCurrentResolution(lease));
+                }
+                catch (ObjectDisposedException)
+                {
+                }
             }
 
             return;
@@ -904,6 +935,8 @@ public sealed class CommandPalette: CompositeControlBase
             activation is { } identity &&
             !IsDisposed &&
             IsOpen &&
+            !IsResolving &&
+            _itemActivationResolutionGeneration == _resolutionGeneration &&
             eventArgs.ActivationGeneration == identity.ItemGeneration &&
             eventArgs.Index == identity.ItemIndex &&
             eventArgs.Index == _list.SelectedIndex &&
@@ -925,6 +958,7 @@ public sealed class CommandPalette: CompositeControlBase
     private void OnItemActivationStarting(object? sender, ItemInvokedEventArgs eventArgs)
     {
         _ = sender;
+        _itemActivationResolutionGeneration = _resolutionGeneration;
         _itemActivation = !IsDisposed && IsOpen
             ? new PopupItemActivationIdentity(
                 eventArgs.ActivationGeneration,

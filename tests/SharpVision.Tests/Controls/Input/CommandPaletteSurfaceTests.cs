@@ -97,6 +97,37 @@ public sealed class CommandPaletteSurfaceTests
         completion.SetResult([]);
     }
 
+    /// <summary>Verifies a pointer click cannot activate the previous query's stale row while a
+    /// newer asynchronous resolution is still pending.</summary>
+    [Fact]
+    public async Task Pointer_WhenNewerResolutionIsPending_DoesNotInvokeStaleResultAsync()
+    {
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        ItemInvokedEventArgs? invoked = null;
+        var palette = new CommandPalette
+        {
+            Width = Length.Cells(18),
+            Resolver = (searchTerms, _) => searchTerms == "o"
+                ? ValueTask.FromResult<IReadOnlyList<object?>>(["Open file"])
+                : new ValueTask<IReadOnlyList<object?>>(completion.Task)
+        };
+        palette.ItemInvoked += (_, eventArgs) => invoked = eventArgs;
+        await using var surface = await ComponentSurface.MountAsync(
+            palette,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => palette.Text = "o", "resolve current results");
+        var list = OwnedTree.Find<UiListView>(palette).ShouldNotBeNull();
+        await surface.UpdateAsync(() => palette.Text = "op", "start newer resolution");
+
+        await surface.Pointer.ClickAsync(list, new Point(0, 0));
+
+        invoked.ShouldBeNull();
+        palette.IsResolving.ShouldBeTrue();
+        completion.SetResult([]);
+    }
+
     /// <summary>Verifies Unicode text continues through the retained editor while an open popup
     /// delegates navigation to its result list.</summary>
     [Fact]
