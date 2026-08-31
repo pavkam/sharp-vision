@@ -42,6 +42,26 @@ public sealed class SessionTests
         transport.JoinedWrites.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies an explicitly requested unsupported mode still reports when promotion is off.</summary>
+    [Fact]
+    public async Task RunAsync_WhenRequestedFocusIsUnsupportedAndNotPromoted_ReportsWithoutThrowingAsync()
+    {
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var options = TerminalOptions.Minimal with
+        {
+            Focus = true
+        };
+        transport.Close();
+        await using Session session = new(transport, resize, sink, options);
+
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Unsupported);
+        sink.Faults.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies cleanup promotion wraps the exact restoration failure after cleanup finishes.</summary>
     [Fact]
     public async Task RunAsync_WhenCleanupFailureIsPromoted_ThrowsTypedExceptionWithCauseAsync()

@@ -563,14 +563,13 @@ public sealed class Session: IAsyncDisposable
 
     private void ReportAndPromote(DiagnosticPromotion promotion, DiagnosticCode code)
     {
-        if ((_options.DiagnosticPromotions & promotion) == 0)
-        {
-            return;
-        }
-
         var diagnostic = new Diagnostic(code, SequenceKind.None, offset: 0, discardedBytes: 0);
         _sink.Input(in diagnostic);
-        throw new TerminalDiagnosticException(promotion);
+
+        if ((_options.DiagnosticPromotions & promotion) != 0)
+        {
+            throw new TerminalDiagnosticException(promotion);
+        }
     }
 
     private async ValueTask EnableAsync(Lease lease, CancellationToken cancellationToken)
