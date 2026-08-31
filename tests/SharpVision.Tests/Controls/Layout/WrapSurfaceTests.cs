@@ -12,7 +12,12 @@ public sealed class WrapSurfaceTests
     public async Task Visibility_WhenChildTransitionsThroughEveryState_ReflowsCellsAndPointerTargetsAsync()
     {
         // Arrange
-        var first = CreateButton("A");
+        var first = new ControlText("A")
+        {
+            Width = Length.Cells(2),
+            Height = Length.Cells(1),
+            Face = AppearanceTestValues.Face(background: ReferenceColors.Get(2))
+        };
         var second = new ControlText("B")
         {
             Width = Length.Cells(2),
@@ -27,14 +32,17 @@ public sealed class WrapSurfaceTests
 
         // Assert - visible state renders the opaque sibling and exposes both targets.
         second.Bounds.ShouldBe(new Rect(3, 0, 2, 1));
+        surface.Cell(default).Text.ShouldBe("A");
+        surface.Cell(new Point(3, 0)).Text.ShouldBe("B");
         wrap.HitTest(new Point(0, 0)).ShouldBeSameAs(first);
-        await surface.Pointer.ClickAsync(first);
+        await surface.Pointer.MoveToAsync(first);
 
         // Act - hidden participates in layout but cannot receive input.
         await surface.UpdateAsync(() => first.Visibility = Visibility.Hidden, "hide first wrapped child");
 
         // Assert - the sibling's opaque cell and slot stay stable, while the hidden slot falls through.
         second.Bounds.ShouldBe(new Rect(3, 0, 2, 1));
+        surface.Cell(default).Text.ShouldBe(" ");
         surface.Cell(new Point(3, 0)).Text.ShouldBe("B");
         wrap.HitTest(new Point(0, 0)).ShouldBeSameAs(wrap);
 
@@ -53,6 +61,7 @@ public sealed class WrapSurfaceTests
         // Assert
         first.Bounds.ShouldBe(new Rect(0, 0, 2, 1));
         second.Bounds.ShouldBe(new Rect(3, 0, 2, 1));
+        surface.Cell(default).Text.ShouldBe("A");
         surface.Cell(new Point(3, 0)).Text.ShouldBe("B");
         wrap.HitTest(new Point(0, 0)).ShouldBeSameAs(first);
     }
@@ -137,26 +146,28 @@ public sealed class WrapSurfaceTests
         surface.ShouldRender("B\nC");
     }
 
-    /// <summary>Verifies a popup owned by a wrapped child stays elevated and receives its normal
-    /// hit route rather than being hidden behind sibling content.</summary>
+    /// <summary>Verifies a ComboBox's owner-managed popup stays elevated when the ComboBox is a
+    /// wrapped child, and the popup layer retains its normal hit route.</summary>
     [Fact]
     public async Task Popup_WhenOwnedByWrappedChild_RemainsRoutedThroughContainerPopupLayerAsync()
     {
         // Arrange
-        var anchor = new ProbeControl(new Size(1, 1)) { IsFocusable = true };
-        var popup = new Popup
+        var combo = new ComboBox
         {
-            Anchor = anchor,
-            Content = new ControlText("P")
+            Width = Length.Cells(4),
+            Height = Length.Cells(1),
+            Items = ["One", "Two"],
+            SelectedIndex = 0
         };
-        var wrap = new Wrap { IsFocusable = true, Children = { anchor, popup } };
+        var wrap = new Wrap { Children = { combo } };
         await using var surface = await ComponentSurface.MountAsync(
             wrap,
             new Size(4, 2),
             TestContext.Current.CancellationToken);
 
         // Act
-        await surface.UpdateAsync(() => popup.IsOpen = true, "open child popup");
+        await surface.UpdateAsync(() => combo.IsOpen = true, "open wrapped ComboBox popup");
+        var popup = OwnedTree.Find<Popup>(combo).ShouldNotBeNull();
         var point = new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y);
 
         // Assert
@@ -172,7 +183,15 @@ public sealed class WrapSurfaceTests
     {
         // Arrange
         var child = new ControlText("A") { Width = Length.Cells(2), Height = Length.Cells(1) };
-        var wrap = new Wrap { Children = { child } };
+        var wrap = new Wrap
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Never,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Children = { child, new ControlText("Z") { Width = Length.Cells(3), Height = Length.Cells(2) } }
+        };
         await using var surface = await ComponentSurface.MountAsync(
             wrap,
             new Size(3, 1),
