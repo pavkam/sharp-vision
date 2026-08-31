@@ -21,7 +21,7 @@ internal sealed class MenuPane: CompositeControlBase
         // File menu with nested Open Recent submenu.
         var fileNew = new MenuItem { Text = "Ne&w" };
         var fileOpen = new MenuItem { Text = "&Open" };
-        var fileRecentToday = new MenuItem { Text = "&Today" };
+        var fileRecentToday = new MenuItem { Text = "To&day" };
         var fileRecentArchive = new MenuItem { Text = "Ar&chive" };
         var fileRecentSubmenu = new Menu
         {
@@ -92,7 +92,7 @@ internal sealed class MenuPane: CompositeControlBase
         viewSubmenu.Items.Add(viewSpacious);
 
         // Help menu completes the top-level bar.
-        var helpAbout = new MenuItem { Text = "&About" };
+        var helpAbout = new MenuItem { Text = "Ab&out" };
         var helpSubmenu = new Menu { Orientation = Orientation.Vertical };
         helpSubmenu.Items.Add(helpAbout);
 
@@ -234,7 +234,7 @@ internal sealed class MenuPane: CompositeControlBase
                     "Application menu bar",
                     "Click or press <reverse>Enter</reverse> on File, Edit, View, or Help, then hover another heading to switch without leaving the menu plane. <reverse>Tab</reverse> and arrows move selection; Open Recent extends the same plane to the right.",
                     new DocColumn(barFrame, barStatus),
-                    "var file = new MenuItem { Text = \"&File\" };\nvar openRecentMenu = new Menu\n{\n    Orientation = Orientation.Vertical,\n    MinWidth = Length.Cells(14),\n    MaxWidth = Length.Percent(75),\n};\nopenRecentMenu.Items.Add(new MenuItem { Text = \"&Today\" });\nvar openRecent = new MenuItem { Text = \"O&pen Recent\", Submenu = openRecentMenu };\nvar fileMenu = new Menu { Orientation = Orientation.Vertical };\nfileMenu.Items.Add(new MenuItem { Text = \"Ne&w\" });\nfileMenu.Items.Add(openRecent);\nfile.Submenu = fileMenu;")),
+                    "var file = new MenuItem { Text = \"&File\" };\nvar openRecentMenu = new Menu\n{\n    Orientation = Orientation.Vertical,\n    MinWidth = Length.Cells(14),\n    MaxWidth = Length.Percent(75),\n};\nopenRecentMenu.Items.Add(new MenuItem { Text = \"To&day\" });\nvar openRecent = new MenuItem { Text = \"O&pen Recent\", Submenu = openRecentMenu };\nvar fileMenu = new Menu { Orientation = Orientation.Vertical };\nfileMenu.Items.Add(new MenuItem { Text = \"Ne&w\" });\nfileMenu.Items.Add(openRecent);\nfile.Submenu = fileMenu;")),
             new DocSection(
                 "🧰",
                 "Building a menu with MenuBuilder",
