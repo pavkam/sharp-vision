@@ -2352,7 +2352,10 @@ public sealed class Application:
             return;
         }
 
-        Idle?.Invoke(this, EventArgs.Empty);
+        if (RaiseIsolated(Idle, EventArgs.Empty) is { } idleFailure)
+        {
+            Report(idleFailure);
+        }
 
         if (!IsRendering && !Suspended() && Root.Pending != Invalidation.None)
         {
