@@ -585,6 +585,90 @@ public sealed class TextTests
         text.Lines.Span[0].Leading.ShouldBe(17);
     }
 
+    /// <summary>Verifies widening past a previous Overflow.Ellipsis truncation reformats to the
+    /// full text instead of reusing the stale truncated line. Ellipsis routinely leaves a line's
+    /// Cells below the arrange width after truncation (word-boundary snap-back reserves the
+    /// ellipsis cell), so the width>=_measuredMaxCells skip-reformat guard could mistake that gap
+    /// for "nothing was truncated" and stay stuck re-aligning the truncated content forever, even
+    /// once the arrange width is wide enough to show everything.</summary>
+    [Fact]
+    public void EnsureLayout_WhenEllipsisArrangeWidensPastTruncation_ShowsFullText()
+    {
+        const string content = "The quick brown fox jumps over the lazy dog";
+        var text = new ControlText(content) { Overflow = Overflow.Ellipsis };
+
+        text.Measure(new Constraint(width: 12, height: 1));
+
+        text.Lines.Length.ShouldBe(1);
+        var narrow = text.Lines.Span[0];
+        narrow.HasEllipsis.ShouldBeTrue();
+        content.AsSpan(narrow.Offset, narrow.Length).ToString().ShouldBe("The quick");
+
+        text.Arrange(new Rect(0, 0, 50, 1));
+
+        var wide = text.Lines.Span[0];
+        wide.HasEllipsis.ShouldBeFalse();
+        wide.Cells.ShouldBe(43);
+        content.AsSpan(wide.Offset, wide.Length).ToString().ShouldBe(content);
+    }
+
+    /// <summary>Verifies widening past a previous Overflow.Clip truncation reformats to the full
+    /// text instead of reusing the stale truncated line. A wide grapheme that does not fit the
+    /// last available cell leaves Clip's Cells below the arrange width too (the same shape of gap
+    /// as Ellipsis's word-boundary snap-back), so the fast path must not treat Clip as safe to
+    /// skip either.</summary>
+    [Fact]
+    public void EnsureLayout_WhenClipArrangeWidensPastTruncation_ShowsFullText()
+    {
+        const string content = "ab界c";
+        var text = new ControlText(content) { Overflow = Overflow.Clip };
+
+        text.Measure(new Constraint(width: 3, height: 1));
+
+        text.Lines.Length.ShouldBe(1);
+        var narrow = text.Lines.Span[0];
+        narrow.HasEllipsis.ShouldBeFalse();
+        narrow.Cells.ShouldBe(2);
+        content.AsSpan(narrow.Offset, narrow.Length).ToString().ShouldBe("ab");
+
+        text.Arrange(new Rect(0, 0, 10, 1));
+
+        var wide = text.Lines.Span[0];
+        wide.Cells.ShouldBe(5);
+        content.AsSpan(wide.Offset, wide.Length).ToString().ShouldBe(content);
+    }
+
+    /// <summary>Verifies repeated widening after an Overflow.Ellipsis truncation reformats at
+    /// every step rather than getting stuck on the first stale line. _measuredMaxCells only ever
+    /// updates inside Format(), so a fast path that wrongly skips Format() on the first widen
+    /// would carry the ORIGINAL narrow-width measurement forward and could keep passing its own
+    /// "already fits" check on every later widen too, permanently truncating the text.</summary>
+    [Fact]
+    public void EnsureLayout_WhenEllipsisArrangeWidensRepeatedly_ReformatsAtEachWidth()
+    {
+        const string content = "The quick brown fox jumps over the lazy dog";
+        var text = new ControlText(content) { Overflow = Overflow.Ellipsis };
+
+        text.Measure(new Constraint(width: 12, height: 1));
+        content.AsSpan(text.Lines.Span[0].Offset, text.Lines.Span[0].Length)
+            .ToString()
+            .ShouldBe("The quick");
+
+        // First widen: the text is still truncated, but the boundary must move — a stale reuse
+        // of the width=12 line would incorrectly still read "The quick" here.
+        text.Arrange(new Rect(0, 0, 20, 1));
+        var medium = text.Lines.Span[0];
+        medium.HasEllipsis.ShouldBeTrue();
+        content.AsSpan(medium.Offset, medium.Length).ToString().ShouldBe("The quick brown");
+
+        // Second widen: the full text now fits. This only works if _measuredMaxCells was
+        // refreshed by the previous widen's reformat rather than left stale from width=12.
+        text.Arrange(new Rect(0, 0, 50, 1));
+        var wide = text.Lines.Span[0];
+        wide.HasEllipsis.ShouldBeFalse();
+        content.AsSpan(wide.Offset, wide.Length).ToString().ShouldBe(content);
+    }
+
     /// <summary>Verifies direct and ancestor-inherited IsEnabled changes compute the effective
     /// disabled state Text's mounted disabled contract depends on.</summary>
     [Fact]

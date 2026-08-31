@@ -347,7 +347,13 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
             // A widened arrange slot that still exceeds every existing line's own cell count would
             // then wrongly compare as "already fits" and skip the reformat that should have
             // merged those wrapped lines back together.
-            if (Overflow is not (Overflow.Wrap or Overflow.WrapAnywhere) &&
+            //
+            // Only Overflow.Visible guarantees a line's Cells never depends on width (FormatUnwrapped
+            // always emits the full completeCells for Visible), so only Visible can safely skip
+            // reformat on widen. Clip and Ellipsis routinely leave cells < width after truncation
+            // (word-boundary snap-back, or a wide grapheme that doesn't fit the last cell), so reusing
+            // stale line data there can leave truncated text stuck forever.
+            if (Overflow == Overflow.Visible &&
                 width >= _measuredMaxCells && _cachedWidth > _measuredMaxCells)
             {
                 Align(width);
