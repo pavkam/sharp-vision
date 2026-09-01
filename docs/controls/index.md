@@ -46,6 +46,7 @@ classDiagram
     Container <|-- Grid
     Container <|-- Dock
     Container <|-- Overlay
+    Container <|-- SplitPane
 ```
 
 The diagram shows the authoring roles and representative controls, not every
@@ -154,6 +155,7 @@ See the [intrinsic appearance rules](../concepts/styling.md#shared-chrome).
 - [Grid](layout/grid.md#overview)
 - [Dock](layout/dock.md#overview)
 - [Overlay](layout/overlay.md#overview)
+- [SplitPane](layout/split-pane.md#overview)
 - [Table](layout/table.md#overview)
 - [GroupBox](layout/group-box.md#overview)
 - [Expander](layout/expander.md#overview)

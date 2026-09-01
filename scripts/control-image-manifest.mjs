@@ -111,6 +111,7 @@ export const controls = [
     { doc: "layout/grid", page: "Grid" },
     { doc: "layout/group-box", page: "GroupBox" },
     { doc: "layout/overlay", page: "Overlay" },
+    { doc: "layout/split-pane", page: "SplitPane" },
     { doc: "layout/stack", page: "Stack" },
     { doc: "layout/wrap", page: "Wrap" },
     { doc: "scrolling/scroll-bar", page: "ScrollBar" },

@@ -72,6 +72,7 @@ public sealed class Gallery: Screen
         ("Progress", ProgressBarPane.Title, static () => new ProgressBarPane()),
         ("Input", RadioButtonPane.Title, static () => new RadioButtonPane()),
         ("Layout", ScrollBarPane.Title, static () => new ScrollBarPane()),
+        ("Layout", SplitPanePane.Title, static () => new SplitPanePane()),
         ("Display", SeparatorPane.Title, static () => new SeparatorPane()),
         ("Display", StatusBarPane.Title, static () => new StatusBarPane()),
         ("Input", SliderPane.Title, static () => new SliderPane()),

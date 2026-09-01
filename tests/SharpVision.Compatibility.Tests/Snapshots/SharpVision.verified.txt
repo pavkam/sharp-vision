@@ -2064,6 +2064,7 @@ namespace SharpVision.Controls.Layout
     public sealed class SplitPane : SharpVision.Controls.Container
     {
         public SplitPane() { }
+        public override bool CanTabStop { get; }
         public SharpVision.Layout.Length FirstPaneLength { get; set; }
         public bool IsResizable { get; set; }
         public int LargeChange { get; set; }
@@ -2072,6 +2073,14 @@ namespace SharpVision.Controls.Layout
         public event System.EventHandler<SharpVision.Controls.Layout.SplitChangedEventArgs>? SplitChanged;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnChildrenChanged() { }
+        protected override void OnDisposing() { }
+        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnFocusChanged(bool focused) { }
+        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
+        protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver) { }
+        protected override void OnRenderAdornment(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
     public sealed class Stack : SharpVision.Controls.Container
     {
