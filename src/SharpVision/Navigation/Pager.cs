@@ -3,13 +3,14 @@
 
 namespace SharpVision.Navigation;
 
+using System.Runtime.ExceptionServices;
+
 using SharpVision.Terminal.Input;
 
 /// <summary>Navigates one zero-based page index inside a finite page range.</summary>
 [PublicAPI]
 public sealed class Pager: ControlBase, IStyled<PagerStyle>
 {
-    private const int _maximumMaterializedWindow = 4096;
     private int _pageCount;
     private int _pageIndex = -1;
     private ulong _layoutGeneration;
@@ -94,7 +95,19 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
     public PagerStyle? Style
     {
         get => _style.Local;
-        set => _style.Local = value;
+        set
+        {
+            var previous = _style.Local;
+            ExceptionDispatchInfo? failure = null;
+            ExceptionAggregation.Capture(() => _style.Local = value, ref failure);
+
+            if (!Equals(previous, _style.Local))
+            {
+                ExceptionAggregation.Capture(CancelPointerInteraction, ref failure);
+            }
+
+            failure?.Throw();
+        }
     }
 
     /// <summary>Gets the complete local, theme-owned, or code-owned presentation.</summary>
@@ -127,6 +140,11 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
         if (PageCount == 0)
         {
             return default;
+        }
+
+        if (constraint.Width is null)
+        {
+            return new Size(MeasureIdealWidth(), 1);
         }
 
         var width = constraint.Width;
@@ -468,22 +486,116 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
             x = x.SaturatingAdd(target.CellWidth);
         }
 
-        var width = TotalWidth(selected);
+        return new PagerLayout(targets, new Size(TotalWidth(selected), 1), generation);
+    }
 
-        if (availableWidth is null && WindowCandidateCount() > _maximumMaterializedWindow)
+    private int MeasureIdealWidth()
+    {
+        List<(int Start, int End)> ranges = [(0, 0)];
+
+        if (PageCount > 1)
         {
-            width = int.MaxValue;
+            ranges.Add((PageCount - 1, PageCount - 1));
         }
 
-        return new PagerLayout(targets, new Size(width, 1), generation);
+        if (PageIndex > 0 && PageIndex < PageCount - 1)
+        {
+            ranges.Add((PageIndex, PageIndex));
+        }
+
+        ResolveWindowCounts(out var leftCount, out var rightCount);
+
+        if (leftCount > 0)
+        {
+            ranges.Add((PageIndex - leftCount, PageIndex - 1));
+        }
+
+        if (rightCount > 0)
+        {
+            ranges.Add((PageIndex + 1, PageIndex + rightCount));
+        }
+
+        ranges.Sort(static (left, right) => left.Start.CompareTo(right.Start));
+        long numericWidth = 0;
+        long numericCount = 0;
+        var omissions = 0;
+        var mergedStart = ranges[0].Start;
+        var mergedEnd = ranges[0].End;
+
+        for (var index = 1; index < ranges.Count; index++)
+        {
+            var (currentStart, currentEnd) = ranges[index];
+
+            if (currentStart <= (long) mergedEnd + 1)
+            {
+                mergedEnd = Math.Max(mergedEnd, currentEnd);
+                continue;
+            }
+
+            AccumulateNumericRange(mergedStart, mergedEnd, ref numericWidth, ref numericCount);
+            omissions++;
+            mergedStart = currentStart;
+            mergedEnd = currentEnd;
+        }
+
+        AccumulateNumericRange(mergedStart, mergedEnd, ref numericWidth, ref numericCount);
+        var navigationCount = 0;
+        navigationCount += TryResolveGlyph(ActualStyle.FirstPageGlyph, out _) ? 1 : 0;
+        navigationCount += TryResolveGlyph(ActualStyle.PreviousPageGlyph, out _) ? 1 : 0;
+        navigationCount += TryResolveGlyph(ActualStyle.NextPageGlyph, out _) ? 1 : 0;
+        navigationCount += TryResolveGlyph(ActualStyle.LastPageGlyph, out _) ? 1 : 0;
+        var omissionCount = TryResolveGlyph(ActualStyle.OmittedPagesGlyph, out _)
+            ? omissions
+            : 0;
+        var targetCount = numericCount + navigationCount + omissionCount;
+        var width = numericWidth + navigationCount + omissionCount + Math.Max(0, targetCount - 1);
+        return width >= int.MaxValue ? int.MaxValue : (int) width;
+    }
+
+    private void ResolveWindowCounts(out int leftCount, out int rightCount)
+    {
+        var leftAvailable = Math.Max(0, PageIndex - 1);
+        var rightAvailable = Math.Max(0, PageCount - PageIndex - 2);
+        var count = Math.Min(MaximumVisiblePages, leftAvailable + rightAvailable);
+        leftCount = Math.Min(leftAvailable, (count + 1) / 2);
+        rightCount = Math.Min(rightAvailable, count / 2);
+        var remaining = count - leftCount - rightCount;
+        var additionalLeft = Math.Min(remaining, leftAvailable - leftCount);
+        leftCount += additionalLeft;
+        remaining -= additionalLeft;
+        rightCount += Math.Min(remaining, rightAvailable - rightCount);
+    }
+
+    private static void AccumulateNumericRange(
+        int startPageIndex,
+        int endPageIndex,
+        ref long width,
+        ref long count)
+    {
+        Debug.Assert(startPageIndex >= 0 && endPageIndex >= startPageIndex);
+        var first = (long) startPageIndex + 1;
+        var last = (long) endPageIndex + 1;
+        count += last - first + 1;
+        var blockStart = first;
+
+        for (long threshold = 10, digits = 1; blockStart <= last; threshold *= 10, digits++)
+        {
+            var blockEnd = Math.Min(last, threshold - 1);
+            width += (blockEnd - blockStart + 1) * digits;
+            blockStart = blockEnd + 1;
+
+            if (threshold > int.MaxValue)
+            {
+                break;
+            }
+        }
     }
 
     private IEnumerable<int> WindowCandidates(int? availableWidth)
     {
         var remaining = WindowCandidateCount();
-        var materializationLimit = availableWidth is { } finite
-            ? Math.Min(remaining, finite)
-            : Math.Min(remaining, _maximumMaterializedWindow);
+        Debug.Assert(availableWidth is not null, "Unbounded measure uses arithmetic ideal-width calculation.");
+        var materializationLimit = Math.Min(remaining, availableWidth.Value);
         var produced = 0;
 
         for (var distance = 1; produced < materializationLimit; distance++)

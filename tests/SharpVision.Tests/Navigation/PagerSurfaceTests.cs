@@ -6,6 +6,26 @@ namespace SharpVision.Tests.Navigation;
 /// <summary>Verifies mounted Pager rendering and input against committed target snapshots.</summary>
 public sealed class PagerSurfaceTests
 {
+    /// <summary>Verifies unbounded measure computes complete ideal width without retaining one target per page.</summary>
+    [Fact]
+    public void Measure_WhenIdealWindowIsLarge_ComputesExactWidth()
+    {
+        const int pageCount = 10_000;
+        var pager = new Pager
+        {
+            PageCount = pageCount,
+            PageIndex = pageCount / 2,
+            MaximumVisiblePages = pageCount - 2
+        };
+        var numericWidth = Enumerable.Range(1, pageCount)
+            .Sum(static page => page.ToString(CultureInfo.InvariantCulture).Length);
+        var expectedWidth = numericWidth + 4 + pageCount + 3;
+
+        pager.Measure(new Constraint(width: null, height: 1));
+
+        pager.DesiredSize.ShouldBe(new Size(expectedWidth, 1));
+    }
+
     /// <summary>Verifies an unbounded middle-page layout emits navigation, endpoint numbers, gaps, and window pages in source order.</summary>
     [Fact]
     public void Render_WhenMiddlePageHasRoom_WritesCompleteIdealSequence()
