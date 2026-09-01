@@ -252,12 +252,8 @@ public sealed class SuggestionInput: CompositeControlBase
     internal Task? LastResolutionObservation { get; private set; }
 
     /// <summary>Gets or sets a test synchronization callback invoked after detached completion
-    /// samples its publication boundary and immediately before it may mutate retained state.</summary>
+    /// acquires exclusive publication authority and before it mutates retained state.</summary>
     internal Action? BeforeDetachedResolutionPublication { get; set; }
-
-    /// <summary>Gets or sets a test synchronization callback invoked after terminal resolution
-    /// cleanup becomes active and immediately before the current authority is revoked.</summary>
-    internal Action? BeforeResolutionTerminalCleanup { get; set; }
 
     /// <summary>Starts a fresh resolution for the current text and makes current results eligible to open.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -525,9 +521,12 @@ public sealed class SuggestionInput: CompositeControlBase
         var generation = ++_resolutionGeneration;
         _currentSnapshotGeneration = null;
         var lease = _resolutionOperation.Begin();
-        var attachmentVersion = CaptureAttachmentVersion();
         var attachment = TryCaptureAttachment(out var capturedAttachment)
             ? capturedAttachment
+            : null;
+        var detachedAttachment = attachment is null &&
+                                 TryCaptureDetachedAttachment(out var capturedDetachedAttachment)
+            ? capturedDetachedAttachment
             : null;
         var searchTerms = Text;
         var resolver = Resolver;
@@ -595,7 +594,7 @@ public sealed class SuggestionInput: CompositeControlBase
             lease,
             generation,
             attachment,
-            attachmentVersion);
+            detachedAttachment);
         LastResolutionObservation = observation;
         ObserveResolution(observation);
         startupFailure?.Throw();
@@ -607,7 +606,7 @@ public sealed class SuggestionInput: CompositeControlBase
         LatestControlOperationLease lease,
         int generation,
         ControlAttachmentToken? attachment,
-        long attachmentVersion)
+        ControlDetachedAttachmentToken? detachedAttachment)
     {
         IReadOnlyList<object?>? results = null;
         Exception? resolverFailure = null;
@@ -630,7 +629,7 @@ public sealed class SuggestionInput: CompositeControlBase
             lease,
             generation,
             attachment,
-            attachmentVersion,
+            detachedAttachment,
             () =>
             {
                 if (wasCancelled)
@@ -652,22 +651,12 @@ public sealed class SuggestionInput: CompositeControlBase
         LatestControlOperationLease lease,
         int generation,
         ControlAttachmentToken? attachment,
-        long attachmentVersion,
+        ControlDetachedAttachmentToken? detachedAttachment,
         Action action)
     {
         if (attachment is not { } token)
         {
-            if (!IsCurrentDetachedAttachment(attachmentVersion) ||
-                !IsCurrentResolution(lease, generation))
-            {
-                CompleteDetachedResolutionWhenStillDetached(lease, generation);
-                return Task.CompletedTask;
-            }
-
-            BeforeDetachedResolutionPublication?.Invoke();
-
-            if (!IsCurrentDetachedAttachment(attachmentVersion) ||
-                !IsCurrentResolution(lease, generation))
+            if (detachedAttachment is not { } detachedToken)
             {
                 CompleteDetachedResolutionWhenStillDetached(lease, generation);
                 return Task.CompletedTask;
@@ -675,7 +664,20 @@ public sealed class SuggestionInput: CompositeControlBase
 
             try
             {
-                action();
+                var published = TryPublishForCurrentDetachedAttachment(
+                    detachedToken,
+                    () =>
+                    {
+                        BeforeDetachedResolutionPublication?.Invoke();
+                        action();
+                    },
+                    () => IsCurrentResolution(lease, generation));
+
+                if (!published)
+                {
+                    CompleteDetachedResolutionWhenStillDetached(lease, generation);
+                }
+
                 return Task.CompletedTask;
             }
             catch (Exception exception)
@@ -1031,9 +1033,6 @@ public sealed class SuggestionInput: CompositeControlBase
         {
             if (endsResolutionLifetime)
             {
-                ExceptionAggregation.Capture(
-                    () => BeforeResolutionTerminalCleanup?.Invoke(),
-                    ref failure);
                 var cancellationGeneration = ++_resolutionGeneration;
                 _currentSnapshotGeneration = null;
                 ExceptionAggregation.Capture(_resolutionOperation.Cancel, ref failure);
@@ -1052,7 +1051,6 @@ public sealed class SuggestionInput: CompositeControlBase
                 _input.TextChanged -= OnTextChanged;
                 ExceptionAggregation.Capture(_popupCoordinator.Detach, ref failure);
                 BeforeDetachedResolutionPublication = null;
-                BeforeResolutionTerminalCleanup = null;
                 SuggestionsChanged = null;
                 ResolutionFailed = null;
 

@@ -6,6 +6,97 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies exact control attachment identities and guarded dispatcher marshalling.</summary>
 public sealed class ControlAttachmentTokenTests
 {
+    /// <summary>Verifies detached authority names one exact owner and cannot be recreated from a
+    /// caller-supplied identity.</summary>
+    [Fact]
+    public void TryPublishForCurrentDetachedAttachment_WhenAuthorityIsForeignOrSynthesized_ReturnsFalse()
+    {
+        // Arrange
+        using var owner = new ProbeControl();
+        using var foreignOwner = new ProbeControl();
+        owner.TryCaptureDetachedAttachment(out var authority).ShouldBeTrue();
+        var synthetic = new ControlDetachedAttachmentToken(owner, new object());
+        var publications = new List<string>();
+
+        // Act
+        var current = owner.TryPublishForCurrentDetachedAttachment(
+            authority,
+            () => publications.Add("current"));
+        var foreign = foreignOwner.TryPublishForCurrentDetachedAttachment(
+            authority,
+            () => publications.Add("foreign"));
+        var forged = owner.TryPublishForCurrentDetachedAttachment(
+            synthetic,
+            () => publications.Add("forged"));
+
+        // Assert
+        current.ShouldBeTrue();
+        foreign.ShouldBeFalse();
+        forged.ShouldBeFalse();
+        publications.ShouldBe(["current"]);
+    }
+
+    /// <summary>Verifies attachment and disposal attempted from detached publication are rejected
+    /// before commit, while detaching an already detached control remains an idempotent no-op.</summary>
+    [Fact]
+    public async Task TryPublishForCurrentDetachedAttachment_WhenLifecycleReenters_RejectsBeforeCommitAsync()
+    {
+        // Arrange
+        var control = new ProbeControl();
+        control.TryCaptureDetachedAttachment(out var authority).ShouldBeTrue();
+        await using var dispatcher = Dispatcher.Start();
+
+        // Act
+        var failures = await dispatcher.InvokeAsync(
+            () =>
+            {
+                var attach = Record.Exception(() => control.TryPublishForCurrentDetachedAttachment(
+                    authority,
+                    () => control.Attach(dispatcher)));
+                var detach = Record.Exception(() => control.TryPublishForCurrentDetachedAttachment(
+                    authority,
+                    control.Detach));
+                var dispose = Record.Exception(() => control.TryPublishForCurrentDetachedAttachment(
+                    authority,
+                    control.Dispose));
+                return new[] { attach, detach, dispose };
+            },
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        _ = failures[0].ShouldBeOfType<InvalidOperationException>();
+        failures[1].ShouldBeNull();
+        _ = failures[2].ShouldBeOfType<InvalidOperationException>();
+        control.Dispatcher.ShouldBeNull();
+        control.IsDisposing.ShouldBeFalse();
+        control.IsDisposed.ShouldBeFalse();
+        control.Dispose();
+    }
+
+    /// <summary>Verifies a detached child publication reserves its owning tree so root disposal
+    /// cannot begin teardown before the child finishes publishing.</summary>
+    [Fact]
+    public void TryPublishForCurrentDetachedAttachment_WhenOwningRootDisposes_RejectsBeforeCommit()
+    {
+        // Arrange
+        var owner = new ProbeOwnedControl();
+        var child = new ProbeControl();
+        owner.AddPrimary(child);
+        child.TryCaptureDetachedAttachment(out var authority).ShouldBeTrue();
+
+        // Act
+        var failure = Record.Exception(() => child.TryPublishForCurrentDetachedAttachment(
+            authority,
+            owner.Dispose));
+
+        // Assert
+        _ = failure.ShouldBeOfType<InvalidOperationException>();
+        owner.IsDisposed.ShouldBeFalse();
+        child.IsDisposed.ShouldBeFalse();
+        child.Parent.ShouldBeSameAs(owner);
+        owner.Dispose();
+    }
+
     /// <summary>Verifies away-and-back attachment to the same dispatcher invalidates a token.</summary>
     [Fact]
     public async Task IsCurrent_WhenDetachedAndReattachedToSameDispatcher_ReturnsFalseAsync()

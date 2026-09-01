@@ -82,22 +82,9 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <summary>Gets the owning dispatcher while attached.</summary>
     public Dispatcher? Dispatcher { get; private set; }
 
-    private long _attachmentVersion;
+    private object _attachmentIdentity = new();
 
-    /// <summary>Captures the private lifecycle version shared by attached and detached completion
-    /// authority without exposing arithmetic to its consumer.</summary>
-    /// <returns>The current opaque lifecycle version.</returns>
-    internal long CaptureAttachmentVersion() => Volatile.Read(ref _attachmentVersion);
-
-    /// <summary>Checks whether one captured lifecycle version still names this exact detached,
-    /// live control state.</summary>
-    /// <param name="version">The previously captured opaque lifecycle version.</param>
-    /// <returns>True only while no attachment or terminal disposal commit has intervened.</returns>
-    internal bool IsCurrentDetachedAttachment(long version) =>
-        !IsDisposed &&
-        !IsDisposing &&
-        Dispatcher is null &&
-        version == Volatile.Read(ref _attachmentVersion);
+    private object AttachmentIdentity => Volatile.Read(ref _attachmentIdentity);
 
     /// <summary>Captures the exact current dispatcher attachment.</summary>
     /// <returns>An opaque identity invalidated by detach, reattach, or disposal.</returns>
@@ -108,7 +95,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         ThrowIfDisposed();
         var dispatcher = Dispatcher ?? throw new InvalidOperationException(
             "An attachment can be captured only while the control is attached.");
-        return new ControlAttachmentToken(this, dispatcher, CaptureAttachmentVersion());
+        return new ControlAttachmentToken(this, dispatcher, AttachmentIdentity);
     }
 
     /// <summary>Attempts to capture one exact live attachment without throwing when a concurrent
@@ -120,12 +107,12 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         token = null;
         var dispatcher = Dispatcher;
 
-        if (IsDisposed || dispatcher is null)
+        if (IsDisposed || TerminalDisposalStarted || dispatcher is null)
         {
             return false;
         }
 
-        var captured = new ControlAttachmentToken(this, dispatcher, CaptureAttachmentVersion());
+        var captured = new ControlAttachmentToken(this, dispatcher, AttachmentIdentity);
 
         if (!IsCurrent(captured))
         {
@@ -172,7 +159,83 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     internal bool IsCurrent(ControlAttachmentToken token)
     {
         ArgumentNullException.ThrowIfNull(token);
-        return !IsDisposed && token.Matches(this, Dispatcher, CaptureAttachmentVersion());
+        return !IsDisposed &&
+               !TerminalDisposalStarted &&
+               token.Matches(this, Dispatcher, AttachmentIdentity);
+    }
+
+    /// <summary>Attempts to capture one exact live detached lifetime without exposing its private
+    /// identity.</summary>
+    /// <param name="token">The exact owner-bound identity, or null when attached or disposing.</param>
+    /// <returns>True only when a live detached identity was captured and revalidated.</returns>
+    internal bool TryCaptureDetachedAttachment(
+        [NotNullWhen(true)] out ControlDetachedAttachmentToken? token)
+    {
+        token = null;
+        var identity = AttachmentIdentity;
+
+        if (IsDisposed || TerminalDisposalStarted || Dispatcher is not null)
+        {
+            return false;
+        }
+
+        var captured = new ControlDetachedAttachmentToken(this, identity);
+
+        if (!IsCurrentDetachedAttachment(captured))
+        {
+            return false;
+        }
+
+        token = captured;
+        return true;
+    }
+
+    /// <summary>Checks whether an opaque identity still names this exact live detached lifetime.</summary>
+    /// <param name="token">The captured owner-bound identity.</param>
+    /// <returns>True only while this control remains live and detached on that identity.</returns>
+    private bool IsCurrentDetachedAttachment(ControlDetachedAttachmentToken token)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        return !IsDisposed &&
+               !TerminalDisposalStarted &&
+               Dispatcher is null &&
+               token.Matches(this, AttachmentIdentity);
+    }
+
+    /// <summary>Runs one synchronous publication only while an opaque detached identity remains
+    /// current, excluding attachment context commit and terminal disposal for its full duration.</summary>
+    /// <param name="token">The exact captured detached identity.</param>
+    /// <param name="action">The complete synchronous state and callback publication.</param>
+    /// <param name="isOperationCurrent">An optional additional domain-current predicate.</param>
+    /// <returns>True when the publication ran; false when lifecycle or domain authority was stale.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="token"/> or <paramref name="action"/> is null.</exception>
+    internal bool TryPublishForCurrentDetachedAttachment(
+        ControlDetachedAttachmentToken token,
+        Action action,
+        Func<bool>? isOperationCurrent = null)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        ArgumentNullException.ThrowIfNull(action);
+
+        if (!OwnedControlRegistry.TryEnterDetachedPublication(this, out var entered))
+        {
+            return false;
+        }
+
+        try
+        {
+            if (!IsCurrentDetachedAttachment(token) || !(isOperationCurrent?.Invoke() ?? true))
+            {
+                return false;
+            }
+
+            action();
+            return true;
+        }
+        finally
+        {
+            OwnedControlRegistry.ExitLifecyclePublication(entered);
+        }
     }
 
     /// <summary>Posts one callback that runs only while its captured attachment and optional
@@ -978,6 +1041,12 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <summary>Gets whether disposal is currently unwinding this control, before <see cref="IsDisposed"/> flips true.</summary>
     internal bool IsDisposing { get; private set; }
 
+    private bool _terminalDisposalStarted;
+
+    /// <summary>Gets whether this control owns the active terminal-disposal lifetime boundary.</summary>
+    /// <remarks>Ownership publication uses this only to permit the framework's pre-disposal unlink.</remarks>
+    internal bool TerminalDisposalStarted => Volatile.Read(ref _terminalDisposalStarted);
+
     private bool OwnedDisposalRequested { get; set; }
 
     private bool UnavailableAlreadyPublishedForDisposal { get; set; }
@@ -1084,7 +1153,6 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         ArgumentNullException.ThrowIfNull(cellPolicy);
         VerifyLifecycleRoot();
         dispatcher.VerifyAccess();
-        ValidateAttachment();
         CommitAndPublishContext(
             dispatcher,
             cellPolicy,
@@ -1092,6 +1160,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             CaptureOwner,
             ModalityOwner,
             InheritedTheme,
+            prepare: null,
             configure: null);
     }
 
@@ -1113,8 +1182,6 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         ArgumentNullException.ThrowIfNull(capabilities);
         VerifyLifecycleRoot();
         dispatcher.VerifyAccess();
-        ValidateAttachment();
-        SetCapabilities(capabilities);
         CommitAndPublishContext(
             dispatcher,
             cellPolicy,
@@ -1122,6 +1189,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             CaptureOwner,
             ModalityOwner,
             InheritedTheme,
+            () => SetCapabilities(capabilities),
             configure: null);
     }
 
@@ -1146,7 +1214,6 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         ArgumentNullException.ThrowIfNull(configure);
         VerifyLifecycleRoot();
         dispatcher.VerifyAccess();
-        ValidateAttachment();
         CommitAndPublishContext(
             dispatcher,
             cellPolicy,
@@ -1154,6 +1221,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             CaptureOwner,
             ModalityOwner,
             theme,
+            prepare: null,
             configure);
     }
 
@@ -1162,7 +1230,6 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     internal void Detach()
     {
         VerifyLifecycleRoot();
-        OwnedControlRegistry.VerifyMutationAllowed(this);
         var dispatcher = Dispatcher;
 
         if (dispatcher is null)
@@ -1171,11 +1238,18 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         }
 
         dispatcher.VerifyAccess();
-        var entered = OwnedControlRegistry.EnterPublication(this);
+        var lifecycleEntered = OwnedControlRegistry.EnterLifecyclePublication(
+            [this],
+            includeDescendants: true);
+        List<OwnedControlRegistry>? entered = null;
         ExceptionDispatchInfo? failure = null;
 
         try
         {
+            ThrowIfDisposed();
+            VerifyLifecycleRoot();
+            OwnedControlRegistry.VerifyMutationAllowed(this);
+            entered = OwnedControlRegistry.EnterPublication(this);
             ExceptionAggregation.Capture(() => NotifyUnavailable(ReleaseReason.Detached), ref failure);
             var previousAppearance = AppearanceSnapshot.CaptureSubtree(this);
             var plan = ContextTransitionPlan.Create(
@@ -1198,7 +1272,12 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         }
         finally
         {
-            OwnedControlRegistry.ExitPublication(entered);
+            if (entered is not null)
+            {
+                OwnedControlRegistry.ExitPublication(entered);
+            }
+
+            OwnedControlRegistry.ExitLifecyclePublication(lifecycleEntered);
         }
 
         failure?.Throw();
@@ -2033,53 +2112,76 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// </exception>
     public void Dispose()
     {
-        if (IsDisposed || IsDisposing)
+        if (IsDisposed || IsDisposing || TerminalDisposalStarted)
         {
             GC.SuppressFinalize(this);
             return;
         }
 
-        if (!OwnedDisposalRequested)
+        var lifecycleEntered = OwnedControlRegistry.EnterTerminalDisposalPublication(this);
+
+        try
         {
-            OwnedControlRegistry.VerifyMutationAllowed(this);
-
-            if (Parent is IOwnedChildDisposalObserver observer)
-            {
-                observer.OnOwnedChildDisposalRequested(this);
-            }
-
-            OnDirectDisposalRequested();
-
-            if (IsDisposed || IsDisposing)
+            if (IsDisposed || IsDisposing || TerminalDisposalStarted)
             {
                 GC.SuppressFinalize(this);
                 return;
             }
 
-            // A direct-disposal path never restores caller-authored values onto the dying control.
-            // Retire the exact property generation before slot publication so cleanup cannot depend
-            // on multicast subscriber order or be skipped by an earlier throwing callback.
-            RetainedPropertyOverride?.Retire();
-        }
+            VerifyAccess();
 
-        try
-        {
-            DisposeWithPublication();
+            if (!OwnedDisposalRequested)
+            {
+                OwnedControlRegistry.VerifyMutationAllowed(this);
+            }
+
+            InvalidateAttachmentIdentity();
+            Volatile.Write(ref _terminalDisposalStarted, true);
+
+            if (!OwnedDisposalRequested)
+            {
+                if (Parent is IOwnedChildDisposalObserver observer)
+                {
+                    observer.OnOwnedChildDisposalRequested(this);
+                }
+
+                OnDirectDisposalRequested();
+
+                if (IsDisposed || IsDisposing)
+                {
+                    GC.SuppressFinalize(this);
+                    return;
+                }
+
+                // A direct-disposal path never restores caller-authored values onto the dying control.
+                // Retire the exact property generation before slot publication so cleanup cannot depend
+                // on multicast subscriber order or be skipped by an earlier throwing callback.
+                RetainedPropertyOverride?.Retire();
+            }
+
+            try
+            {
+                DisposeWithPublication();
+            }
+            finally
+            {
+                if (IsDisposed)
+                {
+                    GC.SuppressFinalize(this);
+                }
+            }
         }
         finally
         {
-            if (IsDisposed)
-            {
-                GC.SuppressFinalize(this);
-            }
+            Volatile.Write(ref _terminalDisposalStarted, false);
+            OwnedControlRegistry.ExitLifecyclePublication(lifecycleEntered);
         }
     }
 
     /// <summary>Allows a semantic control to reconcile caller-requested disposal before structural publication begins.</summary>
     /// <remarks>
-    /// The hook is skipped during owner-driven teardown. A callback raised by reconciliation may
-    /// complete a reentrant disposal; the outer request detects that commit before entering a
-    /// second publication transaction.
+    /// The hook is skipped during owner-driven teardown. A reentrant request while this
+    /// reconciliation is active is idempotent; the outer request owns the terminal transition.
     /// </remarks>
     internal virtual void OnDirectDisposalRequested()
     {
@@ -4898,7 +5000,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         {
             if (!ReferenceEquals(Dispatcher, transition.Dispatcher))
             {
-                _ = Interlocked.Increment(ref _attachmentVersion);
+                InvalidateAttachmentIdentity();
             }
 
             Dispatcher = transition.Dispatcher;
@@ -5069,15 +5171,23 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         PointerManager? captureOwner,
         ModalityManager? modalityOwner,
         Theme? theme,
+        Action? prepare,
         Action? configure)
     {
-        OwnedControlRegistry.VerifyMutationAllowed(this);
-        var entered = OwnedControlRegistry.EnterPublication(this);
-        var previousAppearance = AppearanceSnapshot.CaptureSubtree(this);
+        var lifecycleEntered = OwnedControlRegistry.EnterLifecyclePublication(
+            [this],
+            includeDescendants: true);
+        List<OwnedControlRegistry>? entered = null;
         ExceptionDispatchInfo? failure = null;
 
         try
         {
+            VerifyLifecycleRoot();
+            ValidateAttachment();
+            prepare?.Invoke();
+            OwnedControlRegistry.VerifyMutationAllowed(this);
+            entered = OwnedControlRegistry.EnterPublication(this);
+            var previousAppearance = AppearanceSnapshot.CaptureSubtree(this);
             var plan = ContextTransitionPlan.Create(
                 this,
                 dispatcher,
@@ -5099,7 +5209,12 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         }
         finally
         {
-            OwnedControlRegistry.ExitPublication(entered);
+            if (entered is not null)
+            {
+                OwnedControlRegistry.ExitPublication(entered);
+            }
+
+            OwnedControlRegistry.ExitLifecyclePublication(lifecycleEntered);
         }
 
         failure?.Throw();
@@ -5152,6 +5267,9 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(IsDisposed, this);
+
+    private void InvalidateAttachmentIdentity() =>
+        Volatile.Write(ref _attachmentIdentity, new object());
 
     #region Bindings
 

@@ -1404,48 +1404,40 @@ public sealed class SuggestionInputTests
         await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies an attachment commit that wins after detached completion sampled its
-    /// boundary prevents direct off-dispatcher publication before the attachment callback runs.</summary>
+    /// <summary>Verifies detached result publication excludes an attachment context commit until
+    /// the complete result transition and its callbacks release structural authority.</summary>
     [Fact]
-    public async Task Resolver_WhenAttachmentCommitsAfterDetachedSample_DiscardsBeforeDirectPublicationAsync()
+    public async Task Resolver_WhenDetachedPublicationOwnsBoundary_AttachmentWaitsForCompletePublicationAsync()
     {
         // Arrange
         var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        var completionReachedPublication = new TaskCompletionSource(
+        var publicationAcquired = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var lifecycleWaited = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         var attachmentCommitted = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        using var releaseCompletion = new ManualResetEventSlim();
-        using var releaseAttachmentPublication = new ManualResetEventSlim();
-        var resolvingNotifications = new List<bool>();
-        var publicationAccess = new List<bool>();
-        var suggestionPublications = 0;
+        using var releasePublication = new ManualResetEventSlim();
+        var publications = new System.Collections.Concurrent.ConcurrentQueue<string>();
         var input = new SuggestionInput
         {
             Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task),
             BeforeDetachedResolutionPublication = () =>
             {
-                completionReachedPublication.SetResult();
-                releaseCompletion.Wait();
+                publicationAcquired.SetResult();
+                releasePublication.Wait();
             },
             Text = "query"
         };
+        input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
         var observation = input.LastResolutionObservation.ShouldNotBeNull();
         await using var dispatcher = Dispatcher.Start();
-        input.PropertyChanged += (_, eventArgs) =>
-        {
-            if (eventArgs.PropertyName == nameof(SuggestionInput.IsResolving))
-            {
-                resolvingNotifications.Add(input.IsResolving);
-                publicationAccess.Add(dispatcher.CheckAccess());
-            }
-        };
-        input.SuggestionsChanged += (_, _) => suggestionPublications++;
+        input.SuggestionsChanged += (_, _) => publications.Enqueue("suggestions");
         var completeResolver = Task.Run(
             () => completion.SetResult(["stale"]),
             TestContext.Current.CancellationToken);
-        await completionReachedPublication.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await publicationAcquired.Task.WaitAsync(TestContext.Current.CancellationToken);
         var attach = dispatcher.InvokeAsync(
             () => input.Attach(
                 dispatcher,
@@ -1453,50 +1445,38 @@ public sealed class SuggestionInputTests
                 new Theme(),
                 () =>
                 {
+                    publications.Enqueue("attachment");
                     attachmentCommitted.SetResult();
-                    releaseAttachmentPublication.Wait();
                 }),
             TestContext.Current.CancellationToken).AsTask();
-        var attachmentCommitOrFailure = await Task.WhenAny(attachmentCommitted.Task, attach);
-
-        if (ReferenceEquals(attachmentCommitOrFailure, attach))
-        {
-            await attach;
-        }
-
-        await attachmentCommitted.Task.WaitAsync(TestContext.Current.CancellationToken);
 
         // Act
-        releaseCompletion.Set();
-        Exception? completionFailure = null;
-
         try
         {
-            await observation.WaitAsync(TestContext.Current.CancellationToken);
+            var firstLifecycleBoundary = await Task.WhenAny(
+                lifecycleWaited.Task,
+                attachmentCommitted.Task).WaitAsync(TestContext.Current.CancellationToken);
+
+            // Assert before release
+            firstLifecycleBoundary.ShouldBeSameAs(lifecycleWaited.Task);
+            input.Dispatcher.ShouldBeNull();
+            input.Suggestions.ShouldBeEmpty();
+            input.IsResolving.ShouldBeTrue();
         }
-        catch (Exception exception)
+        finally
         {
-            completionFailure = exception;
+            releasePublication.Set();
         }
 
-        var wasResolvingBeforeAttachmentPublication = input.IsResolving;
-        var suggestionsBeforeAttachmentPublication = input.Suggestions.ToArray();
-        var resolvingNotificationsBeforeAttachmentPublication = resolvingNotifications.ToArray();
-        var publicationAccessBeforeAttachmentPublication = publicationAccess.ToArray();
-        releaseAttachmentPublication.Set();
-        await attach;
+        await observation.WaitAsync(TestContext.Current.CancellationToken);
         await completeResolver;
+        await attach;
 
-        // Assert
-        completionFailure.ShouldBeNull();
-        wasResolvingBeforeAttachmentPublication.ShouldBeTrue();
-        suggestionsBeforeAttachmentPublication.ShouldBeEmpty();
-        resolvingNotificationsBeforeAttachmentPublication.ShouldBeEmpty();
-        publicationAccessBeforeAttachmentPublication.ShouldBeEmpty();
-        suggestionPublications.ShouldBe(0);
+        // Assert after release
+        publications.ShouldBe(["suggestions", "attachment"]);
+        input.Dispatcher.ShouldBeSameAs(dispatcher);
+        input.Suggestions.ShouldBe(["stale"]);
         input.IsResolving.ShouldBeFalse();
-        resolvingNotifications.ShouldBe([false]);
-        publicationAccess.ShouldBe([true]);
         await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
     }
 
@@ -1695,75 +1675,101 @@ public sealed class SuggestionInputTests
         registration.Dispose();
     }
 
-    /// <summary>Verifies a detached resolver completion released from inside terminal disposal
-    /// cannot publish state or surface callback failure while cleanup remains active.</summary>
+    /// <summary>Verifies detached result publication excludes terminal disposal, releases its
+    /// structural authority after callback failure, and lets disposal invalidate later work.</summary>
     [Fact]
-    public async Task Dispose_WhenDetachedCompletionOverlapsTerminalCleanup_DiscardsWithoutPublicationAsync()
+    public async Task Dispose_WhenDetachedPublicationOwnsBoundary_WaitsAndCompletesAfterCallbackFailureAsync()
     {
         // Arrange
         var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        var completionReachedPublication = new TaskCompletionSource(
+        var publicationAcquired = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        using var releaseCompletion = new ManualResetEventSlim();
+        var lifecycleWaited = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releasePublication = new ManualResetEventSlim();
         var expected = new InvalidOperationException("late suggestion publication");
-        var suggestionPublications = 0;
-        var cleanupCallbackRan = false;
-        var wasResolvingDuringCleanup = false;
-        object? suggestionsDuringCleanup = null;
-        Exception? completionFailure = null;
         var input = new SuggestionInput
         {
             Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["current"]),
             BeforeDetachedResolutionPublication = () =>
             {
-                completionReachedPublication.SetResult();
-                releaseCompletion.Wait();
+                publicationAcquired.SetResult();
+                releasePublication.Wait();
             },
             Text = "query"
         };
+        input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
         input.Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task);
         var observation = input.LastResolutionObservation.ShouldNotBeNull();
-        input.SuggestionsChanged += (_, _) =>
-        {
-            suggestionPublications++;
-            throw expected;
-        };
-        input.BeforeResolutionTerminalCleanup = () =>
-        {
-            cleanupCallbackRan = true;
-            releaseCompletion.Set();
-
-            try
-            {
-                observation.GetAwaiter().GetResult();
-            }
-            catch (Exception exception)
-            {
-                completionFailure = exception;
-            }
-
-            wasResolvingDuringCleanup = input.IsResolving;
-            suggestionsDuringCleanup = input.Suggestions.SingleOrDefault();
-        };
+        input.SuggestionsChanged += (_, _) => throw expected;
         var completeResolver = Task.Run(
             () => completion.SetResult(["late"]),
             TestContext.Current.CancellationToken);
-        await completionReachedPublication.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await publicationAcquired.Task.WaitAsync(TestContext.Current.CancellationToken);
 
         // Act
-        input.Dispose();
+        var disposal = Task.Run(input.Dispose, TestContext.Current.CancellationToken);
+
+        try
+        {
+            var firstLifecycleBoundary = await Task.WhenAny(
+                lifecycleWaited.Task,
+                disposal).WaitAsync(TestContext.Current.CancellationToken);
+
+            // Assert before release
+            firstLifecycleBoundary.ShouldBeSameAs(lifecycleWaited.Task);
+            input.IsDisposed.ShouldBeFalse();
+            input.IsDisposing.ShouldBeFalse();
+        }
+        finally
+        {
+            releasePublication.Set();
+        }
+
+        var publicationFailure = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await observation.WaitAsync(TestContext.Current.CancellationToken));
         await completeResolver;
+        await disposal.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Assert after release
+        publicationFailure.ShouldBeSameAs(expected);
+        input.IsResolving.ShouldBeFalse();
+        input.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a lifecycle mutation attempted from a detached result callback is
+    /// rejected before disposal starts and does not strand the publication authority.</summary>
+    [Fact]
+    public async Task SuggestionsChanged_WhenDetachedPublicationDisposesOwner_RejectsBeforeLifecycleMutationAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        Exception? disposalFailure = null;
+        var disposedDuringCallback = false;
+        var input = new SuggestionInput
+        {
+            Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task),
+            Text = "query"
+        };
+        input.SuggestionsChanged += (_, _) =>
+        {
+            disposalFailure = Record.Exception(input.Dispose);
+            disposedDuringCallback = input.IsDisposed;
+        };
+        var observation = input.LastResolutionObservation.ShouldNotBeNull();
+
+        // Act
+        completion.SetResult(["published"]);
         await observation.WaitAsync(TestContext.Current.CancellationToken);
 
         // Assert
-        cleanupCallbackRan.ShouldBeTrue();
-        completionFailure.ShouldBeNull();
-        wasResolvingDuringCleanup.ShouldBeTrue();
-        suggestionsDuringCleanup.ShouldBe("current");
-        suggestionPublications.ShouldBe(0);
-        input.IsResolving.ShouldBeFalse();
-        input.IsDisposed.ShouldBeTrue();
+        _ = disposalFailure.ShouldBeOfType<InvalidOperationException>();
+        disposedDuringCallback.ShouldBeFalse();
+        input.IsDisposed.ShouldBeFalse();
+        input.Suggestions.ShouldBe(["published"]);
+        input.Dispose();
     }
 
     /// <summary>Verifies a current failure callback that starts a successful request prevents the
