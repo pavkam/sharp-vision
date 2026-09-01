@@ -4751,6 +4751,42 @@ public sealed class ModalityManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a failing DismissRequested subscriber cannot suppress a later subscriber on the
+    /// same publication, and that the failure still propagates out of dispatch.</summary>
+    [Fact]
+    public async Task Dispatch_WhenDismissSubscriberThrows_RunsRemainingSubscribersThenRethrowsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 24, 8) };
+            var plane = new ProbeControl { Bounds = new Rect(0, 0, 8, 6) };
+            root.Children.Add(plane);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            using var scope = modality.Enter(plane, OutsideInteraction.Dismiss);
+            var failure = new InvalidOperationException("The first dismissal callback failed.");
+            var firstCalls = 0;
+            var secondCalls = 0;
+            scope.DismissRequested += (_, _) =>
+            {
+                firstCalls++;
+                throw failure;
+            };
+            scope.DismissRequested += (_, _) => secondCalls++;
+            var input = CreatePointer(new Point(14, 2), PointerAction.Press, Buttons.Primary);
+
+            Should.Throw<InvalidOperationException>(() => pointer.Dispatch(input)).ShouldBeSameAs(failure);
+
+            firstCalls.ShouldBe(1);
+            secondCalls.ShouldBe(1);
+            scope.IsActive.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies eligible modal capture wins outside geometry and suppresses dismissal.</summary>
     [Fact]
     public async Task Dispatch_WhenPlaneOwnsCapture_RoutesOutsideRecordsToCaptureWithoutDismissalAsync()

@@ -146,13 +146,11 @@ public sealed class ModalityManager: IDisposable
         }
 
         var previousFocus = _focus.Focused;
-        var previousCapture = _pointer.Captured;
         var scope = new ModalScope(
             this,
             root,
             outsideInteraction,
-            previousFocus,
-            previousCapture);
+            previousFocus);
         _stack.Add(scope);
         scope.IsActive = true;
 
