@@ -14,15 +14,16 @@ namespace SharpVision.Popups;
 /// <para>
 /// <strong>Close-path reentrancy.</strong> The close path calls <see cref="PopupModalTracker.Exit"/>
 /// before assigning <c>Popup.IsOpen = false</c>, and that order is load-bearing, not incidental.
-/// <see cref="PopupModalTracker.Exit"/> can synchronously flip the popup's <c>IsOpen</c> to false
-/// itself, from inside <c>PopupModalTracker.OnExited</c>, once the modal scope's own unwind
-/// completes - which fires the popup's Closing/Closed events, and therefore this coordinator's own
-/// handlers, before the explicit assignment below ever runs. By the time control returns here, the
-/// explicit <c>Popup.IsOpen = false</c> is already a no-op. Reordering it ahead of
-/// <see cref="PopupModalTracker.Exit"/> would instead fire Closing/Closed once from the explicit
-/// assignment and then find the modal scope already gone by the time <c>Exit</c> runs - the same
-/// event, but sourced from the wrong side of the reentrancy and liable to drift out of step with
-/// the open path's own ordering. The statement order here must be preserved exactly.
+/// Assigning <c>Popup.IsOpen = false</c> synchronously raises <c>Popup.Closing</c>, and this
+/// coordinator's own <c>OnPopupClosing</c> handler for that event calls
+/// <see cref="PopupModalTracker.Exit"/> again. Calling <see cref="PopupModalTracker.Exit"/> here
+/// first makes that call the one that actually clears and disposes the modal scope; the reentrant
+/// call from inside <c>OnPopupClosing</c> then finds the scope already cleared and is a no-op.
+/// Reordering it after the assignment would invert which call does the real work - the reentrant
+/// call from inside the <c>Closing</c> cascade would tear down the modal scope instead, and the
+/// coordinator's own explicit call afterward would become the no-op - the same eventual state, but
+/// sourced from the wrong side of the reentrancy and liable to drift out of step with the open
+/// path's own ordering. The statement order here must be preserved exactly.
 /// </para>
 /// <para>
 /// <strong>A failed modal entry skips DropDownOpened.</strong> The open path calls
@@ -273,8 +274,9 @@ internal sealed class PopupDropDownCoordinator
 
     private void Close()
     {
-        // See the type remarks: Exit() can synchronously close the popup before the explicit
-        // assignment below runs, making that assignment a no-op. Do not reorder these statements.
+        // See the type remarks: assigning Popup.IsOpen = false below synchronously reenters
+        // OnPopupClosing, which calls Exit() again. Calling Exit() here first keeps this call - not
+        // that reentrant one - as the call that actually tears down the modal scope. Do not reorder.
         var sessionGeneration = SessionGeneration;
         System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
         _isCloseRequestInProgress = true;
