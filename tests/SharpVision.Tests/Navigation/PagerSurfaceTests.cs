@@ -349,6 +349,75 @@ public sealed class PagerSurfaceTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a layout-affecting mutation makes the previously arranged snapshot
+    /// non-interactive before its property callbacks can route fresh pointer input.</summary>
+    [Theory]
+    [InlineData(nameof(Pager.PageCount))]
+    [InlineData(nameof(Pager.PageIndex))]
+    [InlineData(nameof(Pager.MaximumVisiblePages))]
+    [InlineData(nameof(Pager.Style))]
+    public async Task Pointer_WhenLayoutMutationObserverPressesBeforeArrange_RejectsStaleTargetAsync(
+        string mutation)
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var pager = new Pager
+            {
+                PageCount = 10,
+                PageIndex = 4,
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+            pager.Attach(dispatcher);
+            new LayoutEngine().Layout(pager, new Size(30, 1));
+            using FocusManager focus = new(pager);
+            using PointerManager pointer = new(pager);
+            var staleTarget = pager.LayoutSnapshot.Targets.Single(static target =>
+                target.Kind == PagerTargetKind.Number && target.PageIndex == 5);
+            pager.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName != mutation)
+                {
+                    return;
+                }
+
+                _ = pointer.Dispatch(PointerAt(staleTarget.Bounds, PointerAction.Press));
+                _ = pointer.Dispatch(PointerAt(staleTarget.Bounds, PointerAction.Release));
+            };
+
+            switch (mutation)
+            {
+                case nameof(Pager.PageCount):
+                    pager.PageCount = 2;
+                    break;
+                case nameof(Pager.PageIndex):
+                    pager.PageIndex = 2;
+                    break;
+                case nameof(Pager.MaximumVisiblePages):
+                    pager.MaximumVisiblePages = 1;
+                    break;
+                case nameof(Pager.Style):
+                    pager.Style = PagerStyle.Default with
+                    {
+                        FirstPageGlyph = new ControlGlyph(new Rune('F'), new Rune('F'))
+                    };
+                    break;
+                default:
+                    throw new UnreachableException();
+            }
+
+            pager.PageIndex.ShouldBe(mutation switch
+            {
+                nameof(Pager.PageCount) => 1,
+                nameof(Pager.PageIndex) => 2,
+                _ => 4
+            });
+            pointer.Captured.ShouldBeNull();
+            pager.IsPressed.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies mounted Tab and repeated-key input flow through the real application,
     /// decoder, focus manager, and routed-event path.</summary>
     [Fact]

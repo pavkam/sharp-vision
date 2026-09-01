@@ -402,6 +402,12 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
 
     private bool TryGetInteractiveTarget(Point cells, out PagerLayoutTarget target)
     {
+        if (!IsLayoutSnapshotCurrent())
+        {
+            target = default;
+            return false;
+        }
+
         foreach (var candidate in LayoutSnapshot.Targets)
         {
             if (candidate.IsEnabled && candidate.Bounds.Contains(cells))
@@ -420,6 +426,7 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
         EffectiveIsEnabled &&
         EffectiveIsVisible &&
         PageCount > 1 &&
+        IsLayoutSnapshotCurrent() &&
         _pressedTarget is { } pressed &&
         _pressedLayoutGeneration == LayoutSnapshot.Generation &&
         LayoutSnapshot.Targets.Any(candidate =>
@@ -427,6 +434,13 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
             candidate.Kind == pressed.Kind &&
             candidate.PageIndex == pressed.PageIndex &&
             candidate.Bounds == pressed.Bounds);
+
+    // Page and geometry-affecting style commits mark measure/arrange dirty before publishing
+    // callbacks. Treat that pending phase as an immediate identity boundary so reentrant input
+    // cannot hit the previously arranged targets while the new semantic state is already visible.
+    private bool IsLayoutSnapshotCurrent() =>
+        LayoutSnapshot.Generation == _layoutGeneration &&
+        (Pending & (Invalidation.Measure | Invalidation.Arrange)) == Invalidation.None;
 
     private void ActivatePressedTarget(ActivationCause cause)
     {
