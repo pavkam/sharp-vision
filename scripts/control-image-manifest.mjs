@@ -139,6 +139,11 @@ export const controls = [
         ],
     },
     { doc: "navigation/navigation-view", page: "NavigationView" },
+    {
+        doc: "navigation/pager",
+        page: "Pager",
+        states: [{}, { name: "narrow", example: 2 }],
+    },
     { doc: "layout/dock", page: "Dock" },
     { doc: "layout/expander", page: "Expander" },
     { doc: "layout/grid", page: "Grid" },

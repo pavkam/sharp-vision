@@ -65,6 +65,7 @@ public sealed class Gallery: Screen
         ("Navigation", MenuPane.Title, static () => new MenuPane()),
         ("Navigation", MenuItemPane.Title, static () => new MenuItemPane()),
         ("Navigation", NavigationViewPane.Title, static () => new NavigationViewPane()),
+        ("Navigation", PagerPane.Title, static () => new PagerPane()),
         ("Layout", OverlayPane.Title, static () => new OverlayPane()),
         ("Windows", PopupPane.Title, static () => new PopupPane()),
         ("Windows", ContextMenuPane.Title, static () => new ContextMenuPane()),

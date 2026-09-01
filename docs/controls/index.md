@@ -75,7 +75,7 @@ use the shared [layout](../concepts/layout.md#overview),
 | `SharpVision.Controls.Documents`   | The Document control and its rich-text content-node tree.    |
 | `SharpVision.Controls.Scrolling`   | The ScrollBar control and its glyph and style values.        |
 | `SharpVision.Menus`                | Menus, menu entries, and context menus.                      |
-| `SharpVision.Navigation`           | Sidebar navigation controls and entries.                     |
+| `SharpVision.Navigation`           | Sidebar and scalar page navigation controls and entries.     |
 | `SharpVision.Surfaces`             | Shared elevated-surface lifecycle and modality seams.        |
 | `SharpVision.Popups`               | Anchored popup, flyout, and tooltip surfaces.                |
 | `SharpVision.Notifications`        | In-flow InfoBar and floating Toast notifications and styles. |
@@ -185,6 +185,7 @@ See the [intrinsic appearance rules](../concepts/styling.md#shared-chrome).
 - [MenuItem and MenuSeparator](menus/menu-item.md#overview)
 - [ContextMenu](menus/context-menu.md#overview)
 - [NavigationView](navigation/navigation-view.md#overview)
+- [Pager](navigation/pager.md#overview)
 
 ### Popups and windows
 
