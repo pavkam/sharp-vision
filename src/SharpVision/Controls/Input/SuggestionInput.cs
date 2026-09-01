@@ -251,6 +251,11 @@ public sealed class SuggestionInput: CompositeControlBase
     /// apply-or-discard boundary.</summary>
     internal Task? LastResolutionObservation { get; private set; }
 
+    /// <summary>Gets the completed boundary recorded before the most recent directly executed
+    /// settlement. Tests use this seam to prove inline callback failures do not leave a second
+    /// task-based fault channel.</summary>
+    internal Task? LastInlineResolutionObservation { get; private set; }
+
     /// <summary>Gets or sets a test synchronization callback invoked after detached completion
     /// acquires exclusive publication authority and before it mutates retained state.</summary>
     internal Action? BeforeDetachedResolutionPublication { get; set; }
@@ -685,34 +690,43 @@ public sealed class SuggestionInput: CompositeControlBase
     {
         if (attachment is not { } token)
         {
+            LastInlineResolutionObservation = Task.CompletedTask;
+
             if (detachedAttachment is not { } detachedToken)
             {
                 CompleteDetachedResolutionWhenStillDetached(lease, generation);
-                return Task.CompletedTask;
+                return LastInlineResolutionObservation;
             }
 
-            try
-            {
-                var published = TryPublishForCurrentDetachedAttachment(
-                    detachedToken,
-                    () =>
-                    {
-                        BeforeDetachedResolutionPublication?.Invoke();
-                        action();
-                    },
-                    () => IsCurrentResolution(lease, generation));
-
-                if (!published)
+            var published = TryPublishForCurrentDetachedAttachment(
+                detachedToken,
+                () =>
                 {
-                    CompleteDetachedResolutionWhenStillDetached(lease, generation);
-                }
+                    BeforeDetachedResolutionPublication?.Invoke();
+                    action();
+                },
+                () => IsCurrentResolution(lease, generation));
 
-                return Task.CompletedTask;
-            }
-            catch (Exception exception)
+            if (!published)
             {
-                return Task.FromException(exception);
+                CompleteDetachedResolutionWhenStillDetached(lease, generation);
             }
+
+            return LastInlineResolutionObservation;
+        }
+
+        if (token.Dispatcher.CheckAccess())
+        {
+            LastInlineResolutionObservation = Task.CompletedTask;
+
+            if (!IsCurrent(token) || !IsCurrentResolution(lease, generation))
+            {
+                CompleteResolution(lease, generation);
+                return LastInlineResolutionObservation;
+            }
+
+            action();
+            return LastInlineResolutionObservation;
         }
 
         var observation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -741,12 +755,6 @@ public sealed class SuggestionInput: CompositeControlBase
                 _ = observation.TrySetException(exception);
                 throw;
             }
-        }
-
-        if (token.Dispatcher.CheckAccess())
-        {
-            ApplyOrDiscard();
-            return observation.Task;
         }
 
         token.Dispatcher.PostBackgroundCompletion(ApplyOrDiscard, Abandon);

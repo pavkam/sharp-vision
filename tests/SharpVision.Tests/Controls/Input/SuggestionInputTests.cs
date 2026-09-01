@@ -644,6 +644,337 @@ public sealed class SuggestionInputTests
         ]);
     }
 
+    /// <summary>Verifies attached synchronous success finishes on the initiating dispatcher,
+    /// records a non-faulted inline boundary, and retires its lease before later work begins.</summary>
+    [Fact]
+    public async Task Resolver_WhenAttachedCompletionIsSynchronous_CompletesInlineAndRetiresLeaseAsync()
+    {
+        // Arrange
+        var publications = new List<string>();
+        CancellationToken completedToken = default;
+        Task? inlineObservation = null;
+        object?[] completedSuggestions = [];
+        string[] completedPublications = [];
+        var completedResolving = true;
+        var completedOpen = false;
+        var completedTokenWasCancelled = true;
+        var input = new SuggestionInput
+        {
+            Resolver = (_, cancellationToken) =>
+            {
+                completedToken = cancellationToken;
+                return ValueTask.FromResult<IReadOnlyList<object?>>(["result"]);
+            }
+        };
+        await using var dispatcher = Dispatcher.Start();
+
+        // Act
+        await dispatcher.InvokeAsync(() =>
+        {
+            input.Attach(dispatcher);
+            input.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(SuggestionInput.IsResolving))
+                {
+                    publications.Add($"resolving:{input.IsResolving}");
+                }
+                else if (eventArgs.PropertyName == nameof(SuggestionInput.Suggestions))
+                {
+                    publications.Add($"property:{input.Suggestions.Count}");
+                }
+                else if (eventArgs.PropertyName == nameof(SuggestionInput.IsOpen))
+                {
+                    publications.Add($"open:{input.IsOpen}");
+                }
+            };
+            input.SuggestionsChanged += (_, _) => publications.Add($"event:{input.Suggestions.Count}");
+
+            input.Text = "query";
+            inlineObservation = input.LastInlineResolutionObservation;
+            completedSuggestions = [.. input.Suggestions];
+            completedPublications = [.. publications];
+            completedResolving = input.IsResolving;
+            completedOpen = input.IsOpen;
+            input.Resolver = null;
+            completedTokenWasCancelled = completedToken.IsCancellationRequested;
+            input.Dispose();
+        }, TestContext.Current.CancellationToken);
+
+        // Assert
+        completedSuggestions.ShouldBe(["result"]);
+        completedResolving.ShouldBeFalse();
+        completedOpen.ShouldBeTrue();
+        completedPublications.ShouldBe([
+            "resolving:True",
+            "resolving:False",
+            "property:1",
+            "event:1",
+            "open:True"
+        ]);
+        inlineObservation.ShouldNotBeNull().IsCompletedSuccessfully.ShouldBeTrue();
+        completedTokenWasCancelled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies each attached synchronous success callback propagates its original
+    /// exception after the required transition while leaving no duplicate fault observation.</summary>
+    [Theory]
+    [InlineData("PropertyChanged")]
+    [InlineData("SuggestionsChanged")]
+    [InlineData("PopupOpened")]
+    public async Task Resolver_WhenAttachedSynchronousSuccessCallbackThrows_PropagatesOnceAndCompletesInlineAsync(
+        string callback)
+    {
+        // Arrange
+        var expected = new InvalidOperationException($"{callback} failed");
+        var publications = new List<string>();
+        var throwFromCallback = true;
+        var throwingCallbackCalls = 0;
+        CancellationToken completedToken = default;
+        Exception? thrown = null;
+        Task? inlineObservation = null;
+        object?[] completedSuggestions = [];
+        string[] completedPublications = [];
+        var completedResolving = true;
+        var completedOpen = false;
+        var completedTokenWasCancelled = true;
+        var input = new SuggestionInput
+        {
+            Resolver = (_, cancellationToken) =>
+            {
+                completedToken = cancellationToken;
+                return ValueTask.FromResult<IReadOnlyList<object?>>(["result"]);
+            }
+        };
+        await using var dispatcher = Dispatcher.Start();
+
+        // Act
+        await dispatcher.InvokeAsync(() =>
+        {
+            input.Attach(dispatcher);
+            input.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(SuggestionInput.IsResolving))
+                {
+                    publications.Add($"resolving:{input.IsResolving}");
+                }
+                else if (eventArgs.PropertyName == nameof(SuggestionInput.Suggestions))
+                {
+                    publications.Add($"property:{input.Suggestions.Count}");
+
+                    if (throwFromCallback && callback == "PropertyChanged")
+                    {
+                        throwingCallbackCalls++;
+                        throw expected;
+                    }
+                }
+                else if (eventArgs.PropertyName == nameof(SuggestionInput.IsOpen))
+                {
+                    publications.Add($"open:{input.IsOpen}");
+
+                    if (throwFromCallback && callback == "PopupOpened" && input.IsOpen)
+                    {
+                        throwingCallbackCalls++;
+                        throw expected;
+                    }
+                }
+            };
+            input.SuggestionsChanged += (_, _) =>
+            {
+                publications.Add($"event:{input.Suggestions.Count}");
+
+                if (throwFromCallback && callback == "SuggestionsChanged")
+                {
+                    throwingCallbackCalls++;
+                    throw expected;
+                }
+            };
+
+            thrown = Record.Exception(() => input.Text = "query");
+            inlineObservation = input.LastInlineResolutionObservation;
+            completedSuggestions = [.. input.Suggestions];
+            completedPublications = [.. publications];
+            completedResolving = input.IsResolving;
+            completedOpen = input.IsOpen;
+            throwFromCallback = false;
+            input.Resolver = null;
+            completedTokenWasCancelled = completedToken.IsCancellationRequested;
+            input.Dispose();
+        }, TestContext.Current.CancellationToken);
+
+        // Assert
+        thrown.ShouldBeSameAs(expected);
+        throwingCallbackCalls.ShouldBe(1);
+        completedSuggestions.ShouldBe(["result"]);
+        completedResolving.ShouldBeFalse();
+        completedOpen.ShouldBe(callback != "PopupOpened");
+        completedPublications.ShouldBe([
+            "resolving:True",
+            "resolving:False",
+            "property:1",
+            "event:1",
+            "open:True"
+        ]);
+        inlineObservation.ShouldNotBeNull().IsCompletedSuccessfully.ShouldBeTrue();
+        completedTokenWasCancelled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies attached synchronous failure callbacks propagate their original exception
+    /// after close and failure publication while leaving no duplicate fault observation.</summary>
+    [Theory]
+    [InlineData("ResolutionFailed")]
+    [InlineData("PopupClosed")]
+    public async Task Resolver_WhenAttachedSynchronousFailureCallbackThrows_PropagatesOnceAndCompletesInlineAsync(
+        string callback)
+    {
+        // Arrange
+        var resolverFailure = new InvalidOperationException("resolver failed");
+        var expected = new InvalidOperationException($"{callback} failed");
+        var publications = new List<string>();
+        var throwFromCallback = true;
+        var throwingCallbackCalls = 0;
+        CancellationToken failedToken = default;
+        Exception? publishedResolverFailure = null;
+        Exception? thrown = null;
+        Task? inlineObservation = null;
+        object?[] completedSuggestions = [];
+        string[] completedPublications = [];
+        var completedResolving = true;
+        var completedOpen = true;
+        var completedTokenWasCancelled = true;
+        var input = new SuggestionInput
+        {
+            Resolver = (searchTerms, cancellationToken) =>
+            {
+                if (searchTerms == "initial")
+                {
+                    return ValueTask.FromResult<IReadOnlyList<object?>>(["initial"]);
+                }
+
+                failedToken = cancellationToken;
+                throw resolverFailure;
+            }
+        };
+        await using var dispatcher = Dispatcher.Start();
+
+        // Act
+        await dispatcher.InvokeAsync(() =>
+        {
+            input.Attach(dispatcher);
+            input.Text = "initial";
+            input.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(SuggestionInput.IsResolving))
+                {
+                    publications.Add($"resolving:{input.IsResolving}");
+                }
+                else if (eventArgs.PropertyName == nameof(SuggestionInput.Suggestions))
+                {
+                    publications.Add($"property:{input.Suggestions.Count}");
+                }
+                else if (eventArgs.PropertyName == nameof(SuggestionInput.IsOpen))
+                {
+                    publications.Add($"open:{input.IsOpen}");
+
+                    if (throwFromCallback && callback == "PopupClosed" && !input.IsOpen)
+                    {
+                        throwingCallbackCalls++;
+                        throw expected;
+                    }
+                }
+            };
+            input.SuggestionsChanged += (_, _) => publications.Add($"event:{input.Suggestions.Count}");
+            input.ResolutionFailed += (_, eventArgs) =>
+            {
+                publishedResolverFailure = eventArgs.Exception;
+                publications.Add($"failure:{eventArgs.SearchTerms}");
+
+                if (throwFromCallback && callback == "ResolutionFailed")
+                {
+                    throwingCallbackCalls++;
+                    throw expected;
+                }
+            };
+
+            thrown = Record.Exception(() => input.Text = "failure");
+            inlineObservation = input.LastInlineResolutionObservation;
+            completedSuggestions = [.. input.Suggestions];
+            completedPublications = [.. publications];
+            completedResolving = input.IsResolving;
+            completedOpen = input.IsOpen;
+            throwFromCallback = false;
+            input.Resolver = null;
+            completedTokenWasCancelled = failedToken.IsCancellationRequested;
+            input.Dispose();
+        }, TestContext.Current.CancellationToken);
+
+        // Assert
+        thrown.ShouldBeSameAs(expected);
+        throwingCallbackCalls.ShouldBe(1);
+        publishedResolverFailure.ShouldBeSameAs(resolverFailure);
+        completedSuggestions.ShouldBeEmpty();
+        completedResolving.ShouldBeFalse();
+        completedOpen.ShouldBeFalse();
+        completedPublications.ShouldBe([
+            "resolving:True",
+            "resolving:False",
+            "property:0",
+            "open:False",
+            "event:0",
+            "failure:failure"
+        ]);
+        inlineObservation.ShouldNotBeNull().IsCompletedSuccessfully.ShouldBeTrue();
+        completedTokenWasCancelled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies equivalent detached direct settlement propagates its callback exception
+    /// once, completes the transition, and records only a non-faulted inline boundary.</summary>
+    [Fact]
+    public void Resolver_WhenDetachedSynchronousCallbackThrows_PropagatesOnceAndCompletesInline()
+    {
+        // Arrange
+        var expected = new InvalidOperationException("suggestions callback failed");
+        var throwFromCallback = true;
+        var callbackCalls = 0;
+        CancellationToken completedToken = default;
+        using var input = new SuggestionInput
+        {
+            Resolver = (_, cancellationToken) =>
+            {
+                completedToken = cancellationToken;
+                return ValueTask.FromResult<IReadOnlyList<object?>>(["result"]);
+            }
+        };
+        input.SuggestionsChanged += (_, _) =>
+        {
+            if (throwFromCallback)
+            {
+                callbackCalls++;
+                throw expected;
+            }
+        };
+
+        // Act
+        var thrown = Record.Exception(() => input.Text = "query");
+        var inlineObservation = input.LastInlineResolutionObservation.ShouldNotBeNull();
+        var completedSuggestions = input.Suggestions.ToArray();
+        var completedResolving = input.IsResolving;
+        var completedOpen = input.IsOpen;
+        throwFromCallback = false;
+        input.Resolver = null;
+
+        // Assert
+        thrown.ShouldBeSameAs(expected);
+        callbackCalls.ShouldBe(1);
+        completedSuggestions.ShouldBe(["result"]);
+        completedResolving.ShouldBeFalse();
+        completedOpen.ShouldBeTrue();
+        input.Suggestions.ShouldBeEmpty();
+        input.IsResolving.ShouldBeFalse();
+        input.IsOpen.ShouldBeFalse();
+        inlineObservation.IsCompletedSuccessfully.ShouldBeTrue();
+        completedToken.IsCancellationRequested.ShouldBeFalse();
+    }
+
     /// <summary>Verifies detached asynchronous completion publishes only the immutable text
     /// snapshot passed to the current resolver invocation.</summary>
     [Fact]
