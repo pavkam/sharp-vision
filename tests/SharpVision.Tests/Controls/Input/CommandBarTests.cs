@@ -201,6 +201,26 @@ public sealed class CommandBarTests
         separator.IsDisposed.ShouldBeTrue();
     }
 
+    /// <summary>Verifies child-initiated disposal removes ownership and repairs selected identity.</summary>
+    [Fact]
+    public void Dispose_WhenSelectedEntryDisposesDirectly_RepairsToNearestAvailableSibling()
+    {
+        using var bar = new CommandBar();
+        var first = new CommandBarItem { Text = "First" };
+        var selected = new CommandBarItem { Text = "Selected" };
+        var last = new CommandBarItem { Text = "Last" };
+        bar.Items.Add(first);
+        bar.Items.Add(selected);
+        bar.Items.Add(last);
+        bar.SelectedItem = selected;
+
+        selected.Dispose();
+
+        bar.Items.ShouldBe([first, last]);
+        bar.SelectedItem.ShouldBeSameAs(last);
+        bar.SelectedIndex.ShouldBe(1);
+    }
+
     /// <summary>Verifies selection accepts only owned visible enabled command items.</summary>
     [Fact]
     public void SelectedIndex_WhenTargetIsInvalid_RejectsBeforeMutation()
@@ -277,6 +297,26 @@ public sealed class CommandBarTests
 
         bar.SelectedItem.ShouldBeSameAs(last);
         bar.SelectedIndex.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a live selected item becoming unavailable repairs forward and then backward.</summary>
+    [Fact]
+    public void Availability_WhenSelectedItemBecomesUnavailable_SelectsNearestAvailableSibling()
+    {
+        using var bar = new CommandBar();
+        var first = new CommandBarItem { Text = "First" };
+        var middle = new CommandBarItem { Text = "Middle" };
+        var last = new CommandBarItem { Text = "Last" };
+        bar.Items.Add(first);
+        bar.Items.Add(middle);
+        bar.Items.Add(last);
+        bar.SelectedItem = middle;
+
+        middle.IsEnabled = false;
+        bar.SelectedItem.ShouldBeSameAs(last);
+
+        last.Visibility = Visibility.Hidden;
+        bar.SelectedItem.ShouldBeSameAs(first);
     }
 
     /// <summary>Verifies command denial suppresses both item and bar events as well as execution.</summary>
@@ -400,6 +440,42 @@ public sealed class CommandBarTests
 
         firstCommand.Executions.ShouldBeEmpty();
         secondCommand.Executions.ShouldBe([null]);
+    }
+
+    /// <summary>Verifies callback failure is rethrown only after later accepted stages complete.</summary>
+    [Fact]
+    public void PerformInvoke_WhenItemEventThrows_CompletesBarAndCommandThenRethrowsEarliestFailure()
+    {
+        using var bar = new CommandBar();
+        var failure = new FormatException("item callback");
+        var command = new ProbeCommand();
+        var barEvents = 0;
+        var item = new CommandBarItem { Command = command };
+        item.Invoked += (_, _) => throw failure;
+        bar.ItemInvoked += (_, _) => barEvents++;
+        bar.Items.Add(item);
+
+        var thrown = Should.Throw<FormatException>(item.PerformInvoke);
+
+        thrown.ShouldBeSameAs(failure);
+        barEvents.ShouldBe(1);
+        command.Executions.ShouldBe([null]);
+    }
+
+    /// <summary>Verifies unavailability committed by the bar callback suppresses the captured command.</summary>
+    [Fact]
+    public void PerformInvoke_WhenBarHandlerHidesSource_SuppressesCommandStage()
+    {
+        using var bar = new CommandBar();
+        var command = new ProbeCommand();
+        var item = new CommandBarItem { Command = command };
+        bar.Items.Add(item);
+        bar.ItemInvoked += (_, _) => item.Visibility = Visibility.Hidden;
+
+        item.PerformInvoke();
+
+        command.Executions.ShouldBeEmpty();
+        bar.SelectedItem.ShouldBeNull();
     }
 
     /// <summary>Verifies detached hidden and disabled entries cannot activate.</summary>

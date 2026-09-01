@@ -427,8 +427,12 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         if (entry is CommandBarItem item)
         {
             item.PropertyChanged -= OnEntryPropertyChanged;
-            item.SetOverflowed(false);
-            item.CommitSelection(false);
+
+            if (!item.IsDisposing && !item.IsDisposed)
+            {
+                item.SetOverflowed(false);
+                item.CommitSelection(false);
+            }
         }
     }
 
