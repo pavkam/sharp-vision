@@ -141,6 +141,28 @@ public sealed class PagerTests
         changes.ShouldBe([2]);
     }
 
+    /// <summary>Verifies becoming unavailable from a property observer suppresses stale typed publication.</summary>
+    [Fact]
+    public void PageIndex_WhenPropertyObserverHidesPager_SuppressesStalePageChanged()
+    {
+        var pager = new Pager { PageCount = 4 };
+        var changes = 0;
+        pager.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Pager.PageIndex))
+            {
+                pager.Visibility = Visibility.Hidden;
+            }
+        };
+        pager.PageChanged += (_, _) => changes++;
+
+        pager.PageIndex = 1;
+
+        pager.PageIndex.ShouldBe(1);
+        pager.Visibility.ShouldBe(Visibility.Hidden);
+        changes.ShouldBe(0);
+    }
+
     /// <summary>Verifies scalar navigation keys share the same page transition path.</summary>
     [Fact]
     public void Dispatch_WhenNavigationKeysArrive_ChangesExpectedPages()

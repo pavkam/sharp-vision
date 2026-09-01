@@ -79,13 +79,18 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
         set
         {
             ArgumentOutOfRangeException.ThrowIfLessThan(value, 1);
+            var previous = field;
+            ExceptionDispatchInfo? failure = null;
+            ExceptionAggregation.Capture(
+                () => _ = SetProperty(ref field, value, InvalidationImpact.Measure),
+                ref failure);
 
-            if (value != field)
+            if (previous != field && !IsDisposed)
             {
-                CancelPointerInteraction();
+                ExceptionAggregation.Capture(CancelPointerInteraction, ref failure);
             }
 
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+            failure?.Throw();
         }
     } = 5;
 
@@ -222,6 +227,7 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
+        _ = _pageTransitions.Commit(this);
         base.OnUnavailable(reason);
         _pressedTarget = null;
         _pressedLayoutGeneration = 0;
@@ -290,6 +296,7 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
 
     private bool CommitPageIndex(int pageIndex, ActivationCause cause)
     {
+        VerifyMutable();
         CancelPointerInteraction();
         var previousPageIndex = _pageIndex;
 
