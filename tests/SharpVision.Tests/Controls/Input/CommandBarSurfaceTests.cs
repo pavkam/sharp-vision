@@ -94,7 +94,7 @@ public sealed class CommandBarSurfaceTests
     [Fact]
     public async Task Keyboard_WhenBarIsFocused_RovesAndActivatesWithoutFocusingFacesAsync()
     {
-        var bar = CreateBar(out var open, out var save, out _);
+        var bar = CreateBar(out var open, out var save, out var print);
         var invoked = new List<CommandBarItem>();
         bar.ItemInvoked += (_, eventArgs) => invoked.Add(eventArgs.Item);
         await using var surface = await ComponentSurface.MountAsync(
@@ -110,6 +110,13 @@ public sealed class CommandBarSurfaceTests
         bar.SelectedItem.ShouldBeSameAs(save);
         save.IsFocused.ShouldBeFalse();
         invoked.ShouldBe([save]);
+
+        await surface.Keyboard.PressAsync(Code.End);
+        bar.SelectedItem.ShouldBeSameAs(print);
+        await surface.Keyboard.PressAsync(Code.Right);
+        bar.SelectedItem.ShouldBeSameAs(open);
+        await surface.Keyboard.PressAsync(Code.Left);
+        bar.SelectedItem.ShouldBeSameAs(print);
 
         await surface.UpdateAsync(
             () => bar.SetCapabilities(TestCapabilities.WithKeyReleases),
@@ -145,6 +152,27 @@ public sealed class CommandBarSurfaceTests
         menu.SelectedItem.ShouldNotBeNull().Text.ShouldBe("&Print");
         invoked.ShouldBe(0);
         surface.ShouldHaveFocus(menu);
+    }
+
+    /// <summary>Verifies a primary-plane mnemonic selects and invokes its semantic source without moving focus into a face.</summary>
+    [Fact]
+    public async Task AccessKey_WhenItemIsPrimary_SelectsAndInvokesSemanticItemAsync()
+    {
+        var bar = CreateBar(out var open, out _, out _);
+        ActivationCause? cause = null;
+        open.Invoked += (_, eventArgs) => cause = eventArgs.Cause;
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(28, 2),
+            TestContext.Current.CancellationToken);
+
+        await surface.SendAsync(
+            "\x1b[111;3:1u"u8.ToArray(),
+            "press Alt+O access key");
+
+        bar.SelectedItem.ShouldBeSameAs(open);
+        cause.ShouldBe(ActivationCause.Keyboard);
+        surface.ShouldHaveFocus(bar);
     }
 
     /// <summary>Verifies Escape dismisses the coordinator-owned modal plane and returns focus to the single bar stop.</summary>
@@ -185,6 +213,10 @@ public sealed class CommandBarSurfaceTests
         await surface.Keyboard.PressAsync(Code.Tab);
 
         surface.ShouldHaveFocus(after);
+
+        await surface.Keyboard.PressAsync(Code.Tab, Modifiers.Shift);
+
+        surface.ShouldHaveFocus(bar);
     }
 
     /// <summary>Verifies primary pointer press selects through the bar while the semantic face owns capture and activation.</summary>
@@ -340,7 +372,10 @@ public sealed class CommandBarSurfaceTests
 
         unicode.IsOverflowed.ShouldBeFalse();
         unicode.Bounds.Right.ShouldBeLessThanOrEqualTo(20);
-        ReadRow(surface, 0, 20).ShouldContain("é界");
+        var rendered = ReadRow(surface, 0, 20);
+        rendered.ShouldContain("👩🏽‍💻");
+        rendered.ShouldContain("é界");
+        rendered.ShouldContain("✓");
     }
 
     /// <summary>Verifies an outside pointer target dismisses overflow through the shared coordinator.</summary>
@@ -362,6 +397,68 @@ public sealed class CommandBarSurfaceTests
 
         bar.IsOverflowOpen.ShouldBeFalse();
         surface.ShouldHaveFocus(bar);
+    }
+
+    /// <summary>Verifies owner unavailability and source disposal close overflow and release stale projections.</summary>
+    [Fact]
+    public async Task Overflow_WhenOwnerOrSourceBecomesUnavailable_CleansSessionAndProjectionAsync()
+    {
+        var bar = CreateBar(out _, out _, out var print);
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(12, 6),
+            TestContext.Current.CancellationToken);
+        var trigger = OwnedTree.Find<CommandBarOverflowButton>(bar).ShouldNotBeNull();
+        await surface.Pointer.ClickAsync(trigger);
+        bar.IsOverflowOpen.ShouldBeTrue();
+
+        await surface.UpdateAsync(() => bar.IsEnabled = false, "disable open command bar");
+
+        bar.IsOverflowOpen.ShouldBeFalse();
+        await surface.UpdateAsync(() => bar.IsEnabled = true, "restore command bar");
+        await surface.Pointer.ClickAsync(trigger);
+        bar.IsOverflowOpen.ShouldBeTrue();
+
+        await surface.UpdateAsync(print.Dispose, "dispose overflowed semantic source");
+
+        bar.IsOverflowOpen.ShouldBeFalse();
+        bar.Items.IndexOf(print).ShouldBe(-1);
+        OwnedTree.FindAll<MenuItem>(bar).Select(static item => item.Text).ShouldNotContain("&Print");
+    }
+
+    /// <summary>Verifies the active overflow modal consumes Escape before a containing closable Window fallback.</summary>
+    [Fact]
+    public async Task Overflow_WhenHostedByClosableWindow_EscapeClosesPopupBeforeWindowAsync()
+    {
+        var bar = CreateBar(out _, out _, out _);
+        var window = new Window
+        {
+            CanClose = true,
+            CloseOnEscape = true,
+            Content = bar,
+            Width = Length.Cells(16),
+            Height = Length.Cells(8)
+        };
+        var closing = 0;
+        window.Closing += (_, _) => closing++;
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(20, 10),
+            TestContext.Current.CancellationToken);
+        var trigger = OwnedTree.Find<CommandBarOverflowButton>(bar).ShouldNotBeNull();
+        await surface.Pointer.ClickAsync(trigger);
+        bar.IsOverflowOpen.ShouldBeTrue();
+
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        bar.IsOverflowOpen.ShouldBeFalse();
+        closing.ShouldBe(0);
+        window.IsOpen.ShouldBeTrue();
+
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        closing.ShouldBe(1);
+        window.IsOpen.ShouldBeFalse();
     }
 
     private static CommandBar CreateBar(

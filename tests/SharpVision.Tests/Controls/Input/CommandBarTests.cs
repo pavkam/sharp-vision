@@ -141,6 +141,31 @@ public sealed class CommandBarTests
         second.Items.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies every public collection argument and index failure leaves the retained snapshot untouched.</summary>
+    [Fact]
+    public void Items_WhenArgumentsAreInvalid_RejectsBeforeMutation()
+    {
+        using var bar = new CommandBar();
+        var original = new CommandBarItem { Text = "Original" };
+        bar.Items.Add(original);
+        using var extra = new CommandBarItem();
+        var disposed = new CommandBarItem();
+        disposed.Dispose();
+
+        _ = Should.Throw<ArgumentNullException>(() => bar.Items.Add((CommandBarItem) null!));
+        _ = Should.Throw<ArgumentNullException>(() => bar.Items.Add((CommandBarSeparator) null!));
+        _ = Should.Throw<ArgumentNullException>(() => bar.Items.Insert(0, (CommandBarItem) null!));
+        _ = Should.Throw<ArgumentNullException>(() => bar.Items.Remove((CommandBarItem) null!));
+        _ = Should.Throw<ArgumentNullException>(() => bar.Items[0] = null!);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => bar.Items.Insert(-1, extra));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => bar.Items.RemoveAt(1));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => bar.Items.Move(0, 1));
+        _ = Should.Throw<ObjectDisposedException>(() => bar.Items.Add(disposed));
+
+        bar.Items.ShouldBe([original]);
+        _ = original.Parent.ShouldNotBeNull();
+    }
+
     /// <summary>Verifies replacement, movement, and removal preserve entry identity and order.</summary>
     [Fact]
     public void Items_WhenMutated_PreservesIdentityAndDetachesReplacedEntries()
@@ -478,6 +503,44 @@ public sealed class CommandBarTests
         bar.SelectedItem.ShouldBeNull();
     }
 
+    /// <summary>Verifies disposal at either guarded callback boundary suppresses every stale later stage.</summary>
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 1)]
+    public void PerformInvoke_WhenCallbackDisposesSource_SuppressesStaleStages(
+        bool disposeFromBar,
+        int expectedBarEvents)
+    {
+        using var bar = new CommandBar();
+        var command = new ProbeCommand();
+        var item = new CommandBarItem { Command = command };
+        var barEvents = 0;
+        bar.Items.Add(item);
+        item.Invoked += (_, _) =>
+        {
+            if (!disposeFromBar)
+            {
+                item.Dispose();
+            }
+        };
+        bar.ItemInvoked += (_, _) =>
+        {
+            barEvents++;
+
+            if (disposeFromBar)
+            {
+                item.Dispose();
+            }
+        };
+
+        item.PerformInvoke();
+
+        item.IsDisposed.ShouldBeTrue();
+        barEvents.ShouldBe(expectedBarEvents);
+        command.Executions.ShouldBeEmpty();
+        bar.Items.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies detached hidden and disabled entries cannot activate.</summary>
     [Theory]
     [InlineData(false, Visibility.Visible)]
@@ -496,6 +559,19 @@ public sealed class CommandBarTests
         invoked.ShouldBe(0);
         command.Queries.ShouldBeEmpty();
         command.Executions.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a detached item ignores a command invalidation raised from a worker thread.</summary>
+    [Fact]
+    public async Task Command_WhenCanExecuteChangedFiresWhileDetached_DoesNotInvalidateAsync()
+    {
+        var command = new ProbeCommand();
+        using var item = new CommandBarItem { Command = command };
+        item.Clear(Invalidation.All);
+
+        await Task.Run(command.RaiseCanExecuteChanged, TestContext.Current.CancellationToken);
+
+        item.Pending.ShouldBe(Invalidation.None);
     }
 
     /// <summary>Verifies disposed programmatic activation reports the lifetime error.</summary>

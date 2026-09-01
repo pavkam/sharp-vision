@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Controls.Input;
 
 /// <summary>Exercises command-bar overflow against fixed-seed layout invariants.</summary>
-public sealed class CommandBarRandomizedLayoutTests
+public sealed class CommandBarRandomizedTests
 {
     private const int _seed = 0x434D_4442;
 
@@ -26,6 +26,10 @@ public sealed class CommandBarRandomizedLayoutTests
 
             firstItems.Select(static item => item.IsOverflowed)
                 .ShouldBe(secondItems.Select(static item => item.IsOverflowed), $"case {caseIndex}");
+            firstItems.Where(static item => item.Visibility == Visibility.Visible)
+                .ShouldAllBe(
+                    item => first.IsPrimaryEntry(item) != item.IsOverflowed,
+                    $"exactly one plane, case {caseIndex}, seed {seed}");
             firstItems.ShouldAllBe(
                 item => item.Visibility != Visibility.Visible ||
                     item.IsOverflowed ||
@@ -38,6 +42,12 @@ public sealed class CommandBarRandomizedLayoutTests
             overflow.ShouldBe(
                 firstItems.Count(static item => item.Visibility == Visibility.Visible && item.IsOverflowed),
                 $"case {caseIndex}");
+            AssertSeparatorsNormalized(
+                first.Items.Where(first.IsPrimaryEntry),
+                $"primary, case {caseIndex}, seed {seed}");
+            AssertSeparatorsNormalized(
+                OwnedTree.Find<Menu>(first).ShouldNotBeNull().Items,
+                $"overflow, case {caseIndex}, seed {seed}");
 
             Layout(first, 48);
             Layout(first, width);
@@ -82,4 +92,26 @@ public sealed class CommandBarRandomizedLayoutTests
         bar.Measure(new Constraint(width, 1));
         bar.Arrange(new Rect(0, 0, width, 1));
     }
+
+    private static void AssertSeparatorsNormalized(IEnumerable<ControlBase> entries, string context)
+    {
+        var visible = entries.Where(static entry => entry.Visibility == Visibility.Visible).ToArray();
+
+        if (visible.Length == 0)
+        {
+            return;
+        }
+
+        IsSeparator(visible[0]).ShouldBeFalse($"leading separator in {context}");
+        IsSeparator(visible[^1]).ShouldBeFalse($"trailing separator in {context}");
+
+        for (var index = 1; index < visible.Length; index++)
+        {
+            (IsSeparator(visible[index - 1]) && IsSeparator(visible[index]))
+                .ShouldBeFalse($"adjacent separators in {context}");
+        }
+    }
+
+    private static bool IsSeparator(ControlBase entry) =>
+        entry is CommandBarSeparator or MenuSeparator;
 }

@@ -697,7 +697,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         var changed = !_hasLayoutSnapshot ||
             _lastLayoutWidth != availableWidth ||
             _primaryExtent != primaryExtent ||
-            !SequenceEqual(_primaryEntries, primary) ||
+            !_primaryEntries.SetEquals(primary) ||
             !SequenceEqual(_overflowEntries, overflow);
 
         if (changed)
@@ -798,7 +798,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
     }
 
     [Pure]
-    private static bool SequenceEqual(ICollection<ControlBase> current, List<ControlBase> next) =>
+    private static bool SequenceEqual(List<ControlBase> current, List<ControlBase> next) =>
         current.Count == next.Count && current.SequenceEqual(next, ReferenceEqualityComparer.Instance);
 
     private void SynchronizeOverflowProjections()
@@ -1185,10 +1185,10 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
             return;
         }
 
-        if (eventArgs.PropertyName is nameof(CommandBarItem.IsEnabled) or
-            nameof(CommandBarItem.EffectiveIsEnabled) or
-            nameof(CommandBarItem.Visibility) or
-            nameof(CommandBarItem.EffectiveIsVisible))
+        if (eventArgs.PropertyName is nameof(IsEnabled) or
+            nameof(EffectiveIsEnabled) or
+            nameof(Visibility) or
+            nameof(EffectiveIsVisible))
         {
             if (ReferenceEquals(item, _selectedItem) && !IsAvailableItem(item))
             {
