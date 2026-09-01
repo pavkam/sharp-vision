@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Navigation;
 
 /// <summary>Verifies fixed-seed breadcrumb layout equivalence and resize reversibility.</summary>
-public sealed class BreadcrumbRandomizedTests
+public sealed class BreadcrumbLayoutTests
 {
     /// <summary>Verifies 400 path, availability, current, and width mutations against independent arithmetic.</summary>
     [Fact]

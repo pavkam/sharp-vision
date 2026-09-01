@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Controls.Input;
 
 /// <summary>Exercises command-bar overflow against fixed-seed layout invariants.</summary>
-public sealed class CommandBarRandomizedTests
+public sealed class CommandBarOverflowProjectionTests
 {
     private const int _seed = 0x434D_4442;
 
