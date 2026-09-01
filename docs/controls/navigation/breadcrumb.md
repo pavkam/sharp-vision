@@ -2,12 +2,13 @@
 
 ## Overview
 
-`Breadcrumb` is a sealed typed navigation control that presents a retained
-root-to-location path on one terminal row. The caller creates and keeps
-references to `BreadcrumbItem` controls; the breadcrumb owns their attachment
-and lifetime until removal or owner disposal. Semantic `CurrentItem` state is
-separate from the private roving keyboard target, so moving with arrow keys does
-not claim that the application navigated.
+`Breadcrumb` is declared `public sealed class Breadcrumb : ItemsControl`. It
+presents a retained root-to-location path on one terminal row. The caller
+creates and keeps references to [`BreadcrumbItem`](breadcrumb-item.md#overview)
+controls; the breadcrumb owns their attachment and lifetime until removal or
+owner disposal. Semantic `CurrentItem` state stays separate from the private
+roving keyboard target, so moving with arrow keys does not claim that the
+application navigated.
 
 The path automatically compresses at finite widths. Complete Unicode entries and
 one-cell separators remain on the primary row while omitted available locations
@@ -22,20 +23,18 @@ targets are rejected without changing current state.
 classDiagram
     ControlBase <|-- ItemsControl
     ItemsControl <|-- Breadcrumb
-    ControlBase <|-- InputBase
-    InputBase <|-- BreadcrumbItem
 ```
 
 ## API
 
-| Member           | Type                                              | Default        | Description                                                                     |
-| ---------------- | ------------------------------------------------- | -------------- | ------------------------------------------------------------------------------- |
-| `Items`          | `BreadcrumbItemCollection`                        | Empty          | Owns the typed source-order path.                                               |
-| `CurrentIndex`   | `int`                                             | `-1`           | Gets or sets the represented item index; `-1` explicitly clears current.        |
-| `CurrentItem`    | `BreadcrumbItem?`                                 | `null`         | Gets or sets the represented owned item; null or a foreign item clears current. |
-| `Style`          | `BreadcrumbStyle?`                                | `null`         | Gets or sets the complete local breadcrumb presentation.                        |
-| `ActualStyle`    | `BreadcrumbStyle`                                 | Resolved       | Gets the complete local, theme-owned, or code-owned presentation.               |
-| `CurrentChanged` | `EventHandler<BreadcrumbCurrentChangedEventArgs>` | —              | Reports a committed represented-location change.                                |
+| Member           | Type                                              | Default  | Description                                                                     |
+| ---------------- | ------------------------------------------------- | -------- | ------------------------------------------------------------------------------- |
+| `Items`          | `BreadcrumbItemCollection`                        | Empty    | Owns the typed source-order path.                                               |
+| `CurrentIndex`   | `int`                                             | `-1`     | Gets or sets the represented item index; `-1` explicitly clears current.        |
+| `CurrentItem`    | `BreadcrumbItem?`                                 | `null`   | Gets or sets the represented owned item; null or a foreign item clears current. |
+| `Style`          | `BreadcrumbStyle?`                                | `null`   | Gets or sets the complete local breadcrumb presentation.                        |
+| `ActualStyle`    | `BreadcrumbStyle`                                 | Resolved | Gets the complete local, theme-owned, or code-owned presentation.               |
+| `CurrentChanged` | `EventHandler<BreadcrumbCurrentChangedEventArgs>` | —        | Reports a committed represented-location change.                                |
 
 `CurrentIndex` accepts `-1` or the index of an owned, effectively visible and
 enabled item. An index outside the collection throws
@@ -48,48 +47,28 @@ disposed owner throws `ObjectDisposedException`.
 The path convention is root through final available location. Adding the first
 available item establishes it as current, and every item or availability
 mutation repairs a missing or unavailable current item to the final available
-owned item. The caller may set an earlier owned item when navigating an
-ancestor, and remains responsible for trimming any obsolete later entries. An
-explicit `-1` or null state lasts until a later path or availability mutation
-requires repair.
+owned item. The caller may set an earlier owned item when navigating an ancestor
+and remains responsible for trimming obsolete later entries. An explicit `-1` or
+null state lasts until a later path or availability mutation requires repair.
 
-### BreadcrumbItem
-
-| Member                       | Type                                | Default        | Description                                                             |
-| ---------------------------- | ----------------------------------- | -------------- | ----------------------------------------------------------------------- |
-| `Text`                       | `string`                            | `""`           | Gets or sets the non-null mnemonic-aware location caption.              |
-| `IsCurrent`                  | `bool`                              | `false`        | Read-only; whether this item is the represented semantic location.      |
-| `Style`                      | `BreadcrumbItemStyle?`              | `null`         | Gets or sets the complete local interactive-row presentation.           |
-| `ActualStyle`                | `BreadcrumbItemStyle`               | Resolved       | Gets the complete local, theme-owned, or code-owned item presentation.  |
-| Inherited `Command`          | `ICommand?`                         | `null`         | Runs after `Invoked` when the activation remains current and available. |
-| Inherited `CommandParameter` | `object?`                           | `null`         | Supplies the borrowed parameter for command query and execution.        |
-| `PerformInvoke()`            | `void`                              | —              | Requests programmatic activation through the same owner transaction.    |
-| `Invoked`                    | `EventHandler<ActivationEventArgs>` | —              | Reports activation after its owning breadcrumb commits current state.   |
-
-`Text` rejects null with `ArgumentNullException` and terminal controls with
-`ArgumentException`. `PerformInvoke()` requires the attached dispatcher and
-throws `ObjectDisposedException` after disposal. An unavailable item does not
-activate. A detached available item still raises `Invoked` and runs its command,
-but has no owner current state to commit.
-
-Owned items are normalized to `IsFocusable = false` and `IsTabStop = false` so
-the breadcrumb remains the single focus stop. If callers author either property
-while the item is owned, the live value stays normalized and the latest authored
-value is restored when the item detaches. Removal never disposes an item; direct
-item disposal first removes it from its owner. Disposing the breadcrumb disposes
-every item it still owns.
+`BreadcrumbStyle` is a complete immutable style record with required
+`SeparatorGlyph` and `SeparatorColor` values. The color must be paintable, and
+the glyph validates preferred and fallback scalars as printable one-cell values.
 
 ### BreadcrumbItemCollection
 
-| Member                         | Result                                                          |
-| ------------------------------ | --------------------------------------------------------------- |
-| `this[int index]`              | Gets or replaces one item without changing its source position. |
-| `Count`                        | Gets the number of retained semantic items.                     |
-| `Add(item)` / `Insert(i,item)` | Attaches one detached item at the requested source position.    |
-| `Remove(item)` / `RemoveAt(i)` | Detaches one item without disposing it.                         |
-| `Move(oldIndex,newIndex)`      | Reorders an owned identity without detaching it.                |
-| `IndexOf(item)`                | Returns the identity position, or `-1` for a foreign item.      |
-| `Clear()`                      | Detaches every item without disposing any of them.              |
+| Member                     | Type                          | Default | Description                                                     |
+| -------------------------- | ----------------------------- | ------- | --------------------------------------------------------------- |
+| `this[int index]`          | `BreadcrumbItem`              | —       | Gets or replaces one item without changing its source position. |
+| `Count`                    | `int`                         | `0`     | Gets the number of retained semantic items.                     |
+| `Add(item)`                | `void`                        | —       | Appends one detached item.                                      |
+| `Insert(index, item)`      | `void`                        | —       | Inserts one detached item at a validated source position.       |
+| `Remove(item)`             | `bool`                        | —       | Detaches an identical item without disposing it.                |
+| `RemoveAt(index)`          | `void`                        | —       | Detaches the item at a validated position without disposal.     |
+| `Move(oldIndex, newIndex)` | `void`                        | —       | Reorders one owned identity without detaching it.               |
+| `IndexOf(item)`            | `int`                         | —       | Returns the identity position, or `-1` for a foreign item.      |
+| `Clear()`                  | `void`                        | —       | Detaches every retained item without disposal.                  |
+| `GetEnumerator()`          | `IEnumerator<BreadcrumbItem>` | —       | Enumerates the live source-order items.                         |
 
 Collection calls reject null, duplicate, disposed, already attached, cyclic,
 foreign, out-of-range, off-dispatcher, and active-transaction candidates before
@@ -99,21 +78,12 @@ throw `ArgumentOutOfRangeException`; invalid ownership throws
 `InvalidOperationException`; and disposed participants throw
 `ObjectDisposedException`.
 
-### CurrentChanged
-
 `BreadcrumbCurrentChangedEventArgs` exposes immutable `PreviousItem` and
 `CurrentItem` references, either of which may be null. A current commit updates
-the two items' `IsCurrent` state, then publishes
-`PropertyChanged(CurrentIndex)`, `PropertyChanged(CurrentItem)`, and
-`CurrentChanged`. At every callback boundary, a newer current, collection,
-availability, attachment, or disposal transition supersedes the older
-continuation.
-
-Every activation route captures the command first, commits current, raises
-`Invoked`, and then executes the captured command only while the same item is
-still owned, current, available, and on the same transition generation. An
-`Invoked` handler may therefore navigate, detach, disable, or dispose the item
-without allowing a stale command to execute.
+the two items' state, then publishes `PropertyChanged(CurrentIndex)`,
+`PropertyChanged(CurrentItem)`, and `CurrentChanged`. At every callback
+boundary, a newer current, collection, availability, attachment, or disposal
+transition supersedes the older continuation.
 
 ## Keyboard
 
@@ -128,8 +98,8 @@ without allowing a stale command to execute.
 
 Directional navigation accepts incidental lock modifiers and leaves Shift and
 application-command-modified chords unhandled. It does not change `CurrentItem`;
-Enter, Space, pointer release, access keys, and `PerformInvoke()` all use the
-same activation ordering.
+activation through keyboard, pointer, access keys, or `PerformInvoke()` uses the
+same item ordering.
 
 A width-overflowed available item's access key exists only while the overflow
 menu is open. The menu invokes the original source item. Hidden, collapsed, and
@@ -166,20 +136,12 @@ different item on release.
 
 ## Styling and Unicode
 
-`BreadcrumbStyle` extends the ordinary complete `ControlStyle` with required
-`SeparatorGlyph` and `SeparatorColor` values. `BreadcrumbStyle.Default` uses the
-navigation current marker and control-border color. The color must be paintable,
-and the `ControlGlyph` constructor rejects invalid preferred or fallback
-scalars.
-
-At measure and render time, the preferred separator is used only when it is one
-terminal cell under the live cell-width policy. Otherwise its portable fallback
-is used; if neither is one cell, both the separator and its reserved cell are
-omitted. `BreadcrumbItemStyle` resolves through the theme's complete
-interactive-row states, including current, active, focused, hovered, pressed,
-and disabled presentation. Caption measurement, mnemonic collapse, clipping, and
-drawing use shared extended-grapheme geometry, so combining sequences, wide
-characters, emoji, and zero-width constraints remain cell-safe.
+`BreadcrumbStyle.Default` uses the navigation current marker and control-border
+color. At measure and render time, the preferred separator is used only when it
+is one terminal cell under the live cell-width policy. Otherwise its portable
+fallback is used; if neither is one cell, both the separator and its reserved
+cell are omitted. Item-specific presentation and caption geometry belong to the
+[`BreadcrumbItem` styling rules](breadcrumb-item.md#styling-and-unicode).
 
 ## Example
 
@@ -196,7 +158,6 @@ breadcrumb.Items.Add(new BreadcrumbItem { Text = "界 &Design" });
 breadcrumb.CurrentChanged += (_, change) =>
     Console.WriteLine(change.CurrentItem?.Text ?? "No current location");
 
-// Navigate explicitly without replacing the retained path.
 breadcrumb.CurrentIndex = 1;
 ```
 
@@ -213,17 +174,15 @@ host, trigger, or menu. Application commands own navigation and path mutation.
 | Integrated behavior   | Cross-component behavior through real ownership, routing, focus, and menus. |
 | Complete runtime path | Final Unicode cells, pointer capture, and popup lifecycle cleanup.          |
 
-- Typed ownership, retained focus-property restoration, identity-preserving
-  moves, direct disposal, and final-location repair remain deterministic under
-  callback reentry.
+- Typed ownership, identity-preserving moves, direct disposal, and
+  final-location repair remain deterministic under callback reentry.
 - Current and roving active identities stay independent across keyboard,
   pointer, access-key, programmatic, and overflow-menu activation.
 - Wide, narrow, tiny, zero-width, hidden, collapsed, disabled, explicitly
   nonfinal-current, and no-current paths preserve whole-entry geometry and exact
   separator adjacency.
 - Moves preserve current item identity while updating its numeric index.
-- Adding any item deliberately selects the final available item when one
-  exists, even when the added item is unavailable or the prior current item
-  remains available.
+- Adding any item selects the final available item when one exists, even when
+  the added item is unavailable or the prior current item remains available.
 - Removal, replacement, and availability mutations repair a missing or
   unavailable current item to the final available owned item when one exists.

@@ -42,6 +42,8 @@ export const controls = [
             },
         ],
     },
+    { doc: "input/command-bar-item", page: "CommandBarItem" },
+    { doc: "input/command-bar-separator", page: "CommandBarSeparator" },
     {
         doc: "input/command-palette",
         page: "CommandPalette",
@@ -138,6 +140,7 @@ export const controls = [
             { name: "overflow", actions: [{ click: "Narrow path" }] },
         ],
     },
+    { doc: "navigation/breadcrumb-item", page: "BreadcrumbItem" },
     { doc: "navigation/navigation-view", page: "NavigationView" },
     {
         doc: "navigation/pager",

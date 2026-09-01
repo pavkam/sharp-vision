@@ -140,7 +140,9 @@ See the [intrinsic appearance rules](../concepts/styling.md#shared-chrome).
 - [Calendar](input/calendar.md#overview)
 - [CheckBox](input/check-box.md#overview)
 - [ColorPicker](input/color-picker.md#overview)
-- [CommandBar, CommandBarItem, and CommandBarSeparator](input/command-bar.md#overview)
+- [CommandBar](input/command-bar.md#overview)
+- [CommandBarItem](input/command-bar-item.md#overview)
+- [CommandBarSeparator](input/command-bar-separator.md#overview)
 - [CommandPalette](input/command-palette.md#overview)
 - [ComboBox](input/combo-box.md#overview)
 - [CurrencyInput](input/currency-input.md#overview)
@@ -181,6 +183,7 @@ See the [intrinsic appearance rules](../concepts/styling.md#shared-chrome).
 ### Menus and navigation
 
 - [Breadcrumb](navigation/breadcrumb.md#overview)
+- [BreadcrumbItem](navigation/breadcrumb-item.md#overview)
 - [Menu](menus/menu.md#overview)
 - [MenuItem and MenuSeparator](menus/menu-item.md#overview)
 - [ContextMenu](menus/context-menu.md#overview)
