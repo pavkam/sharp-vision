@@ -1367,12 +1367,17 @@ public sealed class SuggestionInput: CompositeControlBase
 
                 if (IsCurrentResolution(lease, generation))
                 {
+                    var shouldOpen = _wantsOpen && Suggestions.Count > 0;
                     ExceptionAggregation.Capture(
-                        () => _popupCoordinator.SetOpen(
-                            _wantsOpen &&
-                            EffectiveIsEnabled &&
-                            EffectiveIsVisible &&
-                            Suggestions.Count > 0),
+                        () =>
+                        {
+                            if (!shouldOpen ||
+                                (EffectiveIsEnabled && EffectiveIsVisible) ||
+                                _popupCoordinator.IsOpen)
+                            {
+                                _popupCoordinator.SetOpen(shouldOpen);
+                            }
+                        },
                         ref failure);
                 }
 
