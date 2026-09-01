@@ -1404,6 +1404,102 @@ public sealed class SuggestionInputTests
         await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an attachment commit that wins after detached completion sampled its
+    /// boundary prevents direct off-dispatcher publication before the attachment callback runs.</summary>
+    [Fact]
+    public async Task Resolver_WhenAttachmentCommitsAfterDetachedSample_DiscardsBeforeDirectPublicationAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var completionReachedPublication = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var attachmentCommitted = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releaseCompletion = new ManualResetEventSlim();
+        using var releaseAttachmentPublication = new ManualResetEventSlim();
+        var resolvingNotifications = new List<bool>();
+        var publicationAccess = new List<bool>();
+        var suggestionPublications = 0;
+        var input = new SuggestionInput
+        {
+            Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task),
+            BeforeDetachedResolutionPublication = () =>
+            {
+                completionReachedPublication.SetResult();
+                releaseCompletion.Wait();
+            },
+            Text = "query"
+        };
+        var observation = input.LastResolutionObservation.ShouldNotBeNull();
+        await using var dispatcher = Dispatcher.Start();
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SuggestionInput.IsResolving))
+            {
+                resolvingNotifications.Add(input.IsResolving);
+                publicationAccess.Add(dispatcher.CheckAccess());
+            }
+        };
+        input.SuggestionsChanged += (_, _) => suggestionPublications++;
+        var completeResolver = Task.Run(
+            () => completion.SetResult(["stale"]),
+            TestContext.Current.CancellationToken);
+        await completionReachedPublication.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var attach = dispatcher.InvokeAsync(
+            () => input.Attach(
+                dispatcher,
+                UnicodePolicy.Default,
+                new Theme(),
+                () =>
+                {
+                    attachmentCommitted.SetResult();
+                    releaseAttachmentPublication.Wait();
+                }),
+            TestContext.Current.CancellationToken).AsTask();
+        var attachmentCommitOrFailure = await Task.WhenAny(attachmentCommitted.Task, attach);
+
+        if (ReferenceEquals(attachmentCommitOrFailure, attach))
+        {
+            await attach;
+        }
+
+        await attachmentCommitted.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        releaseCompletion.Set();
+        Exception? completionFailure = null;
+
+        try
+        {
+            await observation.WaitAsync(TestContext.Current.CancellationToken);
+        }
+        catch (Exception exception)
+        {
+            completionFailure = exception;
+        }
+
+        var wasResolvingBeforeAttachmentPublication = input.IsResolving;
+        var suggestionsBeforeAttachmentPublication = input.Suggestions.ToArray();
+        var resolvingNotificationsBeforeAttachmentPublication = resolvingNotifications.ToArray();
+        var publicationAccessBeforeAttachmentPublication = publicationAccess.ToArray();
+        releaseAttachmentPublication.Set();
+        await attach;
+        await completeResolver;
+
+        // Assert
+        completionFailure.ShouldBeNull();
+        wasResolvingBeforeAttachmentPublication.ShouldBeTrue();
+        suggestionsBeforeAttachmentPublication.ShouldBeEmpty();
+        resolvingNotificationsBeforeAttachmentPublication.ShouldBeEmpty();
+        publicationAccessBeforeAttachmentPublication.ShouldBeEmpty();
+        suggestionPublications.ShouldBe(0);
+        input.IsResolving.ShouldBeFalse();
+        resolvingNotifications.ShouldBe([false]);
+        publicationAccess.ShouldBe([true]);
+        await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies an attached completion is discarded after same-dispatcher detach and
     /// reattach invalidate its captured identity.</summary>
     [Fact]
@@ -1597,6 +1693,77 @@ public sealed class SuggestionInputTests
         input.Suggestions.ShouldBeEmpty();
         input.IsResolving.ShouldBeFalse();
         registration.Dispose();
+    }
+
+    /// <summary>Verifies a detached resolver completion released from inside terminal disposal
+    /// cannot publish state or surface callback failure while cleanup remains active.</summary>
+    [Fact]
+    public async Task Dispose_WhenDetachedCompletionOverlapsTerminalCleanup_DiscardsWithoutPublicationAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var completionReachedPublication = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releaseCompletion = new ManualResetEventSlim();
+        var expected = new InvalidOperationException("late suggestion publication");
+        var suggestionPublications = 0;
+        var cleanupCallbackRan = false;
+        var wasResolvingDuringCleanup = false;
+        object? suggestionsDuringCleanup = null;
+        Exception? completionFailure = null;
+        var input = new SuggestionInput
+        {
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["current"]),
+            BeforeDetachedResolutionPublication = () =>
+            {
+                completionReachedPublication.SetResult();
+                releaseCompletion.Wait();
+            },
+            Text = "query"
+        };
+        input.Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task);
+        var observation = input.LastResolutionObservation.ShouldNotBeNull();
+        input.SuggestionsChanged += (_, _) =>
+        {
+            suggestionPublications++;
+            throw expected;
+        };
+        input.BeforeResolutionTerminalCleanup = () =>
+        {
+            cleanupCallbackRan = true;
+            releaseCompletion.Set();
+
+            try
+            {
+                observation.GetAwaiter().GetResult();
+            }
+            catch (Exception exception)
+            {
+                completionFailure = exception;
+            }
+
+            wasResolvingDuringCleanup = input.IsResolving;
+            suggestionsDuringCleanup = input.Suggestions.SingleOrDefault();
+        };
+        var completeResolver = Task.Run(
+            () => completion.SetResult(["late"]),
+            TestContext.Current.CancellationToken);
+        await completionReachedPublication.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        input.Dispose();
+        await completeResolver;
+        await observation.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        cleanupCallbackRan.ShouldBeTrue();
+        completionFailure.ShouldBeNull();
+        wasResolvingDuringCleanup.ShouldBeTrue();
+        suggestionsDuringCleanup.ShouldBe("current");
+        suggestionPublications.ShouldBe(0);
+        input.IsResolving.ShouldBeFalse();
+        input.IsDisposed.ShouldBeTrue();
     }
 
     /// <summary>Verifies a current failure callback that starts a successful request prevents the

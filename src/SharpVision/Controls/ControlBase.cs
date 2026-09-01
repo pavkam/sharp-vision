@@ -82,8 +82,22 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <summary>Gets the owning dispatcher while attached.</summary>
     public Dispatcher? Dispatcher { get; private set; }
 
-    /// <summary>Gets the private lifecycle generation backing opaque attachment identities.</summary>
-    private long AttachmentVersion { get; set; }
+    private long _attachmentVersion;
+
+    /// <summary>Captures the private lifecycle version shared by attached and detached completion
+    /// authority without exposing arithmetic to its consumer.</summary>
+    /// <returns>The current opaque lifecycle version.</returns>
+    internal long CaptureAttachmentVersion() => Volatile.Read(ref _attachmentVersion);
+
+    /// <summary>Checks whether one captured lifecycle version still names this exact detached,
+    /// live control state.</summary>
+    /// <param name="version">The previously captured opaque lifecycle version.</param>
+    /// <returns>True only while no attachment or terminal disposal commit has intervened.</returns>
+    internal bool IsCurrentDetachedAttachment(long version) =>
+        !IsDisposed &&
+        !IsDisposing &&
+        Dispatcher is null &&
+        version == Volatile.Read(ref _attachmentVersion);
 
     /// <summary>Captures the exact current dispatcher attachment.</summary>
     /// <returns>An opaque identity invalidated by detach, reattach, or disposal.</returns>
@@ -94,7 +108,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         ThrowIfDisposed();
         var dispatcher = Dispatcher ?? throw new InvalidOperationException(
             "An attachment can be captured only while the control is attached.");
-        return new ControlAttachmentToken(this, dispatcher, AttachmentVersion);
+        return new ControlAttachmentToken(this, dispatcher, CaptureAttachmentVersion());
     }
 
     /// <summary>Attempts to capture one exact live attachment without throwing when a concurrent
@@ -111,7 +125,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             return false;
         }
 
-        var captured = new ControlAttachmentToken(this, dispatcher, AttachmentVersion);
+        var captured = new ControlAttachmentToken(this, dispatcher, CaptureAttachmentVersion());
 
         if (!IsCurrent(captured))
         {
@@ -158,7 +172,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     internal bool IsCurrent(ControlAttachmentToken token)
     {
         ArgumentNullException.ThrowIfNull(token);
-        return !IsDisposed && token.Matches(this, Dispatcher, AttachmentVersion);
+        return !IsDisposed && token.Matches(this, Dispatcher, CaptureAttachmentVersion());
     }
 
     /// <summary>Posts one callback that runs only while its captured attachment and optional
@@ -4884,7 +4898,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         {
             if (!ReferenceEquals(Dispatcher, transition.Dispatcher))
             {
-                AttachmentVersion++;
+                _ = Interlocked.Increment(ref _attachmentVersion);
             }
 
             Dispatcher = transition.Dispatcher;

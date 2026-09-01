@@ -251,6 +251,14 @@ public sealed class SuggestionInput: CompositeControlBase
     /// apply-or-discard boundary.</summary>
     internal Task? LastResolutionObservation { get; private set; }
 
+    /// <summary>Gets or sets a test synchronization callback invoked after detached completion
+    /// samples its publication boundary and immediately before it may mutate retained state.</summary>
+    internal Action? BeforeDetachedResolutionPublication { get; set; }
+
+    /// <summary>Gets or sets a test synchronization callback invoked after terminal resolution
+    /// cleanup becomes active and immediately before the current authority is revoked.</summary>
+    internal Action? BeforeResolutionTerminalCleanup { get; set; }
+
     /// <summary>Starts a fresh resolution for the current text and makes current results eligible to open.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -517,7 +525,10 @@ public sealed class SuggestionInput: CompositeControlBase
         var generation = ++_resolutionGeneration;
         _currentSnapshotGeneration = null;
         var lease = _resolutionOperation.Begin();
-        var attachment = Dispatcher is null ? null : CaptureAttachment();
+        var attachmentVersion = CaptureAttachmentVersion();
+        var attachment = TryCaptureAttachment(out var capturedAttachment)
+            ? capturedAttachment
+            : null;
         var searchTerms = Text;
         var resolver = Resolver;
 
@@ -583,7 +594,8 @@ public sealed class SuggestionInput: CompositeControlBase
             searchTerms,
             lease,
             generation,
-            attachment);
+            attachment,
+            attachmentVersion);
         LastResolutionObservation = observation;
         ObserveResolution(observation);
         startupFailure?.Throw();
@@ -594,7 +606,8 @@ public sealed class SuggestionInput: CompositeControlBase
         string searchTerms,
         LatestControlOperationLease lease,
         int generation,
-        ControlAttachmentToken? attachment)
+        ControlAttachmentToken? attachment,
+        long attachmentVersion)
     {
         IReadOnlyList<object?>? results = null;
         Exception? resolverFailure = null;
@@ -617,6 +630,7 @@ public sealed class SuggestionInput: CompositeControlBase
             lease,
             generation,
             attachment,
+            attachmentVersion,
             () =>
             {
                 if (wasCancelled)
@@ -638,13 +652,24 @@ public sealed class SuggestionInput: CompositeControlBase
         LatestControlOperationLease lease,
         int generation,
         ControlAttachmentToken? attachment,
+        long attachmentVersion,
         Action action)
     {
         if (attachment is not { } token)
         {
-            if (Dispatcher is not null || !IsCurrentResolution(lease, generation))
+            if (!IsCurrentDetachedAttachment(attachmentVersion) ||
+                !IsCurrentResolution(lease, generation))
             {
-                CompleteResolution(lease, generation);
+                CompleteDetachedResolutionWhenStillDetached(lease, generation);
+                return Task.CompletedTask;
+            }
+
+            BeforeDetachedResolutionPublication?.Invoke();
+
+            if (!IsCurrentDetachedAttachment(attachmentVersion) ||
+                !IsCurrentResolution(lease, generation))
+            {
+                CompleteDetachedResolutionWhenStillDetached(lease, generation);
                 return Task.CompletedTask;
             }
 
@@ -689,6 +714,16 @@ public sealed class SuggestionInput: CompositeControlBase
 
         token.Dispatcher.PostBackgroundCompletion(ApplyOrDiscard, Abandon);
         return observation.Task;
+    }
+
+    private void CompleteDetachedResolutionWhenStillDetached(
+        LatestControlOperationLease lease,
+        int generation)
+    {
+        if (Dispatcher is null)
+        {
+            CompleteResolution(lease, generation);
+        }
     }
 
     private void ApplyCompletion(
@@ -879,7 +914,11 @@ public sealed class SuggestionInput: CompositeControlBase
 
     [Pure]
     private bool IsCurrentResolution(LatestControlOperationLease lease, int generation) =>
-        !IsDisposed && generation == _resolutionGeneration && _resolutionOperation.IsCurrent(lease);
+        !IsDisposed &&
+        !IsDisposing &&
+        _resolutionLifecycleCleanupDepth == 0 &&
+        generation == _resolutionGeneration &&
+        _resolutionOperation.IsCurrent(lease);
 
     private void SetIsResolving(bool value)
     {
@@ -990,21 +1029,30 @@ public sealed class SuggestionInput: CompositeControlBase
 
         try
         {
-            ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
-            ExceptionAggregation.Capture(() => _popupCoordinator.OnOwnerUnavailable(reason), ref failure);
-
             if (endsResolutionLifetime)
             {
-                _resolutionGeneration++;
+                ExceptionAggregation.Capture(
+                    () => BeforeResolutionTerminalCleanup?.Invoke(),
+                    ref failure);
+                var cancellationGeneration = ++_resolutionGeneration;
                 _currentSnapshotGeneration = null;
                 ExceptionAggregation.Capture(_resolutionOperation.Cancel, ref failure);
-                ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
+
+                if (_resolutionGeneration == cancellationGeneration)
+                {
+                    ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
+                }
             }
+
+            ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+            ExceptionAggregation.Capture(() => _popupCoordinator.OnOwnerUnavailable(reason), ref failure);
 
             if (reason == ReleaseReason.Disposed)
             {
                 _input.TextChanged -= OnTextChanged;
                 ExceptionAggregation.Capture(_popupCoordinator.Detach, ref failure);
+                BeforeDetachedResolutionPublication = null;
+                BeforeResolutionTerminalCleanup = null;
                 SuggestionsChanged = null;
                 ResolutionFailed = null;
 
