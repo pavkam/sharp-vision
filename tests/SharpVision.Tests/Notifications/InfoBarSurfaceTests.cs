@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Notifications;
 
+using System.ComponentModel;
+
 /// <summary>Verifies mounted InfoBar layout, rendering, navigation, and dismissal input.</summary>
 public sealed class InfoBarSurfaceTests
 {
@@ -93,6 +95,40 @@ public sealed class InfoBarSurfaceTests
 
         bar.IsOpen.ShouldBeFalse();
         surface.ShouldHaveCapture(null);
+    }
+
+    /// <summary>Verifies a failing dismissibility observer cannot strand focus on the unavailable private part.</summary>
+    [Fact]
+    public async Task IsDismissible_WhenObserverThrows_StillCleansDismissPartAsync()
+    {
+        var body = new Button("Retry");
+        var bar = new InfoBar { Title = "Alert", Content = body };
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(20, 5),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        _ = surface.Application.Focus.Focused.ShouldBeOfType<InfoBarDismissButton>();
+        bar.PropertyChanged += ThrowOnDismissibility;
+
+        await surface.UpdateAsync(
+            () => _ = Should.Throw<InvalidOperationException>(() => bar.IsDismissible = false),
+            "disable dismissal with failing observer");
+
+        bar.IsDismissible.ShouldBeFalse();
+        surface.ShouldHaveFocus(null);
+        surface.ShouldHaveCapture(null);
+
+        static void ThrowOnDismissibility(object? sender, PropertyChangedEventArgs eventArgs)
+        {
+            _ = sender;
+
+            if (eventArgs.PropertyName == nameof(InfoBar.IsDismissible))
+            {
+                throw new InvalidOperationException("observer");
+            }
+        }
     }
 
     /// <summary>Verifies tiny geometry never emits a partial wide adornment over the dismiss cell.</summary>

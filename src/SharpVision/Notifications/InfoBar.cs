@@ -100,12 +100,20 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
         get;
         set
         {
-            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
+            var previous = field;
+            ExceptionDispatchInfo? failure = null;
+            ExceptionAggregation.Capture(
+                () => _ = SetProperty(ref field, value, InvalidationImpact.Measure),
+                ref failure);
+
+            if (previous == field || IsDisposed)
             {
+                failure?.Throw();
                 return;
             }
 
-            ApplyDismissAvailability();
+            ExceptionAggregation.Capture(ApplyDismissAvailability, ref failure);
+            failure?.Throw();
         }
     } = true;
 
