@@ -3,17 +3,22 @@
 
 namespace SharpVision.Controls.Layout;
 
-using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
-
 using SharpVision.Terminal.Input;
+
+using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 
 /// <summary>Owns two panes separated by one keyboard- and pointer-resizable cell divider.</summary>
 [PublicAPI]
 public sealed class SplitPane: Container
 {
+    private readonly DragBehavior _drag;
     private readonly CallbackTransitionStream _splitTransitions = new();
     private ControlBase? _firstVisibilitySource;
     private ControlBase? _secondVisibilitySource;
+    private Dispatcher? _dragFocusDispatcher;
+    private Point? _pendingDragCell;
+    private int? _dragPointerStart;
+    private int _dragFirstPaneExtent;
     private int _effectiveFirstPaneExtent;
     private int _dividerExcludedPool;
     private bool _dividerInteractionAvailable;
@@ -27,6 +32,16 @@ public sealed class SplitPane: Container
     /// <summary>Initializes an empty horizontal split with capacity for two panes.</summary>
     public SplitPane() : base(capacity: 2)
     {
+        _drag = new DragBehavior(
+            ResolveVisibleDividerBounds,
+            () => _dividerInteractionAvailable && EffectiveIsEnabled && EffectiveIsVisible,
+            () => !IsDisposed,
+            RequestFocus,
+            TryCaptureDividerPointer,
+            () => HasPointerCapture,
+            ReleasePointerCapture,
+            SetPressed);
+        RegisterLifecycleParticipant(_drag);
         _ = AddHandler(Events.Pointer, OnDividerPointerRouted, handledEventsToo: true);
         HorizontalAlignment = HorizontalAlignment.Stretch;
         EnableChromeAuthoring();
@@ -53,7 +68,7 @@ public sealed class SplitPane: Container
                 ref field,
                 value,
                 InvalidationImpact.Measure,
-                RefreshDividerInteractionState);
+                CancelDividerDragAndRefresh);
         }
     } = Orientation.Horizontal;
 
@@ -100,7 +115,7 @@ public sealed class SplitPane: Container
                 ref field,
                 value,
                 InvalidationImpact.Render,
-                RefreshDividerInteractionState);
+                CancelDividerDragAndRefresh);
         }
     } = true;
 
@@ -521,6 +536,10 @@ public sealed class SplitPane: Container
         Orientation == Orientation.Horizontal ? value.Width : value.Height;
 
     [Pure]
+    private int Primary(Point value) =>
+        Orientation == Orientation.Horizontal ? value.X : value.Y;
+
+    [Pure]
     private int Cross(Rect value) =>
         Orientation == Orientation.Horizontal ? value.Height : value.Width;
 
@@ -562,6 +581,7 @@ public sealed class SplitPane: Container
     protected override void OnChildrenChanged()
     {
         base.OnChildrenChanged();
+        CancelDividerDrag();
         ReconcilePaneVisibilitySubscriptions();
         RefreshDividerInteractionState();
     }
@@ -574,6 +594,10 @@ public sealed class SplitPane: Container
         if (_dividerInteractionAvailable && IsFocused && eventArgs is KeyEventArgs key)
         {
             HandleDividerKey(key);
+        }
+        else if (eventArgs is PointerEventArgs pointer)
+        {
+            HandleDividerPointer(pointer);
         }
 
         if (!eventArgs.IsHandled)
@@ -597,11 +621,35 @@ public sealed class SplitPane: Container
     }
 
     /// <inheritdoc/>
+    protected override void OnFocusChanged(bool focused)
+    {
+        base.OnFocusChanged(focused);
+
+        if (!focused)
+        {
+            ResetDividerDragState();
+        }
+    }
+
+    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
+        ResetDividerDragState();
         _latestPointerCell = null;
         SetDividerPointerOver(false);
+
+        if (reason == ReleaseReason.Disposed)
+        {
+            SplitChanged = null;
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
+    {
+        base.OnLostPointerCapture(reason);
+        ResetDividerDragState();
     }
 
     /// <inheritdoc/>
@@ -715,6 +763,108 @@ public sealed class SplitPane: Container
         eventArgs.IsHandled = true;
     }
 
+    private void HandleDividerPointer(PointerEventArgs eventArgs)
+    {
+        var pointer = eventArgs.Pointer;
+
+        if (_drag.IsDragging)
+        {
+            eventArgs.IsHandled = true;
+
+            if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
+            {
+                CancelDividerDrag();
+                return;
+            }
+
+            if (pointer.Action == PointerAction.Move &&
+                pointer.Cells is { } dragCell &&
+                _dragPointerStart is { } pointerStart)
+            {
+                var delta = (long) Primary(dragCell) - pointerStart;
+                var target = (int) Math.Clamp(
+                    _dragFirstPaneExtent + delta,
+                    MinimumFirstPaneExtent,
+                    MaximumFirstPaneExtent);
+                _ = CommitFirstPaneExtent(target);
+            }
+
+            return;
+        }
+
+        if (pointer.Action != PointerAction.Press ||
+            (pointer.Buttons & Buttons.Primary) == 0 ||
+            pointer.Cells is not { } cells ||
+            !_dividerInteractionAvailable ||
+            !ResolveVisibleDividerBounds().Contains(cells))
+        {
+            return;
+        }
+
+        eventArgs.IsHandled = true;
+        _dragFocusDispatcher = Dispatcher;
+        _pendingDragCell = cells;
+
+        try
+        {
+            _ = _drag.TryStart(cells);
+        }
+        finally
+        {
+            _dragFocusDispatcher = null;
+            _pendingDragCell = null;
+
+            if (!_drag.IsDragging)
+            {
+                ResetDividerDragState();
+            }
+        }
+    }
+
+    private bool TryCaptureDividerPointer()
+    {
+        if (_pendingDragCell is not { } cells ||
+            _dragFocusDispatcher is not { } dispatcher ||
+            !CanContinueAfterFocus(dispatcher) ||
+            !IsFocused ||
+            !_dividerInteractionAvailable ||
+            !ResolveVisibleDividerBounds().Contains(cells))
+        {
+            return false;
+        }
+
+        _dragPointerStart = Primary(cells);
+        _dragFirstPaneExtent = _effectiveFirstPaneExtent;
+
+        if (CapturePointer())
+        {
+            return true;
+        }
+
+        ResetDividerDragState();
+        return false;
+    }
+
+    private void CancelDividerDragAndRefresh()
+    {
+        CancelDividerDrag();
+        RefreshDividerInteractionState();
+    }
+
+    private void CancelDividerDrag()
+    {
+        _drag.Cancel(releaseCapture: true);
+        ResetDividerDragState();
+    }
+
+    private void ResetDividerDragState()
+    {
+        _dragFocusDispatcher = null;
+        _pendingDragCell = null;
+        _dragPointerStart = null;
+        _dragFirstPaneExtent = 0;
+    }
+
     private bool CommitFirstPaneExtent(int extent)
     {
         Debug.Assert(extent >= MinimumFirstPaneExtent && extent <= MaximumFirstPaneExtent,
@@ -766,7 +916,7 @@ public sealed class SplitPane: Container
     {
         _ = sender;
         _ = eventArgs;
-        RefreshDividerInteractionState();
+        CancelDividerDragAndRefresh();
     }
 
     private void RefreshDividerInteractionState()

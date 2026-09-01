@@ -184,6 +184,36 @@ public sealed class SplitPaneTests
         publications.ShouldBe(["property", "split"]);
     }
 
+    /// <summary>Verifies disposal clears typed subscribers before owned-pane disposal can publish
+    /// any child-driven divider reconciliation.</summary>
+    [Fact]
+    public void Dispose_WhenCalled_ClearsSplitSubscribersAndPaneVisibilityParticipation()
+    {
+        // Arrange
+        var first = new ProbeControl();
+        var pane = new SplitPane { Children = { first, new ProbeControl() } };
+        new LayoutEngine().Layout(pane, new Size(11, 2));
+        var splitChanges = 0;
+        var tabStopChanges = 0;
+        pane.SplitChanged += (_, _) => splitChanges++;
+        pane.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ControlBase.CanTabStop))
+            {
+                tabStopChanges++;
+            }
+        };
+
+        // Act
+        pane.Dispose();
+
+        // Assert
+        pane.IsDisposed.ShouldBeTrue();
+        first.IsDisposed.ShouldBeTrue();
+        splitChanges.ShouldBe(0);
+        tabStopChanges.ShouldBe(1);
+    }
+
     /// <summary>Verifies only a laid-out, resizable divider between two visible panes is a Tab stop.</summary>
     [Fact]
     public void CanTabStop_WhenDividerAvailabilityChanges_TracksOwnedInteractionState()

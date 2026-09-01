@@ -568,6 +568,533 @@ public sealed class SplitPaneSurfaceTests
         surface.ShouldHaveFocus(pane.Children[0]);
     }
 
+    /// <summary>Verifies a divider press focuses before capture, preserves the authored split,
+    /// and applies snapshot-relative movement even after the pointer leaves the divider.</summary>
+    [Fact]
+    public async Task Pointer_WhenPrimaryDividerDragMoves_UsesFocusedCapturedSnapshotWithoutPressJumpAsync()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            FirstPaneLength = Length.Cells(5),
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 3),
+            TestContext.Current.CancellationToken);
+        var changes = 0;
+        var focusObservedWithoutCapture = false;
+        pane.SplitChanged += (_, _) => changes++;
+        pane.GotFocus += (_, _) => focusObservedWithoutCapture = !pane.HasPointerCapture;
+        await surface.Pointer.MoveToAsync(pane, new Point(5, 1));
+
+        // Act and assert: press
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveFocus(pane);
+        surface.ShouldHaveCapture(pane);
+        focusObservedWithoutCapture.ShouldBeTrue();
+        pane.IsPressed.ShouldBeTrue();
+        pane.FirstPaneLength.ShouldBe(Length.Cells(5));
+        changes.ShouldBe(0);
+
+        // Act and assert: same-cell no-op followed by movement beyond the divider under capture
+        await surface.Pointer.MovePressedToAsync(pane, new Point(5, 1));
+        changes.ShouldBe(0);
+        await surface.Pointer.MovePressedToAsync(pane, new Point(8, 1));
+        pane.FirstPaneLength.ShouldBe(Length.Cells(8));
+        changes.ShouldBe(1);
+        surface.ShouldHaveCapture(pane);
+
+        // Act and assert: explicit primary release
+        await surface.Pointer.ReleaseAsync();
+        surface.ShouldHaveCapture(null);
+        pane.IsPressed.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies drag movement clamps through the arranged joint pane range and preserves
+    /// percentage authorship against the divider-excluded pool.</summary>
+    [Theory]
+    [InlineData(Orientation.Horizontal, 10, 2, 60d)]
+    [InlineData(Orientation.Vertical, 2, 10, 60d)]
+    public async Task Pointer_WhenPercentDividerDragExceedsFeasibleRange_ClampsAndPreservesPercentKindAsync(
+        Orientation orientation,
+        int dragX,
+        int dragY,
+        double expectedPercent)
+    {
+        // Arrange
+        var first = new ProbeControl
+        {
+            MinWidth = Length.Cells(2),
+            MaxWidth = Length.Cells(6),
+            MinHeight = Length.Cells(2),
+            MaxHeight = Length.Cells(6)
+        };
+        var second = new ProbeControl { MinWidth = Length.Cells(4), MinHeight = Length.Cells(4) };
+        var pane = new SplitPane
+        {
+            Orientation = orientation,
+            FirstPaneLength = Length.Percent(50),
+            Children = { first, second }
+        };
+        var size = orientation == Orientation.Horizontal ? new Size(11, 3) : new Size(3, 11);
+        var divider = orientation == Orientation.Horizontal ? new Point(5, 1) : new Point(1, 5);
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            size,
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(pane, divider);
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveCapture(pane);
+        await surface.Pointer.MovePressedToAsync(new Point(dragX, dragY));
+
+        // Assert
+        pane.FirstPaneLength.Kind.ShouldBe(LengthKind.Percent);
+        pane.FirstPaneLength.Value.ShouldBe(expectedPercent, 0.000000000001);
+        (orientation == Orientation.Horizontal ? first.Bounds.Width : first.Bounds.Height).ShouldBe(6);
+        await surface.Pointer.ReleaseAsync();
+    }
+
+    /// <summary>Verifies an auxiliary release does not terminate a captured primary divider drag.</summary>
+    [Fact]
+    public async Task Pointer_WhenSecondaryReleaseArrivesDuringDividerDrag_PreservesCaptureAndContinuesAsync()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            FirstPaneLength = Length.Cells(5),
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(pane, new Point(5, 0));
+        await surface.Pointer.PressAsync();
+
+        // Act and assert
+        await surface.Pointer.ReleaseSecondaryWhilePrimaryHeldAsync();
+        surface.ShouldHaveCapture(pane);
+        pane.IsPressed.ShouldBeTrue();
+        await surface.Pointer.MovePressedToAsync(pane, new Point(7, 0));
+        pane.FirstPaneLength.ShouldBe(Length.Cells(7));
+        await surface.Pointer.ReleaseAsync();
+        surface.ShouldHaveCapture(null);
+    }
+
+    /// <summary>Verifies both an explicit primary release and terminal Leave cancel the gesture
+    /// without inventing another split commit.</summary>
+    [Theory]
+    [InlineData("primary")]
+    [InlineData("buttonless")]
+    [InlineData("leave")]
+    public async Task Pointer_WhenPrimaryReleaseOrLeaveEndsDividerDrag_ClearsCaptureWithoutCommitAsync(string completion)
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            FirstPaneLength = Length.Cells(5),
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(pane, new Point(5, 0));
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveCapture(pane);
+        var changes = 0;
+        pane.SplitChanged += (_, _) => changes++;
+
+        // Act
+        if (completion == "leave")
+        {
+            await surface.UpdateAsync(
+                () => _ = surface.Application.Capture.Dispatch(new Pointer(
+                    cells: null,
+                    pixels: null,
+                    Buttons.None,
+                    PointerAction.Leave,
+                    wheelX: 0,
+                    wheelY: 0,
+                    Modifiers.None,
+                    isMotion: true,
+                    isCellPositionInferred: false)),
+                "route terminal pointer Leave to captured SplitPane");
+        }
+        else if (completion == "primary")
+        {
+            await surface.Pointer.ReleaseAsync();
+        }
+        else
+        {
+            await surface.SendAsync(
+                "\u001b[<3;6;1M"u8.ToArray(),
+                "release buttonless pointer over SplitPane divider");
+        }
+
+        // Assert
+        surface.ShouldHaveCapture(null);
+        pane.IsPressed.ShouldBeFalse();
+        pane.FirstPaneLength.ShouldBe(Length.Cells(5));
+        changes.ShouldBe(0);
+    }
+
+    /// <summary>Verifies focus or capture loss clears every divider gesture fact and later held
+    /// motion cannot resume the cancelled snapshot.</summary>
+    [Theory]
+    [InlineData("focus")]
+    [InlineData("capture")]
+    public async Task Pointer_WhenFocusOrCaptureIsLost_CancelsDividerDragAsync(string loss)
+    {
+        // Arrange
+        var next = new Button { Text = "Next" };
+        var pane = new SplitPane
+        {
+            Width = Length.Cells(11),
+            Height = Length.Cells(2),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            FirstPaneLength = Length.Cells(5),
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        var root = new Overlay { Children = { pane, next } };
+        Overlay.SetLeft(next, Length.Cells(12));
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(pane, new Point(5, 0));
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveCapture(pane);
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                if (loss == "focus")
+                {
+                    next.Focus().ShouldBeTrue();
+                }
+                else
+                {
+                    surface.Application.Capture.Release();
+                }
+            },
+            $"cancel SplitPane drag through {loss} loss");
+
+        // Assert
+        surface.ShouldHaveCapture(null);
+        pane.IsPressed.ShouldBeFalse();
+        await surface.Pointer.MovePressedToAsync(pane, new Point(8, 0));
+        pane.FirstPaneLength.ShouldBe(Length.Cells(5));
+        await surface.Pointer.ReleaseAsync();
+    }
+
+    /// <summary>Verifies divider-specific mutations and framework availability transitions cancel
+    /// capture while preserving the last committed authored length.</summary>
+    [Theory]
+    [InlineData("resizability")]
+    [InlineData("orientation")]
+    [InlineData("disable")]
+    [InlineData("hide")]
+    [InlineData("collapse-owner")]
+    [InlineData("hide-pane")]
+    [InlineData("collapse-pane")]
+    [InlineData("remove-pane")]
+    [InlineData("detach")]
+    [InlineData("reparent")]
+    public async Task Pointer_WhenDividerLifecycleBecomesInvalid_CancelsDragAsync(string transition)
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            Width = Length.Cells(11),
+            Height = Length.Cells(2),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            FirstPaneLength = Length.Cells(5),
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        var source = new Overlay
+        {
+            Width = Length.Cells(11),
+            Height = Length.Cells(2),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Children = { pane }
+        };
+        var destination = new Overlay
+        {
+            Width = Length.Cells(11),
+            Height = Length.Cells(2),
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        var root = new Overlay { Children = { source, destination } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(pane, new Point(5, 0));
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveCapture(pane);
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                switch (transition)
+                {
+                    case "resizability":
+                        pane.IsResizable = false;
+                        break;
+                    case "orientation":
+                        pane.Orientation = Orientation.Vertical;
+                        break;
+                    case "disable":
+                        pane.IsEnabled = false;
+                        break;
+                    case "hide":
+                        pane.Visibility = Visibility.Hidden;
+                        break;
+                    case "collapse-owner":
+                        pane.Visibility = Visibility.Collapsed;
+                        break;
+                    case "hide-pane":
+                        pane.Children[0].Visibility = Visibility.Hidden;
+                        break;
+                    case "collapse-pane":
+                        pane.Children[0].Visibility = Visibility.Collapsed;
+                        break;
+                    case "remove-pane":
+                        pane.Children.RemoveAt(0);
+                        break;
+                    case "detach":
+                        source.Children.Remove(pane).ShouldBeTrue();
+                        break;
+                    case "reparent":
+                        source.Children.Remove(pane).ShouldBeTrue();
+                        destination.Children.Add(pane);
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Unknown transition '{transition}'.");
+                }
+            },
+            $"invalidate SplitPane divider through {transition}");
+
+        // Assert
+        surface.ShouldHaveCapture(null);
+        pane.IsPressed.ShouldBeFalse();
+        pane.FirstPaneLength.ShouldBe(Length.Cells(5));
+    }
+
+    /// <summary>Verifies entering a sibling modal plane excludes SplitPane and cancels its active capture.</summary>
+    [Fact]
+    public async Task Pointer_WhenSiblingModalPlaneExcludesSplitPane_CancelsDragAsync()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            Width = Length.Cells(11),
+            Height = Length.Cells(2),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        var modal = new Window
+        {
+            Visibility = Visibility.Collapsed,
+            Width = Length.Cells(8),
+            Height = Length.Cells(2),
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        var root = new Overlay { Children = { pane, modal } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 3),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(pane, new Point(5, 0));
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveCapture(pane);
+        ModalScope? scope = null;
+
+        // Act
+        await surface.UpdateAsync(() => scope = modal.ShowModal(), "exclude SplitPane with sibling modal Window");
+
+        // Assert
+        surface.ShouldHaveCapture(null);
+        pane.IsPressed.ShouldBeFalse();
+        await surface.UpdateAsync(scope.ShouldNotBeNull().Dispose, "end sibling modal Window");
+    }
+
+    /// <summary>Verifies disposal releases capture and leaves no active divider gesture in the surviving surface.</summary>
+    [Fact]
+    public async Task Pointer_WhenCapturedSplitPaneIsDisposed_CleansUpGestureAsync()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            Width = Length.Cells(11),
+            Height = Length.Cells(2),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        var root = new Overlay { Children = { pane } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(pane, new Point(5, 0));
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveCapture(pane);
+
+        // Act
+        await surface.UpdateAsync(pane.Dispose, "dispose captured SplitPane");
+
+        // Assert
+        surface.ShouldHaveCapture(null);
+        pane.IsDisposed.ShouldBeTrue();
+        pane.IsPressed.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies focus callbacks can invalidate divider interaction before capture without
+    /// leaving a pressed state or changing the split.</summary>
+    [Fact]
+    public async Task Pointer_WhenFocusObserverDisablesResizing_RevalidatesBeforeCaptureAsync()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            FirstPaneLength = Length.Cells(5),
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 2),
+            TestContext.Current.CancellationToken);
+        pane.GotFocus += (_, _) => pane.IsResizable = false;
+        PointerEventArgs? press = null;
+
+        // Act
+        await surface.UpdateAsync(
+            () => press = Route(pane, new PointerEventArgs(new Pointer(
+                new Point(5, 0),
+                pixels: null,
+                Buttons.Primary,
+                PointerAction.Press,
+                wheelX: 0,
+                wheelY: 0,
+                Modifiers.None,
+                isMotion: false,
+                isCellPositionInferred: false))),
+            "route direct divider press through SplitPane focus revalidation");
+
+        // Assert
+        press.ShouldNotBeNull().IsHandled.ShouldBeTrue();
+        surface.ShouldHaveFocus(pane);
+        surface.ShouldHaveCapture(null);
+        pane.IsPressed.ShouldBeFalse();
+        pane.FirstPaneLength.ShouldBe(Length.Cells(5));
+    }
+
+    /// <summary>Verifies a reentrant split observer that removes divider eligibility cancels
+    /// capture before later held motion can reuse the old drag snapshot.</summary>
+    [Fact]
+    public async Task Pointer_WhenSplitObserverDisablesResizing_CancelsCapturedSnapshotAsync()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            FirstPaneLength = Length.Cells(5),
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 2),
+            TestContext.Current.CancellationToken);
+        pane.SplitChanged += (_, _) => pane.IsResizable = false;
+        await surface.Pointer.MoveToAsync(pane, new Point(5, 0));
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveCapture(pane);
+
+        // Act
+        await surface.Pointer.MovePressedToAsync(pane, new Point(6, 0));
+
+        // Assert
+        pane.FirstPaneLength.ShouldBe(Length.Cells(6));
+        pane.IsResizable.ShouldBeFalse();
+        surface.ShouldHaveCapture(null);
+        pane.IsPressed.ShouldBeFalse();
+        await surface.Pointer.MovePressedToAsync(pane, new Point(8, 0));
+        pane.FirstPaneLength.ShouldBe(Length.Cells(6));
+        await surface.Pointer.ReleaseAsync();
+    }
+
+    /// <summary>Verifies pane clicks keep their descendant route, while an empty non-focusable pane
+    /// background may use the framework's nearest-focusable-ancestor fallback.</summary>
+    [Fact]
+    public async Task Pointer_WhenPaneContentOrEmptyBackgroundIsPressed_PreservesPaneRoutingAndFocusFallbackAsync()
+    {
+        // Arrange
+        var button = new Button { Text = "First" };
+        var empty = new ProbeControl();
+        var pane = new SplitPane
+        {
+            FirstPaneLength = Length.Cells(5),
+            Children = { button, empty }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 2),
+            TestContext.Current.CancellationToken);
+        var clicks = 0;
+        button.Click += (_, _) => clicks++;
+
+        // Act and assert descendant routing
+        await surface.Pointer.ClickAsync(button);
+        clicks.ShouldBe(1);
+        surface.ShouldHaveFocus(button);
+        surface.ShouldHaveCapture(null);
+
+        // Act and assert shared focus fallback on non-focusable pane background
+        await surface.Pointer.ClickAsync(empty);
+        surface.ShouldHaveFocus(pane);
+        surface.ShouldHaveCapture(null);
+        pane.FirstPaneLength.ShouldBe(Length.Cells(5));
+    }
+
+    /// <summary>Verifies disabling divider resizing leaves pane input and pane focus behavior intact.</summary>
+    [Fact]
+    public async Task Pointer_WhenSplitPaneIsNotResizable_LeavesPaneInputAndFocusIntactAsync()
+    {
+        // Arrange
+        var first = new Button { Text = "First" };
+        var pane = new SplitPane
+        {
+            IsResizable = false,
+            Children = { first, new Button { Text = "Second" } }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 2),
+            TestContext.Current.CancellationToken);
+        var clicks = 0;
+        first.Click += (_, _) => clicks++;
+
+        // Act
+        await surface.Pointer.ClickAsync(first);
+
+        // Assert
+        clicks.ShouldBe(1);
+        surface.ShouldHaveFocus(first);
+        surface.ShouldHaveCapture(null);
+
+        // Act and assert: a secondary divider press remains ordinary unhandled pointer input.
+        await surface.Pointer.RightClickAsync(pane, new Point(5, 0));
+        surface.ShouldHaveFocus(first);
+        surface.ShouldHaveCapture(null);
+        pane.FirstPaneLength.ShouldBe(Length.Percent(50));
+    }
+
     /// <summary>Creates one split with two opaque panes suitable for mounted divider rendering.</summary>
     /// <returns>The initialized split pane.</returns>
     private static SplitPane CreatePane() => new()
