@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Navigation;
 
 /// <summary>Compares Pager layout and scalar transitions with independent fixed-seed models.</summary>
-public sealed class PagerRandomizedTests
+public sealed class PagerLayoutTests
 {
     /// <summary>Verifies every selected target, identity, state, and whole-cell bound across a
     /// deterministic matrix of page ranges, windows, and finite widths.</summary>
