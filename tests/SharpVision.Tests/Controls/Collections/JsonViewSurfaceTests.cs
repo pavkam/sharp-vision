@@ -115,6 +115,29 @@ public sealed class JsonViewSurfaceTests
             ColorDepth.Basic16));
     }
 
+    /// <summary>Verifies a non-ASCII object key renders its literal characters instead of the
+    /// default JSON string encoder's \uXXXX escapes, matching how a sibling string value with the
+    /// same non-ASCII characters already renders verbatim from the source JSON text.</summary>
+    [Fact]
+    public async Task Render_WhenObjectKeyIsNonAscii_RendersLiteralCharactersAsync()
+    {
+        // Arrange
+        var view = new JsonView { Json = /*lang=json,strict*/ "{\"café\":\"straße\"}" };
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(20, 3),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        // Assert: both the non-ASCII key label and the non-ASCII string value render their literal
+        // characters, not \uXXXX escapes.
+        surface.ShouldRender(/*lang=json*/ """
+                             {
+                               "café": "straße"
+                             }
+                             """);
+    }
+
     /// <summary>Verifies syntax lines, keyboard traversal, selection, and collapse through decoded terminal input.</summary>
     [Fact]
     public async Task Input_WhenNestedDocumentIsMounted_NavigatesAndCollapsesAsync()
@@ -381,11 +404,12 @@ public sealed class JsonViewSurfaceTests
     }
 
     /// <summary>
-    /// Verifies a click on the disclosure glyph's first cell toggles expansion under
-    /// <see cref="Ambiguous.Wide"/>, where the glyph ('▶'/'▼', both East Asian Ambiguous-width)
-    /// occupies two cells instead of one. The hit test computes the glyph's column from a
-    /// hard-coded "leadingWidth - 2" literal that only ever lands on the glyph's second cell
-    /// under the wide policy, silently ignoring a click on its first cell.
+    /// Verifies a click on the disclosure glyph toggles expansion under <see cref="Ambiguous.Wide"/>.
+    /// The glyph ('▶'/'▼') is East Asian Ambiguous-width, so it resolves through the same one-cell
+    /// fallback every other glyph consumer in the codebase uses before it is measured or drawn -
+    /// under the wide policy the resolved glyph is the portable ASCII fallback ('v'/'>'), which
+    /// stays exactly one cell wide instead of the raw glyph's two, so the disclosure column has
+    /// only ever one clickable cell.
     /// </summary>
     [Fact]
     public async Task Pointer_WhenDisclosureGlyphIsWideAndFirstCellIsClicked_TogglesExpansionAsync()
@@ -406,14 +430,15 @@ public sealed class JsonViewSurfaceTests
             TestThemes.BorderlessContainer,
             TestContext.Current.CancellationToken);
 
-        // Assert: expanded by default, so the disclosure glyph starts as '▼'.
-        surface.Cell(new Point(0, 1)).Text.ShouldBe("▼");
+        // Assert: expanded by default, so the disclosure glyph starts as its resolved
+        // one-cell-wide fallback 'v', not the raw two-cell-wide '▼'.
+        surface.Cell(new Point(0, 1)).Text.ShouldBe("v");
 
-        // Act: column 0 is the disclosure glyph's first (leading) wide cell.
+        // Act: column 0 is the disclosure glyph's only cell.
         await surface.Pointer.ClickAsync(view, new Point(0, 1));
 
-        // Assert: collapsing swaps the glyph to '▶'.
-        surface.Cell(new Point(0, 1)).Text.ShouldBe("▶");
+        // Assert: collapsing swaps the glyph to its resolved fallback '>'.
+        surface.Cell(new Point(0, 1)).Text.ShouldBe(">");
     }
 
     /// <summary>Verifies primary pointer input selects a key and toggles a disclosure glyph, and the
