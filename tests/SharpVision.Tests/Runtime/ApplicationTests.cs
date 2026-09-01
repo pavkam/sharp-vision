@@ -1778,6 +1778,189 @@ public sealed class ApplicationTests
         thrown.Message.ShouldBe("diagnostic-boom");
     }
 
+    /// <summary>Verifies a throwing ResponseReceived subscriber does not force the dispatch loop
+    /// to unwind. The raise site used to be a bare <c>?.Invoke</c>, so a throwing handler
+    /// propagated straight out of Dispatch instead of surfacing through
+    /// <see cref="Application.UnhandledException"/> like its RaiseIsolated-routed siblings in the
+    /// same switch.</summary>
+    [Fact]
+    public async Task Response_WhenAResponseReceivedHandlerThrows_IsIsolatedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        List<Exception> reported = [];
+        var reportedException = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+            _ = reportedException.TrySetResult();
+        };
+        application.ResponseReceived += (_, _) => throw new InvalidOperationException("response-boom");
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+
+        terminal.QueueInput("[?1;2c"u8);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without
+        // the fix, the exception propagates straight out of Dispatch and reportedException never
+        // settles, so this test must fail on a timeout instead of hanging.
+        await reportedException.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "response-boom");
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("response-boom");
+    }
+
+    /// <summary>Verifies a throwing PaletteResponseReceived subscriber does not force the dispatch
+    /// loop to unwind, mirroring the ResponseReceived regression test above for the palette raise
+    /// site.</summary>
+    [Fact]
+    public async Task Response_WhenAPaletteResponseReceivedHandlerThrows_IsIsolatedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        List<Exception> reported = [];
+        var reportedException = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+            _ = reportedException.TrySetResult();
+        };
+        application.PaletteResponseReceived += (_, _) => throw new InvalidOperationException("palette-response-boom");
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+
+        terminal.QueueInput("]4;0;rgb:1111/2222/3333\\"u8);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without
+        // the fix, the exception propagates straight out of Dispatch and reportedException never
+        // settles, so this test must fail on a timeout instead of hanging.
+        await reportedException.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "palette-response-boom");
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("palette-response-boom");
+    }
+
+    /// <summary>Verifies a throwing MetricsResponseReceived subscriber does not force the dispatch
+    /// loop to unwind, mirroring the ResponseReceived regression test above for the metrics raise
+    /// site.</summary>
+    [Fact]
+    public async Task Response_WhenAMetricsResponseReceivedHandlerThrows_IsIsolatedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        List<Exception> reported = [];
+        var reportedException = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+            _ = reportedException.TrySetResult();
+        };
+        application.MetricsResponseReceived += (_, _) => throw new InvalidOperationException("metrics-response-boom");
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+
+        terminal.QueueInput("[4;800;1200t"u8);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without
+        // the fix, the exception propagates straight out of Dispatch and reportedException never
+        // settles, so this test must fail on a timeout instead of hanging.
+        await reportedException.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "metrics-response-boom");
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("metrics-response-boom");
+    }
+
+    /// <summary>Verifies a throwing StatusResponseReceived subscriber does not force the dispatch
+    /// loop to unwind, mirroring the ResponseReceived regression test above for the DECRQSS status
+    /// raise site.</summary>
+    [Fact]
+    public async Task Response_WhenAStatusResponseReceivedHandlerThrows_IsIsolatedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        List<Exception> reported = [];
+        var reportedException = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+            _ = reportedException.TrySetResult();
+        };
+        application.StatusResponseReceived += (_, _) => throw new InvalidOperationException("status-response-boom");
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+
+        terminal.QueueInput("P1$r0m\\"u8);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without
+        // the fix, the exception propagates straight out of Dispatch and reportedException never
+        // settles, so this test must fail on a timeout instead of hanging.
+        await reportedException.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "status-response-boom");
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("status-response-boom");
+    }
+
+    /// <summary>Verifies a throwing CapabilityResponseReceived subscriber does not force the
+    /// dispatch loop to unwind, mirroring the ResponseReceived regression test above for the
+    /// XTGETTCAP capability raise site.</summary>
+    [Fact]
+    public async Task Response_WhenACapabilityResponseReceivedHandlerThrows_IsIsolatedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        List<Exception> reported = [];
+        var reportedException = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+            _ = reportedException.TrySetResult();
+        };
+        application.CapabilityResponseReceived += (_, _) =>
+            throw new InvalidOperationException("capability-response-boom");
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+
+        terminal.QueueInput("P1+r524742=3234\\"u8);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without
+        // the fix, the exception propagates straight out of Dispatch and reportedException never
+        // settles, so this test must fail on a timeout instead of hanging.
+        await reportedException.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "capability-response-boom");
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("capability-response-boom");
+    }
+
     /// <summary>Verifies unavailable synchronized output is a frame fallback promoted after commit.</summary>
     [Fact]
     public async Task StartAsync_WhenSynchronizedOutputIsUnavailableAndFallbackPromoted_StopsAfterFrameAsync()

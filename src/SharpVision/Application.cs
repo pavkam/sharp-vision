@@ -1455,27 +1455,46 @@ public sealed class Application:
                     ApplicationDiagnosticPromotionClassifier.Classify(record.Diagnostic.Code));
                 break;
             case RecordKind.Response:
-                ResponseReceived?.Invoke(this, new ProtocolResponseEventArgs(record.Response));
+                if (RaiseIsolated(ResponseReceived, new ProtocolResponseEventArgs(record.Response))
+                    is { } responseFailure)
+                {
+                    Report(responseFailure);
+                }
+
                 break;
             case RecordKind.PaletteResponse:
-                PaletteResponseReceived?.Invoke(
-                    this,
-                    new PaletteResponseEventArgs(record.PaletteResponse));
+                if (RaiseIsolated(PaletteResponseReceived, new PaletteResponseEventArgs(record.PaletteResponse))
+                    is { } paletteResponseFailure)
+                {
+                    Report(paletteResponseFailure);
+                }
+
                 break;
             case RecordKind.MetricsResponse:
-                MetricsResponseReceived?.Invoke(
-                    this,
-                    new MetricsResponseEventArgs(record.MetricsResponse));
+                if (RaiseIsolated(MetricsResponseReceived, new MetricsResponseEventArgs(record.MetricsResponse))
+                    is { } metricsResponseFailure)
+                {
+                    Report(metricsResponseFailure);
+                }
+
                 break;
             case RecordKind.StatusResponse:
-                StatusResponseReceived?.Invoke(
-                    this,
-                    new StatusResponseEventArgs(record.StatusResponse));
+                if (RaiseIsolated(StatusResponseReceived, new StatusResponseEventArgs(record.StatusResponse))
+                    is { } statusResponseFailure)
+                {
+                    Report(statusResponseFailure);
+                }
+
                 break;
             case RecordKind.CapabilityResponse:
-                CapabilityResponseReceived?.Invoke(
-                    this,
-                    new CapabilityResponseEventArgs(record.CapabilityResponse!));
+                if (RaiseIsolated(
+                        CapabilityResponseReceived,
+                        new CapabilityResponseEventArgs(record.CapabilityResponse!))
+                    is { } capabilityResponseFailure)
+                {
+                    Report(capabilityResponseFailure);
+                }
+
                 break;
             case RecordKind.KittyGraphicsResponse:
                 _renderer?.AcceptKittyGraphicsResponse(record.KittyGraphicsResponse!);
