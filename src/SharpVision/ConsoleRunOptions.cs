@@ -230,7 +230,8 @@ public sealed record ConsoleRunOptions
     public ConsoleHostOptions ToHostOptions() => new()
     {
         ResizeInterval = ResizeInterval,
-        CaptureControlKeys = TreatControlCAsInput
+        CaptureControlKeys = TreatControlCAsInput,
+        EnableMouseInput = MouseTracking.HasValue
     };
 
     /// <summary>

@@ -31,4 +31,10 @@ public sealed record ConsoleHostOptions
     /// raising the host signal. Default is <see langword="false"/>.
     /// </summary>
     public bool CaptureControlKeys { get; init; }
+
+    /// <summary>
+    /// Gets whether the platform console mode should report mouse events, because mouse
+    /// tracking is negotiated for this run. Default is <see langword="false"/>.
+    /// </summary>
+    public bool EnableMouseInput { get; init; }
 }

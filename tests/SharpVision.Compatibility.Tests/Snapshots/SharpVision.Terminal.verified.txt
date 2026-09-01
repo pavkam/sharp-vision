@@ -1755,6 +1755,7 @@ namespace SharpVision.Terminal.Runtime
     {
         public ConsoleHostOptions() { }
         public bool CaptureControlKeys { get; init; }
+        public bool EnableMouseInput { get; init; }
         public System.TimeSpan ResizeInterval { get; init; }
     }
     public sealed class ConsoleResizeSource : SharpVision.Terminal.Abstractions.IResizeSource, System.IAsyncDisposable

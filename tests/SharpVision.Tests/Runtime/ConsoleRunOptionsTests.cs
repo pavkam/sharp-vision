@@ -166,6 +166,24 @@ public sealed class ConsoleRunOptionsTests
         options.ToHostOptions().CaptureControlKeys.ShouldBeTrue();
     }
 
+    /// <summary>Verifies mouse tracking being configured maps to host mouse-input enablement.</summary>
+    [Fact]
+    public void ToHostOptions_WhenMouseTrackingConfigured_EnablesMouseInput()
+    {
+        var options = new ConsoleRunOptions { MouseTracking = MouseTracking.Any };
+
+        options.ToHostOptions().EnableMouseInput.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies mouse tracking disabled maps to host mouse-input disablement.</summary>
+    [Fact]
+    public void ToHostOptions_WhenMouseTrackingDisabled_DisablesMouseInput()
+    {
+        var options = new ConsoleRunOptions { MouseTracking = null };
+
+        options.ToHostOptions().EnableMouseInput.ShouldBeFalse();
+    }
+
     /// <summary>Verifies a null theme resolves to the standard dark theme.</summary>
     [Fact]
     public void ResolveTheme_WhenThemeNull_ReturnsDark() =>

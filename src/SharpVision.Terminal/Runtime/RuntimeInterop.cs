@@ -252,6 +252,9 @@ internal static class RuntimeInterop
 
     public const uint EnableProcessedInput = 0x0001;
     public const uint EnableLineInput = 0x0002;
+    public const uint EnableMouseInput = 0x0010;
+    public const uint EnableQuickEditMode = 0x0040;
+    public const uint EnableExtendedFlags = 0x0080;
     public const uint EnableEchoInput = 0x0004;
     public const uint EnableVirtualTerminalInput = 0x0200;
     public const uint EnableProcessedOutput = 0x0001;
@@ -265,9 +268,13 @@ internal static class RuntimeInterop
     /// <summary>Computes the raw-input console mode from the saved mode.</summary>
     /// <param name="current">The saved console input mode.</param>
     /// <param name="captureControlKeys">Whether Ctrl+C is delivered as input.</param>
-    /// <returns>The mode enabling VT input without canonical line editing or echo.</returns>
+    /// <param name="enableMouseInput">Whether mouse tracking is negotiated for this run.</param>
+    /// <returns>
+    /// The mode enabling VT input without canonical line editing, echo, or classic QuickEdit
+    /// selection, with mouse input enabled when requested.
+    /// </returns>
     [Pure]
-    public static uint ComputeInputMode(uint current, bool captureControlKeys)
+    public static uint ComputeInputMode(uint current, bool captureControlKeys, bool enableMouseInput)
     {
         var mode = current;
         mode &= ~(EnableLineInput | EnableEchoInput);
@@ -280,6 +287,17 @@ internal static class RuntimeInterop
         else
         {
             mode |= EnableProcessedInput;
+        }
+
+        // QuickEdit selection freezes the console on a stray click or drag, which the process
+        // cannot detect or recover from; ENABLE_EXTENDED_FLAGS must be set in the same call for a
+        // QuickEdit change to take effect at all (Win32 otherwise ignores the QuickEdit bit).
+        mode &= ~EnableQuickEditMode;
+        mode |= EnableExtendedFlags;
+
+        if (enableMouseInput)
+        {
+            mode |= EnableMouseInput;
         }
 
         return mode;

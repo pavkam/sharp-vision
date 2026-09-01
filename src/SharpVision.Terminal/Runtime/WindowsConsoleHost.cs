@@ -45,7 +45,7 @@ internal static class WindowsConsoleHost
         [InstantHandle] Func<StreamTransport, IResizeSource> createResize)
     {
         Debug.Assert(createResize is not null, "The console host always supplies a resize factory.");
-        var mode = WindowsConsoleMode.Enter(options.CaptureControlKeys);
+        var mode = WindowsConsoleMode.Enter(options.CaptureControlKeys, options.EnableMouseInput);
         WindowsConsoleInputStream? input = null;
         Stream? output = null;
         StreamTransport? transport = null;

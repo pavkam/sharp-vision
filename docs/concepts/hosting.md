@@ -481,13 +481,21 @@ both console modes (`GetConsoleMode`), and applies computed modes via
 `SetConsoleMode`: the input mode clears `ENABLE_LINE_INPUT` and
 `ENABLE_ECHO_INPUT`, sets `ENABLE_VIRTUAL_TERMINAL_INPUT`, and sets or clears
 `ENABLE_PROCESSED_INPUT` depending on `CaptureControlKeys` (cleared when `true`,
-so Ctrl+C arrives as input instead of the host signal); the output mode adds
-`ENABLE_PROCESSED_OUTPUT`, `ENABLE_VIRTUAL_TERMINAL_PROCESSING`, and
-`DISABLE_NEWLINE_AUTO_RETURN`. It reads the standard input and output streams
-and uses the polling `ConsoleResizeSource` on `ResizeInterval`, because the
-standard Windows console does not report pixel dimensions - Windows resize is
-always cell-only, and pixel mouse coordinates are unavailable on that path. A
-mode read or write failure throws `IOException` wrapping a `Win32Exception`
+so Ctrl+C arrives as input instead of the host signal). It also unconditionally
+clears `ENABLE_QUICK_EDIT_MODE` and sets `ENABLE_EXTENDED_FLAGS` (required in
+the same call for the QuickEdit change to take effect), because classic
+`conhost.exe`'s QuickEdit text selection otherwise freezes the console on a
+stray click or drag with no way for the process to detect or recover from it;
+and it sets `ENABLE_MOUSE_INPUT` when `EnableMouseInput` is set, which
+`ConsoleRunOptions.ToHostOptions` derives from whether mouse tracking is
+configured, so negotiated mouse tracking actually receives input events on
+Windows. The output mode adds `ENABLE_PROCESSED_OUTPUT`,
+`ENABLE_VIRTUAL_TERMINAL_PROCESSING`, and `DISABLE_NEWLINE_AUTO_RETURN`. It
+reads the standard input and output streams and uses the polling
+`ConsoleResizeSource` on `ResizeInterval`, because the standard Windows console
+does not report pixel dimensions - Windows resize is always cell-only, and pixel
+mouse coordinates are unavailable on that path. A mode read or write failure
+throws `IOException` wrapping a `Win32Exception`
 (`Marshal.GetLastPInvokeError()`), mirroring the existing Unix
 `Native.GetDimensions` failure shape.
 
