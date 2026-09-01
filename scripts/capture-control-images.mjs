@@ -150,6 +150,21 @@ export const diffBounds = (before, after) => {
     return bounds;
 };
 
+/// Selects the crop owned by one capture state. Ordinary and contained-popup
+/// states use the example interior; overlay popups may widen to changed cells.
+export const selectCaptureRegion = (rect, state, baseline, frame) => {
+    const interior = {
+        top: rect.top + 1,
+        left: rect.left + 1,
+        bottom: rect.bottom - 1,
+        right: rect.right - 1,
+    };
+
+    if (state.popup !== true) return interior;
+
+    return diffBounds(baseline, frame) ?? interior;
+};
+
 const expand = (row) => {
     const slots = [];
 
@@ -451,20 +466,9 @@ const main = async () => {
                 const frame = await settled(
                     entry.animated === true || held !== null,
                 );
-                let region = {
-                    top: rect.top + 1,
-                    left: rect.left + 1,
-                    bottom: rect.bottom - 1,
-                    right: rect.right - 1,
-                };
-
                 // A popup overdraws neighboring content the example box does
-                // not own, so crop to exactly the cells the actions changed.
-                if (state.popup === true) {
-                    const changed = diffBounds(baseline, frame);
-
-                    if (changed !== null) region = changed;
-                }
+                // not own, so overlay states crop to the cells actions changed.
+                const region = selectCaptureRegion(rect, state, baseline, frame);
 
                 const html = path.join(temporary, `${slug}.html`);
                 await writeFile(

@@ -62,6 +62,9 @@ internal sealed class BreadcrumbItemPane: CompositeControlBase
                 ? "Design availability: enabled"
                 : "Design availability: disabled · activation is inert";
         };
+        var actions = new Wrap { Width = Length.Percent(100), Spacing = 1, LineSpacing = 1 };
+        actions.Children.Add(invoke);
+        actions.Children.Add(availability);
 
         return new DocPage(
             Title,
@@ -75,7 +78,7 @@ internal sealed class BreadcrumbItemPane: CompositeControlBase
                     "Activate Home or Design through the owner, invoke Design programmatically, or disable it. The readouts show the named item's event after current-state commit and before command execution.",
                     new DocColumn(
                         path,
-                        new DocRow(invoke, availability),
+                        actions,
                         availabilityLog,
                         currentLog,
                         itemLog,

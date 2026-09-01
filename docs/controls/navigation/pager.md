@@ -46,9 +46,10 @@ validated copy of `PagerStyle.Default`; assigning `null` to `Style` restores
 theme and code-owned resolution.
 
 `PageChangedEventArgs` carries `PreviousPageIndex`, `CurrentPageIndex`, and the
-`ActivationCause`. Its public constructor accepts `-1` only as an empty-range
-sentinel, rejects indices below `-1` or equal indices, and rejects an unknown
-cause.
+`ActivationCause`. Emitted `Pager` transitions reserve `-1` for an empty-range
+sentinel. The public constructor has no page-count context: it accepts any two
+distinct indices greater than or equal to `-1`, rejects an index below `-1`, and
+rejects an unknown cause.
 
 ## Keyboard
 

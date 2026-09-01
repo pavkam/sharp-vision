@@ -149,19 +149,23 @@ sequenceDiagram
     end
 ```
 
-The item captures `Command` and `CommandParameter` before the query. Replacing
-either value, changing selection or style, or closing overflow from a callback
-does not redirect or cancel the accepted action. Removing, replacing, hiding,
-collapsing, disabling, detaching, or disposing the source cancels stale later
-stages. A newer nested activation likewise supersedes the older action. Required
-cleanup and still-current stages complete before the earliest callback failure
-is rethrown.
+After owner selection and its property notifications commit, the item captures
+`Command` and `CommandParameter` before the query. Replacing either captured
+value, changing selection or style, or closing overflow from a later activation
+callback does not redirect or cancel the accepted action. Removing, replacing,
+hiding, collapsing, disabling, detaching, or disposing the source cancels stale
+later stages. A newer nested activation likewise supersedes the older action.
+Required cleanup and still-current stages complete before the earliest callback
+failure is rethrown.
 
 Overflow uses one stable private trigger, one vertical `Menu`, one anchored
 `Popup`, and one dismissing modal coordinator for the bar's lifetime. Opening
-transfers focus into the menu. Escape, outside interaction, unavailability, or a
-layout-generation change closes it and restores focus according to the shared
+transfers focus into the menu. Escape, outside interaction, a layout-generation
+change, or direct unavailability of the `CommandBar` closes it and restores
+focus according to the shared
 [popup modality rules](../../concepts/modality.md#popup-and-window-presentations).
+Ancestor unavailability instead suspends the modal scope while the popup stays
+logically open, then restores that scope once the ancestor becomes available.
 Invoking a projection completes semantic activation before the popup closes.
 
 ## Appearance and Unicode

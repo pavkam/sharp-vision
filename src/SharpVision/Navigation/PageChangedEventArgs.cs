@@ -8,8 +8,8 @@ namespace SharpVision.Navigation;
 public sealed class PageChangedEventArgs: EventArgs
 {
     /// <summary>Initializes one immutable page transition.</summary>
-    /// <param name="previousPageIndex">The zero-based page index before the transition, or -1 for an empty range.</param>
-    /// <param name="currentPageIndex">The committed zero-based page index, or -1 for an empty range.</param>
+    /// <param name="previousPageIndex">The zero-based page index before the transition, or -1 by convention when the pager was empty.</param>
+    /// <param name="currentPageIndex">The committed zero-based page index, or -1 by convention when the pager is empty.</param>
     /// <param name="cause">The input or programmatic cause that committed the transition.</param>
     /// <exception cref="ArgumentOutOfRangeException">An index is below -1, or <paramref name="cause"/> is unknown.</exception>
     /// <exception cref="ArgumentException">Both indices are equal and therefore do not describe a transition.</exception>
@@ -32,10 +32,10 @@ public sealed class PageChangedEventArgs: EventArgs
         Cause = cause;
     }
 
-    /// <summary>Gets the zero-based page index before the transition, or -1 for an empty range.</summary>
+    /// <summary>Gets the zero-based page index before the transition, or -1 by convention when the pager was empty.</summary>
     public int PreviousPageIndex { get; }
 
-    /// <summary>Gets the committed zero-based page index, or -1 for an empty range.</summary>
+    /// <summary>Gets the committed zero-based page index, or -1 by convention when the pager is empty.</summary>
     public int CurrentPageIndex { get; }
 
     /// <summary>Gets the input or programmatic cause that committed the transition.</summary>

@@ -69,17 +69,21 @@ items are not projected, and unavailable items cannot be selected or invoked.
 
 An accepted activation proceeds in this order:
 
-1. Capture `Command` and `CommandParameter`, then query `CanExecute`.
-2. Raise this item's `Invoked` event with the keyboard, pointer, or programmatic
+1. The owner selects the source item and publishes `SelectedIndex` and
+   `SelectedItem` property notifications.
+2. Capture `Command` and `CommandParameter`, then query `CanExecute`.
+3. Raise this item's `Invoked` event with the keyboard, pointer, or programmatic
    cause.
-3. Let the owner raise `CommandBar.ItemInvoked` for this same item.
-4. Execute the captured command if the item is still owned, available, and on
+4. Let the owner raise `CommandBar.ItemInvoked` for this same item.
+5. Execute the captured command if the item is still owned, available, and on
    the same activation generation.
 
-Changing selection or style during a callback does not redirect the action.
-Removing, replacing, hiding, collapsing, disabling, detaching, or disposing the
-item cancels stale later stages. A newer nested activation also supersedes an
-older one.
+After command capture, changing selection or style during an activation callback
+does not redirect the action. Selection-notification callbacks run before that
+capture and may therefore update the binding chosen for the attempt. Removing,
+replacing, hiding, collapsing, disabling, detaching, or disposing the item
+cancels stale later stages. A newer nested activation also supersedes an older
+one.
 
 ## Appearance and Unicode
 

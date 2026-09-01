@@ -48,6 +48,24 @@ public sealed class InfoBarTests
         dismissed.ShouldBe(0);
     }
 
+    /// <summary>Verifies assigning false enters the same cancellable dismissal path as Dismiss.</summary>
+    [Fact]
+    public void IsOpen_WhenFalseRequestIsCancelled_RemainsOpen()
+    {
+        var bar = new InfoBar();
+        var requested = 0;
+        bar.DismissRequested += (_, eventArgs) =>
+        {
+            requested++;
+            eventArgs.Cancel = true;
+        };
+
+        bar.IsOpen = false;
+
+        bar.IsOpen.ShouldBeTrue();
+        requested.ShouldBe(1);
+    }
+
     /// <summary>Verifies successful dismissal commits state before ordered completion.</summary>
     [Fact]
     public void Dismiss_WhenAllowed_ClosesBeforeDismissed()

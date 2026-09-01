@@ -63,6 +63,9 @@ internal sealed class CommandBarItemPane: CompositeControlBase
                 ? "Deploy availability: enabled"
                 : "Deploy availability: disabled · activation is inert";
         };
+        var actions = new Wrap { Width = Length.Percent(100), Spacing = 1, LineSpacing = 1 };
+        actions.Children.Add(invoke);
+        actions.Children.Add(availability);
 
         return new DocPage(
             Title,
@@ -76,7 +79,7 @@ internal sealed class CommandBarItemPane: CompositeControlBase
                     "Activate Build or Deploy in the owner, invoke Deploy programmatically, or disable it. The three readouts distinguish the named item's event, the owner's forwarded event, and captured ICommand execution.",
                     new DocColumn(
                         bar,
-                        new DocRow(invoke, availability),
+                        actions,
                         availabilityLog,
                         itemLog,
                         ownerLog,

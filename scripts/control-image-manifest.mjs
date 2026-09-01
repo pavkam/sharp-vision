@@ -173,7 +173,7 @@ export const controls = [
     {
         doc: "notifications/info-bar",
         page: "InfoBar",
-        states: [{}],
+        states: [{ example: "Deployment requires attention" }],
     },
     {
         doc: "notifications/toast",

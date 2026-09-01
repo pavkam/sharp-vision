@@ -99,3 +99,25 @@ test("SuggestionInput open capture_WhenPopupIsContained_UsesStableExampleBounds"
 
     assert.equal(open.popup, undefined);
 });
+
+test("selectCaptureRegion_WhenPopupIsContained_UsesInsetExampleBounds", () => {
+    const before = parseCapture("abcd\nefgh\nijkl");
+    const after = parseCapture("abcd\nefGh\nijkl");
+
+    assert.deepEqual(
+        captureHelpers.selectCaptureRegion(
+            { top: 1, left: 1, bottom: 3, right: 4 },
+            { popup: undefined },
+            before,
+            after,
+        ),
+        { top: 2, left: 2, bottom: 2, right: 3 },
+    );
+});
+
+test("InfoBar capture_WhenMultipleExamplesExist_SelectsInteractiveSpecimen", () => {
+    const entry = controls.find(({ doc }) => doc === "notifications/info-bar");
+    const [defaultState] = entry.states;
+
+    assert.equal(defaultState.example, "Deployment requires attention");
+});

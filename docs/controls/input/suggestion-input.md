@@ -137,9 +137,16 @@ Public callbacks are reentrancy boundaries. If a property notification,
 changes the resolver, closes, detaches, or disposes the control, the older
 continuation cannot resume and overwrite that decision.
 
-Hiding or disabling the control or one of its ancestors suppresses rendering,
-input, and the active modal scope without cancelling current resolver work.
-Restoring availability resumes the still-open logical plane once. Detachment and
+Directly hiding or disabling the `SuggestionInput` closes its popup, ends the
+navigation session, and clears retained open intent without cancelling current
+resolver work. A completion may still publish its current result snapshot while
+the control is directly unavailable, but restoring availability leaves that
+snapshot closed until `Open()` or new editor input makes suggestions eligible to
+open again.
+
+Making an ancestor unavailable instead suppresses rendering and input while
+suspending the active modal scope; the popup remains logically open, and
+restoring ancestor availability re-enters that same scope once. Detachment and
 disposal revoke the lease, cancel the token, clear `IsResolving`, remove
 deferred selection work, and reject late completion. A completion begun while
 detached may apply only while that same detached lifetime remains current.

@@ -75,7 +75,7 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
         set => _ = SetProperty(ref field, value, InvalidationImpact.Measure);
     }
 
-    /// <summary>Gets or sets whether this retained notification occupies layout and accepts input.</summary>
+    /// <summary>Gets whether this retained notification is open; setting true opens it, while setting false requests cancellable dismissal.</summary>
     /// <exception cref="InvalidOperationException">The attached bar is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The bar is disposed.</exception>
     public bool IsOpen

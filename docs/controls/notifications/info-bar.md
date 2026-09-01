@@ -30,7 +30,7 @@ classDiagram
 | Inherited `Content` | `ControlBase?`                                   | `null`   | Supplies the caller-replaceable retained notification body.                     |
 | `Title`             | `string?`                                        | `null`   | Supplies optional single-line header text; terminal controls are rejected.      |
 | `Adornment`         | `Affix?`                                         | `null`   | Supplies an optional grapheme-safe adornment before the title.                  |
-| `IsOpen`            | `bool`                                           | `true`   | Controls whether the bar occupies layout, renders, and accepts input.           |
+| `IsOpen`            | `bool`                                           | `true`   | Opens on `true`; on `false`, requests cancellable dismissal before closing.     |
 | `IsDismissible`     | `bool`                                           | `true`   | Enables the trailing focusable dismiss affordance.                              |
 | `Style`             | `InfoBarStyle?`                                  | `null`   | Sets one complete local presentation or restores themed Control fallback.       |
 | `ActualStyle`       | `InfoBarStyle`                                   | Resolved | Reports the complete resolved presentation.                                     |
@@ -59,7 +59,8 @@ register no access keys; content controls retain their own access-key behavior.
 
 ## Dismissal and availability
 
-For an open bar, `Dismiss()` publishes an ordered transition:
+For an open bar, `Dismiss()` and assigning `IsOpen = false` enter the same
+ordered, cancellable transition:
 
 1. `DismissRequested` runs while `IsOpen` is still `true`.
 2. Cancellation keeps layout, focus, input, and open state unchanged.
@@ -67,6 +68,10 @@ For an open bar, `Dismiss()` publishes an ordered transition:
    layout and input, releases focus and pointer capture inside the bar, and
    publishes `PropertyChanged(nameof(IsOpen))`.
 4. `Dismissed` runs after closed state and required cleanup have committed.
+
+Consequently, the `IsOpen` setter may return with `IsOpen` still `true` when a
+`DismissRequested` subscriber cancels the request. Assigning `IsOpen = true`
+opens a closed bar directly and does not raise either dismissal event.
 
 Every requested subscriber is attempted. When cancellation is absent, property
 and completion publication continue after a callback failure unless a newer
