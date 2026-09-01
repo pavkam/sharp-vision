@@ -69,14 +69,14 @@ internal sealed class CommandBarSeparatorPane: CompositeControlBase
 
         return new DocPage(
             Title,
-            "<info>CommandBarSeparator</info> is a passive one-cell divider retained by a CommandBar. It participates in owner normalization but never becomes a focus, pointer, selection, or activation target.",
+            "<info>CommandBarSeparator</info> is a passive one-cell divider retained by a CommandBar. It defaults outside focus and pointer hit testing, and its owner never selects or invokes it.",
             new DocSection(
                 "│",
                 "Passive semantic divider",
                 "The Unicode rule uses an ASCII fallback and an Accent semantic face. Change its style or visibility through public properties; each change is observable on the named separator itself.",
                 new DocExample(
                     "Styled separator between live commands",
-                    "Cycle the preferred glyph, hide or show the separator, and activate either neighbor. The separator's PropertyChanged line proves its own state while the separate item line proves interaction skips it.",
+                    "Cycle the preferred glyph, hide or show the separator, and activate either neighbor. The separator's PropertyChanged line proves its own state while the separate item line proves default interaction skips it.",
                     new DocColumn(
                         bar,
                         new DocRow(cycleGlyph, toggleVisibility),

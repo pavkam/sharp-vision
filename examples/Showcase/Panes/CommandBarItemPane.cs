@@ -24,8 +24,8 @@ internal sealed class CommandBarItemPane: CompositeControlBase
         var availabilityLog = new Text("Deploy availability: enabled") { Overflow = Overflow.Wrap };
 
         var build = CreateItem("&Build", "Build", itemLog);
-        build.StartAffix = new Affix("◆", "*", SemanticColor.Accent);
         var deploy = CreateItem("界 &Deploy 🚀", "界 Deploy 🚀", itemLog);
+        deploy.StartAffix = new Affix("◆", "*", SemanticColor.Accent);
         deploy.EndAffix = new Affix("↑", "^", SemanticColor.Success);
         deploy.Style = CommandBarItemStyle.Default with
         {
@@ -81,7 +81,7 @@ internal sealed class CommandBarItemPane: CompositeControlBase
                         itemLog,
                         ownerLog,
                         commandLog),
-                    "var item = new CommandBarItem\n{\n    Text = \"界 &Deploy 🚀\",\n    EndAffix = new Affix(\"↑\", \"^\"),\n};\nitem.Invoked += (_, args) => Log(args.Cause);\ncommands.Items.Add(item);")));
+                    "var item = new CommandBarItem\n{\n    Text = \"界 &Deploy 🚀\",\n    StartAffix = new Affix(\"◆\", \"*\"),\n    EndAffix = new Affix(\"↑\", \"^\"),\n};\nitem.Invoked += (_, args) => Log(args.Cause);\ncommands.Items.Add(item);")));
     }
 
     /// <summary>Creates one item whose own activation event updates the visible evidence line.</summary>

@@ -46,8 +46,8 @@ internal sealed class BreadcrumbItemPane: CompositeControlBase
 
         var path = new Breadcrumb { Width = Length.Cells(42) };
         path.Items.Add(home);
-        path.Items.Add(design);
         path.Items.Add(archive);
+        path.Items.Add(design);
         path.CurrentChanged += (_, eventArgs) =>
             currentLog.Content =
                 $"Breadcrumb.CurrentChanged: {Plain(eventArgs.PreviousItem)} → {Plain(eventArgs.CurrentItem)}";
@@ -69,7 +69,7 @@ internal sealed class BreadcrumbItemPane: CompositeControlBase
             new DocSection(
                 "🧭",
                 "Semantic path item",
-                "The styled Unicode Design item exposes mnemonic text, current state, availability, an item event, and ICommand execution. Archive remains visible but unavailable.",
+                "The styled Unicode Design item exposes mnemonic text, current state, availability, an item event, and ICommand execution. Archive is a visible unavailable ancestor before the current Design item.",
                 new DocExample(
                     "Current item activation and availability",
                     "Activate Home or Design through the owner, invoke Design programmatically, or disable it. The readouts show the named item's event after current-state commit and before command execution.",
