@@ -666,6 +666,56 @@ public sealed class CommandPaletteSurfaceTests
         list.ActiveIndex.ShouldBe(-1);
     }
 
+    /// <summary>Verifies a stale opening index is not restored merely because it still happens to
+    /// fall within a refreshed, same-or-larger but semantically unrelated result set: a bounds-only
+    /// guard would spuriously accept it, so the fix must additionally prove the opening snapshot's
+    /// items were never replaced during the session.</summary>
+    [Fact]
+    public async Task Close_WhenRefreshedResultsReplaceUnrelatedSameOrLargerSet_ResetsStaleOpeningIndexAsync()
+    {
+        // Arrange
+        var palette = new CommandPalette
+        {
+            Width = Length.Cells(18),
+            Resolver = static (searchTerms, _) => ValueTask.FromResult<IReadOnlyList<object?>>(
+                searchTerms.Length == 0
+                    ? Enumerable.Range(0, 8).Select(index => (object?) $"Item {index}").ToArray()
+                    : ["Unrelated 0", "Unrelated 1", "Unrelated 2"])
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            palette,
+            new Size(24, 10),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => palette.Open(), "open command palette results");
+        var list = OwnedTree.Find<UiListView>(palette).ShouldNotBeNull();
+        await surface.Keyboard.PressAsync(Code.Down);
+        await surface.Keyboard.PressAsync(Code.Down);
+        await surface.Keyboard.PressAsync(Code.Enter);
+        palette.IsOpen.ShouldBeFalse();
+        list.SelectedIndex.ShouldBe(2);
+        await surface.UpdateAsync(() => palette.Open(), "reopen accepted command palette results");
+
+        // Act: a filter keystroke swaps Items for an unrelated 3-item set while the session
+        // remains open. Index 2 is still in bounds against the new count, so a bounds-only guard
+        // would spuriously restore it on cancel.
+        await surface.Application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                palette.Text = "filter";
+            },
+            TestContext.Current.CancellationToken);
+        await surface.Application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        // Assert
+        palette.IsOpen.ShouldBeFalse();
+        palette.Items.Count.ShouldBe(3);
+        list.SelectedIndex.ShouldBe(-1);
+        list.ActiveIndex.ShouldBe(-1);
+    }
+
     /// <summary>Verifies a first-result selection deferred while detached is reconciled after
     /// attachment so immediate Enter accepts the refreshed first item.</summary>
     [Fact]

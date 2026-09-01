@@ -27,6 +27,10 @@ public sealed class CommandPalette: CompositeControlBase
     private int _resolutionGeneration;
     private int _openingSelectedIndex = -1;
     private int _openingCurrentIndex = -1;
+    private int _itemsVersion;
+    private int _selectionVersion;
+    private int _openingItemsVersion;
+    private int _openingSelectionVersion;
     private int? _pendingFirstSelectionResolutionGeneration;
     private ulong _pendingFirstSelectionSessionGeneration;
     private Dispatcher? _pendingFirstSelectionDispatcher;
@@ -527,6 +531,8 @@ public sealed class CommandPalette: CompositeControlBase
     {
         _openingSelectedIndex = _list.SelectedIndex;
         _openingCurrentIndex = _list.ActiveIndex;
+        _openingItemsVersion = _itemsVersion;
+        _openingSelectionVersion = _selectionVersion;
         _itemActivation = null;
     }
 
@@ -567,8 +573,21 @@ public sealed class CommandPalette: CompositeControlBase
     private void CancelNavigationSession()
     {
         _itemActivation = null;
-        var selectedIndex = IsCurrentResultIndex(_openingSelectedIndex) ? _openingSelectedIndex : -1;
-        var currentIndex = IsCurrentResultIndex(_openingCurrentIndex) ? _openingCurrentIndex : -1;
+
+        // A stale index that still happens to fall in range must not be restored: the version
+        // guard proves the opening snapshot's items and selection are still the ones this session
+        // opened against, not merely that the number it captured is coincidentally in bounds
+        // against a since-replaced result set (for example a filter keystroke swapping Items for
+        // an unrelated, same-or-larger-count snapshot while the session remained open).
+        var openingSnapshotIsCurrent =
+            _itemsVersion == _openingItemsVersion &&
+            _selectionVersion == _openingSelectionVersion;
+        var selectedIndex = openingSnapshotIsCurrent && IsCurrentResultIndex(_openingSelectedIndex)
+            ? _openingSelectedIndex
+            : -1;
+        var currentIndex = openingSnapshotIsCurrent && IsCurrentResultIndex(_openingCurrentIndex)
+            ? _openingCurrentIndex
+            : -1;
         _list.SelectedIndex = selectedIndex;
         _list.SetProvisionalCurrentIndex(currentIndex);
     }
@@ -753,8 +772,10 @@ public sealed class CommandPalette: CompositeControlBase
             return;
         }
 
+        _itemsVersion++;
         _list.Items = results;
         _list.SelectedIndex = -1;
+        _selectionVersion++;
         NotifyPropertyChanged(nameof(Items), InvalidationImpact.None);
 
         if (!IsCurrentResolution(lease))
@@ -883,6 +904,7 @@ public sealed class CommandPalette: CompositeControlBase
             return;
         }
 
+        _itemsVersion++;
         _list.Items = [];
         NotifyPropertyChanged(nameof(Items), InvalidationImpact.None);
 
