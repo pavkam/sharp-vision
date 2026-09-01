@@ -163,14 +163,7 @@ export const controls = [
     {
         doc: "notifications/info-bar",
         page: "InfoBar",
-        states: [
-            {},
-            {
-                name: "vetoed",
-                example: "Dismissal veto and event order",
-                actions: [{ click: "Dismiss from content" }],
-            },
-        ],
+        states: [{}],
     },
     {
         doc: "notifications/toast",
