@@ -65,6 +65,16 @@ internal sealed class CodeViewPane: CompositeControlBase
         var expandAll = new Button("&Expand folds");
         expandAll.Click += (_, _) => view.ExpandAll();
 
+        var wrapStatus = new Text("Overflow: Visible (long lines scroll horizontally)");
+        var toggleWrap = new Button("&Toggle word wrap");
+        toggleWrap.Click += (_, _) =>
+        {
+            view.Overflow = view.Overflow == Overflow.Visible ? Overflow.Wrap : Overflow.Visible;
+            wrapStatus.Content = view.Overflow == Overflow.Visible
+                ? "Overflow: Visible (long lines scroll horizontally)"
+                : "Overflow: Wrap (long lines wrap into continuation rows)";
+        };
+
         const string recipe = """
             var view = new CodeView
             {
@@ -79,12 +89,14 @@ internal sealed class CodeViewPane: CompositeControlBase
 
         var example = new DocExample(
             "A read-only, selectable, foldable Rust function",
-            "Click and drag to select text, or use the keyboard: arrow keys move the caret, Shift extends the selection, and Ctrl+A selects everything. Click a ▼/▶ gutter arrow to fold or unfold one range, or right-click for a context menu with Copy, Select All, and whole-document folding commands.",
+            "Click and drag to select text, or use the keyboard: arrow keys move the caret, Shift extends the selection, and Ctrl+A selects everything. Click a ▼/▶ gutter arrow to fold or unfold one range, or right-click for a context menu with Copy, Select All, and whole-document folding commands. Toggle word wrap to switch between horizontal scrolling and wrapped continuation rows.",
             new DocColumn(
                 view,
                 status,
+                wrapStatus,
                 new DocRow(selectAll, clearSelection),
-                new DocRow(collapseAll, expandAll)),
+                new DocRow(collapseAll, expandAll),
+                new DocRow(toggleWrap)),
             recipe)
         {
             Width = Length.Percent(75),
