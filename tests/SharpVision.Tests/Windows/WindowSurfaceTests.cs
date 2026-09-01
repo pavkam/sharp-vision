@@ -970,13 +970,15 @@ public sealed class WindowSurfaceTests
         // not the close chrome, which never armed a press here - is the one that claims this
         // Leave, instead of the event silently escaping the Window unhandled.
         var leaveEscapedWindowUnhandled = false;
-        using var unhandledLeaveProbe = stage.AddHandler(Events.Pointer, (_, args) =>
-        {
-            if (args.Phase == RoutingPhase.Bubble && args.Pointer.Action == PointerAction.Leave)
+        var unhandledLeaveProbe = await surface.Application.Dispatcher.InvokeAsync(
+            () => stage.AddHandler(Events.Pointer, (_, args) =>
             {
-                leaveEscapedWindowUnhandled = true;
-            }
-        });
+                if (args.Phase == RoutingPhase.Bubble && args.Pointer.Action == PointerAction.Leave)
+                {
+                    leaveEscapedWindowUnhandled = true;
+                }
+            }),
+            TestContext.Current.CancellationToken);
 
         // Act — begin a title drag, then leave the terminal with the button still held
         await surface.Pointer.MoveToAsync(window, new Point(4, 0));
@@ -995,6 +997,10 @@ public sealed class WindowSurfaceTests
 
         // Assert — the window did not follow the bare cursor
         window.Bounds.ShouldBe(boundsAfterLeave);
+
+        await surface.Application.Dispatcher.InvokeAsync(
+            unhandledLeaveProbe.Dispose,
+            TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies dragging the bottom-right corner grows the Window without moving its origin.</summary>
@@ -1455,13 +1461,15 @@ public sealed class WindowSurfaceTests
         // Window's own gesture-ending Leave branch - not the close-chrome PressBehavior that
         // otherwise gets first crack at every pointer event - is the one that claims this Leave.
         var leaveEscapedWindowUnhandled = false;
-        using var unhandledLeaveProbe = stage.AddHandler(Events.Pointer, (_, args) =>
-        {
-            if (args.Phase == RoutingPhase.Bubble && args.Pointer.Action == PointerAction.Leave)
+        var unhandledLeaveProbe = await surface.Application.Dispatcher.InvokeAsync(
+            () => stage.AddHandler(Events.Pointer, (_, args) =>
             {
-                leaveEscapedWindowUnhandled = true;
-            }
-        });
+                if (args.Phase == RoutingPhase.Bubble && args.Pointer.Action == PointerAction.Leave)
+                {
+                    leaveEscapedWindowUnhandled = true;
+                }
+            }),
+            TestContext.Current.CancellationToken);
 
         // Act — begin a corner resize, then leave the terminal with the button still held
         await surface.Pointer.MoveToAsync(window, new Point(9, 3));
@@ -1480,6 +1488,10 @@ public sealed class WindowSurfaceTests
 
         // Assert — the window did not keep resizing under the bare cursor
         window.Bounds.ShouldBe(boundsAfterLeave);
+
+        await surface.Application.Dispatcher.InvokeAsync(
+            unhandledLeaveProbe.Dispose,
+            TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies terminal resize pushes an Overlay-hosted Window inside the new client bounds.</summary>

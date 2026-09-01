@@ -34,7 +34,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     // VALUE for the same property renders those exact characters verbatim via GetRawText(). This
     // still escapes the characters a JSON string literal requires escaped (quote, backslash,
     // control characters) - only the blanket non-ASCII escaping is relaxed.
-    private static readonly JsonSerializerOptions LabelSerializerOptions = new()
+    private static readonly JsonSerializerOptions _labelSerializerOptions = new()
     {
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
@@ -602,7 +602,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
                 node.Children.Add(BuildNode(
                     property.Value,
                     childPath,
-                    JsonSerializer.Serialize(property.Name, LabelSerializerOptions),
+                    JsonSerializer.Serialize(property.Name, _labelSerializerOptions),
                     node,
                     false));
             }

@@ -3,6 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 /// <summary>Verifies the embedded theme catalog discovers, orders, loads, and caches themes.</summary>
@@ -94,21 +95,22 @@ public sealed class ThemeCatalogTests
     [Fact]
     public void Deserialize_WhenMalformedJsonIsNestedInStyles_ReportsLineAndColumn()
     {
-        const string malformed = """
-            {
-              "name": "Test",
-              "styles": {
-                "control": {
-                  "normal": {,
-                  }
-                }
-              }
-            }
-            """;
+        // A plain escaped literal, not a raw string: a triple-quoted raw string is JSON-injected
+        // by the analyzer, which then reports this deliberately malformed content as an error.
+        const string malformed =
+            "{\n" +
+            "  \"name\": \"Test\",\n" +
+            "  \"styles\": {\n" +
+            "    \"control\": {\n" +
+            "      \"normal\": {,\n" +
+            "      }\n" +
+            "    }\n" +
+            "  }\n" +
+            "}";
 
         var readerError = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<JsonElement>(malformed));
-        readerError.LineNumber.ShouldNotBeNull();
-        readerError.BytePositionInLine.ShouldNotBeNull();
+        _ = readerError.LineNumber.ShouldNotBeNull();
+        _ = readerError.BytePositionInLine.ShouldNotBeNull();
 
         var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(malformed, "broken"));
 

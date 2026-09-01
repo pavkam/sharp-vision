@@ -87,7 +87,7 @@ public sealed class DateInput: InputBase
         // than a style slot DateInput owns directly, so nothing raises PropertyChanged for it on
         // either a local CalendarStyle assignment or a theme swap unless something forwards
         // Calendar's own notification through. This bridge does exactly that.
-        _ = RegisterRetainedPartProperty<CalendarStyle>(
+        _ = RegisterRetainedPartProperty(
             _calendarDropDown.Calendar,
             nameof(Calendar.ActualStyle),
             nameof(ActualCalendarStyle),

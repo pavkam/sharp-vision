@@ -163,9 +163,10 @@ public sealed class SpinnerTests
     [Fact]
     public void Render_WhenCustomFrameIsAmbiguousWidthAndPolicyIsWide_UsesPortableFallback()
     {
-        // Arrange - U+2600 BLACK SUN WITH RAYS is one cell under Ambiguous.Narrow (so it passes
+        // Arrange - U+25C6 BLACK DIAMOND (the same glyph ChaseIndicatorStyle.Diamond uses to
+        // exercise this identical policy split) is one cell under Ambiguous.Narrow (so it passes
         // SpinnerStyle construction) but two cells under Ambiguous.Wide.
-        var style = SpinnerStyle.Default with { Frames = [new Rune('☀'), new Rune('*')] };
+        var style = SpinnerStyle.Default with { Frames = [new Rune('◆'), new Rune('*')] };
         var spinner = new Spinner { Style = style };
         spinner.SetCellPolicy(new UnicodePolicy(Ambiguous.Wide));
         new LayoutEngine().Layout(spinner, new Size(1, 1));
