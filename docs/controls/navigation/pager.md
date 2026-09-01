@@ -122,6 +122,12 @@ use `SemanticColor.ControlText`, unavailable endpoint navigation uses
 current number uses `PagerStyle.CurrentPageColor`. These non-current roles are
 code-owned rather than additional public style knobs.
 
+Focus retains the theme's authored focus colors and text decoration without the
+generic borderless whole-control reverse-video fallback. Each Pager target owns
+a semantic foreground, so reversing the owner would incorrectly turn current,
+omitted, and unavailable colors into separate background blocks and would fill
+unused cells after the final target.
+
 Zero pages render no targets. One page renders only page number `1` when it
 fits. The sealed control renderer owns intrinsic chrome; Pager renders only
 targets to the cell canvas and never emits terminal protocol bytes.
@@ -189,6 +195,8 @@ pager.PageChanged += (_, change) =>
   cannot publish stale typed events.
 - Ideal and finite layouts retain whole targets deterministically, use invariant
   page text, and resolve glyph fallbacks against the live cell policy.
+- Focus preserves semantic target foregrounds without reversing the owner or
+  filling unused cells.
 - Keyboard and pointer input converge on the same page transition, while capture
   cancellation prevents stale-cell activation.
 - Zero- and one-page ranges stay outside Tab traversal and cannot activate a

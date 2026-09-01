@@ -892,9 +892,30 @@ public sealed class Theme
                 LazyThreadSafetyMode.ExecutionAndPublication),
             this).Value;
 
+    /// <summary>Gets every interactive state rebased onto passive borderless geometry without the
+    /// reverse-video safety net used by a generic borderless focus target.</summary>
+    /// <remarks>
+    /// A targeted control paints independently meaningful targets with semantic foregrounds.
+    /// Reversing the owner would turn those target colors into unrelated background blocks and
+    /// reverse any unused owner cells. Authored focus colors and text decoration remain intact,
+    /// along with hover, press, selection, current, and disabled state resolution.
+    /// </remarks>
+    /// <returns>The cached complete per-state control-style set for targeted surfaces.</returns>
+    internal StyleStates<ControlStyle> GetTargetedInteractiveControlStyleSet() =>
+        (StyleStates<ControlStyle>) _styleSets.GetOrAdd(
+            (typeof(ControlStyle), "$targetedInteractiveControl", ControlStyle.Default),
+            static (_, theme) => new Lazy<object>(
+                () => theme.BuildInteractiveStyleSet(
+                    theme.GetStyleSet(ControlStyle.Default),
+                    preservePointerBackground: false,
+                    applyBorderlessFocusFallback: false),
+                LazyThreadSafetyMode.ExecutionAndPublication),
+            this).Value;
+
     private StyleStates<TGeometry> BuildInteractiveStyleSet<TGeometry>(
         StyleStates<TGeometry> geometry,
-        bool preservePointerBackground)
+        bool preservePointerBackground,
+        bool applyBorderlessFocusFallback = true)
         where TGeometry : ControlStyle
     {
         var input = GetStyleSet(InputStyle.Default);
@@ -910,7 +931,7 @@ public sealed class Theme
                 geometry.Normal,
                 StyleStatesExtensions.Diff(input.Normal, state, input.AuthoredFor(stateName)));
 
-            if (stateName is "focused" or "focusWithin")
+            if (applyBorderlessFocusFallback && (stateName is "focused" or "focusWithin"))
             {
                 rebased = ApplyBorderlessFocusFallback(rebased, geometry.Normal);
             }

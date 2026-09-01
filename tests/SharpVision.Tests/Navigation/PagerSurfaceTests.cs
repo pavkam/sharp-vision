@@ -252,6 +252,60 @@ public sealed class PagerSurfaceTests
         omissionFrame.GetCell(Origin(omission.Bounds)).Style.Foreground.ShouldBe(Color.FromHex("#117733"));
     }
 
+    /// <summary>Verifies focus keeps each Pager target's semantic foreground visible instead of
+    /// reversing the whole borderless owner into target-colored background blocks.</summary>
+    [Fact]
+    public async Task Render_WhenFocusedAtFinalPage_PreservesSemanticTargetColorsAsync()
+    {
+        // Arrange
+        var pager = new Pager
+        {
+            PageCount = 18,
+            PageIndex = 17,
+            MaximumVisiblePages = 5,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pager,
+            new Size(40, 1),
+            ThemeCatalog.Dark,
+            TestContext.Current.CancellationToken);
+        var restingBackground = surface.Cell(new Point(
+            pager.ContentBounds.Right - 1,
+            pager.ContentBounds.Y)).Style.Background;
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert
+        surface.ShouldHaveFocus(pager);
+        var ordinary = pager.LayoutSnapshot.Targets.Single(target =>
+            target.Kind == PagerTargetKind.Number && target.PageIndex == 16);
+        var current = pager.LayoutSnapshot.Targets.Single(static target => target.IsCurrent);
+        var omission = pager.LayoutSnapshot.Targets.First(static target => target.Kind == PagerTargetKind.Omitted);
+        var disabled = pager.LayoutSnapshot.Targets.Single(static target => target.Kind == PagerTargetKind.Next);
+        var ordinaryCell = surface.Cell(Origin(ordinary.Bounds));
+        var currentCell = surface.Cell(Origin(current.Bounds));
+        var omissionCell = surface.Cell(Origin(omission.Bounds));
+        var disabledCell = surface.Cell(Origin(disabled.Bounds));
+        var unusedCell = surface.Cell(new Point(pager.ContentBounds.Right - 1, pager.ContentBounds.Y));
+
+        foreach (var cell in new[] { ordinaryCell, currentCell, omissionCell, disabledCell, unusedCell })
+        {
+            cell.Style.Background.ShouldBe(restingBackground);
+            (cell.Style.Attributes & TerminalAttributes.Reverse).ShouldBe(TerminalAttributes.None);
+        }
+
+        omissionCell.Text.ShouldBe(omission.Text);
+        disabledCell.Text.ShouldBe(disabled.Text);
+        ordinaryCell.Style.Foreground.ShouldBe(Color.FromHex("#ffffff"));
+        currentCell.Style.Foreground.ShouldBe(Color.FromHex("#00ffff"));
+        omissionCell.Style.Foreground.ShouldBe(Color.FromHex("#7f7f7f"));
+        // The mounted terminal's Basic16 profile projects both Dark's steel-gray omission and
+        // slate-gray disabled role to the same ANSI bright-black entry.
+        disabledCell.Style.Foreground.ShouldBe(Color.FromHex("#7f7f7f"));
+    }
+
     /// <summary>Verifies finite retention keeps the current number before endpoint and nearest-window candidates.</summary>
     [Fact]
     public void Render_WhenWidthIsNarrow_RetainsWholeTargetsByPriority()

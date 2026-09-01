@@ -6,8 +6,9 @@ namespace SharpVision.Navigation;
 using System.Diagnostics.CodeAnalysis;
 
 /// <summary>Defines one complete immutable Pager presentation.</summary>
-/// <remarks>The passive chrome falls back to the standard interactive-control role. Navigation
-/// glyphs and current-page emphasis are code-owned unless a local style replaces them.</remarks>
+/// <remarks>The passive chrome retains every authored interactive state without applying a
+/// whole-surface reverse-video fallback. Navigation glyphs and current-page emphasis are
+/// code-owned unless a local style replaces them.</remarks>
 [PublicAPI]
 public sealed record PagerStyle: ControlStyle
 {
@@ -22,7 +23,7 @@ public sealed record PagerStyle: ControlStyle
 
     /// <summary>Gets the primary Pager style definition.</summary>
     internal static StyleDefinition<PagerStyle> Definition { get; } = StyleDefinitions.Control(
-        static theme => theme.GetInteractiveControlStyleSet(),
+        static theme => theme.GetTargetedInteractiveControlStyleSet(),
         Complete,
         static (previous, previousTheme, current, currentTheme) =>
             previous.FirstPageGlyph != current.FirstPageGlyph ||
