@@ -106,7 +106,7 @@ these infrastructure namespaces:
 | `SharpVision.Controls.Collections` | Lists, tabs, trees, typed collections, and item realization.                   |
 | `SharpVision.Controls.Scrolling`   | The ScrollBar control and its glyph and style values.                          |
 | `SharpVision.Menus`                | Menus, typed menu entries, and context menus.                                  |
-| `SharpVision.Navigation`           | Sidebar navigation controls and entries.                                       |
+| `SharpVision.Navigation`           | Breadcrumb paths, sidebar navigation controls, and entries.                    |
 | `SharpVision.Surfaces`             | Shared elevated-surface lifecycle, bounds, and modality coordination.          |
 | `SharpVision.Popups`               | Anchored popup, flyout, and tooltip surfaces.                                  |
 | `SharpVision.Windows`              | Free-standing retained window surfaces.                                        |

@@ -121,6 +121,14 @@ export const controls = [
         states: [{ actions: [{ click: "More options" }] }],
     },
     { doc: "menus/context-menu", page: "ContextMenu" },
+    {
+        doc: "navigation/breadcrumb",
+        page: "Breadcrumb",
+        states: [
+            {},
+            { name: "overflow", actions: [{ click: "Narrow path" }] },
+        ],
+    },
     { doc: "navigation/navigation-view", page: "NavigationView" },
     { doc: "layout/dock", page: "Dock" },
     { doc: "layout/expander", page: "Expander" },

@@ -177,6 +177,7 @@ See the [intrinsic appearance rules](../concepts/styling.md#shared-chrome).
 
 ### Menus and navigation
 
+- [Breadcrumb](navigation/breadcrumb.md#overview)
 - [Menu](menus/menu.md#overview)
 - [MenuItem and MenuSeparator](menus/menu-item.md#overview)
 - [ContextMenu](menus/context-menu.md#overview)

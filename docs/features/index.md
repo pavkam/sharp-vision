@@ -19,6 +19,7 @@ table; the current support state for each terminal protocol lives only in the
 | Scrollable content                               | `Container.AutoScroll` and scrollbar policy                          | [Scrolling](../concepts/scrolling.md#overview)                     |
 | Styling and themes                               | `Color` and `Theme`                                                  | [Themes](../concepts/themes.md#overview)                           |
 | Unicode-safe cells                               | Grapheme segmentation, width policy, wide-cell repair                | [Unicode geometry](../concepts/unicode-cell-geometry.md#overview)  |
+| Hierarchical path navigation                     | `Breadcrumb` and `BreadcrumbItem`                                    | [Breadcrumb](../controls/navigation/breadcrumb.md#overview)        |
 | Menus, popups, and windows                       | Retained controls and popup render layer                             | [Control catalog](../controls/index.md#control-catalog)            |
 | Images                                           | `Image`, `ImageStretch`, and immutable graphics sources              | [Image control](../controls/display/image.md#overview)             |
 | Toast notifications                              | `Toast` and its edge-slot stacking                                   | [Toast](../controls/notifications/toast.md#overview)               |

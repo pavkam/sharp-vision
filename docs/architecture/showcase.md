@@ -82,7 +82,7 @@ sidebar organizes its 64 entries by primary use:
   ColorPicker, CommandPalette, ComboBox, CurrencyInput, NumberInput,
   RadioButton, Slider, SuggestionInput, TextInput, and TimeInput.
 - Collections: JsonView, ListView, TabControl, Table, and TreeView.
-- Navigation: Menu, MenuItem, and NavigationView.
+- Navigation: Breadcrumb, Menu, MenuItem, and NavigationView.
 - Layout: Dock, Expander, Grid, GroupBox, Overlay, ScrollBar, SplitPane, Stack,
   and Wrap.
 - Display: Canvas drawing, CodeView, Document, FigletText, Image, Markdown,
