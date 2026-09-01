@@ -712,6 +712,41 @@ public sealed class DateInputTests
         control.ActualCalendarStyle.ShouldBe(calendar.ActualStyle);
     }
 
+    /// <summary>Verifies assigning CalendarStyle raises PropertyChanged for ActualCalendarStyle
+    /// when the resolved presentation actually changes.</summary>
+    [Fact]
+    public void CalendarStyle_WhenAssignedStyleChangesResolvedValue_RaisesActualCalendarStylePropertyChanged()
+    {
+        using var control = new DateInput();
+        var style = CalendarStyle.Default with { SelectedDayColor = Color.Rgb(65, 43, 21) };
+        var notifications = new List<string?>();
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        control.CalendarStyle = style;
+
+        notifications.ShouldContain(nameof(DateInput.ActualCalendarStyle));
+        control.ActualCalendarStyle.ShouldBe(style);
+    }
+
+    /// <summary>Verifies a Theme swap that changes the owned Calendar's resolved presentation
+    /// raises PropertyChanged for ActualCalendarStyle on the host.</summary>
+    [Fact]
+    public void PropagateTheme_WhenCalendarPresentationDiffers_RaisesActualCalendarStylePropertyChanged()
+    {
+        var previousTheme = ThemeCatalog.Parse(ThemeJson.Create(accent: "#010203"));
+        var currentTheme = ThemeCatalog.Parse(ThemeJson.Create(accent: "#040506"));
+        using var control = new DateInput();
+        control.PropagateTheme(previousTheme);
+        var calendar = OwnedTree.Find<UiCalendar>(control).ShouldNotBeNull();
+        var notifications = new List<string?>();
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        control.PropagateTheme(currentTheme);
+
+        notifications.ShouldContain(nameof(DateInput.ActualCalendarStyle));
+        control.ActualCalendarStyle.ShouldBe(calendar.ActualStyle);
+    }
+
     /// <summary>Verifies reading Value on a detached, never-mounted control falls back to the
     /// system clock instead of throwing or returning null, proving the lazy default still
     /// resolves without a dispatcher to observe.</summary>

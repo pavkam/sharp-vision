@@ -82,6 +82,16 @@ public sealed class DateInput: InputBase
             cancelSession: _calendarDropDown.CancelSession,
             acceptSession: _calendarDropDown.AcceptSession);
         _popup.ContentHeightLimit = Length.Cells(10);
+
+        // ActualCalendarStyle is a live projection of the owned Calendar's own ActualStyle rather
+        // than a style slot DateInput owns directly, so nothing raises PropertyChanged for it on
+        // either a local CalendarStyle assignment or a theme swap unless something forwards
+        // Calendar's own notification through. This bridge does exactly that.
+        _ = RegisterRetainedPartProperty<CalendarStyle>(
+            _calendarDropDown.Calendar,
+            nameof(Calendar.ActualStyle),
+            nameof(ActualCalendarStyle),
+            () => _calendarDropDown.Calendar.ActualStyle);
         EnablePressActivation();
         _segments = EnableSegmentEditing(
             BuildSegments,
