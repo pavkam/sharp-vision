@@ -68,7 +68,7 @@ public sealed class SplitPane: Container
                 ref field,
                 value,
                 InvalidationImpact.Measure,
-                CancelDividerDragAndRefresh);
+                CancelDividerDragAndInvalidateArrangement);
         }
     } = Orientation.Horizontal;
 
@@ -248,11 +248,7 @@ public sealed class SplitPane: Container
     {
         var count = GetParticipants(out var first, out var second);
 
-        LogicalDividerBounds = default;
-        MinimumFirstPaneExtent = 0;
-        MaximumFirstPaneExtent = 0;
-        _effectiveFirstPaneExtent = 0;
-        _dividerExcludedPool = 0;
+        ClearArrangedDividerState();
 
         if (count == 0)
         {
@@ -865,6 +861,22 @@ public sealed class SplitPane: Container
         RefreshDividerInteractionState();
     }
 
+    private void CancelDividerDragAndInvalidateArrangement()
+    {
+        CancelDividerDrag();
+        ClearArrangedDividerState();
+        RefreshDividerInteractionState();
+    }
+
+    private void ClearArrangedDividerState()
+    {
+        LogicalDividerBounds = default;
+        MinimumFirstPaneExtent = 0;
+        MaximumFirstPaneExtent = 0;
+        _effectiveFirstPaneExtent = 0;
+        _dividerExcludedPool = 0;
+    }
+
     private void CancelDividerDrag()
     {
         _drag.Cancel(releaseCapture: true);
@@ -944,14 +956,8 @@ public sealed class SplitPane: Container
             visibleDivider.Width > 0 &&
             visibleDivider.Height > 0;
 
-        ReconcileDividerPointerOver();
-
-        if (_dividerInteractionAvailable == available)
-        {
-            return;
-        }
-
         _dividerInteractionAvailable = available;
+        ReconcileDividerPointerOver();
 
         if (previousCanTabStop != CanTabStop)
         {
@@ -961,7 +967,7 @@ public sealed class SplitPane: Container
 
     private void ReconcileDividerPointerOver()
     {
-        var value = IsResizable &&
+        var value = _dividerInteractionAvailable &&
             EffectiveIsEnabled &&
             EffectiveIsVisible &&
             IsPointerOver &&

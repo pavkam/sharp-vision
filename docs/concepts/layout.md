@@ -217,7 +217,11 @@ and reserves one divider cell between them. Its fixed or percentage leading
 request and both panes' limits resolve against the divider-excluded content-axis
 pool; the same allocation maps to left/right or top/bottom geometry. The divider
 supplies focusable keyboard and captured-pointer resizing without replacing
-descendant input routing.
+descendant input routing. When `AutoScroll` arms the split axis, each measure
+pass resolves percentage requests against the candidate visible viewport minus
+the divider cell while the trailing proportional pane retains its intrinsic
+extent. Automatic scrollbar feedback repeats that resolution against the
+narrowed candidate viewport before committing the final extent and rail cells.
 
 `SharpVision.Terminal.Rendering.TerminalCanvas` is a frame-owned drawing API,
 not a layout panel or a `Container`. Custom controls draw through it in

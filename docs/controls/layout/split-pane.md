@@ -25,16 +25,20 @@ classDiagram
 
 ## API
 
-| Member                 | Type                                  | Default       | Description                                                                          |
-| ---------------------- | ------------------------------------- | ------------- | ------------------------------------------------------------------------------------ |
-| Inherited `Children`   | `ControlCollection`                   | Empty         | Owns at most two panes in leading-to-trailing source order.                          |
-| `Orientation`          | `Orientation`                         | `Horizontal`  | Places the first pane left of or above the second pane.                              |
-| `FirstPaneLength`      | `Length`                              | `Percent(50)` | Requests the leading pane's border box in cells or percentage, excluding its margin. |
-| `IsResizable`          | `bool`                                | `true`        | Enables divider keyboard and primary-pointer resizing.                               |
-| `SmallChange`          | `int`                                 | `1`           | Non-negative arrow-key change in terminal cells.                                     |
-| `LargeChange`          | `int`                                 | `10`          | Non-negative Page Up and Page Down change in terminal cells.                         |
-| Inherited `CanTabStop` | `bool`                                | `false`       | Read-only; true while the visible divider can accept interaction.                    |
-| `SplitChanged`         | `EventHandler<SplitChangedEventArgs>` | —             | Raised after a changed authored leading-pane length commits.                         |
+| Member                    | Type                                  | Default                              | Description                                                                          |
+| ------------------------- | ------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------ |
+| Inherited `Children`      | `ControlCollection`                   | Empty                                | Owns at most two panes in leading-to-trailing source order.                          |
+| `Orientation`             | `Orientation`                         | `Horizontal`                         | Places the first pane left of or above the second pane.                              |
+| `FirstPaneLength`         | `Length`                              | `Percent(50)`                        | Requests the leading pane's border box in cells or percentage, excluding its margin. |
+| `IsResizable`             | `bool`                                | `true`                               | Enables divider keyboard and primary-pointer resizing.                               |
+| `SmallChange`             | `int`                                 | `1`                                  | Non-negative arrow-key change in terminal cells.                                     |
+| `LargeChange`             | `int`                                 | `10`                                 | Non-negative Page Up and Page Down change in terminal cells.                         |
+| `CanTabStop`              | `bool`                                | `false`                              | Read-only; true while the visible divider can accept interaction.                    |
+| Inherited `Border`        | `Border`                              | Theme `control` profile (borderless) | Public complete local frame authoring, enabled by `EnableChromeAuthoring()`.         |
+| Inherited `Shadow`        | `Shadow`                              | Theme `control` profile (none)       | Public complete local shadow authoring, enabled by `EnableChromeAuthoring()`.        |
+| Inherited `ResetBorder()` | `void`                                | —                                    | Returns the local border to Theme ownership.                                         |
+| Inherited `ResetShadow()` | `void`                                | —                                    | Returns the local shadow to Theme ownership.                                         |
+| `SplitChanged`            | `EventHandler<SplitChangedEventArgs>` | —                                    | Raised after a changed authored leading-pane length commits.                         |
 
 `FirstPaneLength` accepts only `Length.Cells` and `Length.Percent`;
 `Length.Auto` and `Length.Star` throw `ArgumentException`. `Orientation` rejects

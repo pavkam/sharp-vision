@@ -276,6 +276,33 @@ public sealed class SplitPaneSurfaceTests
         pane.HasDividerPointerOver().ShouldBeFalse();
     }
 
+    /// <summary>Verifies a retained Hidden pane clears divider presentation under a stationary pointer
+    /// even though the pane keeps its arranged track and the logical divider stays in place.</summary>
+    [Fact]
+    public async Task Hover_WhenPaneBecomesHidden_ClearsWithoutPointerMotionAsync()
+    {
+        // Arrange
+        var pane = CreatePane();
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 3),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(pane, new Point(5, 1));
+        pane.HasDividerPointerOver().ShouldBeTrue();
+        var dividerBounds = pane.LogicalDividerBounds;
+
+        // Act
+        await surface.UpdateAsync(
+            () => pane.Children[0].Visibility = Visibility.Hidden,
+            "hide the hovered SplitPane pane");
+
+        // Assert
+        pane.Children[0].Bounds.ShouldBe(new Rect(0, 0, 5, 3));
+        pane.LogicalDividerBounds.ShouldBe(dividerBounds);
+        pane.HasDividerPointerOver().ShouldBeFalse();
+        pane.GetAppearanceState().HasFlag(VisualState.IsPointerOver).ShouldBeFalse();
+    }
+
     /// <summary>Verifies horizontal and vertical scroll rails clip their perpendicular divider ends before the rails paint.</summary>
     [Theory]
     [InlineData(Orientation.Horizontal, ScrollBarVisibility.Always)]
@@ -1041,6 +1068,88 @@ public sealed class SplitPaneSurfaceTests
         await surface.Pointer.ReleaseAsync();
     }
 
+    /// <summary>Verifies an orientation observer cannot route a primary press through the previous
+    /// arrangement's divider geometry before the new orientation receives layout.</summary>
+    [Fact]
+    public async Task Pointer_WhenOrientationPublishes_RejectsReentrantPressAtPreviousDividerAsync()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            FirstPaneLength = Length.Cells(5),
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 3),
+            TestContext.Current.CancellationToken);
+        var routedPresses = 0;
+        pane.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName != nameof(SplitPane.Orientation))
+            {
+                return;
+            }
+
+            routedPresses++;
+            _ = Route(pane, new PointerEventArgs(new Pointer(
+                new Point(5, 1),
+                pixels: null,
+                Buttons.Primary,
+                PointerAction.Press,
+                wheelX: 0,
+                wheelY: 0,
+                Modifiers.None,
+                isMotion: false,
+                isCellPositionInferred: false)));
+        };
+
+        // Act
+        await surface.UpdateAsync(
+            () => pane.Orientation = Orientation.Vertical,
+            "change SplitPane orientation with a reentrant old-divider press");
+
+        // Assert
+        routedPresses.ShouldBe(1);
+        pane.Orientation.ShouldBe(Orientation.Vertical);
+        surface.ShouldHaveCapture(null);
+        pane.IsPressed.ShouldBeFalse();
+        pane.FirstPaneLength.ShouldBe(Length.Cells(5));
+    }
+
+    /// <summary>Verifies owner unavailability clears focused divider state together with capture and
+    /// pressed presentation in one mounted transition.</summary>
+    [Fact]
+    public async Task Pointer_WhenCapturedSplitPaneBecomesHidden_ClearsFocusCaptureAndPressedStateAsync()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            FirstPaneLength = Length.Cells(5),
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(pane, new Point(5, 0));
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveFocus(pane);
+        surface.ShouldHaveCapture(pane);
+        pane.IsPressed.ShouldBeTrue();
+
+        // Act
+        await surface.UpdateAsync(
+            () => pane.Visibility = Visibility.Hidden,
+            "hide the focused and captured SplitPane");
+
+        // Assert
+        surface.ShouldHaveFocus(null);
+        surface.ShouldHaveCapture(null);
+        pane.IsPressed.ShouldBeFalse();
+        pane.FirstPaneLength.ShouldBe(Length.Cells(5));
+    }
+
     /// <summary>Verifies entering a sibling modal plane excludes SplitPane and cancels its active capture.</summary>
     [Fact]
     public async Task Pointer_WhenSiblingModalPlaneExcludesSplitPane_CancelsDragAsync()
@@ -1235,6 +1344,90 @@ public sealed class SplitPaneSurfaceTests
         surface.ShouldHaveFocus(first);
         surface.ShouldHaveCapture(null);
         pane.FirstPaneLength.ShouldBe(Length.Percent(50));
+    }
+
+    /// <summary>Verifies one pane's full Visible-to-Hidden-to-Collapsed-to-Visible lifecycle keeps
+    /// exact split geometry, final cells, and pointer targets synchronized after every frame.</summary>
+    [Fact]
+    public async Task Pointer_WhenPaneTransitionsThroughVisibleHiddenCollapsedVisible_CommitsExactGeometryCellsAndTargetsAsync()
+    {
+        // Arrange
+        var firstClicks = 0;
+        var secondClicks = 0;
+        var first = new Button
+        {
+            Text = "AAAAAAAAAAA",
+            Style = TestButtonStyles.FlatWithPadding(default),
+            Padding = default,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var second = new Button
+        {
+            Text = "BBBBBBBBBBB",
+            Style = TestButtonStyles.FlatWithPadding(default),
+            Padding = default,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        first.Click += (_, _) => firstClicks++;
+        second.Click += (_, _) => secondClicks++;
+        var pane = new SplitPane
+        {
+            Height = Length.Cells(1),
+            Children = { first, second }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 1),
+            TestContext.Current.CancellationToken);
+        var firstVisibleBounds = new Rect(0, 0, 5, 1);
+        var secondSplitBounds = new Rect(6, 0, 5, 1);
+
+        // Assert the initial visible frame.
+        first.Bounds.ShouldBe(firstVisibleBounds);
+        second.Bounds.ShouldBe(secondSplitBounds);
+        pane.LogicalDividerBounds.ShouldBe(new Rect(5, 0, 1, 1));
+        surface.ShouldRender("AAAAA│BBBBB");
+        pane.HitTest(default).ShouldNotBeNull().Parent.ShouldBeSameAs(first);
+        pane.HitTest(new Point(6, 0)).ShouldNotBeNull().Parent.ShouldBeSameAs(second);
+        await surface.Pointer.ClickAsync(first);
+        firstClicks.ShouldBe(1);
+
+        // Act: Hidden retains the split track and divider but removes the pane from rendering and hit testing.
+        await surface.UpdateAsync(() => first.Visibility = Visibility.Hidden, "hide the first SplitPane pane");
+
+        // Assert the hidden frame.
+        first.Bounds.ShouldBe(firstVisibleBounds);
+        second.Bounds.ShouldBe(secondSplitBounds);
+        pane.LogicalDividerBounds.ShouldBe(new Rect(5, 0, 1, 1));
+        surface.ShouldRender("     │BBBBB");
+        pane.HitTest(default).ShouldBeSameAs(pane);
+        pane.HitTest(new Point(6, 0)).ShouldNotBeNull().Parent.ShouldBeSameAs(second);
+
+        // Act: Collapsed removes the first track and divider so the second pane fills the owner.
+        await surface.UpdateAsync(() => first.Visibility = Visibility.Collapsed, "collapse the first SplitPane pane");
+
+        // Assert the collapsed frame.
+        first.Bounds.ShouldBe(default);
+        second.Bounds.ShouldBe(new Rect(0, 0, 11, 1));
+        pane.LogicalDividerBounds.ShouldBe(default);
+        surface.ShouldRender("BBBBBBBBBBB");
+        pane.HitTest(default).ShouldNotBeNull().Parent.ShouldBeSameAs(second);
+        await surface.Pointer.ClickAsync(second);
+        secondClicks.ShouldBe(1);
+
+        // Act: Visible restores the original split geometry, cells, and pointer target.
+        await surface.UpdateAsync(() => first.Visibility = Visibility.Visible, "restore the first SplitPane pane");
+
+        // Assert the restored frame.
+        first.Bounds.ShouldBe(firstVisibleBounds);
+        second.Bounds.ShouldBe(secondSplitBounds);
+        pane.LogicalDividerBounds.ShouldBe(new Rect(5, 0, 1, 1));
+        surface.ShouldRender("AAAAA│BBBBB");
+        pane.HitTest(default).ShouldNotBeNull().Parent.ShouldBeSameAs(first);
+        await surface.Pointer.ClickAsync(first);
+        firstClicks.ShouldBe(2);
     }
 
     /// <summary>Creates one split with two opaque panes suitable for mounted divider rendering.</summary>

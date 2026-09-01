@@ -46,8 +46,13 @@ internal sealed class SplitPanePane: CompositeControlBase
             }
         };
 
-        var primary = new Text("Navigation\nFiles\nSearch");
+        var primary = new TextInput { Text = "Edit pane input" };
         var secondary = new Text("Workspace\nTab to pane content after the divider.");
+        var status = new Text(
+            "Focus the divider for resize commands, then Tab to the editable pane and type without resizing.")
+        {
+            Overflow = Overflow.Wrap
+        };
         var interactive = new SplitPane
         {
             Height = Length.Cells(5),
@@ -55,11 +60,6 @@ internal sealed class SplitPanePane: CompositeControlBase
             SmallChange = 2,
             LargeChange = 6,
             Children = { primary, secondary }
-        };
-        var status = new Text(
-            "Focus the divider for arrows, Page Up/Page Down, Home, and End; or drag it with the pointer.")
-        {
-            Overflow = Overflow.Wrap
         };
         interactive.GotFocus += (_, _) =>
             status.Content =
@@ -76,6 +76,10 @@ internal sealed class SplitPanePane: CompositeControlBase
             status.Content = Text.Escape(
                 $"Split committed: {DescribeLength(eventArgs.PreviousLength)} → " +
                 DescribeLength(eventArgs.Length));
+        primary.GotFocus += (_, _) =>
+            status.Content = "Pane input focused after Tab; descendant typing remains editor input.";
+        primary.TextChanged += (_, eventArgs) =>
+            status.Content = Text.Escape($"Pane input changed without resizing: {eventArgs.Text}");
 
         var toggleResizable = new Button { Text = "&Lock divider" };
         toggleResizable.Click += (_, _) =>
@@ -131,10 +135,10 @@ internal sealed class SplitPanePane: CompositeControlBase
             new DocSection(
                 "⌨️",
                 "Interaction and availability",
-                "Focus or drag the divider and read each committed split; then lock, disable, or collapse it to observe deterministic fallback.",
+                "Focus or drag the divider and read each committed split; Tab onward to edit pane content, then lock, disable, or collapse the split to observe deterministic fallback.",
                 new DocExample(
                     "Keyboard and pointer status",
-                    "Tab reaches the divider before pane descendants while it is available. Locking or collapsing skips that stop without removing pane input.",
+                    "Tab reaches the divider before the editable leading pane while it is available. Typing updates the readout without resizing; locking or collapsing skips the divider stop without removing pane input.",
                     new DocColumn(
                         interactive,
                         new DocRow(toggleResizable, toggleEnabled, toggleSecond),
