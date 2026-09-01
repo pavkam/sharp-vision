@@ -136,6 +136,7 @@
         public SharpVision.Terminal.Protocols.MouseCoordinates MouseCoordinates { get; init; }
         public SharpVision.Terminal.Protocols.MouseTracking? MouseTracking { get; init; }
         public SharpVision.Terminal.Capabilities.NegotiationOptions? Negotiation { get; init; }
+        public bool NegotiationDisabled { get; init; }
         public SharpVision.Terminal.Capabilities.TerminalProfile? Profile { get; init; }
         public int ReadBufferSize { get; init; }
         public string? RedirectedMessage { get; init; }
