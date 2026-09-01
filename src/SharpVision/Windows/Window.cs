@@ -62,6 +62,12 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         BeginSurfaceOpenLifetime();
         PropertyChanged += OnWindowPropertyChanged;
         EnableChromeAuthoring();
+
+        // A Window is a top-level floating surface: it must never blend an ambient parent's
+        // Foreground/Attributes/Underline into its own resolved Face just because a custom
+        // theme happens to leave styles.window's background transparent. Opting out here keeps
+        // that behavior correct regardless of which theme is active.
+        IsAppearanceBoundary = true;
     }
 
     /// <summary>Gets the retained close-chrome hover detail used to prove reconciliation with the

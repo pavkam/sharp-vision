@@ -314,6 +314,46 @@ public sealed class PopupTests
         popup.Border.Foreground.ShouldBe(SemanticColor.ControlBorder);
     }
 
+    /// <summary>Verifies a Popup opts out of ambient text-appearance inheritance by construction,
+    /// so a floating surface always starts fresh regardless of which theme is active. Every
+    /// composed drop-down/menu surface built directly on this base type (ComboBox, DateInput,
+    /// ContextMenu, MenuItem) and every subclass (Flyout, Tooltip) inherits this from the base
+    /// constructor.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_IsAppearanceBoundary()
+    {
+        using var popup = new Popup();
+
+        popup.IsAppearanceBoundary.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a Popup does not inherit an ambient parent's Foreground even when the
+    /// active theme leaves "control" (and every well-known style section) entirely unauthored -
+    /// the one condition under which the code-owned <see cref="ControlStyle.DefaultFace"/>
+    /// (transparent background, no LocalFace) would otherwise satisfy AppearanceResolver's
+    /// ambient-inheritance gate. Every bundled theme, and every other <see cref="ThemeJson.Create"/>
+    /// call, authors "control" with a face - which "window"/"popup"/"tooltip" cascade onto their
+    /// own Normal regardless of whether they author a "face" of their own - so this only
+    /// reproduces with a theme whose "styles" object is empty.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenThemeLeavesPopupFaceUnauthored_DoesNotInheritAmbientForeground()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(stylesOverride: "{}"));
+        var ambientForeground = Color.Rgb(200, 30, 40);
+        var parent = new ProbeContainer
+        {
+            Face = AppearanceTestValues.Face(foreground: ambientForeground, background: Color.Rgb(1, 1, 1))
+        };
+        using var popup = new Popup();
+        parent.Children.Add(popup);
+
+        var resolved = popup.ResolveAppearance(theme);
+
+        resolved.Face.Background.Literal.ShouldBe(Color.Transparent);
+        resolved.Face.Foreground.Literal.ShouldBe(Color.Default);
+        resolved.Face.Foreground.Literal.ShouldNotBe(ambientForeground);
+    }
+
     /// <summary>Verifies every Popup-declared property starts at its documented default.</summary>
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()

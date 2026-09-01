@@ -65,6 +65,45 @@ public sealed class TooltipTests
         tooltip.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Light);
     }
 
+    /// <summary>Verifies a Tooltip opts out of ambient text-appearance inheritance by
+    /// construction - inherited from Popup's own constructor, which runs before Tooltip's, and
+    /// never reset afterward - so a passive hint always starts fresh regardless of which theme is
+    /// active.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_IsAppearanceBoundary()
+    {
+        using var tooltip = new Tooltip();
+
+        tooltip.IsAppearanceBoundary.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a Tooltip does not inherit an ambient parent's Foreground even when the
+    /// active theme leaves "control" (and every well-known style section) entirely unauthored -
+    /// the one condition under which the code-owned <see cref="ControlStyle.DefaultFace"/>
+    /// (transparent background, no LocalFace) would otherwise satisfy AppearanceResolver's
+    /// ambient-inheritance gate. Every bundled theme, and every other <see cref="ThemeJson.Create"/>
+    /// call, authors "control" with a face - which "window"/"popup"/"tooltip" cascade onto their
+    /// own Normal regardless of whether they author a "face" of their own - so this only
+    /// reproduces with a theme whose "styles" object is empty.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenThemeLeavesTooltipFaceUnauthored_DoesNotInheritAmbientForeground()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(stylesOverride: "{}"));
+        var ambientForeground = Color.Rgb(200, 30, 40);
+        var parent = new ProbeContainer
+        {
+            Face = AppearanceTestValues.Face(foreground: ambientForeground, background: Color.Rgb(1, 1, 1))
+        };
+        using var tooltip = new Tooltip();
+        parent.Children.Add(tooltip);
+
+        var resolved = tooltip.ResolveAppearance(theme);
+
+        resolved.Face.Background.Literal.ShouldBe(Color.Transparent);
+        resolved.Face.Foreground.Literal.ShouldBe(Color.Default);
+        resolved.Face.Foreground.Literal.ShouldNotBe(ambientForeground);
+    }
+
     /// <summary>Verifies Tooltip is the Popup surface instead of owning a private Popup proxy.</summary>
     [Fact]
     public void Constructor_WhenCreated_IsDirectPopupSurface()

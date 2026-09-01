@@ -85,6 +85,13 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         IsFocusable = false;
         PropertyChanged += OnPopupPropertyChanged;
         EnableChromeAuthoring();
+
+        // A Popup (and every subclass - Flyout, Tooltip - plus every composed drop-down/menu
+        // surface built directly on this base type) is a floating surface anchored elsewhere in
+        // the tree. It must never blend the anchor's ambient Foreground/Attributes/Underline into
+        // its own resolved Face just because a custom theme happens to leave styles.popup's
+        // background transparent; it should always start fresh instead.
+        IsAppearanceBoundary = true;
     }
 
     /// <summary>Configures the one Popup-owned light-dismiss policy before attachment.</summary>

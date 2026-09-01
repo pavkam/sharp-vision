@@ -34,7 +34,14 @@ public static class ThemeJson
     /// legal directly in "colors.*" - or the name of a key already present in
     /// <paramref name="palette"/>, passed straight through. <paramref name="selectedText"/> and
     /// <paramref name="selectedControl"/> default to <paramref name="foreground"/> and
-    /// <paramref name="accent"/> respectively, matching every bundled theme's own convention.</summary>
+    /// <paramref name="accent"/> respectively, matching every bundled theme's own convention.
+    /// <paramref name="stylesOverride"/>, when non-null, replaces the entire generated "styles"
+    /// object verbatim (a document's "styles" object is legally empty, so <c>"{}"</c> produces a
+    /// theme where every well-known style resolves purely from its code-owned default - useful for
+    /// proving behavior that only surfaces when a theme's "control" section is entirely
+    /// unauthored, since every other <see cref="Create"/> call authors "control", and the five
+    /// sibling well-known keys otherwise cascade its authored face/border/shadow delta onto their
+    /// own code-owned defaults regardless of whether they author a "face" of their own.</summary>
     public static string Create(
         string palette = "\"bg\":\"#101010\",\"fg\":\"#e0e0e0\"",
         string name = "T",
@@ -58,7 +65,8 @@ public static class ThemeJson
         string extraStyles = "",
         string? glyphs = null,
         string? selectedText = null,
-        string? selectedControl = null)
+        string? selectedControl = null,
+        string? stylesOverride = null)
     {
         var glyphsField = glyphs is null ? "" : $", \"glyphs\": \"{glyphs}\"";
         var (backgroundRef, backgroundEntry) = ColorRef("background", background);
@@ -126,6 +134,26 @@ public static class ThemeJson
             selectedTextEntry,
             selectedControlEntry);
 
+        var stylesField = stylesOverride ?? $$"""
+            {
+                "control": { "normal": {
+                  "face": { "foreground":"controlText", "background":"control", "attributes":"normalText" },
+                  "border": { "sides":{{controlSides}}, "glyphStyle":"rounded", "foreground":"controlBorder", "background":"control", "attributes":"border" },
+                  "shadow": { "visible":false, "mode":"composite", "offset":{"x":0,"y":0}, "glyph":"▓", "foreground":"controlShadow", "background":"transparent", "attributes":"shadow" }
+                  {{controlNormalExtra}}
+                } {{controlExtra}} },
+                "input": { "normal": { "border": { "sides":{{inputSides}}, "glyphStyle":{{inputGlyphStyle}}{{inputBorderExtra}} }
+                {{inputExtra}} },
+                "focused": { "face": { "foreground":"focusedText", "attributes":"focusedText" }, "border": { "foreground":"focusedBorder" } }
+                {{inputStates}} },
+                "container": { "normal": { "border": { "sides":{{containerSides}}, "glyphStyle":"light" } } },
+                "window": { "normal": { "border": { "sides":"all", "glyphStyle":"paired" }{{windowExtra}} } },
+                "popup": { "normal": { "border": { "sides":"all", "glyphStyle":"rounded" } } },
+                "tooltip": { "normal": { "border": { "sides":"none" } } }
+                {{extraStyles}}
+              }
+            """;
+
         return $$"""
             { "name": "{{name}}", "slug": "t", "colorScheme": "dark", "order": 1,
               "author": "A", "license": "MIT", "source": "https://example.invalid/theme"{{glyphsField}},
@@ -150,23 +178,7 @@ public static class ThemeJson
                 "normalText":[], "activeText":[], "focusedText":"bold", "pressedText":[],
                 "selectedText":[], "disabledText":[], "border":[], "shadow":"dim", "hotkey":"underline"
               },
-              "styles": {
-                "control": { "normal": {
-                  "face": { "foreground":"controlText", "background":"control", "attributes":"normalText" },
-                  "border": { "sides":{{controlSides}}, "glyphStyle":"rounded", "foreground":"controlBorder", "background":"control", "attributes":"border" },
-                  "shadow": { "visible":false, "mode":"composite", "offset":{"x":0,"y":0}, "glyph":"▓", "foreground":"controlShadow", "background":"transparent", "attributes":"shadow" }
-                  {{controlNormalExtra}}
-                } {{controlExtra}} },
-                "input": { "normal": { "border": { "sides":{{inputSides}}, "glyphStyle":{{inputGlyphStyle}}{{inputBorderExtra}} }
-                {{inputExtra}} },
-                "focused": { "face": { "foreground":"focusedText", "attributes":"focusedText" }, "border": { "foreground":"focusedBorder" } }
-                {{inputStates}} },
-                "container": { "normal": { "border": { "sides":{{containerSides}}, "glyphStyle":"light" } } },
-                "window": { "normal": { "border": { "sides":"all", "glyphStyle":"paired" }{{windowExtra}} } },
-                "popup": { "normal": { "border": { "sides":"all", "glyphStyle":"rounded" } } },
-                "tooltip": { "normal": { "border": { "sides":"none" } } }
-                {{extraStyles}}
-              } }
+              "styles": {{stylesField}} }
             """;
     }
 
