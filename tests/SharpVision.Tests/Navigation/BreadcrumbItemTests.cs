@@ -56,4 +56,20 @@ public sealed class BreadcrumbItemTests
 
         order.ShouldBe(["event", "command"]);
     }
+
+    /// <summary>Verifies attachment during the detached event retires detached command authority.</summary>
+    [Fact]
+    public void PerformInvoke_WhenDetachedHandlerAttachesItem_DoesNotExecuteDetachedCommand()
+    {
+        var command = new Mock<System.Windows.Input.ICommand>();
+        _ = command.Setup(candidate => candidate.CanExecute(null)).Returns(true);
+        var item = new BreadcrumbItem { Command = command.Object };
+        var breadcrumb = new Breadcrumb();
+        item.Invoked += (_, _) => breadcrumb.Items.Add(item);
+
+        item.PerformInvoke();
+
+        breadcrumb.Items.ShouldBe([item]);
+        command.Verify(candidate => candidate.Execute(null), Times.Never);
+    }
 }

@@ -98,6 +98,21 @@ public sealed class BreadcrumbSurfaceTests
         breadcrumb.HitTest(default).ShouldBeSameAs(breadcrumb);
     }
 
+    /// <summary>Verifies collapsed entries release their slot and both adjacent reserved gaps.</summary>
+    [Fact]
+    public async Task Visibility_WhenItemIsCollapsed_ReleasesItsSlotAndAdjacentGapsAsync()
+    {
+        var breadcrumb = Create("Root", "Middle", "Leaf");
+        breadcrumb.Items[1].Visibility = Visibility.Collapsed;
+        await using var surface = await ComponentSurface.MountAsync(
+            breadcrumb,
+            new Size(9, 1),
+            TestContext.Current.CancellationToken);
+
+        surface.ShouldRender("Root›Leaf");
+        breadcrumb.Items[1].Bounds.ShouldBe(default);
+    }
+
     /// <summary>Verifies wide Unicode captions keep their continuation cells intact.</summary>
     [Fact]
     public async Task Render_WhenCaptionContainsWideAndCombiningText_PreservesWholeClustersAsync()
@@ -162,9 +177,9 @@ public sealed class BreadcrumbSurfaceTests
 
         await surface.Pointer.ClickAsync(trigger);
 
-        var menu = OwnedTree.Find<SharpVision.Menus.Menu>(trigger).ShouldNotBeNull();
-        menu.Items.Cast<SharpVision.Menus.MenuItem>().Select(item => item.Text).ShouldBe(["Root", "Docs"]);
-        await surface.Pointer.ClickAsync((SharpVision.Menus.MenuItem) menu.Items[0]);
+        var menu = OwnedTree.Find<Menu>(trigger).ShouldNotBeNull();
+        menu.Items.Cast<MenuItem>().Select(item => item.Text).ShouldBe(["Root", "Docs"]);
+        await surface.Pointer.ClickAsync((MenuItem) menu.Items[0]);
 
         breadcrumb.CurrentItem.ShouldBeSameAs(breadcrumb.Items[0]);
         invoked.ShouldBe(1);
@@ -184,8 +199,8 @@ public sealed class BreadcrumbSurfaceTests
         var trigger = OwnedTree.Find<BreadcrumbOverflowButton>(breadcrumb).ShouldNotBeNull();
         await surface.Pointer.ClickAsync(trigger);
 
-        var menu = OwnedTree.Find<SharpVision.Menus.Menu>(trigger).ShouldNotBeNull();
-        ((SharpVision.Menus.MenuItem) menu.Items[0]).Text.ShouldBe("Home");
+        var menu = OwnedTree.Find<Menu>(trigger).ShouldNotBeNull();
+        ((MenuItem) menu.Items[0]).Text.ShouldBe("Home");
     }
 
     /// <summary>Verifies pointer activation focuses only the owner and commits through the canonical route.</summary>
@@ -246,6 +261,121 @@ public sealed class BreadcrumbSurfaceTests
         surface.ShouldHaveFocus(breadcrumb);
         breadcrumb.CurrentItem.ShouldBeSameAs(breadcrumb.Items[0]);
         invoked.ShouldBe(1);
+    }
+
+    /// <summary>Verifies an overflowed mnemonic becomes available only through the open menu.</summary>
+    [Fact]
+    public async Task AccessKey_WhenItemIsOverflowed_RequiresOpenMenuAsync()
+    {
+        var breadcrumb = Create("&Root", "&Docs", "&Leaf");
+        var invoked = 0;
+        breadcrumb.Items[0].Invoked += (_, _) => invoked++;
+        await using var surface = await ComponentSurface.MountAsync(
+            breadcrumb,
+            new Size(8, 4),
+            TestContext.Current.CancellationToken);
+
+        await surface.SendAsync("\x1b[114;3:1u"u8.ToArray(), "Alt+R while overflow is closed");
+        invoked.ShouldBe(0);
+
+        var trigger = OwnedTree.Find<BreadcrumbOverflowButton>(breadcrumb).ShouldNotBeNull();
+        await surface.Pointer.ClickAsync(trigger);
+        await surface.SendAsync("\x1b[114;3:1u"u8.ToArray(), "Alt+R while overflow is open");
+
+        invoked.ShouldBe(1);
+        breadcrumb.CurrentItem.ShouldBeSameAs(breadcrumb.Items[0]);
+    }
+
+    /// <summary>Verifies removing a held semantic item immediately retires owner capture.</summary>
+    [Fact]
+    public async Task Pointer_WhenPressedItemIsRemoved_CancelsCaptureBeforeReleaseAsync()
+    {
+        var breadcrumb = Create("Root", "Leaf");
+        await using var surface = await ComponentSurface.MountAsync(
+            breadcrumb,
+            new Size(9, 1),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(breadcrumb.Items[0]);
+        await surface.Pointer.PressAsync();
+        var removed = breadcrumb.Items[0];
+
+        await surface.UpdateAsync(() => breadcrumb.Items.RemoveAt(0), "remove pressed breadcrumb item");
+
+        surface.ShouldHaveCapture(null);
+        removed.IsPressed.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies focus transfer clears the owner-managed held-item state and capture.</summary>
+    [Fact]
+    public async Task Pointer_WhenOwnerLosesFocus_CancelsItemPressAsync()
+    {
+        var breadcrumb = Create("Root", "Leaf");
+        var other = new Button { Text = "Other" };
+        var root = new Stack { Children = { breadcrumb, other } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(9, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(breadcrumb.Items[0]);
+        await surface.Pointer.PressAsync();
+
+        await surface.UpdateAsync(() => other.Focus(), "transfer focus during breadcrumb press");
+
+        surface.ShouldHaveFocus(other);
+        surface.ShouldHaveCapture(null);
+        breadcrumb.Items[0].IsPressed.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies terminal pointer leave retires the held target without moving semantic current.</summary>
+    [Fact]
+    public async Task Pointer_WhenTerminalLeaveArrives_CancelsItemPressAndCaptureAsync()
+    {
+        var breadcrumb = Create("Root", "Leaf");
+        await using var surface = await ComponentSurface.MountAsync(
+            breadcrumb,
+            new Size(9, 1),
+            TestContext.Current.CancellationToken);
+        var current = breadcrumb.CurrentItem;
+        await surface.Pointer.MoveToAsync(breadcrumb.Items[0]);
+        await surface.Pointer.PressAsync();
+
+        await surface.UpdateAsync(
+            () => _ = surface.Application.Capture.Dispatch(new Pointer(
+                cells: null,
+                pixels: null,
+                Buttons.None,
+                PointerAction.Leave,
+                wheelX: 0,
+                wheelY: 0,
+                Modifiers.None,
+                isMotion: true,
+                isCellPositionInferred: false)),
+            "route terminal pointer Leave to captured Breadcrumb");
+
+        surface.ShouldHaveCapture(null);
+        breadcrumb.Items[0].IsPressed.ShouldBeFalse();
+        breadcrumb.CurrentItem.ShouldBeSameAs(current);
+    }
+
+    /// <summary>Verifies owner disposal during a press cleans up without touching disposed item state.</summary>
+    [Fact]
+    public async Task Dispose_WhenOwnerHasPressedItem_ReleasesCaptureAndDisposesPathAsync()
+    {
+        var breadcrumb = Create("Root", "Leaf");
+        var root = new Stack { Children = { breadcrumb } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(9, 1),
+            TestContext.Current.CancellationToken);
+        var pressed = breadcrumb.Items[0];
+        await surface.Pointer.MoveToAsync(pressed);
+        await surface.Pointer.PressAsync();
+
+        await surface.UpdateAsync(breadcrumb.Dispose, "dispose pressed breadcrumb");
+
+        breadcrumb.IsDisposed.ShouldBeTrue();
+        pressed.IsDisposed.ShouldBeTrue();
+        surface.ShouldHaveCapture(null);
     }
 
     /// <summary>Verifies a resize invalidates a held target before its old cell can activate.</summary>

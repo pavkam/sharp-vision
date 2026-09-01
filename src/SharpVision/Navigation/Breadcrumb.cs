@@ -24,6 +24,8 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     private long _projectedCollectionGeneration = -1;
     private bool _pressedOverflow;
 
+    #region Construction and public state
+
     /// <summary>Initializes an empty, single-tab-stop breadcrumb path.</summary>
     public Breadcrumb()
     {
@@ -73,7 +75,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The current index is outside the breadcrumb path.");
             }
 
-            SetCurrent(value < 0 ? null : ItemAt(value));
+            _ = SetCurrent(value < 0 ? null : ItemAt(value));
         }
     }
 
@@ -86,7 +88,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         set
         {
             var index = value is null ? -1 : IndexOfItem(value);
-            SetCurrent(index < 0 ? null : value);
+            _ = SetCurrent(index < 0 ? null : value);
         }
     }
 
@@ -101,6 +103,10 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
 
     /// <summary>Gets the complete local, theme-owned, or code-owned breadcrumb presentation.</summary>
     public BreadcrumbStyle ActualStyle => _style.Actual;
+
+    #endregion
+
+    #region Retained ownership
 
     /// <summary>Gets the immutable layout shared by presentation and input for the current pass.</summary>
     internal BreadcrumbLayout Layout { get; private set; } = BreadcrumbLayout.Empty;
@@ -162,6 +168,11 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             return;
         }
 
+        if (ReferenceEquals(_pressedItem, previous))
+        {
+            CancelPointerPress();
+        }
+
         var previousLease = _propertyOverrides.Get(previous);
         ReplaceItemControl(index, item);
         Unsubscribe(previous);
@@ -191,6 +202,11 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         if (index < 0)
         {
             return false;
+        }
+
+        if (ReferenceEquals(_pressedItem, item))
+        {
+            CancelPointerPress();
         }
 
         var lease = _propertyOverrides.Get(item);
@@ -255,6 +271,12 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     private void ClearItems(bool disposing)
     {
         VerifyMutable();
+
+        if (!disposing)
+        {
+            CancelPointerPress();
+        }
+
         var items = Items.ToArray();
         var leases = items.Select(_propertyOverrides.Get).ToArray();
 
@@ -292,13 +314,17 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
 
         CollectionGeneration++;
         _ = _navigator.SetCurrent(null);
-        SetCurrent(null);
+        _ = SetCurrent(null);
 
         foreach (var lease in leases)
         {
             _propertyOverrides.Restore(lease);
         }
     }
+
+    #endregion
+
+    #region Activation and source changes
 
     /// <summary>Runs one canonical activation transaction for an owned item.</summary>
     internal bool TryActivateItem(
@@ -314,7 +340,10 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             return false;
         }
 
-        SetCurrent(item);
+        if (!SetCurrent(item))
+        {
+            return false;
+        }
 
         if (!IsAvailableOwned(item) || !ReferenceEquals(_currentItem, item))
         {
@@ -392,7 +421,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
 
         if (selectFinal || _currentItem is null || !IsAvailableOwned(_currentItem))
         {
-            SetCurrent(FinalAvailableItem());
+            _ = SetCurrent(FinalAvailableItem());
             return;
         }
 
@@ -414,13 +443,22 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
 
         CollectionGeneration++;
 
+        if (ReferenceEquals(_pressedItem, item) && !IsAvailableOwned(item))
+        {
+            CancelPointerPress();
+        }
+
         if ((ReferenceEquals(_currentItem, item) && !IsAvailableOwned(item)) || _currentItem is null)
         {
-            SetCurrent(FinalAvailableItem());
+            _ = SetCurrent(FinalAvailableItem());
         }
 
         Invalidate(Invalidation.Measure);
     }
+
+    #endregion
+
+    #region Layout and rendering
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
@@ -530,7 +568,11 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         return ReferenceEquals(target, _host) ? this : target;
     }
 
-    private void SetCurrent(BreadcrumbItem? item)
+    #endregion
+
+    #region Current and keyboard navigation
+
+    private bool SetCurrent(BreadcrumbItem? item)
     {
         VerifyMutable();
 
@@ -541,42 +583,56 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
 
         if (ReferenceEquals(_currentItem, item))
         {
-            return;
+            return true;
         }
 
+        var collectionGeneration = CollectionGeneration;
         var version = ++_currentGeneration;
         var previous = _currentItem;
         previous?.CommitSemanticCurrent(false);
 
-        if (_currentGeneration != version)
+        if (!IsCurrentTransitionAuthority(version, collectionGeneration))
         {
-            return;
+            return false;
         }
 
         _currentItem = item;
         item?.CommitSemanticCurrent(true);
 
-        if (_currentGeneration != version || !ReferenceEquals(_currentItem, item))
+        if (!IsCurrentTransition(version, collectionGeneration, item))
         {
-            return;
+            return false;
         }
 
         NotifyPropertyChanged(nameof(CurrentIndex), InvalidationImpact.Measure);
 
-        if (_currentGeneration != version || !ReferenceEquals(_currentItem, item))
+        if (!IsCurrentTransition(version, collectionGeneration, item))
         {
-            return;
+            return false;
         }
 
         NotifyPropertyChanged(nameof(CurrentItem), InvalidationImpact.None);
 
-        if (_currentGeneration != version || !ReferenceEquals(_currentItem, item))
+        if (!IsCurrentTransition(version, collectionGeneration, item))
         {
-            return;
+            return false;
         }
 
         CurrentChanged?.Invoke(this, new BreadcrumbCurrentChangedEventArgs(previous, item));
+        return IsCurrentTransition(version, collectionGeneration, item);
     }
+
+    [Pure]
+    private bool IsCurrentTransition(long version, long collectionGeneration, BreadcrumbItem? item) =>
+        IsCurrentTransitionAuthority(version, collectionGeneration) &&
+        ReferenceEquals(_currentItem, item);
+
+    [Pure]
+    private bool IsCurrentTransitionAuthority(long version, long collectionGeneration) =>
+        !IsDisposed &&
+        !IsDisposing &&
+        _currentGeneration == version &&
+        CollectionGeneration == collectionGeneration;
 
     [Pure]
     private BreadcrumbItem? FinalAvailableItem()
@@ -644,6 +700,10 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         }
     }
 
+    #endregion
+
+    #region Routed input and cleanup
+
     private void OnKeyRouted(object? sender, KeyEventArgs eventArgs)
     {
         _ = sender;
@@ -701,27 +761,59 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     {
         _ = sender;
 
-        if (eventArgs.Phase != RoutingPhase.Preview || eventArgs.Pointer.Cells is not { } cells)
+        if (eventArgs.Phase != RoutingPhase.Preview)
         {
             return;
         }
 
         var pointer = eventArgs.Pointer;
 
+        if (pointer.Action == PointerAction.Leave)
+        {
+            if (_pressedItem is not null || _pressedOverflow)
+            {
+                eventArgs.IsHandled = true;
+                CancelPointerPress();
+            }
+
+            return;
+        }
+
+        if (pointer.Cells is not { } cells)
+        {
+            return;
+        }
+
         if (pointer.Action == PointerAction.Press && (pointer.Buttons & Buttons.Primary) != 0)
         {
             var item = HitPrimaryItem(cells);
             var overflow = _overflowButton.Bounds.Contains(cells) && _overflowButton.HasItems;
+            var layoutGeneration = Layout.Generation;
+
+            if ((item is null && !overflow) || !Focus())
+            {
+                return;
+            }
+
+            item = item is not null &&
+                   layoutGeneration == Layout.Generation &&
+                   IsAvailableOwned(item) &&
+                   item.Bounds.Contains(cells)
+                ? item
+                : null;
+            overflow = overflow &&
+                       layoutGeneration == Layout.Generation &&
+                       _overflowButton.Bounds.Contains(cells) &&
+                       _overflowButton.HasItems;
 
             if ((item is null && !overflow) || !CapturePointer())
             {
                 return;
             }
 
-            _ = Focus();
             _pressedItem = item;
             _pressedOverflow = overflow;
-            _pressedLayoutGeneration = Layout.Generation;
+            _pressedLayoutGeneration = layoutGeneration;
             item?.SetPressed(true);
             _overflowButton.SetPressed(overflow);
             eventArgs.IsHandled = true;
@@ -778,28 +870,67 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
 
     private void CancelPointerPress()
     {
-        _pressedItem?.SetPressed(false);
-        _overflowButton.SetPressed(false);
+        var pressedItem = _pressedItem;
         _pressedItem = null;
         _pressedOverflow = false;
 
-        if (HasPointerCapture)
+        if (pressedItem is { IsDisposed: false, IsDisposing: false, TerminalDisposalStarted: false })
+        {
+            pressedItem.SetPressed(false);
+        }
+
+        if (!_overflowButton.IsDisposed &&
+            !_overflowButton.IsDisposing &&
+            !_overflowButton.TerminalDisposalStarted)
+        {
+            _overflowButton.SetPressed(false);
+        }
+
+        if (HasPointerCapture && !IsDisposed && !IsDisposing && !TerminalDisposalStarted)
         {
             ReleasePointerCapture();
         }
     }
 
     /// <inheritdoc/>
+    protected override void OnFocusChanged(bool focused)
+    {
+        base.OnFocusChanged(focused);
+
+        if (!focused)
+        {
+            CancelPointerPress();
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnUnavailable(ReleaseReason reason)
+    {
+        base.OnUnavailable(reason);
+        CancelPointerPress();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
+    {
+        base.OnLostPointerCapture(reason);
+        CancelPointerPress();
+    }
+
+    /// <inheritdoc/>
     private protected override void OnItemsControlDisposing()
     {
+        CancelPointerPress();
+
         if (ItemControlCount > 0)
         {
             ClearItems(disposing: true);
         }
 
-        CancelPointerPress();
         _ = _navigator.SetCurrent(null);
         _propertyOverrides.Dispose();
         CurrentChanged = null;
     }
+
+    #endregion
 }

@@ -89,12 +89,16 @@ public sealed class BreadcrumbItem: InputBase, IStyled<BreadcrumbItemStyle>
             return;
         }
 
-        InvokeAfterOwnerCommit(cause);
-
-        if (!IsDisposed && !IsDisposing)
+        if (!TryCaptureDetachedAttachment(out var attachment))
         {
-            ExecuteCommandIfAny(command);
+            return;
         }
+
+        InvokeAfterOwnerCommit(cause);
+        _ = TryPublishForCurrentDetachedAttachment(
+            attachment,
+            () => ExecuteCommandIfAny(command),
+            () => FindBreadcrumb() is null);
     }
 
     /// <inheritdoc/>

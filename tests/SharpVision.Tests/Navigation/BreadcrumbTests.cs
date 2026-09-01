@@ -183,4 +183,39 @@ public sealed class BreadcrumbTests
             nameof(Breadcrumb.CurrentItem),
             nameof(Breadcrumb.CurrentChanged)]);
     }
+
+    /// <summary>Verifies a collection change during index publication supersedes later current events.</summary>
+    [Fact]
+    public void CurrentItem_WhenIndexObserverMovesCurrent_DoesNotPublishSupersededDependentEvents()
+    {
+        var breadcrumb = new Breadcrumb();
+        var root = new BreadcrumbItem { Text = "Root" };
+        var leaf = new BreadcrumbItem { Text = "Leaf" };
+        breadcrumb.Items.Add(root);
+        breadcrumb.Items.Add(leaf);
+        var moved = false;
+        var itemNotifications = 0;
+        var currentChanged = 0;
+        breadcrumb.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(Breadcrumb.CurrentIndex) && !moved)
+            {
+                moved = true;
+                breadcrumb.Items.Move(0, 1);
+            }
+
+            if (args.PropertyName == nameof(Breadcrumb.CurrentItem))
+            {
+                itemNotifications++;
+            }
+        };
+        breadcrumb.CurrentChanged += (_, _) => currentChanged++;
+
+        breadcrumb.CurrentItem = root;
+
+        breadcrumb.CurrentItem.ShouldBeSameAs(root);
+        breadcrumb.CurrentIndex.ShouldBe(1);
+        itemNotifications.ShouldBe(0);
+        currentChanged.ShouldBe(0);
+    }
 }
