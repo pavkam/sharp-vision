@@ -30,6 +30,7 @@ const evidenceTierSuffixes = [
   "PerformanceTests",
   "ConsumerTests",
   "CompatibilityTests",
+  "RandomizedTests",
   "Tests",
 ];
 
@@ -262,7 +263,7 @@ export function formatViolation(entry) {
   return (
     `${entry.file}:${entry.line} ${entry.className} does not name a type under src/ or ` +
     "examples/ as " +
-    `${basesText} (checked Tests/SurfaceTests/PerformanceTests/ConsumerTests/CompatibilityTests ` +
+    `${basesText} (checked Tests/SurfaceTests/PerformanceTests/ConsumerTests/CompatibilityTests/RandomizedTests ` +
     "suffixes), and is not in the suite-level allow-list or " +
     "scripts/test-class-naming-baseline.txt."
   );

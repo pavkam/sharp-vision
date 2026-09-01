@@ -11,6 +11,8 @@ using Popups;
 
 using Scrolling;
 
+using SharpVision.Terminal.Input;
+
 /// <summary>Provides a freely editable text field with an owner-managed suggestion popup.</summary>
 /// <remarks>
 /// The retained editor is the sole focus target. Resolver results are exposed as copied snapshots,
@@ -26,7 +28,18 @@ public sealed class SuggestionInput: CompositeControlBase
     private readonly LatestControlOperation _resolutionOperation = new();
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private int? _currentSnapshotGeneration;
+    private int? _openingSnapshotGeneration;
+    private int? _pendingFirstSelectionResolutionGeneration;
     private int _resolutionGeneration;
+    private int _openingSelectedIndex = -1;
+    private int _openingCurrentIndex = -1;
+    private ulong _pendingFirstSelectionSessionGeneration;
+    private Dispatcher? _pendingFirstSelectionDispatcher;
+    private PopupItemActivationIdentity? _itemActivation;
+    private SuggestionInputAcceptanceTransaction? _acceptanceTransaction;
+    private ControlAttachmentToken? _acceptanceAttachment;
+    private ActivationCause _acceptanceCause;
+    private ulong _acceptanceGeneration;
     private ulong _minimumPrefixLengthVersion;
     private ulong _resolverVersion;
     private ulong _textCommitVersion;
@@ -45,6 +58,8 @@ public sealed class SuggestionInput: CompositeControlBase
             IsTabStop = false,
             SelectionMode = ListSelectionMode.Single
         };
+        _list.ItemActivationStarting += OnItemActivationStarting;
+        _list.ItemInvoked += OnItemInvoked;
         _popup = new Popup
         {
             Anchor = _input,
@@ -80,7 +95,11 @@ public sealed class SuggestionInput: CompositeControlBase
             () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None),
             OnOpened,
             OnClosed,
-            ownerInitialFocus: _input);
+            ownerInitialFocus: _input,
+            beginSession: BeginNavigationSession,
+            handleNavigationKey: HandleNavigationKey,
+            cancelSession: CancelNavigationSession,
+            acceptSession: AcceptNavigationSession);
         InitializeContent(_input);
     }
 
@@ -255,6 +274,11 @@ public sealed class SuggestionInput: CompositeControlBase
     /// settlement. Tests use this seam to prove inline callback failures do not leave a second
     /// task-based fault channel.</summary>
     internal Task? LastInlineResolutionObservation { get; private set; }
+
+    /// <summary>Gets whether detached or pre-arrange suggestion selection remains queued. Tests
+    /// use this seam to prove popup and attachment cleanup release deferred session work.</summary>
+    internal bool HasPendingFirstSuggestionSelection =>
+        _pendingFirstSelectionResolutionGeneration is not null;
 
     /// <summary>Gets or sets a test synchronization callback invoked after detached completion
     /// acquires exclusive publication authority and before it mutates retained state.</summary>
@@ -447,6 +471,7 @@ public sealed class SuggestionInput: CompositeControlBase
             if (!value)
             {
                 _wantsOpen = false;
+                CancelPendingAcceptance();
                 _popupCoordinator.SetOpen(false);
                 return;
             }
@@ -490,6 +515,352 @@ public sealed class SuggestionInput: CompositeControlBase
 
     #endregion
 
+    #region Popup navigation and acceptance
+
+    private void BeginNavigationSession()
+    {
+        _openingSnapshotGeneration = _currentSnapshotGeneration;
+        _openingSelectedIndex = _list.SelectedIndex;
+        _openingCurrentIndex = _list.ActiveIndex;
+        _itemActivation = null;
+        CancelPendingAcceptance();
+    }
+
+    private bool HandleNavigationKey(KeyEventArgs eventArgs)
+    {
+        var stroke = eventArgs.Stroke;
+
+        if (eventArgs.IsInitialKeyDown &&
+            stroke.Code == Code.Escape &&
+            stroke.Modifiers.IsActivationEligible())
+        {
+            // Mark Escape before closing because ending the session makes the coordinator's
+            // post-callback guard intentionally refuse to mutate the old routed record.
+            eventArgs.IsHandled = true;
+            _popupCoordinator.SetOpen(false);
+            return true;
+        }
+
+        if (eventArgs.IsInitialKeyDown &&
+            stroke.Code == Code.Tab &&
+            KeyboardModifierPolicy.IsTabTraversalEligible(stroke.Modifiers))
+        {
+            _popupCoordinator.SetOpen(false);
+            return false;
+        }
+
+        if (eventArgs.IsInitialKeyDown &&
+            stroke.Code == Code.Enter &&
+            stroke.Modifiers.IsActivationEligible())
+        {
+            // An open suggestion session owns Enter even while the newest request is unresolved.
+            // This prevents the editor's ordinary Submitted event from accepting an older row.
+            eventArgs.IsHandled = true;
+
+            if (!CanAcceptCurrentSnapshot())
+            {
+                return true;
+            }
+
+            _ = _list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, stroke.Modifiers);
+            return true;
+        }
+
+        var moved = _list.HandleCurrentNavigationKey(eventArgs);
+
+        if (moved)
+        {
+            _list.SetProvisionalSelectionIndex(_list.ActiveIndex);
+        }
+
+        return moved;
+    }
+
+    private void CancelNavigationSession()
+    {
+        ClearPendingFirstSuggestionSelection();
+        _itemActivation = null;
+        CancelPendingAcceptance();
+
+        if (_openingSnapshotGeneration is not { } openingGeneration ||
+            _currentSnapshotGeneration != openingGeneration ||
+            _resolutionGeneration != openingGeneration ||
+            !IsValidSuggestionIndex(_openingSelectedIndex) ||
+            !IsValidSuggestionIndex(_openingCurrentIndex))
+        {
+            return;
+        }
+
+        _list.SetProvisionalSelectionIndex(_openingSelectedIndex);
+        _list.SetProvisionalCurrentIndex(_openingCurrentIndex);
+    }
+
+    private void AcceptNavigationSession()
+    {
+        if (_acceptanceTransaction is not { } transaction ||
+            !IsAcceptanceReadyToCommit(transaction))
+        {
+            return;
+        }
+
+        Text = transaction.AcceptedText;
+    }
+
+    private void OnItemActivationStarting(object? sender, ItemInvokedEventArgs eventArgs)
+    {
+        _ = sender;
+        _itemActivation = CanAcceptCurrentSnapshot() &&
+                          IsCurrentSuggestionItem(eventArgs.Index, eventArgs.Item)
+            ? new PopupItemActivationIdentity(
+                eventArgs.ActivationGeneration,
+                eventArgs.Index,
+                _popupCoordinator.TransitionVersion,
+                _popupCoordinator.SessionGeneration)
+            : null;
+    }
+
+    private void OnItemInvoked(object? sender, ItemInvokedEventArgs eventArgs)
+    {
+        _ = sender;
+        var activation = _itemActivation;
+        _itemActivation = null;
+        var resolutionGeneration = _resolutionGeneration;
+
+        if (activation is not { } identity ||
+            !TryCaptureAttachment(out var attachment) ||
+            !IsCurrentInvocation(eventArgs, identity, resolutionGeneration, attachment))
+        {
+            return;
+        }
+
+        var acceptanceGeneration = AdvanceAcceptanceGeneration();
+        var selector = TextSelector;
+        var acceptedText = selector is null
+            ? Convert.ToString(eventArgs.Item, CultureInfo.InvariantCulture) ?? string.Empty
+            : selector(eventArgs.Item) ?? throw new InvalidOperationException(
+                "A suggestion text selector returned null.");
+        if (_acceptanceGeneration != acceptanceGeneration ||
+            !IsCurrentInvocation(eventArgs, identity, resolutionGeneration, attachment))
+        {
+            return;
+        }
+
+        var transaction = new SuggestionInputAcceptanceTransaction(
+            identity,
+            eventArgs.Item,
+            acceptedText,
+            acceptanceGeneration);
+        _acceptanceTransaction = transaction;
+        _acceptanceAttachment = attachment;
+        _acceptanceCause = eventArgs.Cause;
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(_popupCoordinator.AcceptAndClose, ref failure);
+
+        if (IsCurrentAcceptance(transaction))
+        {
+            var cause = _acceptanceCause;
+            ClearAcceptance(transaction.Generation);
+            ExceptionAggregation.Capture(
+                () => SuggestionAccepted?.Invoke(
+                    this,
+                    new ItemInvokedEventArgs(
+                        transaction.Activation.ItemIndex,
+                        transaction.Item,
+                        cause)),
+                ref failure);
+        }
+        else
+        {
+            ClearAcceptance(transaction.Generation);
+        }
+
+        failure?.Throw();
+    }
+
+    [Pure]
+    private bool IsCurrentInvocation(
+        ItemInvokedEventArgs eventArgs,
+        PopupItemActivationIdentity identity,
+        int resolutionGeneration,
+        ControlAttachmentToken attachment) =>
+        CanAcceptCurrentSnapshot() &&
+        _resolutionGeneration == resolutionGeneration &&
+        _currentSnapshotGeneration == resolutionGeneration &&
+        IsCurrent(attachment) &&
+        eventArgs.ActivationGeneration == identity.ItemGeneration &&
+        eventArgs.Index == identity.ItemIndex &&
+        eventArgs.Index == _list.SelectedIndex &&
+        eventArgs.Index == _list.ActiveIndex &&
+        IsCurrentSuggestionItem(eventArgs.Index, eventArgs.Item) &&
+        _popupCoordinator.TransitionVersion == identity.PopupTransitionVersion &&
+        _popupCoordinator.SessionGeneration == identity.PopupSessionGeneration;
+
+    [Pure]
+    private bool CanAcceptCurrentSnapshot() =>
+        !IsDisposed &&
+        !IsDisposing &&
+        Dispatcher is not null &&
+        EffectiveIsEnabled &&
+        EffectiveIsVisible &&
+        _popupCoordinator.IsOpen &&
+        !IsResolving &&
+        !_resolutionOperation.HasCurrent &&
+        _currentSnapshotGeneration == _resolutionGeneration;
+
+    [Pure]
+    private bool IsCurrentSuggestionItem(int index, object? item) =>
+        (uint) index < (uint) Suggestions.Count &&
+        ReferenceEquals(Suggestions[index], item);
+
+    [Pure]
+    private bool IsValidSuggestionIndex(int index) =>
+        index == -1 || (uint) index < (uint) Suggestions.Count;
+
+    [Pure]
+    private bool IsAcceptanceReadyToCommit(SuggestionInputAcceptanceTransaction transaction) =>
+        !IsDisposed &&
+        !IsDisposing &&
+        _acceptanceTransaction is { } current &&
+        current.Generation == transaction.Generation &&
+        _acceptanceGeneration == transaction.Generation &&
+        _acceptanceAttachment is { } attachment &&
+        IsCurrent(attachment) &&
+        _popupCoordinator.IsOpen &&
+        _popupCoordinator.TransitionVersion == transaction.Activation.PopupTransitionVersion &&
+        _popupCoordinator.SessionGeneration == transaction.Activation.PopupSessionGeneration;
+
+    [Pure]
+    private bool IsCurrentAcceptance(SuggestionInputAcceptanceTransaction transaction) =>
+        !IsDisposed &&
+        !IsDisposing &&
+        _acceptanceTransaction is { } current &&
+        current.Generation == transaction.Generation &&
+        _acceptanceGeneration == transaction.Generation &&
+        _acceptanceAttachment is { } attachment &&
+        IsCurrent(attachment) &&
+        string.Equals(Text, transaction.AcceptedText, StringComparison.Ordinal) &&
+        !_popupCoordinator.IsOpen;
+
+    private ulong AdvanceAcceptanceGeneration()
+    {
+        _acceptanceGeneration++;
+
+        if (_acceptanceGeneration == 0)
+        {
+            _acceptanceGeneration++;
+        }
+
+        _acceptanceTransaction = null;
+        _acceptanceAttachment = null;
+        _acceptanceCause = default;
+        return _acceptanceGeneration;
+    }
+
+    private void CancelPendingAcceptance() => _ = AdvanceAcceptanceGeneration();
+
+    private void ClearAcceptance(ulong generation)
+    {
+        if (_acceptanceGeneration != generation)
+        {
+            return;
+        }
+
+        _acceptanceTransaction = null;
+        _acceptanceAttachment = null;
+        _acceptanceCause = default;
+    }
+
+    private void RequestFirstSuggestionSelection(int resolutionGeneration)
+    {
+        _pendingFirstSelectionResolutionGeneration = resolutionGeneration;
+        _pendingFirstSelectionSessionGeneration = _popupCoordinator.SessionGeneration;
+        SchedulePendingFirstSuggestionSelection();
+    }
+
+    private void SchedulePendingFirstSuggestionSelection()
+    {
+        if (_pendingFirstSelectionResolutionGeneration is null ||
+            Dispatcher is not { } dispatcher ||
+            ReferenceEquals(_pendingFirstSelectionDispatcher, dispatcher))
+        {
+            return;
+        }
+
+        if (_pendingFirstSelectionDispatcher is { } previousDispatcher)
+        {
+            previousDispatcher.Idle -= OnPendingFirstSuggestionSelectionIdle;
+        }
+
+        _pendingFirstSelectionDispatcher = dispatcher;
+        dispatcher.Idle += OnPendingFirstSuggestionSelectionIdle;
+        dispatcher.RequestIdle();
+    }
+
+    private void OnPendingFirstSuggestionSelectionIdle(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+
+        if (_pendingFirstSelectionResolutionGeneration is not { } resolutionGeneration)
+        {
+            ClearPendingFirstSuggestionSelection();
+            return;
+        }
+
+        var sessionGeneration = _pendingFirstSelectionSessionGeneration;
+        ClearPendingFirstSuggestionSelection();
+
+        if (!IsDisposed &&
+            !IsResolving &&
+            resolutionGeneration == _resolutionGeneration &&
+            _currentSnapshotGeneration == resolutionGeneration &&
+            _popupCoordinator.IsOpen &&
+            _popupCoordinator.SessionGeneration == sessionGeneration &&
+            _list.ActiveIndex < 0)
+        {
+            SelectFirstAvailableSuggestion(commitCurrent: true);
+        }
+    }
+
+    private void ClearPendingFirstSuggestionSelection()
+    {
+        if (_pendingFirstSelectionDispatcher is { } dispatcher)
+        {
+            _pendingFirstSelectionDispatcher = null;
+            dispatcher.Idle -= OnPendingFirstSuggestionSelectionIdle;
+        }
+
+        _pendingFirstSelectionResolutionGeneration = null;
+        _pendingFirstSelectionSessionGeneration = 0;
+    }
+
+    private void SelectFirstAvailableSuggestion(bool commitCurrent)
+    {
+        var first = _list.ResolveCollapsedNavigationIndex(
+            new KeyEventArgs(new Stroke(
+                Code.Home,
+                character: null,
+                nativeCode: 0,
+                Modifiers.None,
+                KeyAction.Press)),
+            currentIndex: -1);
+
+        if (first >= 0)
+        {
+            // Result publication can precede the popup's first arrange. Seed the owner's
+            // visual selection without asking ListView to reveal a row against stale geometry.
+            // The queued idle pass commits current after replacement rows have been arranged.
+            _list.SetProvisionalSelectionIndex(first);
+
+            if (commitCurrent)
+            {
+                _list.SetProvisionalCurrentIndex(first);
+            }
+        }
+    }
+
+    #endregion
+
     #region Resolution
 
     private void OnTextChanged(object? sender, TextChangedEventArgs eventArgs)
@@ -526,6 +897,8 @@ public sealed class SuggestionInput: CompositeControlBase
             return;
         }
 
+        ClearPendingFirstSuggestionSelection();
+        _itemActivation = null;
         var generation = ++_resolutionGeneration;
         _currentSnapshotGeneration = null;
         var lease = _resolutionOperation.Begin();
@@ -815,6 +1188,22 @@ public sealed class SuggestionInput: CompositeControlBase
                         () => _popupCoordinator.SetOpen(_wantsOpen && Suggestions.Count > 0),
                         ref failure);
                 }
+
+                if (IsCurrentResolution(lease, generation) &&
+                    _popupCoordinator.IsOpen &&
+                    _list.SelectedIndex < 0)
+                {
+                    SelectFirstAvailableSuggestion(commitCurrent: false);
+                }
+
+                if (IsCurrentResolution(lease, generation) &&
+                    _popupCoordinator.IsOpen &&
+                    _list.ActiveIndex != _list.SelectedIndex)
+                {
+                    ExceptionAggregation.Capture(
+                        () => RequestFirstSuggestionSelection(generation),
+                        ref failure);
+                }
             }
         }
         finally
@@ -913,6 +1302,8 @@ public sealed class SuggestionInput: CompositeControlBase
         }
 
         changed = !SnapshotsEqual(Suggestions, results);
+        ClearPendingFirstSuggestionSelection();
+        _itemActivation = null;
         ExceptionAggregation.Capture(() => _list.Items = results, ref failure);
         ExceptionAggregation.Capture(() => _list.SelectedIndex = -1, ref failure);
         ExceptionAggregation.Capture(() => _list.SetProvisionalCurrentIndex(-1), ref failure);
@@ -1041,6 +1432,22 @@ public sealed class SuggestionInput: CompositeControlBase
     }
 
     /// <inheritdoc/>
+    protected override void OnEvent(RoutedEventArgs eventArgs)
+    {
+        base.OnEvent(eventArgs);
+
+        if (!eventArgs.IsHandled &&
+            _popupCoordinator.IsOpen &&
+            eventArgs is PointerEventArgs { Pointer.Action: PointerAction.Wheel } &&
+            OriginatesInSuggestionList(eventArgs.OriginalSource))
+        {
+            // A wheel that reached the owner has already been offered to ListView and its rails.
+            // Consuming the endpoint keeps in-plane scrolling from becoming light dismissal.
+            eventArgs.IsHandled = true;
+        }
+    }
+
+    /// <inheritdoc/>
     protected override void OnAttached()
     {
         base.OnAttached();
@@ -1059,6 +1466,7 @@ public sealed class SuggestionInput: CompositeControlBase
         }
 
         ExceptionAggregation.Capture(_popupCoordinator.OnOwnerAttached, ref failure);
+        ExceptionAggregation.Capture(SchedulePendingFirstSuggestionSelection, ref failure);
         failure?.Throw();
     }
 
@@ -1067,6 +1475,9 @@ public sealed class SuggestionInput: CompositeControlBase
     {
         ExceptionDispatchInfo? failure = null;
         var endsResolutionLifetime = reason is ReleaseReason.Detached or ReleaseReason.Disposed;
+        ClearPendingFirstSuggestionSelection();
+        _itemActivation = null;
+        CancelPendingAcceptance();
 
         if (endsResolutionLifetime)
         {
@@ -1093,6 +1504,8 @@ public sealed class SuggestionInput: CompositeControlBase
             if (reason == ReleaseReason.Disposed)
             {
                 _input.TextChanged -= OnTextChanged;
+                _list.ItemActivationStarting -= OnItemActivationStarting;
+                _list.ItemInvoked -= OnItemInvoked;
                 ExceptionAggregation.Capture(_popupCoordinator.Detach, ref failure);
                 BeforeDetachedResolutionPublication = null;
                 SuggestionsChanged = null;
@@ -1117,9 +1530,35 @@ public sealed class SuggestionInput: CompositeControlBase
 
     private void OnOpened()
     {
+        SelectFirstAvailableSuggestion(commitCurrent: false);
+
+        if (_list.ActiveIndex != _list.SelectedIndex &&
+            _currentSnapshotGeneration is { } generation)
+        {
+            RequestFirstSuggestionSelection(generation);
+        }
     }
 
-    private void OnClosed() => _wantsOpen = false;
+    private void OnClosed()
+    {
+        _wantsOpen = false;
+        ClearPendingFirstSuggestionSelection();
+        _itemActivation = null;
+    }
+
+    [Pure]
+    private bool OriginatesInSuggestionList(ControlBase? source)
+    {
+        for (var current = source; current is not null; current = current.Parent)
+        {
+            if (ReferenceEquals(current, _list))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     #endregion
 }

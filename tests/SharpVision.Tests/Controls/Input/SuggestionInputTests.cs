@@ -2515,6 +2515,202 @@ public sealed class SuggestionInputTests
         input.IsResolving.ShouldBeFalse();
     }
 
+    /// <summary>Verifies accepted text starts its own resolver generation while the completed
+    /// acceptance still publishes exactly once, after the popup has closed.</summary>
+    [Fact]
+    public async Task Accept_WhenTextCommitStartsNewResolution_RaisesSuggestionAcceptedOnceAsync()
+    {
+        // Arrange
+        var queries = new List<string>();
+        var accepted = new List<ItemInvokedEventArgs>();
+        var input = new SuggestionInput
+        {
+            Width = Length.Cells(16),
+            Resolver = (searchTerms, _) =>
+            {
+                queries.Add(searchTerms);
+                return ValueTask.FromResult<IReadOnlyList<object?>>(
+                    searchTerms == "q" ? ["accepted"] : [$"resolved {searchTerms}"]);
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(18, 7),
+            TestContext.Current.CancellationToken);
+        input.SuggestionAccepted += (_, eventArgs) =>
+        {
+            input.IsOpen.ShouldBeFalse();
+            input.Text.ShouldBe("accepted");
+            accepted.Add(eventArgs);
+        };
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.TypeAsync("q");
+        input.IsOpen.ShouldBeTrue();
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        input.Text.ShouldBe("accepted");
+        input.IsOpen.ShouldBeFalse();
+        input.IsResolving.ShouldBeFalse();
+        queries.ShouldBe(["q", "accepted"]);
+        accepted.Count.ShouldBe(1);
+        accepted[0].Index.ShouldBe(0);
+        accepted[0].Item.ShouldBe("accepted");
+        accepted[0].Cause.ShouldBe(ActivationCause.Keyboard);
+    }
+
+    /// <summary>Verifies selector failure occurs before accepted text or popup state can mutate
+    /// and propagates the original failure to the routed input caller.</summary>
+    [Fact]
+    public async Task Accept_WhenSelectorThrows_PropagatesWithoutChangingTextOrPopupAsync()
+    {
+        // Arrange
+        var expected = new InvalidOperationException("selector failed");
+        var accepted = 0;
+        var input = new SuggestionInput
+        {
+            Width = Length.Cells(16),
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["result"]),
+            TextSelector = _ => throw expected
+        };
+        input.SuggestionAccepted += (_, _) => accepted++;
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(18, 7),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.TypeAsync("q");
+        var list = OwnedTree.Find<UiListView>(input).ShouldNotBeNull();
+        var editor = OwnedTree.Find<TextInput>(input).ShouldNotBeNull();
+
+        // Act
+        var exception = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await surface.Application.Dispatcher.InvokeAsync(
+                () => _ = Router.Route(
+                    editor,
+                    Events.Key,
+                    new KeyEventArgs(new Stroke(
+                        Code.Enter,
+                        character: null,
+                        nativeCode: 0,
+                        Modifiers.None,
+                        KeyAction.Press))),
+                TestContext.Current.CancellationToken));
+
+        // Assert
+        exception.ShouldBeSameAs(expected);
+        input.Text.ShouldBe("q");
+        input.Suggestions.ShouldBe(["result"]);
+        input.IsOpen.ShouldBeTrue();
+        list.SelectedIndex.ShouldBe(0);
+        list.ActiveIndex.ShouldBe(0);
+        accepted.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a custom selector cannot return null and that validation precedes every
+    /// observable mutation in the acceptance transaction.</summary>
+    [Fact]
+    public async Task Accept_WhenSelectorReturnsNull_ThrowsWithoutChangingTextOrPopupAsync()
+    {
+        // Arrange
+        var accepted = 0;
+        var input = new SuggestionInput
+        {
+            Width = Length.Cells(16),
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["result"]),
+            TextSelector = static _ => null!
+        };
+        input.SuggestionAccepted += (_, _) => accepted++;
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(18, 7),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.TypeAsync("q");
+        var list = OwnedTree.Find<UiListView>(input).ShouldNotBeNull();
+        var editor = OwnedTree.Find<TextInput>(input).ShouldNotBeNull();
+
+        // Act
+        var exception = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await surface.Application.Dispatcher.InvokeAsync(
+                () => _ = Router.Route(
+                    editor,
+                    Events.Key,
+                    new KeyEventArgs(new Stroke(
+                        Code.Enter,
+                        character: null,
+                        nativeCode: 0,
+                        Modifiers.None,
+                        KeyAction.Press))),
+                TestContext.Current.CancellationToken));
+
+        // Assert
+        exception.Message.ShouldContain("null");
+        input.Text.ShouldBe("q");
+        input.Suggestions.ShouldBe(["result"]);
+        input.IsOpen.ShouldBeTrue();
+        list.SelectedIndex.ShouldBe(0);
+        list.ActiveIndex.ShouldBe(0);
+        accepted.ShouldBe(0);
+    }
+
+    /// <summary>Verifies every terminal owner-lifecycle boundary releases deferred first-row work
+    /// before it can target unavailable or disposed retained parts.</summary>
+    [Theory]
+    [InlineData("hidden")]
+    [InlineData("disabled")]
+    [InlineData("detached")]
+    [InlineData("disposed")]
+    public async Task Lifecycle_WhenFirstSelectionIsDeferred_ClearsPendingWorkAsync(string transition)
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var input = new SuggestionInput
+        {
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["result"]),
+            Text = "q"
+        };
+        input.HasPendingFirstSuggestionSelection.ShouldBeTrue();
+
+        // Act
+        switch (transition)
+        {
+            case "hidden":
+                input.Visibility = Visibility.Hidden;
+                break;
+            case "disabled":
+                input.IsEnabled = false;
+                break;
+            case "detached":
+                await dispatcher.InvokeAsync(
+                    () =>
+                    {
+                        input.Attach(dispatcher);
+                        input.Detach();
+                    },
+                    TestContext.Current.CancellationToken);
+                break;
+            case "disposed":
+                input.Dispose();
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(
+                    nameof(transition),
+                    transition,
+                    "The lifecycle transition is unknown.");
+        }
+
+        // Assert
+        input.HasPendingFirstSuggestionSelection.ShouldBeFalse();
+
+        if (!input.IsDisposed)
+        {
+            input.Dispose();
+        }
+    }
+
     /// <summary>Verifies null constructor arguments are rejected while an empty eligible query is retained.</summary>
     [Fact]
     public void SuggestionResolutionFailedEventArgs_WhenArgumentsVary_ValidatesBeforeAssignment()
