@@ -177,6 +177,74 @@ public sealed class InfoBarTests
         propertyPublished.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a newer transition from availability cleanup suppresses stale close publication.</summary>
+    [Fact]
+    public void Dismiss_WhenAvailabilityObserverReopens_SuppressesStaleStagesAndPreservesFailure()
+    {
+        var body = new ProbeControl();
+        var bar = new InfoBar { Content = body };
+        var failure = new InvalidOperationException("availability observer");
+        List<bool> openStates = [];
+        var dismissed = 0;
+        body.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ControlBase.Visibility) &&
+                body.Visibility == Visibility.Collapsed)
+            {
+                bar.IsOpen = true;
+                throw failure;
+            }
+        };
+        bar.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(InfoBar.IsOpen))
+            {
+                openStates.Add(bar.IsOpen);
+            }
+        };
+        bar.Dismissed += (_, _) => dismissed++;
+
+        var exception = Should.Throw<InvalidOperationException>(bar.Dismiss);
+
+        exception.ShouldBeSameAs(failure);
+        bar.IsOpen.ShouldBeTrue();
+        body.Visibility.ShouldBe(Visibility.Visible);
+        openStates.ShouldBe([true]);
+        dismissed.ShouldBe(0);
+    }
+
+    /// <summary>Verifies disposal from availability cleanup retires later cleanup without stale publication.</summary>
+    [Fact]
+    public void Dismiss_WhenAvailabilityObserverDisposes_SuppressesStaleStagesWithoutSecondaryFailure()
+    {
+        var body = new ProbeControl();
+        var bar = new InfoBar { Content = body };
+        var propertyPublished = false;
+        var dismissed = false;
+        body.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ControlBase.Visibility) &&
+                body.Visibility == Visibility.Collapsed)
+            {
+                bar.Dispose();
+            }
+        };
+        bar.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(InfoBar.IsOpen))
+            {
+                propertyPublished = true;
+            }
+        };
+        bar.Dismissed += (_, _) => dismissed = true;
+
+        Should.NotThrow(bar.Dismiss);
+
+        bar.IsDisposed.ShouldBeTrue();
+        propertyPublished.ShouldBeFalse();
+        dismissed.ShouldBeFalse();
+    }
+
     /// <summary>Verifies requested failures do not prevent required close publication and preserve earliest failure.</summary>
     [Fact]
     public void Dismiss_WhenSubscribersThrow_CommitsAndAttemptsDismissedBeforeRethrow()

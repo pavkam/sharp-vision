@@ -172,9 +172,13 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
 
         _isOpen = false;
         ExceptionAggregation.Capture(ApplyClosedAvailability, ref failure);
-        ExceptionAggregation.Capture(
-            () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.Measure),
-            ref failure);
+
+        if (token.IsCurrent)
+        {
+            ExceptionAggregation.Capture(
+                () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.Measure),
+                ref failure);
+        }
 
         if (token.IsCurrent)
         {
@@ -475,8 +479,12 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
                 ref failure);
         }
 
-        ExceptionAggregation.Capture(ApplyDismissAvailability, ref failure);
-        ExceptionAggregation.Capture(_dismissButton.CancelInteraction, ref failure);
+        if (!IsDisposing && !IsDisposed)
+        {
+            ExceptionAggregation.Capture(ApplyDismissAvailability, ref failure);
+            ExceptionAggregation.Capture(_dismissButton.CancelInteraction, ref failure);
+        }
+
         failure?.Throw();
     }
 
