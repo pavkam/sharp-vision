@@ -206,39 +206,60 @@ public static class Damage
 
     private static ulong RowProbe(Frame frame, GraphicsCellOverlay? overlay, int row)
     {
-        if (overlay is null)
+        var offset = checked(row * frame.Size.Width);
+
+        // A null overlay and a present overlay with no active cell in this row describe the
+        // same rendered content, so both must take the cached-fingerprint path to hash identically.
+        if (overlay is null || !RowHasActiveCell(overlay, offset, frame.Size.Width))
         {
             return frame.RowSemanticFingerprint(row);
         }
 
         const ulong offsetBasis = 14695981039346656037;
-        const ulong prime = 1099511628211;
-        var offset = checked(row * frame.Size.Width);
         var value = offsetBasis;
 
         for (var column = 0; column < frame.Size.Width; column++)
         {
-            value = (value ^ CellProbe(frame, overlay, offset + column)) * prime;
+            var index = offset + column;
+            var projected = overlay.GetCell(index);
+
+            value = projected.IsActive
+                ? Frame.MixCellFingerprint(
+                    value,
+                    projected.ImageId,
+                    projected.PlacementId,
+                    (uint) projected.Background.GetHashCode(),
+                    (uint) ((projected.Row << 16) ^ projected.Column),
+                    (uint) projected.IdentityColorDepth)
+                : MixFrameCellFingerprint(frame, value, index);
         }
 
         return value;
     }
 
-    private static ulong CellProbe(Frame frame, GraphicsCellOverlay? overlay, int index)
+    private static bool RowHasActiveCell(GraphicsCellOverlay overlay, int offset, int width)
     {
-        var projected = overlay?.GetCell(index) ?? default;
-
-        if (projected.IsActive)
+        for (var column = 0; column < width; column++)
         {
-            return (uint) projected.GetHashCode();
+            if (overlay.GetCell(offset + column).IsActive)
+            {
+                return true;
+            }
         }
 
+        return false;
+    }
+
+    private static ulong MixFrameCellFingerprint(Frame frame, ulong value, int index)
+    {
         var cell = frame.GetCellByIndex(index);
-        var value = ((ulong) cell.Hash << 32) | (uint) cell.Style.GetHashCode();
-        value ^= (ulong) cell.Width << 24;
-        value ^= (uint) cell.Length;
-        value ^= (uint) (cell.IsContinuation ? (cell.LeadIndex % frame.Size.Width) + 2 : 1);
-        return value;
+        return Frame.MixCellFingerprint(
+            value,
+            cell.Width,
+            (uint) (cell.IsContinuation ? (cell.LeadIndex % frame.Size.Width) + 2 : 1),
+            (uint) cell.Style.GetHashCode(),
+            cell.Hash,
+            (uint) cell.Length);
     }
 
     private static void ConsiderCandidate(
