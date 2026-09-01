@@ -5,11 +5,19 @@ namespace SharpVision.Controls.Layout;
 
 using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 
+using SharpVision.Terminal.Input;
+
 /// <summary>Owns two panes separated by one keyboard- and pointer-resizable cell divider.</summary>
 [PublicAPI]
 public sealed class SplitPane: Container
 {
     private readonly CallbackTransitionStream _splitTransitions = new();
+    private bool _isDividerPointerOver;
+    private Point? _latestPointerCell;
+
+    /// <summary>Gets whether the latest physical pointer cell is over the visible divider.</summary>
+    /// <returns>Whether divider-specific hover is retained.</returns>
+    internal bool HasDividerPointerOver() => _isDividerPointerOver;
 
     /// <summary>Initializes an empty horizontal split with capacity for two panes.</summary>
     public SplitPane() : base(capacity: 2)
@@ -35,7 +43,10 @@ public sealed class SplitPane: Container
         {
             ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The split orientation is unknown.");
 
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+            if (SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                ReconcileDividerPointerOver();
+            }
         }
     } = Orientation.Horizontal;
 
@@ -76,7 +87,13 @@ public sealed class SplitPane: Container
     public bool IsResizable
     {
         get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
+        set
+        {
+            if (SetProperty(ref field, value, InvalidationImpact.Render))
+            {
+                ReconcileDividerPointerOver();
+            }
+        }
     } = true;
 
     /// <summary>Gets or sets the non-negative arrow-key change in terminal cells.</summary>
@@ -114,9 +131,7 @@ public sealed class SplitPane: Container
     internal Rect LogicalDividerBounds { get; private set; }
 
     /// <summary>Gets the retained divider rectangle clipped to the committed content viewport.</summary>
-    internal Rect VisibleDividerBounds => LogicalDividerBounds == default
-        ? default
-        : LogicalDividerBounds.Intersect(ViewportBounds);
+    internal Rect VisibleDividerBounds => ResolveVisibleDividerBounds();
 
     /// <summary>Gets the smallest jointly feasible leading-pane border-box extent from the latest arrangement.</summary>
     internal int MinimumFirstPaneExtent { get; private set; }
@@ -213,12 +228,14 @@ public sealed class SplitPane: Container
 
         if (count == 0)
         {
+            ReconcileDividerPointerOver();
             return;
         }
 
         if (count == 1)
         {
             ArrangeParticipant(first!, bounds, PrimaryContainingBase(bounds), CrossContainingBase(bounds));
+            ReconcileDividerPointerOver();
             return;
         }
 
@@ -284,6 +301,7 @@ public sealed class SplitPane: Container
 
         ArrangeParticipant(first!, firstSlot, primaryPercentBase, crossContainingBase);
         ArrangeParticipant(second!, secondSlot, primaryPercentBase, crossContainingBase);
+        ReconcileDividerPointerOver();
     }
 
     private void ArrangeParticipant(
@@ -520,6 +538,118 @@ public sealed class SplitPane: Container
         Orientation == Orientation.Horizontal
             ? new Rect(primaryOrigin, bounds.Y, primaryExtent, bounds.Height)
             : new Rect(bounds.X, primaryOrigin, bounds.Width, primaryExtent);
+
+    #endregion
+
+    #region Divider rendering and hover
+
+    /// <inheritdoc/>
+    protected override void OnChildrenChanged()
+    {
+        base.OnChildrenChanged();
+        ReconcileDividerPointerOver();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnEvent(RoutedEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        base.OnEvent(eventArgs);
+
+        if (eventArgs is PointerEventArgs pointer)
+        {
+            UpdateDividerPointerCell(pointer);
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver)
+    {
+        base.OnPointerOverChanged(isPointerOver, isPointerDirectlyOver);
+        _ = isPointerDirectlyOver;
+
+        if (!isPointerOver)
+        {
+            _latestPointerCell = null;
+        }
+
+        ReconcileDividerPointerOver();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnUnavailable(ReleaseReason reason)
+    {
+        base.OnUnavailable(reason);
+        _latestPointerCell = null;
+        SetDividerPointerOver(false);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnRenderAdornment(TerminalCanvas canvas)
+    {
+        base.OnRenderAdornment(canvas);
+
+        var visible = ResolveVisibleDividerBounds().Intersect(canvas.Bounds);
+
+        if (visible.Width == 0 || visible.Height == 0)
+        {
+            return;
+        }
+
+        var glyph = Orientation == Orientation.Horizontal
+            ? ResolveControlGlyph(ControlGlyphs.Separators.Vertical)
+            : ResolveControlGlyph(ControlGlyphs.Separators.Horizontal);
+        var style = ResolvedStyle;
+
+        if (Orientation == Orientation.Horizontal)
+        {
+            for (var y = visible.Y; y < visible.Bottom; y++)
+            {
+                canvas.DrawRune(glyph, new Point(visible.X, y), style, BackgroundMode.Transparent);
+            }
+
+            return;
+        }
+
+        for (var x = visible.X; x < visible.Right; x++)
+        {
+            canvas.DrawRune(glyph, new Point(x, visible.Y), style, BackgroundMode.Transparent);
+        }
+    }
+
+    private Rect ResolveVisibleDividerBounds() => LogicalDividerBounds == default
+        ? default
+        : LogicalDividerBounds.Intersect(ViewportBounds);
+
+    private void UpdateDividerPointerCell(PointerEventArgs eventArgs)
+    {
+        Debug.Assert(eventArgs is not null, "Pointer handling receives a non-null event.");
+        var pointer = eventArgs.Pointer;
+        _latestPointerCell = pointer.Action == PointerAction.Leave ? null : pointer.Cells;
+        ReconcileDividerPointerOver();
+    }
+
+    private void ReconcileDividerPointerOver()
+    {
+        var value = IsResizable &&
+            EffectiveIsEnabled &&
+            EffectiveIsVisible &&
+            IsPointerOver &&
+            _latestPointerCell is { } cells &&
+            ResolveVisibleDividerBounds().Contains(cells);
+        SetDividerPointerOver(value);
+    }
+
+    private void SetDividerPointerOver(bool value)
+    {
+        if (_isDividerPointerOver == value)
+        {
+            return;
+        }
+
+        _isDividerPointerOver = value;
+        InvalidateVisualState();
+    }
 
     #endregion
 
