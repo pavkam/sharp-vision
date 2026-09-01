@@ -109,6 +109,26 @@ public sealed class PagerSurfaceTests
         Row(frame, 25).TrimEnd().ShouldBe("« ‹ 1 … 4 5 … 10 › »");
     }
 
+    /// <summary>Verifies a rejected wide final-page number leaves its cheaper omission eligible
+    /// before lower-priority navigation glyphs consume the remaining cells.</summary>
+    [Fact]
+    public void Render_WhenFinalPageNumberDoesNotFit_RetainsTrailingOmissionBeforeNavigation()
+    {
+        var pager = new Pager
+        {
+            PageCount = 1_000,
+            PageIndex = 1,
+            MaximumVisiblePages = 1,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        new LayoutEngine().Layout(pager, new Size(7, 1));
+        using Frame frame = new(new Size(7, 1));
+
+        pager.Render(frame.Canvas);
+
+        Row(frame, 7).ShouldBe("1 2 3 …");
+    }
+
     /// <summary>Verifies page numbers always use invariant ASCII formatting even when process
     /// culture uses a different native numbering system.</summary>
     [Fact]

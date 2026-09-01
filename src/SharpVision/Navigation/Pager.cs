@@ -227,6 +227,13 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
     }
 
     /// <inheritdoc/>
+    protected override void OnAttached()
+    {
+        _ = _pageTransitions.Commit(this);
+        base.OnAttached();
+    }
+
+    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         _ = _pageTransitions.Commit(this);
@@ -688,6 +695,15 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
             .Order()
             .ToArray();
 
+        if (numericPages[0] > 1)
+        {
+            AddOmissionCandidate(
+                selected,
+                glyph,
+                NumberOrder(numericPages[0]) - 1,
+                availableWidth);
+        }
+
         for (var index = 1; index < numericPages.Length; index++)
         {
             var previous = numericPages[index - 1];
@@ -698,20 +714,38 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
                 continue;
             }
 
-            var target = new PagerLayoutTarget(
-                PagerTargetKind.Omitted,
-                -1,
-                glyph.ToString(),
-                1,
-                default,
-                isEnabled: false,
-                isCurrent: false);
-            AddCandidate(
+            AddOmissionCandidate(
                 selected,
-                target,
+                glyph,
                 NumberOrder(previous) + 1,
                 availableWidth);
         }
+
+        if (numericPages[^1] < PageCount - 2)
+        {
+            AddOmissionCandidate(
+                selected,
+                glyph,
+                NumberOrder(numericPages[^1]) + 1,
+                availableWidth);
+        }
+    }
+
+    private static void AddOmissionCandidate(
+        List<(long Order, PagerLayoutTarget Target)> selected,
+        Rune glyph,
+        long order,
+        int? availableWidth)
+    {
+        var target = new PagerLayoutTarget(
+            PagerTargetKind.Omitted,
+            -1,
+            glyph.ToString(),
+            1,
+            default,
+            isEnabled: false,
+            isCurrent: false);
+        AddCandidate(selected, target, order, availableWidth);
     }
 
     private void AddNavigationCandidates(

@@ -187,6 +187,59 @@ public sealed class PagerTests
         laterObservations.ShouldBe([2]);
     }
 
+    /// <summary>Verifies attachment from every property-publication boundary supersedes the
+    /// detached transition and suppresses all stale later notifications.</summary>
+    [Theory]
+    [InlineData(nameof(Pager.PageCount), 1)]
+    [InlineData(nameof(Pager.PageIndex), 2)]
+    [InlineData(nameof(Pager.CanTabStop), 3)]
+    public async Task PageCount_WhenPropertyObserverAttaches_SuppressesStaleLaterNotificationsAsync(
+        string boundary,
+        int expectedPropertyCount)
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var pager = new Pager();
+        List<string> properties = [];
+        var changes = 0;
+        pager.PropertyChanged += (_, eventArgs) =>
+        {
+            properties.Add(eventArgs.PropertyName!);
+
+            if (eventArgs.PropertyName == boundary)
+            {
+                pager.Attach(dispatcher);
+            }
+        };
+        pager.PageChanged += (_, _) => changes++;
+
+        _ = await dispatcher.InvokeAsync(
+            () => pager.PageCount = 2,
+            TestContext.Current.CancellationToken);
+
+        properties.Count.ShouldBe(expectedPropertyCount);
+        changes.ShouldBe(0);
+        await dispatcher.InvokeAsync(pager.Dispose, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies attachment from one typed-event subscriber invalidates the outer stream
+    /// before a later subscriber can observe that detached transition.</summary>
+    [Fact]
+    public async Task PageChanged_WhenFirstSubscriberAttaches_SuppressesLaterSubscriberAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var pager = new Pager { PageCount = 2 };
+        var laterChanges = 0;
+        pager.PageChanged += (_, _) => pager.Attach(dispatcher);
+        pager.PageChanged += (_, _) => laterChanges++;
+
+        _ = await dispatcher.InvokeAsync(
+            () => pager.PageIndex = 1,
+            TestContext.Current.CancellationToken);
+
+        laterChanges.ShouldBe(0);
+        await dispatcher.InvokeAsync(pager.Dispose, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies one throwing observer does not prevent later observers from seeing the
     /// committed page while the earliest callback failure still escapes.</summary>
     [Fact]

@@ -39,6 +39,20 @@ public sealed class PagerBindingTests
         pager.PageIndex.ShouldBe(0);
     }
 
+    /// <summary>Verifies a nonempty source index cannot silently fall back to the empty sentinel
+    /// and leave a divergent live binding while the target range is empty.</summary>
+    [Fact]
+    public void Bind_WhenSourceIndexIsNonemptyButPageCountIsZero_ThrowsWithoutCreatingBinding()
+    {
+        var model = new BindingModel { Number = 0 };
+        var pager = new Pager();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => pager.Bind(model, source => source.Number));
+
+        model.Number.ShouldBe(0);
+        pager.PageIndex.ShouldBe(-1);
+    }
+
     /// <summary>Verifies the empty natural value binds before PageCount and the later count repair
     /// flows back to the model through the same two-way lifetime.</summary>
     [Fact]

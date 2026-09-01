@@ -95,7 +95,7 @@ public static class BindingExtensions
         where TModel : class
     {
         ArgumentNullException.ThrowIfNull(target);
-        return BindProperty(
+        return CreateBinding(
             target,
             static control => control.PageIndex,
             source,
@@ -103,7 +103,11 @@ public static class BindingExtensions
             static value => value,
             static value => value,
             BindingMode.TwoWay,
-            -1);
+            -1,
+            tracksCollection: false,
+            coordinatesItems: false,
+            refreshAfterItems: false,
+            retryTargetWriteWithFallback: false);
     }
 
     /// <summary>Binds an integer model value two-way to a scroll bar.</summary>
@@ -695,6 +699,7 @@ public static class BindingExtensions
         bool tracksCollection,
         bool coordinatesItems,
         bool refreshAfterItems,
+        bool retryTargetWriteWithFallback = true,
         Func<NotifyCollectionChangedEventArgs, bool>? applyIncrementalChange = null)
         where TControl : ControlBase
         where TModel : class
@@ -733,6 +738,7 @@ public static class BindingExtensions
             tracksCollection,
             coordinatesItems,
             refreshAfterItems,
+            retryTargetWriteWithFallback,
             applyIncrementalChange);
         binding.Start();
         return binding;

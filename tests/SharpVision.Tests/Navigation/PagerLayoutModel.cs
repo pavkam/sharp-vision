@@ -102,6 +102,15 @@ internal static class PagerLayoutModel
                 .Order()
                 .ToArray();
 
+            if (numbers[0] > 1)
+            {
+                Add(
+                    selected,
+                    (PagerTargetKind.Omitted, -1, "…", false, false),
+                    NumberOrder(numbers[0]) - 1,
+                    width);
+            }
+
             for (var index = 1; index < numbers.Length; index++)
             {
                 if (numbers[index] - numbers[index - 1] <= 1)
@@ -113,6 +122,15 @@ internal static class PagerLayoutModel
                     selected,
                     (PagerTargetKind.Omitted, -1, "…", false, false),
                     NumberOrder(numbers[index - 1]) + 1,
+                    width);
+            }
+
+            if (numbers[^1] < pageCount - 2)
+            {
+                Add(
+                    selected,
+                    (PagerTargetKind.Omitted, -1, "…", false, false),
+                    NumberOrder(numbers[^1]) + 1,
                     width);
             }
 
