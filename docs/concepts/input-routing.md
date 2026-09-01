@@ -199,8 +199,9 @@ any required follow-up arrange before the resulting frame.
 An unhandled pressed Alt character then enters the application
 [access-key fallback](access-keys.md#dispatch-precedence). Access-key discovery
 never preempts preview, bubble, or a control default. When that fallback accepts
-a legacy Alt stroke, it consumes the immediately adjacent equal text Rune so the
-mnemonic cannot be inserted into the newly focused editor.
+a legacy Alt stroke, it consumes the stroke's adjacent text record(s)
+unconditionally - the same way every other consume path does - so the mnemonic
+cannot be inserted into the newly focused editor.
 
 ### Selection and clipboard fallback
 
