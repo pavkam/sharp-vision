@@ -47,6 +47,10 @@ internal sealed class TreeViewStatusRow: ControlBase
     /// <summary>Gets or sets the nesting depth, set by the owning tree view on every flatten.</summary>
     internal int Depth { get; set; }
 
+    /// <summary>Redraws after the owning tree's resolved loading or failed status color changed.</summary>
+    /// <param name="impact">The invalidation the shared change requires.</param>
+    internal void NotifyStatusColorChanged(InvalidationImpact impact) => Invalidate(impact);
+
     private string StatusText
     {
         get

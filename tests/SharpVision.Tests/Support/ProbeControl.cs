@@ -262,6 +262,12 @@ internal sealed class ProbeControl: ChromeProbe
         }
     }
 
+    /// <summary>Resolves the common text-selection adornment colors through the protected seam.</summary>
+    /// <param name="current">The pre-adornment cell style being overlaid.</param>
+    /// <returns>The style <see cref="ControlBase.ApplyTextSelectionStyle(TerminalStyle)"/> would
+    /// paint the selection with.</returns>
+    internal TerminalStyle ProbeApplyTextSelectionStyle(TerminalStyle current) => ApplyTextSelectionStyle(current);
+
     /// <summary>Draws one Rune using this control's resolved terminal style.</summary>
     internal void Draw(TerminalCanvas canvas, Rune value)
     {

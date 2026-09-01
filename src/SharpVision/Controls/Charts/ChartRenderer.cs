@@ -145,7 +145,7 @@ internal static class ChartRenderer
         int seriesIndex)
     {
         var value = ResolveColor(context.Chart.ActualStyle, series, point, seriesIndex);
-        var color = ControlBase.ResolveColor(value, context.Chart.Control.Theme);
+        var color = context.Chart.ResolveSeriesColor(value);
         return context.InheritedStyle.WithForeground(color);
     }
 
@@ -403,7 +403,7 @@ internal static class ChartRenderer
 
             var markerColor = series.Color ?? context.Chart.ActualStyle.GetSeriesColor(index);
             var markerStyle = context.InheritedStyle.WithForeground(
-                ControlBase.ResolveColor(markerColor, context.Chart.Control.Theme));
+                context.Chart.ResolveSeriesColor(markerColor));
 
             if (x.Add(3) > bounds.Right)
             {

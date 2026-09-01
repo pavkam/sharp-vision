@@ -37,6 +37,16 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         static theme => theme.GetStyleSet(InputStyle.Default).Normal.AffixGap,
         InvalidationImpact.Measure);
 
+    // Backs the common ApplyTextSelectionStyle base implementation below: both semantic colors
+    // are resolved bare, outside any style member, so neither the slot walk nor the appearance
+    // diff can see a Theme swap that moves them - only a registered dependency does.
+    private static readonly ThemeValueDependency<Color> _selectedTextThemeDependency = new(
+        static theme => ResolveColor(new ControlColor(SemanticColor.SelectedText), theme),
+        InvalidationImpact.Render);
+    private static readonly ThemeValueDependency<Color> _selectedControlThemeDependency = new(
+        static theme => ResolveColor(new ControlColor(SemanticColor.SelectedControl), theme),
+        InvalidationImpact.Render);
+
     private IThemeValueDependency[]? _themeValueDependencies;
     private AppearanceStatesOverlay? _appearanceOverlay;
     private bool? _effectiveIsVisible;
@@ -6561,9 +6571,17 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     internal bool ShouldCaptureTextSelectionOnPress => CaptureTextSelectionOnPress;
 
     /// <summary>Gets the common final-adornment colors for this owner.</summary>
+    /// <remarks>
+    /// Routed through <see cref="ResolveThemeValue{T}"/> rather than a bare
+    /// <see cref="ResolveColor(ControlColor)"/> call, so a Theme swap that changes what either
+    /// semantic color resolves to is covered by a registered dependency instead of being invisible
+    /// to every mechanism that normally notices a swap - the same gap already closed for
+    /// <c>TextInput</c>, <c>CodeView</c>, and <c>Document</c>, which never reach this base
+    /// implementation because each overrides it.
+    /// </remarks>
     protected virtual TerminalStyle ApplyTextSelectionStyle(TerminalStyle current) => new(
-        ResolveColor(new ControlColor(SemanticColor.SelectedText)),
-        ResolveColor(new ControlColor(SemanticColor.SelectedControl)),
+        ResolveThemeValue(_selectedTextThemeDependency),
+        ResolveThemeValue(_selectedControlThemeDependency),
         current.Attributes,
         current.Hyperlink,
         current.Underline,

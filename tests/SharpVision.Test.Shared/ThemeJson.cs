@@ -6,37 +6,43 @@ namespace SharpVision.Test.Shared;
 /// <summary>Builds complete semantic theme documents for focused loader tests.</summary>
 public static class ThemeJson
 {
-    // Fourteen roles the "colors" section has always filled from fixed literals rather than a
-    // parameter - controlShadow, disabled*, the four status colors plus muted, and the six
-    // chromatic colors (red/green/yellow/blue/magenta/cyan). Every "colors.*" entry must name a
-    // palette key rather than embed a raw hex literal, so these are appended to the palette under
-    // reserved "__"-prefixed keys regardless of what a caller passes as its own "palette" argument.
+    // Twelve roles the "colors" section has always filled from fixed literals rather than a
+    // parameter - controlShadow, disabled*, three of the four status colors, and the six chromatic
+    // colors (red/green/yellow/blue/magenta/cyan). Every "colors.*" entry must name a palette key
+    // rather than embed a raw hex literal, so these are appended to the palette under reserved
+    // "__"-prefixed keys regardless of what a caller passes as its own "palette" argument. "error"
+    // and "muted" moved out to their own parameters below - see DefaultReservedPaletteEntryCount.
     private const string _reservedPalette =
         "\"__controlShadow\":\"#303030\",\"__disabledText\":\"#707070\",\"__disabledBorder\":\"#606060\"," +
-        "\"__error\":\"#ff0000\",\"__warning\":\"#ffff00\",\"__success\":\"#00ff00\",\"__info\":\"#0000ff\"," +
-        "\"__muted\":\"#707070\"," +
+        "\"__warning\":\"#ffff00\",\"__success\":\"#00ff00\",\"__info\":\"#0000ff\"," +
         "\"__red\":\"#ff0000\",\"__green\":\"#00ff00\",\"__yellow\":\"#ffff00\",\"__blue\":\"#0000ff\"," +
         "\"__magenta\":\"#ff00ff\",\"__cyan\":\"#00ffff\"";
 
     /// <summary>Number of palette entries <see cref="Create"/> always appends beyond a caller's own
     /// "palette" argument when every color-role parameter is left at its (hex) default - the
-    /// fourteen reserved roles above plus background/foreground/accent, which default to hex
-    /// literals and so each synthesize one more reserved entry. A caller computing an exact
+    /// twelve reserved roles above plus background/foreground/accent/muted/error, which default to
+    /// hex literals and so each synthesize one more reserved entry. A caller computing an exact
     /// palette-entry-count boundary against the produced document must subtract this.</summary>
     public const int DefaultReservedPaletteEntryCount = 17;
 
     /// <summary>Creates one complete semantic theme document. <paramref name="background"/>,
-    /// <paramref name="foreground"/>, <paramref name="accent"/>, <paramref name="hotkey"/>, and
-    /// <paramref name="controlBorderForeground"/> each accept either a raw hex literal - which this
+    /// <paramref name="foreground"/>, <paramref name="accent"/>, <paramref name="muted"/>,
+    /// <paramref name="error"/>, <paramref name="hotkey"/>,
+    /// <paramref name="controlBorderForeground"/>, <paramref name="selectedText"/>, and
+    /// <paramref name="selectedControl"/> each accept either a raw hex literal - which this
     /// method synthesizes into its own reserved palette entry, since a hex literal is no longer
     /// legal directly in "colors.*" - or the name of a key already present in
-    /// <paramref name="palette"/>, passed straight through.</summary>
+    /// <paramref name="palette"/>, passed straight through. <paramref name="selectedText"/> and
+    /// <paramref name="selectedControl"/> default to <paramref name="foreground"/> and
+    /// <paramref name="accent"/> respectively, matching every bundled theme's own convention.</summary>
     public static string Create(
         string palette = "\"bg\":\"#101010\",\"fg\":\"#e0e0e0\"",
         string name = "T",
         string background = "#101010",
         string foreground = "#e0e0e0",
         string accent = "#77aaff",
+        string muted = "#707070",
+        string error = "#ff0000",
         string? hotkey = null,
         string inputGlyphStyle = "\"heavy\"",
         string inputSides = "\"all\"",
@@ -50,12 +56,16 @@ public static class ThemeJson
         string windowExtra = "",
         string? controlBorderForeground = null,
         string extraStyles = "",
-        string? glyphs = null)
+        string? glyphs = null,
+        string? selectedText = null,
+        string? selectedControl = null)
     {
         var glyphsField = glyphs is null ? "" : $", \"glyphs\": \"{glyphs}\"";
         var (backgroundRef, backgroundEntry) = ColorRef("background", background);
         var (foregroundRef, foregroundEntry) = ColorRef("foreground", foreground);
         var (accentRef, accentEntry) = ColorRef("accent", accent);
+        var (mutedRef, mutedEntry) = ColorRef("muted", muted);
+        var (errorRef, errorEntry) = ColorRef("error", error);
 
         string hotkeyRef;
         string? hotkeyEntry;
@@ -81,8 +91,40 @@ public static class ThemeJson
             (controlBorderRef, controlBorderEntry) = ColorRef("controlBorder", controlBorderForeground);
         }
 
+        string selectedTextRef;
+        string? selectedTextEntry;
+        if (selectedText is null)
+        {
+            selectedTextRef = foregroundRef;
+            selectedTextEntry = null;
+        }
+        else
+        {
+            (selectedTextRef, selectedTextEntry) = ColorRef("selectedText", selectedText);
+        }
+
+        string selectedControlRef;
+        string? selectedControlEntry;
+        if (selectedControl is null)
+        {
+            selectedControlRef = accentRef;
+            selectedControlEntry = null;
+        }
+        else
+        {
+            (selectedControlRef, selectedControlEntry) = ColorRef("selectedControl", selectedControl);
+        }
+
         var extraPalette = string.Concat(
-            backgroundEntry, foregroundEntry, accentEntry, hotkeyEntry, controlBorderEntry);
+            backgroundEntry,
+            foregroundEntry,
+            accentEntry,
+            mutedEntry,
+            errorEntry,
+            hotkeyEntry,
+            controlBorderEntry,
+            selectedTextEntry,
+            selectedControlEntry);
 
         return $$"""
             { "name": "{{name}}", "slug": "t", "colorScheme": "dark", "order": 1,
@@ -97,10 +139,10 @@ public static class ThemeJson
                 "activeControl":"{{backgroundRef}}", "activeText":"{{foregroundRef}}", "activeBorder":"{{accentRef}}",
                 "focusedControl":"{{backgroundRef}}", "focusedText":"{{accentRef}}", "focusedBorder":"{{accentRef}}",
                 "pressedControl":"{{backgroundRef}}", "pressedText":"{{accentRef}}", "pressedBorder":"{{accentRef}}",
-                "selectedControl":"{{accentRef}}", "selectedText":"{{foregroundRef}}",
+                "selectedControl":"{{selectedControlRef}}", "selectedText":"{{selectedTextRef}}",
                 "disabledControl":"{{backgroundRef}}", "disabledText":"__disabledText", "disabledBorder":"__disabledBorder",
-                "accent":"{{accentRef}}", "muted":"__muted", "hotkey":"{{hotkeyRef}}",
-                "error":"__error", "warning":"__warning", "success":"__success", "info":"__info",
+                "accent":"{{accentRef}}", "muted":"{{mutedRef}}", "hotkey":"{{hotkeyRef}}",
+                "error":"{{errorRef}}", "warning":"__warning", "success":"__success", "info":"__info",
                 "red":"__red", "green":"__green", "yellow":"__yellow", "blue":"__blue",
                 "magenta":"__magenta", "cyan":"__cyan"
               },

@@ -673,7 +673,10 @@ public sealed class TreeViewSurfaceTests
     }
 
     /// <summary>Verifies replacing the theme re-resolves the fallback rather than latching the
-    /// family observed at attachment.</summary>
+    /// family observed at attachment - including the row's own measured width, not only the
+    /// glyphs painted into whatever cells the last layout pass reserved. The default mount theme
+    /// resolves the three-cell Brackets family; <see cref="TickTheme"/>'s "blocks" family resolves
+    /// the one-cell Square family, so a correct remeasure narrows the row by exactly two cells.</summary>
     [Fact]
     public async Task ActualCheckMark_WhenThemeIsReplaced_FollowsTheNewFamilyAsync()
     {
@@ -684,11 +687,15 @@ public sealed class TreeViewSurfaceTests
             new Size(24, 8),
             TestContext.Current.CancellationToken);
         var before = item.ActualCheckMark.Glyphs;
+        var beforeDesiredSize = item.DesiredSize;
+        item.ActualCheckMark.Width.ShouldBe(3);
 
         await surface.UpdateAsync(() => surface.Application.Theme = TickTheme(), "swap to tick glyphs");
 
         item.ActualCheckMark.Glyphs.ShouldNotBe(before);
         item.ActualCheckMark.Glyphs.Checked.ShouldBe(new Rune('☒'));
+        item.ActualCheckMark.Width.ShouldBe(1);
+        item.DesiredSize.Width.ShouldBe(beforeDesiredSize.Width - 2);
     }
 
     /// <summary>The counter-case that keeps the change honest: an explicit per-item override still
@@ -888,6 +895,37 @@ public sealed class TreeViewSurfaceTests
                                 • Loading…
 
                               """);
+    }
+
+    /// <summary>Verifies a Theme swap that moves the resolved loading-row color reaches the
+    /// status row itself, not only the owning TreeView - the row shares <c>_itemsStack.Children</c>
+    /// with <see cref="TreeViewItem"/> but resolves its color by reaching sideways into the
+    /// owner's <see cref="TreeView.ActualStyle"/> during render, with no style slot or dependency
+    /// of its own, so the tree's own correctly-computed impact would otherwise never travel down
+    /// to it.</summary>
+    [Fact]
+    public async Task Render_WhenThemeChangesLoadingColor_InvalidatesTheStatusRowAsync()
+    {
+        var source = new FakeTreeViewChildSource();
+        _ = source.DeferNext(null);
+        var root = new TreeViewItem("Root") { ChildSource = source };
+        var tree = CreateTree(20);
+        tree.Items.Add(root);
+        var previousTheme = ThemeCatalog.Parse(ThemeJson.Create(muted: "#111111"));
+        var currentTheme = ThemeCatalog.Parse(ThemeJson.Create(muted: "#222222"));
+
+        await using var surface = await ComponentSurface.MountAsync(
+            tree,
+            new Size(20, 3),
+            previousTheme,
+            TestContext.Current.CancellationToken);
+        await DialogWait.UntilAsync(surface, root, () => root.ChildState == TreeViewChildState.Loading);
+        var statusRow = OwnedTree.Find<TreeViewStatusRow>(tree).ShouldNotBeNull();
+        statusRow.Clear(Invalidation.All);
+
+        await surface.UpdateAsync(() => surface.Application.Theme = currentTheme, "swap loading color");
+
+        (statusRow.Pending & Invalidation.Render).ShouldNotBe(Invalidation.None);
     }
 
     /// <summary>Verifies a failed request draws the configured failed text with its own status

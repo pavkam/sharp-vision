@@ -4765,5 +4765,44 @@ public sealed class ControlBaseTests
         observed.ShouldBe([new Selection(0, 2)]);
     }
 
+    /// <summary>Verifies the base <c>ApplyTextSelectionStyle</c> implementation re-resolves
+    /// SelectedText and SelectedControl under a new Theme instead of latching the colors observed
+    /// under the previous one - the gap a bare <c>ResolveColor</c> call left, since neither the
+    /// slot walk nor the appearance diff sees a value resolved outside any style member. Only a
+    /// registered Theme dependency closes it, which is also why <see cref="ControlBase.Pending"/>
+    /// gains Render even though nothing about this probe's own appearance changed.</summary>
+    [Fact]
+    public void ApplyTextSelectionStyle_WhenThemeChangesSelectionColors_ReResolvesAndInvalidatesRender()
+    {
+        // Arrange
+        var previousTheme = ThemeWithSelectionColors(Color.Rgb(1, 2, 3), Color.Rgb(4, 5, 6));
+        var currentTheme = ThemeWithSelectionColors(Color.Rgb(7, 8, 9), Color.Rgb(10, 11, 12));
+        var control = new ProbeControl();
+        control.SetTheme(previousTheme);
+        var before = control.ProbeApplyTextSelectionStyle(TerminalStyle.Default);
+        control.Clear(Invalidation.All);
+
+        // Act
+        control.SetTheme(currentTheme);
+
+        // Assert
+        before.Foreground.ShouldBe(Color.Rgb(1, 2, 3));
+        before.Background.ShouldBe(Color.Rgb(4, 5, 6));
+        control.Pending.ShouldBe(Invalidation.Render);
+        var after = control.ProbeApplyTextSelectionStyle(TerminalStyle.Default);
+        after.Foreground.ShouldBe(Color.Rgb(7, 8, 9));
+        after.Background.ShouldBe(Color.Rgb(10, 11, 12));
+    }
+
+    /// <summary>Builds a theme whose "selectedText" and "selectedControl" keys carry the given
+    /// literal colors, pinning <c>controlBorderForeground</c> so the bare <c>foreground</c>/
+    /// <c>accent</c> parameters never also move Face or Border - isolating the swap to exactly the
+    /// two colors <see cref="ControlBase.ApplyTextSelectionStyle(TerminalStyle)"/> resolves.</summary>
+    private static Theme ThemeWithSelectionColors(Color selectedText, Color selectedControl) =>
+        ThemeCatalog.Parse(ThemeJson.Create(
+            controlBorderForeground: "#888888",
+            selectedText: Hex(selectedText),
+            selectedControl: Hex(selectedControl)));
+
     #endregion
 }

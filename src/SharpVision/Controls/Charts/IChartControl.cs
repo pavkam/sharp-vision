@@ -35,4 +35,10 @@ internal interface IChartControl
 
     /// <summary>Publishes one changed common chart property.</summary>
     public void OnChartPropertyChanged(string propertyName, InvalidationImpact impact);
+
+    /// <summary>Resolves one authored series or point color override against the active Theme,
+    /// registering the dependency that lets a Theme swap re-resolve every currently assigned
+    /// override instead of leaving it painted with a stale literal.</summary>
+    /// <param name="color">The authored series or point color override to resolve.</param>
+    public Color ResolveSeriesColor(ControlColor color);
 }

@@ -30,6 +30,20 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
     // on the stack while an unusually wide but finite frame uses a clip-sized heap buffer.
     private const int _indentStackAllocLimitCells = 256;
 
+    // Registered only by ResolveDetachedCheckMark, i.e. only while this item has no owning
+    // TreeView - an attached item's ActualCheckMark resolves through FindTreeView() instead, and
+    // the owner is the one place that already knows how to fan a theme-driven change out to every
+    // attached row (see TreeView.GetThemeChangeImpact). Two dependencies, graded exactly like the
+    // local CheckMark setter above: a width-only Measure comparer and a full-value Render
+    // comparer, so GetThemeValueDependencyImpact's max-across-dependencies composes the same
+    // width-graded rule with no extra code.
+    private static readonly ThemeValueDependency<int> _detachedCheckMarkWidthThemeDependency = new(
+        static theme => TreeView.ThemedCheckMark(theme).Width,
+        InvalidationImpact.Measure);
+    private static readonly ThemeValueDependency<CheckMark> _detachedCheckMarkThemeDependency = new(
+        static theme => TreeView.ThemedCheckMark(theme),
+        InvalidationImpact.Render);
+
     private bool _isSelected;
     private long _checkStateVersion;
 #pragma warning disable IDE0032 // Propagation assigns this field across instances.
@@ -310,7 +324,16 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
     /// same reason the tree's own is: a theme's selected glyph family must reach tree rows.
     /// </remarks>
     public CheckMark ActualCheckMark =>
-        CheckMark ?? FindTreeView()?.ActualCheckMark ?? TreeView.ThemedCheckMark(Theme);
+        CheckMark ?? FindTreeView()?.ActualCheckMark ?? ResolveDetachedCheckMark();
+
+    /// <summary>Resolves the library-default check mark against this item's own Theme and
+    /// registers the theme dependencies that let a detached item notice a swap.</summary>
+    /// <returns>The theme-resolved check mark used only while this item has no owning tree.</returns>
+    private CheckMark ResolveDetachedCheckMark()
+    {
+        _ = ResolveThemeValue(_detachedCheckMarkWidthThemeDependency);
+        return ResolveThemeValue(_detachedCheckMarkThemeDependency);
+    }
 
     /// <summary>Redraws or remeasures after the owning tree changed the shared mark.</summary>
     /// <param name="impact">The invalidation the shared change requires.</param>

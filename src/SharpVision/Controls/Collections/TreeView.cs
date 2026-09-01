@@ -1200,6 +1200,59 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
         Invalidate(Invalidation.Render);
     }
 
+    // Neither ActualCheckMark nor a status row's resolved color is covered by appearance diffing
+    // (it covers only Face, Border, and Shadow) or by Style's own slot comparer once that impact
+    // is folded below - both are theme-resolved values reached on-demand by other controls
+    // (TreeViewItem, TreeViewStatusRow) that register no dependency of their own, so this control
+    // - the one place that already knows how to fan a change out to every attached row - has to
+    // notice the swap on their behalf and push it down explicitly instead of only reporting its
+    // own impact upward.
+    /// <inheritdoc/>
+    protected override InvalidationImpact GetThemeChangeImpact(
+        Theme? previous,
+        Theme? current,
+        Face? previousParentAmbientFace,
+        Face? currentParentAmbientFace)
+    {
+        var impact = base.GetThemeChangeImpact(previous, current, previousParentAmbientFace, currentParentAmbientFace);
+
+        // A local CheckMark override already owns its own invalidation through the property
+        // setter above; only the theme-resolved fallback needs this seam.
+        if (CheckMark is null)
+        {
+            var previousMark = ThemedCheckMark(previous);
+            var currentMark = ThemedCheckMark(current);
+
+            // Mirrors the local CheckMark setter's own grading at TreeView.cs:341-347: a width
+            // change moves every row's header and needs a measure pass, a value-only change needs
+            // only a repaint, and an unchanged mark needs neither.
+            var markImpact = previousMark.Width != currentMark.Width
+                ? InvalidationImpact.Measure
+                : previousMark == currentMark
+                    ? InvalidationImpact.None
+                    : InvalidationImpact.Render;
+
+            if (markImpact != InvalidationImpact.None)
+            {
+                NotifyPropertyChanged(nameof(ActualCheckMark), InvalidationImpact.None);
+                InvalidateItemChrome(markImpact);
+                impact = MaximumImpact(impact, markImpact);
+            }
+        }
+
+        var previousStatusStyle = TreeViewStyle.Definition.Resolve(Style, previous);
+        var currentStatusStyle = TreeViewStyle.Definition.Resolve(Style, current);
+
+        if (ResolveColor(previousStatusStyle.LoadingColor, previous) != ResolveColor(currentStatusStyle.LoadingColor, current) ||
+            ResolveColor(previousStatusStyle.FailedColor, previous) != ResolveColor(currentStatusStyle.FailedColor, current))
+        {
+            InvalidateStatusRows(InvalidationImpact.Render);
+            impact = MaximumImpact(impact, InvalidationImpact.Render);
+        }
+
+        return impact;
+    }
+
     private void InvalidateItemChrome(InvalidationImpact impact)
     {
         // Items resolve the shared mark on demand, so they only need to be told to redraw or, when
@@ -1209,6 +1262,21 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
             if (control is TreeViewItem item)
             {
                 item.NotifyCheckMarkChanged(impact);
+            }
+        }
+    }
+
+    // A status row shares _itemsStack.Children with TreeViewItem but resolves its status color by
+    // reaching sideways into this owner's ActualStyle rather than through any dependency of its
+    // own, so a theme swap that moves LoadingColor or FailedColor without changing anything this
+    // control's own appearance diff or style slot would otherwise catch needs to reach it directly.
+    private void InvalidateStatusRows(InvalidationImpact impact)
+    {
+        foreach (var control in _itemsStack.Children)
+        {
+            if (control is TreeViewStatusRow row)
+            {
+                row.NotifyStatusColorChanged(impact);
             }
         }
     }
