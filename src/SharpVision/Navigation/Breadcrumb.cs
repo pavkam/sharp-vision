@@ -477,6 +477,10 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         {
             CancelPointerPress();
             Layout = candidate;
+            // The host's outer slot can stay unchanged while the projected item window moves.
+            // Force its containing arrange pass to apply the new per-item bounds instead of
+            // accepting the previous same-slot arrangement.
+            _host.InvalidateSelf(Invalidation.Arrange);
             _layoutGeneration = candidate.Generation;
         }
 

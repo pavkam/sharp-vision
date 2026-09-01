@@ -6,6 +6,23 @@ namespace SharpVision.Tests.Navigation;
 /// <summary>Verifies breadcrumb layout, rendering, focus, and routed input through a mounted application.</summary>
 public sealed class BreadcrumbSurfaceTests
 {
+    /// <summary>Verifies clicking an ancestor after mount rearranges the retained items to the new projection.</summary>
+    [Fact]
+    public async Task Render_WhenAncestorIsClicked_RearrangesProjectedWindowAsync()
+    {
+        var breadcrumb = Create("Root", "Docs", "Leaf");
+        await using var surface = await ComponentSurface.MountAsync(
+            breadcrumb,
+            new Size(14, 1),
+            TestContext.Current.CancellationToken);
+
+        surface.ShouldRender("Root›Docs›Leaf");
+
+        await surface.Pointer.ClickAsync(breadcrumb.Items[0]);
+
+        surface.ShouldRender("…›Root        ");
+    }
+
     /// <summary>Verifies an explicitly selected ancestor suppresses its later tail even at wide widths.</summary>
     [Fact]
     public async Task Render_WhenAncestorIsExplicitCurrent_ProjectsLaterTailInSourceOrderAsync()
