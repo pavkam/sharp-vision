@@ -33,6 +33,34 @@ public sealed class BreadcrumbItemCollectionTests
         breadcrumb.Items.ShouldBe([item]);
     }
 
+    /// <summary>Verifies foreign ownership is rejected before either tree changes.</summary>
+    [Fact]
+    public void Add_WhenItemBelongsToAnotherTree_ThrowsWithoutMutation()
+    {
+        var host = new Stack();
+        var item = new BreadcrumbItem();
+        host.Children.Add(item);
+        var breadcrumb = new Breadcrumb();
+
+        _ = Should.Throw<ArgumentException>(() => breadcrumb.Items.Add(item));
+
+        breadcrumb.Items.ShouldBeEmpty();
+        host.Children.ShouldBe([item]);
+    }
+
+    /// <summary>Verifies disposed candidates are rejected before ownership changes.</summary>
+    [Fact]
+    public void Add_WhenItemIsDisposed_ThrowsWithoutMutation()
+    {
+        var breadcrumb = new Breadcrumb();
+        var item = new BreadcrumbItem();
+        item.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => breadcrumb.Items.Add(item));
+
+        breadcrumb.Items.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies retained focus requests remain authored while ownership imposes owner-only focus.</summary>
     [Fact]
     public void Remove_WhenOwned_RestoresLatestAuthoredFocusValues()
@@ -97,5 +125,56 @@ public sealed class BreadcrumbItemCollectionTests
 
         breadcrumb.Items.ShouldBe([root]);
         root.IsDisposed.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies clear restores every retained property and leaves removed items live.</summary>
+    [Fact]
+    public void Clear_WhenPathHasItems_DetachesAndRestoresWithoutDisposal()
+    {
+        var breadcrumb = new Breadcrumb();
+        var root = new BreadcrumbItem { IsFocusable = false, IsTabStop = true };
+        var leaf = new BreadcrumbItem { IsFocusable = true, IsTabStop = false };
+        breadcrumb.Items.Add(root);
+        breadcrumb.Items.Add(leaf);
+
+        breadcrumb.Items.Clear();
+
+        breadcrumb.Items.ShouldBeEmpty();
+        root.IsDisposed.ShouldBeFalse();
+        leaf.IsDisposed.ShouldBeFalse();
+        root.IsFocusable.ShouldBeFalse();
+        root.IsTabStop.ShouldBeTrue();
+        leaf.IsFocusable.ShouldBeTrue();
+        leaf.IsTabStop.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies owner disposal recursively disposes retained semantic items.</summary>
+    [Fact]
+    public void Dispose_WhenOwnerIsDisposed_DisposesRetainedItems()
+    {
+        var breadcrumb = new Breadcrumb();
+        var root = new BreadcrumbItem();
+        breadcrumb.Items.Add(root);
+
+        breadcrumb.Dispose();
+
+        root.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies both move indices are validated before order changes.</summary>
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(0, -1)]
+    [InlineData(1, 0)]
+    [InlineData(0, 1)]
+    public void Move_WhenIndexIsOutsidePath_ThrowsWithoutMutation(int oldIndex, int newIndex)
+    {
+        var breadcrumb = new Breadcrumb();
+        var item = new BreadcrumbItem();
+        breadcrumb.Items.Add(item);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => breadcrumb.Items.Move(oldIndex, newIndex));
+
+        breadcrumb.Items.ShouldBe([item]);
     }
 }

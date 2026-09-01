@@ -45,19 +45,14 @@ internal sealed class BreadcrumbHost: Container
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        var x = bounds.X;
-
         foreach (var child in Children)
         {
-            if (child.Visibility == Visibility.Collapsed)
-            {
-                ArrangeChild(child, default, ResolvedAxes.Both);
-                continue;
-            }
-
-            var width = child.DesiredSize.Width.Add(child.Margin.Horizontal);
-            ArrangeChild(child, new Rect(x, bounds.Y, width, bounds.Height), ResolvedAxes.Both);
-            x = x.Add(width).Add(1);
+            var entry = Owner.Layout.EntryFor((BreadcrumbItem) child);
+            var relative = entry.Bounds;
+            var arranged = relative.Width == 0 || relative.Height == 0
+                ? default
+                : new Rect(bounds.X.Add(relative.X), bounds.Y, relative.Width, bounds.Height);
+            ArrangeChild(child, arranged, ResolvedAxes.Both);
         }
     }
 }

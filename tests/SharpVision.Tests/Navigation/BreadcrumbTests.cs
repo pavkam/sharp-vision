@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Navigation;
 
+using Moq;
+
 /// <summary>Verifies breadcrumb ownership, semantic current state, repair, and activation ordering.</summary>
 public sealed class BreadcrumbTests
 {
@@ -88,6 +90,34 @@ public sealed class BreadcrumbTests
         root.IsCurrent.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a disabled owned target is rejected before current state changes.</summary>
+    [Fact]
+    public void CurrentIndex_WhenTargetIsDisabled_ThrowsWithoutMutation()
+    {
+        var breadcrumb = new Breadcrumb();
+        var root = new BreadcrumbItem { Text = "Root", IsEnabled = false };
+        var leaf = new BreadcrumbItem { Text = "Leaf" };
+        breadcrumb.Items.Add(root);
+        breadcrumb.Items.Add(leaf);
+
+        _ = Should.Throw<InvalidOperationException>(() => breadcrumb.CurrentIndex = 0);
+
+        breadcrumb.CurrentItem.ShouldBeSameAs(leaf);
+    }
+
+    /// <summary>Verifies a foreign item follows the established selected-item convention and clears current.</summary>
+    [Fact]
+    public void CurrentItem_WhenAssignedForeignItem_ClearsCurrent()
+    {
+        var breadcrumb = new Breadcrumb();
+        breadcrumb.Items.Add(new BreadcrumbItem { Text = "Root" });
+
+        breadcrumb.CurrentItem = new BreadcrumbItem { Text = "Foreign" };
+
+        breadcrumb.CurrentIndex.ShouldBe(-1);
+        breadcrumb.CurrentItem.ShouldBeNull();
+    }
+
     /// <summary>Verifies item subscribers observe the owner commit made by canonical activation.</summary>
     [Fact]
     public void PerformInvoke_WhenSubscriberPredatesOwnership_ObservesCommittedCurrent()
@@ -104,6 +134,23 @@ public sealed class BreadcrumbTests
 
         observed.ShouldBeSameAs(item);
         breadcrumb.CurrentItem.ShouldBeSameAs(item);
+    }
+
+    /// <summary>Verifies reentrant removal after the item event denies the captured command.</summary>
+    [Fact]
+    public void PerformInvoke_WhenInvokedHandlerRemovesItem_DoesNotExecuteCapturedCommand()
+    {
+        var command = new Mock<System.Windows.Input.ICommand>();
+        _ = command.Setup(candidate => candidate.CanExecute(null)).Returns(true);
+        var item = new BreadcrumbItem { Text = "Root", Command = command.Object };
+        var breadcrumb = new Breadcrumb();
+        breadcrumb.Items.Add(item);
+        item.Invoked += (_, _) => breadcrumb.Items.Remove(item);
+
+        item.PerformInvoke();
+
+        command.Verify(candidate => candidate.Execute(null), Times.Never);
+        breadcrumb.Items.ShouldBeEmpty();
     }
 
     /// <summary>Verifies event publication follows index, item, then transition-event order.</summary>

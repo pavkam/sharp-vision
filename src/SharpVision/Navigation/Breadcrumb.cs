@@ -3,6 +3,8 @@
 
 namespace SharpVision.Navigation;
 
+using SharpVision.Terminal.Input;
+
 using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 
 /// <summary>Displays a retained semantic path with one current location and owner-routed interaction.</summary>
@@ -10,11 +12,17 @@ using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
 {
     private readonly BreadcrumbHost _host;
+    private readonly CurrentItemNavigator _navigator;
+    private readonly BreadcrumbOverflowButton _overflowButton;
     private readonly RetainedPropertyOverrideService _propertyOverrides;
     private readonly StyleSlot<BreadcrumbStyle> _style;
     private BreadcrumbItem? _currentItem;
-    private long _collectionGeneration;
+    private BreadcrumbItem? _pressedItem;
     private long _currentGeneration;
+    private long _layoutGeneration;
+    private long _pressedLayoutGeneration;
+    private long _projectedCollectionGeneration = -1;
+    private bool _pressedOverflow;
 
     /// <summary>Initializes an empty, single-tab-stop breadcrumb path.</summary>
     public Breadcrumb()
@@ -24,6 +32,18 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         _host = new BreadcrumbHost(this);
         InitializeItemsHost(_host);
         _propertyOverrides = new RetainedPropertyOverrideService(this, ItemControlsSlot);
+        _overflowButton = new BreadcrumbOverflowButton(this);
+        var overflowSlot = RegisterOwnedSlot(
+            new OwnedControlOptions(
+                OwnedControlRole.FrameworkPart,
+                OwnedControlLayer.Normal,
+                participatesInHitTesting: true,
+                participatesInNavigation: false,
+                partKey: "overflow",
+                InvalidationImpact.Measure),
+            capacity: 1);
+        overflowSlot.Add(_overflowButton);
+        _navigator = new CurrentItemNavigator(CollectNavigableItems);
         Items = new BreadcrumbItemCollection(this);
         IsFocusable = true;
         IsTabStop = true;
@@ -82,6 +102,15 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     /// <summary>Gets the complete local, theme-owned, or code-owned breadcrumb presentation.</summary>
     public BreadcrumbStyle ActualStyle => _style.Actual;
 
+    /// <summary>Gets the immutable layout shared by presentation and input for the current pass.</summary>
+    internal BreadcrumbLayout Layout { get; private set; } = BreadcrumbLayout.Empty;
+
+    /// <summary>Gets the current semantic ownership generation.</summary>
+    internal long CollectionGeneration { get; private set; }
+
+    /// <summary>Gets the current overflow projection generation.</summary>
+    internal long OverflowGeneration { get; private set; }
+
     /// <summary>Gets the current realized item count.</summary>
     internal int ItemCount => ItemControlCount;
 
@@ -111,6 +140,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             RetainedPropertyOverrides.IsFocusable,
             RetainedPropertyOverrides.IsTabStop);
         ConfigureItem(item, lease);
+        RepairActive(selectFinal: true);
         CollectionMutated(selectFinal: true);
     }
 
@@ -140,6 +170,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             RetainedPropertyOverrides.IsFocusable,
             RetainedPropertyOverrides.IsTabStop);
         ConfigureItem(item, lease);
+        RepairActive(selectFinal: false);
         CollectionMutated(selectFinal: false);
         _propertyOverrides.Restore(previousLease);
     }
@@ -165,6 +196,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         var lease = _propertyOverrides.Get(item);
         RemoveItemControlAt(index);
         Unsubscribe(item);
+        RepairActive(selectFinal: false);
         CollectionMutated(selectFinal: false);
 
         if (restorePresentation)
@@ -213,6 +245,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         }
 
         MoveItemControl(oldIndex, newIndex);
+        RepairActive(selectFinal: false);
         CollectionMutated(selectFinal: false);
     }
 
@@ -224,6 +257,32 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         VerifyMutable();
         var items = Items.ToArray();
         var leases = items.Select(_propertyOverrides.Get).ToArray();
+
+        if (disposing)
+        {
+            _currentItem?.CommitSemanticCurrent(false);
+            _currentItem = null;
+            _currentGeneration++;
+            OwnedControlRegistry.CommitCompoundForOwnerDisposal(
+                () =>
+                {
+                    foreach (var item in items)
+                    {
+                        Unsubscribe(item);
+                    }
+                },
+                (ItemControlsSlot, Array.Empty<ControlBase>()));
+            CollectionGeneration++;
+            _ = _navigator.SetCurrent(null);
+
+            foreach (var item in items)
+            {
+                item.DisposeAfterUnavailable();
+            }
+
+            return;
+        }
+
         ClearItemControls();
 
         foreach (var item in items)
@@ -231,19 +290,13 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             Unsubscribe(item);
         }
 
-        _collectionGeneration++;
+        CollectionGeneration++;
+        _ = _navigator.SetCurrent(null);
         SetCurrent(null);
 
-        for (var index = 0; index < leases.Length; index++)
+        foreach (var lease in leases)
         {
-            if (disposing)
-            {
-                _propertyOverrides.Retire(leases[index]);
-            }
-            else
-            {
-                _propertyOverrides.Restore(leases[index]);
-            }
+            _propertyOverrides.Restore(lease);
         }
     }
 
@@ -268,11 +321,12 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             return false;
         }
 
-        var collectionGeneration = _collectionGeneration;
+        var collectionGeneration = CollectionGeneration;
         var currentGeneration = _currentGeneration;
+        _ = _navigator.SetCurrent(item);
         item.InvokeAfterOwnerCommit(cause);
 
-        if (collectionGeneration != _collectionGeneration ||
+        if (collectionGeneration != CollectionGeneration ||
             currentGeneration != _currentGeneration ||
             !IsAvailableOwned(item) ||
             !ReferenceEquals(_currentItem, item))
@@ -284,12 +338,25 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         return true;
     }
 
+    /// <summary>Activates a source through an exact overflow projection generation.</summary>
+    internal bool TryActivateProjection(
+        BreadcrumbItem item,
+        ActivationCause cause,
+        long collectionGeneration,
+        long overflowGeneration) =>
+        collectionGeneration == CollectionGeneration &&
+        overflowGeneration == OverflowGeneration &&
+        TryActivateItem(item, cause, item.CaptureCommand());
+
     /// <summary>Focuses this breadcrumb and activates a mnemonic-selected primary item.</summary>
     internal bool ActivateAccessKey(BreadcrumbItem item, Rune key)
     {
         _ = key;
 
-        return IsAvailableOwned(item) &&
+        var entry = Layout.EntryFor(item);
+        return entry.IsPrimary &&
+               entry.Bounds.Width > 0 &&
+               IsAvailableOwned(item) &&
                Focus() &&
                IsAvailableOwned(item) &&
                TryActivateItem(item, ActivationCause.Keyboard, item.CaptureCommand());
@@ -320,7 +387,8 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
 
     private void CollectionMutated(bool selectFinal)
     {
-        _collectionGeneration++;
+        CollectionGeneration++;
+        RepairActive(selectFinal: false);
 
         if (selectFinal || _currentItem is null || !IsAvailableOwned(_currentItem))
         {
@@ -336,13 +404,15 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         if (sender is not BreadcrumbItem item ||
             eventArgs.PropertyName is not nameof(Visibility) and
             not nameof(IsEnabled) and
+            not nameof(UseMnemonic) and
+            not nameof(BreadcrumbItem.Text) and
             not nameof(EffectiveIsVisible) and
             not nameof(EffectiveIsEnabled))
         {
             return;
         }
 
-        _collectionGeneration++;
+        CollectionGeneration++;
 
         if ((ReferenceEquals(_currentItem, item) && !IsAvailableOwned(item)) || _currentItem is null)
         {
@@ -350,6 +420,114 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         }
 
         Invalidate(Invalidation.Measure);
+    }
+
+    /// <inheritdoc/>
+    protected override Size MeasureOverride(Constraint constraint)
+    {
+        var natural = base.MeasureOverride(constraint);
+        _ = MeasureChild(_overflowButton, new Constraint(width: null, 1));
+        var candidate = BreadcrumbLayout.Create(
+            this,
+            constraint.Width,
+            _overflowButton.DesiredSize.Width,
+            _layoutGeneration + 1);
+
+        var windowChanged = !Layout.HasSameWindow(candidate);
+
+        if (windowChanged)
+        {
+            CancelPointerPress();
+            Layout = candidate;
+            _layoutGeneration = candidate.Generation;
+        }
+
+        if (windowChanged || _projectedCollectionGeneration != CollectionGeneration)
+        {
+            OverflowGeneration++;
+            _overflowButton.SetSources(
+                this,
+                Layout.OverflowItems,
+                CollectionGeneration,
+                OverflowGeneration);
+            _projectedCollectionGeneration = CollectionGeneration;
+        }
+
+        if (windowChanged)
+        {
+            RepairActive(selectFinal: false);
+        }
+
+        return new Size(
+            constraint.Width.HasValue ? Math.Min(natural.Width, constraint.Width.Value) : natural.Width,
+            Math.Max(natural.Height, _overflowButton.DesiredSize.Height));
+    }
+
+    /// <inheritdoc/>
+    protected override void ArrangeOverride(Rect bounds)
+    {
+        base.ArrangeOverride(bounds);
+        var relative = Layout.TriggerBounds;
+        var trigger = relative.Width == 0 || relative.Height == 0
+            ? default
+            : new Rect(ContentBounds.X.Add(relative.X), ContentBounds.Y, relative.Width, Math.Min(1, bounds.Height));
+        ArrangeChild(_overflowButton, trigger, ResolvedAxes.Both);
+    }
+
+    /// <inheritdoc/>
+    internal override void RenderOverlay(TerminalCanvas canvas)
+    {
+        base.RenderOverlay(canvas);
+
+        if (Bounds.Width == 0 || Bounds.Height == 0)
+        {
+            return;
+        }
+
+        var separator = ResolveControlGlyph(ActualStyle.SeparatorGlyph);
+        var style = NormalStyle.WithForeground(ResolveColor(ActualStyle.SeparatorColor, Theme));
+
+        if (Layout.TriggerBounds.Width > 0 && Layout.PrimaryItems.Count > 0)
+        {
+            var adjacent = Layout.TriggerPrecedesPrimary ? Layout.PrimaryItems[0] : Layout.PrimaryItems[^1];
+
+            if (adjacent.EffectiveIsVisible)
+            {
+                var x = Layout.TriggerPrecedesPrimary
+                    ? Layout.TriggerBounds.Right
+                    : Layout.EntryFor(adjacent).Bounds.Right;
+                canvas.DrawRune(
+                    separator,
+                    new Point(ContentBounds.X.Add(x), ContentBounds.Y),
+                    style,
+                    BackgroundMode.Transparent);
+            }
+        }
+
+        for (var index = 0; index + 1 < Layout.PrimaryItems.Count; index++)
+        {
+            var item = Layout.PrimaryItems[index];
+            var next = Layout.PrimaryItems[index + 1];
+
+            if (!item.EffectiveIsVisible || !next.EffectiveIsVisible)
+            {
+                continue;
+            }
+
+            var entry = Layout.EntryFor(item);
+            canvas.DrawRune(
+                separator,
+                new Point(ContentBounds.X.Add(entry.Bounds.Right), ContentBounds.Y),
+                style,
+                BackgroundMode.Transparent);
+        }
+    }
+
+    /// <inheritdoc/>
+    internal override ControlBase? HitTest(Point point)
+    {
+        var target = base.HitTest(point);
+        return ReferenceEquals(target, _host) ? this : target;
     }
 
     private void SetCurrent(BreadcrumbItem? item)
@@ -425,16 +603,190 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         item.EffectiveIsVisible &&
         item.EffectiveIsEnabled;
 
+    /// <summary>Gets whether an owned item is currently eligible for semantic presentation.</summary>
+    internal bool IsAvailableItem(BreadcrumbItem item) => IsAvailableOwned(item);
+
+    private List<ControlBase> CollectNavigableItems()
+    {
+        List<ControlBase> result = [];
+
+        foreach (var item in Layout.PrimaryItems)
+        {
+            if (IsAvailableOwned(item) && Layout.EntryFor(item).Bounds.Width > 0)
+            {
+                result.Add(item);
+            }
+        }
+
+        if (result.Count > 0 || Layout.Generation > 0)
+        {
+            return result;
+        }
+
+        for (var index = 0; index < ItemControlCount; index++)
+        {
+            var item = ItemAt(index);
+
+            if (IsAvailableOwned(item))
+            {
+                result.Add(item);
+            }
+        }
+
+        return result;
+    }
+
+    private void RepairActive(bool selectFinal)
+    {
+        if (selectFinal || _navigator.Current is not BreadcrumbItem current || !IsAvailableOwned(current))
+        {
+            _ = _navigator.SetCurrent(FinalAvailableItem());
+        }
+    }
+
     private void OnKeyRouted(object? sender, KeyEventArgs eventArgs)
     {
         _ = sender;
-        _ = eventArgs;
+
+        if (eventArgs.Phase != RoutingPhase.Bubble || !eventArgs.IsInitialKeyDown)
+        {
+            return;
+        }
+
+        if (eventArgs.Stroke.Code == Code.Enter ||
+            (eventArgs.Stroke.Code == Code.Character && eventArgs.Stroke.Character == new Rune(' ')))
+        {
+            if (!eventArgs.Stroke.Modifiers.IsActivationEligible())
+            {
+                return;
+            }
+
+            eventArgs.IsHandled = _navigator.Current is BreadcrumbItem item &&
+                                  TryActivateItem(item, ActivationCause.Keyboard, item.CaptureCommand());
+            return;
+        }
+
+        if (!KeyboardModifierPolicy.IsScalarNavigationEligible(eventArgs.Stroke.Modifiers))
+        {
+            return;
+        }
+
+        if (eventArgs.Stroke.Code is Code.Home or Code.End)
+        {
+            var items = CollectNavigableItems();
+
+            if (items.Count > 0)
+            {
+                _ = _navigator.SetCurrent(eventArgs.Stroke.Code == Code.Home ? items[0] : items[^1]);
+                eventArgs.IsHandled = true;
+            }
+
+            return;
+        }
+
+        var direction = eventArgs.Stroke.Code is Code.Left or Code.Up
+            ? -1
+            : eventArgs.Stroke.Code is Code.Right or Code.Down
+                ? 1
+                : 0;
+
+        if (direction != 0)
+        {
+            _ = _navigator.Move(direction, wrap: false);
+            eventArgs.IsHandled = true;
+        }
     }
 
     private void OnPointerRouted(object? sender, PointerEventArgs eventArgs)
     {
         _ = sender;
-        _ = eventArgs;
+
+        if (eventArgs.Phase != RoutingPhase.Preview || eventArgs.Pointer.Cells is not { } cells)
+        {
+            return;
+        }
+
+        var pointer = eventArgs.Pointer;
+
+        if (pointer.Action == PointerAction.Press && (pointer.Buttons & Buttons.Primary) != 0)
+        {
+            var item = HitPrimaryItem(cells);
+            var overflow = _overflowButton.Bounds.Contains(cells) && _overflowButton.HasItems;
+
+            if ((item is null && !overflow) || !CapturePointer())
+            {
+                return;
+            }
+
+            _ = Focus();
+            _pressedItem = item;
+            _pressedOverflow = overflow;
+            _pressedLayoutGeneration = Layout.Generation;
+            item?.SetPressed(true);
+            _overflowButton.SetPressed(overflow);
+            eventArgs.IsHandled = true;
+            return;
+        }
+
+        if (_pressedItem is null && !_pressedOverflow)
+        {
+            return;
+        }
+
+        eventArgs.IsHandled = true;
+        var sameGeneration = _pressedLayoutGeneration == Layout.Generation;
+        var itemInside = sameGeneration && _pressedItem is { } pressed && pressed.Bounds.Contains(cells);
+        var overflowInside = sameGeneration && _pressedOverflow && _overflowButton.Bounds.Contains(cells);
+        _pressedItem?.SetPressed(itemInside);
+        _overflowButton.SetPressed(overflowInside);
+
+        if (!PointerButtonTransition.IsPrimaryRelease(pointer))
+        {
+            return;
+        }
+
+        var activationItem = itemInside ? _pressedItem : null;
+        var activateOverflow = overflowInside;
+        CancelPointerPress();
+
+        if (activationItem is not null)
+        {
+            _ = TryActivateItem(
+                activationItem,
+                ActivationCause.Pointer,
+                activationItem.CaptureCommand());
+        }
+        else if (activateOverflow)
+        {
+            _overflowButton.Open();
+        }
+    }
+
+    [Pure]
+    private BreadcrumbItem? HitPrimaryItem(Point cells)
+    {
+        foreach (var item in Layout.PrimaryItems)
+        {
+            if (IsAvailableOwned(item) && item.Bounds.Contains(cells))
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    private void CancelPointerPress()
+    {
+        _pressedItem?.SetPressed(false);
+        _overflowButton.SetPressed(false);
+        _pressedItem = null;
+        _pressedOverflow = false;
+
+        if (HasPointerCapture)
+        {
+            ReleasePointerCapture();
+        }
     }
 
     /// <inheritdoc/>
@@ -445,6 +797,8 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             ClearItems(disposing: true);
         }
 
+        CancelPointerPress();
+        _ = _navigator.SetCurrent(null);
         _propertyOverrides.Dispose();
         CurrentChanged = null;
     }
