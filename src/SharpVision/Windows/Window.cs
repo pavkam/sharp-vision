@@ -727,12 +727,12 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// <remarks>
     /// Raises <see cref="FloatingSurfaceBase.CloseRequested"/> first; a handler that cancels leaves the
     /// Window untouched. Otherwise raises <see cref="FloatingSurfaceBase.Closing"/> and, by default,
-    /// collapses the Window - unless a <see cref="FloatingSurfaceBase.Closing"/> handler already took
-    /// responsibility for <see cref="Visibility"/> itself, in which case
-    /// <see cref="FloatingSurfaceBase.Closed"/> is suppressed. Unlike <see cref="CanClose"/>, which only
-    /// gates the close affordance and <see cref="CloseOnEscape"/>, this method always attempts to
-    /// close regardless of <see cref="CanClose"/>, matching how modal outside-dismissal already
-    /// behaves.
+    /// collapses the Window - unless a <see cref="FloatingSurfaceBase.Closing"/> handler itself changes
+    /// <see cref="Visibility"/> and leaves the Window visible and presented, in which case it has taken
+    /// responsibility for the outcome and <see cref="FloatingSurfaceBase.Closed"/> is suppressed. Unlike
+    /// <see cref="CanClose"/>, which only gates the close affordance and <see cref="CloseOnEscape"/>, this
+    /// method always attempts to close regardless of <see cref="CanClose"/>, matching how modal
+    /// outside-dismissal already behaves.
     /// </remarks>
     public void Close() => RequestClose();
 
