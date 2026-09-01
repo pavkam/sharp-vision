@@ -3405,6 +3405,80 @@ public sealed class ApplicationTests
         application.LastCleanupException.ShouldBeNull();
     }
 
+    /// <summary>Verifies out-of-band bytes are still flushed when a forced stop commits while the
+    /// application is suspended (a zero-cell size), matching
+    /// <see cref="DrainOutOfBand_WhenStopCommitsWhileOutOfBandIsBuffered_FlushesBufferedOutOfBandBytesAsync"/>
+    /// but with <c>Suspended()</c> true throughout. DrainOutOfBand used to gate its <c>_stopping</c>
+    /// flush behind a combined <c>IsRendering || Suspended()</c> short-circuit, so this callback
+    /// returned without ever reaching the <c>_stopping</c> branch while suspended, stranding the
+    /// bytes silently, with <c>Failure</c> and <c>LastCleanupException</c> both staying null.</summary>
+    [Fact]
+    public async Task DrainOutOfBand_WhenStopCommitsWhileSuspendedWithOutOfBandBuffered_FlushesBufferedOutOfBandBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(0, 0)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        application.Size.ShouldBe(new Size(0, 0));
+
+        using var release = new SemaphoreSlim(0, 1);
+
+        // Block the dispatcher on a placeholder so the Closed record and the out-of-band post
+        // below both land in the queue before either is processed - otherwise the dispatcher could
+        // latch _stopping from the Closed record before PostOutOfBand's own _stopping check (on
+        // this thread) runs, and the write would never even be buffered.
+        application.Dispatcher.Post(release.Wait);
+
+        // Commit a forced stop - its Closed record is queued behind the placeholder above - then
+        // buffer an out-of-band write. Posting it strictly after Shutdown() guarantees its own
+        // queued DrainOutOfBand callback lands behind the Closed record, so DrainOutOfBand is the
+        // first thing to observe _stopping once the placeholder releases below.
+        application.Shutdown();
+        application.PostOutOfBand(new byte[] { 0x07 });
+
+        _ = release.Release();
+
+        await application.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        terminal.Writes.ShouldContain(write => write.Length == 1 && write[0] == 0x07);
+        application.Failure.ShouldBeNull();
+        application.LastCleanupException.ShouldBeNull();
+    }
+
+    /// <summary>Verifies out-of-band bytes buffered while suspended-but-not-stopping are still
+    /// flushed once a later stop commits, even though no further out-of-band post - and therefore no
+    /// further DrainOutOfBand callback - ever happens. DrainOutOfBand bails at its
+    /// <c>Suspended()</c> gate while suspended and not yet stopping, clearing <c>_outOfBandWake</c>
+    /// with bytes still buffered; PostOutOfBand refuses to post once <c>_stopping</c> is set, so
+    /// nothing would otherwise ever revisit those bytes. Reordering DrainOutOfBand's guards alone
+    /// does not rescue this shape - only the explicit flush in ObserveSessionAsync's BeginStopping
+    /// step does - so this exercises that flush directly, with <c>Failure</c> and
+    /// <c>LastCleanupException</c> both staying null.</summary>
+    [Fact]
+    public async Task Stop_WhenCommittedAfterOutOfBandWasBufferedWhileSuspended_FlushesBufferedOutOfBandBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(0, 0)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        application.Size.ShouldBe(new Size(0, 0));
+
+        // Buffer the write and let its queued DrainOutOfBand callback run to completion while still
+        // suspended and not stopping, so it bails at the Suspended() gate with bytes still buffered
+        // and _outOfBandWake cleared - exactly the state a later stop with no intervening resize or
+        // post must still rescue.
+        application.PostOutOfBand(new byte[] { 0x07 });
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        application.Shutdown();
+
+        await application.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        terminal.Writes.ShouldContain(write => write.Length == 1 && write[0] == 0x07);
+        application.Failure.ShouldBeNull();
+        application.LastCleanupException.ShouldBeNull();
+    }
+
     /// <summary>Verifies a shortcut invokes its item without ever reaching Router.Route, so a
     /// focused TextInput neither consumes the chord nor sees it as typed text.</summary>
     [Fact]

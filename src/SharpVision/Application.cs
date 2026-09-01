@@ -2442,7 +2442,21 @@ public sealed class Application:
         // whole CleanupTimeout window does this still propagate, same as before this loop existed.
         try
         {
-            var beginStoppingFailure = await InvokeWithQueueRetryAsync(() => BeginStopping(forced: true, failure));
+            var beginStoppingFailure = await InvokeWithQueueRetryAsync(() =>
+            {
+                _ = BeginStopping(forced: true, failure);
+
+                // BeginStopping's _lifetime.Cancel() does not itself flush _outOfBand: a prior
+                // DrainOutOfBand call can have bailed out at the Suspended() gate while the
+                // application was suspended-but-not-stopping, clearing _outOfBandWake with bytes
+                // still buffered. PostOutOfBand refuses to post once _stopping is set, so no later
+                // callback would ever revisit those bytes - flush them here, in the same spirit as
+                // FinishWithoutSessionAsync's equivalent flush for the never-started path.
+                if (!IsRendering && HasPendingOutOfBand())
+                {
+                    FlushOutOfBandOnStop();
+                }
+            });
 
             if (beginStoppingFailure is not null)
             {
@@ -2594,7 +2608,7 @@ public sealed class Application:
         }
 
         // A frame render owns the writer; CompleteRender re-drains afterward.
-        if (IsRendering || Suspended())
+        if (IsRendering)
         {
             return;
         }
@@ -2606,6 +2620,11 @@ public sealed class Application:
                 FlushOutOfBandOnStop();
             }
 
+            return;
+        }
+
+        if (Suspended())
+        {
             return;
         }
 
