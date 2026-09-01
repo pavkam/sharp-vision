@@ -750,13 +750,14 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
             PropertyChanged -= OnPopupPropertyChanged;
         }
 
+        ExceptionDispatchInfo? failure = null;
+
         if (reason is ReleaseReason.Hidden or ReleaseReason.Detached or ReleaseReason.Disposed)
         {
             ClearAvailabilityAncestor();
+            ExceptionAggregation.Capture(ReleaseLightDismiss, ref failure);
         }
 
-        ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(ReleaseLightDismiss, ref failure);
         ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
 
         // Disposal joins Hidden/Detached here rather than only clearing the backing

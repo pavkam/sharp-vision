@@ -9,7 +9,7 @@ using ReflectionBindingFlags = System.Reflection.BindingFlags;
 public sealed class FlyoutTests
 {
     /// <summary>Verifies Popup owns exactly the current Flyout light-dismiss registration across
-    /// open, anchor replacement, close, reopen, and detachment.</summary>
+    /// open, anchor replacement, a disable/re-enable cycle, close, reopen, and detachment.</summary>
     [Fact]
     public async Task LightDismiss_WhenFlyoutLifetimeChanges_FollowsCommittedPopupStateAsync()
     {
@@ -26,6 +26,12 @@ public sealed class FlyoutTests
         flyout.HasLightDismissRegistration.ShouldBeTrue();
 
         await surface.UpdateAsync(() => flyout.Anchor = secondAnchor, "replace open Flyout anchor");
+        flyout.HasLightDismissRegistration.ShouldBeTrue();
+
+        await surface.UpdateAsync(() => flyout.IsEnabled = false, "disable open Flyout");
+        flyout.HasLightDismissRegistration.ShouldBeTrue();
+
+        await surface.UpdateAsync(() => flyout.IsEnabled = true, "re-enable open Flyout");
         flyout.HasLightDismissRegistration.ShouldBeTrue();
 
         await surface.UpdateAsync(() => flyout.IsOpen = false, "close Flyout");
