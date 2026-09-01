@@ -11,6 +11,15 @@ using System.Diagnostics.CodeAnalysis;
 [PublicAPI]
 public sealed record PagerStyle: ControlStyle
 {
+    /// <summary>Gets the code-owned semantic foreground for ordinary navigable targets.</summary>
+    internal static ControlColor OrdinaryTargetColor => SemanticColor.ControlText;
+
+    /// <summary>Gets the code-owned semantic foreground for informational omission targets.</summary>
+    internal static ControlColor OmittedTargetColor => SemanticColor.Muted;
+
+    /// <summary>Gets the code-owned semantic foreground for unavailable endpoint targets.</summary>
+    internal static ControlColor DisabledEndpointColor => SemanticColor.DisabledText;
+
     /// <summary>Gets the primary Pager style definition.</summary>
     internal static StyleDefinition<PagerStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetInteractiveControlStyleSet(),
@@ -38,7 +47,8 @@ public sealed record PagerStyle: ControlStyle
     /// <param name="lastPageGlyph">The preferred and portable last-page glyphs.</param>
     /// <param name="omittedPagesGlyph">The preferred and portable omitted-pages glyphs.</param>
     /// <param name="currentPageColor">The paintable foreground for the current page number.</param>
-    /// <exception cref="ArgumentException"><paramref name="currentPageColor"/> is transparent.</exception>
+    /// <exception cref="ArgumentException">A glyph is a control or is not one cell wide, or
+    /// <paramref name="currentPageColor"/> is transparent.</exception>
     [SetsRequiredMembers]
     public PagerStyle(
         Face face,
@@ -51,6 +61,13 @@ public sealed record PagerStyle: ControlStyle
         ControlGlyph omittedPagesGlyph,
         ControlColor currentPageColor) : base(face, border, shadow)
     {
+        _ = ValidateGlyph(firstPageGlyph, nameof(firstPageGlyph));
+        _ = ValidateGlyph(previousPageGlyph, nameof(previousPageGlyph));
+        _ = ValidateGlyph(nextPageGlyph, nameof(nextPageGlyph));
+        _ = ValidateGlyph(lastPageGlyph, nameof(lastPageGlyph));
+        _ = ValidateGlyph(omittedPagesGlyph, nameof(omittedPagesGlyph));
+        ControlColor.ValidatePaint(currentPageColor, nameof(currentPageColor));
+
         FirstPageGlyph = firstPageGlyph;
         PreviousPageGlyph = previousPageGlyph;
         NextPageGlyph = nextPageGlyph;
@@ -66,19 +83,44 @@ public sealed record PagerStyle: ControlStyle
         Theme.Unthemed);
 
     /// <summary>Gets the preferred and portable first-page glyphs.</summary>
-    public required ControlGlyph FirstPageGlyph { get; init; }
+    /// <exception cref="ArgumentException">The replacement contains a control or non-single-cell glyph.</exception>
+    public required ControlGlyph FirstPageGlyph
+    {
+        get;
+        init => field = ValidateGlyph(value, nameof(value));
+    }
 
     /// <summary>Gets the preferred and portable previous-page glyphs.</summary>
-    public required ControlGlyph PreviousPageGlyph { get; init; }
+    /// <exception cref="ArgumentException">The replacement contains a control or non-single-cell glyph.</exception>
+    public required ControlGlyph PreviousPageGlyph
+    {
+        get;
+        init => field = ValidateGlyph(value, nameof(value));
+    }
 
     /// <summary>Gets the preferred and portable next-page glyphs.</summary>
-    public required ControlGlyph NextPageGlyph { get; init; }
+    /// <exception cref="ArgumentException">The replacement contains a control or non-single-cell glyph.</exception>
+    public required ControlGlyph NextPageGlyph
+    {
+        get;
+        init => field = ValidateGlyph(value, nameof(value));
+    }
 
     /// <summary>Gets the preferred and portable last-page glyphs.</summary>
-    public required ControlGlyph LastPageGlyph { get; init; }
+    /// <exception cref="ArgumentException">The replacement contains a control or non-single-cell glyph.</exception>
+    public required ControlGlyph LastPageGlyph
+    {
+        get;
+        init => field = ValidateGlyph(value, nameof(value));
+    }
 
     /// <summary>Gets the preferred and portable omitted-pages glyphs.</summary>
-    public required ControlGlyph OmittedPagesGlyph { get; init; }
+    /// <exception cref="ArgumentException">The replacement contains a control or non-single-cell glyph.</exception>
+    public required ControlGlyph OmittedPagesGlyph
+    {
+        get;
+        init => field = ValidateGlyph(value, nameof(value));
+    }
 
     /// <summary>Gets the foreground used for the current page number.</summary>
     /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
@@ -102,4 +144,11 @@ public sealed record PagerStyle: ControlStyle
         new ControlGlyph(new Rune('»'), new Rune('>')),
         new ControlGlyph(new Rune('…'), new Rune('.')),
         SemanticColor.Accent);
+
+    private static ControlGlyph ValidateGlyph(ControlGlyph glyph, string parameterName)
+    {
+        _ = glyph.Value.ValidateSingleCell(parameterName);
+        _ = glyph.Fallback.ValidateSingleCell(parameterName);
+        return glyph;
+    }
 }

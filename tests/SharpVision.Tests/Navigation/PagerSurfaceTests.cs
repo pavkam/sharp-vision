@@ -6,6 +6,18 @@ namespace SharpVision.Tests.Navigation;
 /// <summary>Verifies mounted Pager rendering and input against committed target snapshots.</summary>
 public sealed class PagerSurfaceTests
 {
+    /// <summary>Verifies the one-page ideal sequence is only its sole numbered page rather than
+    /// four inert navigation glyphs that arranged layout never creates.</summary>
+    [Fact]
+    public void Measure_WhenOnlyOnePage_UsesSoleNumberWidth()
+    {
+        var pager = new Pager { PageCount = 1 };
+
+        pager.Measure(new Constraint(width: null, height: 1));
+
+        pager.DesiredSize.ShouldBe(new Size(1, 1));
+    }
+
     /// <summary>Verifies unbounded measure computes complete ideal width without retaining one target per page.</summary>
     [Fact]
     public void Measure_WhenIdealWindowIsLarge_ComputesExactWidth()
@@ -43,6 +55,181 @@ public sealed class PagerSurfaceTests
         pager.Render(frame.Canvas);
 
         Row(frame, 29).TrimEnd().ShouldBe("« ‹ 1 … 3 4 5 6 … 10 › »");
+    }
+
+    /// <summary>Verifies the one-page layout paints only its sole current page and exposes no
+    /// interactive navigation target.</summary>
+    [Fact]
+    public void Render_WhenOnlyOnePage_PaintsOnlyCurrentNumber()
+    {
+        var pager = new Pager { PageCount = 1, HorizontalAlignment = HorizontalAlignment.Stretch };
+        new LayoutEngine().Layout(pager, new Size(9, 1));
+        using Frame frame = new(new Size(9, 1));
+
+        pager.Render(frame.Canvas);
+
+        Row(frame, 9).ShouldBe("1        ");
+        var target = pager.LayoutSnapshot.Targets.ShouldHaveSingleItem();
+        target.Kind.ShouldBe(PagerTargetKind.Number);
+        target.IsCurrent.ShouldBeTrue();
+        target.IsEnabled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies an empty range emits no target, text, or imaginary page zero.</summary>
+    [Fact]
+    public void Render_WhenPageCountIsZero_PaintsNoTargets()
+    {
+        var pager = new Pager { HorizontalAlignment = HorizontalAlignment.Stretch };
+        new LayoutEngine().Layout(pager, new Size(9, 1));
+        using Frame frame = new(new Size(9, 1));
+
+        pager.Render(frame.Canvas);
+
+        Row(frame, 9).ShouldBe("         ");
+        pager.LayoutSnapshot.Targets.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies MaximumVisiblePages budgets only neighboring interior numbers while the
+    /// current and endpoint numbers remain independently required.</summary>
+    [Fact]
+    public void Render_WhenMaximumVisiblePagesIsOne_RetainsOneLeftNeighborAndEndpoints()
+    {
+        var pager = new Pager
+        {
+            PageCount = 10,
+            PageIndex = 4,
+            MaximumVisiblePages = 1,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        new LayoutEngine().Layout(pager, new Size(25, 1));
+        using Frame frame = new(new Size(25, 1));
+
+        pager.Render(frame.Canvas);
+
+        Row(frame, 25).TrimEnd().ShouldBe("« ‹ 1 … 4 5 … 10 › »");
+    }
+
+    /// <summary>Verifies page numbers always use invariant ASCII formatting even when process
+    /// culture uses a different native numbering system.</summary>
+    [Fact]
+    public void Render_WhenCurrentCultureChanges_RemainsInvariant()
+    {
+        var previousCulture = CultureInfo.CurrentCulture;
+        var previousUiCulture = CultureInfo.CurrentUICulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("fa-IR");
+            CultureInfo.CurrentUICulture = new CultureInfo("fa-IR");
+            var pager = new Pager
+            {
+                PageCount = 20,
+                PageIndex = 11,
+                MaximumVisiblePages = 1,
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+            new LayoutEngine().Layout(pager, new Size(30, 1));
+            using Frame frame = new(new Size(30, 1));
+
+            pager.Render(frame.Canvas);
+
+            Row(frame, 30).TrimEnd().ShouldBe("« ‹ 1 … 11 12 … 20 › »");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previousCulture;
+            CultureInfo.CurrentUICulture = previousUiCulture;
+        }
+    }
+
+    /// <summary>Verifies a preferred ambiguous-width glyph degrades to its portable fallback
+    /// under the live wide-cell policy.</summary>
+    [Fact]
+    public void Render_WhenPreferredGlyphBecomesWide_UsesFallback()
+    {
+        var pager = new Pager
+        {
+            PageCount = 3,
+            PageIndex = 1,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Style = PagerStyle.Default with
+            {
+                FirstPageGlyph = new ControlGlyph(new Rune('•'), new Rune('F'))
+            }
+        };
+        pager.SetCellPolicy(new UnicodePolicy(Ambiguous.Wide));
+        new LayoutEngine().Layout(pager, new Size(20, 1));
+        using Frame frame = new(new Size(20, 1), ambiguousWidth: Ambiguous.Wide);
+
+        pager.Render(frame.Canvas);
+
+        pager.LayoutSnapshot.Targets[0].Text.ShouldBe("F");
+        FrameOracle.Get(frame, default).ShouldBe("F");
+    }
+
+    /// <summary>Verifies a glyph target disappears completely when both preferred and fallback
+    /// scalars become wide under the live policy.</summary>
+    [Fact]
+    public void Arrange_WhenPreferredAndFallbackGlyphsBecomeWide_OmitsWholeTarget()
+    {
+        var pager = new Pager
+        {
+            PageCount = 3,
+            PageIndex = 1,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Style = PagerStyle.Default with
+            {
+                FirstPageGlyph = new ControlGlyph(new Rune('•'), new Rune('·'))
+            }
+        };
+        pager.SetCellPolicy(new UnicodePolicy(Ambiguous.Wide));
+
+        new LayoutEngine().Layout(pager, new Size(20, 1));
+
+        pager.LayoutSnapshot.Targets.ShouldNotContain(static target => target.Kind == PagerTargetKind.First);
+    }
+
+    /// <summary>Verifies ordinary, current, omitted, and disabled endpoint targets resolve their
+    /// documented semantic roles rather than sharing one fallback foreground.</summary>
+    [Fact]
+    public void Render_WhenTargetKindsDiffer_UsesCodeOwnedSemanticColors()
+    {
+        var json = ThemeJson.Create(foreground: "#112233", accent: "#445566")
+            .Replace("\"__disabledText\":\"#707070\"", "\"__disabledText\":\"#773311\"", StringComparison.Ordinal)
+            .Replace("\"__muted\":\"#707070\"", "\"__muted\":\"#117733\"", StringComparison.Ordinal);
+        var theme = ThemeCatalog.Parse(json);
+        var endpointPager = new Pager
+        {
+            PageCount = 3,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        endpointPager.SetTheme(theme);
+        new LayoutEngine().Layout(endpointPager, new Size(20, 1));
+        using Frame endpointFrame = new(new Size(20, 1));
+        endpointPager.Render(endpointFrame.Canvas);
+        var first = endpointPager.LayoutSnapshot.Targets.Single(static target => target.Kind == PagerTargetKind.First);
+        var current = endpointPager.LayoutSnapshot.Targets.Single(static target => target.IsCurrent);
+        var ordinary = endpointPager.LayoutSnapshot.Targets.Single(target =>
+            target.Kind == PagerTargetKind.Number && target.PageIndex == 1);
+
+        endpointFrame.GetCell(Origin(first.Bounds)).Style.Foreground.ShouldBe(Color.FromHex("#773311"));
+        endpointFrame.GetCell(Origin(current.Bounds)).Style.Foreground.ShouldBe(Color.FromHex("#445566"));
+        endpointFrame.GetCell(Origin(ordinary.Bounds)).Style.Foreground.ShouldBe(Color.FromHex("#112233"));
+
+        var omissionPager = new Pager
+        {
+            PageCount = 10,
+            PageIndex = 4,
+            MaximumVisiblePages = 1,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        omissionPager.SetTheme(theme);
+        new LayoutEngine().Layout(omissionPager, new Size(30, 1));
+        using Frame omissionFrame = new(new Size(30, 1));
+        omissionPager.Render(omissionFrame.Canvas);
+        var omission = omissionPager.LayoutSnapshot.Targets.First(static target => target.Kind == PagerTargetKind.Omitted);
+
+        omissionFrame.GetCell(Origin(omission.Bounds)).Style.Foreground.ShouldBe(Color.FromHex("#117733"));
     }
 
     /// <summary>Verifies finite retention keeps the current number before endpoint and nearest-window candidates.</summary>
@@ -142,6 +329,143 @@ public sealed class PagerSurfaceTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies mounted Tab and repeated-key input flow through the real application,
+    /// decoder, focus manager, and routed-event path.</summary>
+    [Fact]
+    public async Task Keyboard_WhenMountedPagerHasManyPages_TabsAndRepeatsNavigationAsync()
+    {
+        var pager = new Pager
+        {
+            PageCount = 5,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Height = Length.Cells(1)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pager,
+            new Size(24, 1),
+            TestContext.Current.CancellationToken);
+
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(pager);
+
+        await surface.Keyboard.PressAsync(Code.PageDown);
+        await surface.Keyboard.RepeatAsync(Code.Right);
+
+        pager.PageIndex.ShouldBe(2);
+    }
+
+    /// <summary>Verifies leaving Tab eligibility preserves existing keyboard focus exactly as the
+    /// scalar focus contract requires.</summary>
+    [Fact]
+    public async Task Focus_WhenPageCountBecomesOne_PreservesFocusButLeavesTabTraversalAsync()
+    {
+        var pager = new Pager
+        {
+            PageCount = 3,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Height = Length.Cells(1)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pager,
+            new Size(20, 1),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(pager);
+
+        await surface.UpdateAsync(() => pager.PageCount = 1, "reduce Pager to one page");
+
+        surface.ShouldHaveFocus(pager);
+        pager.CanTabStop.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies pointer activation can focus a one-page Pager without committing the
+    /// impossible transition or capturing the pointer.</summary>
+    [Fact]
+    public async Task Pointer_WhenPagerHasOnePage_FocusesWithoutChangingPageAsync()
+    {
+        var pager = new Pager
+        {
+            PageCount = 1,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Height = Length.Cells(1)
+        };
+        var changes = 0;
+        pager.PageChanged += (_, _) => changes++;
+        await using var surface = await ComponentSurface.MountAsync(
+            pager,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+
+        await surface.Pointer.MoveToAsync(pager, default);
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+
+        surface.ShouldHaveFocus(pager);
+        surface.ShouldHaveCapture(null);
+        pager.PageIndex.ShouldBe(0);
+        changes.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a captured press dragged away from its original target cleans up without
+    /// activating that page.</summary>
+    [Fact]
+    public async Task Pointer_WhenPressedTargetIsDraggedAway_CancelsActivationAsync()
+    {
+        var pager = new Pager
+        {
+            PageCount = 5,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Height = Length.Cells(1)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pager,
+            new Size(24, 1),
+            TestContext.Current.CancellationToken);
+        var target = pager.LayoutSnapshot.Targets.Single(static item =>
+            item.Kind == PagerTargetKind.Number && item.PageIndex == 3);
+        var start = RelativePoint(pager, Origin(target.Bounds));
+
+        await surface.Pointer.MoveToAsync(pager, start);
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(pager, new Point(23, 0));
+        await surface.Pointer.ReleaseAsync();
+
+        pager.PageIndex.ShouldBe(0);
+        pager.IsPressed.ShouldBeFalse();
+        surface.ShouldHaveCapture(null);
+    }
+
+    /// <summary>Verifies a page-count mutation during a captured gesture releases capture and
+    /// prevents the physical release from activating a reinterpreted target.</summary>
+    [Fact]
+    public async Task Pointer_WhenPageCountChangesWhilePressed_CancelsCapturedIdentityAsync()
+    {
+        var pager = new Pager
+        {
+            PageCount = 8,
+            PageIndex = 3,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Height = Length.Cells(1)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pager,
+            new Size(28, 1),
+            TestContext.Current.CancellationToken);
+        var target = pager.LayoutSnapshot.Targets.Single(static item =>
+            item.Kind == PagerTargetKind.Number && item.PageIndex == 5);
+        var point = RelativePoint(pager, Origin(target.Bounds));
+        await surface.Pointer.MoveToAsync(pager, point);
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveCapture(pager);
+
+        await surface.UpdateAsync(() => pager.PageCount = 4, "shrink Pager while pressed");
+        await surface.Pointer.ReleaseAsync();
+
+        surface.ShouldHaveCapture(null);
+        pager.IsPressed.ShouldBeFalse();
+        pager.PageIndex.ShouldBe(3);
+    }
+
     private static Pointer PointerAt(Rect bounds, PointerAction action) => new(
         new Point(bounds.X, bounds.Y),
         pixels: null,
@@ -152,6 +476,12 @@ public sealed class PagerSurfaceTests
         Modifiers.None,
         isMotion: false,
         isCellPositionInferred: false);
+
+    private static Point RelativePoint(Pager pager, Point absolute) => new(
+        absolute.X - pager.Bounds.X,
+        absolute.Y - pager.Bounds.Y);
+
+    private static Point Origin(Rect bounds) => new(bounds.X, bounds.Y);
 
     private static string Row(Frame frame, int width)
     {

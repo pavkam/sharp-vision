@@ -189,9 +189,11 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
         {
             var foreground = target.IsCurrent
                 ? ResolveColor(ActualStyle.CurrentPageColor)
-                : target.IsEnabled
-                    ? inherited.Foreground
-                    : ResolveColor(SemanticColor.Muted);
+                : target.Kind == PagerTargetKind.Omitted
+                    ? ResolveColor(PagerStyle.OmittedTargetColor)
+                    : target.IsEnabled
+                        ? ResolveColor(PagerStyle.OrdinaryTargetColor)
+                        : ResolveColor(PagerStyle.DisabledEndpointColor);
             var style = inherited.WithForeground(foreground);
             _ = canvas.Draw(
                 target.Text.AsSpan(),
@@ -498,6 +500,11 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
 
     private int MeasureIdealWidth()
     {
+        if (PageCount == 1)
+        {
+            return FormatPage(0).Length;
+        }
+
         List<(int Start, int End)> ranges = [(0, 0)];
 
         if (PageCount > 1)

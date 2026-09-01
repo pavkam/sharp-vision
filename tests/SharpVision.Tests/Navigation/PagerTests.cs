@@ -104,6 +104,106 @@ public sealed class PagerTests
         pager.CanTabStop.ShouldBeFalse();
     }
 
+    /// <summary>Verifies a zero-to-multi-page transition publishes its staged invariant and Tab
+    /// eligibility before the typed transition event.</summary>
+    [Fact]
+    public void PageCount_WhenCrossingTabEligibility_PublishesExactOrder()
+    {
+        var pager = new Pager();
+        List<string> observations = [];
+        pager.PropertyChanged += (_, eventArgs) => observations.Add(eventArgs.PropertyName!);
+        pager.PageChanged += (_, eventArgs) => observations.Add(
+            $"{eventArgs.PreviousPageIndex}>{eventArgs.CurrentPageIndex}:{eventArgs.Cause}");
+
+        pager.PageCount = 2;
+
+        observations.ShouldBe([
+            nameof(Pager.PageCount),
+            nameof(Pager.PageIndex),
+            nameof(Pager.CanTabStop),
+            "-1>0:Programmatic"
+        ]);
+    }
+
+    /// <summary>Verifies count-only changes do not invent a page transition when the current
+    /// scalar remains valid.</summary>
+    [Fact]
+    public void PageCount_WhenPageIndexRemainsValid_RaisesNoPageChanged()
+    {
+        var pager = new Pager { PageCount = 3, PageIndex = 1 };
+        var changes = 0;
+        pager.PageChanged += (_, _) => changes++;
+
+        pager.PageCount = 5;
+
+        pager.PageIndex.ShouldBe(1);
+        changes.ShouldBe(0);
+    }
+
+    /// <summary>Verifies reentry from every count-publication boundary establishes a newer page
+    /// transition and suppresses the stale outer typed event.</summary>
+    [Theory]
+    [InlineData(nameof(Pager.PageCount))]
+    [InlineData(nameof(Pager.PageIndex))]
+    [InlineData(nameof(Pager.CanTabStop))]
+    public void PageCount_WhenPropertyObserverReenters_PublishesOnlyNewestPageChanged(string boundary)
+    {
+        var pager = new Pager();
+        List<int> changes = [];
+        pager.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == boundary && pager.PageCount == 2 && pager.PageIndex != 1)
+            {
+                pager.PageIndex = 1;
+            }
+        };
+        pager.PageChanged += (_, eventArgs) => changes.Add(eventArgs.CurrentPageIndex);
+
+        pager.PageCount = 2;
+
+        pager.PageIndex.ShouldBe(1);
+        changes.ShouldBe([1]);
+    }
+
+    /// <summary>Verifies PageChanged dispatch checks the shared generation between subscribers so
+    /// a later subscriber cannot observe an outer transition superseded by an earlier one.</summary>
+    [Fact]
+    public void PageChanged_WhenFirstSubscriberReenters_LaterSubscriberObservesOnlyNewestTransition()
+    {
+        var pager = new Pager { PageCount = 4 };
+        List<int> laterObservations = [];
+        pager.PageChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.CurrentPageIndex == 1)
+            {
+                pager.PageIndex = 2;
+            }
+        };
+        pager.PageChanged += (_, eventArgs) => laterObservations.Add(eventArgs.CurrentPageIndex);
+
+        pager.PageIndex = 1;
+
+        pager.PageIndex.ShouldBe(2);
+        laterObservations.ShouldBe([2]);
+    }
+
+    /// <summary>Verifies one throwing observer does not prevent later observers from seeing the
+    /// committed page while the earliest callback failure still escapes.</summary>
+    [Fact]
+    public void PageChanged_WhenSubscriberThrows_CommitsAndContinuesBeforeRethrowing()
+    {
+        var pager = new Pager { PageCount = 3 };
+        var laterObserved = false;
+        pager.PageChanged += (_, _) => throw new InvalidOperationException("observer failed");
+        pager.PageChanged += (_, _) => laterObserved = true;
+
+        var exception = Should.Throw<InvalidOperationException>(() => pager.PageIndex = 1);
+
+        exception.Message.ShouldBe("observer failed");
+        pager.PageIndex.ShouldBe(1);
+        laterObserved.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a page transition returns whether it committed and raises exactly once.</summary>
     [Fact]
     public void ChangePage_WhenTargetChanges_CommitsExactlyOnce()
@@ -218,6 +318,45 @@ public sealed class PagerTests
 
         key.IsHandled.ShouldBeFalse();
         pager.PageIndex.ShouldBe(0);
+    }
+
+    /// <summary>Verifies structural Pager changes request measure while current-page paint changes
+    /// only request a new render.</summary>
+    [Fact]
+    public void Style_WhenGlyphOrCurrentColorChanges_InvalidatesExactPhase()
+    {
+        var pager = new Pager { PageCount = 5, Style = PagerStyle.Default };
+        pager.Clear(Invalidation.All);
+
+        pager.Style = PagerStyle.Default with
+        {
+            FirstPageGlyph = new ControlGlyph(new Rune('F'), new Rune('F'))
+        };
+
+        pager.Pending.ShouldBe(Invalidation.All);
+        pager.Clear(Invalidation.All);
+
+        pager.Style = pager.Style with { CurrentPageColor = SemanticColor.Info };
+
+        pager.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies attached Pager mutation remains dispatcher-affine.</summary>
+    [Fact]
+    public async Task PageIndex_WhenMutatedFromWorker_ThrowsBeforeChangingStateAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var pager = new Pager();
+        await dispatcher.InvokeAsync(() =>
+        {
+            pager.PageCount = 3;
+            pager.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => pager.PageIndex = 1);
+        pager.PageIndex.ShouldBe(0);
+
+        await dispatcher.InvokeAsync(pager.Dispose, TestContext.Current.CancellationToken);
     }
 
     private static KeyEventArgs Key(Pager pager, Code code)
