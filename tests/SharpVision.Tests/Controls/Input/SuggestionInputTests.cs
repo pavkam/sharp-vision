@@ -488,6 +488,47 @@ public sealed class SuggestionInputTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies attaching cancels detached work without making its empty snapshot current,
+    /// so a later Open starts one fresh request for the live attachment.</summary>
+    [Fact]
+    public async Task Open_WhenDetachedRequestWasCancelledByAttachment_RefreshesStaleSnapshotAsync()
+    {
+        // Arrange
+        var first = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var calls = 0;
+        CancellationToken firstCancellation = default;
+        var input = new SuggestionInput
+        {
+            Resolver = (_, cancellationToken) =>
+            {
+                calls++;
+
+                if (calls == 1)
+                {
+                    firstCancellation = cancellationToken;
+                    return new ValueTask<IReadOnlyList<object?>>(first.Task);
+                }
+
+                return ValueTask.FromResult<IReadOnlyList<object?>>(["fresh"]);
+            },
+            Text = "query"
+        };
+        await using var dispatcher = Dispatcher.Start();
+        await dispatcher.InvokeAsync(() => input.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        // Act
+        _ = await dispatcher.InvokeAsync(input.Open, TestContext.Current.CancellationToken);
+
+        // Assert
+        firstCancellation.IsCancellationRequested.ShouldBeTrue();
+        calls.ShouldBe(2);
+        input.Suggestions.ShouldBe(["fresh"]);
+        input.IsResolving.ShouldBeFalse();
+        input.IsOpen.ShouldBeTrue();
+        await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies representative owner and retained-part mutations are rejected off-dispatcher.</summary>
     [Fact]
     public async Task Mutation_WhenAttachedOffDispatcher_ThrowsBeforeMutationAsync()
@@ -668,6 +709,187 @@ public sealed class SuggestionInputTests
         await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a detached popup-publication failure is not converted into a resolver
+    /// failure, does not clear the successful snapshot, and cannot strand the completed lease.</summary>
+    [Fact]
+    public async Task Resolver_WhenDetachedSuccessPublicationThrows_PreservesOutcomeAndRetiresLeaseAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var expected = new InvalidOperationException("suggestions publication failed");
+        var failures = 0;
+        CancellationToken completedToken = default;
+        using var input = new SuggestionInput
+        {
+            Resolver = (_, cancellationToken) =>
+            {
+                completedToken = cancellationToken;
+                return new ValueTask<IReadOnlyList<object?>>(completion.Task);
+            }
+        };
+        input.SuggestionsChanged += (_, _) => throw expected;
+        input.ResolutionFailed += (_, _) => failures++;
+        input.Text = "query";
+        var observation = input.LastResolutionObservation.ShouldNotBeNull();
+
+        // Act
+        completion.SetResult(["successful"]);
+        var exception = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await observation.WaitAsync(TestContext.Current.CancellationToken));
+        input.Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["successful"]);
+
+        // Assert
+        exception.ShouldBeSameAs(expected);
+        failures.ShouldBe(0);
+        input.Suggestions.ShouldBe(["successful"]);
+        input.IsResolving.ShouldBeFalse();
+        input.IsOpen.ShouldBeTrue();
+        completedToken.IsCancellationRequested.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies attached settlement aggregates later popup work after a throwing result
+    /// callback and retires the successful lease before a subsequent request begins.</summary>
+    [Fact]
+    public async Task Resolver_WhenAttachedSuccessCallbackThrows_CompletesTransitionAndRetiresLeaseAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var expected = new InvalidOperationException("suggestions callback failed");
+        var unhandled = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var failures = 0;
+        var throwFromCallback = true;
+        CancellationToken completedToken = default;
+        var input = new SuggestionInput
+        {
+            Resolver = (_, cancellationToken) =>
+            {
+                completedToken = cancellationToken;
+                return new ValueTask<IReadOnlyList<object?>>(completion.Task);
+            }
+        };
+        await using var dispatcher = Dispatcher.Start();
+        dispatcher.UnhandledException += (_, eventArgs) =>
+        {
+            eventArgs.IsHandled = true;
+            _ = unhandled.TrySetResult(eventArgs.Exception);
+        };
+        await dispatcher.InvokeAsync(() =>
+        {
+            input.Attach(dispatcher);
+            input.SuggestionsChanged += (_, _) =>
+            {
+                if (throwFromCallback)
+                {
+                    throw expected;
+                }
+            };
+            input.ResolutionFailed += (_, _) => failures++;
+            input.Text = "query";
+        }, TestContext.Current.CancellationToken);
+
+        // Act
+        completion.SetResult(["successful"]);
+        var exception = await unhandled.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var (completedSuggestions, completedOpen) = await dispatcher.InvokeAsync(
+            () => (Suggestions: input.Suggestions.ToArray(), input.IsOpen),
+            TestContext.Current.CancellationToken);
+        throwFromCallback = false;
+        await dispatcher.InvokeAsync(() => { input.Resolver = null; }, TestContext.Current.CancellationToken);
+
+        // Assert
+        exception.ShouldBeSameAs(expected);
+        completedSuggestions.ShouldBe(["successful"]);
+        completedOpen.ShouldBeTrue();
+        failures.ShouldBe(0);
+        input.Suggestions.ShouldBeEmpty();
+        input.IsResolving.ShouldBeFalse();
+        input.IsOpen.ShouldBeFalse();
+        completedToken.IsCancellationRequested.ShouldBeFalse();
+        await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies rejected attached publication is reported as dispatcher infrastructure,
+    /// abandons and retires the lease, and never masquerades as a resolver failure.</summary>
+    [Fact]
+    public async Task Resolver_WhenAttachedCompletionPostIsRejected_AbandonsLeaseWithoutResolverFailureAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fillerDrained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var release = new ManualResetEventSlim();
+        var failures = 0;
+        var calls = 0;
+        CancellationToken rejectedToken = default;
+        var input = new SuggestionInput
+        {
+            Resolver = (_, cancellationToken) =>
+            {
+                calls++;
+
+                if (calls == 1)
+                {
+                    return ValueTask.FromResult<IReadOnlyList<object?>>(["prior"]);
+                }
+
+                rejectedToken = cancellationToken;
+                return new ValueTask<IReadOnlyList<object?>>(completion.Task);
+            },
+            Text = "query"
+        };
+        await using var dispatcher = Dispatcher.Start(capacity: 1);
+        await dispatcher.InvokeAsync(() =>
+        {
+            input.Attach(dispatcher);
+            input.ResolutionFailed += (_, _) => failures++;
+            input.Refresh();
+        }, TestContext.Current.CancellationToken);
+        var observation = input.LastResolutionObservation.ShouldNotBeNull();
+        dispatcher.Post(() =>
+        {
+            entered.SetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        dispatcher.Post(fillerDrained.SetResult);
+
+        // Act
+        completion.SetResult(["rejected"]);
+        Exception? observationFailure = null;
+
+        try
+        {
+            await observation.WaitAsync(TestContext.Current.CancellationToken);
+        }
+        catch (Exception exception)
+        {
+            observationFailure = exception;
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await fillerDrained.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                input.Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>([]);
+            },
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        observationFailure.ShouldBeNull();
+        failures.ShouldBe(0);
+        rejectedToken.IsCancellationRequested.ShouldBeFalse();
+        input.Suggestions.ShouldBeEmpty();
+        input.IsResolving.ShouldBeFalse();
+        await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a newer text generation cancels and outranks an older non-cooperative
     /// detached resolver completion.</summary>
     [Fact]
@@ -703,11 +925,14 @@ public sealed class SuggestionInputTests
 
         // Act
         input.Text = "first";
+        var firstObservation = input.LastResolutionObservation.ShouldNotBeNull();
         input.Text = "second";
+        var secondObservation = input.LastResolutionObservation.ShouldNotBeNull();
         second.SetResult(["current"]);
         await currentPublished.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await secondObservation.WaitAsync(TestContext.Current.CancellationToken);
         first.SetResult(["stale"]);
-        await Task.Yield();
+        await firstObservation.WaitAsync(TestContext.Current.CancellationToken);
 
         // Assert
         firstCancellation.IsCancellationRequested.ShouldBeTrue();
@@ -1078,8 +1303,8 @@ public sealed class SuggestionInputTests
             "resolving:True",
             "resolving:False",
             "property",
-            "changed",
             "closed",
+            "changed",
             "failure:failure:broken"
         ]);
     }
@@ -1164,12 +1389,13 @@ public sealed class SuggestionInputTests
             },
             Text = "query"
         };
+        var observation = input.LastResolutionObservation.ShouldNotBeNull();
         await using var dispatcher = Dispatcher.Start();
         await dispatcher.InvokeAsync(() => input.Attach(dispatcher), TestContext.Current.CancellationToken);
 
         // Act
         completion.SetResult(["stale"]);
-        await dispatcher.InvokeAsync(() => { }, TestContext.Current.CancellationToken);
+        await observation.WaitAsync(TestContext.Current.CancellationToken);
 
         // Assert
         cancellation.IsCancellationRequested.ShouldBeTrue();
@@ -1184,25 +1410,36 @@ public sealed class SuggestionInputTests
     public async Task Resolver_WhenAttachmentChangesBeforeCompletion_DiscardsCompletionAsync()
     {
         // Arrange
-        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>();
         var publications = 0;
         var input = new SuggestionInput
         {
             Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task)
         };
         await using var dispatcher = Dispatcher.Start();
+        Task observation = null!;
+        var detachCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var release = new ManualResetEventSlim();
         await dispatcher.InvokeAsync(() =>
         {
             input.Attach(dispatcher);
             input.SuggestionsChanged += (_, _) => publications++;
             input.Text = "query";
+            observation = input.LastResolutionObservation.ShouldNotBeNull();
+        }, TestContext.Current.CancellationToken);
+        dispatcher.Post(release.Wait);
+        dispatcher.Post(() =>
+        {
             input.Detach();
             input.Attach(dispatcher);
-        }, TestContext.Current.CancellationToken);
+            detachCompleted.SetResult();
+        });
 
         // Act
         completion.SetResult(["stale"]);
+        release.Set();
+        await detachCompleted.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await observation.WaitAsync(TestContext.Current.CancellationToken);
         await dispatcher.InvokeAsync(() => { }, TestContext.Current.CancellationToken);
 
         // Assert
@@ -1232,16 +1469,134 @@ public sealed class SuggestionInputTests
             Text = "query"
         };
         input.SuggestionsChanged += (_, _) => publications++;
+        var observation = input.LastResolutionObservation.ShouldNotBeNull();
 
         // Act
         input.Dispose();
         completion.SetResult(["late"]);
-        await Task.Yield();
+        await observation.WaitAsync(TestContext.Current.CancellationToken);
 
         // Assert
         cancellation.IsCancellationRequested.ShouldBeTrue();
         input.IsResolving.ShouldBeFalse();
         publications.ShouldBe(0);
+    }
+
+    /// <summary>Verifies detach aggregates a throwing popup close with resolver cancellation and
+    /// clearing the resolving flag before the first lifecycle failure is rethrown.</summary>
+    [Fact]
+    public async Task Detach_WhenPopupCleanupThrows_StillCancelsAndSettlesResolverAsync()
+    {
+        // Arrange
+        var pending = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var expected = new InvalidOperationException("popup close failed");
+        CancellationToken cancellation = default;
+        var input = new SuggestionInput
+        {
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["current"]),
+            Text = "query"
+        };
+        await using var dispatcher = Dispatcher.Start();
+        await dispatcher.InvokeAsync(() =>
+        {
+            input.Attach(dispatcher);
+            input.Resolver = (_, cancellationToken) =>
+            {
+                cancellation = cancellationToken;
+                return new ValueTask<IReadOnlyList<object?>>(pending.Task);
+            };
+            input.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(SuggestionInput.IsOpen) && !input.IsOpen)
+                {
+                    throw expected;
+                }
+            };
+        }, TestContext.Current.CancellationToken);
+
+        // Act
+        var exception = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await dispatcher.InvokeAsync(input.Detach, TestContext.Current.CancellationToken));
+
+        // Assert
+        exception.ShouldBeSameAs(expected);
+        cancellation.IsCancellationRequested.ShouldBeTrue();
+        input.Dispatcher.ShouldBeNull();
+        input.IsResolving.ShouldBeFalse();
+        input.Dispose();
+    }
+
+    /// <summary>Verifies resolver cancellation cannot reenter detach to start a request that no
+    /// attachment will own, and a late non-cooperative completion stays discarded.</summary>
+    [Fact]
+    public async Task Detach_WhenCancellationReentersRefresh_SuppressesReplacementAndLateCompletionAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var calls = 0;
+        CancellationTokenRegistration registration = default;
+        var input = new SuggestionInput();
+        await using var dispatcher = Dispatcher.Start();
+        Task observation = null!;
+        await dispatcher.InvokeAsync(() =>
+        {
+            input.Attach(dispatcher);
+            input.Resolver = (_, cancellationToken) =>
+            {
+                calls++;
+                registration = cancellationToken.Register(input.Refresh);
+                return new ValueTask<IReadOnlyList<object?>>(completion.Task);
+            };
+            input.Text = "query";
+            observation = input.LastResolutionObservation.ShouldNotBeNull();
+        }, TestContext.Current.CancellationToken);
+
+        // Act
+        await dispatcher.InvokeAsync(input.Detach, TestContext.Current.CancellationToken);
+        completion.SetResult(["late"]);
+        await observation.WaitAsync(TestContext.Current.CancellationToken);
+        await dispatcher.InvokeAsync(() => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        calls.ShouldBe(1);
+        input.Suggestions.ShouldBeEmpty();
+        input.IsResolving.ShouldBeFalse();
+        registration.Dispose();
+        input.Dispose();
+    }
+
+    /// <summary>Verifies resolver cancellation cannot reenter disposal to strand a replacement,
+    /// and terminal cleanup rejects the original request's late completion.</summary>
+    [Fact]
+    public async Task Dispose_WhenCancellationReentersRefresh_SuppressesReplacementAndLateCompletionAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var calls = 0;
+        CancellationTokenRegistration registration = default;
+        var input = new SuggestionInput();
+        input.Resolver = (_, cancellationToken) =>
+        {
+            calls++;
+            registration = cancellationToken.Register(input.Refresh);
+            return new ValueTask<IReadOnlyList<object?>>(completion.Task);
+        };
+        input.Text = "query";
+        var observation = input.LastResolutionObservation.ShouldNotBeNull();
+
+        // Act
+        input.Dispose();
+        completion.SetResult(["late"]);
+        await observation.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        calls.ShouldBe(1);
+        input.Suggestions.ShouldBeEmpty();
+        input.IsResolving.ShouldBeFalse();
+        registration.Dispose();
     }
 
     /// <summary>Verifies a current failure callback that starts a successful request prevents the
@@ -1274,7 +1629,7 @@ public sealed class SuggestionInputTests
         // Assert
         failures.ShouldBe(0);
         input.Suggestions.ShouldBe(["new result"]);
-        input.IsOpen.ShouldBeTrue();
+        input.IsOpen.ShouldBeFalse();
         input.IsResolving.ShouldBeFalse();
     }
 

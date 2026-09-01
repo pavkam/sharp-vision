@@ -25,10 +25,12 @@ public sealed class SuggestionInput: CompositeControlBase
     private readonly PopupDropDownCoordinator _popupCoordinator;
     private readonly LatestControlOperation _resolutionOperation = new();
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
+    private int? _currentSnapshotGeneration;
     private int _resolutionGeneration;
     private ulong _minimumPrefixLengthVersion;
     private ulong _resolverVersion;
     private ulong _textCommitVersion;
+    private int _resolutionLifecycleCleanupDepth;
     private bool _wantsOpen;
 
     #region Construction and events
@@ -244,6 +246,11 @@ public sealed class SuggestionInput: CompositeControlBase
     /// <summary>Gets whether the current resolver request has not completed.</summary>
     public bool IsResolving { get; private set; }
 
+    /// <summary>Gets the most recently started asynchronous resolution observation. Tests await
+    /// this seam before asserting that stale, detached, or rejected completion work reached its
+    /// apply-or-discard boundary.</summary>
+    internal Task? LastResolutionObservation { get; private set; }
+
     /// <summary>Starts a fresh resolution for the current text and makes current results eligible to open.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -452,7 +459,18 @@ public sealed class SuggestionInput: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public bool Open()
     {
-        IsOpen = true;
+        VerifyMutable();
+        _wantsOpen = true;
+
+        if (_currentSnapshotGeneration != _resolutionGeneration)
+        {
+            BeginResolution();
+        }
+        else if (EffectiveIsEnabled && EffectiveIsVisible && Suggestions.Count > 0)
+        {
+            _popupCoordinator.SetOpen(true);
+        }
+
         return _input.Focus();
     }
 
@@ -491,7 +509,13 @@ public sealed class SuggestionInput: CompositeControlBase
 
     private void BeginResolution()
     {
+        if (_resolutionLifecycleCleanupDepth > 0 || IsDisposed || IsDisposing)
+        {
+            return;
+        }
+
         var generation = ++_resolutionGeneration;
+        _currentSnapshotGeneration = null;
         var lease = _resolutionOperation.Begin();
         var attachment = Dispatcher is null ? null : CaptureAttachment();
         var searchTerms = Text;
@@ -507,7 +531,7 @@ public sealed class SuggestionInput: CompositeControlBase
             ExceptionDispatchInfo? failure = null;
             ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
             ExceptionAggregation.Capture(
-                () => ApplyResults(lease, generation, []),
+                () => ApplyResults(lease, generation, [], markCurrent: true),
                 ref failure);
             failure?.Throw();
             return;
@@ -554,7 +578,14 @@ public sealed class SuggestionInput: CompositeControlBase
             return;
         }
 
-        _ = CompleteResolutionAsync(pending, searchTerms, lease, generation, attachment);
+        var observation = CompleteResolutionAsync(
+            pending,
+            searchTerms,
+            lease,
+            generation,
+            attachment);
+        LastResolutionObservation = observation;
+        ObserveResolution(observation);
         startupFailure?.Throw();
     }
 
@@ -565,34 +596,45 @@ public sealed class SuggestionInput: CompositeControlBase
         int generation,
         ControlAttachmentToken? attachment)
     {
+        IReadOnlyList<object?>? results = null;
+        Exception? resolverFailure = null;
+        var wasCancelled = false;
+
         try
         {
-            var results = await pending.ConfigureAwait(false);
-            DispatchCompletion(
-                lease,
-                generation,
-                attachment,
-                () => ApplyCompletion(lease, generation, searchTerms, results));
+            results = await pending.ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
-            DispatchCompletion(
-                lease,
-                generation,
-                attachment,
-                () => ApplyCancellation(lease, generation));
+            wasCancelled = true;
         }
         catch (Exception exception)
         {
-            DispatchCompletion(
-                lease,
-                generation,
-                attachment,
-                () => ApplyFailure(lease, generation, searchTerms, exception));
+            resolverFailure = exception;
         }
+
+        await DispatchCompletionAsync(
+            lease,
+            generation,
+            attachment,
+            () =>
+            {
+                if (wasCancelled)
+                {
+                    ApplyCancellation(lease, generation);
+                }
+                else if (resolverFailure is not null)
+                {
+                    ApplyFailure(lease, generation, searchTerms, resolverFailure);
+                }
+                else
+                {
+                    ApplyCompletion(lease, generation, searchTerms, results);
+                }
+            }).ConfigureAwait(false);
     }
 
-    private void DispatchCompletion(
+    private Task DispatchCompletionAsync(
         LatestControlOperationLease lease,
         int generation,
         ControlAttachmentToken? attachment,
@@ -600,24 +642,53 @@ public sealed class SuggestionInput: CompositeControlBase
     {
         if (attachment is not { } token)
         {
-            if (Dispatcher is null && IsCurrentResolution(lease, generation))
+            if (Dispatcher is not null || !IsCurrentResolution(lease, generation))
             {
-                action();
+                CompleteResolution(lease, generation);
+                return Task.CompletedTask;
             }
 
-            return;
+            try
+            {
+                action();
+                return Task.CompletedTask;
+            }
+            catch (Exception exception)
+            {
+                return Task.FromException(exception);
+            }
         }
 
-        try
+        var observation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        void Abandon()
         {
-            PostForCurrentAttachment(
-                token,
-                action,
-                () => IsCurrentResolution(lease, generation));
+            CompleteResolution(lease, generation);
+            _ = observation.TrySetResult();
         }
-        catch (ObjectDisposedException)
+
+        void ApplyOrDiscard()
         {
+            if (!IsCurrent(token) || !IsCurrentResolution(lease, generation))
+            {
+                Abandon();
+                return;
+            }
+
+            try
+            {
+                action();
+                _ = observation.TrySetResult();
+            }
+            catch (Exception exception)
+            {
+                _ = observation.TrySetException(exception);
+                throw;
+            }
         }
+
+        token.Dispatcher.PostBackgroundCompletion(ApplyOrDiscard, Abandon);
+        return observation.Task;
     }
 
     private void ApplyCompletion(
@@ -636,20 +707,42 @@ public sealed class SuggestionInput: CompositeControlBase
             return;
         }
 
-        ApplyResults(lease, generation, results);
+        ApplyResults(lease, generation, results, markCurrent: true);
     }
 
     private void ApplyResults(
         LatestControlOperationLease lease,
         int generation,
-        IReadOnlyList<object?> results)
+        IReadOnlyList<object?> results,
+        bool markCurrent)
     {
-        if (!PublishResults(lease, generation, results, allowOpen: true))
+        ExceptionDispatchInfo? failure = null;
+
+        try
         {
-            return;
+            if (CommitResultState(lease, generation, results, markCurrent, out var changed, ref failure))
+            {
+                if (changed)
+                {
+                    ExceptionAggregation.Capture(
+                        () => SuggestionsChanged?.Invoke(this, EventArgs.Empty),
+                        ref failure);
+                }
+
+                if (IsCurrentResolution(lease, generation))
+                {
+                    ExceptionAggregation.Capture(
+                        () => _popupCoordinator.SetOpen(_wantsOpen && Suggestions.Count > 0),
+                        ref failure);
+                }
+            }
+        }
+        finally
+        {
+            CompleteResolution(lease, generation);
         }
 
-        CompleteResolution(lease, generation);
+        failure?.Throw();
     }
 
     private void ApplyFailure(
@@ -658,74 +751,106 @@ public sealed class SuggestionInput: CompositeControlBase
         string searchTerms,
         Exception exception)
     {
-        if (!PublishResults(lease, generation, [], allowOpen: false))
+        ExceptionDispatchInfo? failure = null;
+
+        try
         {
-            return;
+            if (CommitResultState(lease, generation, [], markCurrent: false, out var changed, ref failure))
+            {
+                ExceptionAggregation.Capture(() => _popupCoordinator.SetOpen(false), ref failure);
+
+                if (changed && IsCurrentResolution(lease, generation))
+                {
+                    ExceptionAggregation.Capture(
+                        () => SuggestionsChanged?.Invoke(this, EventArgs.Empty),
+                        ref failure);
+                }
+
+                if (IsCurrentResolution(lease, generation))
+                {
+                    ExceptionAggregation.Capture(
+                        () => ResolutionFailed?.Invoke(
+                            this,
+                            new SuggestionResolutionFailedEventArgs(searchTerms, exception)),
+                        ref failure);
+                }
+            }
+        }
+        finally
+        {
+            CompleteResolution(lease, generation);
         }
 
-        ResolutionFailed?.Invoke(
-            this,
-            new SuggestionResolutionFailedEventArgs(searchTerms, exception));
-
-        if (!IsCurrentResolution(lease, generation))
-        {
-            return;
-        }
-
-        CompleteResolution(lease, generation);
+        failure?.Throw();
     }
 
     private void ApplyCancellation(LatestControlOperationLease lease, int generation)
     {
-        if (!PublishResults(lease, generation, [], allowOpen: false))
+        ExceptionDispatchInfo? failure = null;
+
+        try
         {
-            return;
+            if (CommitResultState(lease, generation, [], markCurrent: false, out var changed, ref failure))
+            {
+                ExceptionAggregation.Capture(() => _popupCoordinator.SetOpen(false), ref failure);
+
+                if (changed && IsCurrentResolution(lease, generation))
+                {
+                    ExceptionAggregation.Capture(
+                        () => SuggestionsChanged?.Invoke(this, EventArgs.Empty),
+                        ref failure);
+                }
+            }
+        }
+        finally
+        {
+            CompleteResolution(lease, generation);
         }
 
-        CompleteResolution(lease, generation);
+        failure?.Throw();
     }
 
-    private bool PublishResults(
+    private bool CommitResultState(
         LatestControlOperationLease lease,
         int generation,
         IReadOnlyList<object?> results,
-        bool allowOpen)
+        bool markCurrent,
+        out bool changed,
+        ref ExceptionDispatchInfo? failure)
     {
-        if (!IsCurrentResolution(lease, generation))
-        {
-            return false;
-        }
-
-        SetIsResolving(false);
+        changed = false;
 
         if (!IsCurrentResolution(lease, generation))
         {
             return false;
         }
 
-        var changed = !SnapshotsEqual(Suggestions, results);
-        _list.Items = results;
-        _list.SelectedIndex = -1;
-        _list.SetProvisionalCurrentIndex(-1);
+        ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
+
+        if (!IsCurrentResolution(lease, generation))
+        {
+            return false;
+        }
+
+        changed = !SnapshotsEqual(Suggestions, results);
+        ExceptionAggregation.Capture(() => _list.Items = results, ref failure);
+        ExceptionAggregation.Capture(() => _list.SelectedIndex = -1, ref failure);
+        ExceptionAggregation.Capture(() => _list.SetProvisionalCurrentIndex(-1), ref failure);
+
+        if (!IsCurrentResolution(lease, generation) || !SnapshotsEqual(Suggestions, results))
+        {
+            return false;
+        }
+
+        _currentSnapshotGeneration = markCurrent ? generation : null;
 
         if (changed)
         {
-            NotifyPropertyChanged(nameof(Suggestions), InvalidationImpact.None);
-
-            if (!IsCurrentResolution(lease, generation))
-            {
-                return false;
-            }
-
-            SuggestionsChanged?.Invoke(this, EventArgs.Empty);
-
-            if (!IsCurrentResolution(lease, generation))
-            {
-                return false;
-            }
+            ExceptionAggregation.Capture(
+                () => NotifyPropertyChanged(nameof(Suggestions), InvalidationImpact.None),
+                ref failure);
         }
 
-        _popupCoordinator.SetOpen(allowOpen && _wantsOpen && Suggestions.Count > 0);
         return IsCurrentResolution(lease, generation);
     }
 
@@ -735,6 +860,21 @@ public sealed class SuggestionInput: CompositeControlBase
         {
             _ = _resolutionOperation.TryComplete(lease);
         }
+    }
+
+    private static void ObserveResolution(Task observation)
+    {
+        if (observation.IsCompleted)
+        {
+            _ = observation.Exception;
+            return;
+        }
+
+        _ = observation.ContinueWith(
+            static completed => _ = completed.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     [Pure]
@@ -824,6 +964,7 @@ public sealed class SuggestionInput: CompositeControlBase
         if (_resolutionOperation.HasCurrent)
         {
             var cancellationGeneration = ++_resolutionGeneration;
+            _currentSnapshotGeneration = null;
             ExceptionAggregation.Capture(_resolutionOperation.Cancel, ref failure);
 
             if (_resolutionGeneration == cancellationGeneration)
@@ -839,38 +980,45 @@ public sealed class SuggestionInput: CompositeControlBase
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
-        base.OnUnavailable(reason);
-        _popupCoordinator.OnOwnerUnavailable(reason);
         ExceptionDispatchInfo? failure = null;
+        var endsResolutionLifetime = reason is ReleaseReason.Detached or ReleaseReason.Disposed;
 
-        if (reason is ReleaseReason.Detached or ReleaseReason.Disposed)
+        if (endsResolutionLifetime)
         {
-            var cancellationGeneration = ++_resolutionGeneration;
-            ExceptionAggregation.Capture(_resolutionOperation.Cancel, ref failure);
-
-            if (_resolutionGeneration == cancellationGeneration)
-            {
-                ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
-            }
+            _resolutionLifecycleCleanupDepth++;
         }
 
-        if (reason == ReleaseReason.Disposed)
+        try
         {
-            _input.TextChanged -= OnTextChanged;
-            ExceptionAggregation.Capture(_popupCoordinator.Detach, ref failure);
-            if (SuggestionsChanged is not null)
+            ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+            ExceptionAggregation.Capture(() => _popupCoordinator.OnOwnerUnavailable(reason), ref failure);
+
+            if (endsResolutionLifetime)
             {
+                _resolutionGeneration++;
+                _currentSnapshotGeneration = null;
+                ExceptionAggregation.Capture(_resolutionOperation.Cancel, ref failure);
+                ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
+            }
+
+            if (reason == ReleaseReason.Disposed)
+            {
+                _input.TextChanged -= OnTextChanged;
+                ExceptionAggregation.Capture(_popupCoordinator.Detach, ref failure);
                 SuggestionsChanged = null;
-            }
-
-            if (ResolutionFailed is not null)
-            {
                 ResolutionFailed = null;
-            }
 
-            if (SuggestionAccepted is not null)
+                if (SuggestionAccepted is not null)
+                {
+                    SuggestionAccepted = null;
+                }
+            }
+        }
+        finally
+        {
+            if (endsResolutionLifetime)
             {
-                SuggestionAccepted = null;
+                _resolutionLifecycleCleanupDepth--;
             }
         }
 
