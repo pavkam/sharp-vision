@@ -1215,13 +1215,19 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             // Modal-entry callbacks may synchronously hide the Window or dispose
             // the just-entered manager scope. Preserve that owner decision and
             // never retain an inactive presentation handle.
-            if (!scope.IsActive || Visibility != Visibility.Visible)
+            if (Visibility != Visibility.Visible)
             {
                 if (scope.IsActive)
                 {
                     scope.Dispose();
                 }
 
+                return scope;
+            }
+
+            if (!scope.IsActive)
+            {
+                RollbackVisibility();
                 return scope;
             }
 
@@ -1243,6 +1249,14 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
                 }
             }
 
+            RollbackVisibility();
+
+            failure.Throw();
+            throw;
+        }
+
+        void RollbackVisibility()
+        {
             if (Visibility != previousVisibility)
             {
                 try
@@ -1255,9 +1269,6 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
                     // even when rollback publication fails.
                 }
             }
-
-            failure.Throw();
-            throw;
         }
     }
 

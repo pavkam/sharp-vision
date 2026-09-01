@@ -115,6 +115,74 @@ public sealed class ModalSessionTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies the silent "entry did not take" path — an active scope that fails the
+    /// caller's currentness check — disposes the candidate scope and invokes the caller's rollback,
+    /// the same as the throwing path does.</summary>
+    [Fact]
+    public async Task Enter_WhenNotCurrent_DisposesScopeAndInvokesRollbackAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var plane = new ProbeControl { IsFocusable = true };
+            root.Children.Add(plane);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            var session = new ModalSession();
+            var rolledBack = false;
+
+            var scope = session.Enter(
+                () => modality.Enter(plane),
+                static () => false,
+                () => rolledBack = true);
+
+            scope.IsActive.ShouldBeFalse();
+            rolledBack.ShouldBeTrue();
+            session.Current.ShouldBeNull();
+            session.IsActive.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the silent "entry did not take" path does not invoke rollback when the
+    /// scope itself came back inactive, preserving an ancestor-recovery caller's own decision.</summary>
+    [Fact]
+    public async Task Enter_WhenScopeInactive_DoesNotInvokeRollbackAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var plane = new ProbeControl { IsFocusable = true };
+            root.Children.Add(plane);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            var session = new ModalSession();
+            var rolledBack = false;
+
+            var scope = session.Enter(
+                () =>
+                {
+                    var candidate = modality.Enter(plane);
+                    candidate.Dispose();
+                    return candidate;
+                },
+                static () => true,
+                () => rolledBack = true);
+
+            scope.IsActive.ShouldBeFalse();
+            rolledBack.ShouldBeFalse();
+            session.Current.ShouldBeNull();
+            session.IsActive.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a failed entry remains authoritative when rollback also fails.</summary>
     [Fact]
     public void Enter_WhenEntryAndRollbackFail_RethrowsEntryFailure()

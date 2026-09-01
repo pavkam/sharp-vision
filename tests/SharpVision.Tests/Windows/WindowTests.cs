@@ -2837,7 +2837,9 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies a scope disposed from entry callbacks is returned inactive without stale Window tracking.</summary>
+    /// <summary>Verifies a scope disposed from entry callbacks is returned inactive without stale
+    /// Window tracking, and that the visibility this call itself forced is rolled back to its prior
+    /// value since the callback's decision ended modality, not visibility.</summary>
     [Fact]
     public async Task ShowModal_WhenEntryCallbackDisposesScope_ReturnsInactiveAndAllowsReopenAsync()
     {
@@ -2865,7 +2867,7 @@ public sealed class WindowTests
 
             first.IsActive.ShouldBeFalse();
             modality.Active.ShouldBeNull();
-            window.Visibility.ShouldBe(Visibility.Visible);
+            window.Visibility.ShouldBe(Visibility.Collapsed);
             disposeOnEntry = false;
 
             using var second = window.ShowModal();

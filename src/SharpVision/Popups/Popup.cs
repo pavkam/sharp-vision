@@ -384,13 +384,19 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
             // User callbacks reached during modal entry may synchronously close
             // the Popup or dispose the just-entered manager scope. Preserve that
             // decision and never retain a stale presentation handle.
-            if (!scope.IsActive || !IsOpen)
+            if (!IsOpen)
             {
                 if (scope.IsActive)
                 {
                     scope.Dispose();
                 }
 
+                return scope;
+            }
+
+            if (!scope.IsActive)
+            {
+                RollbackExposure();
                 return scope;
             }
 
@@ -412,6 +418,14 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                 }
             }
 
+            RollbackExposure();
+
+            failure.Throw();
+            throw;
+        }
+
+        void RollbackExposure()
+        {
             if (exposed && IsOpen)
             {
                 try
@@ -423,9 +437,6 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                     // Entry rollback is complete enough to keep the initiating failure.
                 }
             }
-
-            failure.Throw();
-            throw;
         }
     }
 

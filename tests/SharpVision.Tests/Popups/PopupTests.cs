@@ -1852,7 +1852,9 @@ public sealed class PopupTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies a scope disposed from entry callbacks is returned inactive without stale Popup tracking.</summary>
+    /// <summary>Verifies a scope disposed from entry callbacks is returned inactive without stale
+    /// Popup tracking, and that the popup this call itself opened is rolled back closed since the
+    /// callback's decision ended modality, not visibility.</summary>
     [Fact]
     public async Task OpenModal_WhenEntryCallbackDisposesScope_ReturnsInactiveAndAllowsReopenAsync()
     {
@@ -1880,7 +1882,7 @@ public sealed class PopupTests
 
             first.IsActive.ShouldBeFalse();
             modality.Active.ShouldBeNull();
-            popup.IsOpen.ShouldBeTrue();
+            popup.IsOpen.ShouldBeFalse();
             disposeOnEntry = false;
 
             using var second = popup.OpenModal();
