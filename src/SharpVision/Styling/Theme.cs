@@ -979,7 +979,23 @@ public sealed class Theme
 
         var attributes = rebased.Face.Attributes;
         var literalAttributes = attributes.IsLiteral ? attributes.Literal : ResolveAttributes(attributes.SemanticDecoration);
-        return rebased with { Face = rebased.Face with { Attributes = literalAttributes | TerminalAttributes.Reverse } };
+
+        var normalAttributes = geometryNormal.Face.Attributes;
+        var literalNormalAttributes = normalAttributes.IsLiteral
+            ? normalAttributes.Literal
+            : ResolveAttributes(normalAttributes.SemanticDecoration);
+
+        // Key off Normal's own resolved Reverse bit rather than blindly OR-ing: a custom theme may
+        // already author Reverse on this borderless control's Normal face (independently of the
+        // color collapse checked above, which only compares Foreground/Background), in which case
+        // OR-ing Reverse again onto Focused would be a no-op and leave Focused byte-identical to
+        // Normal - defeating this fallback entirely. Flipping the bit relative to Normal guarantees
+        // Focused always differs from Normal regardless of which direction Normal already points.
+        var finalAttributes = literalNormalAttributes.HasFlag(TerminalAttributes.Reverse)
+            ? literalAttributes & ~TerminalAttributes.Reverse
+            : literalAttributes | TerminalAttributes.Reverse;
+
+        return rebased with { Face = rebased.Face with { Attributes = finalAttributes } };
     }
 
     private Color ResolveColorValue(ControlColor value) => value.IsLiteral ? value.Literal : ResolveColor(value.SemanticColor);
