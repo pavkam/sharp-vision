@@ -1942,6 +1942,82 @@ public sealed class InputDecoderTests
         }
     }
 
+    /// <summary>Verifies a cursor-key CSI carrying a Kitty event sub-parameter reports Super
+    /// unremapped: the event sub-parameter alone is enough to identify Kitty grammar, where bit 3
+    /// of the modifier byte is Super rather than the legacy ctlseqs.txt Meta.</summary>
+    [Fact]
+    public void Decode_WhenKittyEventTypeIsPresent_MapsSuperCursorKeyAtEverySplit()
+    {
+        var bytes = "[1;9:3A"u8.ToArray();
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink);
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+            decoder.Complete();
+
+            sink.Strokes.ShouldBe(
+                [new Stroke(Code.Up, null, 0, Modifiers.Super, KeyAction.Release)],
+                $"split {split}");
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
+    /// <summary>Verifies a bare cursor-key CSI (no event sub-parameter) still reports Super, not
+    /// Meta, once the Kitty disambiguation lease is active: the lease is already the signal the
+    /// decoder trusts to accept this otherwise-ambiguous shape as a real Kitty keystroke, so its
+    /// modifier byte must be read with Kitty semantics too.</summary>
+    [Fact]
+    public void Decode_WhenKittyDisambiguationIsEnabled_MapsSuperCursorPressAtEverySplit()
+    {
+        var bytes = "[1;9A"u8.ToArray();
+        var options = InputOptions.Default with { UseAnsiKeyGrammar = false };
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+
+            using (InputDecoder decoder = new(sink, options))
+            {
+                decoder.EnableKittyKeyboardDisambiguation();
+                decoder.Decode(bytes.AsSpan(0, split));
+                decoder.Decode(bytes.AsSpan(split));
+                decoder.Complete();
+            }
+
+            sink.Strokes.ShouldBe(
+                [new Stroke(Code.Up, null, 0, Modifiers.Super, KeyAction.Press)],
+                $"split {split}");
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
+    /// <summary>Verifies the same bare cursor-key CSI still reports Meta, not Super, when neither
+    /// the Kitty disambiguation lease nor an event sub-parameter is present: this is the
+    /// genuinely-ambiguous legacy shape (also pinned in
+    /// <c>Decode_WhenLegacyKeyIsFragmented_MapsAtEverySplit</c>) and must not regress.</summary>
+    [Fact]
+    public void Decode_WhenKittyDisambiguationIsNotEnabled_MapsMetaCursorPressAtEverySplit()
+    {
+        var bytes = "[1;9A"u8.ToArray();
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink);
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+            decoder.Complete();
+
+            sink.Strokes.ShouldBe(
+                [new Stroke(Code.Up, null, 0, Modifiers.Meta, KeyAction.Press)],
+                $"split {split}");
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
     #endregion
 
     #region Bracketed paste
@@ -2868,6 +2944,30 @@ public sealed class InputDecoderTests
             stroke.Code.ShouldBe(Code.Character, $"split {split}");
             stroke.Character.ShouldBe(new Rune('x'), $"split {split}");
             stroke.Modifiers.ShouldBe(Modifiers.Alt, $"split {split}");
+        }
+    }
+
+    /// <summary>Verifies the modifyOtherKeys legacy tilde form's Super-bit modifier encoding
+    /// still reports Meta: it is decoded by TryGetModifier/TryHandleModifiedOtherKey, an entirely
+    /// separate legacy code path from the CSI cursor/function-key grammar's isKittyGrammar
+    /// threading, so it is unaffected by Kitty-grammar detection regardless of the terminal's
+    /// Kitty-keyboard capability.</summary>
+    [Fact]
+    public void Decode_WhenEnhancedCharacterCarriesSuperBit_ReportsMetaAtEverySplit()
+    {
+        var bytes = "[27;9;97~"u8.ToArray();
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingProtocolSink();
+            using var decoder = new InputDecoder(sink);
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+
+            var stroke = sink.Strokes.ShouldHaveSingleItem($"split {split}");
+            stroke.Code.ShouldBe(Code.Character, $"split {split}");
+            stroke.Character.ShouldBe(new Rune('a'), $"split {split}");
+            stroke.Modifiers.ShouldBe(Modifiers.Meta, $"split {split}");
         }
     }
 

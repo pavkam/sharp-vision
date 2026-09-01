@@ -801,12 +801,26 @@ public sealed class InputDecoder: IDisposable
         return true;
     }
 
-    private bool TryHandleLegacyCsiKey(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final) =>
-        intermediates.IsEmpty &&
-        (_options.UseAnsiKeyGrammar ||
-         _kittyKeyboardDisambiguationEnabled ||
-         HasKittyEventType(parameters)) &&
-        TryHandleCsiKey(parameters, final);
+    private bool TryHandleLegacyCsiKey(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final)
+    {
+        if (!intermediates.IsEmpty)
+        {
+            return false;
+        }
+
+        // Deliberately excludes UseAnsiKeyGrammar: that flag only controls whether this
+        // legacy-shape handler fires at all, not what bit 3 of the modifier byte means. The
+        // disambiguation lease alone (with no event sub-parameter present) is enough to call this
+        // Kitty grammar: the lease is already the signal the decoder trusts to accept this
+        // otherwise-ambiguous shape as a real Kitty keystroke, so reading its modifier byte with
+        // legacy ctlseqs.txt semantics afterward would be internally inconsistent - a byte
+        // sequence decoding differently before vs after Kitty-keyboard negotiation is intentional
+        // here, not accidental.
+        var isKittyGrammar = _kittyKeyboardDisambiguationEnabled || HasKittyEventType(parameters);
+
+        return (_options.UseAnsiKeyGrammar || isKittyGrammar) &&
+            TryHandleCsiKey(parameters, final, isKittyGrammar);
+    }
 
     // Kitty reuses the legacy CSI cursor-key finals when progressive event reporting is active.
     // Repeat and release carry a distinguishing event sub-parameter, while press may omit its
@@ -955,7 +969,7 @@ public sealed class InputDecoder: IDisposable
         }
     }
 
-    private bool TryHandleCsiKey(ReadOnlySpan<byte> parameters, byte final)
+    private bool TryHandleCsiKey(ReadOnlySpan<byte> parameters, byte final, bool isKittyGrammar)
     {
         // CSI Z (cursor back-tab / Shift+Tab) has no SS3 equivalent, so it stays CSI-only. An
         // unmapped final byte returns false rather than Code.Unknown: CSI sits in an extensible
@@ -970,7 +984,7 @@ public sealed class InputDecoder: IDisposable
             return false;
         }
 
-        if (!TryReadCsiModifiers(parameters, out var modifiers, out var action))
+        if (!TryReadCsiModifiers(parameters, isKittyGrammar, out var modifiers, out var action))
         {
             Report(DiagnosticCode.Malformed, SequenceKind.Csi);
             return true;
@@ -1346,6 +1360,7 @@ public sealed class InputDecoder: IDisposable
 
     private static bool TryReadCsiModifiers(
         ReadOnlySpan<byte> parameters,
+        bool isKittyGrammar,
         out Modifiers modifiers,
         out KeyAction action)
     {
@@ -1384,8 +1399,14 @@ public sealed class InputDecoder: IDisposable
 
         // KittyKeyDecoder.TryReadModifiers decodes into Kitty's own CSI-u bit layout, where bit 3
         // is Super. Legacy-grammar CSI modifiers reuse the same wire encoding but define bit 3 as
-        // Meta (per ctlseqs.txt), so remap it here rather than in the shared Kitty decoder.
-        RemapLegacySuperToMeta(ref modifiers);
+        // Meta (per ctlseqs.txt), so remap it here rather than in the shared Kitty decoder - but
+        // only when this sequence is not itself Kitty grammar (event sub-parameter present, or the
+        // disambiguation lease active), since then bit 3 already means Super.
+        if (!isKittyGrammar)
+        {
+            RemapLegacySuperToMeta(ref modifiers);
+        }
+
         return true;
     }
 
