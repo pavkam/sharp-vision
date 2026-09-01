@@ -25,7 +25,7 @@ internal sealed class PagerPane: CompositeControlBase
             MaximumVisiblePages = 5
         };
         _ = LivePager.Bind(model, source => source.NumericValue);
-        LiveStatus = new Text("Page 9 of 18 · model PageIndex 8 · ready");
+        LiveStatus = new Text("Page 9 of 18 · model PageIndex 8 · ready") { Overflow = Overflow.Wrap };
         LivePager.PageChanged += (_, eventArgs) =>
             LiveStatus.Content =
                 $"Page {eventArgs.CurrentPageIndex + 1} of {LivePager.PageCount} · " +

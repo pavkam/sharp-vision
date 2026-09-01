@@ -111,6 +111,10 @@ internal sealed class SplitPanePane: CompositeControlBase
                 ? "Second pane restored; the divider participates again."
                 : "Second pane collapsed; the first pane fills the split and the divider is absent.";
         };
+        var actions = new Wrap { Width = Length.Percent(100), Spacing = 1, LineSpacing = 1 };
+        actions.Children.Add(toggleResizable);
+        actions.Children.Add(toggleEnabled);
+        actions.Children.Add(toggleSecond);
 
         return new DocPage(
             Title,
@@ -141,7 +145,7 @@ internal sealed class SplitPanePane: CompositeControlBase
                     "Tab reaches the divider before the editable leading pane while it is available. Typing updates the readout without resizing; locking or collapsing skips the divider stop without removing pane input.",
                     new DocColumn(
                         interactive,
-                        new DocRow(toggleResizable, toggleEnabled, toggleSecond),
+                        actions,
                         status))));
     }
 

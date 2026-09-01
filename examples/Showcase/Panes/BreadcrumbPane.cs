@@ -18,32 +18,47 @@ internal sealed class BreadcrumbPane: CompositeControlBase
     /// <returns>The complete page root.</returns>
     private static DocPage CreateContent()
     {
-        var activity = new Text("Current: Release 🚀\nActivity: ready") { Overflow = Overflow.Wrap };
+        var activity = new Text { Overflow = Overflow.Wrap };
+        var activityEntries = new List<string>();
+
+        void AppendActivity(string entry)
+        {
+            activityEntries.Add(entry);
+
+            while (activityEntries.Count > 4)
+            {
+                activityEntries.RemoveAt(0);
+            }
+
+            activity.Content = "<d>Activity</d>\n" +
+                string.Join('\n', activityEntries.Select(static value => Text.Escape($"• {value}")));
+        }
+
         var interactive = new Breadcrumb { Width = Length.Percent(100) };
-        var home = CreateItem("&Home", "Home", activity);
-        var projects = CreateItem("Pr&ojects", "Projects", activity);
-        var design = CreateItem("界 &Design", "界 Design", activity);
-        var release = CreateItem("Relea&se 🚀", "Release 🚀", activity);
+        var home = CreateItem("&Home", "Home", AppendActivity);
+        var projects = CreateItem("Pr&ojects", "Projects", AppendActivity);
+        var design = CreateItem("界 &Design", "界 Design", AppendActivity);
+        var release = CreateItem("Relea&se 🚀", "Release 🚀", AppendActivity);
         interactive.Items.Add(home);
         interactive.Items.Add(projects);
         interactive.Items.Add(design);
         interactive.Items.Add(release);
         interactive.CurrentChanged += (_, eventArgs) =>
-            activity.Content = Text.Escape(
-                $"Current: {Plain(eventArgs.CurrentItem)}\nActivity: CurrentChanged from {Plain(eventArgs.PreviousItem)}");
+            AppendActivity($"CurrentChanged: {Plain(eventArgs.PreviousItem)} → {Plain(eventArgs.CurrentItem)}");
+        AppendActivity("Ready: Release 🚀 is current.");
 
         var clearCurrent = new Button { Text = "Clear &current" };
         clearCurrent.Click += (_, _) =>
         {
             interactive.CurrentIndex = -1;
-            activity.Content = "Current: none\nActivity: explicit no-current state";
+            AppendActivity("Current: none (explicit state).");
         };
 
         var restoreLeaf = new Button { Text = "Restore &leaf" };
         restoreLeaf.Click += (_, _) =>
         {
             interactive.CurrentItem = release;
-            activity.Content = "Current: Release 🚀\nActivity: final location restored";
+            AppendActivity("Current: Release 🚀 restored.");
         };
 
         var toggleWidth = new Button { Text = "&Narrow path" };
@@ -52,10 +67,14 @@ internal sealed class BreadcrumbPane: CompositeControlBase
             var isNarrow = interactive.Width == Length.Cells(18);
             interactive.Width = isNarrow ? Length.Percent(100) : Length.Cells(18);
             toggleWidth.Text = isNarrow ? "&Narrow path" : "&Widen path";
-            activity.Content = isNarrow
-                ? "Current: Release 🚀\nActivity: live reading-column width restored"
-                : "Current: Release 🚀\nActivity: narrow overflow projection active";
+            AppendActivity(isNarrow
+                ? "Width: live reading column restored."
+                : "Width: narrow overflow projection active.");
         };
+        var actions = new Wrap { Width = Length.Percent(100), Spacing = 1, LineSpacing = 1 };
+        actions.Children.Add(clearCurrent);
+        actions.Children.Add(restoreLeaf);
+        actions.Children.Add(toggleWidth);
 
         var overflow = new Breadcrumb
         {
@@ -66,32 +85,29 @@ internal sealed class BreadcrumbPane: CompositeControlBase
                 SeparatorColor = SemanticColor.Accent
             }
         };
-        overflow.Items.Add(new BreadcrumbItem { Text = "Workspace", UseMnemonic = false });
-        overflow.Items.Add(new BreadcrumbItem { Text = "Applications", UseMnemonic = false });
-        overflow.Items.Add(new BreadcrumbItem { Text = "界 Design", UseMnemonic = false });
-        overflow.Items.Add(new BreadcrumbItem { Text = "Release 🚀", UseMnemonic = false });
+        overflow.Items.Add(new BreadcrumbItem { Text = "Wo&rkspace" });
+        overflow.Items.Add(new BreadcrumbItem { Text = "A&pplications" });
+        overflow.Items.Add(new BreadcrumbItem { Text = "界 Desi&gn" });
+        overflow.Items.Add(new BreadcrumbItem { Text = "Releas&e 🚀" });
 
         var participation = new Breadcrumb { Width = Length.Percent(100) };
-        participation.Items.Add(new BreadcrumbItem { Text = "Root", UseMnemonic = false });
+        participation.Items.Add(new BreadcrumbItem { Text = "Roo&t" });
         participation.Items.Add(new BreadcrumbItem
         {
-            Text = "Hidden cache",
-            UseMnemonic = false,
+            Text = "Hi&dden cache",
             Visibility = Visibility.Hidden
         });
         participation.Items.Add(new BreadcrumbItem
         {
-            Text = "Collapsed branch",
-            UseMnemonic = false,
+            Text = "Collapsed bran&ch",
             Visibility = Visibility.Collapsed
         });
         participation.Items.Add(new BreadcrumbItem
         {
             Text = "Locked",
-            UseMnemonic = false,
             IsEnabled = false
         });
-        participation.Items.Add(new BreadcrumbItem { Text = "Available leaf", UseMnemonic = false });
+        participation.Items.Add(new BreadcrumbItem { Text = "A&vailable leaf" });
 
         return new DocPage(
             Title,
@@ -105,7 +121,7 @@ internal sealed class BreadcrumbPane: CompositeControlBase
                     "The path follows the live reading-column width. Clear current to reveal prefix-first overflow behavior; restore the leaf to return to the conventional final location.",
                     new DocColumn(
                         interactive,
-                        new DocRow(clearCurrent, restoreLeaf, toggleWidth),
+                        actions,
                         activity),
                     "var path = new Breadcrumb();\n" +
                     "path.Items.Add(new BreadcrumbItem { Text = \"&Home\" });\n" +
@@ -137,14 +153,14 @@ internal sealed class BreadcrumbPane: CompositeControlBase
     /// <summary>Creates one mnemonic-aware command item with observable activation.</summary>
     /// <param name="text">The authored caption.</param>
     /// <param name="name">The plain location name used by the activity readout.</param>
-    /// <param name="activity">The retained readout updated by item callbacks.</param>
+    /// <param name="appendActivity">The retained ordered readout callback updated by item callbacks.</param>
     /// <returns>The initialized breadcrumb item.</returns>
-    private static BreadcrumbItem CreateItem(string text, string name, Text activity)
+    private static BreadcrumbItem CreateItem(string text, string name, Action<string> appendActivity)
     {
         var item = new BreadcrumbItem { Text = text, CommandParameter = name };
-        item.Invoked += (_, _) => activity.Content = Text.Escape($"Current: {name}\nActivity: Invoked {name}");
+        item.Invoked += (_, eventArgs) => appendActivity($"Invoked: {name} ({eventArgs.Cause})");
         item.Command = new ShowcaseCommand(
-            parameter => activity.Content = Text.Escape($"Current: {name}\nActivity: Command {parameter}"),
+            parameter => appendActivity($"Command: {parameter}"),
             static _ => true);
         return item;
     }

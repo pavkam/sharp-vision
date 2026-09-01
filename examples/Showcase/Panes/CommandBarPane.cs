@@ -16,9 +16,9 @@ internal sealed class CommandBarPane: CompositeControlBase
 
     private static DocPage CreateContent()
     {
-        var itemLog = new Text("Item event: waiting");
-        var commandLog = new Text("Command log: waiting");
-        var widthLog = new Text("Width: 30 cells · tail actions overflow");
+        var itemLog = new Text("Item event: waiting") { Overflow = Overflow.Wrap };
+        var commandLog = new Text("Command log: waiting") { Overflow = Overflow.Wrap };
+        var widthLog = new Text("Width: 30 cells · tail actions overflow") { Overflow = Overflow.Wrap };
         var width = 30;
         var bar = new CommandBar
         {
@@ -51,10 +51,7 @@ internal sealed class CommandBarPane: CompositeControlBase
         narrower.Click += (_, _) => Resize(-6);
         wider.Click += (_, _) => Resize(6);
         var resizeActions = new DocRow(narrower, wider);
-        var specimen = new DocColumn(bar, resizeActions, widthLog, itemLog, commandLog)
-        {
-            Width = Length.Cells(48)
-        };
+        var specimen = new DocColumn(bar, resizeActions, widthLog, itemLog, commandLog);
 
         return new DocPage(
             Title,
@@ -71,7 +68,8 @@ internal sealed class CommandBarPane: CompositeControlBase
 
         void Resize(int delta)
         {
-            width = Math.Clamp(width + delta, 12, 48);
+            var available = Math.Max(12, bar.Parent?.Bounds.Width ?? width);
+            width = Math.Clamp(width + delta, 12, available);
             bar.Width = Length.Cells(width);
             widthLog.Content = $"Width: {width} cells · resize preserves source identity";
         }

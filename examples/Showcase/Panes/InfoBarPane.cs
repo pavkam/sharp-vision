@@ -16,10 +16,23 @@ internal sealed class InfoBarPane: CompositeControlBase
 
     private static DocPage CreateContent()
     {
-        var eventLog = new Text("Event log: waiting for a dismissal request.")
+        var eventLog = new Text { Overflow = Overflow.Wrap };
+        var eventEntries = new List<string>();
+
+        void AppendEvent(string entry)
         {
-            Overflow = Overflow.Wrap
-        };
+            eventEntries.Add(entry);
+
+            while (eventEntries.Count > 3)
+            {
+                eventEntries.RemoveAt(0);
+            }
+
+            eventLog.Content = "<d>Event log</d>\n" +
+                string.Join('\n', eventEntries.Select(static value => Text.Escape($"• {value}")));
+        }
+
+        AppendEvent("Waiting for a dismissal request.");
         var allowDismissal = new CheckBox { Text = "&Allow dismissal" };
         var dismiss = new Button { Text = "&Dismiss from content" };
         var reopen = new Button { Text = "&Reopen notification" };
@@ -38,12 +51,7 @@ internal sealed class InfoBarPane: CompositeControlBase
                     {
                         Overflow = Overflow.Wrap
                     },
-                    new Stack
-                    {
-                        Orientation = Orientation.Horizontal,
-                        Spacing = 1,
-                        Children = { allowDismissal, dismiss }
-                    }
+                    CreateActions(allowDismissal, dismiss)
                 }
             }
         };
@@ -52,12 +60,12 @@ internal sealed class InfoBarPane: CompositeControlBase
         interactive.DismissRequested += (_, eventArgs) =>
         {
             eventArgs.Cancel = allowDismissal.IsChecked != true;
-            eventLog.Content = eventArgs.Cancel
-                ? "Event log: DismissRequested vetoed; enable Allow dismissal to close."
-                : "Event log: DismissRequested accepted; cleanup is committing.";
+            AppendEvent(eventArgs.Cancel
+                ? "DismissRequested: vetoed; enable Allow dismissal to close."
+                : "DismissRequested: accepted; close and availability cleanup are pending.");
         };
         interactive.Dismissed += (_, _) =>
-            eventLog.Content = "Event log: Dismissed after layout, focus, and capture cleanup.";
+            AppendEvent("Dismissed: close and availability cleanup completed.");
 
         var narrow = new InfoBar
         {
@@ -93,7 +101,7 @@ internal sealed class InfoBarPane: CompositeControlBase
             new DocSection(
                 "🔔",
                 "Retained action and dismissal",
-                "The body remains an ordinary focusable control tree. Its action chooses whether to request dismissal, and DismissRequested may veto before closed layout and input cleanup commit.",
+                "The body remains an ordinary focusable control tree. Its action chooses whether to request dismissal, and DismissRequested may veto before close and availability cleanup commit.",
                 new DocExample(
                     "Dismissal veto and event order",
                     "Activate Dismiss from content or the trailing close glyph. The first request is vetoed until Allow dismissal is checked; Reopen notification restores the same retained controls.",
@@ -121,4 +129,16 @@ internal sealed class InfoBarPane: CompositeControlBase
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Content = new Text(content) { Overflow = Overflow.Wrap }
         };
+
+    private static Wrap CreateActions(params ControlBase[] actions)
+    {
+        var wrap = new Wrap { Width = Length.Percent(100), Spacing = 1, LineSpacing = 1 };
+
+        foreach (var action in actions)
+        {
+            wrap.Children.Add(action);
+        }
+
+        return wrap;
+    }
 }

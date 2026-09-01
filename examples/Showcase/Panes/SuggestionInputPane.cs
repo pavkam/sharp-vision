@@ -42,8 +42,7 @@ internal sealed class SuggestionInputPane: CompositeControlBase
         var status = new Text("Status: type at least 2 graphemes.")
         {
             Width = Length.Cells(38),
-            Height = Length.Cells(1),
-            Overflow = Overflow.Clip
+            Overflow = Overflow.Wrap
         };
         var activity = new Text()
         {
