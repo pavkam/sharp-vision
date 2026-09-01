@@ -185,6 +185,6 @@ workspace.SplitChanged += (_, change) =>
 - Divider hover, focus, press, capture, cancellation, and unavailable-state
   cleanup remain local to the divider while ordinary pane input retains its
   routed behavior.
-- The live Showcase keeps its narrow, normal, and reading-column-wide specimens
-  contained and demonstrates fixed and percentage sidebars, a vertical
-  editor/output split, interaction status, locking, disabling, and collapse.
+- Fixed-cell and percentage-authored dividers remain contained through resize,
+  and horizontal and vertical splits retain the same availability, interaction,
+  and collapse semantics.

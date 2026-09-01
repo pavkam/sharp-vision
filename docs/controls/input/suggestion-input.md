@@ -100,8 +100,6 @@ changes.
 | Space                                  | Inserts text; it never accepts a suggestion.                                                |
 | Escape                                 | Closes without changing text.                                                               |
 | Tab / Shift+Tab                        | Closes without acceptance, then continues ordinary focus traversal.                         |
-| Primary release on a row               | Accepts that current result through the same guarded transaction as Enter.                  |
-| Wheel over results                     | Scrolls the list first; an endpoint wheel remains consumed inside the suggestion plane.     |
 
 Navigation accepts incidental Caps Lock or Num Lock state. Shift-modified
 navigation and Control, Alt, Super, Hyper, or Meta command chords remain
@@ -155,12 +153,14 @@ uses the shared
 [focus-independent delegation rule](../../concepts/input-routing.md#popup-navigation-delegation),
 so one routed keystroke moves one row even if focus routing reaches the list.
 
-Enter or primary-pointer activation captures the exact item, row, resolver
+Enter or a primary release on a row captures the exact item, row, resolver
 generation, attachment, popup transition, and popup session. The projected text
 commits through the retained editor before the popup closes. That text commit
 may start its normal next resolution without suppressing this acceptance. After
 the close transaction completes, `SuggestionAccepted` fires exactly once only if
-the accepted text and transaction remain current.
+the accepted text and transaction remain current. Wheel input over the result
+list scrolls that list first; an endpoint wheel remains consumed inside the
+suggestion plane.
 
 A competing activation, replacement result or popup session, different text,
 explicit close, direct popup closure, Escape, Tab, light dismissal, detach, or

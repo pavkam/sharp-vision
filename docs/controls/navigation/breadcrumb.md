@@ -35,7 +35,7 @@ classDiagram
 | `CurrentItem`    | `BreadcrumbItem?`                                 | `null`         | Gets or sets the represented owned item; null or a foreign item clears current. |
 | `Style`          | `BreadcrumbStyle?`                                | `null`         | Gets or sets the complete local breadcrumb presentation.                        |
 | `ActualStyle`    | `BreadcrumbStyle`                                 | Resolved       | Gets the complete local, theme-owned, or code-owned presentation.               |
-| `CurrentChanged` | `EventHandler<BreadcrumbCurrentChangedEventArgs>` | No subscribers | Reports a committed represented-location change.                                |
+| `CurrentChanged` | `EventHandler<BreadcrumbCurrentChangedEventArgs>` | —              | Reports a committed represented-location change.                                |
 
 `CurrentIndex` accepts `-1` or the index of an owned, effectively visible and
 enabled item. An index outside the collection throws
@@ -64,7 +64,7 @@ requires repair.
 | Inherited `Command`          | `ICommand?`                         | `null`         | Runs after `Invoked` when the activation remains current and available. |
 | Inherited `CommandParameter` | `object?`                           | `null`         | Supplies the borrowed parameter for command query and execution.        |
 | `PerformInvoke()`            | `void`                              | —              | Requests programmatic activation through the same owner transaction.    |
-| `Invoked`                    | `EventHandler<ActivationEventArgs>` | No subscribers | Reports activation after its owning breadcrumb commits current state.   |
+| `Invoked`                    | `EventHandler<ActivationEventArgs>` | —              | Reports activation after its owning breadcrumb commits current state.   |
 
 `Text` rejects null with `ArgumentNullException` and terminal controls with
 `ArgumentException`. `PerformInvoke()` requires the attached dispatcher and
@@ -221,5 +221,6 @@ host, trigger, or menu. Application commands own navigation and path mutation.
 - Wide, narrow, tiny, zero-width, hidden, collapsed, disabled, explicitly
   nonfinal-current, and no-current paths preserve whole-entry geometry and exact
   separator adjacency.
-- Fixed-seed mutation evidence independently checks current identity, primary
-  window, overflow source order, trigger placement, and all committed bounds.
+- Path mutations preserve current identity, select the correct primary window
+  and overflow source order, and place the overflow trigger and visible entries
+  in their committed bounds.

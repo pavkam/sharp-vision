@@ -85,7 +85,8 @@ index valid raises no `PageChanged` event. Direct `PageIndex` assignment and
 Callbacks run without a lock. If a property or typed-event observer changes page
 state, availability, attachment, or lifetime, that newer transition suppresses
 stale remaining notifications from the interrupted transition. Callback failures
-are aggregated after the committed state and do not roll it back.
+do not roll back the committed state: Pager attempts still-current callbacks,
+preserves the earliest failure, and rethrows it after required work.
 
 ## Layout and appearance
 

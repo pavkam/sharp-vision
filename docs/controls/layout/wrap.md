@@ -91,8 +91,6 @@ commands.Children.Add(new Button { Text = "Cancel" });
 - Hidden children retain geometry; collapsed children release geometry and
   adjacent spacing; normal Container ownership and input behavior remains in
   effect.
-
-Mounted cross-layer coverage in
-[`WrapSurfaceTests`](../../../tests/SharpVision.Tests/Controls/Layout/WrapSurfaceTests.cs)
-demonstrates visibility reflow, wide-cell rendering after resize, source-order
-Tab traversal, child popup routing, disabled inheritance, and scrolling.
+- Resize reflows lines without splitting a Unicode grapheme, while each child
+  retains its normal Container focus, popup-routing, disabled-state, and
+  scrolling behavior.

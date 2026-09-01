@@ -240,8 +240,8 @@ commands.ItemInvoked += (_, eventArgs) => Log(eventArgs.Item, eventArgs.Cause);
   planes, while semantic parent and command identity remain stable.
 - Disabled rows remain visible and consume width without becoming selectable;
   Hidden rows retain only primary layout space and Collapsed rows consume none.
-- Fixed-seed randomized layout proves tail-first overflow, normalized
-  separators, bounded primary geometry, and deterministic resize recovery.
-- The Showcase specimen exposes commands, a separator, a disabled action, access
-  keys, separate item/command logs, and live width changes through the same
-  public API an application uses.
+- The longest fitting visible source prefix remains primary; normalized
+  separators and bounded geometry produce a deterministic overflow tail that
+  returns to the row when width permits.
+- Access-key, keyboard, and pointer activation follow the same semantic item
+  and command sequence, including when the item appears in overflow.
