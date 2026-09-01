@@ -478,7 +478,11 @@ public sealed class SuggestionInput: CompositeControlBase
 
             _wantsOpen = true;
 
-            if (!EffectiveIsEnabled || !EffectiveIsVisible || Suggestions.Count == 0)
+            if (!EffectiveIsEnabled ||
+                !EffectiveIsVisible ||
+                IsResolving ||
+                _currentSnapshotGeneration != _resolutionGeneration ||
+                Suggestions.Count == 0)
             {
                 return;
             }
@@ -973,7 +977,9 @@ public sealed class SuggestionInput: CompositeControlBase
                         generation,
                         attachment,
                         detachedAttachment,
-                        () => ApplyResults(lease, generation, [], markCurrent: true))
+                        () => ApplyResults(lease, generation, [], markCurrent: true),
+                        allowDeferredDetachedPublication: true,
+                        awaitDeferredDetachedPublication: false)
                     .GetAwaiter()
                     .GetResult(),
                 ref startupFailure);
@@ -1003,7 +1009,9 @@ public sealed class SuggestionInput: CompositeControlBase
                         generation,
                         attachment,
                         detachedAttachment,
-                        () => ApplyCancellation(lease, generation))
+                        () => ApplyCancellation(lease, generation),
+                        allowDeferredDetachedPublication: true,
+                        awaitDeferredDetachedPublication: false)
                     .GetAwaiter()
                     .GetResult(),
                 ref startupFailure);
@@ -1018,7 +1026,9 @@ public sealed class SuggestionInput: CompositeControlBase
                         generation,
                         attachment,
                         detachedAttachment,
-                        () => ApplyFailure(lease, generation, searchTerms, exception))
+                        () => ApplyFailure(lease, generation, searchTerms, exception),
+                        allowDeferredDetachedPublication: true,
+                        awaitDeferredDetachedPublication: false)
                     .GetAwaiter()
                     .GetResult(),
                 ref startupFailure);
@@ -1034,7 +1044,9 @@ public sealed class SuggestionInput: CompositeControlBase
                         generation,
                         attachment,
                         detachedAttachment,
-                        () => ApplyCompletion(lease, generation, searchTerms, pending.Result))
+                        () => ApplyCompletion(lease, generation, searchTerms, pending.Result),
+                        allowDeferredDetachedPublication: true,
+                        awaitDeferredDetachedPublication: false)
                     .GetAwaiter()
                     .GetResult(),
                 ref startupFailure);
@@ -1098,7 +1110,8 @@ public sealed class SuggestionInput: CompositeControlBase
                 {
                     ApplyCompletion(lease, generation, searchTerms, results);
                 }
-            }).ConfigureAwait(false);
+            },
+            allowDeferredDetachedPublication: true).ConfigureAwait(false);
     }
 
     private Task DispatchCompletionAsync(
@@ -1106,7 +1119,9 @@ public sealed class SuggestionInput: CompositeControlBase
         int generation,
         ControlAttachmentToken? attachment,
         ControlDetachedAttachmentToken? detachedAttachment,
-        Action action)
+        Action action,
+        bool allowDeferredDetachedPublication = false,
+        bool awaitDeferredDetachedPublication = true)
     {
         if (attachment is not { } token)
         {
@@ -1129,6 +1144,28 @@ public sealed class SuggestionInput: CompositeControlBase
 
             if (!published)
             {
+                if (allowDeferredDetachedPublication &&
+                    Dispatcher is null &&
+                    IsCurrentResolution(lease, generation))
+                {
+                    var retry = Task.Run(
+                        () => RetryDetachedCompletion(
+                            lease,
+                            generation,
+                            detachedToken,
+                            action),
+                        CancellationToken.None);
+
+                    if (awaitDeferredDetachedPublication)
+                    {
+                        return retry;
+                    }
+
+                    LastResolutionObservation = retry;
+                    ObserveResolution(retry);
+                    return Task.CompletedTask;
+                }
+
                 CompleteDetachedResolutionWhenStillDetached(lease, generation);
             }
 
@@ -1151,11 +1188,8 @@ public sealed class SuggestionInput: CompositeControlBase
 
         var observation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        void Abandon()
-        {
-            CompleteResolution(lease, generation);
-            _ = observation.TrySetResult();
-        }
+        void Abandon() =>
+            DeferAttachedResolutionAbandonment(token, lease, generation, observation);
 
         void ApplyOrDiscard()
         {
@@ -1179,6 +1213,108 @@ public sealed class SuggestionInput: CompositeControlBase
 
         token.Dispatcher.PostBackgroundCompletion(ApplyOrDiscard, Abandon);
         return observation.Task;
+    }
+
+    private void DeferAttachedResolutionAbandonment(
+        ControlAttachmentToken attachment,
+        LatestControlOperationLease lease,
+        int generation,
+        TaskCompletionSource observation)
+    {
+        var dispatcher = attachment.Dispatcher;
+        var settled = 0;
+        EventHandler? idleHandler = null;
+        CancellationTokenRegistration stoppingRegistration = default;
+
+        void RetireWithoutPublication()
+        {
+            if (Interlocked.Exchange(ref settled, 1) != 0)
+            {
+                return;
+            }
+
+            dispatcher.Idle -= idleHandler;
+
+            // Shutdown has revoked dispatcher publication. Retire the public pending state
+            // directly so terminal cleanup cannot leave an operation permanently observable.
+            if (IsCurrentResolution(lease, generation))
+            {
+                IsResolving = false;
+            }
+
+            CompleteResolution(lease, generation);
+            _ = observation.TrySetResult();
+        }
+
+        idleHandler = (_, _) =>
+        {
+            if (Interlocked.Exchange(ref settled, 1) != 0)
+            {
+                return;
+            }
+
+            dispatcher.Idle -= idleHandler;
+            stoppingRegistration.Dispose();
+
+            try
+            {
+                if (IsCurrent(attachment) && IsCurrentResolution(lease, generation))
+                {
+                    SetIsResolving(false);
+                }
+            }
+            finally
+            {
+                CompleteResolution(lease, generation);
+                _ = observation.TrySetResult();
+            }
+        };
+
+        dispatcher.Idle += idleHandler;
+        stoppingRegistration = dispatcher.StoppingToken.Register(RetireWithoutPublication);
+
+        if (Volatile.Read(ref settled) != 0)
+        {
+            stoppingRegistration.Dispose();
+            return;
+        }
+
+        try
+        {
+            // A full queue guarantees another drain-to-idle transition. When the queue drained
+            // between rejection and subscription, this marker creates that transition without
+            // retaining or repeatedly retrying rejected work.
+            dispatcher.Post(static () => { }, RetireWithoutPublication);
+        }
+        catch (ObjectDisposedException)
+        {
+            RetireWithoutPublication();
+        }
+        catch (InvalidOperationException)
+        {
+            // Existing queued work owns the next idle transition.
+        }
+    }
+
+    private void RetryDetachedCompletion(
+        LatestControlOperationLease lease,
+        int generation,
+        ControlDetachedAttachmentToken detachedToken,
+        Action action)
+    {
+        var published = TryPublishForCurrentDetachedAttachment(
+            detachedToken,
+            () =>
+            {
+                BeforeDetachedResolutionPublication?.Invoke();
+                action();
+            },
+            () => IsCurrentResolution(lease, generation));
+
+        if (!published)
+        {
+            CompleteDetachedResolutionWhenStillDetached(lease, generation);
+        }
     }
 
     private void CompleteDetachedResolutionWhenStillDetached(
@@ -1232,7 +1368,11 @@ public sealed class SuggestionInput: CompositeControlBase
                 if (IsCurrentResolution(lease, generation))
                 {
                     ExceptionAggregation.Capture(
-                        () => _popupCoordinator.SetOpen(_wantsOpen && Suggestions.Count > 0),
+                        () => _popupCoordinator.SetOpen(
+                            _wantsOpen &&
+                            EffectiveIsEnabled &&
+                            EffectiveIsVisible &&
+                            Suggestions.Count > 0),
                         ref failure);
                 }
 

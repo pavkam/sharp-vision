@@ -31,6 +31,8 @@ public sealed class Dispatcher: IAsyncDisposable
     private readonly TaskCompletionSource _stopped =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+    private readonly CancellationTokenSource _stoppingTokenSource = new();
+
     private readonly Thread _thread;
     private int _disposed;
     private Exception? _fatalException;
@@ -144,6 +146,10 @@ public sealed class Dispatcher: IAsyncDisposable
 
     /// <summary>Gets the shared clock used by timers associated with this dispatcher.</summary>
     internal TimeProvider TimeProvider { get; }
+
+    /// <summary>Gets a token signaled once when shutdown starts.</summary>
+    /// <remarks>Internal terminal cleanup registrations must be finite and nonthrowing.</remarks>
+    internal CancellationToken StoppingToken => _stoppingTokenSource.Token;
 
     /// <summary>Gets whether the current thread owns this dispatcher.</summary>
     /// <returns>True only on the dedicated dispatcher thread.</returns>
@@ -464,6 +470,8 @@ public sealed class Dispatcher: IAsyncDisposable
             Monitor.PulseAll(_gate);
         }
 
+        _stoppingTokenSource.Cancel();
+
         foreach (var work in cancelled)
         {
             work.Cancel();
@@ -632,6 +640,8 @@ public sealed class Dispatcher: IAsyncDisposable
             _queue.Clear();
             Monitor.PulseAll(_gate);
         }
+
+        _stoppingTokenSource.Cancel();
 
         foreach (var work in cancelled)
         {

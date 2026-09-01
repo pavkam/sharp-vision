@@ -9,6 +9,92 @@ using SharpVision.DataBinding;
 /// cross-cutting Tab, render, and hit-test traversal over every central ownership slot.</summary>
 public sealed class OwnedControlRegistryTests
 {
+    /// <summary>Verifies reciprocal callbacks holding independent lifecycle roots reject instead
+    /// of retaining one root while waiting for the other.</summary>
+    [Fact]
+    public async Task Clear_WhenReciprocalCrossRootCallbacksOverlap_RejectsWithoutWaitingAsync()
+    {
+        var firstCallbackEntered = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondCallbackEntered = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstOwner = new ProbeOwnedControl();
+        var secondOwner = new ProbeOwnedControl();
+        var firstChild = new ProbeControl();
+        var secondChild = new ProbeControl();
+        firstOwner.AddPrimary(firstChild);
+        secondOwner.AddPrimary(secondChild);
+        var waits = 0;
+        firstOwner.OwnedControls.PublicationWaitStarted = ObserveForbiddenWait;
+        secondOwner.OwnedControls.PublicationWaitStarted = ObserveForbiddenWait;
+        firstChild.ParentChanged += (_, _) =>
+        {
+            firstCallbackEntered.SetResult();
+            secondCallbackEntered.Task.GetAwaiter().GetResult();
+            secondOwner.Dispose();
+        };
+        secondChild.ParentChanged += (_, _) =>
+        {
+            secondCallbackEntered.SetResult();
+            firstCallbackEntered.Task.GetAwaiter().GetResult();
+            firstOwner.Dispose();
+        };
+
+        var firstMutation = Task.Run(
+            firstOwner.ClearPrimary,
+            TestContext.Current.CancellationToken);
+        var secondMutation = Task.Run(
+            secondOwner.ClearPrimary,
+            TestContext.Current.CancellationToken);
+        try
+        {
+            await firstCallbackEntered.Task.WaitAsync(TestContext.Current.CancellationToken);
+            await secondCallbackEntered.Task.WaitAsync(TestContext.Current.CancellationToken);
+            var combined = Task.WhenAll(firstMutation, secondMutation);
+
+            _ = await Should.ThrowAsync<InvalidOperationException>(
+                () => combined.WaitAsync(TestContext.Current.CancellationToken));
+            Volatile.Read(ref waits).ShouldBe(0);
+            new[] { firstMutation, secondMutation }
+                .Where(task => task.Exception is not null)
+                .SelectMany(task => task.Exception!.InnerExceptions)
+                .ShouldContain(exception =>
+                    exception.Message == "Owned-control mutation cannot be reentered.");
+            firstChild.Parent.ShouldBeNull();
+            secondChild.Parent.ShouldBeNull();
+            return;
+        }
+        finally
+        {
+            _ = firstCallbackEntered.TrySetResult();
+            _ = secondCallbackEntered.TrySetResult();
+        }
+
+        void ObserveForbiddenWait()
+        {
+            _ = Interlocked.Increment(ref waits);
+            throw new InvalidOperationException("A reciprocal lifecycle callback waited.");
+        }
+    }
+
+    /// <summary>Verifies a failing structural test barrier cannot expose a half-committed ownership edge.</summary>
+    [Fact]
+    public void Add_WhenStructuralBarrierThrows_CompletesOwnershipAndPublicationBeforeRethrow()
+    {
+        var owner = new ProbeOwnedControl();
+        var child = new ProbeControl();
+        var expected = new InvalidOperationException("barrier");
+        owner.OwnedControls.StructuralMutationPaused = () => throw expected;
+
+        var exception = Should.Throw<InvalidOperationException>(() => owner.AddPrimary(child));
+
+        exception.ShouldBeSameAs(expected);
+        owner.PrimaryCount.ShouldBe(1);
+        owner.PrimaryAt(0).ShouldBeSameAs(child);
+        child.Parent.ShouldBeSameAs(owner);
+        owner.PrimaryChanges.ShouldBe(1);
+    }
+
     /// <summary>Verifies restoration failure preserves the first exception while restoring later
     /// properties and retiring the completed generation.</summary>
     [Fact]

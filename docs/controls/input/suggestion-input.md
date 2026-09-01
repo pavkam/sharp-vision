@@ -44,8 +44,8 @@ classDiagram
 | `TextSelector`         | `Func<object?, string>?`                            | `null`             | Projects an accepted item to non-null text; invariant `Convert.ToString` is the fallback.               |
 | `DropDownHeight`       | `Length`                                            | `Length.Cells(8)`  | Automatic, fixed-cell, or placement-relative maximum suggestion-list height.                            |
 | `RowHeight`            | `Length`                                            | `Length.Auto`      | Automatic eager rows or a positive fixed/percentage uniform row request.                                |
-| `ScrollBars`           | `ScrollBars`                                        | ListView default   | Forwards the available overflow axes to the retained list.                                              |
-| `ShowScrollBars`       | `ShowScrollBars`                                    | ListView default   | Forwards the suggestion-list scrollbar reservation policy.                                              |
+| `ScrollBars`           | `ScrollBars`                                        | `Vertical`         | Forwards the available overflow axes to the retained list.                                              |
+| `ShowScrollBars`       | `ShowScrollBars`                                    | `WhenNeeded`       | Forwards the suggestion-list scrollbar reservation policy.                                              |
 | `ScrollBarStyle`       | `ScrollBarStyle?`                                   | `null`             | Complete local style for the retained list's rails.                                                     |
 | `ActualScrollBarStyle` | `ScrollBarStyle`                                    | Resolved           | Read-only local, theme-owned, or code-owned rail style.                                                 |
 | `PopupChrome`          | `PopupChrome`                                       | `default`          | Local border and shadow fragments for the owned suggestion popup.                                       |

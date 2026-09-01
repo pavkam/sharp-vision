@@ -436,9 +436,11 @@ public sealed class SuggestionInputTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            var input = new SuggestionInput();
-            var list = OwnedTree.Find<UiListView>(input).ShouldNotBeNull();
-            list.Items = ["result"];
+            var input = new SuggestionInput
+            {
+                Text = "query",
+                Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["result"])
+            };
             var root = new Overlay { Children = { input } };
             new LayoutEngine().Layout(root, new Size(20, 6));
             root.Attach(dispatcher);
@@ -1152,10 +1154,12 @@ public sealed class SuggestionInputTests
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var fillerDrained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var release = new ManualResetEventSlim();
+        await using var dispatcher = Dispatcher.Start(capacity: 1);
         try
         {
             var failures = 0;
             var calls = 0;
+            dispatcher.UnhandledException += (_, eventArgs) => eventArgs.IsHandled = true;
             CancellationToken rejectedToken = default;
             var input = new SuggestionInput
             {
@@ -1173,7 +1177,6 @@ public sealed class SuggestionInputTests
                 },
                 Text = "query"
             };
-            await using var dispatcher = Dispatcher.Start(capacity: 1);
             await dispatcher.InvokeAsync(() =>
             {
                 input.Attach(dispatcher);
@@ -1191,6 +1194,7 @@ public sealed class SuggestionInputTests
 
             // Act
             completion.SetResult(["rejected"]);
+            release.Set();
             Exception? observationFailure = null;
 
             try
@@ -1202,9 +1206,10 @@ public sealed class SuggestionInputTests
                 observationFailure = exception;
             }
 
-            release.Set();
-
             await fillerDrained.Task.WaitAsync(TestContext.Current.CancellationToken);
+            var resolvingAfterRejectedPublication = await dispatcher.InvokeAsync(
+                () => input.IsResolving,
+                TestContext.Current.CancellationToken);
             await dispatcher.InvokeAsync(
                 () =>
                 {
@@ -1216,9 +1221,66 @@ public sealed class SuggestionInputTests
             observationFailure.ShouldBeNull();
             failures.ShouldBe(0);
             rejectedToken.IsCancellationRequested.ShouldBeFalse();
+            resolvingAfterRejectedPublication.ShouldBeFalse();
             input.Suggestions.ShouldBeEmpty();
             input.IsResolving.ShouldBeFalse();
             await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            release.Set();
+        }
+    }
+
+    /// <summary>Verifies dispatcher shutdown retires a rejected completion that cannot reach idle.</summary>
+    [Fact]
+    public async Task Resolver_WhenRejectedAttachedCompletionDispatcherStops_SettlesWithoutIdleAsync()
+    {
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var callbackEntered = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var rejectionObserved = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var release = new ManualResetEventSlim();
+        await using var dispatcher = Dispatcher.Start(capacity: 1);
+        var calls = 0;
+        var input = new SuggestionInput
+        {
+            Resolver = (_, _) => ++calls == 1
+                ? ValueTask.FromResult<IReadOnlyList<object?>>(["prior"])
+                : new ValueTask<IReadOnlyList<object?>>(completion.Task),
+            Text = "query"
+        };
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                input.Attach(dispatcher);
+                input.Refresh();
+            },
+            TestContext.Current.CancellationToken);
+        var observation = input.LastResolutionObservation.ShouldNotBeNull();
+        dispatcher.BackgroundCompletionRetryHookForTests = rejectionObserved.SetResult;
+        dispatcher.Post(() =>
+        {
+            callbackEntered.SetResult();
+            release.Wait();
+        });
+        await callbackEntered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        dispatcher.Post(static () => { });
+
+        try
+        {
+            completion.SetResult(["rejected"]);
+            await rejectionObserved.Task.WaitAsync(TestContext.Current.CancellationToken);
+            var stopping = dispatcher.DisposeAsync().AsTask();
+            release.Set();
+
+            await observation.WaitAsync(TestContext.Current.CancellationToken);
+            await stopping.WaitAsync(TestContext.Current.CancellationToken);
+
+            input.IsResolving.ShouldBeFalse();
+            input.Suggestions.ShouldBe(["prior"]);
         }
         finally
         {
@@ -1755,6 +1817,7 @@ public sealed class SuggestionInputTests
         var attachmentCommitted = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         using var releasePublication = new ManualResetEventSlim();
+        await using var dispatcher = Dispatcher.Start();
         try
         {
             var publications = new System.Collections.Concurrent.ConcurrentQueue<string>();
@@ -1770,7 +1833,6 @@ public sealed class SuggestionInputTests
             };
             input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
             var observation = input.LastResolutionObservation.ShouldNotBeNull();
-            await using var dispatcher = Dispatcher.Start();
             input.SuggestionsChanged += (_, _) => publications.Enqueue("suggestions");
             var completeResolver = Task.Run(
                 () => completion.SetResult(["stale"]),
@@ -1817,6 +1879,146 @@ public sealed class SuggestionInputTests
         }
     }
 
+    /// <summary>Verifies inline resolver completion from ParentChanged retries after ownership publication closes.</summary>
+    [Fact]
+    public async Task Resolver_WhenParentChangedCompletesPendingRequest_SettlesAfterOwnershipPublicationAsync()
+    {
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>();
+        var input = new SuggestionInput
+        {
+            Text = "query",
+            Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task)
+        };
+        var observation = input.LastResolutionObservation.ShouldNotBeNull();
+        var owner = new ProbeOwnedControl();
+        input.ParentChanged += (_, _) => _ = completion.TrySetResult(["resolved"]);
+
+        owner.AddPrimary(input);
+        await observation.WaitAsync(TestContext.Current.CancellationToken);
+
+        input.Parent.ShouldBeSameAs(owner);
+        input.Suggestions.ShouldBe(["resolved"]);
+        input.IsResolving.ShouldBeFalse();
+        input.Dispose();
+        owner.Dispose();
+    }
+
+    /// <summary>Verifies a synchronous resolver installed from ParentChanged publishes after ownership commits.</summary>
+    [Fact]
+    public async Task Resolver_WhenParentChangedSetsSynchronousResolver_SettlesAfterOwnershipPublicationAsync()
+    {
+        var input = new SuggestionInput { Text = "query" };
+        var owner = new ProbeOwnedControl();
+        input.ParentChanged += (_, _) =>
+            input.Resolver = static (_, _) =>
+                ValueTask.FromResult<IReadOnlyList<object?>>(["resolved"]);
+
+        owner.AddPrimary(input);
+        var observation = input.LastResolutionObservation.ShouldNotBeNull();
+        await observation.WaitAsync(TestContext.Current.CancellationToken);
+
+        input.Parent.ShouldBeSameAs(owner);
+        input.Suggestions.ShouldBe(["resolved"]);
+        input.IsResolving.ShouldBeFalse();
+        input.Dispose();
+        owner.Dispose();
+    }
+
+    /// <summary>Verifies a first result completed during direct unavailability stays closed until explicit recovery.</summary>
+    /// <param name="hide">Whether visibility rather than enabled state makes the owner unavailable.</param>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Resolver_WhenFirstResultCompletesDuringDirectUnavailability_PreservesClosedSnapshotAsync(
+        bool hide)
+    {
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var input = new SuggestionInput
+        {
+            Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task)
+        };
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 6),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => input.Text = "query", "start pending first suggestion request");
+        var observation = input.LastResolutionObservation.ShouldNotBeNull();
+        await surface.UpdateAsync(
+            () =>
+            {
+                if (hide)
+                {
+                    input.Visibility = Visibility.Hidden;
+                }
+                else
+                {
+                    input.IsEnabled = false;
+                }
+            },
+            "make pending suggestion owner unavailable");
+
+        completion.SetResult(["resolved"]);
+        await observation.WaitAsync(TestContext.Current.CancellationToken);
+
+        input.Suggestions.ShouldBe(["resolved"]);
+        input.IsResolving.ShouldBeFalse();
+        input.IsOpen.ShouldBeFalse();
+        surface.Application.Modality.Active.ShouldBeNull();
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                input.Visibility = Visibility.Visible;
+                input.IsEnabled = true;
+                _ = input.Open();
+            },
+            "restore and explicitly open suggestion owner");
+
+        input.IsOpen.ShouldBeTrue();
+        _ = surface.Application.Modality.Active.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies the property setter waits for the current generation instead of reopening stale rows.</summary>
+    [Fact]
+    public async Task IsOpen_WhenNewerResolutionIsPending_DoesNotOpenStaleSnapshotAsync()
+    {
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var input = new SuggestionInput
+        {
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["old"])
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(20, 6),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => input.Text = "query", "resolve initial suggestion snapshot");
+        await surface.UpdateAsync(
+            () =>
+            {
+                input.Close();
+                input.Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task);
+            },
+            "start newer pending suggestion generation");
+        var observation = input.LastResolutionObservation.ShouldNotBeNull();
+
+        await surface.UpdateAsync(() => input.IsOpen = true, "request opening while snapshot is stale");
+
+        input.Suggestions.ShouldBe(["old"]);
+        input.IsResolving.ShouldBeTrue();
+        input.IsOpen.ShouldBeFalse();
+
+        completion.SetResult(["new"]);
+        await observation.WaitAsync(TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(static () => { }, "drain current suggestion publication");
+
+        input.Suggestions.ShouldBe(["new"]);
+        input.IsResolving.ShouldBeFalse();
+        input.IsOpen.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a resolver that returns synchronously after attachment commits cannot
     /// bypass its captured detached authority or mutate the newly attached tree.</summary>
     [Fact]
@@ -1831,6 +2033,7 @@ public sealed class SuggestionInputTests
             TaskCreationOptions.RunContinuationsAsynchronously);
         using var releaseResolver = new ManualResetEventSlim();
         using var releaseAttachment = new ManualResetEventSlim();
+        await using var dispatcher = Dispatcher.Start();
         try
         {
             var input = new SuggestionInput
@@ -1843,7 +2046,6 @@ public sealed class SuggestionInputTests
                 }
             };
             input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
-            await using var dispatcher = Dispatcher.Start();
             var resolve = Task.Run(
                 () => input.Text = "query",
                 TestContext.Current.CancellationToken);
@@ -1904,6 +2106,7 @@ public sealed class SuggestionInputTests
         var discoveryStarted = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         using var releaseMutation = new ManualResetEventSlim();
+        await using var dispatcher = Dispatcher.Start();
         try
         {
             var pauseCount = 0;
@@ -1924,13 +2127,12 @@ public sealed class SuggestionInputTests
                     }
 
                     mutationPaused.SetResult();
-                    releaseMutation.Wait(TestContext.Current.CancellationToken);
+                    releaseMutation.Wait();
                 };
             }
 
             input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
             input.OwnedControls.DescendantDiscoveryStarted = () => discoveryStarted.TrySetResult();
-            await using var dispatcher = Dispatcher.Start();
             var complete = Task.Run(
                 () => completion.SetResult(["one", "two"]),
                 TestContext.Current.CancellationToken);
@@ -1985,13 +2187,13 @@ public sealed class SuggestionInputTests
         var lifecycleWaited = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         using var releasePublication = new ManualResetEventSlim();
+        using var input = new SuggestionInput
+        {
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["current"]),
+            Text = "query"
+        };
         try
         {
-            using var input = new SuggestionInput
-            {
-                Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["current"]),
-                Text = "query"
-            };
             input.BeforeDetachedResolutionPublication = () =>
             {
                 publicationAcquired.SetResult();

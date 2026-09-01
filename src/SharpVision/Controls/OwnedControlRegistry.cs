@@ -16,10 +16,11 @@ internal sealed class OwnedControlRegistry
     // user code ever executes under an internal lock.
     private static readonly object _lifecyclePublicationGate = new();
 
-    // Detached publication is wholly synchronous, so a thread-local scope is sufficient to
-    // recognize a callback that must not wait for a root reserved by another publication thread.
+    // Any lifecycle callback can reach an independent root. Retaining one root while waiting for
+    // another allows reciprocal callbacks to deadlock, so cross-root waits are rejected whenever
+    // the current thread already owns a lifecycle publication scope.
     [ThreadStatic]
-    private static int _detachedPublicationDepth;
+    private static int _currentThreadLifecyclePublicationDepth;
 
     private readonly List<OwnedControlSlot> _slots = [];
     private bool _lifecyclePublicationAllowsDetachedPublicationReentry;
@@ -118,20 +119,14 @@ internal sealed class OwnedControlRegistry
     {
         ArgumentNullException.ThrowIfNull(owner);
 
-        if (!TryEnterStableAncestryPublication(
-                owner,
-                static _ => false,
-                acceptDetachedPublicationReentry: true,
-                acceptTerminalDisposalReentry: false,
-                establishDetachedPublicationBoundary: true,
-                establishTerminalDisposalBoundary: false,
-                out entered))
-        {
-            return false;
-        }
-
-        _detachedPublicationDepth++;
-        return true;
+        return TryEnterStableAncestryPublication(
+            owner,
+            static _ => false,
+            acceptDetachedPublicationReentry: true,
+            acceptTerminalDisposalReentry: false,
+            establishDetachedPublicationBoundary: true,
+            establishTerminalDisposalBoundary: false,
+            out entered);
     }
 
     /// <summary>Releases one detached-publication ancestry and its current-thread wait scope.</summary>
@@ -139,17 +134,7 @@ internal sealed class OwnedControlRegistry
     internal static void ExitDetachedPublication(List<OwnedControlRegistry> entered)
     {
         ArgumentNullException.ThrowIfNull(entered);
-        Debug.Assert(_detachedPublicationDepth > 0,
-            "Detached publication thread scopes are balanced.");
-
-        try
-        {
-            ExitLifecyclePublication(entered);
-        }
-        finally
-        {
-            _detachedPublicationDepth--;
-        }
+        ExitLifecyclePublication(entered);
     }
 
     /// <summary>Reserves one exact control and its stable ancestry for terminal disposal.</summary>
@@ -210,28 +195,37 @@ internal sealed class OwnedControlRegistry
     internal static void ExitLifecyclePublication(List<OwnedControlRegistry> entered)
     {
         ArgumentNullException.ThrowIfNull(entered);
+        Debug.Assert(_currentThreadLifecyclePublicationDepth > 0,
+            "Current-thread lifecycle publication scopes are balanced.");
 
-        lock (_lifecyclePublicationGate)
+        try
         {
-            for (var index = entered.Count - 1; index >= 0; index--)
+            lock (_lifecyclePublicationGate)
             {
-                var registry = entered[index];
-                Debug.Assert(registry._lifecyclePublicationDepth > 0,
-                    "Lifecycle publication depth is balanced.");
-                Debug.Assert(
-                    ReferenceEquals(registry._lifecyclePublicationOwner, Thread.CurrentThread),
-                    "Lifecycle publication exits on its owning thread.");
-                registry._lifecyclePublicationDepth--;
-
-                if (registry._lifecyclePublicationDepth == 0)
+                for (var index = entered.Count - 1; index >= 0; index--)
                 {
-                    registry._lifecyclePublicationAllowsDetachedPublicationReentry = false;
-                    registry._lifecyclePublicationAllowsTerminalDisposalReentry = false;
-                    registry._lifecyclePublicationOwner = null;
-                }
-            }
+                    var registry = entered[index];
+                    Debug.Assert(registry._lifecyclePublicationDepth > 0,
+                        "Lifecycle publication depth is balanced.");
+                    Debug.Assert(
+                        ReferenceEquals(registry._lifecyclePublicationOwner, Thread.CurrentThread),
+                        "Lifecycle publication exits on its owning thread.");
+                    registry._lifecyclePublicationDepth--;
 
-            Monitor.PulseAll(_lifecyclePublicationGate);
+                    if (registry._lifecyclePublicationDepth == 0)
+                    {
+                        registry._lifecyclePublicationAllowsDetachedPublicationReentry = false;
+                        registry._lifecyclePublicationAllowsTerminalDisposalReentry = false;
+                        registry._lifecyclePublicationOwner = null;
+                    }
+                }
+
+                Monitor.PulseAll(_lifecyclePublicationGate);
+            }
+        }
+        finally
+        {
+            _currentThreadLifecyclePublicationDepth--;
         }
     }
 
@@ -980,7 +974,11 @@ internal sealed class OwnedControlRegistry
             {
                 change.Slot.Items.Clear();
                 change.Slot.Items.AddRange(change.Next);
-                change.Slot.Registry.StructuralMutationPaused?.Invoke();
+
+                if (change.Slot.Registry.StructuralMutationPaused is { } structuralMutationPaused)
+                {
+                    ExceptionAggregation.Capture(structuralMutationPaused, ref failure);
+                }
             }
 
             foreach (var change in changes)
@@ -1485,13 +1483,14 @@ internal sealed class OwnedControlRegistry
                         registry._lifecyclePublicationDepth++;
                     }
 
+                    _currentThreadLifecyclePublicationDepth++;
                     entered = requested;
                     return true;
                 }
 
-                // Waiting while a detached callback owns another root can close a reciprocal
-                // wait cycle. Reject before blocking; ordinary lifecycle callers remain waitable.
-                if (_detachedPublicationDepth > 0)
+                // Waiting while any callback owns another root can close a reciprocal wait cycle.
+                // Reject before blocking while ordinary top-level lifecycle callers remain waitable.
+                if (_currentThreadLifecyclePublicationDepth > 0)
                 {
                     entered = [];
                     return false;
