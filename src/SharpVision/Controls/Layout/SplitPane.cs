@@ -587,6 +587,15 @@ public sealed class SplitPane: Container
     }
 
     /// <inheritdoc/>
+    internal override VisualState GetAppearanceState()
+    {
+        var state = base.GetAppearanceState();
+        return _isDividerPointerOver
+            ? state
+            : state & ~VisualState.IsPointerOver;
+    }
+
+    /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);

@@ -215,9 +215,9 @@ its child ownership model.
 [`SplitPane`](../controls/layout/split-pane.md#overview) owns at most two panes
 and reserves one divider cell between them. Its fixed or percentage leading
 request and both panes' limits resolve against the divider-excluded content-axis
-pool; the same allocation maps to left/right or top/bottom geometry. The
-divider supplies focusable keyboard and captured-pointer resizing without
-replacing descendant input routing.
+pool; the same allocation maps to left/right or top/bottom geometry. The divider
+supplies focusable keyboard and captured-pointer resizing without replacing
+descendant input routing.
 
 `SharpVision.Terminal.Rendering.TerminalCanvas` is a frame-owned drawing API,
 not a layout panel or a `Container`. Custom controls draw through it in

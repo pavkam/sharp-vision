@@ -135,6 +135,38 @@ public sealed class SplitPaneLayoutTests
         maximum.ShouldBe(7);
     }
 
+    /// <summary>Verifies a trailing maximum transfers otherwise unused finite cells to the leading pane.</summary>
+    [Fact]
+    public void Resolve_WhenTrailingMaximumLeavesUnusedPool_ExpandsLeadingIntoFeasibleRange()
+    {
+        // Arrange
+        Span<int> extents = stackalloc int[2];
+        Span<int> margins = stackalloc int[2];
+
+        // Act
+        SplitPaneLayout.Resolve(
+            Length.Percent(10),
+            firstAutomatic: 0,
+            secondAutomatic: 0,
+            firstMinimum: 0,
+            firstMaximum: 20,
+            secondMinimum: 0,
+            secondMaximum: 6,
+            firstMargin: 0,
+            secondMargin: 0,
+            available: 20,
+            percentBase: 20,
+            extents,
+            margins,
+            out var minimum,
+            out var maximum);
+
+        // Assert
+        extents.ToArray().ShouldBe([14, 6]);
+        minimum.ShouldBe(14);
+        maximum.ShouldBe(20);
+    }
+
     /// <summary>Verifies contradictory pane minima collapse interaction to the contained allocation.</summary>
     [Fact]
     public void Resolve_WhenJointLimitsAreInfeasible_CollapsesRangeToAllocatedLeadingExtent()
@@ -256,5 +288,84 @@ public sealed class SplitPaneLayoutTests
 
         // Assert
         allocated.ShouldBe(0);
+    }
+
+    /// <summary>Verifies varied finite inputs remain deterministic, contained, and inside the reported range.</summary>
+    [Fact]
+    public void Resolve_WhenFixedSeedInputsVary_ContainsTracksAndReportsStableFeasibleRange()
+    {
+        // Arrange
+        const int seed = 0x51_17_50;
+        var random = new Random(seed);
+        Span<int> extents = stackalloc int[2];
+        Span<int> margins = stackalloc int[2];
+        Span<int> repeatedExtents = stackalloc int[2];
+        Span<int> repeatedMargins = stackalloc int[2];
+
+        // Act and assert
+        for (var iteration = 0; iteration < 1_000; iteration++)
+        {
+            var available = random.Next(0, 41);
+            var firstMargin = random.Next(0, 61);
+            var secondMargin = random.Next(0, 61);
+            var firstMinimum = random.Next(0, 21);
+            var secondMinimum = random.Next(0, 21);
+            var firstMaximum = firstMinimum + random.Next(0, 31);
+            var secondMaximum = secondMinimum + random.Next(0, 31);
+            var firstAutomatic = random.Next(0, 31);
+            var secondAutomatic = random.Next(0, 31);
+            var firstLength = random.Next(0, 2) == 0
+                ? Length.Cells(random.Next(0, 61))
+                : Length.Percent(random.NextDouble() * 100d);
+
+            SplitPaneLayout.Resolve(
+                firstLength,
+                firstAutomatic,
+                secondAutomatic,
+                firstMinimum,
+                firstMaximum,
+                secondMinimum,
+                secondMaximum,
+                firstMargin,
+                secondMargin,
+                available,
+                available,
+                extents,
+                margins,
+                out var minimum,
+                out var maximum);
+            SplitPaneLayout.Resolve(
+                firstLength,
+                firstAutomatic,
+                secondAutomatic,
+                firstMinimum,
+                firstMaximum,
+                secondMinimum,
+                secondMaximum,
+                firstMargin,
+                secondMargin,
+                available,
+                available,
+                repeatedExtents,
+                repeatedMargins,
+                out var repeatedMinimum,
+                out var repeatedMaximum);
+            var context = FormattableString.Invariant(
+                $"seed={seed}, iteration={iteration}, available={available}, firstLength={firstLength}, automatic=[{firstAutomatic},{secondAutomatic}], minimum=[{firstMinimum},{secondMinimum}], maximum=[{firstMaximum},{secondMaximum}], margin=[{firstMargin},{secondMargin}], extent=[{extents[0]},{extents[1]}], range=[{minimum},{maximum}]");
+
+            margins[0].ShouldBe(Math.Min(firstMargin, available), context);
+            margins[1].ShouldBe(Math.Min(secondMargin, available - margins[0]), context);
+            extents[0].ShouldBeGreaterThanOrEqualTo(0, context);
+            extents[1].ShouldBeGreaterThanOrEqualTo(0, context);
+            extents[0].Add(extents[1]).Add(margins[0]).Add(margins[1])
+                .ShouldBeLessThanOrEqualTo(available, context);
+            minimum.ShouldBeInRange(0, available - margins[0] - margins[1], context);
+            maximum.ShouldBeInRange(minimum, available - margins[0] - margins[1], context);
+            extents[0].ShouldBeInRange(minimum, maximum, context);
+            repeatedExtents.ToArray().ShouldBe(extents.ToArray(), context);
+            repeatedMargins.ToArray().ShouldBe(margins.ToArray(), context);
+            repeatedMinimum.ShouldBe(minimum, context);
+            repeatedMaximum.ShouldBe(maximum, context);
+        }
     }
 }

@@ -23,10 +23,12 @@ public sealed class SplitPaneSurfaceTests
         // Act and assert pane hover
         await surface.Pointer.MoveToAsync(pane.Children[0]);
         pane.HasDividerPointerOver().ShouldBeFalse();
+        pane.GetAppearanceState().HasFlag(VisualState.IsPointerOver).ShouldBeFalse();
 
         // Act and assert divider hover
         await surface.Pointer.MoveToAsync(pane, new Point(5, 1));
         pane.HasDividerPointerOver().ShouldBeTrue();
+        pane.GetAppearanceState().HasFlag(VisualState.IsPointerOver).ShouldBeTrue();
     }
 
     /// <summary>Verifies a handled descendant move replaces an earlier divider cell and clears divider-specific hover.</summary>

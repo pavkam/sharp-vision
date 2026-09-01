@@ -90,6 +90,11 @@ internal static class SplitPaneLayout
             return;
         }
 
+        // A maximum on one pane transfers the remaining finite cells to its sibling. Tracks.Resolve
+        // intentionally leaves that remainder unassigned when a fixed or percentage track does not
+        // request it, but SplitPane owns a complete two-pane pool with no third track to receive it.
+        extents[0] = Math.Clamp(extents[0], (int) lower, (int) upper);
+        extents[1] = trackAvailable - extents[0];
         minimumFirstExtent = (int) lower;
         maximumFirstExtent = (int) upper;
     }
