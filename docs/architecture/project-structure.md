@@ -101,7 +101,7 @@ these infrastructure namespaces:
 | `SharpVision.Controls`             | Foundational mutable control tree, ownership, invalidation, and drawing.       |
 | `SharpVision.Controls.Display`     | Text, images, indicators, and passive presentation controls.                   |
 | `SharpVision.Controls.Charts`      | Reactive bar, line, area, and compact trend charts.                            |
-| `SharpVision.Controls.Input`       | Buttons, command bars, editors, async suggestions, pickers, and value controls. |
+| `SharpVision.Controls.Input`       | Buttons, command bars, suggestion editors, pickers, and value controls.        |
 | `SharpVision.Controls.Layout`      | Panels, overlays, structural chrome, and tables.                               |
 | `SharpVision.Controls.Collections` | Lists, tabs, trees, typed collections, and item realization.                   |
 | `SharpVision.Controls.Scrolling`   | The ScrollBar control and its glyph and style values.                          |
