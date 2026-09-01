@@ -1347,9 +1347,17 @@ public sealed class Theme
             // which is the common case, since no bundled theme authors "input.checked".
             //
             // Completing from the fallback's Normal leaves every other style type byte-identical:
-            // RadioButtonStyle.Complete is the only implementation that reads its state parameter,
-            // so for all the others complete(Normal, state) equals completedFallbackNormal and the
-            // diff comes out empty, yielding resolvedNormal exactly as before.
+            // RadioButtonStyle.Complete and HyperlinkButtonStyle.Complete are the only
+            // implementations that read their state parameter, so for all the others
+            // complete(Normal, state) equals completedFallbackNormal and the diff comes out empty,
+            // yielding resolvedNormal exactly as before. A per-state branch is safe here only when
+            // it yields a semantic constant (RadioButtonStyle's Checked accent) rather than a
+            // pass-through of the fallback's own face - HyperlinkButtonStyle's non-Normal branches
+            // pass control.Face.Foreground/Attributes through unchanged, so on this
+            // (Theme-fallback-aware) path the diff still comes out empty for those members, but the
+            // same pass-through is why HyperlinkButtonStyle cannot use this path's frozen-fallback
+            // sibling (BuildCodeOwnedStates) for its local-style resolution without losing a local
+            // style's colors in every non-Normal state.
             var completedFallbackState = complete(fallbackSelector(fallbackSet) ?? fallbackSet.Normal, state, this);
             var inheritedMembers = fallbackSet.AuthoredFor(stateName);
             var delta = StyleStatesExtensions.Diff(
