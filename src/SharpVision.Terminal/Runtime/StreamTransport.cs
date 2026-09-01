@@ -203,24 +203,24 @@ public sealed class StreamTransport: ITransport
 
         try
         {
-            // The gate wait itself is left observing only the caller's token, unchanged: a write
-            // still queued behind another has not started any I/O yet, and disposal already
-            // guarantees it will observe ObjectDisposedException as soon as it is admitted to the
-            // gate (see ThrowIfDisposed below), the same as before this fix. What is new is the
-            // link below, which lets a concurrent DisposeAsync nudge a write that is genuinely
-            // blocked inside the underlying I/O call to cancel cooperatively, rather than leaving
-            // it to run against streams that may be disposed out from under it. See the
-            // abandon-on-timeout comment in DisposeAsync for what happens when it does not honor
-            // this.
-            await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            // The gate wait is linked to disposal cancellation, not just the caller's token: a
+            // write still queued behind another has not started any I/O yet, but if the holder is
+            // genuinely blocked in a non-cooperative underlying stream, the holder never reaches
+            // ReleaseWriteGate, so a queued waiter would otherwise sit on WaitAsync forever -
+            // SemaphoreSlim.Dispose() does not release or fault a pending wait, so DisposeAsync
+            // disposing the gate after its own abandon-on-timeout budget would strand this waiter
+            // permanently rather than surface ObjectDisposedException. Linking disposal
+            // cancellation here lets a queued waiter unblock as soon as disposal begins, instead
+            // of waiting on a gate that may never open.
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken,
+                _disposalCancellation.Token);
+
+            await _writeGate.WaitAsync(linked.Token).ConfigureAwait(false);
 
             try
             {
                 ThrowIfDisposed();
-
-                using var linked = CancellationTokenSource.CreateLinkedTokenSource(
-                    cancellationToken,
-                    _disposalCancellation.Token);
 
                 await _output.WriteAsync(source, linked.Token).ConfigureAwait(false);
             }
@@ -243,17 +243,17 @@ public sealed class StreamTransport: ITransport
 
         try
         {
-            // See the identical comment in WriteAsync for why only the underlying I/O call below
-            // is linked to disposal cancellation, and the gate wait above it is not.
-            await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            // See the identical comment in WriteAsync for why the gate wait and the underlying
+            // I/O call below both observe disposal cancellation.
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken,
+                _disposalCancellation.Token);
+
+            await _writeGate.WaitAsync(linked.Token).ConfigureAwait(false);
 
             try
             {
                 ThrowIfDisposed();
-
-                using var linked = CancellationTokenSource.CreateLinkedTokenSource(
-                    cancellationToken,
-                    _disposalCancellation.Token);
 
                 await _output.FlushAsync(linked.Token).ConfigureAwait(false);
             }

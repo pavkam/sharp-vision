@@ -91,10 +91,15 @@ public sealed class StreamTransportTests
     /// <remarks>
     /// The in-flight write uses a stream that ignores cancellation, the same way the read-side
     /// drain tests below model a non-cooperative stream: <see cref="StreamTransport.WriteAsync"/>
-    /// now links disposal's cancellation into the underlying write, so a stream that honored it would race
-    /// disposal's own cancel signal against this test's explicit <c>Release</c> for the outcome of
-    /// the first write, which is not what this test is about. What this test verifies is that the
-    /// gate itself stays correct for the writes and flush still queued behind it.
+    /// links disposal's cancellation into the underlying write, so a stream that honored it would
+    /// race disposal's own cancel signal against this test's explicit <c>Release</c> for the
+    /// outcome of the first write, which is not what this test is about. The second write and the
+    /// flush are still queued on the gate itself (never admitted) when disposal begins, so they
+    /// observe the cancellation directly on their gate wait and fault with
+    /// <see cref="OperationCanceledException"/> - not <see cref="ObjectDisposedException"/> - since
+    /// a queued waiter that depended on the first write's own gate release could otherwise be
+    /// stranded forever if the first write never honored cancellation
+    /// (<see cref="SemaphoreSlim.Dispose()"/> does not release or fault a pending wait).
     /// </remarks>
     [Fact]
     public async Task DisposeAsync_WhenWritesAndFlushAreQueued_AllOperationsSettleBeforeStreamDisposalAsync()
@@ -107,15 +112,54 @@ public sealed class StreamTransportTests
         var flush = transport.FlushAsync(TestContext.Current.CancellationToken).AsTask();
 
         var disposal = transport.DisposeAsync().AsTask();
+
+        // Confirm the still-queued second write and flush observe disposal cancellation on their
+        // OWN gate wait before releasing the first write's blocked I/O below - otherwise the two
+        // outcomes race: if the gate happened to free up before their cancellation was delivered,
+        // they would be admitted and see ObjectDisposedException instead, which is a real
+        // (harmless) possible outcome in production but would make this assertion flaky.
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () =>
+            await second.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () =>
+            await flush.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
         output.Release();
 
         await first.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        _ = await Should.ThrowAsync<ObjectDisposedException>(async () =>
-            await second.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
-        _ = await Should.ThrowAsync<ObjectDisposedException>(async () =>
-            await flush.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
         await disposal.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         output.DisposeCount.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies a write queued behind the gate does not hang forever when the write currently
+    /// holding the gate is abandoned past the write drain timeout: the gate wait itself observes
+    /// disposal cancellation, so the queued write unblocks even though the gate it is waiting on
+    /// is never released by its non-cooperative holder.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenAWriteIsQueuedBehindAnAbandonedWrite_TheQueuedWriteDoesNotHangAsync()
+    {
+        var output = new BlockingWriteStream(ignoresCancellation: true);
+        var transport = new StreamTransport(
+            Stream.Null,
+            output,
+            leaveInputOpen: true,
+            leaveOutputOpen: false,
+            writeDrainTimeout: TimeSpan.FromMilliseconds(50));
+        var first = transport.WriteAsync("one"u8.ToArray(), TestContext.Current.CancellationToken).AsTask();
+        await output.FirstStarted;
+        var second = transport.WriteAsync("two"u8.ToArray(), TestContext.Current.CancellationToken).AsTask();
+
+        // The first write never releases the gate - it ignores cancellation and is never
+        // Release()d in this test - so the only way the second write can ever observe an outcome
+        // is via disposal cancellation reaching its still-queued gate wait directly.
+        await transport.DisposeAsync().AsTask().WaitAsync(
+            TimeSpan.FromSeconds(5),
+            TestContext.Current.CancellationToken);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () =>
+            await second.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        first.IsCompleted.ShouldBeFalse();
     }
 
     /// <summary>
