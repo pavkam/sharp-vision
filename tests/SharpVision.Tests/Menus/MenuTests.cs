@@ -748,8 +748,13 @@ public sealed class MenuTests
     [Fact]
     public void InvokeAccessKey_WhenSelectionPublishDisablesTheTarget_ReturnsFalseWithoutActivating()
     {
+        // A menu auto-selects the first item it gains while nothing is selected yet, so `other`
+        // has to exist first: InvokeAccessKey(item) then drives a real 0->1 SelectedIndex
+        // transition (and its notification) instead of a same-index no-op Select never publishes.
+        var other = new MenuItem { Text = "Other" };
         var item = new MenuItem { Text = "Save" };
         var menu = new Menu();
+        menu.Items.Add(other);
         menu.Items.Add(item);
         menu.PropertyChanged += (_, eventArgs) =>
         {
@@ -774,11 +779,14 @@ public sealed class MenuTests
     [Fact]
     public void InvokeAccessKey_WhenSelectionPublishMovesSelectionElsewhere_ReturnsFalseWithoutActivating()
     {
-        var item = new MenuItem { Text = "Save" };
+        // Same ordering requirement as the sibling disable test above: `other` has to be added
+        // first so it - not `item` - claims the menu's auto-selected slot, leaving a real
+        // transition for InvokeAccessKey(item) to publish and a reentrant handler to observe.
         var other = new MenuItem { Text = "Other" };
+        var item = new MenuItem { Text = "Save" };
         var menu = new Menu();
-        menu.Items.Add(item);
         menu.Items.Add(other);
+        menu.Items.Add(item);
         var reentered = false;
         menu.PropertyChanged += (_, eventArgs) =>
         {
@@ -788,7 +796,7 @@ public sealed class MenuTests
             }
 
             reentered = true;
-            menu.SelectedIndex = 1;
+            menu.SelectedIndex = 0;
         };
         var invocations = new List<ActivationCause>();
         item.Invoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);

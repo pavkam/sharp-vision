@@ -1003,6 +1003,7 @@ namespace SharpVision.Controls.Collections
         public void CollapseAll() { }
         public void EndUpdate() { }
         public void ExpandAll() { }
+        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
         public void SelectAll() { }

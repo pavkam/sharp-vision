@@ -179,6 +179,12 @@ public sealed class StyleSlotTests
         control.DetachIntermediate();
         control.ButtonStyle = ButtonStyle.Filled;
         control.GrandchildTarget.Style = ButtonStyle.Standard;
+
+        // DetachIntermediate only removes the intermediate container from the root - exactly the
+        // scenario under test, where the grandchild's own removal never fires - so the grandchild's
+        // Parent still points at that now-unreachable intermediate and must be cleared here before
+        // it can join a new tree, same as any control leaving one parent for another.
+        _ = ((Overlay) control.GrandchildTarget.Parent!).Children.Remove(control.GrandchildTarget);
         var newParent = new Overlay { Children = { control.GrandchildTarget } };
 
         // Assert

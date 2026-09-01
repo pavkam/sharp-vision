@@ -911,21 +911,32 @@ public sealed class TreeViewSurfaceTests
         var root = new TreeViewItem("Root") { ChildSource = source };
         var tree = CreateTree(20);
         tree.Items.Add(root);
-        var previousTheme = ThemeCatalog.Parse(ThemeJson.Create(muted: "#111111"));
-        var currentTheme = ThemeCatalog.Parse(ThemeJson.Create(muted: "#222222"));
+        // Far enough apart that no color-depth quantization the surface applies could round both
+        // to the same bucket and defeat the before/after comparison below.
+        var previousTheme = ThemeCatalog.Parse(ThemeJson.Create(muted: "#000000"));
+        var currentTheme = ThemeCatalog.Parse(ThemeJson.Create(muted: "#ffffff"));
 
         await using var surface = await ComponentSurface.MountAsync(
             tree,
-            new Size(20, 3),
+            new Size(20, 4),
             previousTheme,
             TestContext.Current.CancellationToken);
         await DialogWait.UntilAsync(surface, root, () => root.ChildState == TreeViewChildState.Loading);
-        var statusRow = OwnedTree.Find<TreeViewStatusRow>(tree).ShouldNotBeNull();
-        statusRow.Clear(Invalidation.All);
+        _ = OwnedTree.Find<TreeViewStatusRow>(tree).ShouldNotBeNull();
+
+        // Row 0/3 are the container's own border, row 1 is "Root", row 2 is the status row's
+        // "  • Loading..." - its glyph sits at column 3 (1 for the border, 2 for the one-level
+        // indent).
+        var glyphCell = new Point(3, 2);
+        var beforeForeground = surface.Cell(glyphCell).Style.Foreground;
 
         await surface.UpdateAsync(() => surface.Application.Theme = currentTheme, "swap loading color");
 
-        (statusRow.Pending & Invalidation.Render).ShouldNotBe(Invalidation.None);
+        // Pending is consumed by UpdateAsync's own render pass, so the only way to observe the
+        // invalidation actually reached the status row (as opposed to only the owning TreeView)
+        // is to check the row's own rendered output changed - mirroring the before/after pattern
+        // ActualCheckMark_WhenThemeIsReplaced_FollowsTheNewFamilyAsync uses for the same reason.
+        surface.Cell(glyphCell).Style.Foreground.ShouldNotBe(beforeForeground);
     }
 
     /// <summary>Verifies a failed request draws the configured failed text with its own status
