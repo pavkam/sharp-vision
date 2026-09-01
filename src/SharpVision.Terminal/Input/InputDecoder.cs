@@ -224,6 +224,8 @@ public sealed class InputDecoder: IDisposable
         _escapePending = false;
         _skippedBytes = checked(_skippedBytes + 1);
         _utf8.Flush();
+        _mouseDecoder.EndIfPending();
+        EndSs3IfPending();
         EmitEscape();
         return true;
     }

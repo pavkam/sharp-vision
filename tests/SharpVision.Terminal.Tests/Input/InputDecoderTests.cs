@@ -3023,6 +3023,78 @@ public sealed class InputDecoderTests
     }
 
     /// <summary>
+    /// Verifies escape-timeout expiry ends a pending SS3 continuation along with the lone
+    /// Escape, so the next byte decodes as an ordinary keystroke instead of being consumed as
+    /// the SS3 final byte.
+    /// </summary>
+    [Fact]
+    public void ExpireEscape_WhenSs3IsPending_EndsSs3BeforeNextByteArrives()
+    {
+        var sink = new RecordingInputSink();
+        var clock = new ManualTimeProvider();
+        using InputDecoder decoder = new(
+            sink,
+            new InputOptions { EscapeTimeout = TimeSpan.FromMilliseconds(25) },
+            clock);
+
+        // ESC O arms a pending SS3 continuation.
+        decoder.Decode([0x1b, (byte) 'O']);
+
+        // A second, unrelated Escape arms the lone-Escape ambiguity deadline while the SS3
+        // continuation is still pending underneath it.
+        decoder.Decode([0x1b]);
+
+        clock.Advance(TimeSpan.FromMilliseconds(25));
+        decoder.ExpireEscape().ShouldBeTrue();
+
+        // Without ending the SS3 continuation here, this byte would be consumed as the SS3
+        // final byte and produce Code.Unknown instead of an ordinary keystroke.
+        decoder.Decode([(byte) 'a']);
+        decoder.Complete();
+
+        sink.Strokes.Count.ShouldBe(2);
+        sink.Strokes[0].Code.ShouldBe(Code.Escape);
+        sink.Strokes[1].Code.ShouldBe(Code.Character);
+        sink.Strokes[1].Character.ShouldBe(new Rune('a'));
+        sink.Strokes[1].Modifiers.ShouldBe(Modifiers.None);
+    }
+
+    /// <summary>
+    /// Verifies escape-timeout expiry ends a pending X10 mouse continuation along with the lone
+    /// Escape, so the following bytes decode as ordinary input instead of being consumed as a
+    /// synthetic pointer report.
+    /// </summary>
+    [Fact]
+    public void ExpireEscape_WhenX10MouseIsPending_EndsMouseBeforeNextBytesArrive()
+    {
+        var sink = new RecordingInputSink();
+        var clock = new ManualTimeProvider();
+        using InputDecoder decoder = new(
+            sink,
+            new InputOptions { EscapeTimeout = TimeSpan.FromMilliseconds(25) },
+            clock);
+
+        // ESC [ M arms a pending X10 mouse report awaiting its three field bytes.
+        decoder.Decode([0x1b, (byte) '[', (byte) 'M']);
+
+        // A second, unrelated Escape arms the lone-Escape ambiguity deadline while the X10
+        // report is still pending underneath it.
+        decoder.Decode([0x1b]);
+
+        clock.Advance(TimeSpan.FromMilliseconds(25));
+        decoder.ExpireEscape().ShouldBeTrue();
+
+        // Without ending the mouse continuation here, these three bytes would be consumed as
+        // the X10 report fields and fabricate a spurious pointer event.
+        decoder.Decode([(byte) ' ', (byte) '*', (byte) '%']);
+        decoder.Complete();
+
+        sink.Pointers.ShouldBeEmpty();
+        sink.Strokes.ShouldContain(static value => value.Code == Code.Escape);
+        sink.Text.ShouldNotBeEmpty();
+    }
+
+    /// <summary>
     /// Verifies an expired raw Escape remains included in later diagnostic offsets.
     /// </summary>
     [Fact]
