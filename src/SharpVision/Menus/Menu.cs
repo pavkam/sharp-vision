@@ -353,6 +353,10 @@ public sealed class Menu: ItemsControl
             switchSubmenu: false,
             openedFromPointerSelection: false);
 
+        // A callback run by the publish above may have disabled, hidden, or reselected away from
+        // the target. Falling through unhandled (rather than swallowing the keystroke while
+        // skipping activation) mirrors AccessKeyManager's own contract: an access key that cannot
+        // reach a real target is simply not this control's to handle.
         if (item is not { EffectiveIsEnabled: true, EffectiveIsVisible: true } ||
             _selectedIndex < 0 || !ReferenceEquals(ItemAt(_selectedIndex), item))
         {

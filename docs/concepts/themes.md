@@ -64,6 +64,14 @@ RGB literals and cannot reference each other. Loading a theme resolves every
 value to a concrete `Color` instance, and `Theme.ResolveColor(SemanticColor)` is
 the typed public lookup.
 
+`reliefHighlight` and `reliefShade` model one light source above and to the left
+of the surface: `BorderRelief.Raised` paints the top and left edges with
+`reliefHighlight` and the bottom and right edges with `reliefShade`, and
+`BorderRelief.Sunken` reverses the assignment. A theme author cannot infer the
+correct direction from the color names alone - `reliefHighlight` must resolve
+lighter than `reliefShade`, or every `Raised`/`Sunken` border in that theme
+reads as the opposite of what it asked for.
+
 `attributes` requires these nine properties:
 
 ```text
