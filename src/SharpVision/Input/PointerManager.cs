@@ -491,6 +491,12 @@ public sealed class PointerManager: IDisposable
     #region Cleanup
 
     /// <summary>Releases pointer ownership and all manager references.</summary>
+    /// <remarks>
+    /// A control that held capture is not notified of the loss (no <c>LostPointerCapture</c>, no
+    /// <see cref="IControlLifecycleParticipant.CaptureLost(PointerCaptureLossReason)"/>) - disposal is terminal teardown, and
+    /// publishing a new callback surface here would only reopen the failure mode this method's
+    /// ordering exists to close.
+    /// </remarks>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     public void Dispose()
     {

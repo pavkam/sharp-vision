@@ -1040,6 +1040,24 @@ public sealed class PopupTests
         popup.IsOpen.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a Closing handler cannot reopen a staged-detached Popup mid-transaction
+    /// through the CloseUnpresented route: unlike Closed, the close transition has not committed
+    /// yet, so a reopen that silently succeeded here would leave the popup's content collapsed
+    /// while IsOpen reports true. The reentrancy guard stays armed through Closing and rejects the
+    /// attempt - the aggregated failure surfaces to the caller, but the rest of the close
+    /// transaction still runs to completion (matching every other throwing-Closing-handler
+    /// scenario in this file), leaving the popup consistently closed rather than corrupted.</summary>
+    [Fact]
+    public void IsOpen_WhenClosingHandlerReopensStagedDetachedPopupSynchronously_ThrowsAndLeavesPopupClosed()
+    {
+        var popup = new Popup { Content = new ProbeControl(), IsOpen = true };
+        popup.Closing += (_, _) => popup.IsOpen = true;
+
+        _ = Should.Throw<InvalidOperationException>(() => popup.IsOpen = false);
+
+        popup.IsOpen.ShouldBeFalse();
+    }
+
     /// <summary>Verifies a CloseRequested handler that repeats the same close request synchronously
     /// is a documented no-op instead of reentering the open-state transition, mirroring Window's
     /// equivalent contract.</summary>

@@ -4191,6 +4191,7 @@ namespace SharpVision.Surfaces
         protected bool RaiseCloseRequested() { }
         protected void RaiseSurfaceClosed() { }
         protected void RaiseSurfaceClosing() { }
+        protected void RaiseSurfaceClosingWithReentrantOpenGuard() { }
         protected void RaiseSurfaceOpened() { }
     }
     public sealed class SurfaceCloseRequestedEventArgs : System.EventArgs

@@ -89,6 +89,24 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <summary>Raises the inherited closing notification for a family-specific close request.</summary>
     protected void RaiseSurfaceClosing() => Closing?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>Raises <see cref="Closing"/> while arming the same reentrant-open guard
+    /// <see cref="CloseSurfaceCore"/> holds for its own <see cref="Closing"/> publication, for a
+    /// family close route - an unpresented close, which never calls <see cref="OpenSurface"/>'s
+    /// presented sibling - that does not go through it.</summary>
+    protected void RaiseSurfaceClosingWithReentrantOpenGuard()
+    {
+        _isClosing = true;
+
+        try
+        {
+            RaiseSurfaceClosing();
+        }
+        finally
+        {
+            _isClosing = false;
+        }
+    }
+
     /// <summary>Raises the inherited closed notification after a family confirms presentation unavailability.</summary>
     protected void RaiseSurfaceClosed() => Closed?.Invoke(this, EventArgs.Empty);
 

@@ -1349,11 +1349,14 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(CommitClosedState, ref failure);
-        // Release the reentrancy guard the moment the closed state actually commits, mirroring
-        // the presented close path, so a Closed observer that reopens the popup synchronously
-        // does not hit SetOpen's reentrancy throw.
+        // Closing runs under the same reentrant-open guard CloseSurfaceCore holds for its own
+        // Closing publication, so a Closing observer that tries to reopen here is blocked by
+        // OpenSurface's existing check rather than corrupting this in-flight transaction.
+        ExceptionAggregation.Capture(RaiseSurfaceClosingWithReentrantOpenGuard, ref failure);
+        // Release the reentrancy guard once Closing has fully run, mirroring the presented close
+        // path, so a Closed observer that reopens the popup synchronously does not hit SetOpen's
+        // reentrancy throw.
         ExceptionAggregation.Capture(() => IsOpenTransitioning = false, ref failure);
-        ExceptionAggregation.Capture(RaiseSurfaceClosing, ref failure);
         ExceptionAggregation.Capture(CollapseContent, ref failure);
         SurfaceBounds = default;
         ExceptionAggregation.Capture(() => closedHandlers?.Invoke(this, EventArgs.Empty), ref failure);
