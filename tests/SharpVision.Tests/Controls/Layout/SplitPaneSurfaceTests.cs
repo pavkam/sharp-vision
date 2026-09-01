@@ -29,6 +29,33 @@ public sealed class SplitPaneSurfaceTests
         pane.HasDividerPointerOver().ShouldBeTrue();
     }
 
+    /// <summary>Verifies a handled descendant move replaces an earlier divider cell and clears divider-specific hover.</summary>
+    [Fact]
+    public async Task Pointer_WhenHandledDescendantMoveLeavesDivider_ClearsDividerHoverAsync()
+    {
+        // Arrange
+        var second = new Button { Text = "B" };
+        second.PointerMoved += (_, eventArgs) => eventArgs.IsHandled = true;
+        var pane = new SplitPane
+        {
+            Children = { new Button { Text = "A" }, second }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 3),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(pane, new Point(5, 1));
+        pane.HasDividerPointerOver().ShouldBeTrue();
+
+        // Act
+        await surface.Pointer.MoveToAsync(second);
+
+        // Assert
+        pane.IsPointerOver.ShouldBeTrue();
+        pane.IsPointerDirectlyOver.ShouldBeFalse();
+        pane.HasDividerPointerOver().ShouldBeFalse();
+    }
+
     /// <summary>Verifies a horizontal split paints the code-owned vertical divider over its pane descendants.</summary>
     [Fact]
     public async Task Render_WhenHorizontalSplitHasTwoPanes_PaintsExactVerticalDividerCellsAsync()
@@ -45,6 +72,34 @@ public sealed class SplitPaneSurfaceTests
         {
             surface.Cell(new Point(5, y)).Text.ShouldBe("│");
         }
+    }
+
+    /// <summary>Verifies SplitPane preserves the framework text-selection adornment beneath its owner-rendered divider.</summary>
+    [Fact]
+    public async Task Render_WhenFrameworkTextSelectionIsActive_PreservesBaseAdornmentAsync()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            IsTextSelectionEnabled = true,
+            Children = { new ControlText("Alpha"), new ControlText("Bravo") }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 3),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.UpdateAsync(
+            () => pane.SetTextSelection(new Selection(0, 1)),
+            "select the first SplitPane text cell");
+
+        // Assert
+        var selectedBackground = TerminalPalette.Project(
+            surface.Application.Theme.ResolveColor(SemanticColor.SelectedControl),
+            ColorDepth.Basic16);
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(selectedBackground);
+        surface.Cell(new Point(5, 0)).Text.ShouldBe("│");
     }
 
     /// <summary>Verifies a vertical split paints the code-owned horizontal divider over its pane descendants.</summary>
@@ -168,6 +223,7 @@ public sealed class SplitPaneSurfaceTests
 
         // Act
         await surface.Pointer.LeaveAsync();
+        await surface.ResizeAsync(new Size(13, 3));
 
         // Assert
         pane.HasDividerPointerOver().ShouldBeFalse();

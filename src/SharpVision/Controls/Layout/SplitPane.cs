@@ -22,6 +22,7 @@ public sealed class SplitPane: Container
     /// <summary>Initializes an empty horizontal split with capacity for two panes.</summary>
     public SplitPane() : base(capacity: 2)
     {
+        _ = AddHandler(Events.Pointer, OnDividerPointerRouted, handledEventsToo: true);
         HorizontalAlignment = HorizontalAlignment.Stretch;
         EnableChromeAuthoring();
         IsFocusable = true;
@@ -551,18 +552,6 @@ public sealed class SplitPane: Container
     }
 
     /// <inheritdoc/>
-    protected override void OnEvent(RoutedEventArgs eventArgs)
-    {
-        ArgumentNullException.ThrowIfNull(eventArgs);
-        base.OnEvent(eventArgs);
-
-        if (eventArgs is PointerEventArgs pointer)
-        {
-            UpdateDividerPointerCell(pointer);
-        }
-    }
-
-    /// <inheritdoc/>
     protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver)
     {
         base.OnPointerOverChanged(isPointerOver, isPointerDirectlyOver);
@@ -629,12 +618,23 @@ public sealed class SplitPane: Container
         ReconcileDividerPointerOver();
     }
 
+    private void OnDividerPointerRouted(object? sender, PointerEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.Phase == RoutingPhase.Bubble)
+        {
+            UpdateDividerPointerCell(eventArgs);
+        }
+    }
+
     private void ReconcileDividerPointerOver()
     {
         var value = IsResizable &&
             EffectiveIsEnabled &&
             EffectiveIsVisible &&
             IsPointerOver &&
+            IsPointerDirectlyOver &&
             _latestPointerCell is { } cells &&
             ResolveVisibleDividerBounds().Contains(cells);
         SetDividerPointerOver(value);
