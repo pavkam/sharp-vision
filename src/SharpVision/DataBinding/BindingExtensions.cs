@@ -415,7 +415,33 @@ public static class BindingExtensions
             mode,
             string.Empty);
 
-    /// <summary>Binds optional model text two-way to an editable suggestion input.</summary>
+    /// <summary>Creates a two-way relationship between nullable model text and suggestion input text.</summary>
+    /// <typeparam name="TModel">The reference-type model that owns the source property.</typeparam>
+    /// <param name="target">The suggestion input whose <see cref="SuggestionInput.Text"/> is synchronized.</param>
+    /// <param name="source">The model instance that owns <paramref name="sourceProperty"/>.</param>
+    /// <param name="sourceProperty">
+    /// A public readable and writable property path rooted in <paramref name="source"/>.
+    /// </param>
+    /// <returns>
+    /// The live binding. The target owns the binding and disposes it during target disposal; the
+    /// caller may dispose it earlier to stop synchronization immediately.
+    /// </returns>
+    /// <remarks>
+    /// Initial synchronization flows from source to target, mapping a null source value to empty
+    /// text. Subsequent target edits flow back as non-null strings. Source notifications for an
+    /// attached target are applied through that target's dispatcher; detached notifications are
+    /// retained until a compatible attachment commits.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="target"/>, <paramref name="source"/>, or
+    /// <paramref name="sourceProperty"/> is null.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// The source expression is not a public property path, its leaf is not writable, or the
+    /// target text property already has a live binding.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">The attached target is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The target has been disposed.</exception>
     [MustDisposeResource]
     public static Binding Bind<TModel>(
         this SuggestionInput target,
@@ -424,7 +450,37 @@ public static class BindingExtensions
         where TModel : class =>
         Bind(target, source, sourceProperty, BindingMode.TwoWay);
 
-    /// <summary>Binds optional model text to an editable suggestion input with an explicit direction.</summary>
+    /// <summary>Creates a directed relationship between nullable model text and suggestion input text.</summary>
+    /// <typeparam name="TModel">The reference-type model that owns the source property.</typeparam>
+    /// <param name="target">The suggestion input whose <see cref="SuggestionInput.Text"/> is synchronized.</param>
+    /// <param name="source">The model instance that owns <paramref name="sourceProperty"/>.</param>
+    /// <param name="sourceProperty">
+    /// A public readable property path rooted in <paramref name="source"/>. Its leaf must also be
+    /// writable when <paramref name="mode"/> sends target changes to the source.
+    /// </param>
+    /// <param name="mode">The initial and ongoing synchronization direction.</param>
+    /// <returns>
+    /// The live binding. The target owns the binding and disposes it during target disposal; the
+    /// caller may dispose it earlier to stop synchronization immediately.
+    /// </returns>
+    /// <remarks>
+    /// Source-to-target synchronization maps null to empty text; target-to-source synchronization
+    /// writes the target's non-null text. Source notifications for an attached target are applied
+    /// through that target's dispatcher; detached notifications are retained until a compatible
+    /// attachment commits. <see cref="BindingMode.OneWayToSource"/> initializes the source from
+    /// the target instead of reading the model first.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="target"/>, <paramref name="source"/>, or
+    /// <paramref name="sourceProperty"/> is null.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="mode"/> is undefined.</exception>
+    /// <exception cref="ArgumentException">
+    /// The source expression is not a public property path, its leaf is not writable for the
+    /// requested direction, or the target text property already has a live binding.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">The attached target is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The target has been disposed.</exception>
     [MustDisposeResource]
     public static Binding Bind<TModel>(
         this SuggestionInput target,

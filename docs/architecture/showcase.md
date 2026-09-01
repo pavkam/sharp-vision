@@ -12,7 +12,7 @@ across the active shell and selected page, and across every simultaneously open
 menu/submenu path. The shell advertises `Alt+key`, while the Menu and GroupBox
 pages demonstrate invocation and focus transfer.
 
-The sidebar remains one arrow-key `NavigationView`. Its heading, groups, and 63
+The sidebar remains one arrow-key `NavigationView`. Its heading, groups, and 64
 catalog items set `UseMnemonic = false`, because no useful single-character
 assignment can be globally unique at that scale. The repeated `DocExample` and
 `C# recipe` structural chrome also opts out. Body prose and generated list data
@@ -75,12 +75,12 @@ blink remain isolated demonstrations rather than general documentation styling.
 
 `Gallery` owns the stable catalog of pane group names, titles, and factories
 (`(string Group, string Name, Func<CompositeControlBase> Create)[]`). The
-sidebar organizes its 63 entries by primary use:
+sidebar organizes its 64 entries by primary use:
 
 - Concepts: ControlBase, Border, Shadow, Data Binding, and Styling.
 - Input: Button, HyperlinkButton, Calendar, DateInput, DateTimeInput, CheckBox,
   ColorPicker, CommandPalette, ComboBox, CurrencyInput, NumberInput,
-  RadioButton, Slider, TextInput, and TimeInput.
+  RadioButton, Slider, SuggestionInput, TextInput, and TimeInput.
 - Collections: JsonView, ListView, TabControl, Table, and TreeView.
 - Navigation: Menu, MenuItem, and NavigationView.
 - Layout: Dock, Expander, Grid, GroupBox, Overlay, ScrollBar, SplitPane, Stack,
@@ -144,6 +144,14 @@ selection and invocation events rather than internal state. The same page also
 demonstrates `MenuBuilder`'s fluent chain — `Item`, `Check`, `Separator`, and a
 nested `Submenu` — composing an equivalent menu without an object graph
 assembled by hand.
+
+The SuggestionInput page keeps one real editor focused while its asynchronous
+resolver publishes a long Unicode result set. Threshold controls re-evaluate the
+current grapheme count, a deliberately cancellation-ignoring slow request races
+a newer swift request, and the activity log distinguishes keyboard and pointer
+acceptance from Escape, Tab, and outside dismissal. Separate disabled and narrow
+specimens expose availability and wide-cell clipping through public control
+state only.
 
 The FilePicker page launches the real `SharpVision.Dialogs.FilePickerDialog` and
 `SaveFileDialog` directly from its Buttons, without a decorative specimen

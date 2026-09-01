@@ -60,6 +60,22 @@ export const controls = [
     { doc: "input/radio-button", page: "RadioButton" },
     { doc: "input/slider", page: "Slider" },
     {
+        doc: "input/suggestion-input",
+        page: "SuggestionInput",
+        states: [
+            {},
+            {
+                name: "open",
+                popup: true,
+                actions: [
+                    { click: "Search destinations…" },
+                    { type: "li" },
+                    { wait: 800 },
+                ],
+            },
+        ],
+    },
+    {
         doc: "input/text-input",
         page: "TextInput",
         states: [

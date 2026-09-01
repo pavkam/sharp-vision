@@ -76,6 +76,7 @@ public sealed class Gallery: Screen
         ("Display", SeparatorPane.Title, static () => new SeparatorPane()),
         ("Display", StatusBarPane.Title, static () => new StatusBarPane()),
         ("Input", SliderPane.Title, static () => new SliderPane()),
+        ("Input", SuggestionInputPane.Title, static () => new SuggestionInputPane()),
         ("Progress", SpinnerPane.Title, static () => new SpinnerPane()),
         ("Windows", ToastPane.Title, static () => new ToastPane()),
         ("Layout", StackPane.Title, static () => new StackPane()),

@@ -41,6 +41,7 @@ classDiagram
     HeaderedContentControl <|-- GroupBox
     HeaderedContentControl <|-- Expander
     CompositeControlBase <|-- Screen
+    CompositeControlBase <|-- SuggestionInput
     Container <|-- Stack
     Container <|-- Wrap
     Container <|-- Grid
@@ -66,7 +67,7 @@ use the shared [layout](../concepts/layout.md#overview),
 | `SharpVision.Controls`             | Foundational roles, ownership, and intrinsic chrome.         |
 | `SharpVision.Controls.Display`     | Text, images, indicators, and passive presentation.          |
 | `SharpVision.Controls.Charts`      | Reactive bar, line, area, and compact trend charts.          |
-| `SharpVision.Controls.Input`       | Buttons, editors, pickers, and value controls.               |
+| `SharpVision.Controls.Input`       | Buttons, editors, suggestions, pickers, and value controls.  |
 | `SharpVision.Controls.Layout`      | Panels, overlays, structural chrome, and tables.             |
 | `SharpVision.Controls.Collections` | Lists, tabs, trees, typed collections, and item realization. |
 | `SharpVision.Controls.Documents`   | The Document control and its rich-text content-node tree.    |
@@ -145,6 +146,7 @@ See the [intrinsic appearance rules](../concepts/styling.md#shared-chrome).
 - [NumberInput](input/number-input.md#overview)
 - [RadioButton](input/radio-button.md#overview)
 - [Slider](input/slider.md#overview)
+- [SuggestionInput](input/suggestion-input.md#overview)
 - [TextInput](input/text-input.md#overview)
 - [TimeInput](input/time-input.md#overview)
 

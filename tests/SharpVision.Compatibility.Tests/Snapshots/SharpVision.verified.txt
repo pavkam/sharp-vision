@@ -1875,6 +1875,47 @@ namespace SharpVision.Controls.Input
         public required SharpVision.Styling.ControlColor TrackColor { get; init; }
         public new static SharpVision.Controls.Input.SliderStyle Default { get; }
     }
+    public sealed class SuggestionInput : SharpVision.Controls.CompositeControlBase
+    {
+        public SuggestionInput() { }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
+        public SharpVision.Layout.Length DropDownHeight { get; set; }
+        public SharpVision.Styling.Affix? EndAffix { get; set; }
+        public bool IsOpen { get; set; }
+        public bool IsResolving { get; }
+        public SharpVision.Controls.Collections.ItemTemplate ItemTemplate { get; set; }
+        public int MinimumPrefixLength { get; set; }
+        public string? Placeholder { get; set; }
+        public SharpVision.Popups.PopupChrome PopupChrome { get; set; }
+        public SharpVision.Controls.Input.SuggestionResolver? Resolver { get; set; }
+        public SharpVision.Layout.Length RowHeight { get; set; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
+        public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
+        public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
+        public SharpVision.Styling.Affix? StartAffix { get; set; }
+        public System.Collections.Generic.IReadOnlyList<object?> Suggestions { get; }
+        public string Text { get; set; }
+        public System.Func<object?, string>? TextSelector { get; set; }
+        public event System.EventHandler<SharpVision.Controls.Input.SuggestionResolutionFailedEventArgs>? ResolutionFailed;
+        public event System.EventHandler<SharpVision.Input.ItemInvokedEventArgs>? SuggestionAccepted;
+        public event System.EventHandler? SuggestionsChanged;
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        public void Close() { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnAttached() { }
+        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        public bool Open() { }
+        public void Refresh() { }
+        public void ResetPopupChrome() { }
+    }
+    public sealed class SuggestionResolutionFailedEventArgs : System.EventArgs
+    {
+        public SuggestionResolutionFailedEventArgs(string searchTerms, System.Exception exception) { }
+        public System.Exception Exception { get; }
+        public string SearchTerms { get; }
+    }
+    public delegate System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<object?>> SuggestionResolver(string searchTerms, System.Threading.CancellationToken cancellationToken);
     public sealed class TextInput : SharpVision.Controls.ControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.TextInputStyle>, SharpVision.Runtime.IClipboardCopySource
     {
         public TextInput() { }
@@ -2428,6 +2469,8 @@ namespace SharpVision.DataBinding
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Input.Slider target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, int>> sourceProperty)
             where TModel :  class { }
+        public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Input.SuggestionInput target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, string?>> sourceProperty)
+            where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Input.TextInput target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, string?>> sourceProperty)
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Input.TimeInput target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, System.TimeOnly?>> sourceProperty)
@@ -2439,6 +2482,8 @@ namespace SharpVision.DataBinding
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Scrolling.ScrollBar target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, int>> sourceProperty)
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Menus.Menu target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, int>> sourceProperty)
+            where TModel :  class { }
+        public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Input.SuggestionInput target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, string?>> sourceProperty, SharpVision.DataBinding.BindingMode mode)
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Input.TextInput target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, string?>> sourceProperty, SharpVision.DataBinding.BindingMode mode)
             where TModel :  class { }

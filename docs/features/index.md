@@ -12,6 +12,7 @@ table; the current support state for each terminal protocol lives only in the
 | Interactive console hosting                      | `ConsoleApplication` and `ConsoleApplicationBuilder`                 | [Hosting](../concepts/hosting.md#overview)                         |
 | Retained mutable controls                        | `ControlBase`, `Container`, `ContentControl`, `CompositeControlBase` | [Control catalog](../controls/index.md#control-catalog)            |
 | Strongly typed model binding                     | `Bind`, `BindItems`, `BindSelection`, `BindingMode`                  | [Data binding](../concepts/data-binding.md#overview)               |
+| Editable asynchronous suggestions                | `SuggestionInput` and `SuggestionResolver`                           | [SuggestionInput](../controls/input/suggestion-input.md#overview)  |
 | Fixed, auto, percentage, and proportional layout | `Length`, `Stack`, `Dock`, `Grid`, `Overlay`                         | [Layout](../concepts/layout.md#overview)                           |
 | Elevated windows, dialogs, popups, and tooltips  | `FloatingSurfaceBase`, `Window`, `Dialog<TResult>`, `Popup`          | [Floating surfaces](../concepts/floating-surfaces.md#overview)     |
 | Routed keyboard and pointer input                | Preview/bubble events, focus, pointer capture                        | [Input routing](../concepts/input-routing.md#overview)             |
