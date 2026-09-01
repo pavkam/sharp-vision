@@ -834,6 +834,17 @@ public sealed class InputDecoder: IDisposable
             return true;
         }
 
+        // Kitty reports repeat/release on tilde-form functional keys (Delete, Insert,
+        // PageUp/Down, F5-F12) as a colon-separated event type appended to the modifier field -
+        // e.g. "3;1:2~" for a Delete repeat. That colon is only valid in this second field, so it
+        // is decoded here before falling through to the plain-modifier reader below, which would
+        // otherwise reject any colon outright.
+        if (TryReadTildeEventParameters(parameters, out var eventNative, out var eventModifiers, out var eventAction))
+        {
+            HandleTilde(eventNative, eventModifiers, eventAction);
+            return true;
+        }
+
         Span<int> values = stackalloc int[3];
 
         if (!TryReadParameters(parameters, values, out var count))
@@ -847,7 +858,56 @@ public sealed class InputDecoder: IDisposable
             return true;
         }
 
-        HandleTilde(values, count);
+        if (count is < 1 or > 2 || values[0] < 0 ||
+            !TryGetModifier(count == 2 ? values[1] : 1, out var modifiers))
+        {
+            Report(DiagnosticCode.Malformed, SequenceKind.Csi);
+            return true;
+        }
+
+        HandleTilde(values[0], modifiers, KeyAction.Press);
+        return true;
+    }
+
+    /// <summary>Attempts to read a tilde-form functional key's native code together with a
+    /// Kitty-style colon-delimited modifier/event-type field (e.g. "3;1:2" for a Delete repeat).
+    /// Returns false whenever the modifier field carries no colon, leaving the plain
+    /// legacy-modifier path above to handle it instead.</summary>
+    private static bool TryReadTildeEventParameters(
+        ReadOnlySpan<byte> parameters,
+        out int native,
+        out Modifiers modifiers,
+        out KeyAction action)
+    {
+        native = 0;
+        modifiers = Modifiers.None;
+        action = KeyAction.Press;
+
+        var semicolon = parameters.IndexOf((byte) ';');
+
+        if (semicolon < 0)
+        {
+            return false;
+        }
+
+        var nativeField = parameters[..semicolon];
+        var modifierField = parameters[(semicolon + 1)..];
+
+        if (modifierField.IndexOf((byte) ':') < 0 || modifierField.IndexOf((byte) ';') >= 0)
+        {
+            return false;
+        }
+
+        if (!Kitty.Keyboard.KittyKeyDecoder.TryDecimal(nativeField, allowEmpty: false, out native, out var nativeSeparator) ||
+            nativeSeparator != ParameterSeparator.None ||
+            !Kitty.Keyboard.KittyKeyDecoder.TryReadModifiers(modifierField, out modifiers, out action))
+        {
+            return false;
+        }
+
+        // See the matching remap in TryReadCsiModifiers: Kitty's own bit 3 is Super, but this
+        // legacy ANSI grammar (guarded by UseAnsiKeyGrammar above) defines bit 3 as Meta.
+        RemapLegacySuperToMeta(ref modifiers);
         return true;
     }
 
@@ -925,16 +985,8 @@ public sealed class InputDecoder: IDisposable
         return true;
     }
 
-    private void HandleTilde(ReadOnlySpan<int> values, int count)
+    private void HandleTilde(int native, Modifiers modifiers, KeyAction action)
     {
-        if (count is < 1 or > 2 || values[0] < 0 ||
-            !TryGetModifier(count == 2 ? values[1] : 1, out var modifiers))
-        {
-            Report(DiagnosticCode.Malformed, SequenceKind.Csi);
-            return;
-        }
-
-        var native = values[0];
         var code = native switch
         {
             1 or 7 => Code.Home,
@@ -957,7 +1009,7 @@ public sealed class InputDecoder: IDisposable
             24 => Code.F12,
             _ => Code.Unknown
         };
-        EmitStroke(code, null, native, modifiers);
+        EmitStroke(code, null, native, modifiers, action);
     }
 
     private bool TryHandleModifiedOtherKey(int encodedModifiers, int native)

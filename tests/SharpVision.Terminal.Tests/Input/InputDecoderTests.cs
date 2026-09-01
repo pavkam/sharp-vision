@@ -1716,17 +1716,48 @@ public sealed class InputDecoderTests
     }
 
     /// <summary>
-    /// Verifies tilde keys with colon-separated event types are reported as malformed
-    /// because the tilde path uses <c>TryReadParameters</c> which rejects colons.
+    /// Verifies tilde-form functional keys with a Kitty-style colon-separated event type
+    /// decode successfully, carrying the repeat/release action through instead of being
+    /// reported malformed.
     /// </summary>
     [Theory]
-    [InlineData("[15;1:1~")]
-    [InlineData("[3;2:1~")]
-    public void Decode_WhenTildeKeyHasEventTypeColon_ReportsMalformed(string input)
+    [InlineData("[3;1:2~", Code.Delete, Modifiers.None, KeyAction.Repeat, 3)]
+    [InlineData("[3;1:3~", Code.Delete, Modifiers.None, KeyAction.Release, 3)]
+    [InlineData("[5;1:2~", Code.PageUp, Modifiers.None, KeyAction.Repeat, 5)]
+    [InlineData("[15;1:2~", Code.F5, Modifiers.None, KeyAction.Repeat, 15)]
+    [InlineData("[2;1:3~", Code.Insert, Modifiers.None, KeyAction.Release, 2)]
+    [InlineData("[3;2:1~", Code.Delete, Modifiers.Shift, KeyAction.Press, 3)]
+    public void Decode_WhenTildeKeyHasEventTypeColon_DecodesEventAction(
+        string input,
+        Code code,
+        Modifiers modifiers,
+        KeyAction action,
+        int native)
     {
         var sink = Decode(Encoding.UTF8.GetBytes(input));
 
-        sink.Diagnostics.Count.ShouldBe(1);
+        sink.Strokes.ShouldBe(
+        [
+            new Stroke(code, null, native, modifiers, action)
+        ]);
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies a tilde-form functional key without a colon-separated event type still
+    /// decodes as a plain press, confirming the colon-aware parsing path added for Kitty
+    /// event types doesn't regress the simple legacy-modifier case.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenTildeKeyHasNoEventTypeColon_DecodesAsPress()
+    {
+        var sink = Decode(Encoding.UTF8.GetBytes("[3~"));
+
+        sink.Strokes.ShouldBe(
+        [
+            new Stroke(Code.Delete, null, 3, Modifiers.None, KeyAction.Press)
+        ]);
+        sink.Diagnostics.ShouldBeEmpty();
     }
 
     /// <summary>
