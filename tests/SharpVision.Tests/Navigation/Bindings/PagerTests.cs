@@ -1,13 +1,13 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Tests.Navigation;
+namespace SharpVision.Tests.Navigation.Bindings;
 
 using SharpVision.DataBinding;
 using SharpVision.Tests.DataBinding.Support;
 
 /// <summary>Verifies Pager's target-owned two-way PageIndex binding.</summary>
-public sealed class PagerBindingTests
+public sealed class PagerTests
 {
     /// <summary>Verifies initial, model-to-control, and control-to-model synchronization.</summary>
     [Fact]
