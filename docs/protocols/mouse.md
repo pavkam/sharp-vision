@@ -34,10 +34,13 @@ The X10 field reader honors the negotiated `Protocols.MouseCoordinates`,
 threaded into `Input.InputOptions.MouseCoordinates` from the same
 `Runtime.TerminalOptions.Coordinates` value that selects the write-side DECSET
 mode: raw single-byte fields under `MouseCoordinates.Default`, UTF-8 scalar
-fields under `MouseCoordinates.Utf8`. Xterm's bit-128 selectors preserve buttons
-8 through 11 as `Back`, `Forward`, `Extended10`, and `Extended11`; motion and
-SGR release retain the same typed button. Values beyond button 11 remain
-malformed because their modifier encoding is ambiguous. The two coordinate
+fields under `MouseCoordinates.Utf8`. In cell mode, xterm's bit-128 selectors
+preserve buttons 8 through 11 as `Back`, `Forward`, `Extended10`, and
+`Extended11`; motion and SGR release retain the same typed button there. In
+SGR pixel mode, bit 8 is exclusively the Kitty leave marker described below,
+so buttons 8 through 11 are unaddressable while pixel mode is active. Values
+beyond button 11 remain malformed because their modifier encoding is
+ambiguous. The two coordinate
 encodings are mutually ambiguous for field bytes at or above `0x80`, so the
 decoder cannot infer which is in force from the byte stream alone — the input
 and output sides must agree. `0x7F` (DEL) is a legal field byte (coordinate 95)
@@ -45,10 +48,12 @@ under both encodings and is fed to a pending X10 report rather than being
 treated as a keystroke.
 
 Kitty leave-window reports are recognized only while SGR pixel input is active.
-Bit 8 of the button value is the complete leave identity; all other button and
-modifier bits and both reported pixel coordinates are ignored, producing one
-coordinate-free `Leave`. The same bit in cell mode retains xterm's extended
-button meaning, and zero coordinates without the marker remain malformed.
+Bit 8 of the button value is the complete leave identity on both the SGR press
+(`M`) and release (`m`) final byte; all other button and modifier bits and
+both reported pixel coordinates are ignored, producing one coordinate-free
+`Leave` regardless of which final byte carried it. The same bit in cell mode
+instead retains xterm's extended button meaning, as described above, and zero
+coordinates without the marker remain malformed.
 
 Cell reports subtract the wire's one-based origin exactly once. With
 `Input.InputOptions.PixelMouse`, SGR coordinates are retained as zero-based

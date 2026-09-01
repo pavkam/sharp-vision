@@ -57,6 +57,7 @@ public sealed class InputDecoderTests
     [InlineData("\u001b[<8;10;5M", Buttons.Primary, InputAction.Press, 0, 0,
         Modifiers.Meta, false)]
     [InlineData("\u001b[<128;10;5M", Buttons.Back, InputAction.Press, 0, 0, Modifiers.None, false)]
+    [InlineData("\u001b[<128;10;5m", Buttons.Back, InputAction.Release, 0, 0, Modifiers.None, false)]
     [InlineData("\u001b[<129;10;5M", Buttons.Forward, InputAction.Press, 0, 0, Modifiers.None, false)]
     [InlineData("\u001b[<130;10;5M", Buttons.Extended10, InputAction.Press, 0, 0, Modifiers.None, false)]
     [InlineData("\u001b[<131;10;5M", Buttons.Extended11, InputAction.Press, 0, 0, Modifiers.None, false)]
@@ -195,6 +196,29 @@ public sealed class InputDecoderTests
         sink.Diagnostics.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies Kitty's bit-8 SGR pixel marker emits a coordinate-free leave on the SGR
+    /// release final byte too, not just the press final byte — the release half of a leave must
+    /// not fall through and be decoded as an unbalanced extended-button Release.</summary>
+    [Fact]
+    public void Decode_WhenKittyPixelMouseLeavesOnRelease_EmitsLeaveWithoutCoordinates()
+    {
+        var sink = new RecordingInputSink();
+        using InputDecoder decoder = new(sink, new InputOptions { PixelMouse = true });
+
+        decoder.Decode("\u001b[<160;77;99m"u8);
+        decoder.Complete();
+
+        var pointer = sink.Pointers.ShouldHaveSingleItem();
+
+        pointer.Action.ShouldBe(InputAction.Leave);
+        pointer.Cells.ShouldBe(default);
+        pointer.Pixels.ShouldBe(default);
+        pointer.Buttons.ShouldBe(Buttons.None);
+        pointer.Modifiers.ShouldBe(Modifiers.None);
+        pointer.MotionReported.ShouldBeTrue();
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies every other button/modifier bit and both zero and positive coordinates
     /// are ignored for a Kitty leave marker at every read boundary.</summary>
     /// <param name="code">The bit-8-marked button value.</param>
@@ -224,6 +248,43 @@ public sealed class InputDecoderTests
             pointer.Action.ShouldBe(InputAction.Leave);
             pointer.Cells.ShouldBeNull();
             pointer.Pixels.ShouldBeNull();
+            pointer.Modifiers.ShouldBe(Modifiers.None);
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
+    /// <summary>Verifies every other button/modifier bit and both zero and positive coordinates
+    /// are ignored for a Kitty leave marker on the SGR release final byte, at every read
+    /// boundary — the release half of a leave must decode identically to its press half rather
+    /// than being reinterpreted as an extended-button Release with no matching press.</summary>
+    /// <param name="code">The bit-8-marked button value.</param>
+    /// <param name="x">The ignored wire x coordinate.</param>
+    /// <param name="y">The ignored wire y coordinate.</param>
+    [Theory]
+    [InlineData(128, 0, 0)]
+    [InlineData(165, 77, 99)]
+    [InlineData(255, 1, 2)]
+    public void Decode_WhenKittyLeaveBitsAndCoordinatesVaryAtEverySplitOnRelease_EmitsOneLeave(
+        int code,
+        int x,
+        int y)
+    {
+        var sequence = Encoding.ASCII.GetBytes($"\u001b[<{code};{x};{y}m");
+
+        for (var split = 0; split <= sequence.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink, new InputOptions { PixelMouse = true });
+
+            decoder.Decode(sequence.AsSpan(0, split));
+            decoder.Decode(sequence.AsSpan(split));
+            decoder.Complete();
+
+            var pointer = sink.Pointers.ShouldHaveSingleItem($"split {split}");
+            pointer.Action.ShouldBe(InputAction.Leave);
+            pointer.Cells.ShouldBeNull();
+            pointer.Pixels.ShouldBeNull();
+            pointer.Buttons.ShouldBe(Buttons.None);
             pointer.Modifiers.ShouldBe(Modifiers.None);
             sink.Diagnostics.ShouldBeEmpty($"split {split}");
         }
