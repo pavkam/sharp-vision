@@ -1576,6 +1576,36 @@ public sealed class ListViewTests
         control.IsDisposed.ShouldBeTrue();
     }
 
+    /// <summary>
+    /// Verifies a PropertyChanged subscriber that disposes the control mid-commit does not leave
+    /// MoveSelection's post-ApplyInputSelection continuation running against disposed-guarded
+    /// members.
+    /// </summary>
+    [Fact]
+    public async Task MoveSelection_WhenPropertyChangedSubscriberDisposesControl_DoesNotThrowAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = new UiListView { Items = ["A", "B"] };
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiListView.SelectedIndex))
+            {
+                control.Dispose();
+            }
+        };
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            control.Attach(dispatcher);
+            new LayoutEngine().Layout(control, new Size(10, 2));
+            using FocusManager focus = new(control);
+            focus.Focus(control).ShouldBeTrue();
+            Should.NotThrow(() => Key(control, Code.Down));
+        }, TestContext.Current.CancellationToken);
+
+        control.IsDisposed.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a reentrant selection change wins the complete active-row and visibility
     /// transaction instead of letting the outer assignment reveal its now-unselected target.</summary>
     [Fact]

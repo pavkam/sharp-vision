@@ -1985,14 +1985,27 @@ public sealed class ListView: ItemsControl
             return false;
         }
 
-        if (SelectionMode != ListSelectionMode.None && !ApplyInputSelection(target.Index, Modifiers.None))
+        if (SelectionMode != ListSelectionMode.None)
         {
-            if (SelectionMode == ListSelectionMode.None)
+            var accepted = ApplyInputSelection(target.Index, Modifiers.None);
+
+            // ApplyInputSelection can synchronously reach a subscriber that disposes the control -
+            // matches the guard the SelectedIndex setter already applies before this same
+            // continuation.
+            if (IsDisposed)
             {
-                _ = TryCommitCurrent(target);
+                return true;
             }
 
-            return true;
+            if (!accepted)
+            {
+                if (SelectionMode == ListSelectionMode.None)
+                {
+                    _ = TryCommitCurrent(target);
+                }
+
+                return true;
+            }
         }
 
         _ = TryCommitCurrent(target);
