@@ -1106,9 +1106,16 @@ public sealed class InputDecoder: IDisposable
 
     private bool TryHandleOscSequence(SequenceKind kind, ReadOnlySpan<byte> value, StringTerminator terminator)
     {
-        if (kind != SequenceKind.Osc || !XtermResponses.TryOsc(value, out var response))
+        if (kind != SequenceKind.Osc ||
+            !(value.StartsWith("4;"u8) || value.StartsWith("10;rgb:"u8) || value.StartsWith("11;rgb:"u8)))
         {
             return false;
+        }
+
+        if (!XtermResponses.TryOsc(value, out var response))
+        {
+            Report(DiagnosticCode.Malformed, kind);
+            return true;
         }
 
         if (_protocolSink is { } protocolSink)

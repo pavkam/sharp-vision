@@ -2326,6 +2326,66 @@ public sealed class InputDecoderTests
 
     #endregion
 
+    #region OSC 4/10/11 palette routing
+
+    /// <summary>Verifies a well-formed OSC 4/10/11 color reply still dispatches as a typed
+    /// <see cref="PaletteResponse"/>, guarding against a regression from the selector-prefix
+    /// check that now guards <c>TryHandleOscSequence</c> ahead of decoding the body.</summary>
+    [Theory]
+    [InlineData("]4;5;rgb:ffff/0000/8080\\", ResponseKind.PaletteColor)]
+    [InlineData("]10;rgb:ffff/0000/aaaa\\", ResponseKind.ForegroundColor)]
+    [InlineData("]11;rgb:0000/ffff/1111\\", ResponseKind.BackgroundColor)]
+    public void Decode_WhenPaletteReplyIsWellFormed_DispatchesTypedResponse(string sequence, ResponseKind kind)
+    {
+        var sink = new RecordingProtocolSink();
+        using var decoder = new InputDecoder(sink);
+
+        decoder.Decode(Encoding.ASCII.GetBytes(sequence));
+
+        var response = sink.PaletteResponses.ShouldHaveSingleItem();
+        response.Kind.ShouldBe(kind);
+        sink.Sequences.ShouldBeEmpty();
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a selector-prefix-matched but corrupt OSC 4/10/11 payload (here: a
+    /// 6-hex-digit color field, one too many for the 4-digit <c>rr/gg/bb</c> grammar) is reported
+    /// as <see cref="DiagnosticCode.Malformed"/> rather than falling through the handler chain and
+    /// being silently forwarded as an untagged <see cref="ProtocolSequence"/> with no diagnostic at
+    /// all, per docs/protocols/runtime-routing.md's contract that malformed occurrences always
+    /// raise a diagnostic.</summary>
+    [Theory]
+    [InlineData("]4;5;rgb:ffff/0000/ffffff\\")]
+    [InlineData("]10;rgb:ffff/0000/ffffff\\")]
+    [InlineData("]11;rgb:ffff/ffff/ffffff\\")]
+    public void Decode_WhenPaletteReplyIsCorrupt_ReportsMalformedInsteadOfUntaggedSequence(string sequence)
+    {
+        var sink = new RecordingProtocolSink();
+        using var decoder = new InputDecoder(sink);
+
+        decoder.Decode(Encoding.ASCII.GetBytes(sequence));
+
+        sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Malformed);
+        sink.PaletteResponses.ShouldBeEmpty();
+        sink.Sequences.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies the same corrupt payload is still reported Malformed even without a
+    /// protocol sink registered, confirming the selector-prefix match — not sink presence —
+    /// decides whether the sequence is claimed and diagnosed.</summary>
+    [Fact]
+    public void Decode_WhenPaletteReplyIsCorruptWithoutProtocolSink_ReportsMalformed()
+    {
+        var sink = new RecordingInputSink();
+        using var decoder = new InputDecoder(sink);
+
+        decoder.Decode("]11;rgb:ffff/ffff/ffffff\\"u8);
+
+        sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Malformed);
+    }
+
+    #endregion
+
     #region Terminal-description key precedence
 
     /// <summary>Verifies a described CSI spelling overrides the ANSI legacy meaning at every split.</summary>
