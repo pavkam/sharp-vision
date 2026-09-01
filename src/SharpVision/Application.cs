@@ -2263,7 +2263,7 @@ public sealed class Application:
     /// <param name="handler">The event's current invocation list, or null when unsubscribed.</param>
     /// <param name="eventArgs">The arguments to raise with.</param>
     /// <returns>The handler's failure, or null.</returns>
-    private Exception? RaiseIsolated(EventHandler? handler, EventArgs eventArgs)
+    internal Exception? RaiseIsolated(EventHandler? handler, EventArgs eventArgs)
     {
         if (handler is null)
         {
@@ -2283,7 +2283,7 @@ public sealed class Application:
 
     /// <inheritdoc cref="RaiseIsolated(EventHandler?, EventArgs)"/>
     /// <typeparam name="TArgs">The event argument type.</typeparam>
-    private Exception? RaiseIsolated<TArgs>(EventHandler<TArgs>? handler, TArgs eventArgs)
+    internal Exception? RaiseIsolated<TArgs>(EventHandler<TArgs>? handler, TArgs eventArgs)
     {
         if (handler is null)
         {
@@ -2305,7 +2305,7 @@ public sealed class Application:
     /// skip a following transition either.</summary>
     /// <param name="action">The step to run.</param>
     /// <returns>The step's failure, or null.</returns>
-    private static Exception? RaiseIsolated(Action action)
+    internal static Exception? RaiseIsolated(Action action)
     {
         try
         {
@@ -2564,7 +2564,7 @@ public sealed class Application:
         }
     }
 
-    private void Report(Exception exception)
+    internal void Report(Exception exception)
     {
         Failure ??= exception;
         var eventArgs = new UnhandledEventArgs(exception);

@@ -541,6 +541,58 @@ public sealed class TerminalServicesTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a throwing KittyClipboardReplyReceived subscriber does not force the
+    /// application to stop as a direct, raw propagation out of the raise call. The raise site used
+    /// to be a bare <c>?.Invoke</c> on <see cref="TerminalServices"/>, so a throwing handler
+    /// propagated straight out unhandled instead of being caught and routed through
+    /// <see cref="Application.Report"/> and <see cref="Application.UnhandledException"/> like the
+    /// Application-level events already were (see the ResponseReceived isolation tests in
+    /// ApplicationTests). The exception still surfaces - as the recorded <see
+    /// cref="Application.Failure"/> that a graceful stop rethrows - it just no longer unwinds raw
+    /// through the terminal-input dispatch path.</summary>
+    [Fact]
+    public async Task Clipboard_WhenKittyClipboardReplyHandlerThrows_IsIsolatedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        List<Exception> reported = [];
+        var reportedException = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+            _ = reportedException.TrySetResult();
+        };
+        application.Terminal.Clipboard.KittyClipboardReplyReceived +=
+            (_, _) => throw new InvalidOperationException("kitty-clipboard-reply-boom");
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+
+        application.Terminal.Clipboard.Write("hello");
+        // The Kitty id is assigned inside the posted callback, so a dispatcher round-trip is
+        // needed before the reply below can carry a matching id.
+        await application.Dispatcher.InvokeAsync(static () => { }, timeout.Token);
+        terminal.QueueInput("]5522;type=write:status=DONE:id=sv1\\"u8);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without the
+        // fix, the exception propagates straight out of the raise call and reportedException never
+        // settles, so this test must fail on a timeout instead of hanging or crashing the process.
+        await reportedException.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "kitty-clipboard-reply-boom");
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("kitty-clipboard-reply-boom");
+    }
+
     /// <summary>Verifies a completed Kitty read transfers the owned MIME result through the reply
     /// event.</summary>
     [Fact]

@@ -403,7 +403,10 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
                 KittyClipboardReplyStatus.None,
                 new Diagnostic(DiagnosticCode.Malformed, SequenceKind.Osc, offset: 0, discardedBytes: 0));
 
-        KittyClipboardReplyReceived?.Invoke(this, eventArgs);
+        if (_application.RaiseIsolated(KittyClipboardReplyReceived, eventArgs) is { } failure)
+        {
+            _application.Report(failure);
+        }
     }
 
     /// <summary>Feeds a decoded Kitty OSC 5522 packet to the live transaction, if any.</summary>
@@ -634,9 +637,13 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
 
         // Same shape the Kitty TimedOut arm reports: an outcome with no data and no diagnostic,
         // so a consumer distinguishes "no answer" from a terminal-reported failure.
-        KittyClipboardReplyReceived?.Invoke(
-            this,
-            new KittyClipboardReplyEventArgs(selection, null, null, KittyClipboardReplyStatus.None, null));
+        if (_application.RaiseIsolated(
+                KittyClipboardReplyReceived,
+                new KittyClipboardReplyEventArgs(selection, null, null, KittyClipboardReplyStatus.None, null))
+            is { } failure)
+        {
+            _application.Report(failure);
+        }
     }
 
     private void CancelPendingOsc52Request()
@@ -715,29 +722,49 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
         switch (transaction.State)
         {
             case KittyClipboardTransactionState.Completed:
-                KittyClipboardReplyReceived?.Invoke(
-                    this,
-                    new KittyClipboardReplyEventArgs(
-                        selection,
-                        transaction.Result,
-                        null,
-                        KittyClipboardReplyStatus.None,
-                        null));
+                if (_application.RaiseIsolated(
+                        KittyClipboardReplyReceived,
+                        new KittyClipboardReplyEventArgs(
+                            selection,
+                            transaction.Result,
+                            null,
+                            KittyClipboardReplyStatus.None,
+                            null))
+                    is { } completedFailure)
+                {
+                    _application.Report(completedFailure);
+                }
+
                 break;
             case KittyClipboardTransactionState.Failed:
-                KittyClipboardReplyReceived?.Invoke(
-                    this,
-                    new KittyClipboardReplyEventArgs(
-                        selection,
-                        null,
-                        null,
-                        transaction.Failure,
-                        transaction.Diagnostic));
+                if (_application.RaiseIsolated(
+                        KittyClipboardReplyReceived,
+                        new KittyClipboardReplyEventArgs(
+                            selection,
+                            null,
+                            null,
+                            transaction.Failure,
+                            transaction.Diagnostic))
+                    is { } failedFailure)
+                {
+                    _application.Report(failedFailure);
+                }
+
                 break;
             case KittyClipboardTransactionState.TimedOut:
-                KittyClipboardReplyReceived?.Invoke(
-                    this,
-                    new KittyClipboardReplyEventArgs(selection, null, null, KittyClipboardReplyStatus.None, null));
+                if (_application.RaiseIsolated(
+                        KittyClipboardReplyReceived,
+                        new KittyClipboardReplyEventArgs(
+                            selection,
+                            null,
+                            null,
+                            KittyClipboardReplyStatus.None,
+                            null))
+                    is { } timedOutFailure)
+                {
+                    _application.Report(timedOutFailure);
+                }
+
                 break;
             case KittyClipboardTransactionState.Created:
             case KittyClipboardTransactionState.Accepted:
@@ -820,9 +847,9 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
             CancelPendingKittyPasteTransaction();
         }
 
-        if (eventArgs is not null)
+        if (eventArgs is not null && _application.RaiseIsolated(ClipboardPasteReceived, eventArgs) is { } failure)
         {
-            ClipboardPasteReceived?.Invoke(this, eventArgs);
+            _application.Report(failure);
         }
     }
 
