@@ -183,7 +183,9 @@ public sealed class ProtocolRouterTests
             router.Route(bytes.AsSpan(split));
 
             sink.PaletteResponses.ShouldBeEmpty($"Overflow was accepted at split {split}.");
-            _ = sink.Sequences.ShouldHaveSingleItem($"OSC recovery differed at split {split}.");
+            sink.Sequences.ShouldBeEmpty($"Overflow should not fall through as an untagged sequence at split {split}.");
+            sink.Diagnostics.ShouldHaveSingleItem($"OSC recovery differed at split {split}.")
+                .Code.ShouldBe(DiagnosticCode.Malformed, $"split {split}");
             sink.Responses.ShouldHaveSingleItem($"Trailing DA1 was lost at split {split}.")
                 .Kind.ShouldBe(ResponseKind.PrimaryAttributes);
         }
