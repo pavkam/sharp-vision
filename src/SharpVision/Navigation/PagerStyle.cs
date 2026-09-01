@@ -33,7 +33,13 @@ public sealed record PagerStyle: ControlStyle
                 ? InvalidationImpact.Measure
                 : previous != current ||
                   ControlBase.ResolveColor(previous.CurrentPageColor, previousTheme) !=
-                  ControlBase.ResolveColor(current.CurrentPageColor, currentTheme)
+                  ControlBase.ResolveColor(current.CurrentPageColor, currentTheme) ||
+                  ControlBase.ResolveColor(OrdinaryTargetColor, previousTheme) !=
+                  ControlBase.ResolveColor(OrdinaryTargetColor, currentTheme) ||
+                  ControlBase.ResolveColor(OmittedTargetColor, previousTheme) !=
+                  ControlBase.ResolveColor(OmittedTargetColor, currentTheme) ||
+                  ControlBase.ResolveColor(DisabledEndpointColor, previousTheme) !=
+                  ControlBase.ResolveColor(DisabledEndpointColor, currentTheme)
                     ? InvalidationImpact.Render
                     : InvalidationImpact.None);
 

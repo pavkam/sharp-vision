@@ -394,6 +394,30 @@ public sealed class PagerTests
         pager.Pending.ShouldBe(Invalidation.Render);
     }
 
+    /// <summary>Verifies theme changes to code-owned omission and disabled-endpoint colors request
+    /// a repaint even though those semantic roles are deliberately absent from public PagerStyle.</summary>
+    [Theory]
+    [InlineData("\"__muted\":\"#707070\"", "\"__muted\":\"#117733\"")]
+    [InlineData("\"__disabledText\":\"#707070\"", "\"__disabledText\":\"#773311\"")]
+    public void Theme_WhenCodeOwnedTargetColorChanges_InvalidatesRender(
+        string previousPaletteEntry,
+        string currentPaletteEntry)
+    {
+        var document = ThemeJson.Create();
+        var previous = ThemeCatalog.Parse(document);
+        var current = ThemeCatalog.Parse(document.Replace(
+            previousPaletteEntry,
+            currentPaletteEntry,
+            StringComparison.Ordinal));
+        var pager = new Pager { PageCount = 10, PageIndex = 4 };
+        pager.SetTheme(previous);
+        pager.Clear(Invalidation.All);
+
+        pager.SetTheme(current);
+
+        pager.Pending.ShouldBe(Invalidation.Render);
+    }
+
     /// <summary>Verifies attached Pager mutation remains dispatcher-affine.</summary>
     [Fact]
     public async Task PageIndex_WhenMutatedFromWorker_ThrowsBeforeChangingStateAsync()
