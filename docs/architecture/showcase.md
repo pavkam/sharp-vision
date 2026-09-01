@@ -75,7 +75,7 @@ blink remain isolated demonstrations rather than general documentation styling.
 
 `Gallery` owns the stable catalog of pane group names, titles, and factories
 (`(string Group, string Name, Func<CompositeControlBase> Create)[]`). The
-sidebar organizes its 66 entries by primary use:
+sidebar organizes its 67 entries by primary use:
 
 - Concepts: ControlBase, Border, Shadow, Data Binding, and Styling.
 - Input: Button, HyperlinkButton, Calendar, DateInput, DateTimeInput, CheckBox,
@@ -91,7 +91,8 @@ sidebar organizes its 66 entries by primary use:
   Sparkline.
 - Progress: ChaseIndicator, ProgressBar, and Spinner.
 - Dialogs: FilePicker.
-- Windows: MessageBox, Popup, ContextMenu, Tooltip, Flyout, Toast, and Window.
+- Windows: MessageBox, Popup, ContextMenu, Tooltip, Flyout, InfoBar, Toast, and
+  Window.
 
 Each purpose group starts expanded and can be collapsed through the standard
 `NavigationViewGroup` interaction. The first Concepts group owns cross-cutting
@@ -176,6 +177,12 @@ clipping the adjacent branch. The bar's semantic hovered, focused, and checked
 appearances retain contrast against the status surface without local child
 appearance configuration. The example therefore demonstrates live composition
 and dispatcher-affine mutation, not a static row of labels.
+
+The InfoBar page contrasts all four complete semantic presentations, then keeps
+one warning notification interactive with a retained body action, access-keyed
+veto toggle, public dismissal event log, and external reopen action. Its narrow
+specimen combines long text and Unicode so whole-cluster adornment fallback and
+the trailing keyboard-reachable dismiss cell remain visible under constraint.
 
 Canvas demonstrates the frame-owned drawing API through labeled, framed live
 specimens rather than pretending to be a child-owning layout control. Fixed,

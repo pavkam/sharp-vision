@@ -118,7 +118,7 @@ these infrastructure namespaces:
 | `SharpVision.DataBinding`          | Typed model bindings, property-path observation, and collection tracking.      |
 | `SharpVision.Fonts`                | FIG-font parsing, layout metadata, and glyph rendering for FIGlet text.        |
 | `SharpVision.Text`                 | Grapheme-safe text layout, wrapping, editing, and selection primitives.        |
-| `SharpVision.Notifications`        | The `Toast` notification surface and its stacking host.                        |
+| `SharpVision.Notifications`        | Persistent in-flow `InfoBar` and floating `Toast` notification lifecycles.     |
 | `SharpVision.Runtime`              | Application-facing runtime seams such as `IClipboardCopySource`.               |
 
 `SharpVision.FigletFonts` is an optional package over the public FIGlet engine

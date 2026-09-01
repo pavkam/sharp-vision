@@ -90,10 +90,7 @@ export const controls = [
     {
         doc: "input/text-input",
         page: "TextInput",
-        states: [
-            {},
-            { name: "focused", actions: [{ click: "Edit me" }] },
-        ],
+        states: [{}, { name: "focused", actions: [{ click: "Edit me" }] }],
     },
     { doc: "input/time-input", page: "TimeInput" },
     {
@@ -163,6 +160,18 @@ export const controls = [
     { doc: "popups/popup", page: "Popup" },
     { doc: "popups/flyout", page: "Flyout" },
     { doc: "popups/tooltip", page: "Tooltip" },
+    {
+        doc: "notifications/info-bar",
+        page: "InfoBar",
+        states: [
+            {},
+            {
+                name: "vetoed",
+                example: "Dismissal veto and event order",
+                actions: [{ click: "Dismiss from content" }],
+            },
+        ],
+    },
     {
         doc: "notifications/toast",
         page: "Toast",

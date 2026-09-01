@@ -80,6 +80,7 @@ public sealed class Gallery: Screen
         ("Input", SliderPane.Title, static () => new SliderPane()),
         ("Input", SuggestionInputPane.Title, static () => new SuggestionInputPane()),
         ("Progress", SpinnerPane.Title, static () => new SpinnerPane()),
+        ("Windows", InfoBarPane.Title, static () => new InfoBarPane()),
         ("Windows", ToastPane.Title, static () => new ToastPane()),
         ("Layout", StackPane.Title, static () => new StackPane()),
         ("Layout", WrapPane.Title, static () => new WrapPane()),

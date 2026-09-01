@@ -22,6 +22,7 @@ classDiagram
     ControlBase <|-- ItemsControl
     ControlBase <|-- InputBase
     ContentControl <|-- FloatingSurfaceBase
+    ContentControl <|-- InfoBar
     ContentControl <|-- HeaderedContentControl
     FloatingSurfaceBase <|-- Window
     FloatingSurfaceBase <|-- Popup
@@ -77,7 +78,7 @@ use the shared [layout](../concepts/layout.md#overview),
 | `SharpVision.Navigation`           | Sidebar navigation controls and entries.                     |
 | `SharpVision.Surfaces`             | Shared elevated-surface lifecycle and modality seams.        |
 | `SharpVision.Popups`               | Anchored popup, flyout, and tooltip surfaces.                |
-| `SharpVision.Notifications`        | Non-modal Toast notifications, positions, and styles.        |
+| `SharpVision.Notifications`        | In-flow InfoBar and floating Toast notifications and styles. |
 | `SharpVision.Windows`              | Free-standing retained window surfaces.                      |
 
 Complete modal tasks such as `MessageBox` live in
@@ -187,6 +188,7 @@ See the [intrinsic appearance rules](../concepts/styling.md#shared-chrome).
 
 ### Popups and windows
 
+- [InfoBar](notifications/info-bar.md#overview)
 - [Toast](notifications/toast.md#overview)
 - [Popup](popups/popup.md#overview)
 - [Tooltip](popups/tooltip.md#overview)
