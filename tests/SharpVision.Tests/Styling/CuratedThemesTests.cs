@@ -174,6 +174,30 @@ public sealed class CuratedThemesTests
         theme.Resolve(theme.Window.Normal.Shadow.Foreground).ShouldBe(Color.FromHex("#000000"));
     }
 
+    /// <summary>Verifies every curated theme declares <see cref="SemanticColor.ReliefHighlight"/>
+    /// lighter than <see cref="SemanticColor.ReliefShade"/>, using the same 0.299R + 0.587G + 0.114B
+    /// luminance weighting the framework already applies elsewhere (see
+    /// <c>ColorMath.Contrast</c>). <see cref="BorderRelief.Raised"/> paints the top and left edges
+    /// with ReliefHighlight and the bottom and right edges with ReliefShade, modelling a light
+    /// source above and to the left; a theme that inverts the two colors makes Raised read as
+    /// recessed and Sunken read as protruding, which defeats relief's whole premise of being a
+    /// semantic direction the theme, not the caller, supplies the lighting for.</summary>
+    [Fact]
+    public void EveryCuratedTheme_DeclaresReliefHighlightLighterThanReliefShade()
+    {
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            var highlight = theme.ResolveColor(SemanticColor.ReliefHighlight);
+            var shade = theme.ResolveColor(SemanticColor.ReliefShade);
+
+            Luminance(highlight).ShouldBeGreaterThan(Luminance(shade), slug);
+        }
+
+        static double Luminance(Color color) =>
+            (color.Red * 0.299) + (color.Green * 0.587) + (color.Blue * 0.114);
+    }
+
     /// <summary>Verifies bundled themes never apply relief to interactive or floating chrome,
     /// and only Turbo Vision applies it to containers.</summary>
     [Fact]

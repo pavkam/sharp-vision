@@ -34,7 +34,7 @@
     "controlText": "black",
     "controlBorder": "steelGray",
     "controlShadow": "steelGray",
-    "reliefHighlight": "black",
+    "reliefHighlight": "white",
     "reliefShade": "steelGray",
     "activeControl": "paleGray",
     "activeText": "navy",
