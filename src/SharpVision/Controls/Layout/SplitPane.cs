@@ -64,7 +64,7 @@ public sealed class SplitPane: Container
         {
             ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The split orientation is unknown.");
 
-            _ = SetPropertyAndContinue(
+            _ = SetPropertyAndSynchronize(
                 ref field,
                 value,
                 InvalidationImpact.Measure,
@@ -111,7 +111,7 @@ public sealed class SplitPane: Container
         get;
         set
         {
-            _ = SetPropertyAndContinue(
+            _ = SetPropertyAndSynchronize(
                 ref field,
                 value,
                 InvalidationImpact.Render,
@@ -766,6 +766,11 @@ public sealed class SplitPane: Container
     private void HandleDividerPointer(PointerEventArgs eventArgs)
     {
         var pointer = eventArgs.Pointer;
+
+        if (pointer.Action == PointerAction.Wheel)
+        {
+            return;
+        }
 
         if (_drag.IsDragging)
         {

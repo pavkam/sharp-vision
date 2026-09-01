@@ -612,6 +612,48 @@ public sealed class SplitPaneSurfaceTests
         pane.IsPressed.ShouldBeFalse();
     }
 
+    /// <summary>Verifies an active divider capture leaves wheel input available to ordinary routed
+    /// ancestry without changing or ending the drag.</summary>
+    [Fact]
+    public async Task Pointer_WhenWheelArrivesDuringDividerDrag_LeavesWheelUnhandledAndCaptureActiveAsync()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            Width = Length.Cells(11),
+            Height = Length.Cells(2),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            FirstPaneLength = Length.Cells(5),
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        var root = new Overlay { Children = { pane } };
+        var routedWheels = 0;
+        _ = root.AddHandler(Events.Pointer, (_, eventArgs) =>
+        {
+            if (eventArgs.Phase == RoutingPhase.Bubble && eventArgs.Pointer.Action == PointerAction.Wheel)
+            {
+                routedWheels++;
+            }
+        });
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(pane, new Point(5, 0));
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveCapture(pane);
+
+        // Act
+        await surface.Pointer.WheelAsync(pane, new Point(5, 0), wheelY: 1);
+
+        // Assert
+        routedWheels.ShouldBe(1);
+        surface.ShouldHaveCapture(pane);
+        pane.IsPressed.ShouldBeTrue();
+        pane.FirstPaneLength.ShouldBe(Length.Cells(5));
+        await surface.Pointer.ReleaseAsync();
+    }
+
     /// <summary>Verifies drag movement clamps through the arranged joint pane range and preserves
     /// percentage authorship against the divider-excluded pool.</summary>
     [Theory]
@@ -655,6 +697,44 @@ public sealed class SplitPaneSurfaceTests
         pane.FirstPaneLength.Kind.ShouldBe(LengthKind.Percent);
         pane.FirstPaneLength.Value.ShouldBe(expectedPercent, 0.000000000001);
         (orientation == Orientation.Horizontal ? first.Bounds.Width : first.Bounds.Height).ShouldBe(6);
+        await surface.Pointer.ReleaseAsync();
+    }
+
+    /// <summary>Verifies a captured drag reads a newly narrowed feasible range rather than the
+    /// endpoints that existed when capture began.</summary>
+    [Fact]
+    public async Task Pointer_WhenPaneConstraintNarrowsDuringDrag_ClampsMovementToLatestFeasibleRangeAsync()
+    {
+        // Arrange
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        var pane = new SplitPane
+        {
+            FirstPaneLength = Length.Cells(5),
+            Children = { first, second }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(pane, new Point(5, 0));
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveCapture(pane);
+        pane.MaximumFirstPaneExtent.ShouldBe(10);
+
+        // Act: keep the current five-cell split feasible while narrowing its upper endpoint.
+        await surface.UpdateAsync(
+            () => second.MinWidth = Length.Cells(3),
+            "narrow SplitPane feasible range during capture");
+        pane.MaximumFirstPaneExtent.ShouldBe(7);
+        first.Bounds.Width.ShouldBe(5);
+        surface.ShouldHaveCapture(pane);
+        await surface.Pointer.MovePressedToAsync(pane, new Point(9, 0));
+
+        // Assert
+        pane.FirstPaneLength.ShouldBe(Length.Cells(7));
+        first.Bounds.Width.ShouldBe(7);
+        surface.ShouldHaveCapture(pane);
         await surface.Pointer.ReleaseAsync();
     }
 
@@ -888,6 +968,77 @@ public sealed class SplitPaneSurfaceTests
         pane.FirstPaneLength.ShouldBe(Length.Cells(5));
     }
 
+    /// <summary>Verifies divider-affecting property observers see capture and pressed state already
+    /// cleared, so reentrant motion cannot consume a stale drag snapshot.</summary>
+    [Theory]
+    [InlineData("orientation")]
+    [InlineData("resizability")]
+    public async Task Pointer_WhenDividerPropertyPublishes_CancelsDragBeforeObserverAndReentrantMotionAsync(
+        string property)
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            FirstPaneLength = Length.Cells(5),
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(pane, new Point(5, 0));
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveCapture(pane);
+        bool? observerHadCapture = null;
+        bool? observerSawPressed = null;
+        var expectedProperty = property == "orientation"
+            ? nameof(SplitPane.Orientation)
+            : nameof(SplitPane.IsResizable);
+        pane.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName != expectedProperty)
+            {
+                return;
+            }
+
+            observerHadCapture = pane.HasPointerCapture;
+            observerSawPressed = pane.IsPressed;
+            _ = surface.Application.Capture.Dispatch(new Pointer(
+                new Point(8, 0),
+                pixels: null,
+                Buttons.Primary,
+                PointerAction.Move,
+                wheelX: 0,
+                wheelY: 0,
+                Modifiers.None,
+                isMotion: true,
+                isCellPositionInferred: false));
+        };
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                if (property == "orientation")
+                {
+                    pane.Orientation = Orientation.Vertical;
+                }
+                else
+                {
+                    pane.IsResizable = false;
+                }
+            },
+            $"publish SplitPane {property} during captured drag");
+
+        // Assert
+        observerHadCapture.ShouldBe(false);
+        observerSawPressed.ShouldBe(false);
+        surface.ShouldHaveCapture(null);
+        pane.IsPressed.ShouldBeFalse();
+        pane.FirstPaneLength.ShouldBe(Length.Cells(5));
+        await surface.Pointer.ReleaseAsync();
+    }
+
     /// <summary>Verifies entering a sibling modal plane excludes SplitPane and cancels its active capture.</summary>
     [Fact]
     public async Task Pointer_WhenSiblingModalPlaneExcludesSplitPane_CancelsDragAsync()
@@ -972,28 +1123,17 @@ public sealed class SplitPaneSurfaceTests
             new Size(11, 2),
             TestContext.Current.CancellationToken);
         pane.GotFocus += (_, _) => pane.IsResizable = false;
-        PointerEventArgs? press = null;
 
         // Act
-        await surface.UpdateAsync(
-            () => press = Route(pane, new PointerEventArgs(new Pointer(
-                new Point(5, 0),
-                pixels: null,
-                Buttons.Primary,
-                PointerAction.Press,
-                wheelX: 0,
-                wheelY: 0,
-                Modifiers.None,
-                isMotion: false,
-                isCellPositionInferred: false))),
-            "route direct divider press through SplitPane focus revalidation");
+        await surface.Pointer.MoveToAsync(pane, new Point(5, 0));
+        await surface.Pointer.PressAsync();
 
         // Assert
-        press.ShouldNotBeNull().IsHandled.ShouldBeTrue();
         surface.ShouldHaveFocus(pane);
         surface.ShouldHaveCapture(null);
         pane.IsPressed.ShouldBeFalse();
         pane.FirstPaneLength.ShouldBe(Length.Cells(5));
+        await surface.Pointer.ReleaseAsync();
     }
 
     /// <summary>Verifies a reentrant split observer that removes divider eligibility cancels

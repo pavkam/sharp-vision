@@ -381,9 +381,10 @@ public sealed class SplitPaneTests
         pane.CanTabStop.ShouldBeFalse();
     }
 
-    /// <summary>Verifies a newer reentrant resizability transition owns the final divider eligibility.</summary>
+    /// <summary>Verifies a newer reentrant resizability transition restores final divider eligibility
+    /// after both committed dependent-state transitions publish.</summary>
     [Fact]
-    public void IsResizable_WhenPropertyObserverCommitsNewerValue_SuppressesSupersededRefresh()
+    public void IsResizable_WhenPropertyObserverCommitsNewerValue_RestoresFinalEligibility()
     {
         // Arrange
         var pane = new SplitPane
@@ -410,7 +411,7 @@ public sealed class SplitPaneTests
         // Assert
         pane.IsResizable.ShouldBeTrue();
         pane.CanTabStop.ShouldBeTrue();
-        tabStopChanges.ShouldBe(0);
+        tabStopChanges.ShouldBe(2);
     }
 
     /// <summary>Verifies transition payloads reject lengths that SplitPane cannot author.</summary>
