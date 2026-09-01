@@ -38,6 +38,7 @@ classDiagram
     InputBase <|-- DateTimeInput
     InputBase <|-- NumberInput
     InputBase <|-- TimeInput
+    ItemsControl <|-- CommandBar
     HeaderedContentControl <|-- GroupBox
     HeaderedContentControl <|-- Expander
     CompositeControlBase <|-- Screen
@@ -138,6 +139,7 @@ See the [intrinsic appearance rules](../concepts/styling.md#shared-chrome).
 - [Calendar](input/calendar.md#overview)
 - [CheckBox](input/check-box.md#overview)
 - [ColorPicker](input/color-picker.md#overview)
+- [CommandBar, CommandBarItem, and CommandBarSeparator](input/command-bar.md#overview)
 - [CommandPalette](input/command-palette.md#overview)
 - [ComboBox](input/combo-box.md#overview)
 - [CurrencyInput](input/currency-input.md#overview)

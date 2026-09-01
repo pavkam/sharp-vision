@@ -1592,6 +1592,91 @@ namespace SharpVision.Controls.Input
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetPopupChrome() { }
     }
+    public sealed class CommandBar : SharpVision.Controls.ItemsControl, SharpVision.Controls.IStyled<SharpVision.Controls.Input.CommandBarStyle>
+    {
+        public CommandBar() { }
+        public SharpVision.Controls.Input.CommandBarStyle ActualStyle { get; }
+        public bool IsOverflowOpen { get; }
+        public SharpVision.Controls.Input.CommandBarEntryCollection Items { get; }
+        public int SelectedIndex { get; set; }
+        public SharpVision.Controls.Input.CommandBarItem? SelectedItem { get; set; }
+        public int Spacing { get; set; }
+        public SharpVision.Controls.Input.CommandBarStyle? Style { get; set; }
+        public event System.EventHandler<SharpVision.Controls.Input.CommandBarItemInvokedEventArgs>? ItemInvoked;
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnAttached() { }
+        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+    }
+    public sealed class CommandBarEntryCollection : System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.ControlBase>, System.Collections.IEnumerable
+    {
+        public int Count { get; }
+        public SharpVision.Controls.ControlBase this[int index] { get; set; }
+        public void Add(SharpVision.Controls.Input.CommandBarItem item) { }
+        public void Add(SharpVision.Controls.Input.CommandBarSeparator separator) { }
+        public void Clear() { }
+        public System.Collections.Generic.IEnumerator<SharpVision.Controls.ControlBase> GetEnumerator() { }
+        public int IndexOf(SharpVision.Controls.ControlBase entry) { }
+        public void Insert(int index, SharpVision.Controls.Input.CommandBarItem item) { }
+        public void Insert(int index, SharpVision.Controls.Input.CommandBarSeparator separator) { }
+        public void Move(int oldIndex, int newIndex) { }
+        public bool Remove(SharpVision.Controls.Input.CommandBarItem item) { }
+        public bool Remove(SharpVision.Controls.Input.CommandBarSeparator separator) { }
+        public void RemoveAt(int index) { }
+    }
+    public sealed class CommandBarItem : SharpVision.Controls.InputBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.CommandBarItemStyle>
+    {
+        public CommandBarItem() { }
+        public SharpVision.Controls.Input.CommandBarItemStyle ActualStyle { get; }
+        public SharpVision.Styling.Affix? EndAffix { get; set; }
+        public bool IsOverflowed { get; }
+        public SharpVision.Styling.Affix? StartAffix { get; set; }
+        public SharpVision.Controls.Input.CommandBarItemStyle? Style { get; set; }
+        public event System.EventHandler<SharpVision.Input.ActivationEventArgs>? Invoked;
+        protected override void Activate(SharpVision.Input.ActivationCause cause) { }
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override bool OnAccessKey(System.Text.Rune key) { }
+        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        public void PerformInvoke() { }
+    }
+    public sealed class CommandBarItemInvokedEventArgs : System.EventArgs
+    {
+        public CommandBarItemInvokedEventArgs(SharpVision.Controls.Input.CommandBarItem item, SharpVision.Input.ActivationCause cause) { }
+        public SharpVision.Input.ActivationCause Cause { get; }
+        public SharpVision.Controls.Input.CommandBarItem Item { get; }
+    }
+    public sealed class CommandBarItemStyle : SharpVision.Styling.InputStyle, System.IEquatable<SharpVision.Controls.Input.CommandBarItemStyle>
+    {
+        public CommandBarItemStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Layout.Thickness padding) { }
+        public required SharpVision.Layout.Thickness Padding { get; init; }
+        public new static SharpVision.Controls.Input.CommandBarItemStyle Default { get; }
+    }
+    public sealed class CommandBarSeparator : SharpVision.Controls.ControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.CommandBarSeparatorStyle>
+    {
+        public CommandBarSeparator() { }
+        public SharpVision.Controls.Input.CommandBarSeparatorStyle ActualStyle { get; }
+        public SharpVision.Controls.Input.CommandBarSeparatorStyle? Style { get; set; }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+    }
+    public sealed class CommandBarSeparatorStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Input.CommandBarSeparatorStyle>
+    {
+        public CommandBarSeparatorStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.ControlGlyph glyph) { }
+        public required SharpVision.Styling.ControlGlyph Glyph { get; init; }
+        public new static SharpVision.Controls.Input.CommandBarSeparatorStyle Default { get; }
+    }
+    public sealed class CommandBarStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Input.CommandBarStyle>
+    {
+        public CommandBarStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Layout.Thickness padding, SharpVision.Styling.ControlGlyph overflowGlyph, SharpVision.Styling.ControlColor overflowColor) { }
+        public required SharpVision.Styling.ControlColor OverflowColor { get; init; }
+        public required SharpVision.Styling.ControlGlyph OverflowGlyph { get; init; }
+        public required SharpVision.Layout.Thickness Padding { get; init; }
+        public new static SharpVision.Controls.Input.CommandBarStyle Default { get; }
+    }
     public sealed class CommandPalette : SharpVision.Controls.CompositeControlBase
     {
         public CommandPalette() { }

@@ -11,6 +11,7 @@ table; the current support state for each terminal protocol lives only in the
 | ------------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | Interactive console hosting                      | `ConsoleApplication` and `ConsoleApplicationBuilder`                 | [Hosting](../concepts/hosting.md#overview)                         |
 | Retained mutable controls                        | `ControlBase`, `Container`, `ContentControl`, `CompositeControlBase` | [Control catalog](../controls/index.md#control-catalog)            |
+| Adaptive command surfaces                        | `CommandBar`, `CommandBarItem`, `CommandBarSeparator`                | [CommandBar](../controls/input/command-bar.md#overview)            |
 | Strongly typed model binding                     | `Bind`, `BindItems`, `BindSelection`, `BindingMode`                  | [Data binding](../concepts/data-binding.md#overview)               |
 | Editable asynchronous suggestions                | `SuggestionInput` and `SuggestionResolver`                           | [SuggestionInput](../controls/input/suggestion-input.md#overview)  |
 | Fixed, auto, percentage, and proportional layout | `Length`, `Stack`, `Dock`, `Grid`, `Overlay`                         | [Layout](../concepts/layout.md#overview)                           |

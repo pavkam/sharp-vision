@@ -75,11 +75,11 @@ blink remain isolated demonstrations rather than general documentation styling.
 
 `Gallery` owns the stable catalog of pane group names, titles, and factories
 (`(string Group, string Name, Func<CompositeControlBase> Create)[]`). The
-sidebar organizes its 64 entries by primary use:
+sidebar organizes its 66 entries by primary use:
 
 - Concepts: ControlBase, Border, Shadow, Data Binding, and Styling.
 - Input: Button, HyperlinkButton, Calendar, DateInput, DateTimeInput, CheckBox,
-  ColorPicker, CommandPalette, ComboBox, CurrencyInput, NumberInput,
+  ColorPicker, CommandBar, CommandPalette, ComboBox, CurrencyInput, NumberInput,
   RadioButton, Slider, SuggestionInput, TextInput, and TimeInput.
 - Collections: JsonView, ListView, TabControl, Table, and TreeView.
 - Navigation: Breadcrumb, Menu, MenuItem, and NavigationView.
@@ -186,6 +186,12 @@ in the dedicated ColorPicker page, where the same swatch language supports
 retained keyboard and pointer selection and adapts to the active terminal color
 depth. The Slider page proves direct signed-range selection independently of
 scrolling viewport semantics.
+
+The CommandBar page presents one resizable typed command surface with access-key
+captions, a separator, a disabled action, and separate semantic-event and
+`ICommand` logs. Narrowing the specimen moves only its source-order tail into
+the live private overflow menu; widening restores the same retained command
+identities without creating a second Tab stop.
 
 The Charts group demonstrates retained chart controls rather than ad hoc Canvas
 drawings. Horizontal and vertical bars cover mixed-sign scaling, category

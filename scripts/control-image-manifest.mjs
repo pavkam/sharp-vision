@@ -31,6 +31,18 @@ export const controls = [
     },
     { doc: "input/color-picker", page: "ColorPicker" },
     {
+        doc: "input/command-bar",
+        page: "CommandBar",
+        states: [
+            {},
+            {
+                name: "open",
+                popup: true,
+                actions: [{ click: " …" }],
+            },
+        ],
+    },
+    {
         doc: "input/command-palette",
         page: "CommandPalette",
         states: [
