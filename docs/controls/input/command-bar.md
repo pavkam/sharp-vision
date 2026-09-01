@@ -243,5 +243,7 @@ commands.ItemInvoked += (_, eventArgs) => Log(eventArgs.Item, eventArgs.Cause);
 - The longest fitting visible source prefix remains primary; normalized
   separators and bounded geometry produce a deterministic overflow tail that
   returns to the row when width permits.
-- Access-key, keyboard, and pointer activation follow the same semantic item
-  and command sequence, including when the item appears in overflow.
+- Primary access-key, keyboard, and pointer invocation follow the same semantic
+  item and command sequence. An access key for an overflowed item selects its
+  source and opens overflow; that item's activation waits for its projected menu
+  entry to be invoked.

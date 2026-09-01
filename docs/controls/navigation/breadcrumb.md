@@ -221,6 +221,7 @@ host, trigger, or menu. Application commands own navigation and path mutation.
 - Wide, narrow, tiny, zero-width, hidden, collapsed, disabled, explicitly
   nonfinal-current, and no-current paths preserve whole-entry geometry and exact
   separator adjacency.
-- Path mutations preserve current identity, select the correct primary window
-  and overflow source order, and place the overflow trigger and visible entries
-  in their committed bounds.
+- Moves preserve current identity. Other path and availability mutations repair
+  a missing or unavailable current item to the final available owned item when
+  one exists, then select the correct primary window and overflow source order
+  and place the overflow trigger and visible entries in their committed bounds.
