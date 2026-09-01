@@ -114,21 +114,40 @@ public sealed class PagerBindingTests
         binding.IsDisposed.ShouldBeTrue();
     }
 
-    /// <summary>Verifies replacing a disposed binding with a different source leaves later stale
-    /// notifications from the first source inert.</summary>
+    /// <summary>Verifies replacing a binding while its worker notification is queued leaves the
+    /// stale old-source drain inert after the new source becomes authoritative.</summary>
     [Fact]
-    public void Bind_WhenSourceIsReplaced_IgnoresOldSourceNotifications()
+    public async Task Bind_WhenQueuedOldSourceIsReplaced_IgnoresStaleDrainAsync()
     {
+        await using var dispatcher = Dispatcher.Start();
         var previous = new BindingModel { Number = 1 };
         var current = new BindingModel { Number = 2 };
-        var pager = new Pager { PageCount = 5 };
-        var previousBinding = pager.Bind(previous, source => source.Number);
-        previousBinding.Dispose();
-        using var currentBinding = pager.Bind(current, source => source.Number);
+        var pager = new Pager();
+        Binding? binding = null;
+        await dispatcher.InvokeAsync(() =>
+        {
+            pager.PageCount = 5;
+            pager.Attach(dispatcher);
+            binding = pager.Bind(previous, source => source.Number);
+        }, TestContext.Current.CancellationToken);
 
-        previous.Number = 4;
+        await dispatcher.InvokeAsync(() =>
+        {
+            _ = Task.Run(
+                    () => previous.Number = 4,
+                    TestContext.Current.CancellationToken)
+                .GetAwaiter()
+                .GetResult();
+            binding!.Dispose();
+            binding = pager.Bind(current, source => source.Number);
+        }, TestContext.Current.CancellationToken);
 
-        pager.PageIndex.ShouldBe(2);
+        await dispatcher.InvokeAsync(() =>
+        {
+            pager.PageIndex.ShouldBe(2);
+            binding!.Dispose();
+            pager.Dispose();
+        }, TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies a worker burst coalesces to the latest valid page on the owning dispatcher.</summary>

@@ -174,6 +174,94 @@ public sealed class PagerRandomizedTests
         actualChanges.ShouldBe(expectedChanges, $"seed={seed}");
     }
 
+    /// <summary>Verifies fixed-seed pointer presses retain target identity only when no layout or
+    /// availability transition supersedes the captured snapshot.</summary>
+    [Fact]
+    public async Task Pointer_WhenFixedSeedVariesPressLifecycle_ActivatesOnlyUninterruptedIdentityAsync()
+    {
+        const int seed = 0x504F494E;
+        var random = new Random(seed);
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            for (var caseIndex = 0; caseIndex < 500; caseIndex++)
+            {
+                var pageCount = random.Next(2, 81);
+                var pageIndex = random.Next(pageCount);
+                var width = random.Next(5, 41);
+                var pager = new Pager
+                {
+                    PageCount = pageCount,
+                    PageIndex = pageIndex,
+                    MaximumVisiblePages = random.Next(1, 12),
+                    HorizontalAlignment = HorizontalAlignment.Stretch
+                };
+                pager.Attach(dispatcher);
+                new LayoutEngine().Layout(pager, new Size(width, 1));
+
+                using (var focus = new FocusManager(pager))
+                using (var pointer = new PointerManager(pager))
+                {
+                    var candidates = pager.LayoutSnapshot.Targets
+                        .Where(static target => target.IsEnabled)
+                        .ToArray();
+
+                    if (candidates.Length == 0)
+                    {
+                        pager.Dispose();
+                        continue;
+                    }
+
+                    var target = candidates[random.Next(candidates.Length)];
+                    var operation = random.Next(6);
+                    var releaseBounds = target.Bounds;
+                    var changes = 0;
+                    pager.PageChanged += (_, _) => changes++;
+                    _ = pointer.Dispatch(PointerAt(target.Bounds, PointerAction.Press));
+
+                    switch (operation)
+                    {
+                        case 0:
+                            break;
+                        case 1:
+                            var resizedWidth = width == 40 ? width - 1 : width + 1;
+                            new LayoutEngine().Layout(pager, new Size(resizedWidth, 1));
+                            break;
+                        case 2:
+                            pager.PageCount = pageCount + 1;
+                            break;
+                        case 3:
+                            pager.Visibility = Visibility.Hidden;
+                            break;
+                        case 4:
+                            pager.IsEnabled = false;
+                            break;
+                        case 5:
+                            var dragX = target.Bounds.X == 0
+                                ? target.Bounds.Right
+                                : target.Bounds.X - 1;
+                            releaseBounds = new Rect(dragX, 0, 1, 1);
+                            _ = pointer.Dispatch(PointerAt(releaseBounds, PointerAction.Move));
+                            break;
+                        default:
+                            throw new UnreachableException();
+                    }
+
+                    _ = pointer.Dispatch(PointerAt(releaseBounds, PointerAction.Release));
+                    var transcript = FormattableString.Invariant(
+                        $"seed={seed}, case={caseIndex}, count={pageCount}, index={pageIndex}, width={width}, operation={operation}");
+                    pager.PageIndex.ShouldBe(operation == 0 ? target.PageIndex : pageIndex, transcript);
+                    changes.ShouldBe(operation == 0 ? 1 : 0, transcript);
+                    pointer.Captured.ShouldBeNull(transcript);
+                    pager.IsPressed.ShouldBeFalse(transcript);
+                }
+
+                pager.Dispose();
+            }
+        }, TestContext.Current.CancellationToken);
+    }
+
     private static KeyEventArgs RouteKey(Pager pager, Code code)
     {
         var eventArgs = new KeyEventArgs(new Stroke(
@@ -185,4 +273,15 @@ public sealed class PagerRandomizedTests
         _ = Router.Route(pager, Events.Key, eventArgs);
         return eventArgs;
     }
+
+    private static Pointer PointerAt(Rect bounds, PointerAction action) => new(
+        new Point(bounds.X, bounds.Y),
+        pixels: null,
+        Buttons.Primary,
+        action,
+        wheelX: 0,
+        wheelY: 0,
+        Modifiers.None,
+        isMotion: action == PointerAction.Move,
+        isCellPositionInferred: false);
 }

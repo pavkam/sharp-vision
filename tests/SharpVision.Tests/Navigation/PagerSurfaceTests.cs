@@ -486,6 +486,51 @@ public sealed class PagerSurfaceTests
         pager.PageIndex.ShouldBe(3);
     }
 
+    /// <summary>Verifies every availability loss during a mounted captured press releases the
+    /// original identity without committing a page transition.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Pointer_WhenAvailabilityChangesWhilePressed_CancelsCapturedIdentityAsync(bool hide)
+    {
+        var pager = new Pager
+        {
+            PageCount = 5,
+            PageIndex = 2,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Height = Length.Cells(1)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pager,
+            new Size(24, 1),
+            TestContext.Current.CancellationToken);
+        var target = pager.LayoutSnapshot.Targets.Single(static item =>
+            item.Kind == PagerTargetKind.Number && item.PageIndex == 4);
+        var point = RelativePoint(pager, Origin(target.Bounds));
+        await surface.Pointer.MoveToAsync(pager, point);
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveCapture(pager);
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                if (hide)
+                {
+                    pager.Visibility = Visibility.Hidden;
+                }
+                else
+                {
+                    pager.IsEnabled = false;
+                }
+            },
+            hide ? "hide Pager while pressed" : "disable Pager while pressed");
+        await surface.Pointer.ReleaseAsync();
+
+        surface.ShouldHaveCapture(null);
+        pager.IsPressed.ShouldBeFalse();
+        pager.PageIndex.ShouldBe(2);
+    }
+
     private static Pointer PointerAt(Rect bounds, PointerAction action) => new(
         new Point(bounds.X, bounds.Y),
         pixels: null,
