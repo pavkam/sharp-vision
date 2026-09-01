@@ -707,8 +707,8 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         ulong? committedCloseVersion = null;
         ClearAvailabilityAncestor();
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(ReleaseLightDismiss, ref failure);
-        ExceptionAggregation.Capture(base.OnDetached, ref failure);
+        CaptureFailure(ReleaseLightDismiss, ref failure);
+        CaptureFailure(base.OnDetached, ref failure);
 
         if (IsOpen)
         {
@@ -716,7 +716,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
             // Capture the identity before PropertyChanged runs: observers may synchronously open
             // or close again, and the remainder of this forced-close path belongs only to this
             // commit rather than whichever state exists when the observer returns.
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => CommitClosedState(
                     (openStateVersion, closeVersion) =>
                     {
@@ -727,13 +727,13 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
             if (IsCurrentClosedState(committedOpenStateVersion))
             {
-                ExceptionAggregation.Capture(CollapseContent, ref failure);
+                CaptureFailure(CollapseContent, ref failure);
             }
         }
 
         if (wasOpen && committedCloseVersion is { } closeVersion)
         {
-            ExceptionAggregation.Capture(() => RaiseCloseTransitionCompleted(closeVersion), ref failure);
+            CaptureFailure(() => RaiseCloseTransitionCompleted(closeVersion), ref failure);
         }
 
         failure?.Throw();
@@ -756,8 +756,8 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         }
 
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(ReleaseLightDismiss, ref failure);
-        ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+        CaptureFailure(ReleaseLightDismiss, ref failure);
+        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
 
         // Disposal joins Hidden/Detached here rather than only clearing the backing
         // field: a disposed-while-open popup (for example, a whole owner control
@@ -769,7 +769,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
             var committedOpenStateVersion = 0UL;
             // Availability cleanup publishes IsOpen synchronously, so capture the committed
             // identity before an observer can replace it with another open-state transaction.
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => CommitClosedState(
                     (openStateVersion, closeVersion) =>
                     {
@@ -780,13 +780,13 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
             if (IsCurrentClosedState(committedOpenStateVersion))
             {
-                ExceptionAggregation.Capture(CollapseContent, ref failure);
+                CaptureFailure(CollapseContent, ref failure);
             }
         }
 
         if (wasOpen && committedCloseVersion is { } closeVersion)
         {
-            ExceptionAggregation.Capture(() => RaiseCloseTransitionCompleted(closeVersion), ref failure);
+            CaptureFailure(() => RaiseCloseTransitionCompleted(closeVersion), ref failure);
         }
 
         failure?.Throw();
@@ -940,7 +940,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         ExceptionDispatchInfo? failure = null;
         try
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () =>
                 {
                     if (value)
@@ -974,7 +974,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
         if (wasOpen && !_isOpen)
         {
-            ExceptionAggregation.Capture(() => RaiseCloseTransitionCompleted(_closeCommitVersion), ref failure);
+            CaptureFailure(() => RaiseCloseTransitionCompleted(_closeCommitVersion), ref failure);
         }
 
         failure?.Throw();
@@ -1005,19 +1005,19 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         catch (Exception exception)
         {
             var failure = ExceptionDispatchInfo.Capture(exception);
-            ExceptionAggregation.Capture(ReleasePresentation, ref failure);
+            CaptureFailure(ReleasePresentation, ref failure);
 
             if (_isOpen)
             {
                 _isOpen = false;
                 _openStateVersion++;
-                ExceptionAggregation.Capture(ReleaseLightDismiss, ref failure);
-                ExceptionAggregation.Capture(
+                CaptureFailure(ReleaseLightDismiss, ref failure);
+                CaptureFailure(
                     () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.Measure),
                     ref failure);
             }
 
-            ExceptionAggregation.Capture(CollapseContent, ref failure);
+            CaptureFailure(CollapseContent, ref failure);
             failure!.Throw();
         }
     }
@@ -1075,7 +1075,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         {
             _isOpen = true;
             _openStateVersion++;
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.Measure),
                 ref failure);
         }
@@ -1086,13 +1086,13 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
         if (SuppressCloseOtherPopups)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => ownsContinuation = CompleteOpenContent(suppressFocusOnOpen),
                 ref failure);
         }
         else
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => ownsContinuation = ExcludePopupPeers(
                     static _ => true,
                     candidate => IsAncestorOf(candidate, this),
@@ -1120,15 +1120,15 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         {
             _isOpen = false;
             _openStateVersion++;
-            ExceptionAggregation.Capture(ReleaseLightDismiss, ref failure);
-            ExceptionAggregation.Capture(
+            CaptureFailure(ReleaseLightDismiss, ref failure);
+            CaptureFailure(
                 () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.Measure),
                 ref failure);
         }
 
         if (ownsFailedOpen)
         {
-            ExceptionAggregation.Capture(CollapseContent, ref failure);
+            CaptureFailure(CollapseContent, ref failure);
         }
 
         failure!.Throw();
@@ -1138,8 +1138,8 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     {
         ExceptionDispatchInfo? failure = null;
         var ownsContinuation = true;
-        ExceptionAggregation.Capture(() => MakeContentAvailable(suppressFocusOnOpen), ref failure);
-        ExceptionAggregation.Capture(() => ownsContinuation = OnContentAvailable(), ref failure);
+        CaptureFailure(() => MakeContentAvailable(suppressFocusOnOpen), ref failure);
+        CaptureFailure(() => ownsContinuation = OnContentAvailable(), ref failure);
 
         failure?.Throw();
         return ownsContinuation;
@@ -1151,7 +1151,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
         if (Content is { } child)
         {
-            ExceptionAggregation.Capture(() => child.Visibility = Visibility.Visible, ref failure);
+            CaptureFailure(() => child.Visibility = Visibility.Visible, ref failure);
         }
 
         if (!suppressFocusOnOpen &&
@@ -1162,7 +1162,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                 includeRoot: true,
                 ModalityOwner) is { } target)
         {
-            ExceptionAggregation.Capture(() => _ = FocusOwner?.Focus(target), ref failure);
+            CaptureFailure(() => _ = FocusOwner?.Focus(target), ref failure);
         }
 
         failure?.Throw();
@@ -1265,8 +1265,8 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         _closeCommitVersion++;
         captureCommit?.Invoke(_openStateVersion, _closeCommitVersion);
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(ReleaseLightDismiss, ref failure);
-        ExceptionAggregation.Capture(
+        CaptureFailure(ReleaseLightDismiss, ref failure);
+        CaptureFailure(
             () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.Measure),
             ref failure);
         failure?.Throw();
@@ -1296,11 +1296,11 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         }
 
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(CommitClosedState, ref failure);
-        ExceptionAggregation.Capture(RaiseSurfaceClosing, ref failure);
-        ExceptionAggregation.Capture(CollapseContent, ref failure);
+        CaptureFailure(CommitClosedState, ref failure);
+        CaptureFailure(RaiseSurfaceClosing, ref failure);
+        CaptureFailure(CollapseContent, ref failure);
         SurfaceBounds = default;
-        ExceptionAggregation.Capture(RaiseSurfaceClosed, ref failure);
+        CaptureFailure(RaiseSurfaceClosed, ref failure);
         failure?.Throw();
     }
 
@@ -1594,7 +1594,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
         if (ownsContinuation)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => continuationOwns = continuation(),
                 ref failure);
             ownsContinuation = continuationOwns && IsCurrentPeerExclusion(root, openStateVersion);
@@ -1643,7 +1643,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                 continue;
             }
 
-            ExceptionAggregation.Capture(() => popup.IsOpen = false, ref failure);
+            CaptureFailure(() => popup.IsOpen = false, ref failure);
         }
 
         return IsCurrentPeerExclusion(root, openStateVersion);

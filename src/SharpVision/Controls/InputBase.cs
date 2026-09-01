@@ -847,7 +847,7 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
 
         foreach (var subscription in subscriptions)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => subscription.Command.CanExecuteChanged -= subscription.Handler,
                 ref failure);
         }
@@ -896,8 +896,8 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
         {
             _command = null;
             ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(() => _popupCoordinator?.Detach(), ref failure);
-            ExceptionAggregation.Capture(ReleaseCommandSubscriptions, ref failure);
+            CaptureFailure(() => _popupCoordinator?.Detach(), ref failure);
+            CaptureFailure(ReleaseCommandSubscriptions, ref failure);
             failure?.Throw();
         }
     }

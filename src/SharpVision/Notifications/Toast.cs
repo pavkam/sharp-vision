@@ -183,7 +183,7 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
         {
             var wasDismissible = field;
             ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => _ = SetProperty(ref field, value, InvalidationImpact.Measure),
                 ref failure);
 
@@ -193,8 +193,8 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
                 return;
             }
 
-            ExceptionAggregation.Capture(_closeInteraction.Unavailable, ref failure);
-            ExceptionAggregation.Capture(
+            CaptureFailure(_closeInteraction.Unavailable, ref failure);
+            CaptureFailure(
                 () =>
                 {
                     if (HasPointerCapture)
@@ -251,22 +251,22 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
         catch (Exception exception)
         {
             var failure = ExceptionDispatchInfo.Capture(exception);
-            ExceptionAggregation.Capture(ReleasePresentation, ref failure);
+            CaptureFailure(ReleasePresentation, ref failure);
 
             if (IsOpen)
             {
                 IsOpen = false;
                 AnimationProgress = 0;
-                ExceptionAggregation.Capture(
+                CaptureFailure(
                     () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None),
                     ref failure);
-                ExceptionAggregation.Capture(
+                CaptureFailure(
                     () => NotifyPropertyChanged(nameof(AnimationProgress), InvalidationImpact.None),
                     ref failure);
             }
 
             _coordinator = null;
-            ExceptionAggregation.Capture(() => coordinator.Remove(this), ref failure);
+            CaptureFailure(() => coordinator.Remove(this), ref failure);
             failure!.Throw();
         }
     }
@@ -534,11 +534,11 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
 
         if (reason is ReleaseReason.Detached or ReleaseReason.Hidden or ReleaseReason.Disposed)
         {
-            ExceptionAggregation.Capture(DisposeTimers, ref failure);
+            CaptureFailure(DisposeTimers, ref failure);
             var coordinator = _coordinator;
             _coordinator = null;
             hiddenCoordinator = reason == ReleaseReason.Hidden ? coordinator : null;
-            ExceptionAggregation.Capture(() => coordinator?.Forget(this), ref failure);
+            CaptureFailure(() => coordinator?.Forget(this), ref failure);
 
             if (reason is ReleaseReason.Detached or ReleaseReason.Disposed)
             {
@@ -554,7 +554,7 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
             }
         }
 
-        ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
 
         if (hiddenCoordinator is not null)
         {
@@ -563,10 +563,10 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
 
         if (publishClosedState)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None),
                 ref failure);
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => NotifyPropertyChanged(nameof(AnimationProgress), InvalidationImpact.None),
                 ref failure);
         }

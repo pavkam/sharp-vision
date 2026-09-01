@@ -324,16 +324,16 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 
             if (value == MenuItemKind.Radio && _isChecked && FindAncestor<Menu>() is { } menu)
             {
-                ExceptionAggregation.Capture(() => menu.SelectRadio(this), ref failure);
+                CaptureFailure(() => menu.SelectRadio(this), ref failure);
             }
 
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => NotifyPropertyChanged(nameof(Kind), InvalidationImpact.Measure),
                 ref failure);
 
             if (clearChecked)
             {
-                ExceptionAggregation.Capture(
+                CaptureFailure(
                     () => NotifyPropertyChanged(nameof(IsChecked), InvalidationImpact.None),
                     ref failure);
             }
@@ -380,10 +380,10 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 
             if (Kind == MenuItemKind.Radio && _isChecked && FindAncestor<Menu>() is { } menu)
             {
-                ExceptionAggregation.Capture(() => menu.SelectRadio(this), ref failure);
+                CaptureFailure(() => menu.SelectRadio(this), ref failure);
             }
 
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => NotifyPropertyChanged(nameof(GroupName), InvalidationImpact.None),
                 ref failure);
             failure?.Throw();
@@ -467,17 +467,17 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
         var eventArgs = new MenuItemInvokedEventArgs(this, cause);
         var owner = FindAncestor<Menu>();
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(() => Invoked?.Invoke(this, eventArgs), ref failure);
+        CaptureFailure(() => Invoked?.Invoke(this, eventArgs), ref failure);
 
         if (owner is not null &&
             !IsDisposed &&
             !owner.IsDisposed &&
             ReferenceEquals(FindAncestor<Menu>(), owner))
         {
-            ExceptionAggregation.Capture(() => owner.NotifyItemInvoked(eventArgs), ref failure);
+            CaptureFailure(() => owner.NotifyItemInvoked(eventArgs), ref failure);
         }
 
-        ExceptionAggregation.Capture(() => ExecuteCommandIfAny(command), ref failure);
+        CaptureFailure(() => ExecuteCommandIfAny(command), ref failure);
 
         failure?.Throw();
     }
@@ -695,17 +695,17 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 
         if (sessionOwner is not null)
         {
-            ExceptionAggregation.Capture(sessionOwner.CloseChain, ref failure);
+            CaptureFailure(sessionOwner.CloseChain, ref failure);
         }
 
-        ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
 
         if (reason == ReleaseReason.Disposed)
         {
             PointerExited -= OnPointerExited;
             var closeOwner = _submenuCloseOwner;
             _submenuCloseOwner = null;
-            ExceptionAggregation.Capture(() => closeOwner?.EndSubmenuSurfaceClose(this), ref failure);
+            CaptureFailure(() => closeOwner?.EndSubmenuSurfaceClose(this), ref failure);
 
             if (Submenu is { } submenu)
             {

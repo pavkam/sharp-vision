@@ -330,7 +330,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         var stagedSelectedIndex = previousSelectedIndex;
         System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
         var committed = false;
-        ExceptionAggregation.Capture(
+        CaptureFailure(
             () => OwnedControlRegistry.CommitCompound(
                 () =>
                 {
@@ -370,7 +370,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             return;
         }
 
-        ExceptionAggregation.Capture(() => WriteItemWidth(item, Length.Percent(100)), ref failure);
+        CaptureFailure(() => WriteItemWidth(item, Length.Percent(100)), ref failure);
 
         if (!IsCommitted(item, header))
         {
@@ -378,7 +378,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             return;
         }
 
-        ExceptionAggregation.Capture(() => WriteItemHeight(item, Length.Percent(100)), ref failure);
+        CaptureFailure(() => WriteItemHeight(item, Length.Percent(100)), ref failure);
 
         if (!IsCommitted(item, header))
         {
@@ -386,7 +386,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             return;
         }
 
-        ExceptionAggregation.Capture(
+        CaptureFailure(
             () =>
             {
                 if (previousSelectedIndex >= 0 && stagedSelectedIndex != previousSelectedIndex)
@@ -470,7 +470,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         var stagedSelectedIndex = previousSelectedIndex;
         System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
         var committed = false;
-        ExceptionAggregation.Capture(
+        CaptureFailure(
             () => OwnedControlRegistry.CommitCompound(
                 () =>
                 {
@@ -507,7 +507,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             return;
         }
 
-        ExceptionAggregation.Capture(
+        CaptureFailure(
             () =>
             {
                 if (wasSelected)
@@ -532,9 +532,9 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
                 }
             },
             ref failure);
-        ExceptionAggregation.Capture(() => header.CommitSelection(false), ref failure);
-        ExceptionAggregation.Capture(header.Dispose, ref failure);
-        ExceptionAggregation.Capture(
+        CaptureFailure(() => header.CommitSelection(false), ref failure);
+        CaptureFailure(header.Dispose, ref failure);
+        CaptureFailure(
             () =>
             {
                 if (restorePresentation)
@@ -587,7 +587,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         var stagedSelectedIndex = previousSelectedIndex;
         System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
         var committed = false;
-        ExceptionAggregation.Capture(
+        CaptureFailure(
             () => OwnedControlRegistry.CommitCompound(
                 () =>
                 {
@@ -624,18 +624,18 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             return;
         }
 
-        ExceptionAggregation.Capture(() => oldHeader.CommitSelection(false), ref failure);
-        ExceptionAggregation.Capture(oldHeader.Dispose, ref failure);
-        ExceptionAggregation.Capture(() => WriteItemWidth(item, Length.Percent(100)), ref failure);
+        CaptureFailure(() => oldHeader.CommitSelection(false), ref failure);
+        CaptureFailure(oldHeader.Dispose, ref failure);
+        CaptureFailure(() => WriteItemWidth(item, Length.Percent(100)), ref failure);
 
         if (IsCommitted(item, newHeader))
         {
-            ExceptionAggregation.Capture(() => WriteItemHeight(item, Length.Percent(100)), ref failure);
+            CaptureFailure(() => WriteItemHeight(item, Length.Percent(100)), ref failure);
         }
 
         if (IsCommitted(item, newHeader))
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () =>
                 {
                     if (wasSelected)
@@ -654,7 +654,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
                 ref failure);
         }
 
-        ExceptionAggregation.Capture(() => _propertyOverrides.Restore(oldPropertyLease), ref failure);
+        CaptureFailure(() => _propertyOverrides.Restore(oldPropertyLease), ref failure);
         failure?.Throw();
     }
 
@@ -708,7 +708,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             stagedSelectedIndex++;
         }
 
-        ExceptionAggregation.Capture(
+        CaptureFailure(
             () => OwnedControlRegistry.CommitCompound(
                 () =>
                 {
@@ -724,12 +724,12 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
         if (stagedSelectedIndex != previousSelectedIndex)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure),
                 ref failure);
         }
 
-        ExceptionAggregation.Capture(ApplyPresentation, ref failure);
+        CaptureFailure(ApplyPresentation, ref failure);
         failure?.Throw();
     }
 
@@ -826,7 +826,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
         System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
         var committed = false;
-        ExceptionAggregation.Capture(CommitSnapshots, ref failure);
+        CaptureFailure(CommitSnapshots, ref failure);
 
         if (!committed)
         {
@@ -836,15 +836,15 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
         if (!disposing)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => CommitSelection(-1, previousSelectedIndex, previousSelectedItem, force: true),
                 ref failure);
         }
 
         foreach (var header in headers)
         {
-            ExceptionAggregation.Capture(() => header.CommitSelection(false), ref failure);
-            ExceptionAggregation.Capture(header.Dispose, ref failure);
+            CaptureFailure(() => header.CommitSelection(false), ref failure);
+            CaptureFailure(header.Dispose, ref failure);
         }
 
         for (var index = 0; index < items.Length; index++)
@@ -854,12 +854,12 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             if (!disposing)
             {
                 var propertyLease = propertyLeases[index];
-                ExceptionAggregation.Capture(() => _propertyOverrides.Restore(propertyLease), ref failure);
+                CaptureFailure(() => _propertyOverrides.Restore(propertyLease), ref failure);
             }
 
             if (disposing)
             {
-                ExceptionAggregation.Capture(item.DisposeAfterUnavailable, ref failure);
+                CaptureFailure(item.DisposeAfterUnavailable, ref failure);
             }
         }
 

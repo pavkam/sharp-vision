@@ -104,7 +104,7 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
         {
             var previous = field;
             ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => _ = SetProperty(ref field, value, InvalidationImpact.Measure),
                 ref failure);
 
@@ -114,7 +114,7 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
                 return;
             }
 
-            ExceptionAggregation.Capture(ApplyDismissAvailability, ref failure);
+            CaptureFailure(ApplyDismissAvailability, ref failure);
             failure?.Throw();
         }
     } = true;
@@ -165,17 +165,17 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
 
         if (request.Cancel || !token.IsCurrent)
         {
-            ExceptionAggregation.Capture(_dismissButton.CancelInteraction, ref failure);
+            CaptureFailure(_dismissButton.CancelInteraction, ref failure);
             failure?.Throw();
             return;
         }
 
         _isOpen = false;
-        ExceptionAggregation.Capture(ApplyClosedAvailability, ref failure);
+        CaptureFailure(ApplyClosedAvailability, ref failure);
 
         if (token.IsCurrent)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.Measure),
                 ref failure);
         }
@@ -311,8 +311,8 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
             _dismissAvailability.Dispose();
         }
 
-        ExceptionAggregation.Capture(_dismissButton.CancelInteraction, ref failure);
-        ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+        CaptureFailure(_dismissButton.CancelInteraction, ref failure);
+        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
 
         if (reason == ReleaseReason.Disposed)
         {
@@ -331,14 +331,14 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
 
         if (previous is not null)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => _contentAvailability.Restore(previous),
                 ref failure);
         }
 
         if (current is not null && !IsDisposing)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () =>
                 {
                     var lease = _contentAvailability.Acquire(
@@ -349,7 +349,7 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
                 ref failure);
         }
 
-        ExceptionAggregation.Capture(() => base.OnContentChanged(previous, current), ref failure);
+        CaptureFailure(() => base.OnContentChanged(previous, current), ref failure);
         failure?.Throw();
     }
 
@@ -370,8 +370,8 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
         _ = _dismissTransitions.Commit(this);
         _isOpen = true;
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(RestoreOpenAvailability, ref failure);
-        ExceptionAggregation.Capture(
+        CaptureFailure(RestoreOpenAvailability, ref failure);
+        CaptureFailure(
             () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.Measure),
             ref failure);
         failure?.Throw();
@@ -472,7 +472,7 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
 
         if (Content is { } content)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => _contentAvailability.Get(content).SetLive(
                     RetainedControlProperty.Visibility,
                     Visibility.Collapsed),
@@ -481,8 +481,8 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
 
         if (!IsDisposing && !IsDisposed)
         {
-            ExceptionAggregation.Capture(ApplyDismissAvailability, ref failure);
-            ExceptionAggregation.Capture(_dismissButton.CancelInteraction, ref failure);
+            CaptureFailure(ApplyDismissAvailability, ref failure);
+            CaptureFailure(_dismissButton.CancelInteraction, ref failure);
         }
 
         failure?.Throw();
@@ -494,12 +494,12 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
 
         if (Content is { } content)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => ApplyContentAvailability(_contentAvailability.Get(content)),
                 ref failure);
         }
 
-        ExceptionAggregation.Capture(ApplyDismissAvailability, ref failure);
+        CaptureFailure(ApplyDismissAvailability, ref failure);
         failure?.Throw();
     }
 
@@ -515,7 +515,7 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
     {
         ExceptionDispatchInfo? failure = null;
         var lease = _dismissAvailability.Get(_dismissButton);
-        ExceptionAggregation.Capture(
+        CaptureFailure(
             () => lease.SetLive(
                 RetainedControlProperty.Visibility,
                 IsOpen && IsDismissible ? Visibility.Visible : Visibility.Collapsed),
@@ -523,7 +523,7 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
 
         if (!IsOpen || !IsDismissible)
         {
-            ExceptionAggregation.Capture(_dismissButton.CancelInteraction, ref failure);
+            CaptureFailure(_dismissButton.CancelInteraction, ref failure);
         }
 
         failure?.Throw();
@@ -561,7 +561,7 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
                 break;
             }
 
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => ((EventHandler<InfoBarDismissRequestedEventArgs>) handler)(this, eventArgs),
                 ref failure);
         }
@@ -583,7 +583,7 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
                 break;
             }
 
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => ((EventHandler) handler)(this, EventArgs.Empty),
                 ref failure);
         }

@@ -221,11 +221,11 @@ public abstract class ItemsControl: ControlBase
     protected override void OnDisposing()
     {
         System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(OnItemsControlDisposing, ref failure);
+        CaptureFailure(OnItemsControlDisposing, ref failure);
 
         _itemsHost?.Children.Changed -= OnHostItemsChanged;
 
-        ExceptionAggregation.Capture(base.OnDisposing, ref failure);
+        CaptureFailure(base.OnDisposing, ref failure);
         failure?.Throw();
     }
 

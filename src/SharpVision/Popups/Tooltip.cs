@@ -151,8 +151,8 @@ public sealed class Tooltip: Popup
         if (_attachedTooltips.TryGetValue(anchor, out var tooltip))
         {
             ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(() => tooltip.Detach(anchor, clearOwnership: true), ref failure);
-            ExceptionAggregation.Capture(() => _ = _attachedTooltips.Remove(anchor), ref failure);
+            CaptureFailure(() => tooltip.Detach(anchor, clearOwnership: true), ref failure);
+            CaptureFailure(() => _ = _attachedTooltips.Remove(anchor), ref failure);
             failure?.Throw();
         }
     }
@@ -302,10 +302,10 @@ public sealed class Tooltip: Popup
     private void Detach(ControlBase anchor, bool clearOwnership)
     {
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(CancelShowTimer, ref failure);
-        ExceptionAggregation.Capture(CancelHideTimer, ref failure);
-        ExceptionAggregation.Capture(Hide, ref failure);
-        ExceptionAggregation.Capture(
+        CaptureFailure(CancelShowTimer, ref failure);
+        CaptureFailure(CancelHideTimer, ref failure);
+        CaptureFailure(Hide, ref failure);
+        CaptureFailure(
             () =>
             {
                 anchor.PointerEntered -= OnAnchorPointerEntered;
@@ -318,11 +318,11 @@ public sealed class Tooltip: Popup
 
         if (clearOwnership)
         {
-            ExceptionAggregation.Capture(() => _ = OwningSlot?.Remove(this), ref failure);
+            CaptureFailure(() => _ = OwningSlot?.Remove(this), ref failure);
         }
 
         _attachedAnchor = null;
-        ExceptionAggregation.Capture(() => Anchor = null, ref failure);
+        CaptureFailure(() => Anchor = null, ref failure);
         failure?.Throw();
     }
 
@@ -611,14 +611,14 @@ public sealed class Tooltip: Popup
         {
             if (_attachedAnchor is { } anchor)
             {
-                ExceptionAggregation.Capture(() => Detach(anchor, clearOwnership: false), ref failure);
-                ExceptionAggregation.Capture(() => _ = _attachedTooltips.Remove(anchor), ref failure);
+                CaptureFailure(() => Detach(anchor, clearOwnership: false), ref failure);
+                CaptureFailure(() => _ = _attachedTooltips.Remove(anchor), ref failure);
             }
 
-            ExceptionAggregation.Capture(ReleaseTimers, ref failure);
+            CaptureFailure(ReleaseTimers, ref failure);
         }
 
-        ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
         failure?.Throw();
     }
 

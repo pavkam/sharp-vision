@@ -290,7 +290,7 @@ public abstract class Dialog<TResult>: Window
             if (IsSurfacePresented && !IsDisposed)
             {
                 var closed = true;
-                ExceptionAggregation.Capture(() => closed = ClosePresentedDialog(), ref failure);
+                CaptureFailure(() => closed = ClosePresentedDialog(), ref failure);
 
                 // A handler vetoing CloseRequested reports failure through the returned bool, not
                 // an exception, so only a clean (non-exceptional) false counts as a veto. An actual
@@ -444,16 +444,16 @@ public abstract class Dialog<TResult>: Window
 
     private void CleanupPresentation(bool dispose, ref ExceptionDispatchInfo? failure)
     {
-        ExceptionAggregation.Capture(_externalCancellation.Dispose, ref failure);
+        CaptureFailure(_externalCancellation.Dispose, ref failure);
         _externalCancellation = default;
 
-        ExceptionAggregation.Capture(ExitSurfaceModal, ref failure);
+        CaptureFailure(ExitSurfaceModal, ref failure);
 
-        ExceptionAggregation.Capture(RemoveFromHost, ref failure);
+        CaptureFailure(RemoveFromHost, ref failure);
 
         if (dispose && !IsDisposed)
         {
-            ExceptionAggregation.Capture(Dispose, ref failure);
+            CaptureFailure(Dispose, ref failure);
         }
     }
 
@@ -569,11 +569,11 @@ public abstract class Dialog<TResult>: Window
         if (!_isFinishingCompletion)
         {
             _ = TryBeginResult(_cancelledResult);
-            ExceptionAggregation.Capture(_externalCancellation.Dispose, ref failure);
+            CaptureFailure(_externalCancellation.Dispose, ref failure);
             _externalCancellation = default;
         }
 
-        ExceptionAggregation.Capture(base.OnDisposing, ref failure);
+        CaptureFailure(base.OnDisposing, ref failure);
         failure?.Throw();
     }
 

@@ -98,12 +98,12 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
 
             if (IsChecked)
             {
-                ExceptionAggregation.Capture(
+                CaptureFailure(
                     () => this.SelectInGroup(ActivationCause.Programmatic),
                     ref failure);
             }
 
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => NotifyPropertyChanged(nameof(GroupName), InvalidationImpact.None),
                 ref failure);
             failure?.Throw();

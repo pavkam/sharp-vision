@@ -326,12 +326,12 @@ public abstract class FloatingSurfaceBase: ContentControl
         {
             if (commitClosingStateBeforeClosing is { } commitBeforeClosing)
             {
-                ExceptionAggregation.Capture(commitBeforeClosing, ref failure);
+                CaptureFailure(commitBeforeClosing, ref failure);
             }
 
             if (prepareClosingState is { } prepare)
             {
-                ExceptionAggregation.Capture(prepare, ref failure);
+                CaptureFailure(prepare, ref failure);
             }
 
             if (publishClosing)
@@ -340,7 +340,7 @@ public abstract class FloatingSurfaceBase: ContentControl
 
                 try
                 {
-                    ExceptionAggregation.Capture(RaiseSurfaceClosing, ref failure);
+                    CaptureFailure(RaiseSurfaceClosing, ref failure);
                 }
                 finally
                 {
@@ -350,7 +350,7 @@ public abstract class FloatingSurfaceBase: ContentControl
 
             if (commitClosingStateAfterClosing is { } commitAfterClosing)
             {
-                ExceptionAggregation.Capture(
+                CaptureFailure(
                     () => closureCompleted = commitAfterClosing(),
                     ref failure);
             }
@@ -358,8 +358,8 @@ public abstract class FloatingSurfaceBase: ContentControl
             if (closureCompleted)
             {
                 IsSurfaceOpen = false;
-                ExceptionAggregation.Capture(ExitSurfaceModal, ref failure);
-                ExceptionAggregation.Capture(commitUnavailableState, ref failure);
+                CaptureFailure(ExitSurfaceModal, ref failure);
+                CaptureFailure(commitUnavailableState, ref failure);
 
                 if (IsSurfacePresented)
                 {
@@ -378,7 +378,7 @@ public abstract class FloatingSurfaceBase: ContentControl
         // lets a handler begin a distinct presentation without reentering the transition above.
         if (closureCompleted && wasPresented && closedHandlers is { } capturedClosed)
         {
-            ExceptionAggregation.Capture(() => capturedClosed.Invoke(this, EventArgs.Empty), ref failure);
+            CaptureFailure(() => capturedClosed.Invoke(this, EventArgs.Empty), ref failure);
         }
 
         failure?.Throw();
@@ -470,8 +470,8 @@ public abstract class FloatingSurfaceBase: ContentControl
             IsSurfaceOpen = false;
         }
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(ExitSurfaceModal, ref failure);
-        ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+        CaptureFailure(ExitSurfaceModal, ref failure);
+        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
 
         if (RemovesPresentation(reason))
         {
@@ -495,12 +495,12 @@ public abstract class FloatingSurfaceBase: ContentControl
         var presentationAlreadyReleased = _presentationReleasedForPendingDetach;
         _presentationReleasedForPendingDetach = false;
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(ExitSurfaceModal, ref failure);
-        ExceptionAggregation.Capture(base.OnDetached, ref failure);
+        CaptureFailure(ExitSurfaceModal, ref failure);
+        CaptureFailure(base.OnDetached, ref failure);
 
         if (!presentationAlreadyReleased)
         {
-            ExceptionAggregation.Capture(ReleasePresentation, ref failure);
+            CaptureFailure(ReleasePresentation, ref failure);
         }
 
         failure?.Throw();

@@ -25,6 +25,8 @@ public sealed class SuggestionInput: CompositeControlBase
     private readonly ListView _list;
     private readonly Popup _popup;
     private readonly PopupDropDownCoordinator _popupCoordinator;
+    private readonly CallbackTransitionStream _minimumPrefixLengthTransitions = new();
+    private readonly CallbackTransitionStream _resolverTransitions = new();
     private readonly LatestControlOperation _resolutionOperation = new();
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private int? _currentSnapshotGeneration;
@@ -40,8 +42,6 @@ public sealed class SuggestionInput: CompositeControlBase
     private ActivationCause _acceptanceCause;
     private int _acceptanceResolutionGeneration;
     private ulong _acceptanceGeneration;
-    private ulong _minimumPrefixLengthVersion;
-    private ulong _resolverVersion;
     private ulong _textCommitVersion;
     private int _resolutionLifecycleCleanupDepth;
     private bool _wantsOpen;
@@ -197,30 +197,24 @@ public sealed class SuggestionInput: CompositeControlBase
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            VerifyMutable();
+            var resolutionGeneration = _resolutionGeneration;
 
-            if (field == value)
+            if (!SetTransitionProperty(
+                    ref field,
+                    value,
+                    InvalidationImpact.None,
+                    _minimumPrefixLengthTransitions,
+                    out var transition))
             {
                 return;
             }
 
-            field = value;
-            var version = ++_minimumPrefixLengthVersion;
-            var resolutionGeneration = _resolutionGeneration;
-            ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(
-                () => NotifyPropertyChanged(nameof(MinimumPrefixLength), InvalidationImpact.None),
-                ref failure);
-
-            if (!IsDisposed &&
-                _minimumPrefixLengthVersion == version &&
-                field == value &&
-                _resolutionGeneration == resolutionGeneration)
+            if (_resolutionGeneration == resolutionGeneration)
             {
-                ExceptionAggregation.Capture(BeginResolution, ref failure);
+                transition.CaptureIfCurrent(BeginResolution);
             }
 
-            failure?.Throw();
+            transition.ThrowIfFailed();
         }
     } = 1;
 
@@ -232,30 +226,25 @@ public sealed class SuggestionInput: CompositeControlBase
         get;
         set
         {
-            VerifyMutable();
+            var resolutionGeneration = _resolutionGeneration;
 
-            if (ReferenceEquals(field, value))
+            if (!SetTransitionProperty(
+                    ref field,
+                    value,
+                    InvalidationImpact.None,
+                    _resolverTransitions,
+                    out var transition,
+                    comparer: ReferenceEqualityComparer.Instance))
             {
                 return;
             }
 
-            field = value;
-            var version = ++_resolverVersion;
-            var resolutionGeneration = _resolutionGeneration;
-            ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(
-                () => NotifyPropertyChanged(nameof(Resolver), InvalidationImpact.None),
-                ref failure);
-
-            if (!IsDisposed &&
-                _resolverVersion == version &&
-                ReferenceEquals(field, value) &&
-                _resolutionGeneration == resolutionGeneration)
+            if (_resolutionGeneration == resolutionGeneration)
             {
-                ExceptionAggregation.Capture(BeginResolution, ref failure);
+                transition.CaptureIfCurrent(BeginResolution);
             }
 
-            failure?.Throw();
+            transition.ThrowIfFailed();
         }
     }
 
@@ -675,13 +664,13 @@ public sealed class SuggestionInput: CompositeControlBase
         }
 
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(_popupCoordinator.AcceptAndClose, ref failure);
+        CaptureFailure(_popupCoordinator.AcceptAndClose, ref failure);
 
         if (IsCurrentAcceptance(prepared))
         {
             var cause = _acceptanceCause;
             ClearAcceptance(prepared.Generation);
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => SuggestionAccepted?.Invoke(
                     this,
                     new ItemInvokedEventArgs(
@@ -915,7 +904,7 @@ public sealed class SuggestionInput: CompositeControlBase
             string.Equals(committedText, acceptance.AcceptedText, StringComparison.Ordinal);
         _wantsOpen |= Resolver is not null;
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(
+        CaptureFailure(
             () => NotifyPropertyChanged(nameof(Text), InvalidationImpact.None),
             ref failure);
 
@@ -924,7 +913,7 @@ public sealed class SuggestionInput: CompositeControlBase
             string.Equals(Text, committedText, StringComparison.Ordinal) &&
             _resolutionGeneration == resolutionGeneration)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => BeginResolution(preservePendingAcceptance),
                 ref failure);
         }
@@ -971,7 +960,7 @@ public sealed class SuggestionInput: CompositeControlBase
 
         if (resolver is null || !MeetsMinimumPrefixLength(searchTerms, MinimumPrefixLength))
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => DispatchCompletionAsync(
                         lease,
                         generation,
@@ -987,7 +976,7 @@ public sealed class SuggestionInput: CompositeControlBase
             return;
         }
 
-        ExceptionAggregation.Capture(() => SetIsResolving(true), ref startupFailure);
+        CaptureFailure(() => SetIsResolving(true), ref startupFailure);
 
         if (!IsCurrentResolution(lease, generation))
         {
@@ -1003,7 +992,7 @@ public sealed class SuggestionInput: CompositeControlBase
         }
         catch (OperationCanceledException)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => DispatchCompletionAsync(
                         lease,
                         generation,
@@ -1020,7 +1009,7 @@ public sealed class SuggestionInput: CompositeControlBase
         }
         catch (Exception exception)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => DispatchCompletionAsync(
                         lease,
                         generation,
@@ -1038,7 +1027,7 @@ public sealed class SuggestionInput: CompositeControlBase
 
         if (pending.IsCompletedSuccessfully)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => DispatchCompletionAsync(
                         lease,
                         generation,
@@ -1360,7 +1349,7 @@ public sealed class SuggestionInput: CompositeControlBase
             {
                 if (changed)
                 {
-                    ExceptionAggregation.Capture(
+                    CaptureFailure(
                         () => SuggestionsChanged?.Invoke(this, EventArgs.Empty),
                         ref failure);
                 }
@@ -1368,7 +1357,7 @@ public sealed class SuggestionInput: CompositeControlBase
                 if (IsCurrentResolution(lease, generation))
                 {
                     var shouldOpen = _wantsOpen && Suggestions.Count > 0;
-                    ExceptionAggregation.Capture(
+                    CaptureFailure(
                         () =>
                         {
                             if (!shouldOpen ||
@@ -1392,7 +1381,7 @@ public sealed class SuggestionInput: CompositeControlBase
                     _popupCoordinator.IsOpen &&
                     _list.ActiveIndex != _list.SelectedIndex)
                 {
-                    ExceptionAggregation.Capture(
+                    CaptureFailure(
                         () => RequestFirstSuggestionSelection(generation),
                         ref failure);
                 }
@@ -1418,18 +1407,18 @@ public sealed class SuggestionInput: CompositeControlBase
         {
             if (CommitResultState(lease, generation, [], markCurrent: false, out var changed, ref failure))
             {
-                ExceptionAggregation.Capture(() => _popupCoordinator.SetOpen(false), ref failure);
+                CaptureFailure(() => _popupCoordinator.SetOpen(false), ref failure);
 
                 if (changed && IsCurrentResolution(lease, generation))
                 {
-                    ExceptionAggregation.Capture(
+                    CaptureFailure(
                         () => SuggestionsChanged?.Invoke(this, EventArgs.Empty),
                         ref failure);
                 }
 
                 if (IsCurrentResolution(lease, generation))
                 {
-                    ExceptionAggregation.Capture(
+                    CaptureFailure(
                         () => ResolutionFailed?.Invoke(
                             this,
                             new SuggestionResolutionFailedEventArgs(searchTerms, exception)),
@@ -1453,11 +1442,11 @@ public sealed class SuggestionInput: CompositeControlBase
         {
             if (CommitResultState(lease, generation, [], markCurrent: false, out var changed, ref failure))
             {
-                ExceptionAggregation.Capture(() => _popupCoordinator.SetOpen(false), ref failure);
+                CaptureFailure(() => _popupCoordinator.SetOpen(false), ref failure);
 
                 if (changed && IsCurrentResolution(lease, generation))
                 {
-                    ExceptionAggregation.Capture(
+                    CaptureFailure(
                         () => SuggestionsChanged?.Invoke(this, EventArgs.Empty),
                         ref failure);
                 }
@@ -1486,7 +1475,7 @@ public sealed class SuggestionInput: CompositeControlBase
             return false;
         }
 
-        ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
+        CaptureFailure(() => SetIsResolving(false), ref failure);
 
         if (!IsCurrentResolution(lease, generation))
         {
@@ -1495,9 +1484,9 @@ public sealed class SuggestionInput: CompositeControlBase
 
         changed = !SnapshotsEqual(Suggestions, results);
         ClearPendingFirstSuggestionSelection();
-        ExceptionAggregation.Capture(() => _list.Items = results, ref failure);
-        ExceptionAggregation.Capture(() => _list.SelectedIndex = -1, ref failure);
-        ExceptionAggregation.Capture(() => _list.SetProvisionalCurrentIndex(-1), ref failure);
+        CaptureFailure(() => _list.Items = results, ref failure);
+        CaptureFailure(() => _list.SelectedIndex = -1, ref failure);
+        CaptureFailure(() => _list.SetProvisionalCurrentIndex(-1), ref failure);
 
         if (!IsCurrentResolution(lease, generation) || !SnapshotsEqual(Suggestions, results))
         {
@@ -1508,7 +1497,7 @@ public sealed class SuggestionInput: CompositeControlBase
 
         if (changed)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => NotifyPropertyChanged(nameof(Suggestions), InvalidationImpact.None),
                 ref failure);
         }
@@ -1648,16 +1637,16 @@ public sealed class SuggestionInput: CompositeControlBase
         {
             var cancellationGeneration = ++_resolutionGeneration;
             _currentSnapshotGeneration = null;
-            ExceptionAggregation.Capture(_resolutionOperation.Cancel, ref failure);
+            CaptureFailure(_resolutionOperation.Cancel, ref failure);
 
             if (_resolutionGeneration == cancellationGeneration)
             {
-                ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
+                CaptureFailure(() => SetIsResolving(false), ref failure);
             }
         }
 
-        ExceptionAggregation.Capture(_popupCoordinator.OnOwnerAttached, ref failure);
-        ExceptionAggregation.Capture(SchedulePendingFirstSuggestionSelection, ref failure);
+        CaptureFailure(_popupCoordinator.OnOwnerAttached, ref failure);
+        CaptureFailure(SchedulePendingFirstSuggestionSelection, ref failure);
         failure?.Throw();
     }
 
@@ -1680,23 +1669,23 @@ public sealed class SuggestionInput: CompositeControlBase
             {
                 var cancellationGeneration = ++_resolutionGeneration;
                 _currentSnapshotGeneration = null;
-                ExceptionAggregation.Capture(_resolutionOperation.Cancel, ref failure);
+                CaptureFailure(_resolutionOperation.Cancel, ref failure);
 
                 if (_resolutionGeneration == cancellationGeneration)
                 {
-                    ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
+                    CaptureFailure(() => SetIsResolving(false), ref failure);
                 }
             }
 
-            ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
-            ExceptionAggregation.Capture(() => _popupCoordinator.OnOwnerUnavailable(reason), ref failure);
+            CaptureFailure(() => base.OnUnavailable(reason), ref failure);
+            CaptureFailure(() => _popupCoordinator.OnOwnerUnavailable(reason), ref failure);
 
             if (reason == ReleaseReason.Disposed)
             {
                 _input.TextChanged -= OnTextChanged;
                 _list.ItemActivationStarting -= OnItemActivationStarting;
                 _list.ItemInvoked -= OnItemInvoked;
-                ExceptionAggregation.Capture(_popupCoordinator.Detach, ref failure);
+                CaptureFailure(_popupCoordinator.Detach, ref failure);
                 BeforeDetachedResolutionPublication = null;
                 SuggestionsChanged = null;
                 ResolutionFailed = null;

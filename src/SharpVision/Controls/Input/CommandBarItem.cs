@@ -112,7 +112,7 @@ public sealed class CommandBarItem: InputBase, IStyled<CommandBarItemStyle>
         var generation = ++_activationGeneration;
         var availability = AvailabilityGeneration;
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(() => RaiseInvoked(cause), ref failure);
+        CaptureFailure(() => RaiseInvoked(cause), ref failure);
 
         if (!IsDisposed &&
             generation == _activationGeneration &&
@@ -120,7 +120,7 @@ public sealed class CommandBarItem: InputBase, IStyled<CommandBarItemStyle>
             EffectiveIsEnabled &&
             EffectiveIsVisible)
         {
-            ExceptionAggregation.Capture(() => binding.Command?.Execute(binding.Parameter), ref failure);
+            CaptureFailure(() => binding.Command?.Execute(binding.Parameter), ref failure);
         }
 
         failure?.Throw();

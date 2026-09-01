@@ -81,13 +81,13 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
             ArgumentOutOfRangeException.ThrowIfLessThan(value, 1);
             var previous = field;
             ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => _ = SetProperty(ref field, value, InvalidationImpact.Measure),
                 ref failure);
 
             if (previous != field && !IsDisposed)
             {
-                ExceptionAggregation.Capture(CancelPointerInteraction, ref failure);
+                CaptureFailure(CancelPointerInteraction, ref failure);
             }
 
             failure?.Throw();
@@ -104,11 +104,11 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
         {
             var previous = _style.Local;
             ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(() => _style.Local = value, ref failure);
+            CaptureFailure(() => _style.Local = value, ref failure);
 
             if (!Equals(previous, _style.Local))
             {
-                ExceptionAggregation.Capture(CancelPointerInteraction, ref failure);
+                CaptureFailure(CancelPointerInteraction, ref failure);
             }
 
             failure?.Throw();

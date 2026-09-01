@@ -1520,6 +1520,128 @@ public sealed class SuggestionInputTests
         input.Suggestions.ShouldBe(["eligible"]);
     }
 
+    /// <summary>Verifies a failing observer cannot strand later observers or the dependent
+    /// resolution transition after the threshold has committed.</summary>
+    [Fact]
+    public void MinimumPrefixLength_WhenPropertyObserverThrows_CompletesCurrentTransitionBeforeRethrow()
+    {
+        // Arrange
+        var failure = new InvalidOperationException("observer failure");
+        var laterObserverCalls = 0;
+        var resolverCalls = 0;
+        using var input = new SuggestionInput
+        {
+            MinimumPrefixLength = 2,
+            Text = "q",
+            Resolver = (searchTerms, _) =>
+            {
+                resolverCalls++;
+                return ValueTask.FromResult<IReadOnlyList<object?>>([searchTerms]);
+            }
+        };
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SuggestionInput.MinimumPrefixLength))
+            {
+                throw failure;
+            }
+        };
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SuggestionInput.MinimumPrefixLength))
+            {
+                laterObserverCalls++;
+            }
+        };
+
+        // Act
+        var thrown = Should.Throw<InvalidOperationException>(() => input.MinimumPrefixLength = 1);
+
+        // Assert
+        thrown.ShouldBeSameAs(failure);
+        laterObserverCalls.ShouldBe(1);
+        resolverCalls.ShouldBe(1);
+        input.Suggestions.ShouldBe(["q"]);
+    }
+
+    /// <summary>Verifies resolver replacement uses the same failure-safe current transition as
+    /// threshold changes.</summary>
+    [Fact]
+    public void Resolver_WhenPropertyObserverThrows_CompletesCurrentTransitionBeforeRethrow()
+    {
+        // Arrange
+        var failure = new InvalidOperationException("observer failure");
+        var laterObserverCalls = 0;
+        var resolverCalls = 0;
+        using var input = new SuggestionInput { Text = "query" };
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SuggestionInput.Resolver))
+            {
+                throw failure;
+            }
+        };
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SuggestionInput.Resolver))
+            {
+                laterObserverCalls++;
+            }
+        };
+        ValueTask<IReadOnlyList<object?>> Resolve(string searchTerms, CancellationToken cancellationToken)
+        {
+            _ = cancellationToken;
+            resolverCalls++;
+            return ValueTask.FromResult<IReadOnlyList<object?>>([searchTerms]);
+        }
+
+        // Act
+        var thrown = Should.Throw<InvalidOperationException>(() => input.Resolver = Resolve);
+
+        // Assert
+        thrown.ShouldBeSameAs(failure);
+        laterObserverCalls.ShouldBe(1);
+        resolverCalls.ShouldBe(1);
+        input.Suggestions.ShouldBe(["query"]);
+    }
+
+    /// <summary>Verifies resolver storage preserves its reference-identity contract even when two
+    /// delegate instances compare equal by invocation list.</summary>
+    [Fact]
+    public void Resolver_WhenDelegateIsValueEqualButDistinct_ReplacesStoredReference()
+    {
+        // Arrange
+        static ValueTask<IReadOnlyList<object?>> Resolve(
+            string searchTerms,
+            CancellationToken cancellationToken)
+        {
+            _ = searchTerms;
+            _ = cancellationToken;
+            return ValueTask.FromResult<IReadOnlyList<object?>>([]);
+        }
+
+        var first = new SuggestionResolver(Resolve);
+        var second = new SuggestionResolver(Resolve);
+        ReferenceEquals(first, second).ShouldBeFalse();
+        first.ShouldBe(second);
+        using var input = new SuggestionInput { Resolver = first };
+        var changes = 0;
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SuggestionInput.Resolver))
+            {
+                changes++;
+            }
+        };
+
+        // Act
+        input.Resolver = second;
+
+        // Assert
+        ReferenceEquals(input.Resolver, second).ShouldBeTrue();
+        changes.ShouldBe(1);
+    }
+
     /// <summary>Verifies a reentrant resolver-property observer supersedes the outer assignment
     /// even when the outer continuation would otherwise start a request.</summary>
     [Fact]

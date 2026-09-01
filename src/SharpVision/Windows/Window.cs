@@ -707,7 +707,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     {
         ExceptionDispatchInfo? failure = null;
 
-        ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
 
         if (reason == ReleaseReason.Disposed)
         {
@@ -1066,7 +1066,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         if (Visibility == Visibility.Visible && !IsSurfacePresented)
         {
             ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(() => OpenSurface(() => SurfaceBounds = Bounds), ref failure);
+            CaptureFailure(() => OpenSurface(() => SurfaceBounds = Bounds), ref failure);
             var presentationVersion = SurfacePresentationVersion;
 
             // Mirrors the Shown notification OnWindowPropertyChanged raises for an explicit
@@ -1085,7 +1085,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             // changed) in the meantime.
             if (CanContinueShownPresentation(presentationVersion))
             {
-                ExceptionAggregation.Capture(() => Shown?.Invoke(this, EventArgs.Empty), ref failure);
+                CaptureFailure(() => Shown?.Invoke(this, EventArgs.Empty), ref failure);
             }
 
             var dispatcher = Dispatcher;
@@ -1149,26 +1149,26 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 
         if (Dispatcher is null)
         {
-            ExceptionAggregation.Capture(() => Shown?.Invoke(this, EventArgs.Empty), ref failure);
+            CaptureFailure(() => Shown?.Invoke(this, EventArgs.Empty), ref failure);
             failure?.Throw();
             return;
         }
 
         if (!IsSurfacePresented)
         {
-            ExceptionAggregation.Capture(() => OpenSurface(() => SurfaceBounds = Bounds), ref failure);
+            CaptureFailure(() => OpenSurface(() => SurfaceBounds = Bounds), ref failure);
         }
 
         var presentationVersion = SurfacePresentationVersion;
 
         if (CanContinueShownPresentation(presentationVersion))
         {
-            ExceptionAggregation.Capture(() => Shown?.Invoke(this, EventArgs.Empty), ref failure);
+            CaptureFailure(() => Shown?.Invoke(this, EventArgs.Empty), ref failure);
         }
 
         if (!_isShowingModal && CanContinueShownPresentation(presentationVersion))
         {
-            ExceptionAggregation.Capture(ApplyVisibleFocusFallback, ref failure);
+            CaptureFailure(ApplyVisibleFocusFallback, ref failure);
         }
 
         failure?.Throw();

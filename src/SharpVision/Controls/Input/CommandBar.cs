@@ -481,17 +481,17 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         var availability = _availabilityGeneration;
         var itemAvailability = item.AvailabilityGeneration;
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(() => item.RaiseInvoked(cause), ref failure);
+        CaptureFailure(() => item.RaiseInvoked(cause), ref failure);
 
         if (IsActivationCurrent(item, activation, entries, availability, itemAvailability))
         {
             var eventArgs = new CommandBarItemInvokedEventArgs(item, cause);
-            ExceptionAggregation.Capture(() => ItemInvoked?.Invoke(this, eventArgs), ref failure);
+            CaptureFailure(() => ItemInvoked?.Invoke(this, eventArgs), ref failure);
         }
 
         if (IsActivationCurrent(item, activation, entries, availability, itemAvailability))
         {
-            ExceptionAggregation.Capture(() => command?.Execute(parameter), ref failure);
+            CaptureFailure(() => command?.Execute(parameter), ref failure);
         }
 
         failure?.Throw();
@@ -1249,18 +1249,18 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
     {
         _availabilityGeneration++;
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(CancelSpacePress, ref failure);
-        ExceptionAggregation.Capture(_overflowButton.CancelPress, ref failure);
-        ExceptionAggregation.Capture(() => _overflowCoordinator.OnOwnerUnavailable(reason), ref failure);
-        ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+        CaptureFailure(CancelSpacePress, ref failure);
+        CaptureFailure(_overflowButton.CancelPress, ref failure);
+        CaptureFailure(() => _overflowCoordinator.OnOwnerUnavailable(reason), ref failure);
+        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
 
         if (reason == ReleaseReason.Disposed)
         {
             FocusEntered -= OnFocusEntered;
             FocusLeft -= OnFocusLeft;
             _overflowMenu.ItemInvocationCompleted -= OnOverflowItemInvocationCompleted;
-            ExceptionAggregation.Capture(_overflowCoordinator.Detach, ref failure);
-            ExceptionAggregation.Capture(() => ReleaseOverflowProjections(disposeFaces: false), ref failure);
+            CaptureFailure(_overflowCoordinator.Detach, ref failure);
+            CaptureFailure(() => ReleaseOverflowProjections(disposeFaces: false), ref failure);
             ItemInvoked = null;
         }
 

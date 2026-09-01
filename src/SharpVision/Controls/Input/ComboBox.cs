@@ -709,13 +709,13 @@ public sealed class ComboBox: InputBase
 
         var version = _selectionVersion;
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(
+        CaptureFailure(
             () => NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure),
             ref failure);
 
         if (_selectionVersion == version && _selectedIndex == selectedIndex)
         {
-            ExceptionAggregation.Capture(() => SelectionChanged?.Invoke(this, eventArgs), ref failure);
+            CaptureFailure(() => SelectionChanged?.Invoke(this, eventArgs), ref failure);
         }
 
         failure?.Throw();
@@ -850,7 +850,7 @@ public sealed class ComboBox: InputBase
     {
         var version = _selectionVersion;
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(
+        CaptureFailure(
             () => NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure),
             ref failure);
 
@@ -859,7 +859,7 @@ public sealed class ComboBox: InputBase
             int[] added = selectedIndex >= 0 ? [selectedIndex] : [];
             int[] removed = previousIndex >= 0 ? [previousIndex] : [];
             var selectionChanged = new ListSelectionChangedEventArgs(added, removed);
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => SelectionChanged?.Invoke(this, selectionChanged),
                 ref failure);
         }

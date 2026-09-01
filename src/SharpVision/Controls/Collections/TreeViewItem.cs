@@ -132,25 +132,25 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
             field = value;
             var version = ++_expandedVersion;
             ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => NotifyPropertyChanged(nameof(IsExpanded), InvalidationImpact.None),
                 ref failure);
 
             if (IsCurrentExpansion(version, value))
             {
-                ExceptionAggregation.Capture(
+                CaptureFailure(
                     () => ExpandedChanged?.Invoke(this, new ItemExpandedChangedEventArgs(value)),
                     ref failure);
             }
 
             if (IsCurrentExpansion(version, value))
             {
-                ExceptionAggregation.Capture(() => FindTreeView()?.NotifyStructureChanged(), ref failure);
+                CaptureFailure(() => FindTreeView()?.NotifyStructureChanged(), ref failure);
             }
 
             if (IsCurrentExpansion(version, value))
             {
-                ExceptionAggregation.Capture(ApplyExpandedState, ref failure);
+                CaptureFailure(ApplyExpandedState, ref failure);
             }
 
             failure?.Throw();
@@ -415,7 +415,7 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
             if (value is null)
             {
                 Children.IsLoaderOwned = false;
-                ExceptionAggregation.Capture(
+                CaptureFailure(
                     () => SetChildState(Children.Count > 0
                         ? TreeViewChildState.Loaded
                         : TreeViewChildState.Leaf),
@@ -424,14 +424,14 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
             else
             {
                 Children.IsLoaderOwned = true;
-                ExceptionAggregation.Capture(
+                CaptureFailure(
                     () => SetChildState(TreeViewChildState.Unloaded),
                     ref callbackFailure);
             }
 
             if (checkStateChange is not null)
             {
-                ExceptionAggregation.Capture(
+                CaptureFailure(
                     () => PublishChildMembershipCheckStateChange(checkStateChange),
                     ref callbackFailure);
             }
@@ -800,11 +800,11 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
     protected override void OnUnavailable(ReleaseReason reason)
     {
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
 
         if (reason == ReleaseReason.Detached)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => CancelPendingChildLoadSubtree(notifyTree: false),
                 ref failure);
         }
@@ -1283,16 +1283,16 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         {
             // Realization and selection repair must already reflect the new semantic state before
             // either public callback can inspect or reenter the tree.
-            ExceptionAggregation.Capture(() => FindTreeView()?.NotifyStructureChanged(), ref failure);
+            CaptureFailure(() => FindTreeView()?.NotifyStructureChanged(), ref failure);
         }
 
-        ExceptionAggregation.Capture(
+        CaptureFailure(
             () => NotifyPropertyChanged(nameof(ChildState), InvalidationImpact.Measure),
             ref failure);
 
         if (IsCurrentChildState(version, value))
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => ChildStateChanged?.Invoke(this, new TreeViewChildStateChangedEventArgs(previous, value)),
                 ref failure);
         }
@@ -1324,7 +1324,7 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
             "BeginLoad requires a non-null ChildSource.");
         var cancellationToken = lease.CancellationToken;
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(() => SetChildState(TreeViewChildState.Loading), ref failure);
+        CaptureFailure(() => SetChildState(TreeViewChildState.Loading), ref failure);
         Task? observation = null;
 
         if (IsCurrentLoad(attachment, source, lease))
@@ -1477,11 +1477,11 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         // Loaded never reads the previous request's stale error.
         LastChildLoadError = null;
         ExceptionDispatchInfo? callbackFailure = null;
-        ExceptionAggregation.Capture(() => SetChildState(TreeViewChildState.Loaded), ref callbackFailure);
-        ExceptionAggregation.Capture(
+        CaptureFailure(() => SetChildState(TreeViewChildState.Loaded), ref callbackFailure);
+        CaptureFailure(
             () => PublishChildMembershipCheckStateChange(checkStateChange),
             ref callbackFailure);
-        ExceptionAggregation.Capture(() => _loadOperation.TryComplete(lease), ref callbackFailure);
+        CaptureFailure(() => _loadOperation.TryComplete(lease), ref callbackFailure);
         callbackFailure?.Throw();
     }
 

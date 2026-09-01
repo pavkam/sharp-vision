@@ -4058,6 +4058,19 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         return true;
     }
 
+    /// <summary>Runs one required control action while preserving the earliest failure accumulated
+    /// by the caller.</summary>
+    /// <param name="action">The non-null synchronous action.</param>
+    /// <param name="failure">The first captured failure, or null.</param>
+    /// <remarks>
+    /// Concrete controls use this inherited seam when later invariant work must still run after an
+    /// earlier callback fails. Non-control collaborators use their own explicit aggregation policy.
+    /// </remarks>
+    private protected static void CaptureFailure(
+        Action action,
+        ref ExceptionDispatchInfo? failure) =>
+        ExceptionAggregation.Capture(action, ref failure);
+
     /// <summary>Commits one property and begins a current-aware callback transaction.</summary>
     /// <typeparam name="T">The property value type.</typeparam>
     /// <param name="field">The current backing field.</param>
@@ -4066,6 +4079,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="stream">The non-null logical callback stream for this property.</param>
     /// <param name="transition">Receives the committed publication transaction.</param>
     /// <param name="propertyName">The non-empty property name supplied by the compiler.</param>
+    /// <param name="comparer">The optional equality policy for the commit gate.</param>
     /// <returns>Whether a changed value was committed.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="stream"/> or
     /// <paramref name="propertyName"/> is null.</exception>
@@ -4080,14 +4094,17 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         InvalidationImpact impact,
         CallbackTransitionStream stream,
         out CallbackTransitionTransaction transition,
-        [CallerMemberName] string? propertyName = null)
+        [CallerMemberName] string? propertyName = null,
+        IEqualityComparer<T>? comparer = null)
     {
         ArgumentNullException.ThrowIfNull(stream);
         ValidateImpact(impact);
         ArgumentException.ThrowIfNullOrEmpty(propertyName);
         VerifyMutable();
 
-        if (EqualityComparer<T>.Default.Equals(field, value))
+        comparer ??= EqualityComparer<T>.Default;
+
+        if (comparer.Equals(field, value))
         {
             transition = default;
             return false;

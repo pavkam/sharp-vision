@@ -381,16 +381,16 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
 
         if (_selection is { } selection && BlockedDates.Intersects(selection))
         {
-            ExceptionAggregation.Capture(() => _ = CommitSelection(null), ref failure);
+            CaptureFailure(() => _ = CommitSelection(null), ref failure);
         }
 
         if (_intervalAnchor is { } anchor && BlockedDates.Contains(anchor))
         {
-            ExceptionAggregation.Capture(() => SetIntervalAnchor(null), ref failure);
+            CaptureFailure(() => SetIntervalAnchor(null), ref failure);
         }
 
-        ExceptionAggregation.Capture(RepairActiveDate, ref failure);
-        ExceptionAggregation.Capture(() => Invalidate(InvalidationImpact.Render), ref failure);
+        CaptureFailure(RepairActiveDate, ref failure);
+        CaptureFailure(() => Invalidate(InvalidationImpact.Render), ref failure);
         failure?.Throw();
     }
 
@@ -1101,13 +1101,13 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         // is too late.
         if (previous == value)
         {
-            ExceptionAggregation.Capture(() => SetIntervalAnchor(null), ref failure);
+            CaptureFailure(() => SetIntervalAnchor(null), ref failure);
             failure?.Throw();
             return false;
         }
 
         var version = ++_selectionVersion;
-        ExceptionAggregation.Capture(() => SetIntervalAnchor(null), ref failure);
+        CaptureFailure(() => SetIntervalAnchor(null), ref failure);
 
         if (!IsVersionedPropertyCurrent(_selection, previous, _selectionVersion, version))
         {
@@ -1117,20 +1117,20 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
 
         if (value is { } committed)
         {
-            ExceptionAggregation.Capture(() => SetActiveDate(committed.Start), ref failure);
+            CaptureFailure(() => SetActiveDate(committed.Start), ref failure);
         }
 
         if (IsVersionedPropertyCurrent(_selection, previous, _selectionVersion, version))
         {
             _selection = value;
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => NotifyPropertyChanged(nameof(Selection), InvalidationImpact.Render),
                 ref failure);
         }
 
         if (IsVersionedPropertyCurrent(_selection, value, _selectionVersion, version))
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => SelectionChanged?.Invoke(this, new CalendarSelectionChangedEventArgs(previous, value)),
                 ref failure);
         }
@@ -1157,15 +1157,15 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         if (_selection is { } selection &&
             (selection.Start < MinimumDate || selection.End > MaximumDate))
         {
-            ExceptionAggregation.Capture(() => _ = CommitSelection(null), ref failure);
+            CaptureFailure(() => _ = CommitSelection(null), ref failure);
         }
 
         if (_intervalAnchor is { } anchor && (anchor < MinimumDate || anchor > MaximumDate))
         {
-            ExceptionAggregation.Capture(() => SetIntervalAnchor(null), ref failure);
+            CaptureFailure(() => SetIntervalAnchor(null), ref failure);
         }
 
-        ExceptionAggregation.Capture(RepairActiveDate, ref failure);
+        CaptureFailure(RepairActiveDate, ref failure);
         failure?.Throw();
     }
 

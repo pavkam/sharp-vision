@@ -133,8 +133,8 @@ public abstract class ContentControl: ControlBase
         var current = change.Current.Length == 0 ? null : change.Current.Span[0];
         ExceptionDispatchInfo? failure = null;
 
-        ExceptionAggregation.Capture(() => OnContentChanged(previous, current), ref failure);
-        ExceptionAggregation.Capture(
+        CaptureFailure(() => OnContentChanged(previous, current), ref failure);
+        CaptureFailure(
             () => NotifyPropertyChanged(nameof(Content), InvalidationImpact.None),
             ref failure);
 

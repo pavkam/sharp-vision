@@ -122,13 +122,13 @@ public sealed class CommandPalette: CompositeControlBase
 
             field = value;
             ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => NotifyPropertyChanged(nameof(Resolver), InvalidationImpact.None),
                 ref failure);
 
             if (!IsDisposed && ReferenceEquals(field, value))
             {
-                ExceptionAggregation.Capture(BeginResolution, ref failure);
+                CaptureFailure(BeginResolution, ref failure);
             }
 
             failure?.Throw();
@@ -491,8 +491,8 @@ public sealed class CommandPalette: CompositeControlBase
         if (reason is ReleaseReason.Detached or ReleaseReason.Disposed)
         {
             _resolutionGeneration++;
-            ExceptionAggregation.Capture(_resolutionOperation.Cancel, ref failure);
-            ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
+            CaptureFailure(_resolutionOperation.Cancel, ref failure);
+            CaptureFailure(() => SetIsResolving(false), ref failure);
         }
 
         if (reason == ReleaseReason.Disposed)
@@ -591,13 +591,13 @@ public sealed class CommandPalette: CompositeControlBase
         var committedText = Text;
         _wantsOpen |= Resolver is not null;
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(
+        CaptureFailure(
             () => NotifyPropertyChanged(nameof(Text), InvalidationImpact.None),
             ref failure);
 
         if (!IsDisposed && string.Equals(Text, committedText, StringComparison.Ordinal))
         {
-            ExceptionAggregation.Capture(BeginResolution, ref failure);
+            CaptureFailure(BeginResolution, ref failure);
         }
 
         failure?.Throw();
@@ -614,14 +614,14 @@ public sealed class CommandPalette: CompositeControlBase
         if (resolver is null)
         {
             ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
-            ExceptionAggregation.Capture(() => ApplyResults(lease, generation, []), ref failure);
+            CaptureFailure(() => SetIsResolving(false), ref failure);
+            CaptureFailure(() => ApplyResults(lease, generation, []), ref failure);
             failure?.Throw();
             return;
         }
 
         ExceptionDispatchInfo? startupFailure = null;
-        ExceptionAggregation.Capture(() => SetIsResolving(true), ref startupFailure);
+        CaptureFailure(() => SetIsResolving(true), ref startupFailure);
 
         if (!IsCurrentResolution(lease))
         {
@@ -637,7 +637,7 @@ public sealed class CommandPalette: CompositeControlBase
         }
         catch (Exception exception)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => ApplyFailure(lease, Text, exception),
                 ref startupFailure);
             startupFailure?.Throw();
@@ -646,7 +646,7 @@ public sealed class CommandPalette: CompositeControlBase
 
         if (pending.IsCompletedSuccessfully)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => ApplyCompletion(lease, generation, Text, pending.Result),
                 ref startupFailure);
             startupFailure?.Throw();
