@@ -139,9 +139,26 @@ public sealed class ModalScope: IDisposable
     /// <summary>Publishes one dismissal request when this active scope opted into dismissal.</summary>
     internal void PublishDismissRequested()
     {
-        if (IsActive && OutsideInteraction == OutsideInteraction.Dismiss)
+        if (!IsActive || OutsideInteraction != OutsideInteraction.Dismiss)
         {
-            DismissRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        var handlers = DismissRequested;
+
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var subscriber in handlers.GetInvocationList())
+        {
+            if (!IsActive)
+            {
+                break;
+            }
+
+            ((EventHandler) subscriber).Invoke(this, EventArgs.Empty);
         }
     }
 

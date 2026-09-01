@@ -4573,6 +4573,35 @@ public sealed class ModalityManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a DismissRequested subscriber that ends the scope stops later subscribers on
+    /// the same publication from running.</summary>
+    [Fact]
+    public async Task Dispatch_WhenDismissSubscriberDisposesScope_SkipsRemainingSubscribersAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 24, 8) };
+            var plane = new ProbeControl { Bounds = new Rect(0, 0, 8, 6) };
+            root.Children.Add(plane);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            var scope = modality.Enter(plane, OutsideInteraction.Dismiss);
+            var secondSubscriberCalls = 0;
+
+            scope.DismissRequested += (_, _) => scope.Dispose();
+            scope.DismissRequested += (_, _) => secondSubscriberCalls++;
+
+            _ = pointer.Dispatch(CreatePointer(new Point(14, 2), PointerAction.Press, Buttons.Primary));
+
+            secondSubscriberCalls.ShouldBe(0);
+            scope.IsActive.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies ignored outside transitions never route or create background press bookkeeping.</summary>
     [Fact]
     public async Task Dispatch_WhenOutsideInteractionIsIgnored_ConsumesPressReleaseAndWheelAsync()
