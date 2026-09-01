@@ -2291,6 +2291,14 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             "The slot belongs to the committed parent.");
         Parent = parent;
         ReleaseInvalidStyleBindings();
+        if (parent is null)
+        {
+            // This control's own Parent is already cleared above, so the whole detached subtree
+            // is now unreachable from any surviving ancestor chain - release every descendant's
+            // now-invalid style bindings too, not just this control's.
+            ReleaseInvalidStyleBindingsInSubtree();
+        }
+
         InvalidateEffectiveState();
         OwningSlot = slot;
     }
@@ -4158,6 +4166,19 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             slot.ReleaseInvalidBinding();
         }
     }
+
+    /// <summary>Releases every no-longer-valid style-binding edge on this control's whole owned
+    /// subtree. A control removed from its owner only has its own bindings reconciled by
+    /// <see cref="ReleaseInvalidStyleBindings"/> - a deeper descendant never observes its ancestor
+    /// leaving the tree, so its binding edges would otherwise survive the detach and permanently
+    /// poison its style slots. Mirrors the recursive-descendant-walk shape of
+    /// <see cref="InvalidateDescendants"/>.</summary>
+    private void ReleaseInvalidStyleBindingsInSubtree() =>
+        VisitChildren(child =>
+        {
+            child.ReleaseInvalidStyleBindings();
+            child.ReleaseInvalidStyleBindingsInSubtree();
+        });
 
     private void RegisterStyleSlot(StyleSlotBase slot)
     {
