@@ -169,11 +169,6 @@ public sealed class ModalityManager: IDisposable
                 scope,
                 previousFocus);
 
-            if (target is null)
-            {
-                _activate?.Invoke(root);
-            }
-
             ObjectDisposedException.ThrowIf(_isDisposed, this);
             return scope;
         }
@@ -1045,6 +1040,13 @@ public sealed class ModalityManager: IDisposable
                         attempted,
                         entryScope,
                         entryPreviousFocus);
+
+                    return;
+                }
+
+                if (preferred is null && entryScope is not null)
+                {
+                    _activate?.Invoke(entryScope.Root);
                 }
             },
             isValid);

@@ -2903,6 +2903,53 @@ public sealed class ModalityManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a queued initial-focus candidate that becomes ineligible before the deferred
+    /// commit settles still activates the modal root's owner, even though the pre-commit target
+    /// inspected at entry time was non-null.</summary>
+    [Fact]
+    public async Task Enter_WhenQueuedInitialFocusBecomesIneligible_ActivatesModalRootAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var background = new ProbeControl { IsFocusable = true };
+            var requested = new ProbeControl { IsFocusable = true };
+            var plane = new ProbeContainer();
+            var initial = new ProbeControl { IsFocusable = true };
+            plane.Children.Add(initial);
+            root.Children.Add(background);
+            root.Children.Add(requested);
+            root.Children.Add(plane);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            var activated = new List<ControlBase?>();
+            using var modality = new ModalityManager(root, focus, pointer, target => activated.Add(target));
+            focus.Focus(background).ShouldBeTrue();
+            ModalScope? scope = null;
+            focus.Changing += (_, eventArgs) =>
+            {
+                if (scope is null && ReferenceEquals(eventArgs.Next, requested))
+                {
+                    scope = modality.Enter(plane, initialFocus: initial);
+                    initial.IsFocusable = false;
+                }
+            };
+
+            focus.Focus(requested).ShouldBeFalse();
+
+            var active = scope.ShouldNotBeNull();
+            active.IsActive.ShouldBeTrue();
+            modality.Active.ShouldBeSameAs(active);
+            focus.Focused.ShouldBeNull();
+            background.IsFocused.ShouldBeFalse();
+            activated.ShouldHaveSingleItem().ShouldBeSameAs(plane);
+            active.Dispose();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies modal fallback tries each candidate once while retaining descendant search.</summary>
     [Fact]
     public async Task Enter_WhenFallbackCandidatesToggle_DoesNotRetryAttemptedTargetsAsync()

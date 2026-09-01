@@ -44,6 +44,61 @@ public sealed class WindowSurfaceTests
         await surface.UpdateAsync(scope.Dispose, "close passive modal Window");
     }
 
+    /// <summary>Verifies a modal Window whose only focusable content becomes ineligible while the
+    /// deferred initial-focus commit is still queued still becomes the active Window, even though
+    /// the target inspected at entry time was non-null.</summary>
+    [Fact]
+    public async Task ShowModal_WhenQueuedInitialFocusBecomesIneligible_ActivatesModalWindowAsync()
+    {
+        // Arrange
+        var backgroundInput = new Button { Text = "Background" };
+        var background = new Window { Content = backgroundInput };
+        var requested = new Button { Text = "Requested" };
+        var modalInput = new Button { Text = "Modal" };
+        var modal = new Window
+        {
+            Content = modalInput,
+            Visibility = Visibility.Collapsed
+        };
+        var root = new Overlay { Children = { background, requested, modal } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(32, 10),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(
+            () => surface.Application.Focus.Focus(backgroundInput).ShouldBeTrue(),
+            "activate background Window");
+        surface.Application.ActiveWindow.ShouldBeSameAs(background);
+        ModalScope? scope = null;
+
+        void OnChanging(object? _, FocusChangingEventArgs eventArgs)
+        {
+            if (scope is null && ReferenceEquals(eventArgs.Next, requested))
+            {
+                scope = modal.ShowModal();
+                modalInput.IsEnabled = false;
+            }
+        }
+
+        surface.Application.Focus.Changing += OnChanging;
+
+        // Act
+        await surface.UpdateAsync(
+            () => surface.Application.Focus.Focus(requested).ShouldBeFalse(),
+            "request focus while the modal's initial target becomes ineligible before it settles");
+
+        // Assert
+        var active = scope.ShouldNotBeNull();
+        active.IsActive.ShouldBeTrue();
+        surface.Application.ActiveWindow.ShouldBeSameAs(modal);
+        modal.IsActive.ShouldBeTrue();
+        background.IsActive.ShouldBeFalse();
+        surface.Application.Focus.Focused.ShouldBeNull();
+
+        surface.Application.Focus.Changing -= OnChanging;
+        await surface.UpdateAsync(scope.Dispose, "close modal Window");
+    }
+
     /// <summary>Verifies ancestor availability and reparenting transitions clear retained close
     /// hover when the framework pointer path is retired without routing a raw Leave event.</summary>
     [Theory]
