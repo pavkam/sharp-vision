@@ -703,6 +703,42 @@ public sealed class WindowSurfaceTests
         surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(normal);
     }
 
+    /// <summary>Verifies leaving the terminal entirely while the close mark is pressed - with no
+    /// drag or resize in flight - still cancels the press and releases capture, matching
+    /// PressBehavior's ordinary Leave handling unchanged. This is the non-dragging counterpart to
+    /// the drag/resize-in-flight Leave tests: Window must route a Leave to the close chrome
+    /// normally whenever no gesture actually owns the capture, and only skip it while one does.</summary>
+    [Fact]
+    public async Task Close_WhenPointerLeavesTerminalWhilePressedWithoutDragging_CancelsPressAndReleasesCaptureAsync()
+    {
+        // Arrange
+        var window = new Window
+        {
+            CanClose = true,
+            Width = Length.Cells(12),
+            Height = Length.Cells(4)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(14, 6),
+            TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel },
+            TestContext.Current.CancellationToken);
+        var closeCell = new Point(4, 0);
+        var normalForeground = surface.Cell(closeCell).Style.Foreground;
+
+        // Act - press and hold the close mark, then leave the terminal without ever dragging
+        await surface.Pointer.MoveToAsync(window, closeCell);
+        await surface.Pointer.PressAsync();
+        surface.Cell(closeCell).Style.Foreground.ShouldNotBe(normalForeground);
+        surface.ShouldHaveCapture(window);
+        await surface.Pointer.LeaveAsync();
+
+        // Assert - the press is cancelled and capture is released, exactly as before Window
+        // learned to withhold routing to the close chrome while a drag or resize is in flight
+        surface.ShouldHaveCapture(null);
+        surface.Cell(closeCell).Style.Foreground.ShouldBe(normalForeground);
+    }
+
     /// <summary>Verifies a theme swap confined to the directly-resolved Accent role still
     /// repaints the close-mark glyph, instead of the base role-profile comparison alone
     /// under-invalidating it.</summary>
@@ -927,14 +963,31 @@ public sealed class WindowSurfaceTests
             TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel },
             TestContext.Current.CancellationToken);
 
+        // A bubble handler registered on the stage (without handledEventsToo) only runs for a
+        // route that reaches it still unhandled - see Router.RouteCore. Window defaults CanClose
+        // to true, so its close-chrome PressBehavior gets first crack at every pointer event
+        // ahead of HandlePointerDrag; this proves the in-flight drag's own Leave/Release branch -
+        // not the close chrome, which never armed a press here - is the one that claims this
+        // Leave, instead of the event silently escaping the Window unhandled.
+        var leaveEscapedWindowUnhandled = false;
+        using var unhandledLeaveProbe = stage.AddHandler(Events.Pointer, (_, args) =>
+        {
+            if (args.Phase == RoutingPhase.Bubble && args.Pointer.Action == PointerAction.Leave)
+            {
+                leaveEscapedWindowUnhandled = true;
+            }
+        });
+
         // Act — begin a title drag, then leave the terminal with the button still held
         await surface.Pointer.MoveToAsync(window, new Point(4, 0));
         await surface.Pointer.PressAsync();
         await surface.Pointer.MovePressedToAsync(stage, new Point(10, 6));
         await surface.Pointer.LeaveAsync();
 
-        // Assert — the gesture ended and capture is released
+        // Assert — the gesture ended and capture is released, and the Window itself claimed the
+        // Leave that ended it (matching every other in-flight drag/resize termination).
         surface.ShouldHaveCapture(null);
+        leaveEscapedWindowUnhandled.ShouldBeFalse();
         var boundsAfterLeave = window.Bounds;
 
         // Act — a plain move with no button held must not drag the window
@@ -1398,14 +1451,28 @@ public sealed class WindowSurfaceTests
             TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel },
             TestContext.Current.CancellationToken);
 
+        // See the analogous drag test above for why an unhandled-only stage handler proves the
+        // Window's own gesture-ending Leave branch - not the close-chrome PressBehavior that
+        // otherwise gets first crack at every pointer event - is the one that claims this Leave.
+        var leaveEscapedWindowUnhandled = false;
+        using var unhandledLeaveProbe = stage.AddHandler(Events.Pointer, (_, args) =>
+        {
+            if (args.Phase == RoutingPhase.Bubble && args.Pointer.Action == PointerAction.Leave)
+            {
+                leaveEscapedWindowUnhandled = true;
+            }
+        });
+
         // Act — begin a corner resize, then leave the terminal with the button still held
         await surface.Pointer.MoveToAsync(window, new Point(9, 3));
         await surface.Pointer.PressAsync();
         await surface.Pointer.MovePressedToAsync(stage, new Point(13, 6));
         await surface.Pointer.LeaveAsync();
 
-        // Assert — the gesture ended and capture is released
+        // Assert — the gesture ended and capture is released, and the Window itself claimed the
+        // Leave that ended it.
         surface.ShouldHaveCapture(null);
+        leaveEscapedWindowUnhandled.ShouldBeFalse();
         var boundsAfterLeave = window.Bounds;
 
         // Act — a plain move with no button held must not resize the window

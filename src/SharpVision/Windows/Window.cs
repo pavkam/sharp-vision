@@ -673,7 +673,23 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         if (eventArgs is PointerEventArgs pointer)
         {
             UpdateClosePointerOver(pointer);
-            _closeInteraction.Handle(pointer);
+
+            // While a title-bar drag or corner resize is in flight, the gesture owns pointer
+            // capture and every subsequent event until it ends. Routing those events through
+            // the close chrome's PressBehavior first is wrong regardless of whether it is
+            // pressed: PressBehavior.HandlePointer's Leave branch releases capture whenever
+            // _hasPointerCapture() is true, with no check for whether *it* is the one holding
+            // it, so a Leave mid-drag would release the drag's own capture out from under it
+            // and leave HandlePointerDrag's matching Leave/Release branch permanently
+            // unreachable (its (_dragging || _resizing) guard is already false by the time it
+            // runs, since OnLostPointerCapture unconditionally clears both flags first). Skip
+            // the close chrome entirely while a gesture is active so HandlePointerDrag's own
+            // Leave/Release branch can run and correctly end the gesture and mark the event
+            // handled.
+            if (!_dragging && !_resizing)
+            {
+                _closeInteraction.Handle(pointer);
+            }
 
             if (!pointer.IsHandled)
             {
