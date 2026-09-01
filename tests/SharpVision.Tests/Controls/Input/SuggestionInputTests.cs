@@ -1480,6 +1480,256 @@ public sealed class SuggestionInputTests
         await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a resolver that returns synchronously after attachment commits cannot
+    /// bypass its captured detached authority or mutate the newly attached tree.</summary>
+    [Fact]
+    public async Task Resolver_WhenAttachmentCommitsBeforeSynchronousReturn_DiscardsCompletionAsync()
+    {
+        // Arrange
+        var resolverEntered = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var attachmentCommitted = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var lifecycleWaited = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releaseResolver = new ManualResetEventSlim();
+        using var releaseAttachment = new ManualResetEventSlim();
+        var input = new SuggestionInput
+        {
+            Resolver = (_, cancellationToken) =>
+            {
+                resolverEntered.SetResult();
+                releaseResolver.Wait(cancellationToken);
+                return ValueTask.FromResult<IReadOnlyList<object?>>(["stale"]);
+            }
+        };
+        input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
+        await using var dispatcher = Dispatcher.Start();
+        var resolve = Task.Run(
+            () => input.Text = "query",
+            TestContext.Current.CancellationToken);
+        await resolverEntered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var attach = dispatcher.InvokeAsync(
+            () => input.Attach(
+                dispatcher,
+                UnicodePolicy.Default,
+                new Theme(),
+                () =>
+                {
+                    attachmentCommitted.SetResult();
+                    releaseAttachment.Wait();
+                }),
+            TestContext.Current.CancellationToken).AsTask();
+        await attachmentCommitted.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        releaseResolver.Set();
+
+        try
+        {
+            var firstSettlement = await Task.WhenAny(
+                lifecycleWaited.Task,
+                resolve).WaitAsync(TestContext.Current.CancellationToken);
+
+            // Assert before lifecycle release
+            firstSettlement.ShouldBeSameAs(lifecycleWaited.Task);
+            input.Suggestions.ShouldBeEmpty();
+        }
+        finally
+        {
+            releaseAttachment.Set();
+        }
+
+        _ = await resolve.WaitAsync(TestContext.Current.CancellationToken);
+        await attach.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Assert after lifecycle release
+        input.Dispatcher.ShouldBeSameAs(dispatcher);
+        input.Suggestions.ShouldBeEmpty();
+        input.IsResolving.ShouldBeFalse();
+        await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies attachment reserves stable ancestry before it discovers descendants while
+    /// result-list ownership is between slot and parent-identity commits.</summary>
+    [Fact]
+    public async Task Resolver_WhenListStructureIsMutating_AttachmentWaitsBeforeDescendantDiscoveryAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var mutationPaused = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var lifecycleWaited = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var discoveryStarted = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releaseMutation = new ManualResetEventSlim();
+        var pauseCount = 0;
+        var input = new SuggestionInput
+        {
+            Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task),
+            Text = "query"
+        };
+        var observation = input.LastResolutionObservation.ShouldNotBeNull();
+
+        foreach (var control in OwnedTree.FindAll<ControlBase>(input))
+        {
+            control.OwnedControls.StructuralMutationPaused = () =>
+            {
+                if (Interlocked.Exchange(ref pauseCount, 1) != 0)
+                {
+                    return;
+                }
+
+                mutationPaused.SetResult();
+                releaseMutation.Wait(TestContext.Current.CancellationToken);
+            };
+        }
+
+        input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
+        input.OwnedControls.DescendantDiscoveryStarted = () => discoveryStarted.TrySetResult();
+        await using var dispatcher = Dispatcher.Start();
+        var complete = Task.Run(
+            () => completion.SetResult(["one", "two"]),
+            TestContext.Current.CancellationToken);
+        await mutationPaused.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var attach = dispatcher.InvokeAsync(
+            () => input.Attach(dispatcher),
+            TestContext.Current.CancellationToken).AsTask();
+
+        // Act
+        try
+        {
+            var firstBoundary = await Task.WhenAny(
+                lifecycleWaited.Task,
+                discoveryStarted.Task).WaitAsync(TestContext.Current.CancellationToken);
+
+            // Assert before mutation release
+            firstBoundary.ShouldBeSameAs(lifecycleWaited.Task);
+            input.Dispatcher.ShouldBeNull();
+        }
+        finally
+        {
+            releaseMutation.Set();
+        }
+
+        await observation.WaitAsync(TestContext.Current.CancellationToken);
+        await complete.WaitAsync(TestContext.Current.CancellationToken);
+        await attach.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Assert after mutation release
+        input.Suggestions.ShouldBe(["one", "two"]);
+        input.Dispatcher.ShouldBeSameAs(dispatcher);
+
+        foreach (var control in OwnedTree.FindAll<ControlBase>(input))
+        {
+            control.Dispatcher.ShouldBeSameAs(dispatcher);
+        }
+
+        await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies threshold and resolver clearing use the same detached publication
+    /// authority as resolver completion.</summary>
+    /// <param name="clearWithThreshold">Whether the threshold, rather than resolver, causes clearing.</param>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Settlement_WhenEligibilityClears_UsesDetachedPublicationAuthorityAsync(
+        bool clearWithThreshold)
+    {
+        // Arrange
+        var publicationAcquired = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var lifecycleWaited = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releasePublication = new ManualResetEventSlim();
+        using var input = new SuggestionInput
+        {
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["current"]),
+            Text = "query"
+        };
+        input.BeforeDetachedResolutionPublication = () =>
+        {
+            publicationAcquired.SetResult();
+            releasePublication.Wait();
+        };
+        input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
+        var clear = Task.Run(
+            () =>
+            {
+                if (clearWithThreshold)
+                {
+                    input.MinimumPrefixLength = 100;
+                }
+                else
+                {
+                    input.Resolver = null;
+                }
+            },
+            TestContext.Current.CancellationToken);
+        Task? disposal = null;
+
+        // Act
+        try
+        {
+            var firstSettlement = await Task.WhenAny(
+                publicationAcquired.Task,
+                clear).WaitAsync(TestContext.Current.CancellationToken);
+            firstSettlement.ShouldBeSameAs(publicationAcquired.Task);
+            disposal = Task.Run(input.Dispose, TestContext.Current.CancellationToken);
+            var firstLifecycleBoundary = await Task.WhenAny(
+                lifecycleWaited.Task,
+                disposal).WaitAsync(TestContext.Current.CancellationToken);
+
+            // Assert before release
+            firstLifecycleBoundary.ShouldBeSameAs(lifecycleWaited.Task);
+            input.Suggestions.ShouldBe(["current"]);
+            input.IsDisposed.ShouldBeFalse();
+        }
+        finally
+        {
+            releasePublication.Set();
+        }
+
+        await clear.WaitAsync(TestContext.Current.CancellationToken);
+        await disposal.ShouldNotBeNull().WaitAsync(TestContext.Current.CancellationToken);
+
+        // Assert after release
+        input.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies terminal disposal of a retained ancestor prevents a reentrant refresh
+    /// from invoking the resolver before descendant teardown begins.</summary>
+    [Fact]
+    public void Refresh_WhenRetainedAncestorStartsTerminalDisposal_DoesNotStartResolution()
+    {
+        // Arrange
+        var resolverCalls = 0;
+        using var input = new SuggestionInput
+        {
+            MinimumPrefixLength = 100,
+            Resolver = (_, _) =>
+            {
+                resolverCalls++;
+                return ValueTask.FromResult<IReadOnlyList<object?>>(["unexpected"]);
+            },
+            Text = "query"
+        };
+        var owner = new ProbeOwnedControl();
+        owner.AddPrimary(input);
+        owner.DirectDisposalRequesting = _ => input.MinimumPrefixLength = 0;
+
+        // Act
+        owner.Dispose();
+
+        // Assert
+        resolverCalls.ShouldBe(0);
+        owner.IsDisposed.ShouldBeTrue();
+        input.IsDisposed.ShouldBeTrue();
+    }
+
     /// <summary>Verifies an attached completion is discarded after same-dispatcher detach and
     /// reattach invalidate its captured identity.</summary>
     [Fact]
@@ -1692,12 +1942,12 @@ public sealed class SuggestionInputTests
         var input = new SuggestionInput
         {
             Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["current"]),
+            Text = "query",
             BeforeDetachedResolutionPublication = () =>
             {
                 publicationAcquired.SetResult();
                 releasePublication.Wait();
-            },
-            Text = "query"
+            }
         };
         input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
         input.Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task);
@@ -1770,6 +2020,134 @@ public sealed class SuggestionInputTests
         input.IsDisposed.ShouldBeFalse();
         input.Suggestions.ShouldBe(["published"]);
         input.Dispose();
+    }
+
+    /// <summary>Verifies a newer asynchronous generation can publish on the same thread while an
+    /// outer detached result callback still owns the lifecycle boundary.</summary>
+    [Fact]
+    public async Task SuggestionsChanged_WhenNewerDetachedCompletionNests_SettlesNewGenerationAsync()
+    {
+        // Arrange
+        var firstCompletion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var nestedCompletion = new TaskCompletionSource<IReadOnlyList<object?>>();
+        var input = new SuggestionInput
+        {
+            Resolver = (searchTerms, _) => searchTerms == "first"
+                ? new ValueTask<IReadOnlyList<object?>>(firstCompletion.Task)
+                : new ValueTask<IReadOnlyList<object?>>(nestedCompletion.Task),
+            Text = "first"
+        };
+        var firstObservation = input.LastResolutionObservation.ShouldNotBeNull();
+        Task? nestedObservation = null;
+        input.SuggestionsChanged += (_, _) =>
+        {
+            if (input.Suggestions.SequenceEqual(["first result"]))
+            {
+                input.Text = "newer";
+                nestedObservation = input.LastResolutionObservation.ShouldNotBeNull();
+                nestedCompletion.SetResult(["newer result"]);
+            }
+        };
+
+        // Act
+        firstCompletion.SetResult(["first result"]);
+        await firstObservation.WaitAsync(TestContext.Current.CancellationToken);
+        await nestedObservation.ShouldNotBeNull().WaitAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        input.Suggestions.ShouldBe(["newer result"]);
+        input.IsResolving.ShouldBeFalse();
+        input.Dispose();
+    }
+
+    /// <summary>Verifies reciprocal detached callbacks reject cross-root lifecycle waits before
+    /// either worker can deadlock and release both publication reservations.</summary>
+    [Fact]
+    public async Task SuggestionsChanged_WhenTwoRootsDisposeEachOther_RejectsCycleAndReleasesReservationsAsync()
+    {
+        // Arrange
+        var firstCompletion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondCompletion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var callbacksReady = new CountdownEvent(initialCount: 2);
+        using var releaseCallbacks = new ManualResetEventSlim();
+        Exception? firstFailure = null;
+        Exception? secondFailure = null;
+        var first = new SuggestionInput
+        {
+            Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(firstCompletion.Task),
+            Text = "first"
+        };
+        var second = new SuggestionInput
+        {
+            Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(secondCompletion.Task),
+            Text = "second"
+        };
+        var firstObservation = first.LastResolutionObservation.ShouldNotBeNull();
+        var secondObservation = second.LastResolutionObservation.ShouldNotBeNull();
+        first.SuggestionsChanged += (_, _) =>
+        {
+            _ = callbacksReady.Signal();
+            releaseCallbacks.Wait(TestContext.Current.CancellationToken);
+            firstFailure = Record.Exception(second.Dispose);
+        };
+        second.SuggestionsChanged += (_, _) =>
+        {
+            _ = callbacksReady.Signal();
+            releaseCallbacks.Wait(TestContext.Current.CancellationToken);
+            secondFailure = Record.Exception(first.Dispose);
+        };
+        var completeFirst = Task.Run(
+            () => firstCompletion.SetResult(["first result"]),
+            TestContext.Current.CancellationToken);
+        var completeSecond = Task.Run(
+            () => secondCompletion.SetResult(["second result"]),
+            TestContext.Current.CancellationToken);
+        callbacksReady.Wait(TestContext.Current.CancellationToken);
+
+        // Act
+        releaseCallbacks.Set();
+        await Task.WhenAll(firstObservation, secondObservation)
+            .WaitAsync(TestContext.Current.CancellationToken);
+        await Task.WhenAll(completeFirst, completeSecond)
+            .WaitAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        (firstFailure is InvalidOperationException || secondFailure is InvalidOperationException)
+            .ShouldBeTrue();
+
+        if (firstFailure is null)
+        {
+            second.IsDisposed.ShouldBeTrue();
+        }
+        else
+        {
+            _ = firstFailure.ShouldBeOfType<InvalidOperationException>();
+        }
+
+        if (secondFailure is null)
+        {
+            first.IsDisposed.ShouldBeTrue();
+        }
+        else
+        {
+            _ = secondFailure.ShouldBeOfType<InvalidOperationException>();
+        }
+
+        if (!first.IsDisposed)
+        {
+            first.Dispose();
+        }
+
+        if (!second.IsDisposed)
+        {
+            second.Dispose();
+        }
+
+        first.IsDisposed.ShouldBeTrue();
+        second.IsDisposed.ShouldBeTrue();
     }
 
     /// <summary>Verifies a current failure callback that starts a successful request prevents the

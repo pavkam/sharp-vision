@@ -234,7 +234,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         }
         finally
         {
-            OwnedControlRegistry.ExitLifecyclePublication(entered);
+            OwnedControlRegistry.ExitDetachedPublication(entered);
         }
     }
 
@@ -1046,6 +1046,23 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <summary>Gets whether this control owns the active terminal-disposal lifetime boundary.</summary>
     /// <remarks>Ownership publication uses this only to permit the framework's pre-disposal unlink.</remarks>
     internal bool TerminalDisposalStarted => Volatile.Read(ref _terminalDisposalStarted);
+
+    /// <summary>Gets whether this control or a retained ancestor has begun terminal disposal.</summary>
+    internal bool TerminalDisposalStartedInAncestry
+    {
+        get
+        {
+            for (var current = this; current is not null; current = current.Parent)
+            {
+                if (current.TerminalDisposalStarted)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
 
     private bool OwnedDisposalRequested { get; set; }
 

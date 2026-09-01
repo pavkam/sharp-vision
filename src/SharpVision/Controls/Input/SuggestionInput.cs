@@ -513,7 +513,10 @@ public sealed class SuggestionInput: CompositeControlBase
 
     private void BeginResolution()
     {
-        if (_resolutionLifecycleCleanupDepth > 0 || IsDisposed || IsDisposing)
+        if (_resolutionLifecycleCleanupDepth > 0 ||
+            IsDisposed ||
+            IsDisposing ||
+            TerminalDisposalStartedInAncestry)
         {
             return;
         }
@@ -530,6 +533,7 @@ public sealed class SuggestionInput: CompositeControlBase
             : null;
         var searchTerms = Text;
         var resolver = Resolver;
+        ExceptionDispatchInfo? startupFailure = null;
 
         if (!IsCurrentResolution(lease, generation))
         {
@@ -538,16 +542,20 @@ public sealed class SuggestionInput: CompositeControlBase
 
         if (resolver is null || !MeetsMinimumPrefixLength(searchTerms, MinimumPrefixLength))
         {
-            ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
             ExceptionAggregation.Capture(
-                () => ApplyResults(lease, generation, [], markCurrent: true),
-                ref failure);
-            failure?.Throw();
+                () => DispatchCompletionAsync(
+                        lease,
+                        generation,
+                        attachment,
+                        detachedAttachment,
+                        () => ApplyResults(lease, generation, [], markCurrent: true))
+                    .GetAwaiter()
+                    .GetResult(),
+                ref startupFailure);
+            startupFailure?.Throw();
             return;
         }
 
-        ExceptionDispatchInfo? startupFailure = null;
         ExceptionAggregation.Capture(() => SetIsResolving(true), ref startupFailure);
 
         if (!IsCurrentResolution(lease, generation))
@@ -565,7 +573,14 @@ public sealed class SuggestionInput: CompositeControlBase
         catch (OperationCanceledException)
         {
             ExceptionAggregation.Capture(
-                () => ApplyCancellation(lease, generation),
+                () => DispatchCompletionAsync(
+                        lease,
+                        generation,
+                        attachment,
+                        detachedAttachment,
+                        () => ApplyCancellation(lease, generation))
+                    .GetAwaiter()
+                    .GetResult(),
                 ref startupFailure);
             startupFailure?.Throw();
             return;
@@ -573,7 +588,14 @@ public sealed class SuggestionInput: CompositeControlBase
         catch (Exception exception)
         {
             ExceptionAggregation.Capture(
-                () => ApplyFailure(lease, generation, searchTerms, exception),
+                () => DispatchCompletionAsync(
+                        lease,
+                        generation,
+                        attachment,
+                        detachedAttachment,
+                        () => ApplyFailure(lease, generation, searchTerms, exception))
+                    .GetAwaiter()
+                    .GetResult(),
                 ref startupFailure);
             startupFailure?.Throw();
             return;
@@ -582,7 +604,14 @@ public sealed class SuggestionInput: CompositeControlBase
         if (pending.IsCompletedSuccessfully)
         {
             ExceptionAggregation.Capture(
-                () => ApplyCompletion(lease, generation, searchTerms, pending.Result),
+                () => DispatchCompletionAsync(
+                        lease,
+                        generation,
+                        attachment,
+                        detachedAttachment,
+                        () => ApplyCompletion(lease, generation, searchTerms, pending.Result))
+                    .GetAwaiter()
+                    .GetResult(),
                 ref startupFailure);
             startupFailure?.Throw();
             return;
@@ -712,6 +741,12 @@ public sealed class SuggestionInput: CompositeControlBase
                 _ = observation.TrySetException(exception);
                 throw;
             }
+        }
+
+        if (token.Dispatcher.CheckAccess())
+        {
+            ApplyOrDiscard();
+            return observation.Task;
         }
 
         token.Dispatcher.PostBackgroundCompletion(ApplyOrDiscard, Abandon);
@@ -918,6 +953,7 @@ public sealed class SuggestionInput: CompositeControlBase
     private bool IsCurrentResolution(LatestControlOperationLease lease, int generation) =>
         !IsDisposed &&
         !IsDisposing &&
+        !TerminalDisposalStartedInAncestry &&
         _resolutionLifecycleCleanupDepth == 0 &&
         generation == _resolutionGeneration &&
         _resolutionOperation.IsCurrent(lease);
