@@ -90,7 +90,7 @@ internal sealed class BreadcrumbPane: CompositeControlBase
         overflow.Items.Add(new BreadcrumbItem { Text = "界 Desi&gn" });
         overflow.Items.Add(new BreadcrumbItem { Text = "Releas&e 🚀" });
 
-        var participation = new Breadcrumb { Width = Length.Percent(100) };
+        var participation = new Breadcrumb { Width = Length.Cells(39) };
         participation.Items.Add(new BreadcrumbItem { Text = "Roo&t" });
         participation.Items.Add(new BreadcrumbItem
         {
