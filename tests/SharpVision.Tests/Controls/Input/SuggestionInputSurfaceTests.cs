@@ -141,6 +141,98 @@ public sealed class SuggestionInputSurfaceTests
         list.ActiveIndex.ShouldBe(expectedIndex);
     }
 
+    /// <summary>Verifies scalar popup navigation ignores application and selection modifiers while
+    /// treating lock state as incidental to an otherwise plain command.</summary>
+    [Theory]
+    [InlineData(Modifiers.CapsLock, 1)]
+    [InlineData(Modifiers.NumLock, 1)]
+    [InlineData(Modifiers.CapsLock | Modifiers.NumLock, 1)]
+    [InlineData(Modifiers.Shift, 0)]
+    [InlineData(Modifiers.Control, 0)]
+    [InlineData(Modifiers.Alt, 0)]
+    [InlineData(Modifiers.Super, 0)]
+    [InlineData(Modifiers.Hyper, 0)]
+    [InlineData(Modifiers.Meta, 0)]
+    public async Task Navigation_WhenDownHasModifiers_UsesScalarModifierPolicyAsync(
+        Modifiers modifiers,
+        int expectedIndex)
+    {
+        // Arrange
+        var input = new SuggestionInput
+        {
+            Width = Length.Cells(16),
+            Resolver = static (_, _) =>
+                ValueTask.FromResult<IReadOnlyList<object?>>(["Alpha", "Beta", "Gamma"])
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(18, 7),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.TypeAsync("q");
+        var list = OwnedTree.Find<UiListView>(input).ShouldNotBeNull();
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Down, modifiers);
+
+        // Assert
+        input.Text.ShouldBe("q");
+        input.IsOpen.ShouldBeTrue();
+        list.SelectedIndex.ShouldBe(expectedIndex);
+        list.ActiveIndex.ShouldBe(expectedIndex);
+    }
+
+    /// <summary>Verifies modified Enter and Escape use the shared activation policy: Shift and
+    /// lock state remain eligible, while application-command modifiers leave the popup untouched.</summary>
+    [Theory]
+    [InlineData(Code.Enter, Modifiers.Shift, true)]
+    [InlineData(Code.Enter, Modifiers.CapsLock | Modifiers.NumLock, true)]
+    [InlineData(Code.Enter, Modifiers.Control, false)]
+    [InlineData(Code.Enter, Modifiers.Alt, false)]
+    [InlineData(Code.Escape, Modifiers.Shift, true)]
+    [InlineData(Code.Escape, Modifiers.CapsLock, true)]
+    [InlineData(Code.Escape, Modifiers.Super, false)]
+    [InlineData(Code.Escape, Modifiers.Meta, false)]
+    public async Task Input_WhenEnterOrEscapeHasModifiers_UsesActivationModifierPolicyAsync(
+        Code code,
+        Modifiers modifiers,
+        bool commandEligible)
+    {
+        // Arrange
+        var accepted = 0;
+        var input = new SuggestionInput
+        {
+            Width = Length.Cells(16),
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["Alpha"])
+        };
+        input.SuggestionAccepted += (_, _) => accepted++;
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(18, 7),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.TypeAsync("q");
+        var editor = OwnedTree.Find<TextInput>(input).ShouldNotBeNull();
+
+        // Act
+        _ = await surface.Application.Dispatcher.InvokeAsync(
+            () => _ = Router.Route(
+                editor,
+                Events.Key,
+                new KeyEventArgs(new Stroke(
+                    code,
+                    character: null,
+                    nativeCode: 0,
+                    modifiers,
+                    KeyAction.Press))),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        input.IsOpen.ShouldBe(!commandEligible);
+        input.Text.ShouldBe(code == Code.Enter && commandEligible ? "Alpha" : "q");
+        accepted.ShouldBe(code == Code.Enter && commandEligible ? 1 : 0);
+    }
+
     /// <summary>Verifies Enter accepts the first provisional row without moving focus into the list.</summary>
     [Fact]
     public async Task Input_WhenEnterAcceptsCurrentSuggestion_CommitsAndClosesAsync()
@@ -203,6 +295,91 @@ public sealed class SuggestionInputSurfaceTests
         accepted.Cause.ShouldBe(ActivationCause.Pointer);
     }
 
+    /// <summary>Verifies projection failure for a non-current pointer row occurs before ListView
+    /// can change the live popup session's provisional current or selected row.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Input_WhenNonCurrentPointerSuggestionProjectionFails_PreservesExactPopupStateAsync(
+        bool returnsNull)
+    {
+        // Arrange
+        var expected = new InvalidOperationException("selector failed");
+        var accepted = 0;
+        var input = new SuggestionInput
+        {
+            Width = Length.Cells(16),
+            DropDownHeight = Length.Cells(3),
+            Resolver = static (_, _) =>
+                ValueTask.FromResult<IReadOnlyList<object?>>(["Alpha", "Beta", "Gamma"]),
+            TextSelector = item => item is not "Beta"
+                ? (string) item!
+                : returnsNull ? null! : throw expected
+        };
+        input.SuggestionAccepted += (_, _) => accepted++;
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(18, 8),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.TypeAsync("a");
+        var list = OwnedTree.Find<UiListView>(input).ShouldNotBeNull();
+        var openingScope = surface.Application.Modality.Active.ShouldNotBeNull();
+        var openingSuggestions = input.Suggestions.ToArray();
+        list.SelectedIndex.ShouldBe(0);
+        list.ActiveIndex.ShouldBe(0);
+
+        // Act
+        var point = new Point(list.Bounds.X + 1, list.Bounds.Y + 1);
+        var exception = await surface.Application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                _ = surface.Application.Capture.Dispatch(new Pointer(
+                    point,
+                    pixels: null,
+                    Buttons.Primary,
+                    PointerAction.Press,
+                    wheelX: 0,
+                    wheelY: 0,
+                    Modifiers.None,
+                    isMotion: false,
+                    isCellPositionInferred: false));
+                return Should.Throw<InvalidOperationException>(() =>
+                    _ = surface.Application.Capture.Dispatch(new Pointer(
+                        point,
+                        pixels: null,
+                        Buttons.Primary,
+                        PointerAction.Release,
+                        wheelX: 0,
+                        wheelY: 0,
+                        Modifiers.None,
+                        isMotion: false,
+                        isCellPositionInferred: false)));
+            },
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        if (returnsNull)
+        {
+            exception.Message.ShouldContain("null");
+        }
+        else
+        {
+            exception.ShouldBeSameAs(expected);
+        }
+
+        input.Text.ShouldBe("a");
+        input.Suggestions.ShouldBe(openingSuggestions);
+        input.IsOpen.ShouldBeTrue();
+        input.IsResolving.ShouldBeFalse();
+        list.SelectedIndex.ShouldBe(0);
+        list.ActiveIndex.ShouldBe(0);
+        accepted.ShouldBe(0);
+        var currentScope = surface.Application.Modality.Active.ShouldNotBeNull();
+        currentScope.ShouldBeSameAs(openingScope);
+        currentScope.IsActive.ShouldBeTrue();
+    }
+
     /// <summary>Verifies Escape consumes the open session, restores the opening provisional state,
     /// and leaves editor text untouched.</summary>
     [Fact]
@@ -245,6 +422,41 @@ public sealed class SuggestionInputSurfaceTests
         input.IsOpen.ShouldBeFalse();
         list.SelectedIndex.ShouldBe(-1);
         list.ActiveIndex.ShouldBe(-1);
+    }
+
+    /// <summary>Verifies Enter returns to the retained editor's ordinary submission contract after
+    /// an open suggestion session has been dismissed.</summary>
+    [Fact]
+    public async Task Input_WhenEnterIsPressedAfterPopupCloses_SubmitsEditorTextAsync()
+    {
+        // Arrange
+        var accepted = 0;
+        string? submitted = null;
+        var input = new SuggestionInput
+        {
+            Width = Length.Cells(16),
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["Alpha"])
+        };
+        input.SuggestionAccepted += (_, _) => accepted++;
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(18, 7),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.TypeAsync("q");
+        var editor = OwnedTree.Find<TextInput>(input).ShouldNotBeNull();
+        editor.Submitted += (_, eventArgs) => submitted = eventArgs.Text;
+        await surface.Keyboard.PressAsync(Code.Escape);
+        input.IsOpen.ShouldBeFalse();
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        submitted.ShouldBe("q");
+        input.Text.ShouldBe("q");
+        input.IsOpen.ShouldBeFalse();
+        accepted.ShouldBe(0);
     }
 
     /// <summary>Verifies plain Tab closes the popup but stays available to normal forward and
@@ -503,17 +715,31 @@ public sealed class SuggestionInputSurfaceTests
             TestContext.Current.CancellationToken);
         await surface.Keyboard.PressAsync(Code.Tab);
         await surface.Keyboard.TypeAsync("q");
+        var list = OwnedTree.Find<UiListView>(input).ShouldNotBeNull();
+        var suggestionLead = surface.Cell(new Point(list.Bounds.X, list.Bounds.Y));
+        var suggestionContinuation = surface.Cell(new Point(list.Bounds.X + 1, list.Bounds.Y));
+        suggestionLead.Text.ShouldBe("界");
+        suggestionLead.Width.ShouldBe(2);
+        suggestionLead.Continuation.ShouldBeFalse();
+        suggestionLead.LeadX.ShouldBe(list.Bounds.X);
+        suggestionContinuation.Width.ShouldBe(0);
+        suggestionContinuation.Continuation.ShouldBeTrue();
+        suggestionContinuation.LeadX.ShouldBe(list.Bounds.X);
 
         // Act
         await surface.ResizeAsync(new Size(1, 1));
 
         // Assert
-        var list = OwnedTree.Find<UiListView>(input).ShouldNotBeNull();
         list.Bounds.Width.ShouldBeGreaterThanOrEqualTo(0);
         list.Bounds.Height.ShouldBeGreaterThanOrEqualTo(0);
         list.Bounds.Right.ShouldBeLessThanOrEqualTo(1);
         list.Bounds.Bottom.ShouldBeLessThanOrEqualTo(1);
-        _ = surface.Cell(default);
+        surface.ShouldRender("╰");
+        var onlyCell = surface.Cell(default);
+        onlyCell.Text.ShouldBe("╰");
+        onlyCell.Width.ShouldBe(1);
+        onlyCell.Continuation.ShouldBeFalse();
+        onlyCell.LeadX.ShouldBe(0);
     }
 
     /// <summary>Verifies direct hidden and disabled transitions close interaction but do not

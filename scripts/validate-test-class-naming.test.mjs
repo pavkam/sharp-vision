@@ -47,7 +47,6 @@ test("stripLongestSuffix_WhenNameHasEvidenceTierSuffix_StripsLongestFirst", () =
   assert.equal(stripLongestSuffix("WidgetPerformanceTests"), "Widget");
   assert.equal(stripLongestSuffix("WidgetConsumerTests"), "Widget");
   assert.equal(stripLongestSuffix("WidgetCompatibilityTests"), "Widget");
-  assert.equal(stripLongestSuffix("WidgetRandomizedTests"), "Widget");
   assert.equal(stripLongestSuffix("WidgetTests"), "Widget");
 });
 
@@ -58,7 +57,6 @@ test("candidateBases_WhenNameHasEvidenceTierSuffix_AlsoOffersTheBareTestsInterpr
   assert.deepEqual(candidateBases("WidgetPerformanceTests"), ["Widget", "WidgetPerformance"]);
   assert.deepEqual(candidateBases("WidgetConsumerTests"), ["Widget", "WidgetConsumer"]);
   assert.deepEqual(candidateBases("WidgetCompatibilityTests"), ["Widget", "WidgetCompatibility"]);
-  assert.deepEqual(candidateBases("WidgetRandomizedTests"), ["Widget", "WidgetRandomized"]);
   assert.deepEqual(candidateBases("WidgetTests"), ["Widget"]);
 });
 
@@ -294,7 +292,7 @@ test("computeViolations_WhenClassNamesNoSubjectType_Fails", async () => {
     assert.match(message, /^tests\/Widgets\/FooBarBazTests\.cs:\d+ FooBarBazTests does not name/);
     assert.match(
       message,
-      /as FooBarBaz \(checked Tests\/SurfaceTests\/PerformanceTests\/ConsumerTests\/CompatibilityTests\/RandomizedTests suffixes\)/,
+      /as FooBarBaz \(checked Tests\/SurfaceTests\/PerformanceTests\/ConsumerTests\/CompatibilityTests suffixes\)/,
     );
     assert.match(message, /suite-level allow-list or scripts\/test-class-naming-baseline\.txt\.$/);
   } finally {

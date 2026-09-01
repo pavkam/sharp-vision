@@ -97,10 +97,15 @@ public sealed class BindingTests
         // Act
         using var binding = target.Bind(model, source => source.Name);
         target.Text = "target";
+
+        // Assert target-to-model propagation before the source changes again
+        binding.Mode.ShouldBe(BindingMode.TwoWay);
+        model.Name.ShouldBe("target");
+
+        // Act source-to-target propagation
         model.Name = null;
 
         // Assert
-        binding.Mode.ShouldBe(BindingMode.TwoWay);
         target.Text.ShouldBeEmpty();
         model.Name.ShouldBeNull();
     }
@@ -117,10 +122,15 @@ public sealed class BindingTests
         // Act
         using var binding = target.Bind(model, source => source.Name, BindingMode.OneWay);
         target.Text = "target";
+
+        // Assert target edits do not flow back in one-way mode
+        binding.Mode.ShouldBe(BindingMode.OneWay);
+        model.Name.ShouldBe("model");
+
+        // Act source-to-target propagation
         model.Name = null;
 
         // Assert
-        binding.Mode.ShouldBe(BindingMode.OneWay);
         target.Text.ShouldBeEmpty();
         model.Name.ShouldBeNull();
     }

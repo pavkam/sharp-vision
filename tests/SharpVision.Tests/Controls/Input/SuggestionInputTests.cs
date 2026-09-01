@@ -1152,73 +1152,78 @@ public sealed class SuggestionInputTests
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var fillerDrained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var release = new ManualResetEventSlim();
-        var failures = 0;
-        var calls = 0;
-        CancellationToken rejectedToken = default;
-        var input = new SuggestionInput
-        {
-            Resolver = (_, cancellationToken) =>
-            {
-                calls++;
-
-                if (calls == 1)
-                {
-                    return ValueTask.FromResult<IReadOnlyList<object?>>(["prior"]);
-                }
-
-                rejectedToken = cancellationToken;
-                return new ValueTask<IReadOnlyList<object?>>(completion.Task);
-            },
-            Text = "query"
-        };
-        await using var dispatcher = Dispatcher.Start(capacity: 1);
-        await dispatcher.InvokeAsync(() =>
-        {
-            input.Attach(dispatcher);
-            input.ResolutionFailed += (_, _) => failures++;
-            input.Refresh();
-        }, TestContext.Current.CancellationToken);
-        var observation = input.LastResolutionObservation.ShouldNotBeNull();
-        dispatcher.Post(() =>
-        {
-            entered.SetResult();
-            release.Wait();
-        });
-        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
-        dispatcher.Post(fillerDrained.SetResult);
-
-        // Act
-        completion.SetResult(["rejected"]);
-        Exception? observationFailure = null;
-
         try
         {
-            await observation.WaitAsync(TestContext.Current.CancellationToken);
-        }
-        catch (Exception exception)
-        {
-            observationFailure = exception;
+            var failures = 0;
+            var calls = 0;
+            CancellationToken rejectedToken = default;
+            var input = new SuggestionInput
+            {
+                Resolver = (_, cancellationToken) =>
+                {
+                    calls++;
+
+                    if (calls == 1)
+                    {
+                        return ValueTask.FromResult<IReadOnlyList<object?>>(["prior"]);
+                    }
+
+                    rejectedToken = cancellationToken;
+                    return new ValueTask<IReadOnlyList<object?>>(completion.Task);
+                },
+                Text = "query"
+            };
+            await using var dispatcher = Dispatcher.Start(capacity: 1);
+            await dispatcher.InvokeAsync(() =>
+            {
+                input.Attach(dispatcher);
+                input.ResolutionFailed += (_, _) => failures++;
+                input.Refresh();
+            }, TestContext.Current.CancellationToken);
+            var observation = input.LastResolutionObservation.ShouldNotBeNull();
+            dispatcher.Post(() =>
+            {
+                entered.SetResult();
+                release.Wait();
+            });
+            await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+            dispatcher.Post(fillerDrained.SetResult);
+
+            // Act
+            completion.SetResult(["rejected"]);
+            Exception? observationFailure = null;
+
+            try
+            {
+                await observation.WaitAsync(TestContext.Current.CancellationToken);
+            }
+            catch (Exception exception)
+            {
+                observationFailure = exception;
+            }
+
+            release.Set();
+
+            await fillerDrained.Task.WaitAsync(TestContext.Current.CancellationToken);
+            await dispatcher.InvokeAsync(
+                () =>
+                {
+                    input.Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>([]);
+                },
+                TestContext.Current.CancellationToken);
+
+            // Assert
+            observationFailure.ShouldBeNull();
+            failures.ShouldBe(0);
+            rejectedToken.IsCancellationRequested.ShouldBeFalse();
+            input.Suggestions.ShouldBeEmpty();
+            input.IsResolving.ShouldBeFalse();
+            await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
         }
         finally
         {
             release.Set();
         }
-
-        await fillerDrained.Task.WaitAsync(TestContext.Current.CancellationToken);
-        await dispatcher.InvokeAsync(
-            () =>
-            {
-                input.Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>([]);
-            },
-            TestContext.Current.CancellationToken);
-
-        // Assert
-        observationFailure.ShouldBeNull();
-        failures.ShouldBe(0);
-        rejectedToken.IsCancellationRequested.ShouldBeFalse();
-        input.Suggestions.ShouldBeEmpty();
-        input.IsResolving.ShouldBeFalse();
-        await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies a newer text generation cancels and outranks an older non-cooperative
@@ -1750,40 +1755,40 @@ public sealed class SuggestionInputTests
         var attachmentCommitted = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         using var releasePublication = new ManualResetEventSlim();
-        var publications = new System.Collections.Concurrent.ConcurrentQueue<string>();
-        var input = new SuggestionInput
-        {
-            Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task),
-            BeforeDetachedResolutionPublication = () =>
-            {
-                publicationAcquired.SetResult();
-                releasePublication.Wait();
-            },
-            Text = "query"
-        };
-        input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
-        var observation = input.LastResolutionObservation.ShouldNotBeNull();
-        await using var dispatcher = Dispatcher.Start();
-        input.SuggestionsChanged += (_, _) => publications.Enqueue("suggestions");
-        var completeResolver = Task.Run(
-            () => completion.SetResult(["stale"]),
-            TestContext.Current.CancellationToken);
-        await publicationAcquired.Task.WaitAsync(TestContext.Current.CancellationToken);
-        var attach = dispatcher.InvokeAsync(
-            () => input.Attach(
-                dispatcher,
-                UnicodePolicy.Default,
-                new Theme(),
-                () =>
-                {
-                    publications.Enqueue("attachment");
-                    attachmentCommitted.SetResult();
-                }),
-            TestContext.Current.CancellationToken).AsTask();
-
-        // Act
         try
         {
+            var publications = new System.Collections.Concurrent.ConcurrentQueue<string>();
+            var input = new SuggestionInput
+            {
+                Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task),
+                BeforeDetachedResolutionPublication = () =>
+                {
+                    publicationAcquired.SetResult();
+                    releasePublication.Wait();
+                },
+                Text = "query"
+            };
+            input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
+            var observation = input.LastResolutionObservation.ShouldNotBeNull();
+            await using var dispatcher = Dispatcher.Start();
+            input.SuggestionsChanged += (_, _) => publications.Enqueue("suggestions");
+            var completeResolver = Task.Run(
+                () => completion.SetResult(["stale"]),
+                TestContext.Current.CancellationToken);
+            await publicationAcquired.Task.WaitAsync(TestContext.Current.CancellationToken);
+            var attach = dispatcher.InvokeAsync(
+                () => input.Attach(
+                    dispatcher,
+                    UnicodePolicy.Default,
+                    new Theme(),
+                    () =>
+                    {
+                        publications.Enqueue("attachment");
+                        attachmentCommitted.SetResult();
+                    }),
+                TestContext.Current.CancellationToken).AsTask();
+
+            // Act
             var firstLifecycleBoundary = await Task.WhenAny(
                 lifecycleWaited.Task,
                 attachmentCommitted.Task).WaitAsync(TestContext.Current.CancellationToken);
@@ -1793,22 +1798,23 @@ public sealed class SuggestionInputTests
             input.Dispatcher.ShouldBeNull();
             input.Suggestions.ShouldBeEmpty();
             input.IsResolving.ShouldBeTrue();
+            releasePublication.Set();
+
+            await observation.WaitAsync(TestContext.Current.CancellationToken);
+            await completeResolver;
+            await attach;
+
+            // Assert after release
+            publications.ShouldBe(["suggestions", "attachment"]);
+            input.Dispatcher.ShouldBeSameAs(dispatcher);
+            input.Suggestions.ShouldBe(["stale"]);
+            input.IsResolving.ShouldBeFalse();
+            await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
         }
         finally
         {
             releasePublication.Set();
         }
-
-        await observation.WaitAsync(TestContext.Current.CancellationToken);
-        await completeResolver;
-        await attach;
-
-        // Assert after release
-        publications.ShouldBe(["suggestions", "attachment"]);
-        input.Dispatcher.ShouldBeSameAs(dispatcher);
-        input.Suggestions.ShouldBe(["stale"]);
-        input.IsResolving.ShouldBeFalse();
-        await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies a resolver that returns synchronously after attachment commits cannot
@@ -1825,39 +1831,39 @@ public sealed class SuggestionInputTests
             TaskCreationOptions.RunContinuationsAsynchronously);
         using var releaseResolver = new ManualResetEventSlim();
         using var releaseAttachment = new ManualResetEventSlim();
-        var input = new SuggestionInput
-        {
-            Resolver = (_, cancellationToken) =>
-            {
-                resolverEntered.SetResult();
-                releaseResolver.Wait(cancellationToken);
-                return ValueTask.FromResult<IReadOnlyList<object?>>(["stale"]);
-            }
-        };
-        input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
-        await using var dispatcher = Dispatcher.Start();
-        var resolve = Task.Run(
-            () => input.Text = "query",
-            TestContext.Current.CancellationToken);
-        await resolverEntered.Task.WaitAsync(TestContext.Current.CancellationToken);
-        var attach = dispatcher.InvokeAsync(
-            () => input.Attach(
-                dispatcher,
-                UnicodePolicy.Default,
-                new Theme(),
-                () =>
-                {
-                    attachmentCommitted.SetResult();
-                    releaseAttachment.Wait();
-                }),
-            TestContext.Current.CancellationToken).AsTask();
-        await attachmentCommitted.Task.WaitAsync(TestContext.Current.CancellationToken);
-
-        // Act
-        releaseResolver.Set();
-
         try
         {
+            var input = new SuggestionInput
+            {
+                Resolver = (_, cancellationToken) =>
+                {
+                    resolverEntered.SetResult();
+                    releaseResolver.Wait(cancellationToken);
+                    return ValueTask.FromResult<IReadOnlyList<object?>>(["stale"]);
+                }
+            };
+            input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
+            await using var dispatcher = Dispatcher.Start();
+            var resolve = Task.Run(
+                () => input.Text = "query",
+                TestContext.Current.CancellationToken);
+            await resolverEntered.Task.WaitAsync(TestContext.Current.CancellationToken);
+            var attach = dispatcher.InvokeAsync(
+                () => input.Attach(
+                    dispatcher,
+                    UnicodePolicy.Default,
+                    new Theme(),
+                    () =>
+                    {
+                        attachmentCommitted.SetResult();
+                        releaseAttachment.Wait();
+                    }),
+                TestContext.Current.CancellationToken).AsTask();
+            await attachmentCommitted.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+            // Act
+            releaseResolver.Set();
+
             var firstSettlement = await Task.WhenAny(
                 lifecycleWaited.Task,
                 resolve).WaitAsync(TestContext.Current.CancellationToken);
@@ -1865,20 +1871,22 @@ public sealed class SuggestionInputTests
             // Assert before lifecycle release
             firstSettlement.ShouldBeSameAs(lifecycleWaited.Task);
             input.Suggestions.ShouldBeEmpty();
+            releaseAttachment.Set();
+
+            _ = await resolve.WaitAsync(TestContext.Current.CancellationToken);
+            await attach.WaitAsync(TestContext.Current.CancellationToken);
+
+            // Assert after lifecycle release
+            input.Dispatcher.ShouldBeSameAs(dispatcher);
+            input.Suggestions.ShouldBeEmpty();
+            input.IsResolving.ShouldBeFalse();
+            await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
         }
         finally
         {
+            releaseResolver.Set();
             releaseAttachment.Set();
         }
-
-        _ = await resolve.WaitAsync(TestContext.Current.CancellationToken);
-        await attach.WaitAsync(TestContext.Current.CancellationToken);
-
-        // Assert after lifecycle release
-        input.Dispatcher.ShouldBeSameAs(dispatcher);
-        input.Suggestions.ShouldBeEmpty();
-        input.IsResolving.ShouldBeFalse();
-        await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies attachment reserves stable ancestry before it discovers descendants while
@@ -1896,42 +1904,42 @@ public sealed class SuggestionInputTests
         var discoveryStarted = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         using var releaseMutation = new ManualResetEventSlim();
-        var pauseCount = 0;
-        var input = new SuggestionInput
-        {
-            Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task),
-            Text = "query"
-        };
-        var observation = input.LastResolutionObservation.ShouldNotBeNull();
-
-        foreach (var control in OwnedTree.FindAll<ControlBase>(input))
-        {
-            control.OwnedControls.StructuralMutationPaused = () =>
-            {
-                if (Interlocked.Exchange(ref pauseCount, 1) != 0)
-                {
-                    return;
-                }
-
-                mutationPaused.SetResult();
-                releaseMutation.Wait(TestContext.Current.CancellationToken);
-            };
-        }
-
-        input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
-        input.OwnedControls.DescendantDiscoveryStarted = () => discoveryStarted.TrySetResult();
-        await using var dispatcher = Dispatcher.Start();
-        var complete = Task.Run(
-            () => completion.SetResult(["one", "two"]),
-            TestContext.Current.CancellationToken);
-        await mutationPaused.Task.WaitAsync(TestContext.Current.CancellationToken);
-        var attach = dispatcher.InvokeAsync(
-            () => input.Attach(dispatcher),
-            TestContext.Current.CancellationToken).AsTask();
-
-        // Act
         try
         {
+            var pauseCount = 0;
+            var input = new SuggestionInput
+            {
+                Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task),
+                Text = "query"
+            };
+            var observation = input.LastResolutionObservation.ShouldNotBeNull();
+
+            foreach (var control in OwnedTree.FindAll<ControlBase>(input))
+            {
+                control.OwnedControls.StructuralMutationPaused = () =>
+                {
+                    if (Interlocked.Exchange(ref pauseCount, 1) != 0)
+                    {
+                        return;
+                    }
+
+                    mutationPaused.SetResult();
+                    releaseMutation.Wait(TestContext.Current.CancellationToken);
+                };
+            }
+
+            input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
+            input.OwnedControls.DescendantDiscoveryStarted = () => discoveryStarted.TrySetResult();
+            await using var dispatcher = Dispatcher.Start();
+            var complete = Task.Run(
+                () => completion.SetResult(["one", "two"]),
+                TestContext.Current.CancellationToken);
+            await mutationPaused.Task.WaitAsync(TestContext.Current.CancellationToken);
+            var attach = dispatcher.InvokeAsync(
+                () => input.Attach(dispatcher),
+                TestContext.Current.CancellationToken).AsTask();
+
+            // Act
             var firstBoundary = await Task.WhenAny(
                 lifecycleWaited.Task,
                 discoveryStarted.Task).WaitAsync(TestContext.Current.CancellationToken);
@@ -1939,26 +1947,27 @@ public sealed class SuggestionInputTests
             // Assert before mutation release
             firstBoundary.ShouldBeSameAs(lifecycleWaited.Task);
             input.Dispatcher.ShouldBeNull();
+            releaseMutation.Set();
+
+            await observation.WaitAsync(TestContext.Current.CancellationToken);
+            await complete.WaitAsync(TestContext.Current.CancellationToken);
+            await attach.WaitAsync(TestContext.Current.CancellationToken);
+
+            // Assert after mutation release
+            input.Suggestions.ShouldBe(["one", "two"]);
+            input.Dispatcher.ShouldBeSameAs(dispatcher);
+
+            foreach (var control in OwnedTree.FindAll<ControlBase>(input))
+            {
+                control.Dispatcher.ShouldBeSameAs(dispatcher);
+            }
+
+            await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
         }
         finally
         {
             releaseMutation.Set();
         }
-
-        await observation.WaitAsync(TestContext.Current.CancellationToken);
-        await complete.WaitAsync(TestContext.Current.CancellationToken);
-        await attach.WaitAsync(TestContext.Current.CancellationToken);
-
-        // Assert after mutation release
-        input.Suggestions.ShouldBe(["one", "two"]);
-        input.Dispatcher.ShouldBeSameAs(dispatcher);
-
-        foreach (var control in OwnedTree.FindAll<ControlBase>(input))
-        {
-            control.Dispatcher.ShouldBeSameAs(dispatcher);
-        }
-
-        await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies threshold and resolver clearing use the same detached publication
@@ -1976,35 +1985,35 @@ public sealed class SuggestionInputTests
         var lifecycleWaited = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         using var releasePublication = new ManualResetEventSlim();
-        using var input = new SuggestionInput
-        {
-            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["current"]),
-            Text = "query"
-        };
-        input.BeforeDetachedResolutionPublication = () =>
-        {
-            publicationAcquired.SetResult();
-            releasePublication.Wait();
-        };
-        input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
-        var clear = Task.Run(
-            () =>
-            {
-                if (clearWithThreshold)
-                {
-                    input.MinimumPrefixLength = 100;
-                }
-                else
-                {
-                    input.Resolver = null;
-                }
-            },
-            TestContext.Current.CancellationToken);
-        Task? disposal = null;
-
-        // Act
         try
         {
+            using var input = new SuggestionInput
+            {
+                Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["current"]),
+                Text = "query"
+            };
+            input.BeforeDetachedResolutionPublication = () =>
+            {
+                publicationAcquired.SetResult();
+                releasePublication.Wait();
+            };
+            input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
+            var clear = Task.Run(
+                () =>
+                {
+                    if (clearWithThreshold)
+                    {
+                        input.MinimumPrefixLength = 100;
+                    }
+                    else
+                    {
+                        input.Resolver = null;
+                    }
+                },
+                TestContext.Current.CancellationToken);
+            Task? disposal = null;
+
+            // Act
             var firstSettlement = await Task.WhenAny(
                 publicationAcquired.Task,
                 clear).WaitAsync(TestContext.Current.CancellationToken);
@@ -2018,17 +2027,18 @@ public sealed class SuggestionInputTests
             firstLifecycleBoundary.ShouldBeSameAs(lifecycleWaited.Task);
             input.Suggestions.ShouldBe(["current"]);
             input.IsDisposed.ShouldBeFalse();
+            releasePublication.Set();
+
+            await clear.WaitAsync(TestContext.Current.CancellationToken);
+            await disposal.ShouldNotBeNull().WaitAsync(TestContext.Current.CancellationToken);
+
+            // Assert after release
+            input.IsDisposed.ShouldBeTrue();
         }
         finally
         {
             releasePublication.Set();
         }
-
-        await clear.WaitAsync(TestContext.Current.CancellationToken);
-        await disposal.ShouldNotBeNull().WaitAsync(TestContext.Current.CancellationToken);
-
-        // Assert after release
-        input.IsDisposed.ShouldBeTrue();
     }
 
     /// <summary>Verifies terminal disposal of a retained ancestor prevents a reentrant refresh
@@ -2077,33 +2087,40 @@ public sealed class SuggestionInputTests
         Task observation = null!;
         var detachCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var release = new ManualResetEventSlim();
-        await dispatcher.InvokeAsync(() =>
+        try
         {
-            input.Attach(dispatcher);
-            input.SuggestionsChanged += (_, _) => publications++;
-            input.Text = "query";
-            observation = input.LastResolutionObservation.ShouldNotBeNull();
-        }, TestContext.Current.CancellationToken);
-        dispatcher.Post(release.Wait);
-        dispatcher.Post(() =>
+            await dispatcher.InvokeAsync(() =>
+            {
+                input.Attach(dispatcher);
+                input.SuggestionsChanged += (_, _) => publications++;
+                input.Text = "query";
+                observation = input.LastResolutionObservation.ShouldNotBeNull();
+            }, TestContext.Current.CancellationToken);
+            dispatcher.Post(release.Wait);
+            dispatcher.Post(() =>
+            {
+                input.Detach();
+                input.Attach(dispatcher);
+                detachCompleted.SetResult();
+            });
+
+            // Act
+            completion.SetResult(["stale"]);
+            release.Set();
+            await detachCompleted.Task.WaitAsync(TestContext.Current.CancellationToken);
+            await observation.WaitAsync(TestContext.Current.CancellationToken);
+            await dispatcher.InvokeAsync(() => { }, TestContext.Current.CancellationToken);
+
+            // Assert
+            publications.ShouldBe(0);
+            input.Suggestions.ShouldBeEmpty();
+            input.IsResolving.ShouldBeFalse();
+            await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
+        }
+        finally
         {
-            input.Detach();
-            input.Attach(dispatcher);
-            detachCompleted.SetResult();
-        });
-
-        // Act
-        completion.SetResult(["stale"]);
-        release.Set();
-        await detachCompleted.Task.WaitAsync(TestContext.Current.CancellationToken);
-        await observation.WaitAsync(TestContext.Current.CancellationToken);
-        await dispatcher.InvokeAsync(() => { }, TestContext.Current.CancellationToken);
-
-        // Assert
-        publications.ShouldBe(0);
-        input.Suggestions.ShouldBeEmpty();
-        input.IsResolving.ShouldBeFalse();
-        await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
+            release.Set();
+        }
     }
 
     /// <summary>Verifies disposal revokes a detached pending request and suppresses every late
@@ -2269,31 +2286,30 @@ public sealed class SuggestionInputTests
         var lifecycleWaited = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         using var releasePublication = new ManualResetEventSlim();
-        var expected = new InvalidOperationException("late suggestion publication");
-        var input = new SuggestionInput
-        {
-            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["current"]),
-            Text = "query",
-            BeforeDetachedResolutionPublication = () =>
-            {
-                publicationAcquired.SetResult();
-                releasePublication.Wait();
-            }
-        };
-        input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
-        input.Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task);
-        var observation = input.LastResolutionObservation.ShouldNotBeNull();
-        input.SuggestionsChanged += (_, _) => throw expected;
-        var completeResolver = Task.Run(
-            () => completion.SetResult(["late"]),
-            TestContext.Current.CancellationToken);
-        await publicationAcquired.Task.WaitAsync(TestContext.Current.CancellationToken);
-
-        // Act
-        var disposal = Task.Run(input.Dispose, TestContext.Current.CancellationToken);
-
         try
         {
+            var expected = new InvalidOperationException("late suggestion publication");
+            var input = new SuggestionInput
+            {
+                Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["current"]),
+                Text = "query",
+                BeforeDetachedResolutionPublication = () =>
+                {
+                    publicationAcquired.SetResult();
+                    releasePublication.Wait();
+                }
+            };
+            input.OwnedControls.PublicationWaitStarted = () => lifecycleWaited.TrySetResult();
+            input.Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task);
+            var observation = input.LastResolutionObservation.ShouldNotBeNull();
+            input.SuggestionsChanged += (_, _) => throw expected;
+            var completeResolver = Task.Run(
+                () => completion.SetResult(["late"]),
+                TestContext.Current.CancellationToken);
+            await publicationAcquired.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+            // Act
+            var disposal = Task.Run(input.Dispose, TestContext.Current.CancellationToken);
             var firstLifecycleBoundary = await Task.WhenAny(
                 lifecycleWaited.Task,
                 disposal).WaitAsync(TestContext.Current.CancellationToken);
@@ -2302,21 +2318,22 @@ public sealed class SuggestionInputTests
             firstLifecycleBoundary.ShouldBeSameAs(lifecycleWaited.Task);
             input.IsDisposed.ShouldBeFalse();
             input.IsDisposing.ShouldBeFalse();
+            releasePublication.Set();
+
+            var publicationFailure = await Should.ThrowAsync<InvalidOperationException>(async () =>
+                await observation.WaitAsync(TestContext.Current.CancellationToken));
+            await completeResolver;
+            await disposal.WaitAsync(TestContext.Current.CancellationToken);
+
+            // Assert after release
+            publicationFailure.ShouldBeSameAs(expected);
+            input.IsResolving.ShouldBeFalse();
+            input.IsDisposed.ShouldBeTrue();
         }
         finally
         {
             releasePublication.Set();
         }
-
-        var publicationFailure = await Should.ThrowAsync<InvalidOperationException>(async () =>
-            await observation.WaitAsync(TestContext.Current.CancellationToken));
-        await completeResolver;
-        await disposal.WaitAsync(TestContext.Current.CancellationToken);
-
-        // Assert after release
-        publicationFailure.ShouldBeSameAs(expected);
-        input.IsResolving.ShouldBeFalse();
-        input.IsDisposed.ShouldBeTrue();
     }
 
     /// <summary>Verifies a lifecycle mutation attempted from a detached result callback is
@@ -2404,81 +2421,88 @@ public sealed class SuggestionInputTests
             TaskCreationOptions.RunContinuationsAsynchronously);
         using var callbacksReady = new CountdownEvent(initialCount: 2);
         using var releaseCallbacks = new ManualResetEventSlim();
-        Exception? firstFailure = null;
-        Exception? secondFailure = null;
-        var first = new SuggestionInput
+        try
         {
-            Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(firstCompletion.Task),
-            Text = "first"
-        };
-        var second = new SuggestionInput
-        {
-            Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(secondCompletion.Task),
-            Text = "second"
-        };
-        var firstObservation = first.LastResolutionObservation.ShouldNotBeNull();
-        var secondObservation = second.LastResolutionObservation.ShouldNotBeNull();
-        first.SuggestionsChanged += (_, _) =>
-        {
-            _ = callbacksReady.Signal();
-            releaseCallbacks.Wait(TestContext.Current.CancellationToken);
-            firstFailure = Record.Exception(second.Dispose);
-        };
-        second.SuggestionsChanged += (_, _) =>
-        {
-            _ = callbacksReady.Signal();
-            releaseCallbacks.Wait(TestContext.Current.CancellationToken);
-            secondFailure = Record.Exception(first.Dispose);
-        };
-        var completeFirst = Task.Run(
-            () => firstCompletion.SetResult(["first result"]),
-            TestContext.Current.CancellationToken);
-        var completeSecond = Task.Run(
-            () => secondCompletion.SetResult(["second result"]),
-            TestContext.Current.CancellationToken);
-        callbacksReady.Wait(TestContext.Current.CancellationToken);
+            Exception? firstFailure = null;
+            Exception? secondFailure = null;
+            var first = new SuggestionInput
+            {
+                Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(firstCompletion.Task),
+                Text = "first"
+            };
+            var second = new SuggestionInput
+            {
+                Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(secondCompletion.Task),
+                Text = "second"
+            };
+            var firstObservation = first.LastResolutionObservation.ShouldNotBeNull();
+            var secondObservation = second.LastResolutionObservation.ShouldNotBeNull();
+            first.SuggestionsChanged += (_, _) =>
+            {
+                _ = callbacksReady.Signal();
+                releaseCallbacks.Wait(TestContext.Current.CancellationToken);
+                firstFailure = Record.Exception(second.Dispose);
+            };
+            second.SuggestionsChanged += (_, _) =>
+            {
+                _ = callbacksReady.Signal();
+                releaseCallbacks.Wait(TestContext.Current.CancellationToken);
+                secondFailure = Record.Exception(first.Dispose);
+            };
+            var completeFirst = Task.Run(
+                () => firstCompletion.SetResult(["first result"]),
+                TestContext.Current.CancellationToken);
+            var completeSecond = Task.Run(
+                () => secondCompletion.SetResult(["second result"]),
+                TestContext.Current.CancellationToken);
+            callbacksReady.Wait(TestContext.Current.CancellationToken);
 
-        // Act
-        releaseCallbacks.Set();
-        await Task.WhenAll(firstObservation, secondObservation)
-            .WaitAsync(TestContext.Current.CancellationToken);
-        await Task.WhenAll(completeFirst, completeSecond)
-            .WaitAsync(TestContext.Current.CancellationToken);
+            // Act
+            releaseCallbacks.Set();
+            await Task.WhenAll(firstObservation, secondObservation)
+                .WaitAsync(TestContext.Current.CancellationToken);
+            await Task.WhenAll(completeFirst, completeSecond)
+                .WaitAsync(TestContext.Current.CancellationToken);
 
-        // Assert
-        (firstFailure is InvalidOperationException || secondFailure is InvalidOperationException)
-            .ShouldBeTrue();
+            // Assert
+            (firstFailure is InvalidOperationException || secondFailure is InvalidOperationException)
+                .ShouldBeTrue();
 
-        if (firstFailure is null)
-        {
+            if (firstFailure is null)
+            {
+                second.IsDisposed.ShouldBeTrue();
+            }
+            else
+            {
+                _ = firstFailure.ShouldBeOfType<InvalidOperationException>();
+            }
+
+            if (secondFailure is null)
+            {
+                first.IsDisposed.ShouldBeTrue();
+            }
+            else
+            {
+                _ = secondFailure.ShouldBeOfType<InvalidOperationException>();
+            }
+
+            if (!first.IsDisposed)
+            {
+                first.Dispose();
+            }
+
+            if (!second.IsDisposed)
+            {
+                second.Dispose();
+            }
+
+            first.IsDisposed.ShouldBeTrue();
             second.IsDisposed.ShouldBeTrue();
         }
-        else
+        finally
         {
-            _ = firstFailure.ShouldBeOfType<InvalidOperationException>();
+            releaseCallbacks.Set();
         }
-
-        if (secondFailure is null)
-        {
-            first.IsDisposed.ShouldBeTrue();
-        }
-        else
-        {
-            _ = secondFailure.ShouldBeOfType<InvalidOperationException>();
-        }
-
-        if (!first.IsDisposed)
-        {
-            first.Dispose();
-        }
-
-        if (!second.IsDisposed)
-        {
-            second.Dispose();
-        }
-
-        first.IsDisposed.ShouldBeTrue();
-        second.IsDisposed.ShouldBeTrue();
     }
 
     /// <summary>Verifies a current failure callback that starts a successful request prevents the
@@ -2559,6 +2583,44 @@ public sealed class SuggestionInputTests
         accepted[0].Index.ShouldBe(0);
         accepted[0].Item.ShouldBe("accepted");
         accepted[0].Cause.ShouldBe(ActivationCause.Keyboard);
+    }
+
+    /// <summary>Verifies replacing the activated result after close publication supersedes the
+    /// pending acceptance notification even though the already-committed text remains unchanged.</summary>
+    [Fact]
+    public async Task Accept_WhenResultSnapshotIsReplacedDuringClose_DoesNotPublishStaleAcceptanceAsync()
+    {
+        // Arrange
+        var accepted = 0;
+        var input = new SuggestionInput
+        {
+            Width = Length.Cells(16),
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["accepted"])
+        };
+        input.SuggestionAccepted += (_, _) => accepted++;
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SuggestionInput.IsOpen) && !input.IsOpen)
+            {
+                input.Resolver = null;
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(18, 7),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.TypeAsync("q");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        input.Text.ShouldBe("accepted");
+        input.Suggestions.ShouldBeEmpty();
+        input.IsOpen.ShouldBeFalse();
+        input.IsResolving.ShouldBeFalse();
+        accepted.ShouldBe(0);
     }
 
     /// <summary>Verifies selector failure occurs before accepted text or popup state can mutate
@@ -2708,6 +2770,1084 @@ public sealed class SuggestionInputTests
         if (!input.IsDisposed)
         {
             input.Dispose();
+        }
+    }
+
+    /// <summary>Verifies stale completions, attachment changes, popup intent, provisional
+    /// navigation, selector failure, and acceptance remain equivalent to an independent model.</summary>
+    [Fact]
+    public async Task Transcript_WhenSeeded_PreservesLatestResolutionAndAcceptanceInvariantsAsync()
+    {
+        const int seed = 0x51A7_2026;
+        var random = new Random(seed);
+        var transcript = new List<string>();
+        var completions = new Dictionary<int, TaskCompletionSource<IReadOnlyList<object?>>>();
+        var observations = new Dictionary<int, Task>();
+        var queries = new Dictionary<int, string>();
+        var cancellationTokens = new Dictionary<int, CancellationToken>();
+        var settled = new HashSet<int>();
+        var issued = 0;
+        var resolveSynchronously = false;
+        var actualAcceptances = new List<(object? Item, string Text, int Index, ActivationCause Cause)>();
+
+        object?[] ResultsFor(string query) =>
+        [
+            $"{query}:0",
+            $"{query}:1",
+            $"{query}:2"
+        ];
+
+        ValueTask<IReadOnlyList<object?>> ResolveSuggestion(
+            string searchTerms,
+            CancellationToken cancellationToken)
+        {
+            if (resolveSynchronously)
+            {
+                return ValueTask.FromResult<IReadOnlyList<object?>>(ResultsFor(searchTerms));
+            }
+
+            var id = ++issued;
+            var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            completions.Add(id, completion);
+            queries.Add(id, searchTerms);
+            cancellationTokens.Add(id, cancellationToken);
+            return new ValueTask<IReadOnlyList<object?>>(completion.Task);
+        }
+
+        var input = new SuggestionInput
+        {
+            Width = Length.Cells(18),
+            Height = Length.Cells(3),
+            DropDownHeight = Length.Cells(4),
+            Resolver = ResolveSuggestion
+        };
+        input.SuggestionAccepted += (_, eventArgs) => actualAcceptances.Add(
+            (eventArgs.Item, input.Text, eventArgs.Index, eventArgs.Cause));
+        var root = new Overlay { Children = { input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 10),
+            TestContext.Current.CancellationToken);
+        var list = OwnedTree.Find<UiListView>(input).ShouldNotBeNull();
+        var editor = OwnedTree.Find<TextInput>(input).ShouldNotBeNull();
+
+        var modelText = string.Empty;
+        object?[] modelSuggestions = [];
+        var modelResolving = false;
+        var modelOpen = false;
+        var modelWantsOpen = false;
+        var modelAttached = true;
+        var modelEnabled = true;
+        var modelVisible = true;
+        var modelAncestorEnabled = true;
+        var modelAncestorVisible = true;
+        var modelGeneration = 1;
+        var modelResultSessionIdentity = 1;
+        var modelAttachmentIdentity = 1;
+        var modelCloseTransition = 0;
+        var modelAcceptanceIdentity = 0;
+        int? modelPendingAcceptanceIdentity = null;
+        int? modelAcceptanceResultSessionIdentity = null;
+        int? modelAcceptanceAttachmentIdentity = null;
+        object? modelPendingAcceptedItem = null;
+        string? modelPendingAcceptedText = null;
+        var modelPendingAcceptedIndex = -1;
+        var modelPendingAcceptanceCause = ActivationCause.Programmatic;
+        var modelDisposed = false;
+        int? modelSnapshotGeneration = 1;
+        int? currentRequest = null;
+        var modelSelectedIndex = -1;
+        int? openingSnapshotGeneration = null;
+        var openingSelectedIndex = -1;
+        var modelAcceptances = new List<(object? Item, string Text, int Index, ActivationCause Cause)>();
+        var minimumPrefixLength = 1;
+
+        bool IsAvailable() =>
+            modelAttached && !modelDisposed && modelEnabled && modelVisible &&
+            modelAncestorEnabled && modelAncestorVisible;
+
+        bool IsOperationEligible(int operation) => operation switch
+        {
+            0 => modelAttached,
+            1 => completions.Keys.Any(id => !settled.Contains(id)),
+            2 => modelAttached && modelOpen,
+            3 => modelAttached && !modelOpen && !modelResolving &&
+                 modelSnapshotGeneration == modelGeneration &&
+                 modelSuggestions.Length > 0 && IsAvailable(),
+            4 => modelOpen && !modelResolving &&
+                 modelSnapshotGeneration == modelGeneration && IsAvailable(),
+            5 or 6 => modelOpen && !modelResolving && modelSelectedIndex >= 0 &&
+                      modelSnapshotGeneration == modelGeneration && IsAvailable(),
+            7 => modelAttached && modelOpen && modelEnabled && modelVisible,
+            8 => modelAttached && (!modelEnabled || !modelVisible),
+            9 => true,
+            10 => modelAttached,
+            11 => true,
+            _ => false
+        };
+
+        void SupersedeModelAcceptance()
+        {
+            modelPendingAcceptanceIdentity = null;
+            modelAcceptanceResultSessionIdentity = null;
+            modelAcceptanceAttachmentIdentity = null;
+            modelPendingAcceptedItem = null;
+            modelPendingAcceptedText = null;
+            modelPendingAcceptedIndex = -1;
+            modelPendingAcceptanceCause = ActivationCause.Programmatic;
+        }
+
+        void BeginModelAcceptance(int index, ActivationCause cause)
+        {
+            modelAcceptanceIdentity++;
+            modelPendingAcceptanceIdentity = modelAcceptanceIdentity;
+            modelAcceptanceResultSessionIdentity = modelResultSessionIdentity;
+            modelAcceptanceAttachmentIdentity = modelAttachmentIdentity;
+            modelPendingAcceptedItem = modelSuggestions[index];
+            modelPendingAcceptedText = (string) modelSuggestions[index]!;
+            modelPendingAcceptedIndex = index;
+            modelPendingAcceptanceCause = cause;
+        }
+
+        void ReplaceModelResultSession(bool preservePendingAcceptance)
+        {
+            modelResultSessionIdentity++;
+
+            if (preservePendingAcceptance && modelPendingAcceptanceIdentity is not null)
+            {
+                modelAcceptanceResultSessionIdentity = modelResultSessionIdentity;
+            }
+            else
+            {
+                SupersedeModelAcceptance();
+            }
+        }
+
+        void PublishModelAcceptanceIfEligible()
+        {
+            if (modelPendingAcceptanceIdentity is not null &&
+                modelAcceptanceResultSessionIdentity == modelResultSessionIdentity &&
+                modelAcceptanceAttachmentIdentity == modelAttachmentIdentity &&
+                IsAvailable() &&
+                !modelOpen)
+            {
+                modelAcceptances.Add((
+                    modelPendingAcceptedItem,
+                    modelPendingAcceptedText.ShouldNotBeNull(),
+                    modelPendingAcceptedIndex,
+                    modelPendingAcceptanceCause));
+            }
+
+            SupersedeModelAcceptance();
+        }
+
+        void OpenModel()
+        {
+            if (modelOpen || !IsAvailable() || modelSuggestions.Length == 0)
+            {
+                return;
+            }
+
+            modelOpen = true;
+            openingSnapshotGeneration = modelSnapshotGeneration;
+            openingSelectedIndex = modelSelectedIndex;
+            modelSelectedIndex = 0;
+        }
+
+        void CloseModel(bool accepted)
+        {
+            if (!modelOpen)
+            {
+                modelWantsOpen = false;
+                return;
+            }
+
+            modelOpen = false;
+            modelWantsOpen = false;
+            modelCloseTransition++;
+
+            if (!accepted && openingSnapshotGeneration == modelSnapshotGeneration)
+            {
+                modelSelectedIndex = openingSelectedIndex;
+            }
+
+            openingSnapshotGeneration = null;
+            openingSelectedIndex = -1;
+        }
+
+        void CaptureCurrentObservation()
+        {
+            if (currentRequest is { } previousRequest && !settled.Contains(previousRequest))
+            {
+                cancellationTokens[previousRequest].IsCancellationRequested.ShouldBeTrue();
+            }
+
+            currentRequest = issued;
+            observations[issued] = input.LastResolutionObservation.ShouldNotBeNull();
+        }
+
+        void ApplySynchronousModelResolution(bool preservePendingAcceptance)
+        {
+            modelGeneration++;
+            ReplaceModelResultSession(preservePendingAcceptance);
+            modelSuggestions = ResultsFor(modelText);
+            modelSnapshotGeneration = modelGeneration;
+            modelResolving = false;
+            currentRequest = null;
+
+            if (modelWantsOpen)
+            {
+                if (modelOpen)
+                {
+                    modelSelectedIndex = 0;
+                }
+                else
+                {
+                    OpenModel();
+                }
+            }
+        }
+
+        void AssertModel(int step)
+        {
+            input.Text.ShouldBe(modelText, $"seed {seed}, step {step}");
+            input.Suggestions.ShouldBe(modelSuggestions, $"seed {seed}, step {step}");
+            input.IsResolving.ShouldBe(modelResolving, $"seed {seed}, step {step}");
+            input.IsOpen.ShouldBe(modelOpen, $"seed {seed}, step {step}");
+            actualAcceptances.Count.ShouldBe(modelAcceptances.Count, $"seed {seed}, step {step}");
+            (input.Dispatcher is not null).ShouldBe(modelAttached, $"seed {seed}, step {step}");
+
+            for (var index = 0; index < modelAcceptances.Count; index++)
+            {
+                actualAcceptances[index].Item.ShouldBe(
+                    modelAcceptances[index].Item,
+                    $"seed {seed}, step {step}, acceptance {index}");
+                actualAcceptances[index].Text.ShouldBe(
+                    modelAcceptances[index].Text,
+                    $"seed {seed}, step {step}, acceptance {index}");
+                actualAcceptances[index].Index.ShouldBe(
+                    modelAcceptances[index].Index,
+                    $"seed {seed}, step {step}, acceptance {index}");
+                actualAcceptances[index].Cause.ShouldBe(
+                    modelAcceptances[index].Cause,
+                    $"seed {seed}, step {step}, acceptance {index}");
+            }
+
+            if (modelOpen && modelSnapshotGeneration is not null && !modelResolving && IsAvailable())
+            {
+                list.SelectedIndex.ShouldBe(modelSelectedIndex, $"seed {seed}, step {step}");
+                list.ActiveIndex.ShouldBe(modelSelectedIndex, $"seed {seed}, step {step}");
+            }
+        }
+
+        try
+        {
+            for (var step = 0; step < 96; step++)
+            {
+                var eligibleOperations = Enumerable.Range(0, 12).Where(IsOperationEligible).ToArray();
+                int? coverageOperation =
+                    !transcript.Any(entry => entry.Contains(":edit:", StringComparison.Ordinal)) &&
+                    eligibleOperations.Contains(0) ? 0 :
+                    !transcript.Any(entry => entry.Contains(":complete:", StringComparison.Ordinal)) &&
+                    eligibleOperations.Contains(1) ? 1 :
+                    !transcript.Any(entry => entry.Contains(":selector-failure", StringComparison.Ordinal)) &&
+                    eligibleOperations.Contains(6) ? 6 :
+                    !transcript.Any(entry => entry.Contains(":accept:", StringComparison.Ordinal)) &&
+                    eligibleOperations.Contains(5) ? 5 :
+                    !transcript.Any(entry => entry.EndsWith(":detach", StringComparison.Ordinal)) &&
+                    modelAttached ? 9 :
+                    !transcript.Any(entry => entry.EndsWith(":attach", StringComparison.Ordinal)) &&
+                    !modelAttached ? 9 :
+                    null;
+                var operation = coverageOperation ?? eligibleOperations[random.Next(eligibleOperations.Length)];
+
+                switch (operation)
+                {
+                    case 0 when modelAttached:
+                        {
+                            var nextText = $"q{step}";
+                            transcript.Add($"{step}:edit:{nextText}");
+                            await surface.UpdateAsync(() => input.Text = nextText, $"transcript edit {step}");
+                            modelText = nextText;
+                            modelGeneration++;
+                            ReplaceModelResultSession(preservePendingAcceptance: false);
+                            modelWantsOpen = true;
+
+                            if (nextText.Length < minimumPrefixLength)
+                            {
+                                if (currentRequest is { } previousRequest && !settled.Contains(previousRequest))
+                                {
+                                    cancellationTokens[previousRequest].IsCancellationRequested.ShouldBeTrue();
+                                }
+
+                                currentRequest = null;
+                                modelSnapshotGeneration = modelGeneration;
+                                modelSuggestions = [];
+                                modelSelectedIndex = -1;
+                                modelResolving = false;
+
+                                if (modelOpen)
+                                {
+                                    CloseModel(accepted: false);
+                                }
+                            }
+                            else
+                            {
+                                modelSnapshotGeneration = null;
+                                modelResolving = true;
+                                CaptureCurrentObservation();
+                            }
+
+                            break;
+                        }
+
+                    case 1 when completions.Keys.Any(id => !settled.Contains(id)):
+                        {
+                            var candidates = completions.Keys.Where(id => !settled.Contains(id)).ToArray();
+                            var id = candidates[random.Next(candidates.Length)];
+                            var results = ResultsFor(queries[id]);
+                            transcript.Add($"{step}:complete:{id}:{queries[id]}");
+                            completions[id].SetResult(results);
+                            _ = settled.Add(id);
+                            await observations[id].WaitAsync(TestContext.Current.CancellationToken);
+                            await surface.UpdateAsync(static () => { }, $"render transcript completion {step}");
+
+                            if (currentRequest == id)
+                            {
+                                modelSuggestions = results;
+                                modelResolving = false;
+                                modelSnapshotGeneration = modelGeneration;
+                                currentRequest = null;
+                                modelSelectedIndex = -1;
+
+                                if (modelWantsOpen && modelSuggestions.Length > 0)
+                                {
+                                    if (modelOpen)
+                                    {
+                                        modelSelectedIndex = 0;
+                                    }
+                                    else
+                                    {
+                                        OpenModel();
+                                    }
+                                }
+                                else if (modelOpen)
+                                {
+                                    CloseModel(accepted: false);
+                                }
+                            }
+
+                            break;
+                        }
+
+                    case 2 when modelAttached && modelOpen:
+                        transcript.Add($"{step}:close");
+                        await surface.UpdateAsync(input.Close, $"transcript close {step}");
+                        CloseModel(accepted: false);
+                        break;
+
+                    case 3 when modelAttached && !modelOpen && !modelResolving &&
+                                     modelSnapshotGeneration == modelGeneration &&
+                                     modelSuggestions.Length > 0 && IsAvailable():
+                        transcript.Add($"{step}:open");
+                        modelWantsOpen = true;
+                        await surface.UpdateAsync(() => _ = input.Open(), $"transcript open {step}");
+                        OpenModel();
+                        break;
+
+                    case 4 when modelOpen && !modelResolving &&
+                                     modelSnapshotGeneration == modelGeneration && IsAvailable():
+                        {
+                            var down = random.Next(2) == 0;
+                            transcript.Add($"{step}:navigate:{(down ? "down" : "up")}");
+                            await surface.UpdateAsync(() => _ = input.Open(), $"focus transcript owner {step}");
+
+                            if (down)
+                            {
+                                await surface.Keyboard.PressAsync(Code.Down);
+                                modelSelectedIndex = Math.Min(modelSuggestions.Length - 1, modelSelectedIndex + 1);
+                            }
+                            else
+                            {
+                                await surface.Keyboard.PressAsync(Code.Up);
+                                modelSelectedIndex = Math.Max(0, modelSelectedIndex - 1);
+                            }
+
+                            break;
+                        }
+
+                    case 5 when modelOpen && !modelResolving && modelSelectedIndex >= 0 &&
+                                     modelSnapshotGeneration == modelGeneration && IsAvailable():
+                        {
+                            var pointer = random.Next(2) == 0;
+                            var acceptedIndex = pointer ? 0 : modelSelectedIndex;
+                            var acceptedText = (string) modelSuggestions[acceptedIndex]!;
+                            transcript.Add($"{step}:accept:{(pointer ? "pointer" : "enter")}:{acceptedIndex}");
+                            BeginModelAcceptance(
+                                acceptedIndex,
+                                pointer ? ActivationCause.Pointer : ActivationCause.Keyboard);
+
+                            if (pointer)
+                            {
+                                await surface.ResizeAsync(new Size(24, 10));
+                                await surface.Pointer.ClickAsync(list, new Point(1, acceptedIndex));
+                            }
+                            else
+                            {
+                                await surface.UpdateAsync(() => _ = input.Open(), $"focus transcript acceptance {step}");
+                                await surface.Keyboard.PressAsync(Code.Enter);
+                            }
+
+                            modelText = acceptedText;
+                            modelSelectedIndex = acceptedIndex;
+                            modelGeneration++;
+                            ReplaceModelResultSession(preservePendingAcceptance: true);
+                            modelSnapshotGeneration = null;
+                            modelResolving = true;
+                            CloseModel(accepted: true);
+                            CaptureCurrentObservation();
+                            PublishModelAcceptanceIfEligible();
+                            break;
+                        }
+
+                    case 6 when modelOpen && !modelResolving && modelSelectedIndex >= 0 &&
+                                     modelSnapshotGeneration == modelGeneration && IsAvailable():
+                        {
+                            var expected = new InvalidOperationException($"selector {step}");
+                            var failingIndex = (modelSelectedIndex + 1) % modelSuggestions.Length;
+                            var selectedBefore = list.SelectedIndex;
+                            var activeBefore = list.ActiveIndex;
+                            var closeTransitionBefore = modelCloseTransition;
+                            transcript.Add($"{step}:selector-failure:pointer:{failingIndex}");
+                            await surface.UpdateAsync(
+                                () => input.TextSelector = item => ReferenceEquals(item, modelSuggestions[failingIndex])
+                                    ? throw expected
+                                    : (string) item!,
+                                $"arm transcript selector failure {step}");
+                            var point = new Point(
+                                list.Bounds.X + 1,
+                                list.Bounds.Y + failingIndex - list.VerticalOffset);
+                            var thrown = await surface.Application.Dispatcher.InvokeAsync(
+                                () =>
+                                {
+                                    _ = surface.Application.Capture.Dispatch(new Pointer(
+                                        point,
+                                        pixels: null,
+                                        Buttons.Primary,
+                                        PointerAction.Press,
+                                        wheelX: 0,
+                                        wheelY: 0,
+                                        Modifiers.None,
+                                        isMotion: false,
+                                        isCellPositionInferred: false));
+                                    return Should.Throw<InvalidOperationException>(() =>
+                                        _ = surface.Application.Capture.Dispatch(new Pointer(
+                                            point,
+                                            pixels: null,
+                                            Buttons.Primary,
+                                            PointerAction.Release,
+                                            wheelX: 0,
+                                            wheelY: 0,
+                                            Modifiers.None,
+                                            isMotion: false,
+                                            isCellPositionInferred: false)));
+                                },
+                                TestContext.Current.CancellationToken);
+                            thrown.ShouldBeSameAs(expected);
+                            list.SelectedIndex.ShouldBe(selectedBefore);
+                            list.ActiveIndex.ShouldBe(activeBefore);
+                            modelCloseTransition.ShouldBe(closeTransitionBefore);
+                            modelPendingAcceptanceIdentity.ShouldBeNull();
+                            await surface.UpdateAsync(
+                                () => input.TextSelector = null,
+                                $"clear transcript selector failure {step}");
+                            break;
+                        }
+
+                    case 7 when modelAttached && modelOpen && modelEnabled && modelVisible:
+                        {
+                            var hide = random.Next(2) == 0;
+                            transcript.Add($"{step}:owner-unavailable:{(hide ? "hidden" : "disabled")}");
+                            await surface.UpdateAsync(
+                                () =>
+                                {
+                                    if (hide)
+                                    {
+                                        input.Visibility = Visibility.Hidden;
+                                    }
+                                    else
+                                    {
+                                        input.IsEnabled = false;
+                                    }
+                                },
+                                $"transcript owner unavailable {step}");
+                            CloseModel(accepted: false);
+                            modelVisible = !hide;
+                            modelEnabled = hide;
+                            break;
+                        }
+
+                    case 8 when modelAttached && (!modelEnabled || !modelVisible):
+                        transcript.Add($"{step}:owner-available");
+                        await surface.UpdateAsync(
+                            () =>
+                            {
+                                input.IsEnabled = true;
+                                input.Visibility = Visibility.Visible;
+                            },
+                            $"transcript owner available {step}");
+                        modelEnabled = true;
+                        modelVisible = true;
+                        break;
+
+                    case 9 when modelAttached:
+                        var detachedRequest = currentRequest;
+                        transcript.Add($"{step}:detach");
+                        await surface.UpdateAsync(() => root.Children.Remove(input), $"transcript detach {step}");
+
+                        if (detachedRequest is { } request && !settled.Contains(request))
+                        {
+                            cancellationTokens[request].IsCancellationRequested.ShouldBeTrue();
+                        }
+
+                        modelAttached = false;
+                        modelAttachmentIdentity++;
+                        modelGeneration++;
+                        ReplaceModelResultSession(preservePendingAcceptance: false);
+                        modelSnapshotGeneration = null;
+                        modelResolving = false;
+                        currentRequest = null;
+                        CloseModel(accepted: false);
+                        break;
+
+                    case 9 when !modelAttached:
+                        transcript.Add($"{step}:attach");
+                        await surface.UpdateAsync(() => root.Children.Add(input), $"transcript attach {step}");
+                        modelAttached = true;
+                        modelAttachmentIdentity++;
+                        break;
+
+                    case 10 when modelAttached:
+                        {
+                            minimumPrefixLength = minimumPrefixLength == 1 ? 100 : 1;
+                            transcript.Add($"{step}:threshold:{minimumPrefixLength}");
+                            await surface.UpdateAsync(
+                                () => input.MinimumPrefixLength = minimumPrefixLength,
+                                $"transcript threshold {step}");
+                            modelGeneration++;
+                            ReplaceModelResultSession(preservePendingAcceptance: false);
+
+                            if (minimumPrefixLength > modelText.Length)
+                            {
+                                if (currentRequest is { } previousRequest && !settled.Contains(previousRequest))
+                                {
+                                    cancellationTokens[previousRequest].IsCancellationRequested.ShouldBeTrue();
+                                }
+
+                                modelSnapshotGeneration = modelGeneration;
+                                modelSuggestions = [];
+                                modelSelectedIndex = -1;
+                                modelResolving = false;
+                                currentRequest = null;
+
+                                if (modelOpen)
+                                {
+                                    CloseModel(accepted: false);
+                                }
+                            }
+                            else
+                            {
+                                modelSnapshotGeneration = null;
+                                modelResolving = true;
+                                CaptureCurrentObservation();
+                            }
+
+                            break;
+                        }
+
+                    case 11:
+                    default:
+                        {
+                            var width = random.Next(1, 25);
+                            var height = random.Next(1, 12);
+                            transcript.Add($"{step}:resize:{width}x{height}");
+                            await surface.ResizeAsync(new Size(width, height));
+                            break;
+                        }
+                }
+
+                AssertModel(step);
+            }
+
+            foreach (var id in completions.Keys.Where(id => !settled.Contains(id)).ToArray())
+            {
+                transcript.Add($"drain:complete:{id}:{queries[id]}");
+                var results = ResultsFor(queries[id]);
+                completions[id].SetResult(results);
+                _ = settled.Add(id);
+                await observations[id].WaitAsync(TestContext.Current.CancellationToken);
+
+                if (currentRequest == id)
+                {
+                    modelSuggestions = results;
+                    modelResolving = false;
+                    modelSnapshotGeneration = modelGeneration;
+                    currentRequest = null;
+                    modelSelectedIndex = -1;
+
+                    if (modelWantsOpen && modelSuggestions.Length > 0)
+                    {
+                        if (modelOpen)
+                        {
+                            modelSelectedIndex = 0;
+                        }
+                        else
+                        {
+                            OpenModel();
+                        }
+                    }
+                }
+            }
+
+            await surface.UpdateAsync(static () => { }, "render drained randomized suggestion completions");
+            AssertModel(step: 96);
+
+            if (!modelAttached)
+            {
+                transcript.Add("guarantee:attach");
+                await surface.UpdateAsync(() => root.Children.Add(input), "attach for guaranteed oracle cases");
+                modelAttached = true;
+                modelAttachmentIdentity++;
+            }
+
+            await surface.UpdateAsync(
+                () =>
+                {
+                    input.IsEnabled = true;
+                    input.Visibility = Visibility.Visible;
+                    root.IsEnabled = true;
+                    root.Visibility = Visibility.Visible;
+
+                    if (input.IsOpen)
+                    {
+                        input.Close();
+                    }
+                },
+                "normalize randomized suggestion availability");
+            modelEnabled = true;
+            modelVisible = true;
+            modelAncestorEnabled = true;
+            modelAncestorVisible = true;
+
+            if (modelOpen)
+            {
+                CloseModel(accepted: false);
+            }
+
+            if (minimumPrefixLength != 1)
+            {
+                minimumPrefixLength = 1;
+                await surface.UpdateAsync(
+                    () => input.MinimumPrefixLength = minimumPrefixLength,
+                    "restore randomized suggestion threshold");
+                modelGeneration++;
+                ReplaceModelResultSession(preservePendingAcceptance: false);
+
+                if (modelText.Length >= minimumPrefixLength)
+                {
+                    modelSnapshotGeneration = null;
+                    modelResolving = true;
+                    CaptureCurrentObservation();
+                }
+                else
+                {
+                    modelSnapshotGeneration = modelGeneration;
+                    modelSuggestions = [];
+                    modelSelectedIndex = -1;
+                    modelResolving = false;
+                    currentRequest = null;
+                }
+            }
+
+            var staleQuery = $"stale-{random.Next(1000, 9999)}";
+            transcript.Add($"guarantee:edit:{staleQuery}");
+            await surface.UpdateAsync(() => input.Text = staleQuery, "start guaranteed stale suggestion request");
+            modelText = staleQuery;
+            modelGeneration++;
+            ReplaceModelResultSession(preservePendingAcceptance: false);
+            modelWantsOpen = true;
+            modelSnapshotGeneration = null;
+            modelResolving = true;
+            CaptureCurrentObservation();
+            var staleRequest = currentRequest.ShouldNotBeNull();
+
+            var currentQuery = $"current-{random.Next(1000, 9999)}";
+            transcript.Add($"guarantee:edit:{currentQuery}");
+            await surface.UpdateAsync(() => input.Text = currentQuery, "supersede guaranteed stale suggestion request");
+            modelText = currentQuery;
+            modelGeneration++;
+            ReplaceModelResultSession(preservePendingAcceptance: false);
+            modelWantsOpen = true;
+            modelSnapshotGeneration = null;
+            modelResolving = true;
+            CaptureCurrentObservation();
+            var currentGuaranteedRequest = currentRequest.ShouldNotBeNull();
+            cancellationTokens[staleRequest].IsCancellationRequested.ShouldBeTrue();
+
+            transcript.Add($"guarantee:stale-completion:{staleRequest}");
+            completions[staleRequest].SetResult(ResultsFor(staleQuery));
+            _ = settled.Add(staleRequest);
+            await observations[staleRequest].WaitAsync(TestContext.Current.CancellationToken);
+            await surface.UpdateAsync(static () => { }, "observe guaranteed stale suggestion completion");
+            AssertModel(step: 97);
+
+            var currentGuaranteedResults = ResultsFor(currentQuery);
+            transcript.Add($"guarantee:current-completion:{currentGuaranteedRequest}");
+            completions[currentGuaranteedRequest].SetResult(currentGuaranteedResults);
+            _ = settled.Add(currentGuaranteedRequest);
+            await observations[currentGuaranteedRequest].WaitAsync(TestContext.Current.CancellationToken);
+            await surface.UpdateAsync(static () => { }, "observe guaranteed current suggestion completion");
+            modelSuggestions = currentGuaranteedResults;
+            modelResolving = false;
+            modelSnapshotGeneration = modelGeneration;
+            currentRequest = null;
+            modelSelectedIndex = -1;
+            OpenModel();
+            AssertModel(step: 98);
+
+            transcript.Add("guarantee:owner-disabled");
+            await surface.UpdateAsync(() => input.IsEnabled = false, "disable randomized suggestion owner");
+            modelEnabled = false;
+            CloseModel(accepted: false);
+            AssertModel(step: 99);
+            await surface.UpdateAsync(() => input.IsEnabled = true, "enable randomized suggestion owner");
+            modelEnabled = true;
+
+            modelWantsOpen = true;
+            await surface.UpdateAsync(() => _ = input.Open(), "open before owner visibility transition");
+            OpenModel();
+            transcript.Add("guarantee:owner-hidden");
+            await surface.UpdateAsync(
+                () => input.Visibility = Visibility.Hidden,
+                "hide randomized suggestion owner");
+            modelVisible = false;
+            CloseModel(accepted: false);
+            AssertModel(step: 100);
+            await surface.UpdateAsync(
+                () => input.Visibility = Visibility.Visible,
+                "show randomized suggestion owner");
+            modelVisible = true;
+
+            modelWantsOpen = true;
+            await surface.UpdateAsync(() => _ = input.Open(), "open before ancestor availability transitions");
+            OpenModel();
+            transcript.Add("guarantee:ancestor-disabled");
+            await surface.UpdateAsync(() => root.IsEnabled = false, "disable randomized suggestion ancestor");
+            modelAncestorEnabled = false;
+            input.IsOpen.ShouldBeTrue();
+            surface.Application.Modality.Active.ShouldBeNull();
+            AssertModel(step: 101);
+            await surface.UpdateAsync(() => root.IsEnabled = true, "enable randomized suggestion ancestor");
+            modelAncestorEnabled = true;
+            _ = surface.Application.Modality.Active.ShouldNotBeNull();
+
+            transcript.Add("guarantee:ancestor-hidden");
+            await surface.UpdateAsync(
+                () => root.Visibility = Visibility.Hidden,
+                "hide randomized suggestion ancestor");
+            modelAncestorVisible = false;
+            input.IsOpen.ShouldBeTrue();
+            surface.Application.Modality.Active.ShouldBeNull();
+            AssertModel(step: 102);
+            await surface.UpdateAsync(
+                () => root.Visibility = Visibility.Visible,
+                "show randomized suggestion ancestor");
+            modelAncestorVisible = true;
+            _ = surface.Application.Modality.Active.ShouldNotBeNull();
+
+            transcript.Add("guarantee:resize:7x4");
+            await surface.ResizeAsync(new Size(7, 4));
+            AssertModel(step: 103);
+
+            transcript.Add("guarantee:dismiss:escape");
+            await surface.Keyboard.PressAsync(Code.Escape);
+            CloseModel(accepted: false);
+            AssertModel(step: 104);
+
+            modelWantsOpen = true;
+            await surface.UpdateAsync(() => _ = input.Open(), "open before randomized Tab dismissal");
+            OpenModel();
+            transcript.Add("guarantee:dismiss:tab");
+            await surface.Keyboard.PressAsync(Code.Tab);
+            CloseModel(accepted: false);
+            AssertModel(step: 105);
+
+            modelWantsOpen = true;
+            await surface.UpdateAsync(() => _ = input.Open(), "open before randomized light dismissal");
+            OpenModel();
+            await surface.ResizeAsync(new Size(24, 10));
+            transcript.Add("guarantee:dismiss:light");
+            await surface.Pointer.ClickAsync(root, new Point(23, 9));
+            CloseModel(accepted: false);
+            AssertModel(step: 106);
+
+            resolveSynchronously = true;
+            transcript.Add("guarantee:resolver:synchronous");
+            await surface.UpdateAsync(input.Refresh, "switch randomized oracle to synchronous results");
+            modelWantsOpen = true;
+            ApplySynchronousModelResolution(preservePendingAcceptance: false);
+            AssertModel(step: 107);
+
+            modelWantsOpen = true;
+            await surface.UpdateAsync(() => _ = input.Open(), "open before guaranteed successful acceptance");
+            OpenModel();
+            var successfulIndex = random.Next(modelSuggestions.Length);
+
+            for (var index = 0; index < successfulIndex; index++)
+            {
+                await surface.Keyboard.PressAsync(Code.Down);
+                modelSelectedIndex++;
+            }
+
+            var successfulCause = random.Next(2) == 0
+                ? ActivationCause.Keyboard
+                : ActivationCause.Pointer;
+            var successfulText = (string) modelSuggestions[successfulIndex]!;
+            transcript.Add($"guarantee:accept:{successfulCause}:{successfulIndex}:{successfulText}");
+            BeginModelAcceptance(successfulIndex, successfulCause);
+
+            if (successfulCause == ActivationCause.Pointer)
+            {
+                await surface.Pointer.ClickAsync(
+                    list,
+                    new Point(1, successfulIndex - list.VerticalOffset));
+            }
+            else
+            {
+                await surface.Keyboard.PressAsync(Code.Enter);
+            }
+
+            modelText = successfulText;
+            ApplySynchronousModelResolution(preservePendingAcceptance: true);
+            CloseModel(accepted: true);
+            PublishModelAcceptanceIfEligible();
+            AssertModel(step: 108);
+
+            modelWantsOpen = true;
+            await surface.UpdateAsync(() => _ = input.Open(), "open before replaced acceptance");
+            OpenModel();
+            var replacedText = (string) modelSuggestions[0]!;
+            var acceptancesBeforeReplacement = modelAcceptances.Count;
+            BeginModelAcceptance(index: 0, ActivationCause.Keyboard);
+            void ReplaceResultsOnClose(object? _, System.ComponentModel.PropertyChangedEventArgs eventArgs)
+            {
+                if (eventArgs.PropertyName == nameof(SuggestionInput.IsOpen) && !input.IsOpen)
+                {
+                    input.Resolver = null;
+                }
+            }
+
+            input.PropertyChanged += ReplaceResultsOnClose;
+            transcript.Add($"guarantee:accept:result-replaced:{replacedText}");
+
+            try
+            {
+                await surface.Keyboard.PressAsync(Code.Enter);
+            }
+            finally
+            {
+                input.PropertyChanged -= ReplaceResultsOnClose;
+            }
+
+            modelText = replacedText;
+            ApplySynchronousModelResolution(preservePendingAcceptance: true);
+            CloseModel(accepted: true);
+            modelGeneration++;
+            ReplaceModelResultSession(preservePendingAcceptance: false);
+            modelSuggestions = [];
+            modelSnapshotGeneration = modelGeneration;
+            modelSelectedIndex = -1;
+            modelResolving = false;
+            currentRequest = null;
+            PublishModelAcceptanceIfEligible();
+            modelAcceptances.Count.ShouldBe(acceptancesBeforeReplacement);
+            AssertModel(step: 109);
+
+            await surface.UpdateAsync(
+                () => input.Resolver = ResolveSuggestion,
+                "restore resolver after result replacement");
+            ApplySynchronousModelResolution(preservePendingAcceptance: false);
+            modelWantsOpen = true;
+            await surface.UpdateAsync(() => _ = input.Open(), "open before competing acceptance");
+            OpenModel();
+            var competingOuterText = (string) modelSuggestions[0]!;
+            BeginModelAcceptance(index: 0, ActivationCause.Keyboard);
+            var competeOnClose = true;
+            void CompeteDuringClose(object? _, System.ComponentModel.PropertyChangedEventArgs eventArgs)
+            {
+                if (!competeOnClose ||
+                    eventArgs.PropertyName != nameof(SuggestionInput.IsOpen) ||
+                    input.IsOpen)
+                {
+                    return;
+                }
+
+                competeOnClose = false;
+                _ = input.Open();
+                _ = Router.Route(
+                    editor,
+                    Events.Key,
+                    new KeyEventArgs(new Stroke(
+                        Code.Enter,
+                        character: null,
+                        nativeCode: 0,
+                        Modifiers.None,
+                        KeyAction.Press)));
+            }
+
+            input.PropertyChanged += CompeteDuringClose;
+            transcript.Add($"guarantee:accept:competing:{competingOuterText}");
+
+            try
+            {
+                await surface.Keyboard.PressAsync(Code.Enter);
+            }
+            finally
+            {
+                input.PropertyChanged -= CompeteDuringClose;
+            }
+
+            modelText = competingOuterText;
+            ApplySynchronousModelResolution(preservePendingAcceptance: true);
+            CloseModel(accepted: true);
+            modelWantsOpen = true;
+            OpenModel();
+            BeginModelAcceptance(index: 0, ActivationCause.Keyboard);
+            var competingWinnerText = (string) modelSuggestions[0]!;
+            modelText = competingWinnerText;
+            ApplySynchronousModelResolution(preservePendingAcceptance: true);
+            CloseModel(accepted: true);
+            PublishModelAcceptanceIfEligible();
+            PublishModelAcceptanceIfEligible();
+            AssertModel(step: 110);
+
+            modelWantsOpen = true;
+            await surface.UpdateAsync(() => _ = input.Open(), "open before attachment supersession");
+            OpenModel();
+            var detachedAcceptedText = (string) modelSuggestions[0]!;
+            var acceptancesBeforeDetach = modelAcceptances.Count;
+            BeginModelAcceptance(index: 0, ActivationCause.Keyboard);
+            void DetachDuringClose(object? _, System.ComponentModel.PropertyChangedEventArgs eventArgs)
+            {
+                if (eventArgs.PropertyName == nameof(SuggestionInput.IsOpen) && !input.IsOpen)
+                {
+                    _ = root.Children.Remove(input);
+                }
+            }
+
+            input.PropertyChanged += DetachDuringClose;
+            transcript.Add($"guarantee:accept:detached:{detachedAcceptedText}");
+
+            try
+            {
+                await surface.Keyboard.PressAsync(Code.Enter);
+            }
+            finally
+            {
+                input.PropertyChanged -= DetachDuringClose;
+            }
+
+            modelText = detachedAcceptedText;
+            ApplySynchronousModelResolution(preservePendingAcceptance: true);
+            CloseModel(accepted: true);
+            modelAttached = false;
+            modelAttachmentIdentity++;
+            modelGeneration++;
+            ReplaceModelResultSession(preservePendingAcceptance: false);
+            modelSnapshotGeneration = null;
+            modelResolving = false;
+            currentRequest = null;
+            PublishModelAcceptanceIfEligible();
+            modelAcceptances.Count.ShouldBe(acceptancesBeforeDetach);
+            AssertModel(step: 111);
+
+            await surface.UpdateAsync(() => root.Children.Add(input), "reattach after acceptance supersession");
+            modelAttached = true;
+            modelAttachmentIdentity++;
+            AssertModel(step: 112);
+
+            modelWantsOpen = true;
+            await surface.UpdateAsync(() => _ = input.Open(), "open before disposal supersession");
+            OpenModel();
+            var disposedAcceptedText = (string) modelSuggestions[0]!;
+            var acceptancesBeforeDisposal = modelAcceptances.Count;
+            BeginModelAcceptance(index: 0, ActivationCause.Keyboard);
+            void DisposeDuringClose(object? _, System.ComponentModel.PropertyChangedEventArgs eventArgs)
+            {
+                if (eventArgs.PropertyName == nameof(SuggestionInput.IsOpen) && !input.IsOpen)
+                {
+                    _ = root.Children.Remove(input);
+                    input.Dispose();
+                }
+            }
+
+            input.PropertyChanged += DisposeDuringClose;
+            transcript.Add($"guarantee:accept:disposed:{disposedAcceptedText}");
+
+            try
+            {
+                await surface.Keyboard.PressAsync(Code.Enter);
+            }
+            finally
+            {
+                input.PropertyChanged -= DisposeDuringClose;
+            }
+
+            modelText = disposedAcceptedText;
+            ApplySynchronousModelResolution(preservePendingAcceptance: true);
+            CloseModel(accepted: true);
+            modelAttached = false;
+            modelDisposed = true;
+            modelAttachmentIdentity++;
+            modelGeneration++;
+            ReplaceModelResultSession(preservePendingAcceptance: false);
+            modelSnapshotGeneration = null;
+            modelResolving = false;
+            currentRequest = null;
+            PublishModelAcceptanceIfEligible();
+            actualAcceptances.Count.ShouldBe(acceptancesBeforeDisposal);
+            input.IsDisposed.ShouldBeTrue();
+            modelPendingAcceptanceIdentity.ShouldBeNull();
+            modelCloseTransition.ShouldBeGreaterThan(0);
+
+            transcript.Any(entry => entry.Contains(":complete:", StringComparison.Ordinal)).ShouldBeTrue();
+            transcript.Any(entry => entry.Contains(":accept:", StringComparison.Ordinal)).ShouldBeTrue();
+            transcript.Any(entry => entry.Contains(":selector-failure", StringComparison.Ordinal)).ShouldBeTrue();
+            transcript.Any(entry => entry.EndsWith(":detach", StringComparison.Ordinal)).ShouldBeTrue();
+            transcript.Any(entry => entry.EndsWith(":attach", StringComparison.Ordinal)).ShouldBeTrue();
+            transcript.Any(entry => entry.Contains(":stale-completion:", StringComparison.Ordinal)).ShouldBeTrue();
+            transcript.Any(entry => entry.Contains(":accept:result-replaced:", StringComparison.Ordinal)).ShouldBeTrue();
+            transcript.Any(entry => entry.Contains(":accept:competing:", StringComparison.Ordinal)).ShouldBeTrue();
+            transcript.Any(entry => entry.Contains(":accept:detached:", StringComparison.Ordinal)).ShouldBeTrue();
+            transcript.Any(entry => entry.Contains(":accept:disposed:", StringComparison.Ordinal)).ShouldBeTrue();
+            transcript.Any(entry => entry.Contains(":ancestor-disabled", StringComparison.Ordinal)).ShouldBeTrue();
+            transcript.Any(entry => entry.Contains(":ancestor-hidden", StringComparison.Ordinal)).ShouldBeTrue();
+            transcript.Any(entry => entry.Contains(":resize:", StringComparison.Ordinal)).ShouldBeTrue();
+            transcript.Count(entry => entry.Contains(":dismiss:", StringComparison.Ordinal)).ShouldBe(3);
+        }
+        catch (Exception exception)
+        {
+            throw new InvalidOperationException(
+                $"SuggestionInput randomized transcript failed for seed {seed}.\n{string.Join(Environment.NewLine, transcript)}",
+                exception);
+        }
+        finally
+        {
+            if (!modelAttached && !modelDisposed)
+            {
+                await surface.UpdateAsync(() => root.Children.Add(input), "reattach randomized suggestion input for disposal");
+            }
         }
     }
 

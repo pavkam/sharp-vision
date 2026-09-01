@@ -35,10 +35,10 @@ public sealed class SuggestionInput: CompositeControlBase
     private int _openingCurrentIndex = -1;
     private ulong _pendingFirstSelectionSessionGeneration;
     private Dispatcher? _pendingFirstSelectionDispatcher;
-    private PopupItemActivationIdentity? _itemActivation;
     private SuggestionInputAcceptanceTransaction? _acceptanceTransaction;
     private ControlAttachmentToken? _acceptanceAttachment;
     private ActivationCause _acceptanceCause;
+    private int _acceptanceResolutionGeneration;
     private ulong _acceptanceGeneration;
     private ulong _minimumPrefixLengthVersion;
     private ulong _resolverVersion;
@@ -522,7 +522,6 @@ public sealed class SuggestionInput: CompositeControlBase
         _openingSnapshotGeneration = _currentSnapshotGeneration;
         _openingSelectedIndex = _list.SelectedIndex;
         _openingCurrentIndex = _list.ActiveIndex;
-        _itemActivation = null;
         CancelPendingAcceptance();
     }
 
@@ -579,7 +578,6 @@ public sealed class SuggestionInput: CompositeControlBase
     private void CancelNavigationSession()
     {
         ClearPendingFirstSuggestionSelection();
-        _itemActivation = null;
         CancelPendingAcceptance();
 
         if (_openingSnapshotGeneration is not { } openingGeneration ||
@@ -609,69 +607,88 @@ public sealed class SuggestionInput: CompositeControlBase
     private void OnItemActivationStarting(object? sender, ItemInvokedEventArgs eventArgs)
     {
         _ = sender;
-        _itemActivation = CanAcceptCurrentSnapshot() &&
-                          IsCurrentSuggestionItem(eventArgs.Index, eventArgs.Item)
-            ? new PopupItemActivationIdentity(
-                eventArgs.ActivationGeneration,
-                eventArgs.Index,
-                _popupCoordinator.TransitionVersion,
-                _popupCoordinator.SessionGeneration)
-            : null;
-    }
-
-    private void OnItemInvoked(object? sender, ItemInvokedEventArgs eventArgs)
-    {
-        _ = sender;
-        var activation = _itemActivation;
-        _itemActivation = null;
+        CancelPendingAcceptance();
         var resolutionGeneration = _resolutionGeneration;
 
-        if (activation is not { } identity ||
+        if (!CanAcceptCurrentSnapshot() ||
             !TryCaptureAttachment(out var attachment) ||
-            !IsCurrentInvocation(eventArgs, identity, resolutionGeneration, attachment))
+            !IsCurrentSuggestionItem(eventArgs.Index, eventArgs.Item))
         {
             return;
         }
 
-        var acceptanceGeneration = AdvanceAcceptanceGeneration();
+        var identity = new PopupItemActivationIdentity(
+            eventArgs.ActivationGeneration,
+            eventArgs.Index,
+            _popupCoordinator.TransitionVersion,
+            _popupCoordinator.SessionGeneration);
+        var acceptanceGeneration = _acceptanceGeneration;
         var selector = TextSelector;
         var acceptedText = selector is null
             ? Convert.ToString(eventArgs.Item, CultureInfo.InvariantCulture) ?? string.Empty
             : selector(eventArgs.Item) ?? throw new InvalidOperationException(
                 "A suggestion text selector returned null.");
+
         if (_acceptanceGeneration != acceptanceGeneration ||
-            !IsCurrentInvocation(eventArgs, identity, resolutionGeneration, attachment))
+            !IsCurrentActivationStarting(eventArgs, identity, resolutionGeneration, attachment))
         {
             return;
         }
 
-        var transaction = new SuggestionInputAcceptanceTransaction(
+        _acceptanceTransaction = new SuggestionInputAcceptanceTransaction(
             identity,
             eventArgs.Item,
             acceptedText,
             acceptanceGeneration);
-        _acceptanceTransaction = transaction;
         _acceptanceAttachment = attachment;
         _acceptanceCause = eventArgs.Cause;
+        _acceptanceResolutionGeneration = resolutionGeneration;
+    }
+
+    private void OnItemInvoked(object? sender, ItemInvokedEventArgs eventArgs)
+    {
+        _ = sender;
+        var transaction = _acceptanceTransaction;
+        var attachment = _acceptanceAttachment;
+        var resolutionGeneration = _acceptanceResolutionGeneration;
+
+        if (transaction is not { } prepared ||
+            attachment is not { } capturedAttachment ||
+            _acceptanceGeneration != prepared.Generation ||
+            !ReferenceEquals(eventArgs.Item, prepared.Item) ||
+            !IsCurrentInvocation(
+                eventArgs,
+                prepared.Activation,
+                resolutionGeneration,
+                capturedAttachment))
+        {
+            if (transaction is { } stale)
+            {
+                ClearAcceptance(stale.Generation);
+            }
+
+            return;
+        }
+
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(_popupCoordinator.AcceptAndClose, ref failure);
 
-        if (IsCurrentAcceptance(transaction))
+        if (IsCurrentAcceptance(prepared))
         {
             var cause = _acceptanceCause;
-            ClearAcceptance(transaction.Generation);
+            ClearAcceptance(prepared.Generation);
             ExceptionAggregation.Capture(
                 () => SuggestionAccepted?.Invoke(
                     this,
                     new ItemInvokedEventArgs(
-                        transaction.Activation.ItemIndex,
-                        transaction.Item,
+                        prepared.Activation.ItemIndex,
+                        prepared.Item,
                         cause)),
                 ref failure);
         }
         else
         {
-            ClearAcceptance(transaction.Generation);
+            ClearAcceptance(prepared.Generation);
         }
 
         failure?.Throw();
@@ -691,6 +708,22 @@ public sealed class SuggestionInput: CompositeControlBase
         eventArgs.Index == identity.ItemIndex &&
         eventArgs.Index == _list.SelectedIndex &&
         eventArgs.Index == _list.ActiveIndex &&
+        IsCurrentSuggestionItem(eventArgs.Index, eventArgs.Item) &&
+        _popupCoordinator.TransitionVersion == identity.PopupTransitionVersion &&
+        _popupCoordinator.SessionGeneration == identity.PopupSessionGeneration;
+
+    [Pure]
+    private bool IsCurrentActivationStarting(
+        ItemInvokedEventArgs eventArgs,
+        PopupItemActivationIdentity identity,
+        int resolutionGeneration,
+        ControlAttachmentToken attachment) =>
+        CanAcceptCurrentSnapshot() &&
+        _resolutionGeneration == resolutionGeneration &&
+        _currentSnapshotGeneration == resolutionGeneration &&
+        IsCurrent(attachment) &&
+        eventArgs.ActivationGeneration == identity.ItemGeneration &&
+        eventArgs.Index == identity.ItemIndex &&
         IsCurrentSuggestionItem(eventArgs.Index, eventArgs.Item) &&
         _popupCoordinator.TransitionVersion == identity.PopupTransitionVersion &&
         _popupCoordinator.SessionGeneration == identity.PopupSessionGeneration;
@@ -753,6 +786,7 @@ public sealed class SuggestionInput: CompositeControlBase
         _acceptanceTransaction = null;
         _acceptanceAttachment = null;
         _acceptanceCause = default;
+        _acceptanceResolutionGeneration = 0;
         return _acceptanceGeneration;
     }
 
@@ -768,6 +802,7 @@ public sealed class SuggestionInput: CompositeControlBase
         _acceptanceTransaction = null;
         _acceptanceAttachment = null;
         _acceptanceCause = default;
+        _acceptanceResolutionGeneration = 0;
     }
 
     private void RequestFirstSuggestionSelection(int resolutionGeneration)
@@ -870,6 +905,10 @@ public sealed class SuggestionInput: CompositeControlBase
         var committedText = Text;
         var version = ++_textCommitVersion;
         var resolutionGeneration = _resolutionGeneration;
+        var preservePendingAcceptance =
+            _acceptanceTransaction is { } acceptance &&
+            _acceptanceGeneration == acceptance.Generation &&
+            string.Equals(committedText, acceptance.AcceptedText, StringComparison.Ordinal);
         _wantsOpen |= Resolver is not null;
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(
@@ -881,13 +920,17 @@ public sealed class SuggestionInput: CompositeControlBase
             string.Equals(Text, committedText, StringComparison.Ordinal) &&
             _resolutionGeneration == resolutionGeneration)
         {
-            ExceptionAggregation.Capture(BeginResolution, ref failure);
+            ExceptionAggregation.Capture(
+                () => BeginResolution(preservePendingAcceptance),
+                ref failure);
         }
 
         failure?.Throw();
     }
 
-    private void BeginResolution()
+    private void BeginResolution() => BeginResolution(preservePendingAcceptance: false);
+
+    private void BeginResolution(bool preservePendingAcceptance)
     {
         if (_resolutionLifecycleCleanupDepth > 0 ||
             IsDisposed ||
@@ -897,8 +940,12 @@ public sealed class SuggestionInput: CompositeControlBase
             return;
         }
 
+        if (!preservePendingAcceptance)
+        {
+            CancelPendingAcceptance();
+        }
+
         ClearPendingFirstSuggestionSelection();
-        _itemActivation = null;
         var generation = ++_resolutionGeneration;
         _currentSnapshotGeneration = null;
         var lease = _resolutionOperation.Begin();
@@ -1303,7 +1350,6 @@ public sealed class SuggestionInput: CompositeControlBase
 
         changed = !SnapshotsEqual(Suggestions, results);
         ClearPendingFirstSuggestionSelection();
-        _itemActivation = null;
         ExceptionAggregation.Capture(() => _list.Items = results, ref failure);
         ExceptionAggregation.Capture(() => _list.SelectedIndex = -1, ref failure);
         ExceptionAggregation.Capture(() => _list.SetProvisionalCurrentIndex(-1), ref failure);
@@ -1476,7 +1522,6 @@ public sealed class SuggestionInput: CompositeControlBase
         ExceptionDispatchInfo? failure = null;
         var endsResolutionLifetime = reason is ReleaseReason.Detached or ReleaseReason.Disposed;
         ClearPendingFirstSuggestionSelection();
-        _itemActivation = null;
         CancelPendingAcceptance();
 
         if (endsResolutionLifetime)
@@ -1543,7 +1588,6 @@ public sealed class SuggestionInput: CompositeControlBase
     {
         _wantsOpen = false;
         ClearPendingFirstSuggestionSelection();
-        _itemActivation = null;
     }
 
     [Pure]
