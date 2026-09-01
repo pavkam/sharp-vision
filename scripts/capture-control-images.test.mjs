@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import * as captureHelpers from "./capture-control-images.mjs";
+import { controls } from "./control-image-manifest.mjs";
 import { parseCapture } from "./render-terminal-capture.mjs";
 
 const { diffBounds, locateExampleBox } = captureHelpers;
@@ -90,4 +91,11 @@ test("locateExampleBox rejects a box whose bottom is hidden behind the next box"
     );
 
     assert.equal(locateExampleBox(rows), null);
+});
+
+test("SuggestionInput open capture_WhenPopupIsContained_UsesStableExampleBounds", () => {
+    const entry = controls.find(({ doc }) => doc === "input/suggestion-input");
+    const open = entry.states.find(({ name }) => name === "open");
+
+    assert.equal(open.popup, undefined);
 });

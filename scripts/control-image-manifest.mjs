@@ -80,7 +80,9 @@ export const controls = [
             {},
             {
                 name: "open",
-                popup: true,
+                // The pane's bounded stage contains the complete suggestion popup. Keeping the
+                // ordinary example crop avoids unrelated focus or page-scroll changes expanding
+                // the image to the whole Gallery.
                 actions: [
                     { click: "Search destinations…" },
                     { type: "li" },
