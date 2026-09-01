@@ -2568,6 +2568,8 @@ namespace SharpVision.DataBinding
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Menus.Menu target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, int>> sourceProperty)
             where TModel :  class { }
+        public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Navigation.Pager target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, int>> sourceProperty)
+            where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Input.SuggestionInput target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, string?>> sourceProperty, SharpVision.DataBinding.BindingMode mode)
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Input.TextInput target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, string?>> sourceProperty, SharpVision.DataBinding.BindingMode mode)
@@ -3693,6 +3695,42 @@ namespace SharpVision.Navigation
         public NavigationViewSeparatorStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, System.Text.Rune glyph) { }
         public required System.Text.Rune Glyph { get; init; }
         public new static SharpVision.Navigation.NavigationViewSeparatorStyle Default { get; }
+    }
+    public sealed class PageChangedEventArgs : System.EventArgs
+    {
+        public PageChangedEventArgs(int previousPageIndex, int currentPageIndex, SharpVision.Input.ActivationCause cause) { }
+        public SharpVision.Input.ActivationCause Cause { get; }
+        public int CurrentPageIndex { get; }
+        public int PreviousPageIndex { get; }
+    }
+    public sealed class Pager : SharpVision.Controls.ControlBase, SharpVision.Controls.IStyled<SharpVision.Navigation.PagerStyle>
+    {
+        public Pager() { }
+        public SharpVision.Navigation.PagerStyle ActualStyle { get; }
+        public override bool CanTabStop { get; }
+        public int MaximumVisiblePages { get; set; }
+        public int PageCount { get; set; }
+        public int PageIndex { get; set; }
+        public SharpVision.Navigation.PagerStyle? Style { get; set; }
+        public event System.EventHandler<SharpVision.Navigation.PageChangedEventArgs>? PageChanged;
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        public bool ChangePage(int pageIndex) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnAttached() { }
+        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+    }
+    public sealed class PagerStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Navigation.PagerStyle>
+    {
+        public PagerStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.ControlGlyph firstPageGlyph, SharpVision.Styling.ControlGlyph previousPageGlyph, SharpVision.Styling.ControlGlyph nextPageGlyph, SharpVision.Styling.ControlGlyph lastPageGlyph, SharpVision.Styling.ControlGlyph omittedPagesGlyph, SharpVision.Styling.ControlColor currentPageColor) { }
+        public required SharpVision.Styling.ControlColor CurrentPageColor { get; init; }
+        public required SharpVision.Styling.ControlGlyph FirstPageGlyph { get; init; }
+        public required SharpVision.Styling.ControlGlyph LastPageGlyph { get; init; }
+        public required SharpVision.Styling.ControlGlyph NextPageGlyph { get; init; }
+        public required SharpVision.Styling.ControlGlyph OmittedPagesGlyph { get; init; }
+        public required SharpVision.Styling.ControlGlyph PreviousPageGlyph { get; init; }
+        public new static SharpVision.Navigation.PagerStyle Default { get; }
     }
 }
 namespace SharpVision.Notifications
