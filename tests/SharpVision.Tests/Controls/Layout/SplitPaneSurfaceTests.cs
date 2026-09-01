@@ -321,10 +321,287 @@ public sealed class SplitPaneSurfaceTests
         surface.Cell(railPoint).Text.ShouldNotBe(expected);
     }
 
+    /// <summary>Verifies focused arrow, paging, and endpoint commands use the arranged feasible cell range.</summary>
+    [Theory]
+    [InlineData(Orientation.Horizontal, Code.Right, 7)]
+    [InlineData(Orientation.Horizontal, Code.Left, 3)]
+    [InlineData(Orientation.Vertical, Code.Up, 7)]
+    [InlineData(Orientation.Vertical, Code.Down, 3)]
+    [InlineData(Orientation.Horizontal, Code.PageUp, 8)]
+    [InlineData(Orientation.Horizontal, Code.PageDown, 2)]
+    [InlineData(Orientation.Horizontal, Code.Home, 0)]
+    [InlineData(Orientation.Horizontal, Code.End, 10)]
+    public async Task Keyboard_WhenSplitPaneIsFocused_AppliesOrientationAndRangeCommandAsync(
+        Orientation orientation,
+        Code code,
+        int expectedExtent)
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            Orientation = orientation,
+            FirstPaneLength = Length.Cells(5),
+            SmallChange = 2,
+            LargeChange = 3,
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        var size = orientation == Orientation.Horizontal ? new Size(11, 3) : new Size(3, 11);
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            size,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(pane);
+
+        // Act
+        await surface.Keyboard.PressAsync(code);
+
+        // Assert
+        pane.FirstPaneLength.ShouldBe(Length.Cells(expectedExtent));
+        var actualExtent = orientation == Orientation.Horizontal
+            ? pane.Children[0].Bounds.Width
+            : pane.Children[0].Bounds.Height;
+        actualExtent.ShouldBe(expectedExtent);
+    }
+
+    /// <summary>Verifies keyboard commits preserve percentage authorship across odd divider-excluded pools.</summary>
+    [Theory]
+    [InlineData(10, 6, 66.66666666666667)]
+    [InlineData(12, 7, 63.63636363636363)]
+    [InlineData(14, 8, 61.53846153846154)]
+    public async Task Keyboard_WhenPercentSplitMovesAcrossOddPool_PreservesPercentKindAsync(
+        int width,
+        int expectedExtent,
+        double expectedPercent)
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            FirstPaneLength = Length.Percent(50),
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(width, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        // Assert
+        pane.FirstPaneLength.Kind.ShouldBe(LengthKind.Percent);
+        pane.FirstPaneLength.Value.ShouldBe(expectedPercent, 0.000000000001);
+        pane.Children[0].Bounds.Width.ShouldBe(expectedExtent);
+    }
+
+    /// <summary>Verifies recognized zero and endpoint commands are handled without publishing an effective-cell no-op.</summary>
+    [Theory]
+    [InlineData(Code.Right, 0)]
+    [InlineData(Code.End, 1)]
+    public async Task Keyboard_WhenCommandCannotChangeEffectiveCell_HandlesWithoutPublishingAsync(
+        Code code,
+        int smallChange)
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            FirstPaneLength = Length.Cells(10),
+            SmallChange = smallChange,
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        var propertyChanges = 0;
+        var splitChanges = 0;
+        pane.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SplitPane.FirstPaneLength))
+            {
+                propertyChanges++;
+            }
+        };
+        pane.SplitChanged += (_, _) => splitChanges++;
+        KeyEventArgs? routed = null;
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                routed = Key(code);
+                _ = Router.Route(pane, Events.Key, routed);
+            },
+            $"route no-op SplitPane {code}");
+
+        // Assert
+        routed.ShouldNotBeNull().IsHandled.ShouldBeTrue();
+        pane.FirstPaneLength.ShouldBe(Length.Cells(10));
+        propertyChanges.ShouldBe(0);
+        splitChanges.ShouldBe(0);
+    }
+
+    /// <summary>Verifies an arrow routed from a focused descendant remains the descendant's input.</summary>
+    [Fact]
+    public async Task Keyboard_WhenPaneDescendantIsFocused_DoesNotRunSplitPaneCommandAsync()
+    {
+        // Arrange
+        var first = new Button { Text = "First" };
+        var pane = new SplitPane
+        {
+            FirstPaneLength = Length.Cells(5),
+            Children = { first, new Button { Text = "Second" } }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(first);
+        var descendantKeys = 0;
+        first.KeyDown += (_, eventArgs) =>
+        {
+            if (eventArgs.Stroke.Code == Code.Right)
+            {
+                descendantKeys++;
+            }
+        };
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        // Assert
+        pane.FirstPaneLength.ShouldBe(Length.Cells(5));
+        descendantKeys.ShouldBe(1);
+        surface.ShouldHaveFocus(first);
+    }
+
+    /// <summary>Verifies modified, unknown, released, and wheel records remain available to normal routing.</summary>
+    [Fact]
+    public async Task Input_WhenRecordIsNotAPlainSplitCommand_DoesNotConsumeItAsync()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            FirstPaneLength = Length.Cells(5),
+            Children = { new Button { Text = "First" }, new Button { Text = "Second" } }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        var records = new List<RoutedEventArgs>();
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                records.Add(Route(pane, Key(Code.Right, Modifiers.Shift)));
+                records.Add(Route(pane, Key(Code.F1)));
+                records.Add(Route(pane, Key(Code.Right, Modifiers.None, KeyAction.Release)));
+                records.Add(Route(pane, Wheel()));
+            },
+            "route non-command SplitPane input");
+
+        // Assert
+        records.ShouldAllBe(record => !record.IsHandled);
+        pane.FirstPaneLength.ShouldBe(Length.Cells(5));
+
+        // Act and assert: Tab remains owned by normal traversal.
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(pane.Children[0]);
+    }
+
+    /// <summary>Verifies losing sequential eligibility does not evict existing programmatic focus.</summary>
+    [Fact]
+    public async Task CanTabStop_WhenDividerBecomesUnavailable_PreservesExistingFocusAsync()
+    {
+        // Arrange
+        var pane = CreatePane();
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 3),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => _ = pane.Focus(), "focus SplitPane programmatically");
+        surface.ShouldHaveFocus(pane);
+
+        // Act and assert: resizability
+        await surface.UpdateAsync(() => pane.IsResizable = false, "disable SplitPane resizing");
+        pane.CanTabStop.ShouldBeFalse();
+        surface.ShouldHaveFocus(pane);
+
+        // Act and assert: pane visibility
+        await surface.UpdateAsync(
+            () =>
+            {
+                pane.IsResizable = true;
+                pane.Children[0].Visibility = Visibility.Hidden;
+            },
+            "hide one SplitPane pane");
+        pane.CanTabStop.ShouldBeFalse();
+        surface.ShouldHaveFocus(pane);
+    }
+
+    /// <summary>Verifies sequential traversal skips an unavailable divider while retaining its pane descendants.</summary>
+    [Fact]
+    public async Task Keyboard_WhenDividerIsNotResizable_TabsDirectlyToPaneContentAsync()
+    {
+        // Arrange
+        var pane = CreatePane();
+        pane.IsResizable = false;
+        await using var surface = await ComponentSurface.MountAsync(
+            pane,
+            new Size(11, 3),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert
+        pane.CanTabStop.ShouldBeFalse();
+        surface.ShouldHaveFocus(pane.Children[0]);
+    }
+
     /// <summary>Creates one split with two opaque panes suitable for mounted divider rendering.</summary>
     /// <returns>The initialized split pane.</returns>
     private static SplitPane CreatePane() => new()
     {
         Children = { new Button { Text = "A" }, new Button { Text = "B" } }
     };
+
+    /// <summary>Creates one routed key record for direct mounted routing assertions.</summary>
+    private static KeyEventArgs Key(
+        Code code,
+        Modifiers modifiers = Modifiers.None,
+        KeyAction action = KeyAction.Press) =>
+        new(new Stroke(code, character: null, nativeCode: 0, modifiers, action));
+
+    /// <summary>Creates one wheel record that SplitPane must leave to normal routing.</summary>
+    private static PointerEventArgs Wheel() => new(new Pointer(
+        new Point(5, 0),
+        pixels: null,
+        Buttons.None,
+        PointerAction.Wheel,
+        wheelX: 0,
+        wheelY: 1,
+        Modifiers.None,
+        isMotion: false,
+        isCellPositionInferred: false));
+
+    /// <summary>Routes one record and returns the same instance for handled-state assertions.</summary>
+    private static T Route<T>(ControlBase target, T eventArgs)
+        where T : RoutedEventArgs
+    {
+        _ = eventArgs switch
+        {
+            KeyEventArgs key => Router.Route(target, Events.Key, key),
+            PointerEventArgs pointer => Router.Route(target, Events.Pointer, pointer),
+            _ => throw new UnreachableException()
+        };
+        return eventArgs;
+    }
 }

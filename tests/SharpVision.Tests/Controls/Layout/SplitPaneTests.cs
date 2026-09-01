@@ -152,6 +152,237 @@ public sealed class SplitPaneTests
         observations.ShouldBe([(Length.Percent(25), Length.Percent(25))]);
     }
 
+    /// <summary>Verifies property and typed observers are both attempted and the earlier failure wins.</summary>
+    [Fact]
+    public void FirstPaneLength_WhenPropertyAndTypedObserversThrow_RethrowsPropertyFailureAfterTypedPublication()
+    {
+        // Arrange
+        var pane = new SplitPane();
+        var publications = new List<string>();
+        var propertyFailure = new InvalidOperationException("property failed");
+        pane.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SplitPane.FirstPaneLength))
+            {
+                publications.Add("property");
+                throw propertyFailure;
+            }
+        };
+        pane.SplitChanged += (_, _) =>
+        {
+            publications.Add("split");
+            throw new NotSupportedException("split failed");
+        };
+
+        // Act
+        var thrown = Should.Throw<InvalidOperationException>(
+            () => pane.FirstPaneLength = Length.Cells(4));
+
+        // Assert
+        thrown.ShouldBeSameAs(propertyFailure);
+        pane.FirstPaneLength.ShouldBe(Length.Cells(4));
+        publications.ShouldBe(["property", "split"]);
+    }
+
+    /// <summary>Verifies only a laid-out, resizable divider between two visible panes is a Tab stop.</summary>
+    [Fact]
+    public void CanTabStop_WhenDividerAvailabilityChanges_TracksOwnedInteractionState()
+    {
+        // Arrange
+        var pane = new SplitPane();
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        pane.Children.Add(first);
+        pane.Children.Add(second);
+        var engine = new LayoutEngine();
+
+        // Act and assert: geometry
+        pane.CanTabStop.ShouldBeFalse();
+        engine.Layout(pane, new Size(11, 2));
+        pane.CanTabStop.ShouldBeTrue();
+        engine.Layout(pane, new Size(11, 0));
+        pane.CanTabStop.ShouldBeFalse();
+        engine.Layout(pane, new Size(11, 2));
+        pane.CanTabStop.ShouldBeTrue();
+
+        // Act and assert: resizability and pane visibility
+        pane.IsResizable = false;
+        pane.CanTabStop.ShouldBeFalse();
+        pane.IsResizable = true;
+        pane.CanTabStop.ShouldBeTrue();
+        first.Visibility = Visibility.Hidden;
+        pane.CanTabStop.ShouldBeFalse();
+        first.Visibility = Visibility.Visible;
+        pane.CanTabStop.ShouldBeTrue();
+        second.Visibility = Visibility.Collapsed;
+        pane.CanTabStop.ShouldBeFalse();
+        second.Visibility = Visibility.Visible;
+        pane.CanTabStop.ShouldBeTrue();
+
+        // Act and assert: structure
+        _ = pane.Children.Remove(second);
+        pane.CanTabStop.ShouldBeFalse();
+        pane.Children.Add(second);
+        pane.CanTabStop.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies SplitPane publishes one notification for each divider-owned eligibility transition.</summary>
+    [Fact]
+    public void CanTabStop_WhenOwnedInteractionTransitions_PublishesExactlyOncePerTransition()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        var publications = 0;
+        pane.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ControlBase.CanTabStop))
+            {
+                publications++;
+            }
+        };
+
+        // Act and assert
+        new LayoutEngine().Layout(pane, new Size(11, 2));
+        publications.ShouldBe(1);
+
+        pane.IsResizable = false;
+        publications.ShouldBe(2);
+
+        pane.IsResizable = false;
+        publications.ShouldBe(2);
+
+        pane.IsResizable = true;
+        publications.ShouldBe(3);
+
+        pane.Children[0].Visibility = Visibility.Hidden;
+        publications.ShouldBe(4);
+
+        pane.Children[0].Visibility = Visibility.Visible;
+        publications.ShouldBe(5);
+    }
+
+    /// <summary>Verifies owner availability remains ControlBase notification territory.</summary>
+    [Fact]
+    public void CanTabStop_WhenOwnerAvailabilityChanges_PublishesOneInheritedNotification()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        new LayoutEngine().Layout(pane, new Size(11, 2));
+        var publications = new List<string?>();
+        pane.PropertyChanged += (_, eventArgs) => publications.Add(eventArgs.PropertyName);
+
+        // Act
+        pane.IsEnabled = false;
+
+        // Assert
+        pane.CanTabStop.ShouldBeFalse();
+        publications.Count(name => name == nameof(ControlBase.CanTabStop)).ShouldBe(1);
+
+        // Act
+        publications.Clear();
+        pane.IsEnabled = true;
+        pane.Visibility = Visibility.Hidden;
+
+        // Assert
+        pane.CanTabStop.ShouldBeFalse();
+        publications.Count(name => name == nameof(ControlBase.CanTabStop)).ShouldBe(2);
+    }
+
+    /// <summary>Verifies inherited focus and tab setters do not receive a duplicate SplitPane notification.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void CanTabStop_WhenInheritedEligibilitySetterChanges_PublishesOneNotification(bool tabStopSetter)
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        new LayoutEngine().Layout(pane, new Size(11, 2));
+        var publications = new List<string?>();
+        pane.PropertyChanged += (_, eventArgs) => publications.Add(eventArgs.PropertyName);
+
+        // Act
+        if (tabStopSetter)
+        {
+            pane.IsTabStop = false;
+        }
+        else
+        {
+            pane.IsFocusable = false;
+        }
+
+        // Assert
+        pane.CanTabStop.ShouldBeFalse();
+        publications.Count(name => name == nameof(ControlBase.CanTabStop)).ShouldBe(1);
+    }
+
+    /// <summary>Verifies required divider reconciliation still runs after a throwing resizability observer.</summary>
+    [Fact]
+    public void IsResizable_WhenPropertyObserverThrows_StillRefreshesCanTabStop()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        new LayoutEngine().Layout(pane, new Size(11, 2));
+        var failure = new InvalidOperationException("observer failed");
+        pane.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SplitPane.IsResizable))
+            {
+                throw failure;
+            }
+        };
+
+        // Act
+        var thrown = Should.Throw<InvalidOperationException>(() => pane.IsResizable = false);
+
+        // Assert
+        thrown.ShouldBeSameAs(failure);
+        pane.CanTabStop.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a newer reentrant resizability transition owns the final divider eligibility.</summary>
+    [Fact]
+    public void IsResizable_WhenPropertyObserverCommitsNewerValue_SuppressesSupersededRefresh()
+    {
+        // Arrange
+        var pane = new SplitPane
+        {
+            Children = { new ProbeControl(), new ProbeControl() }
+        };
+        new LayoutEngine().Layout(pane, new Size(11, 2));
+        var tabStopChanges = 0;
+        pane.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SplitPane.IsResizable) && !pane.IsResizable)
+            {
+                pane.IsResizable = true;
+            }
+            else if (eventArgs.PropertyName == nameof(ControlBase.CanTabStop))
+            {
+                tabStopChanges++;
+            }
+        };
+
+        // Act
+        pane.IsResizable = false;
+
+        // Assert
+        pane.IsResizable.ShouldBeTrue();
+        pane.CanTabStop.ShouldBeTrue();
+        tabStopChanges.ShouldBe(0);
+    }
+
     /// <summary>Verifies transition payloads reject lengths that SplitPane cannot author.</summary>
     [Fact]
     public void SplitChangedEventArgs_WhenLengthIsUnsupported_ThrowsBeforeConstruction()

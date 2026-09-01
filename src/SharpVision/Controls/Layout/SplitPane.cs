@@ -12,6 +12,11 @@ using SharpVision.Terminal.Input;
 public sealed class SplitPane: Container
 {
     private readonly CallbackTransitionStream _splitTransitions = new();
+    private ControlBase? _firstVisibilitySource;
+    private ControlBase? _secondVisibilitySource;
+    private int _effectiveFirstPaneExtent;
+    private int _dividerExcludedPool;
+    private bool _dividerInteractionAvailable;
     private bool _isDividerPointerOver;
     private Point? _latestPointerCell;
 
@@ -44,10 +49,11 @@ public sealed class SplitPane: Container
         {
             ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The split orientation is unknown.");
 
-            if (SetProperty(ref field, value, InvalidationImpact.Measure))
-            {
-                ReconcileDividerPointerOver();
-            }
+            _ = SetPropertyAndContinue(
+                ref field,
+                value,
+                InvalidationImpact.Measure,
+                RefreshDividerInteractionState);
         }
     } = Orientation.Horizontal;
 
@@ -90,12 +96,16 @@ public sealed class SplitPane: Container
         get;
         set
         {
-            if (SetProperty(ref field, value, InvalidationImpact.Render))
-            {
-                ReconcileDividerPointerOver();
-            }
+            _ = SetPropertyAndContinue(
+                ref field,
+                value,
+                InvalidationImpact.Render,
+                RefreshDividerInteractionState);
         }
     } = true;
+
+    /// <summary>Gets whether the visible divider currently participates in sequential focus traversal.</summary>
+    public override bool CanTabStop => base.CanTabStop && _dividerInteractionAvailable;
 
     /// <summary>Gets or sets the non-negative arrow-key change in terminal cells.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
@@ -226,17 +236,19 @@ public sealed class SplitPane: Container
         LogicalDividerBounds = default;
         MinimumFirstPaneExtent = 0;
         MaximumFirstPaneExtent = 0;
+        _effectiveFirstPaneExtent = 0;
+        _dividerExcludedPool = 0;
 
         if (count == 0)
         {
-            ReconcileDividerPointerOver();
+            RefreshDividerInteractionState();
             return;
         }
 
         if (count == 1)
         {
             ArrangeParticipant(first!, bounds, PrimaryContainingBase(bounds), CrossContainingBase(bounds));
-            ReconcileDividerPointerOver();
+            RefreshDividerInteractionState();
             return;
         }
 
@@ -287,6 +299,8 @@ public sealed class SplitPane: Container
 
         MinimumFirstPaneExtent = minimum;
         MaximumFirstPaneExtent = maximum;
+        _effectiveFirstPaneExtent = extents[0];
+        _dividerExcludedPool = primaryPercentBase ?? 0;
 
         var dividerOrigin = PrimaryOrigin(bounds).Add(firstOuterExtent);
         var secondOrigin = dividerOrigin.Add(dividerExtent);
@@ -302,7 +316,7 @@ public sealed class SplitPane: Container
 
         ArrangeParticipant(first!, firstSlot, primaryPercentBase, crossContainingBase);
         ArrangeParticipant(second!, secondSlot, primaryPercentBase, crossContainingBase);
-        ReconcileDividerPointerOver();
+        RefreshDividerInteractionState();
     }
 
     private void ArrangeParticipant(
@@ -542,13 +556,30 @@ public sealed class SplitPane: Container
 
     #endregion
 
-    #region Divider rendering and hover
+    #region Divider interaction and rendering
 
     /// <inheritdoc/>
     protected override void OnChildrenChanged()
     {
         base.OnChildrenChanged();
-        ReconcileDividerPointerOver();
+        ReconcilePaneVisibilitySubscriptions();
+        RefreshDividerInteractionState();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnEvent(RoutedEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+
+        if (_dividerInteractionAvailable && IsFocused && eventArgs is KeyEventArgs key)
+        {
+            HandleDividerKey(key);
+        }
+
+        if (!eventArgs.IsHandled)
+        {
+            base.OnEvent(eventArgs);
+        }
     }
 
     /// <inheritdoc/>
@@ -571,6 +602,13 @@ public sealed class SplitPane: Container
         base.OnUnavailable(reason);
         _latestPointerCell = null;
         SetDividerPointerOver(false);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnDisposing()
+    {
+        UnsubscribePaneVisibilitySources();
+        base.OnDisposing();
     }
 
     /// <inheritdoc/>
@@ -625,6 +663,135 @@ public sealed class SplitPane: Container
         if (eventArgs.Phase == RoutingPhase.Bubble)
         {
             UpdateDividerPointerCell(eventArgs);
+        }
+    }
+
+    private void HandleDividerKey(KeyEventArgs eventArgs)
+    {
+        if (!eventArgs.IsKeyDown ||
+            !KeyboardModifierPolicy.MatchesCommand(eventArgs.Stroke.Modifiers, Modifiers.None))
+        {
+            return;
+        }
+
+        var code = eventArgs.Stroke.Code;
+        long target;
+
+        if ((Orientation == Orientation.Horizontal && code == Code.Left) ||
+            (Orientation == Orientation.Vertical && code == Code.Down))
+        {
+            target = (long) _effectiveFirstPaneExtent - SmallChange;
+        }
+        else if ((Orientation == Orientation.Horizontal && code == Code.Right) ||
+                 (Orientation == Orientation.Vertical && code == Code.Up))
+        {
+            target = (long) _effectiveFirstPaneExtent + SmallChange;
+        }
+        else if (code == Code.PageDown)
+        {
+            target = (long) _effectiveFirstPaneExtent - LargeChange;
+        }
+        else if (code == Code.PageUp)
+        {
+            target = (long) _effectiveFirstPaneExtent + LargeChange;
+        }
+        else if (code == Code.Home)
+        {
+            target = MinimumFirstPaneExtent;
+        }
+        else if (code == Code.End)
+        {
+            target = MaximumFirstPaneExtent;
+        }
+        else
+        {
+            return;
+        }
+
+        _ = CommitFirstPaneExtent((int) Math.Clamp(
+            target,
+            MinimumFirstPaneExtent,
+            MaximumFirstPaneExtent));
+        eventArgs.IsHandled = true;
+    }
+
+    private bool CommitFirstPaneExtent(int extent)
+    {
+        Debug.Assert(extent >= MinimumFirstPaneExtent && extent <= MaximumFirstPaneExtent,
+            "Divider commits remain inside the allocator's feasible leading range.");
+
+        if (extent == _effectiveFirstPaneExtent)
+        {
+            return false;
+        }
+
+        var authored = FirstPaneLength.Kind == LengthKind.Cells
+            ? Length.Cells(extent)
+            : Length.Percent(_dividerExcludedPool == 0 ? 0 : extent * 100d / _dividerExcludedPool);
+        FirstPaneLength = authored;
+        return true;
+    }
+
+    private void ReconcilePaneVisibilitySubscriptions()
+    {
+        UnsubscribePaneVisibilitySources();
+
+        if (IsDisposing || IsDisposed)
+        {
+            return;
+        }
+
+        if (Children.Count > 0)
+        {
+            _firstVisibilitySource = Children[0];
+            _firstVisibilitySource.VisibilityChanged += OnPaneVisibilityChanged;
+        }
+
+        if (Children.Count > 1)
+        {
+            _secondVisibilitySource = Children[1];
+            _secondVisibilitySource.VisibilityChanged += OnPaneVisibilityChanged;
+        }
+    }
+
+    private void UnsubscribePaneVisibilitySources()
+    {
+        _firstVisibilitySource?.VisibilityChanged -= OnPaneVisibilityChanged;
+        _secondVisibilitySource?.VisibilityChanged -= OnPaneVisibilityChanged;
+        _firstVisibilitySource = null;
+        _secondVisibilitySource = null;
+    }
+
+    private void OnPaneVisibilityChanged(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+        RefreshDividerInteractionState();
+    }
+
+    private void RefreshDividerInteractionState()
+    {
+        var previousCanTabStop = CanTabStop;
+        var visibleDivider = ResolveVisibleDividerBounds();
+        var available = IsResizable &&
+            Children.Count == 2 &&
+            Children[0].Visibility == Visibility.Visible &&
+            Children[1].Visibility == Visibility.Visible &&
+            visibleDivider.Width > 0 &&
+            visibleDivider.Height > 0;
+
+        ReconcileDividerPointerOver();
+
+        if (_dividerInteractionAvailable == available)
+        {
+            return;
+        }
+
+        _dividerInteractionAvailable = available;
+
+        if (previousCanTabStop != CanTabStop)
+        {
+            NotifyPropertyChanged(nameof(CanTabStop), InvalidationImpact.None);
         }
     }
 
