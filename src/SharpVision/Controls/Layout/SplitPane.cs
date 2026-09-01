@@ -678,20 +678,20 @@ public sealed class SplitPane: Container
         long target;
 
         if ((Orientation == Orientation.Horizontal && code == Code.Left) ||
-            (Orientation == Orientation.Vertical && code == Code.Down))
+            (Orientation == Orientation.Vertical && code == Code.Up))
         {
             target = (long) _effectiveFirstPaneExtent - SmallChange;
         }
         else if ((Orientation == Orientation.Horizontal && code == Code.Right) ||
-                 (Orientation == Orientation.Vertical && code == Code.Up))
+                 (Orientation == Orientation.Vertical && code == Code.Down))
         {
             target = (long) _effectiveFirstPaneExtent + SmallChange;
         }
-        else if (code == Code.PageDown)
+        else if (code == Code.PageUp)
         {
             target = (long) _effectiveFirstPaneExtent - LargeChange;
         }
-        else if (code == Code.PageUp)
+        else if (code == Code.PageDown)
         {
             target = (long) _effectiveFirstPaneExtent + LargeChange;
         }
