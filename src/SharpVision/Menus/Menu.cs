@@ -352,6 +352,13 @@ public sealed class Menu: ItemsControl
             focus: true,
             switchSubmenu: false,
             openedFromPointerSelection: false);
+
+        if (item is not { EffectiveIsEnabled: true, EffectiveIsVisible: true } ||
+            _selectedIndex < 0 || !ReferenceEquals(ItemAt(_selectedIndex), item))
+        {
+            return false;
+        }
+
         item.ActivateFromMenu(ActivationCause.Keyboard);
         return true;
     }
@@ -621,8 +628,19 @@ public sealed class Menu: ItemsControl
 
         if (wasSelected)
         {
+            var target = item is MenuItem ? index : SingleSelectionIndex.FindWrapped(index, 1, ItemControlCount, Available);
             _selectedIndex = -1;
-            Select(item is MenuItem ? index : SingleSelectionIndex.FindWrapped(index, 1, ItemControlCount, Available), focus: false);
+
+            if (target < 0)
+            {
+                _selectedEntry = null;
+                NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Render);
+                NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
+            }
+            else
+            {
+                Select(target, focus: false);
+            }
         }
 
         if (item is MenuItem { Kind: MenuItemKind.Radio, IsChecked: true } radio)

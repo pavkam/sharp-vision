@@ -723,6 +723,83 @@ public sealed class MenuTests
         _ = Should.Throw<ObjectDisposedException>(item.PerformInvoke);
     }
 
+    /// <summary>Verifies InvokeAccessKey selects and activates an ordinary available item.</summary>
+    [Fact]
+    public void InvokeAccessKey_WhenItemIsAvailable_SelectsAndActivatesWithKeyboardCause()
+    {
+        var item = new MenuItem { Text = "Save" };
+        var menu = new Menu();
+        menu.Items.Add(item);
+        var invocations = new List<ActivationCause>();
+        item.Invoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);
+
+        var result = menu.InvokeAccessKey(item);
+
+        result.ShouldBeTrue();
+        menu.SelectedItem.ShouldBeSameAs(item);
+        invocations.ShouldBe([ActivationCause.Keyboard]);
+    }
+
+    /// <summary>Verifies InvokeAccessKey re-validates its target after SelectFromInput runs
+    /// application callbacks. SelectFromInput publishes SelectedIndex/SelectedItem before
+    /// InvokeAccessKey activates the item, and a reentrant subscriber can disable the very item
+    /// being invoked during that publish. Before this fix, the target was never re-checked after
+    /// the callback ran, so a callback-disabled item was still activated.</summary>
+    [Fact]
+    public void InvokeAccessKey_WhenSelectionPublishDisablesTheTarget_ReturnsFalseWithoutActivating()
+    {
+        var item = new MenuItem { Text = "Save" };
+        var menu = new Menu();
+        menu.Items.Add(item);
+        menu.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Menu.SelectedIndex))
+            {
+                item.IsEnabled = false;
+            }
+        };
+        var invocations = new List<ActivationCause>();
+        item.Invoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);
+
+        var result = menu.InvokeAccessKey(item);
+
+        result.ShouldBeFalse();
+        invocations.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies InvokeAccessKey re-validates that the target still occupies the selected
+    /// slot after SelectFromInput runs callbacks, mirroring the enabled/visible re-check. A
+    /// reentrant subscriber that moves selection to a different item during the publish must
+    /// prevent the original target from activating.</summary>
+    [Fact]
+    public void InvokeAccessKey_WhenSelectionPublishMovesSelectionElsewhere_ReturnsFalseWithoutActivating()
+    {
+        var item = new MenuItem { Text = "Save" };
+        var other = new MenuItem { Text = "Other" };
+        var menu = new Menu();
+        menu.Items.Add(item);
+        menu.Items.Add(other);
+        var reentered = false;
+        menu.PropertyChanged += (_, eventArgs) =>
+        {
+            if (reentered || eventArgs.PropertyName != nameof(Menu.SelectedIndex))
+            {
+                return;
+            }
+
+            reentered = true;
+            menu.SelectedIndex = 1;
+        };
+        var invocations = new List<ActivationCause>();
+        item.Invoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);
+
+        var result = menu.InvokeAccessKey(item);
+
+        result.ShouldBeFalse();
+        invocations.ShouldBeEmpty();
+        menu.SelectedItem.ShouldBeSameAs(other);
+    }
+
     /// <summary>Verifies a separator is never focusable, hit-testable, selectable, or invokable.</summary>
     [Fact]
     public async Task MenuSeparator_WhenUsed_RemainsNonInteractiveAsync()
@@ -2059,6 +2136,34 @@ public sealed class MenuTests
         menu.SelectedItem.ShouldBeSameAs(replacement);
         first.IsDisposed.ShouldBeFalse();
         first.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies replacing the sole selected entry with a MenuSeparator - leaving no other
+    /// selectable entry - still publishes the cleared selection. ReplaceEntry force-sets
+    /// _selectedIndex to -1 before computing the repaired target; when that target is also -1,
+    /// routing through Select's own "_selectedIndex == index" guard would silently return before
+    /// its PropertyChanged notifications, and _selectedEntry would keep pointing at the just-detached
+    /// old item.</summary>
+    [Fact]
+    public void Indexer_WhenSelectedItemIsReplacedBySeparatorWithNoOtherSelectableEntry_PublishesClearedSelection()
+    {
+        var selected = new MenuItem { Text = "Selected" };
+        var menu = new Menu();
+        menu.Items.Add(selected);
+        menu.SelectedIndex = 0;
+        var notifications = new List<string>();
+        menu.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName!);
+        var separator = new MenuSeparator();
+
+        menu.Items[0] = separator;
+
+        menu.Items.ShouldBe([separator]);
+        menu.SelectedIndex.ShouldBe(-1);
+        menu.SelectedItem.ShouldBeNull();
+        notifications.ShouldContain(nameof(Menu.SelectedIndex));
+        notifications.ShouldContain(nameof(Menu.SelectedItem));
+        selected.IsDisposed.ShouldBeFalse();
+        selected.Parent.ShouldBeNull();
     }
 
     /// <summary>Verifies the indexer rejects a replacement that is not a MenuItem or MenuSeparator.</summary>
