@@ -83,4 +83,82 @@ public sealed class InfoBarTests
 
         body.Parent.ShouldBeNull();
     }
+
+    /// <summary>Verifies closing imposes availability without losing the caller's latest visibility request.</summary>
+    [Fact]
+    public void IsOpen_WhenContentVisibilityChangesWhileClosed_RestoresLatestAuthoredValue()
+    {
+        var body = new ProbeControl { Visibility = Visibility.Hidden };
+        var bar = new InfoBar { Content = body, IsOpen = false };
+        body.Visibility.ShouldBe(Visibility.Collapsed);
+
+        body.Visibility = Visibility.Visible;
+        body.Visibility.ShouldBe(Visibility.Collapsed);
+
+        bar.IsOpen = true;
+        body.Visibility.ShouldBe(Visibility.Visible);
+    }
+
+    /// <summary>Verifies replacement retires the old availability lease and gates the new generation.</summary>
+    [Fact]
+    public void Content_WhenReplacedWhileClosed_RestoresOldAndCollapsesNewContent()
+    {
+        var previous = new ProbeControl { Visibility = Visibility.Hidden };
+        var current = new ProbeControl();
+        var bar = new InfoBar { Content = previous, IsOpen = false };
+
+        bar.Content = current;
+
+        previous.Parent.ShouldBeNull();
+        previous.Visibility.ShouldBe(Visibility.Hidden);
+        current.Parent.ShouldBeSameAs(bar);
+        current.Visibility.ShouldBe(Visibility.Collapsed);
+
+        bar.IsOpen = true;
+        current.Visibility.ShouldBe(Visibility.Visible);
+    }
+
+    /// <summary>Verifies requested failures do not prevent required close publication and preserve earliest failure.</summary>
+    [Fact]
+    public void Dismiss_WhenSubscribersThrow_CommitsAndAttemptsDismissedBeforeRethrow()
+    {
+        var bar = new InfoBar();
+        var requestedFailure = new InvalidOperationException("requested");
+        var dismissedRan = false;
+        bar.DismissRequested += (_, _) => throw requestedFailure;
+        bar.DismissRequested += (_, _) => { };
+        bar.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(InfoBar.IsOpen))
+            {
+                throw new InvalidOperationException("property");
+            }
+        };
+        bar.Dismissed += (_, _) =>
+        {
+            dismissedRan = true;
+            throw new InvalidOperationException("dismissed");
+        };
+
+        var exception = Should.Throw<InvalidOperationException>(bar.Dismiss);
+
+        exception.ShouldBeSameAs(requestedFailure);
+        bar.IsOpen.ShouldBeFalse();
+        dismissedRan.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a reentrant reopen request supersedes the stale dismissal before it commits.</summary>
+    [Fact]
+    public void Dismiss_WhenRequestedHandlerReopens_DoesNotPublishStaleClose()
+    {
+        var bar = new InfoBar();
+        var dismissed = 0;
+        bar.DismissRequested += (_, _) => bar.IsOpen = true;
+        bar.Dismissed += (_, _) => dismissed++;
+
+        bar.Dismiss();
+
+        bar.IsOpen.ShouldBeTrue();
+        dismissed.ShouldBe(0);
+    }
 }
