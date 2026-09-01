@@ -114,11 +114,11 @@ internal sealed class InfoBarPane: CompositeControlBase
         string adornment,
         string content,
         InfoBarStyle style) => new()
-    {
-        Title = title,
-        Adornment = new Affix(adornment),
-        Style = style,
-        HorizontalAlignment = HorizontalAlignment.Stretch,
-        Content = new Text(content) { Overflow = Overflow.Wrap }
-    };
+        {
+            Title = title,
+            Adornment = new Affix(adornment),
+            Style = style,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Content = new Text(content) { Overflow = Overflow.Wrap }
+        };
 }

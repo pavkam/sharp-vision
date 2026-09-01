@@ -3697,6 +3697,46 @@ namespace SharpVision.Navigation
 }
 namespace SharpVision.Notifications
 {
+    public sealed class InfoBar : SharpVision.Controls.ContentControl, SharpVision.Controls.IStyled<SharpVision.Notifications.InfoBarStyle>
+    {
+        public InfoBar() { }
+        public SharpVision.Notifications.InfoBarStyle ActualStyle { get; }
+        public SharpVision.Styling.Affix? Adornment { get; set; }
+        public bool IsDismissible { get; set; }
+        public bool IsOpen { get; set; }
+        public SharpVision.Notifications.InfoBarStyle? Style { get; set; }
+        public string? Title { get; set; }
+        protected override SharpVision.Terminal.Geometry.Rect VisualBounds { get; }
+        public event System.EventHandler<SharpVision.Notifications.InfoBarDismissRequestedEventArgs>? DismissRequested;
+        public event System.EventHandler? Dismissed;
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        public void Dismiss() { }
+        protected override SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnContentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+    }
+    public sealed class InfoBarDismissRequestedEventArgs : System.ComponentModel.CancelEventArgs
+    {
+        public InfoBarDismissRequestedEventArgs() { }
+    }
+    public sealed class InfoBarStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Notifications.InfoBarStyle>
+    {
+        public InfoBarStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.Face titleFace, SharpVision.Styling.ControlColor adornmentColor, SharpVision.Styling.ControlGlyph dismissGlyph, SharpVision.Styling.ControlColor dismissColor, SharpVision.Layout.Thickness padding, int contentGap, int adornmentGap) { }
+        public required SharpVision.Styling.ControlColor AdornmentColor { get; init; }
+        public required int AdornmentGap { get; init; }
+        public required int ContentGap { get; init; }
+        public required SharpVision.Styling.ControlColor DismissColor { get; init; }
+        public required SharpVision.Styling.ControlGlyph DismissGlyph { get; init; }
+        public required SharpVision.Layout.Thickness Padding { get; init; }
+        public required SharpVision.Styling.Face TitleFace { get; init; }
+        public new static SharpVision.Notifications.InfoBarStyle Default { get; }
+        public static SharpVision.Notifications.InfoBarStyle Error { get; }
+        public static SharpVision.Notifications.InfoBarStyle Info { get; }
+        public static SharpVision.Notifications.InfoBarStyle Success { get; }
+        public static SharpVision.Notifications.InfoBarStyle Warning { get; }
+    }
     public sealed class Toast : SharpVision.Surfaces.FloatingSurfaceBase, SharpVision.Controls.IStyled<SharpVision.Notifications.ToastStyle>
     {
         public Toast() { }
