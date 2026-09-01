@@ -204,8 +204,12 @@ public sealed class WindowSurfaceTests
     }
 
     /// <summary>Verifies active Window chrome consumes Turbo Vision's explicit
-    /// "window.focusWithin.border.foreground" delta - a flat "activeBorder" color on every edge -
-    /// rather than the passive Raised bezel a Sunken/Raised relief would otherwise substitute.</summary>
+    /// "window.focusWithin.border.foreground" delta - a flat "activeBorder" color reaching every
+    /// edge against WindowStyle's own Flat relief baseline, since turbo-vision's own window relief is
+    /// also Flat (only Container gets Sunken there). IntrinsicBorderSurfaceTests.cs:58
+    /// (turbo-vision's "container.normal.border.relief": "sunken") is the sole surviving non-Flat
+    /// specimen in the whole test suite, which is why Flat is the correct default assumption
+    /// everywhere else.</summary>
     /// <remarks>
     /// Before the border-relief-vs-authored-Foreground fix, this authored per-state color was
     /// silently discarded for every non-Flat relief, and every edge showed the same
@@ -630,8 +634,10 @@ public sealed class WindowSurfaceTests
     ///
     /// <para>The frame itself only reacts to genuine Window activation (FocusWithin), not to mere
     /// pointer-over of the close mark - "window" authors no "pointerOver" delta, so hovering alone
-    /// leaves the frame at its passive Raised bezel exactly like Normal, and only pressing (which
-    /// also focuses/activates the Window) switches it to the flat ActiveBorder color
+    /// leaves the frame at its Flat baseline exactly like Normal (WindowStyle's own relief default is
+    /// Flat; IntrinsicBorderSurfaceTests.cs:58 is the sole surviving non-Flat specimen in the whole
+    /// test suite, which is why Flat is the correct default assumption everywhere else), and only
+    /// pressing (which also focuses/activates the Window) switches it to the flat ActiveBorder color
     /// Theme.BuildWindowStyleSet's code-owned default has always intended.</para>
     /// </remarks>
     [Fact]
