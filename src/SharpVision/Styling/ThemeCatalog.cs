@@ -404,10 +404,18 @@ public static class ThemeCatalog
             // error.Path is "$" at the document root, which is not whitespace, so this must test
             // the trimmed value - trimming first and then checking would otherwise interpolate an
             // empty string while the untrimmed guard let it through, leaving "... at ''." on every
-            // root-level failure.
+            // root-level failure. error.Path also stops descending once it reaches a raw-JsonElement
+            // subtree such as "styles", so a syntax error nested inside one reports only the shallow
+            // path above it; LineNumber/BytePositionInLine come from the underlying Utf8JsonReader
+            // instead and are unaffected by that truncation, so they are appended unconditionally
+            // whenever the reader captured them. Both are 0-based in JsonException; +1 them here so
+            // the message reads as a human would count lines and columns in an editor.
             var trimmedPath = error.Path?.TrimStart('$', '.') ?? string.Empty;
             var path = string.IsNullOrWhiteSpace(trimmedPath) ? string.Empty : $" at '{trimmedPath}'";
-            throw new InvalidDataException($"Theme '{source}' is not valid JSON{path}.", error);
+            var position = error.LineNumber is { } line && error.BytePositionInLine is { } column
+                ? $" (line {line + 1}, column {column + 1})"
+                : string.Empty;
+            throw new InvalidDataException($"Theme '{source}' is not valid JSON{path}{position}.", error);
         }
     }
 

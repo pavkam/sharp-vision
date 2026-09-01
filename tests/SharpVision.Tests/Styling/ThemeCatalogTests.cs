@@ -87,6 +87,36 @@ public sealed class ThemeCatalogTests
         error.Message.ShouldContain("broken");
     }
 
+    /// <summary>Verifies a syntax error nested inside "styles" - where <see cref="JsonException.Path"/>
+    /// stops descending because that subtree binds to a raw <c>JsonElement</c> - still surfaces the
+    /// reader's line and column, computed the same way the underlying reader itself reports the
+    /// failure rather than by hand-counting characters in the fixture below.</summary>
+    [Fact]
+    public void Deserialize_WhenMalformedJsonIsNestedInStyles_ReportsLineAndColumn()
+    {
+        const string malformed = """
+            {
+              "name": "Test",
+              "styles": {
+                "control": {
+                  "normal": {,
+                  }
+                }
+              }
+            }
+            """;
+
+        var readerError = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<JsonElement>(malformed));
+        readerError.LineNumber.ShouldNotBeNull();
+        readerError.BytePositionInLine.ShouldNotBeNull();
+
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(malformed, "broken"));
+
+        error.Message.ShouldContain("broken");
+        error.Message.ShouldContain(
+            $"line {readerError.LineNumber + 1}, column {readerError.BytePositionInLine + 1}");
+    }
+
     /// <summary>Verifies a complete semantic theme loads metadata and concrete global colors.</summary>
     [Fact]
     public void Parse_WhenSemanticThemeIsComplete_LoadsGlobalValues()
