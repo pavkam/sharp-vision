@@ -30,6 +30,10 @@ public sealed record DocumentStyle: ControlStyle
     /// large owner surface behind independently colored heading, quote, code, table, and link faces;
     /// reversing that surface would produce a solid focus slab with normal-colored islands wherever
     /// those faces paint their own colors.</summary>
+    // theme.GetTabularControlStyleSet() is public, so this fallback relies on the same public
+    // Theme contract that TableStyle itself uses, not on SharpVision's InternalsVisibleTo grant
+    // to this assembly - see the Default property below for the property that still deliberately
+    // avoids that grant.
     internal static StyleDefinition<DocumentStyle> Definition { get; } =
         StyleDefinitions.Control(
         static theme => theme.GetTabularControlStyleSet(),

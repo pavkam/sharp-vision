@@ -1052,17 +1052,27 @@ public sealed class Theme
                 LazyThreadSafetyMode.ExecutionAndPublication),
             this).Value;
 
-    /// <summary>Gets the focused control deltas rebased onto passive borderless geometry without
-    /// the reverse-video safety net used by a generic borderless focus target.</summary>
+    /// <summary>Gets only the Focused/FocusWithin state deltas rebased onto the passive control's
+    /// own borderless Normal geometry, leaving every other state exactly as the passive "control"
+    /// key resolves it, and without the reverse-video safety net that
+    /// <see cref="GetFocusableControlStyleSet"/> applies. Use this as a leaf style's
+    /// <c>StyleDefinitions.Control</c> fallback target for a directly focusable borderless control
+    /// that paints one large owner surface behind independently colored content it does not fully
+    /// own the coloring of - a Table or Document.</summary>
     /// <remarks>
-    /// A table paints one large owner surface behind independently styled cells. Reversing that
-    /// surface produces a solid focus slab with normal-background islands wherever cells paint
-    /// their own faces. The table retains the theme's focused text decoration and authored colors;
-    /// it merely omits the synthetic reverse fallback while row or cell selection owns the strong
-    /// filled cue.
+    /// <see cref="GetFocusableControlStyleSet"/> is the same borderless-geometry rebasing with the
+    /// reverse-video fallback included; prefer that one unless the fallback would actively hurt
+    /// readability for this control's shape.
+    ///
+    /// <para>A table or document paints one large owner surface behind independently styled cells
+    /// or blocks. Reversing that surface on focus produces a solid focus slab with normal-background
+    /// islands wherever the content paints its own faces. This style set retains the theme's
+    /// focused text decoration and authored colors; it merely omits the synthetic reverse fallback
+    /// while row, cell, or selection styling owns the strong filled cue instead.</para>
     /// </remarks>
-    /// <returns>The cached complete per-state control-style set for tabular surfaces.</returns>
-    internal StyleStates<ControlStyle> GetTabularControlStyleSet() =>
+    /// <returns>The cached complete per-state control-style set for tabular, owner-surface
+    /// controls.</returns>
+    public StyleStates<ControlStyle> GetTabularControlStyleSet() =>
         (StyleStates<ControlStyle>) _styleSets.GetOrAdd(
             (typeof(ControlStyle), "$tabularControl", ControlStyle.Default),
             static (_, theme) => new Lazy<object>(

@@ -4109,6 +4109,7 @@ namespace SharpVision.Styling
         public SharpVision.Styling.StyleStates<SharpVision.Styling.ControlStyle> GetInteractiveRowStyleSet() { }
         public SharpVision.Styling.StyleStates<TStyle> GetStyleSet<TStyle>(TStyle codeOwnedDefault)
             where TStyle : SharpVision.Styling.ControlStyle { }
+        public SharpVision.Styling.StyleStates<SharpVision.Styling.ControlStyle> GetTabularControlStyleSet() { }
         public SharpVision.Terminal.Rendering.TerminalAttributes ResolveAttributes(SharpVision.Styling.SemanticDecoration decoration) { }
         public SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.SemanticColor color) { }
         public void SetAttributes(SharpVision.Styling.SemanticDecoration decoration, SharpVision.Terminal.Rendering.TerminalAttributes value) { }
