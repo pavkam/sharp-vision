@@ -81,7 +81,7 @@ internal sealed class StylingPane: CompositeControlBase
                 "ThemeCatalog exposes stable metadata before loading one immutable application theme snapshot.",
                 new DocExample(
                     "Attribution and scheme metadata",
-                    "The bundled Turbo Vision entry is sourced from the original BIOS palette. Select it from the Showcase theme picker to apply its blue desktop, gray surfaces, cyan selection, green press feedback, black shadows, and relief borders to every pane.",
+                    "The bundled Turbo Vision entry is sourced from the original BIOS palette. Select it from the Showcase theme picker to apply its blue desktop, gray surfaces, cyan selection, green press feedback, and black shadows; relief borders are applied automatically, but only to containers.",
                     catalog,
                     "application.Theme = ThemeCatalog.Load(\"turbo-vision\");")),
             new DocSection(
