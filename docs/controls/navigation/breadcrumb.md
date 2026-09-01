@@ -222,7 +222,8 @@ host, trigger, or menu. Application commands own navigation and path mutation.
   nonfinal-current, and no-current paths preserve whole-entry geometry and exact
   separator adjacency.
 - Moves preserve current item identity while updating its numeric index.
-- Adding an available item deliberately selects the final available item, even
-  when the prior current item remains available.
+- Adding any item deliberately selects the final available item when one
+  exists, even when the added item is unavailable or the prior current item
+  remains available.
 - Removal, replacement, and availability mutations repair a missing or
   unavailable current item to the final available owned item when one exists.
