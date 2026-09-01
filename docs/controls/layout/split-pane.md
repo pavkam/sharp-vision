@@ -60,40 +60,47 @@ transition owns the final state and the superseded typed event is not raised.
 | Page Up / Page Down | Decreases or increases the split by `LargeChange`.                    |
 | Home / End          | Moves the divider to the minimum or maximum feasible pane allocation. |
 
-Only an unmodified key-down routed directly to the focused `SplitPane` runs a
-split command. A pane descendant keeps its own directional input, and other
-keys, modified chords, key releases, and wheel records continue through normal
-routing. Recognized commands are handled even when clamping or a zero change
-leaves the effective divider cell unchanged; that no-op publishes no property or
-typed event.
+Only an unmodified key-down [routed directly to the focused
+control](../../concepts/input-routing.md#route-construction) runs a split command.
+A pane descendant keeps its own directional input, and the shared
+[keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy)
+leaves other keys, modified chords, key releases, and wheel records available
+to normal routing. Recognized commands are handled even when clamping or a zero
+change leaves the effective divider cell unchanged; that no-op publishes no
+property or typed event.
 
 ## Layout
 
-`Visibility.Hidden` panes keep their layout track, while
-`Visibility.Collapsed` panes do not participate. Zero participating panes have
-zero intrinsic size. One participating pane receives the complete content box
-without a divider. Two participating panes reserve a one-cell divider on the
-split axis whenever that axis and the cross axis are non-empty.
+Under the shared [layout-pass and collapsed-child
+rules](../../concepts/layout.md#passes-and-rounding), `Visibility.Hidden` panes
+keep their layout track while `Visibility.Collapsed` panes do not participate.
+Zero participating panes have zero intrinsic size. One participating pane
+receives the complete content box without a divider. Two participating panes
+reserve a one-cell divider on the split axis whenever that axis and the cross
+axis are non-empty.
 
-For a finite split axis, the divider is removed first. A percentage
+For a finite split axis, the divider is removed first. Following the shared
+[length resolution](../../concepts/layout.md#lengths), a percentage
 `FirstPaneLength` and percentage pane limits resolve against that
 divider-excluded content-axis pool before pane margins are subtracted. Margins
 then consume the pool in source order, saturating at the available cells, and
 the two pane border boxes share the remainder. A fixed `FirstPaneLength` keeps
-its cell request across resize; a percentage request follows the pool. Each
-pane's resolved minimum and maximum constrain the shared allocation: the
-trailing minimum caps the leading maximum, and the trailing maximum raises the
-leading minimum. When both panes cannot satisfy one common interval, layout
-chooses one deterministic contained allocation and divider interaction collapses
-to that single position.
+its cell request across resize; a percentage request follows the pool. The
+shared [track-allocation precedence](../../concepts/layout.md#track-allocation)
+applies to each pane's resolved minimum and maximum: the trailing minimum caps
+the leading maximum, and the trailing maximum raises the leading minimum. When
+both panes cannot satisfy one common interval, layout chooses one deterministic
+contained allocation and divider interaction collapses to that single position.
 
-When `AutoScroll` includes the split axis, that axis is measured as an extent
-rather than a competing finite track: percentage requests still use the visible
-viewport minus its divider, and the trailing pane keeps its intrinsic extent for
-scrolling. A perpendicular scrollbar narrows that percentage viewport before
-allocation, while scrolling only the cross axis leaves the finite split-axis
-allocation unchanged. The logical divider remains in content coordinates and
-is painted and hit-tested only where it intersects the committed viewport.
+When [`AutoScroll` arms the split axis](../../concepts/scrolling.md#overview),
+that axis is measured as an extent rather than a competing finite track:
+percentage requests still use the visible viewport minus its divider, and the
+trailing pane keeps its intrinsic extent for scrolling. The shared
+[automatic scrollbar feedback](../../concepts/scrolling.md#automatic-scrollbar-algorithm)
+narrows that percentage viewport for a perpendicular bar before allocation,
+while scrolling only the cross axis leaves the finite split-axis allocation
+unchanged. The logical divider remains in content coordinates and is painted
+and hit-tested only where it intersects the committed viewport.
 
 At one cell on the split axis, the divider consumes that cell and both pane
 border boxes collapse to zero. At zero cells, or with an empty cross axis, no
@@ -104,12 +111,16 @@ rails, and clipped output remain inside their owning geometry.
 
 The divider is sequentially focusable only while `IsResizable` is true, both
 owned panes are `Visibility.Visible`, the control is effectively enabled and
-visible, and the divider has a visible cell. Otherwise Tab skips the divider and
-continues to eligible pane descendants. Losing Tab eligibility does not evict
-focus that was assigned programmatically. Setting `IsResizable` to `false`
-disables only divider interaction; ordinary pane input and focus remain intact.
+visible, and the divider has a visible cell. Otherwise the shared
+[Tab traversal](../../concepts/input-routing.md#general-keyboard-behavior) skips
+the divider and continues to eligible pane descendants. Losing Tab eligibility
+does not evict focus that was assigned programmatically. Setting `IsResizable`
+to `false` disables only divider interaction; ordinary pane input and focus
+remain intact.
 
-Divider hover is true only for the physical pointer cell directly over the
+Under the shared [pointer coordinate and capture
+contract](../../concepts/input-routing.md#pointer-capture-and-coordinates),
+divider hover is true only for the physical pointer cell directly over the
 visible divider, never for a pane descendant or uncovered owner background. A
 primary press on that cell focuses the `SplitPane`, captures the pointer, and
 starts from the committed divider position without a press-time jump. Captured
@@ -124,7 +135,8 @@ pane becoming hidden, collapsed, or absent cancels the gesture and releases
 pressed and capture state without inventing another split commit. An auxiliary
 button release does not end a primary drag, and wheel input remains available
 to routed ancestors. A primary press in pane content follows that descendant's
-normal route; a press on empty non-focusable pane content may use the shared
+normal [preview-and-bubble route](../../concepts/input-routing.md#route-construction);
+a press on empty non-focusable pane content may use the shared
 nearest-focusable-ancestor fallback, but it does not capture or resize the
 divider.
 

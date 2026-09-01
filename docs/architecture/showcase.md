@@ -12,7 +12,7 @@ across the active shell and selected page, and across every simultaneously open
 menu/submenu path. The shell advertises `Alt+key`, while the Menu and GroupBox
 pages demonstrate invocation and focus transfer.
 
-The sidebar remains one arrow-key `NavigationView`. Its heading, groups, and 62
+The sidebar remains one arrow-key `NavigationView`. Its heading, groups, and 63
 catalog items set `UseMnemonic = false`, because no useful single-character
 assignment can be globally unique at that scale. The repeated `DocExample` and
 `C# recipe` structural chrome also opts out. Body prose and generated list data
@@ -75,7 +75,7 @@ blink remain isolated demonstrations rather than general documentation styling.
 
 `Gallery` owns the stable catalog of pane group names, titles, and factories
 (`(string Group, string Name, Func<CompositeControlBase> Create)[]`). The
-sidebar organizes its 62 entries by primary use:
+sidebar organizes its 63 entries by primary use:
 
 - Concepts: ControlBase, Border, Shadow, Data Binding, and Styling.
 - Input: Button, HyperlinkButton, Calendar, DateInput, DateTimeInput, CheckBox,
