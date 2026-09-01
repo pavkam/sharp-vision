@@ -17,6 +17,8 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
     private bool _isOpen = true;
     private int _dismissDepth;
 
+    #region Public contract
+
     /// <summary>Initializes an open, dismissible informational bar.</summary>
     public InfoBar()
     {
@@ -182,6 +184,10 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
         failure?.Throw();
     }
 
+    #endregion
+
+    #region Layout and rendering
+
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint) =>
         IsOpen ? MeasureOpen(constraint) : default;
@@ -285,6 +291,10 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
         }
     }
 
+    #endregion
+
+    #region Lifecycle and content ownership
+
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
@@ -313,21 +323,30 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
     protected override void OnContentChanged(ControlBase? previous, ControlBase? current)
     {
         _ = _dismissTransitions.Commit(this);
+        ExceptionDispatchInfo? failure = null;
 
         if (previous is not null)
         {
-            _contentAvailability.Restore(previous);
+            ExceptionAggregation.Capture(
+                () => _contentAvailability.Restore(previous),
+                ref failure);
         }
 
         if (current is not null && !IsDisposing)
         {
-            var lease = _contentAvailability.Acquire(
-                current,
-                RetainedPropertyOverrides.Visibility);
-            ApplyContentAvailability(lease);
+            ExceptionAggregation.Capture(
+                () =>
+                {
+                    var lease = _contentAvailability.Acquire(
+                        current,
+                        RetainedPropertyOverrides.Visibility);
+                    ApplyContentAvailability(lease);
+                },
+                ref failure);
         }
 
-        base.OnContentChanged(previous, current);
+        ExceptionAggregation.Capture(() => base.OnContentChanged(previous, current), ref failure);
+        failure?.Throw();
     }
 
     private void Open()
@@ -349,6 +368,10 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
         RestoreOpenAvailability();
         NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.Measure);
     }
+
+    #endregion
+
+    #region Layout helpers
 
     private bool HasHeader =>
         !string.IsNullOrEmpty(Title) || Adornment is not null || IsDismissible;
@@ -417,61 +440,6 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
         ArrangeChild(_dismissButton, dismissBounds, ResolvedAxes.Both);
     }
 
-    private void ApplyClosedAvailability()
-    {
-        if (Content is { } content)
-        {
-            _contentAvailability.Get(content).SetLive(
-                RetainedControlProperty.Visibility,
-                Visibility.Collapsed);
-        }
-
-        ApplyDismissAvailability();
-        _dismissButton.CancelInteraction();
-    }
-
-    private void RestoreOpenAvailability()
-    {
-        if (Content is { } content)
-        {
-            ApplyContentAvailability(_contentAvailability.Get(content));
-        }
-
-        ApplyDismissAvailability();
-    }
-
-    private void ApplyContentAvailability(RetainedPropertyOverrideLease lease)
-    {
-        var authored = lease.GetAuthored<Visibility>(RetainedControlProperty.Visibility);
-        lease.SetLive(
-            RetainedControlProperty.Visibility,
-            IsOpen ? authored : Visibility.Collapsed);
-    }
-
-    private void ApplyDismissAvailability()
-    {
-        var lease = _dismissAvailability.Get(_dismissButton);
-        lease.SetLive(
-            RetainedControlProperty.Visibility,
-            IsOpen && IsDismissible ? Visibility.Visible : Visibility.Collapsed);
-
-        if (!IsOpen || !IsDismissible)
-        {
-            _dismissButton.CancelInteraction();
-        }
-    }
-
-    private void OnAuthoredContentAvailabilityChanged(
-        ControlBase control,
-        RetainedControlProperty property)
-    {
-        if (property == RetainedControlProperty.Visibility &&
-            ReferenceEquals(control, Content))
-        {
-            ApplyContentAvailability(_contentAvailability.Get(control));
-        }
-    }
-
     [Pure]
     private TerminalStyle ResolveFaceStyle(Face face)
     {
@@ -485,6 +453,84 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
             underline: face.Underline,
             underlineColor: ResolveColor(face.UnderlineColor));
     }
+
+    #endregion
+
+    #region Retained availability
+
+    private void ApplyClosedAvailability()
+    {
+        ExceptionDispatchInfo? failure = null;
+
+        if (Content is { } content)
+        {
+            ExceptionAggregation.Capture(
+                () => _contentAvailability.Get(content).SetLive(
+                    RetainedControlProperty.Visibility,
+                    Visibility.Collapsed),
+                ref failure);
+        }
+
+        ExceptionAggregation.Capture(ApplyDismissAvailability, ref failure);
+        ExceptionAggregation.Capture(_dismissButton.CancelInteraction, ref failure);
+        failure?.Throw();
+    }
+
+    private void RestoreOpenAvailability()
+    {
+        ExceptionDispatchInfo? failure = null;
+
+        if (Content is { } content)
+        {
+            ExceptionAggregation.Capture(
+                () => ApplyContentAvailability(_contentAvailability.Get(content)),
+                ref failure);
+        }
+
+        ExceptionAggregation.Capture(ApplyDismissAvailability, ref failure);
+        failure?.Throw();
+    }
+
+    private void ApplyContentAvailability(RetainedPropertyOverrideLease lease)
+    {
+        var authored = lease.GetAuthored<Visibility>(RetainedControlProperty.Visibility);
+        lease.SetLive(
+            RetainedControlProperty.Visibility,
+            IsOpen ? authored : Visibility.Collapsed);
+    }
+
+    private void ApplyDismissAvailability()
+    {
+        ExceptionDispatchInfo? failure = null;
+        var lease = _dismissAvailability.Get(_dismissButton);
+        ExceptionAggregation.Capture(
+            () => lease.SetLive(
+                RetainedControlProperty.Visibility,
+                IsOpen && IsDismissible ? Visibility.Visible : Visibility.Collapsed),
+            ref failure);
+
+        if (!IsOpen || !IsDismissible)
+        {
+            ExceptionAggregation.Capture(_dismissButton.CancelInteraction, ref failure);
+        }
+
+        failure?.Throw();
+    }
+
+    private void OnAuthoredContentAvailabilityChanged(
+        ControlBase control,
+        RetainedControlProperty property)
+    {
+        if (property == RetainedControlProperty.Visibility &&
+            ReferenceEquals(control, Content))
+        {
+            ApplyContentAvailability(_contentAvailability.Get(control));
+        }
+    }
+
+    #endregion
+
+    #region Dismissal callback publication
 
     private void InvokeRequested(
         CallbackTransitionToken token,
@@ -530,4 +576,6 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
                 ref failure);
         }
     }
+
+    #endregion
 }

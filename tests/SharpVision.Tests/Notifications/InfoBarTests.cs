@@ -118,6 +118,31 @@ public sealed class InfoBarTests
         current.Visibility.ShouldBe(Visibility.Visible);
     }
 
+    /// <summary>Verifies a retiring content callback cannot prevent the replacement availability gate.</summary>
+    [Fact]
+    public void Content_WhenRetiringVisibilityObserverThrows_StillGatesReplacement()
+    {
+        var previous = new ProbeControl { Visibility = Visibility.Hidden };
+        var current = new ProbeControl();
+        var bar = new InfoBar { Content = previous, IsOpen = false };
+        var failure = new InvalidOperationException("retiring visibility");
+        previous.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ControlBase.Visibility))
+            {
+                throw failure;
+            }
+        };
+
+        var exception = Should.Throw<InvalidOperationException>(() => bar.Content = current);
+
+        exception.ShouldBeSameAs(failure);
+        previous.Parent.ShouldBeNull();
+        previous.Visibility.ShouldBe(Visibility.Hidden);
+        current.Parent.ShouldBeSameAs(bar);
+        current.Visibility.ShouldBe(Visibility.Collapsed);
+    }
+
     /// <summary>Verifies requested failures do not prevent required close publication and preserve earliest failure.</summary>
     [Fact]
     public void Dismiss_WhenSubscribersThrow_CommitsAndAttemptsDismissedBeforeRethrow()
@@ -160,5 +185,221 @@ public sealed class InfoBarTests
 
         bar.IsOpen.ShouldBeTrue();
         dismissed.ShouldBe(0);
+    }
+
+    /// <summary>Verifies cancellation remains authoritative while every requested subscriber is attempted.</summary>
+    [Fact]
+    public void Dismiss_WhenRequestIsCancelledAndSubscriberThrows_RethrowsAfterKeepingOpen()
+    {
+        var bar = new InfoBar();
+        var failure = new InvalidOperationException("requested");
+        var requested = 0;
+        var propertyChanges = 0;
+        var dismissed = 0;
+        bar.DismissRequested += (_, _) =>
+        {
+            requested++;
+            throw failure;
+        };
+        bar.DismissRequested += (_, eventArgs) =>
+        {
+            requested++;
+            eventArgs.Cancel = true;
+        };
+        bar.PropertyChanged += (_, eventArgs) => propertyChanges +=
+            eventArgs.PropertyName == nameof(InfoBar.IsOpen) ? 1 : 0;
+        bar.Dismissed += (_, _) => dismissed++;
+
+        var exception = Should.Throw<InvalidOperationException>(bar.Dismiss);
+
+        exception.ShouldBeSameAs(failure);
+        requested.ShouldBe(2);
+        propertyChanges.ShouldBe(0);
+        dismissed.ShouldBe(0);
+        bar.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a nested dismissal request is absorbed by the active transition.</summary>
+    [Fact]
+    public void Dismiss_WhenRequestedHandlerDismissesAgain_PublishesOnce()
+    {
+        var bar = new InfoBar();
+        var requested = 0;
+        var propertyChanges = 0;
+        var dismissed = 0;
+        bar.DismissRequested += (_, _) =>
+        {
+            requested++;
+            bar.Dismiss();
+        };
+        bar.PropertyChanged += (_, eventArgs) => propertyChanges +=
+            eventArgs.PropertyName == nameof(InfoBar.IsOpen) ? 1 : 0;
+        bar.Dismissed += (_, _) => dismissed++;
+
+        bar.Dismiss();
+        bar.Dismiss();
+
+        requested.ShouldBe(1);
+        propertyChanges.ShouldBe(1);
+        dismissed.ShouldBe(1);
+        bar.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies replacing content from a requested callback supersedes stale close publication.</summary>
+    [Fact]
+    public void Dismiss_WhenRequestedHandlerReplacesContent_SuppressesStaleTransition()
+    {
+        var previous = new ProbeControl();
+        var current = new ProbeControl();
+        var bar = new InfoBar { Content = previous };
+        var laterRequested = 0;
+        var dismissed = 0;
+        bar.DismissRequested += (_, _) => bar.Content = current;
+        bar.DismissRequested += (_, _) => laterRequested++;
+        bar.Dismissed += (_, _) => dismissed++;
+
+        bar.Dismiss();
+
+        bar.IsOpen.ShouldBeTrue();
+        bar.Content.ShouldBeSameAs(current);
+        previous.Parent.ShouldBeNull();
+        laterRequested.ShouldBe(0);
+        dismissed.ShouldBe(0);
+    }
+
+    /// <summary>Verifies hiding from a requested callback supersedes stale close publication.</summary>
+    [Fact]
+    public void Dismiss_WhenRequestedHandlerHidesBar_SuppressesStaleTransition()
+    {
+        var bar = new InfoBar();
+        var laterRequested = 0;
+        var dismissed = 0;
+        bar.DismissRequested += (_, _) => bar.Visibility = Visibility.Hidden;
+        bar.DismissRequested += (_, _) => laterRequested++;
+        bar.Dismissed += (_, _) => dismissed++;
+
+        bar.Dismiss();
+
+        bar.Visibility.ShouldBe(Visibility.Hidden);
+        bar.IsOpen.ShouldBeTrue();
+        laterRequested.ShouldBe(0);
+        dismissed.ShouldBe(0);
+    }
+
+    /// <summary>Verifies reopening from the committed-property callback suppresses stale completion.</summary>
+    [Fact]
+    public void Dismiss_WhenPropertyObserverReopens_SuppressesDismissed()
+    {
+        var bar = new InfoBar();
+        var dismissed = 0;
+        bar.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(InfoBar.IsOpen) && !bar.IsOpen)
+            {
+                bar.IsOpen = true;
+            }
+        };
+        bar.Dismissed += (_, _) => dismissed++;
+
+        bar.Dismiss();
+
+        bar.IsOpen.ShouldBeTrue();
+        dismissed.ShouldBe(0);
+    }
+
+    /// <summary>Verifies reopening from completion supersedes the remaining completion subscribers.</summary>
+    [Fact]
+    public void Dismiss_WhenDismissedSubscriberReopens_SuppressesLaterSubscribers()
+    {
+        var bar = new InfoBar();
+        var laterDismissed = 0;
+        bar.Dismissed += (_, _) => bar.IsOpen = true;
+        bar.Dismissed += (_, _) => laterDismissed++;
+
+        bar.Dismiss();
+
+        bar.IsOpen.ShouldBeTrue();
+        laterDismissed.ShouldBe(0);
+    }
+
+    /// <summary>Verifies all completion subscribers are attempted and the earliest failure is preserved.</summary>
+    [Fact]
+    public void Dismiss_WhenDismissedSubscribersThrow_AttemptsAllBeforeRethrow()
+    {
+        var bar = new InfoBar();
+        var firstFailure = new InvalidOperationException("first dismissed");
+        var callbacks = 0;
+        bar.Dismissed += (_, _) =>
+        {
+            callbacks++;
+            throw firstFailure;
+        };
+        bar.Dismissed += (_, _) =>
+        {
+            callbacks++;
+            throw new InvalidOperationException("second dismissed");
+        };
+
+        var exception = Should.Throw<InvalidOperationException>(bar.Dismiss);
+
+        exception.ShouldBeSameAs(firstFailure);
+        callbacks.ShouldBe(2);
+        bar.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies directly disposing retained content retires the lease and clears the inherited slot.</summary>
+    [Fact]
+    public void Content_WhenDisposedWhileClosed_RetiresAvailabilityWithoutRestoration()
+    {
+        var body = new ProbeControl { Visibility = Visibility.Hidden };
+        var bar = new InfoBar { Content = body, IsOpen = false };
+        var visibilityChanges = 0;
+        body.PropertyChanged += (_, eventArgs) => visibilityChanges +=
+            eventArgs.PropertyName == nameof(ControlBase.Visibility) ? 1 : 0;
+
+        body.Dispose();
+
+        body.IsDisposed.ShouldBeTrue();
+        bar.Content.ShouldBeNull();
+        visibilityChanges.ShouldBe(0);
+    }
+
+    /// <summary>Verifies owner disposal tears down retained content without restoring closed live state.</summary>
+    [Fact]
+    public void Dispose_WhenBarIsClosed_DisposesCurrentContentWithoutRestoration()
+    {
+        var body = new ProbeControl { Visibility = Visibility.Hidden };
+        var bar = new InfoBar { Content = body, IsOpen = false };
+        var visibilityChanges = 0;
+        body.PropertyChanged += (_, eventArgs) => visibilityChanges +=
+            eventArgs.PropertyName == nameof(ControlBase.Visibility) ? 1 : 0;
+
+        bar.Dispose();
+
+        bar.IsDisposed.ShouldBeTrue();
+        body.IsDisposed.ShouldBeTrue();
+        visibilityChanges.ShouldBe(0);
+    }
+
+    /// <summary>Verifies title, adornment, dismiss affordance, padding, and body determine intrinsic size.</summary>
+    [Fact]
+    public void Measure_WhenHeaderAndContentExist_ReservesCompleteGeometry()
+    {
+        using var bar = new InfoBar
+        {
+            Title = "Build",
+            Adornment = new Affix("!"),
+            Content = new ProbeControl(new Size(10, 2)),
+            Style = InfoBarStyle.Info with
+            {
+                Padding = new Thickness(1),
+                ContentGap = 1,
+                AdornmentGap = 1
+            }
+        };
+
+        new LayoutEngine().Layout(bar, new Size(40, 10));
+
+        bar.DesiredSize.ShouldBe(new Size(14, 8));
     }
 }

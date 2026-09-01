@@ -38,7 +38,7 @@ public sealed record InfoBarStyle: ControlStyle
     /// <param name="padding">The non-negative internal content padding.</param>
     /// <param name="contentGap">The non-negative rows between header and body.</param>
     /// <param name="adornmentGap">The non-negative cells after an adornment.</param>
-    /// <exception cref="ArgumentException">A foreground paint color is transparent.</exception>
+    /// <exception cref="ArgumentException">A foreground paint color is transparent, or a dismiss glyph is not printable and one cell wide.</exception>
     /// <exception cref="ArgumentOutOfRangeException">A gap is negative.</exception>
     [SetsRequiredMembers]
     public InfoBarStyle(
@@ -82,7 +82,17 @@ public sealed record InfoBarStyle: ControlStyle
     }
 
     /// <summary>Gets the preferred and portable dismiss glyphs.</summary>
-    public required ControlGlyph DismissGlyph { get; init; }
+    /// <exception cref="ArgumentException">A replacement glyph is not printable and one cell wide.</exception>
+    public required ControlGlyph DismissGlyph
+    {
+        get;
+        init
+        {
+            _ = value.Value.ValidateSingleCell(nameof(value));
+            _ = value.Fallback.ValidateSingleCell(nameof(value));
+            field = value;
+        }
+    }
 
     /// <summary>Gets the dismiss foreground.</summary>
     /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
