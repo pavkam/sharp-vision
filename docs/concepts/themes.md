@@ -525,9 +525,8 @@ tree.
 Input is limited to 64 KiB, a JSON depth of eight, 256 palette entries, and
 2,048 characters per metadata string. Comments, trailing commas, malformed
 UTF-8, invalid element kinds, unknown top-level or `styles.*` key names, and
-malformed colors all fail with a source-labelled `InvalidDataException` - for
-`styles.*` leaf values specifically, at first resolution rather than at parse
-time (see [Style types](#style-types) above).
+malformed colors all fail with a source-labelled `InvalidDataException` (see
+[Style types](#style-types) above).
 
 Style-property metadata is cached once per style type; rejected JSON member
 names are never retained, so repeated invalid external documents cannot grow a

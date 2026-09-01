@@ -18,7 +18,7 @@ Appearance is grouped by responsibility:
 | Complete value      | Partial set         | Members                                                              |
 | ------------------- | ------------------- | -------------------------------------------------------------------- |
 | `Face`              | `FaceOverlay`       | Foreground, background, attributes, underline, underline color.      |
-| `Border`            | `BorderOverlay`     | Sides, glyph style, foreground, background, attributes.              |
+| `Border`            | `BorderOverlay`     | Sides, glyph style, foreground, relief, background, attributes.      |
 | `Shadow`            | `ShadowOverlay`     | Visibility, mode, offset, glyph, foreground, background, attributes. |
 | `ControlAppearance` | `AppearanceOverlay` | Face, border, and shadow as one bulk appearance.                     |
 
