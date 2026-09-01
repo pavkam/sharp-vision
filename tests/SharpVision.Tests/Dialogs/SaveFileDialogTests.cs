@@ -357,6 +357,32 @@ public sealed class SaveFileDialogTests
         saveButton.IsEnabled.ShouldBeFalse();
     }
 
+    /// <summary>Verifies the Save button is disabled when InitialFileName is whitespace-only - the
+    /// accept path already treats a whitespace-only name as "no file name" and silently no-ops, so
+    /// seeding the button as enabled would produce a no-op default button.</summary>
+    [Fact]
+    public async Task SaveButton_WhenInitialFileNameIsWhitespace_IsDisabledAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "save-initial-whitespace"));
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory);
+        var dialog = new SaveFileDialog(
+            new SaveFileOptions { InitialDirectory = directory, InitialFileName = "   " },
+            source);
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(100, 40),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        var saveButton = OwnedTree.FindAll<Button>(dialog)
+            .First(static button => button.Text.Contains("Save"));
+        saveButton.IsEnabled.ShouldBeFalse();
+    }
+
     /// <summary>Verifies the Save button is enabled when the filename input is non-empty.</summary>
     [Fact]
     public async Task SaveButton_WhenFileNameIsProvided_IsEnabledAsync()
