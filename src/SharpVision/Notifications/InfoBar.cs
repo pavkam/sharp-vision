@@ -165,7 +165,7 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
 
         if (request.Cancel || !token.IsCurrent)
         {
-            _dismissButton.CancelInteraction();
+            ExceptionAggregation.Capture(_dismissButton.CancelInteraction, ref failure);
             failure?.Throw();
             return;
         }
@@ -365,8 +365,12 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
 
         _ = _dismissTransitions.Commit(this);
         _isOpen = true;
-        RestoreOpenAvailability();
-        NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.Measure);
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(RestoreOpenAvailability, ref failure);
+        ExceptionAggregation.Capture(
+            () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.Measure),
+            ref failure);
+        failure?.Throw();
     }
 
     #endregion

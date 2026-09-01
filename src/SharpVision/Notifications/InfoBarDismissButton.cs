@@ -34,6 +34,11 @@ internal sealed class InfoBarDismissButton: ControlBase
     /// <summary>Cancels transient press and capture state before owner availability changes publish.</summary>
     internal void CancelInteraction()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         _interaction.Unavailable();
 
         if (HasPointerCapture)

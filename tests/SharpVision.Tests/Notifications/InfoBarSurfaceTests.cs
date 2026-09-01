@@ -373,6 +373,37 @@ public sealed class InfoBarSurfaceTests
         await surface.Pointer.ReleaseAsync();
     }
 
+    /// <summary>Verifies cancelled-press cleanup cannot replace an earlier requested-handler failure.</summary>
+    [Fact]
+    public async Task Dismiss_WhenCancellationAndCaptureCleanupThrow_PreservesEarliestFailureAsync()
+    {
+        var bar = new InfoBar { Title = "Alert", Content = new ControlText("Body") };
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(20, 5),
+            TestContext.Current.CancellationToken);
+        var dismiss = OwnedTree.Find<InfoBarDismissButton>(bar).ShouldNotBeNull();
+        var requestedFailure = new InvalidOperationException("requested");
+        bar.DismissRequested += (_, eventArgs) =>
+        {
+            eventArgs.Cancel = true;
+            throw requestedFailure;
+        };
+        dismiss.LostPointerCapture += (_, _) => throw new InvalidOperationException("cleanup");
+        await surface.Pointer.MoveToAsync(dismiss);
+        await surface.Pointer.PressAsync();
+        InvalidOperationException? exception = null;
+
+        await surface.UpdateAsync(
+            () => exception = Should.Throw<InvalidOperationException>(bar.Dismiss),
+            "cancel held dismissal with failing cleanup");
+
+        exception.ShouldBeSameAs(requestedFailure);
+        bar.IsOpen.ShouldBeTrue();
+        dismiss.IsPressed.ShouldBeFalse();
+        surface.ShouldHaveCapture(null);
+    }
+
     /// <summary>Verifies a retained body action remains ordinary and controls whether to dismiss.</summary>
     [Fact]
     public async Task BodyAction_WhenActivated_OnlyDismissesWhenItsHandlerRequestsItAsync()

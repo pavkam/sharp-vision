@@ -143,6 +143,40 @@ public sealed class InfoBarTests
         current.Visibility.ShouldBe(Visibility.Collapsed);
     }
 
+    /// <summary>Verifies reopening publishes committed state after availability restoration fails.</summary>
+    [Fact]
+    public void IsOpen_WhenBodyRestorationObserverThrows_StillPublishesCommittedOpenState()
+    {
+        var body = new ProbeControl { Visibility = Visibility.Hidden };
+        var bar = new InfoBar { Content = body, IsOpen = false };
+        var dismiss = OwnedTree.Find<InfoBarDismissButton>(bar).ShouldNotBeNull();
+        var restorationFailure = new InvalidOperationException("body restoration");
+        var propertyPublished = false;
+        body.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ControlBase.Visibility))
+            {
+                throw restorationFailure;
+            }
+        };
+        bar.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(InfoBar.IsOpen))
+            {
+                propertyPublished = true;
+                throw new InvalidOperationException("open property");
+            }
+        };
+
+        var exception = Should.Throw<InvalidOperationException>(() => bar.IsOpen = true);
+
+        exception.ShouldBeSameAs(restorationFailure);
+        bar.IsOpen.ShouldBeTrue();
+        body.Visibility.ShouldBe(Visibility.Hidden);
+        dismiss.Visibility.ShouldBe(Visibility.Visible);
+        propertyPublished.ShouldBeTrue();
+    }
+
     /// <summary>Verifies requested failures do not prevent required close publication and preserve earliest failure.</summary>
     [Fact]
     public void Dismiss_WhenSubscribersThrow_CommitsAndAttemptsDismissedBeforeRethrow()
@@ -283,6 +317,28 @@ public sealed class InfoBarTests
         bar.Visibility.ShouldBe(Visibility.Hidden);
         bar.IsOpen.ShouldBeTrue();
         laterRequested.ShouldBe(0);
+        dismissed.ShouldBe(0);
+    }
+
+    /// <summary>Verifies disposal from a requested callback supersedes every stale dismissal stage.</summary>
+    [Fact]
+    public void Dismiss_WhenRequestedHandlerDisposesBar_SuppressesStaleTransition()
+    {
+        var bar = new InfoBar { Content = new ProbeControl() };
+        var laterRequested = 0;
+        var propertyChanges = 0;
+        var dismissed = 0;
+        bar.DismissRequested += (_, _) => bar.Dispose();
+        bar.DismissRequested += (_, _) => laterRequested++;
+        bar.PropertyChanged += (_, eventArgs) => propertyChanges +=
+            eventArgs.PropertyName == nameof(InfoBar.IsOpen) ? 1 : 0;
+        bar.Dismissed += (_, _) => dismissed++;
+
+        bar.Dismiss();
+
+        bar.IsDisposed.ShouldBeTrue();
+        laterRequested.ShouldBe(0);
+        propertyChanges.ShouldBe(0);
         dismissed.ShouldBe(0);
     }
 
