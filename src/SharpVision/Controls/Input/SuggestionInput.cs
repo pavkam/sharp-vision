@@ -25,6 +25,10 @@ public sealed class SuggestionInput: CompositeControlBase
     private readonly PopupDropDownCoordinator _popupCoordinator;
     private readonly LatestControlOperation _resolutionOperation = new();
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
+    private int _resolutionGeneration;
+    private ulong _minimumPrefixLengthVersion;
+    private ulong _resolverVersion;
+    private ulong _textCommitVersion;
     private bool _wantsOpen;
 
     #region Construction and events
@@ -172,7 +176,30 @@ public sealed class SuggestionInput: CompositeControlBase
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = SetProperty(ref field, value, InvalidationImpact.None);
+            VerifyMutable();
+
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            var version = ++_minimumPrefixLengthVersion;
+            var resolutionGeneration = _resolutionGeneration;
+            ExceptionDispatchInfo? failure = null;
+            ExceptionAggregation.Capture(
+                () => NotifyPropertyChanged(nameof(MinimumPrefixLength), InvalidationImpact.None),
+                ref failure);
+
+            if (!IsDisposed &&
+                _minimumPrefixLengthVersion == version &&
+                field == value &&
+                _resolutionGeneration == resolutionGeneration)
+            {
+                ExceptionAggregation.Capture(BeginResolution, ref failure);
+            }
+
+            failure?.Throw();
         }
     } = 1;
 
@@ -182,7 +209,33 @@ public sealed class SuggestionInput: CompositeControlBase
     public SuggestionResolver? Resolver
     {
         get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.None);
+        set
+        {
+            VerifyMutable();
+
+            if (ReferenceEquals(field, value))
+            {
+                return;
+            }
+
+            field = value;
+            var version = ++_resolverVersion;
+            var resolutionGeneration = _resolutionGeneration;
+            ExceptionDispatchInfo? failure = null;
+            ExceptionAggregation.Capture(
+                () => NotifyPropertyChanged(nameof(Resolver), InvalidationImpact.None),
+                ref failure);
+
+            if (!IsDisposed &&
+                _resolverVersion == version &&
+                ReferenceEquals(field, value) &&
+                _resolutionGeneration == resolutionGeneration)
+            {
+                ExceptionAggregation.Capture(BeginResolution, ref failure);
+            }
+
+            failure?.Throw();
+        }
     }
 
     /// <summary>Gets the copied current suggestion snapshot.</summary>
@@ -197,11 +250,8 @@ public sealed class SuggestionInput: CompositeControlBase
     public void Refresh()
     {
         VerifyMutable();
-
-        if (!_wantsOpen)
-        {
-            _wantsOpen = true;
-        }
+        _wantsOpen = true;
+        BeginResolution();
     }
 
     #endregion
@@ -413,6 +463,342 @@ public sealed class SuggestionInput: CompositeControlBase
 
     #endregion
 
+    #region Resolution
+
+    private void OnTextChanged(object? sender, TextChangedEventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+        var committedText = Text;
+        var version = ++_textCommitVersion;
+        var resolutionGeneration = _resolutionGeneration;
+        _wantsOpen |= Resolver is not null;
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(
+            () => NotifyPropertyChanged(nameof(Text), InvalidationImpact.None),
+            ref failure);
+
+        if (!IsDisposed &&
+            _textCommitVersion == version &&
+            string.Equals(Text, committedText, StringComparison.Ordinal) &&
+            _resolutionGeneration == resolutionGeneration)
+        {
+            ExceptionAggregation.Capture(BeginResolution, ref failure);
+        }
+
+        failure?.Throw();
+    }
+
+    private void BeginResolution()
+    {
+        var generation = ++_resolutionGeneration;
+        var lease = _resolutionOperation.Begin();
+        var attachment = Dispatcher is null ? null : CaptureAttachment();
+        var searchTerms = Text;
+        var resolver = Resolver;
+
+        if (!IsCurrentResolution(lease, generation))
+        {
+            return;
+        }
+
+        if (resolver is null || !MeetsMinimumPrefixLength(searchTerms, MinimumPrefixLength))
+        {
+            ExceptionDispatchInfo? failure = null;
+            ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
+            ExceptionAggregation.Capture(
+                () => ApplyResults(lease, generation, []),
+                ref failure);
+            failure?.Throw();
+            return;
+        }
+
+        ExceptionDispatchInfo? startupFailure = null;
+        ExceptionAggregation.Capture(() => SetIsResolving(true), ref startupFailure);
+
+        if (!IsCurrentResolution(lease, generation))
+        {
+            startupFailure?.Throw();
+            return;
+        }
+
+        ValueTask<IReadOnlyList<object?>> pending;
+
+        try
+        {
+            pending = resolver(searchTerms, lease.CancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            ExceptionAggregation.Capture(
+                () => ApplyCancellation(lease, generation),
+                ref startupFailure);
+            startupFailure?.Throw();
+            return;
+        }
+        catch (Exception exception)
+        {
+            ExceptionAggregation.Capture(
+                () => ApplyFailure(lease, generation, searchTerms, exception),
+                ref startupFailure);
+            startupFailure?.Throw();
+            return;
+        }
+
+        if (pending.IsCompletedSuccessfully)
+        {
+            ExceptionAggregation.Capture(
+                () => ApplyCompletion(lease, generation, searchTerms, pending.Result),
+                ref startupFailure);
+            startupFailure?.Throw();
+            return;
+        }
+
+        _ = CompleteResolutionAsync(pending, searchTerms, lease, generation, attachment);
+        startupFailure?.Throw();
+    }
+
+    private async Task CompleteResolutionAsync(
+        ValueTask<IReadOnlyList<object?>> pending,
+        string searchTerms,
+        LatestControlOperationLease lease,
+        int generation,
+        ControlAttachmentToken? attachment)
+    {
+        try
+        {
+            var results = await pending.ConfigureAwait(false);
+            DispatchCompletion(
+                lease,
+                generation,
+                attachment,
+                () => ApplyCompletion(lease, generation, searchTerms, results));
+        }
+        catch (OperationCanceledException)
+        {
+            DispatchCompletion(
+                lease,
+                generation,
+                attachment,
+                () => ApplyCancellation(lease, generation));
+        }
+        catch (Exception exception)
+        {
+            DispatchCompletion(
+                lease,
+                generation,
+                attachment,
+                () => ApplyFailure(lease, generation, searchTerms, exception));
+        }
+    }
+
+    private void DispatchCompletion(
+        LatestControlOperationLease lease,
+        int generation,
+        ControlAttachmentToken? attachment,
+        Action action)
+    {
+        if (attachment is not { } token)
+        {
+            if (Dispatcher is null && IsCurrentResolution(lease, generation))
+            {
+                action();
+            }
+
+            return;
+        }
+
+        try
+        {
+            PostForCurrentAttachment(
+                token,
+                action,
+                () => IsCurrentResolution(lease, generation));
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    private void ApplyCompletion(
+        LatestControlOperationLease lease,
+        int generation,
+        string searchTerms,
+        IReadOnlyList<object?>? results)
+    {
+        if (results is null)
+        {
+            ApplyFailure(
+                lease,
+                generation,
+                searchTerms,
+                new InvalidOperationException("A suggestion resolver returned a null result snapshot."));
+            return;
+        }
+
+        ApplyResults(lease, generation, results);
+    }
+
+    private void ApplyResults(
+        LatestControlOperationLease lease,
+        int generation,
+        IReadOnlyList<object?> results)
+    {
+        if (!PublishResults(lease, generation, results, allowOpen: true))
+        {
+            return;
+        }
+
+        CompleteResolution(lease, generation);
+    }
+
+    private void ApplyFailure(
+        LatestControlOperationLease lease,
+        int generation,
+        string searchTerms,
+        Exception exception)
+    {
+        if (!PublishResults(lease, generation, [], allowOpen: false))
+        {
+            return;
+        }
+
+        ResolutionFailed?.Invoke(
+            this,
+            new SuggestionResolutionFailedEventArgs(searchTerms, exception));
+
+        if (!IsCurrentResolution(lease, generation))
+        {
+            return;
+        }
+
+        CompleteResolution(lease, generation);
+    }
+
+    private void ApplyCancellation(LatestControlOperationLease lease, int generation)
+    {
+        if (!PublishResults(lease, generation, [], allowOpen: false))
+        {
+            return;
+        }
+
+        CompleteResolution(lease, generation);
+    }
+
+    private bool PublishResults(
+        LatestControlOperationLease lease,
+        int generation,
+        IReadOnlyList<object?> results,
+        bool allowOpen)
+    {
+        if (!IsCurrentResolution(lease, generation))
+        {
+            return false;
+        }
+
+        SetIsResolving(false);
+
+        if (!IsCurrentResolution(lease, generation))
+        {
+            return false;
+        }
+
+        var changed = !SnapshotsEqual(Suggestions, results);
+        _list.Items = results;
+        _list.SelectedIndex = -1;
+        _list.SetProvisionalCurrentIndex(-1);
+
+        if (changed)
+        {
+            NotifyPropertyChanged(nameof(Suggestions), InvalidationImpact.None);
+
+            if (!IsCurrentResolution(lease, generation))
+            {
+                return false;
+            }
+
+            SuggestionsChanged?.Invoke(this, EventArgs.Empty);
+
+            if (!IsCurrentResolution(lease, generation))
+            {
+                return false;
+            }
+        }
+
+        _popupCoordinator.SetOpen(allowOpen && _wantsOpen && Suggestions.Count > 0);
+        return IsCurrentResolution(lease, generation);
+    }
+
+    private void CompleteResolution(LatestControlOperationLease lease, int generation)
+    {
+        if (IsCurrentResolution(lease, generation))
+        {
+            _ = _resolutionOperation.TryComplete(lease);
+        }
+    }
+
+    [Pure]
+    private bool IsCurrentResolution(LatestControlOperationLease lease, int generation) =>
+        !IsDisposed && generation == _resolutionGeneration && _resolutionOperation.IsCurrent(lease);
+
+    private void SetIsResolving(bool value)
+    {
+        if (IsResolving == value)
+        {
+            return;
+        }
+
+        IsResolving = value;
+        NotifyPropertyChanged(nameof(IsResolving), InvalidationImpact.None);
+    }
+
+    [Pure]
+    private static bool MeetsMinimumPrefixLength(string value, int minimum)
+    {
+        if (minimum == 0)
+        {
+            return true;
+        }
+
+        var count = 0;
+
+        foreach (var unused in Graphemes.Enumerate(value))
+        {
+            _ = unused;
+            count++;
+
+            if (count >= minimum)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    [Pure]
+    private static bool SnapshotsEqual(
+        IReadOnlyList<object?> first,
+        IReadOnlyList<object?> second)
+    {
+        if (first.Count != second.Count)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < first.Count; index++)
+        {
+            if (!EqualityComparer<object?>.Default.Equals(first[index], second[index]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    #endregion
+
     #region Layout and lifetime
 
     /// <inheritdoc/>
@@ -433,7 +819,21 @@ public sealed class SuggestionInput: CompositeControlBase
     protected override void OnAttached()
     {
         base.OnAttached();
-        _popupCoordinator.OnOwnerAttached();
+        ExceptionDispatchInfo? failure = null;
+
+        if (_resolutionOperation.HasCurrent)
+        {
+            var cancellationGeneration = ++_resolutionGeneration;
+            ExceptionAggregation.Capture(_resolutionOperation.Cancel, ref failure);
+
+            if (_resolutionGeneration == cancellationGeneration)
+            {
+                ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
+            }
+        }
+
+        ExceptionAggregation.Capture(_popupCoordinator.OnOwnerAttached, ref failure);
+        failure?.Throw();
     }
 
     /// <inheritdoc/>
@@ -445,7 +845,13 @@ public sealed class SuggestionInput: CompositeControlBase
 
         if (reason is ReleaseReason.Detached or ReleaseReason.Disposed)
         {
+            var cancellationGeneration = ++_resolutionGeneration;
             ExceptionAggregation.Capture(_resolutionOperation.Cancel, ref failure);
+
+            if (_resolutionGeneration == cancellationGeneration)
+            {
+                ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
+            }
         }
 
         if (reason == ReleaseReason.Disposed)
@@ -469,13 +875,6 @@ public sealed class SuggestionInput: CompositeControlBase
         }
 
         failure?.Throw();
-    }
-
-    private void OnTextChanged(object? sender, TextChangedEventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-        NotifyPropertyChanged(nameof(Text), InvalidationImpact.None);
     }
 
     private void OnOpened()

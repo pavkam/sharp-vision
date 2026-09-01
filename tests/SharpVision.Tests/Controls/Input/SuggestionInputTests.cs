@@ -300,6 +300,8 @@ public sealed class SuggestionInputTests
             nameof(SuggestionInput.EndAffix),
             nameof(SuggestionInput.MinimumPrefixLength),
             nameof(SuggestionInput.Resolver),
+            nameof(SuggestionInput.IsResolving),
+            nameof(SuggestionInput.IsResolving),
             nameof(SuggestionInput.ItemTemplate),
             nameof(SuggestionInput.TextSelector),
             nameof(SuggestionInput.DropDownHeight),
@@ -552,6 +554,728 @@ public sealed class SuggestionInputTests
         editor.IsDisposed.ShouldBeTrue();
         list.IsDisposed.ShouldBeTrue();
         popup.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a synchronous current result is copied, published in contract order,
+    /// and opened from the intent recorded by the committed text.</summary>
+    [Fact]
+    public void Resolver_WhenCompletionIsSynchronous_CopiesPublishesAndOpensInOrder()
+    {
+        // Arrange
+        using var input = new SuggestionInput
+        {
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>([])
+        };
+        var source = new List<object?> { "first" };
+        input.Resolver = (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(source);
+        var publications = new List<string>();
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SuggestionInput.IsResolving))
+            {
+                publications.Add($"resolving:{input.IsResolving}");
+            }
+            else if (eventArgs.PropertyName == nameof(SuggestionInput.Suggestions))
+            {
+                publications.Add($"property:{input.Suggestions.Count}");
+            }
+            else if (eventArgs.PropertyName == nameof(SuggestionInput.IsOpen))
+            {
+                publications.Add($"open:{input.IsOpen}");
+            }
+        };
+        input.SuggestionsChanged += (_, _) => publications.Add($"event:{input.Suggestions.Count}");
+
+        // Act
+        input.Text = "f";
+        source[0] = "mutated";
+        source.Add("foreign");
+
+        // Assert
+        input.Suggestions.ShouldBe(["first"]);
+        input.IsResolving.ShouldBeFalse();
+        input.IsOpen.ShouldBeTrue();
+        publications.ShouldBe([
+            "resolving:True",
+            "resolving:False",
+            "property:1",
+            "event:1"
+        ]);
+    }
+
+    /// <summary>Verifies detached asynchronous completion publishes only the immutable text
+    /// snapshot passed to the current resolver invocation.</summary>
+    [Fact]
+    public async Task Resolver_WhenStillDetachedAtCompletion_PublishesCurrentSnapshotAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var published = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        string? receivedSearchTerms = null;
+        using var input = new SuggestionInput
+        {
+            Resolver = (searchTerms, _) =>
+            {
+                receivedSearchTerms = searchTerms;
+                return new ValueTask<IReadOnlyList<object?>>(completion.Task);
+            }
+        };
+        input.SuggestionsChanged += (_, _) => published.TrySetResult();
+        input.Text = "query";
+
+        // Act
+        await Task.Run(() => completion.SetResult(["result"]), TestContext.Current.CancellationToken);
+        await published.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        receivedSearchTerms.ShouldBe("query");
+        input.Text.ShouldBe("query");
+        input.Suggestions.ShouldBe(["result"]);
+        input.IsResolving.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a completion captured while attached publishes only on that exact
+    /// attachment's dispatcher.</summary>
+    [Fact]
+    public async Task Resolver_WhenAttachedCompletionIsCurrent_PublishesOnDispatcherAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var published = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var input = new SuggestionInput
+        {
+            Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task)
+        };
+        await using var dispatcher = Dispatcher.Start();
+        await dispatcher.InvokeAsync(() =>
+        {
+            input.Attach(dispatcher);
+            input.SuggestionsChanged += (_, _) =>
+                _ = published.TrySetResult(dispatcher.CheckAccess());
+            input.Text = "query";
+        }, TestContext.Current.CancellationToken);
+
+        // Act
+        await Task.Run(() => completion.SetResult(["result"]), TestContext.Current.CancellationToken);
+        var publishedOnDispatcher = await published.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        publishedOnDispatcher.ShouldBeTrue();
+        input.Suggestions.ShouldBe(["result"]);
+        input.IsResolving.ShouldBeFalse();
+        await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a newer text generation cancels and outranks an older non-cooperative
+    /// detached resolver completion.</summary>
+    [Fact]
+    public async Task Text_WhenEarlierResolutionCompletesLast_DiscardsStaleSnapshotAsync()
+    {
+        // Arrange
+        var first = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var second = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var currentPublished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken firstCancellation = default;
+        using var input = new SuggestionInput
+        {
+            Resolver = (searchTerms, cancellationToken) =>
+            {
+                if (searchTerms == "first")
+                {
+                    firstCancellation = cancellationToken;
+                    return new ValueTask<IReadOnlyList<object?>>(first.Task);
+                }
+
+                return new ValueTask<IReadOnlyList<object?>>(second.Task);
+            }
+        };
+        input.SuggestionsChanged += (_, _) =>
+        {
+            if (input.Suggestions is ["current"])
+            {
+                _ = currentPublished.TrySetResult();
+            }
+        };
+
+        // Act
+        input.Text = "first";
+        input.Text = "second";
+        second.SetResult(["current"]);
+        await currentPublished.Task.WaitAsync(TestContext.Current.CancellationToken);
+        first.SetResult(["stale"]);
+        await Task.Yield();
+
+        // Assert
+        firstCancellation.IsCancellationRequested.ShouldBeTrue();
+        input.Suggestions.ShouldBe(["current"]);
+        input.IsResolving.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a resolver replacement with null cancels the pending generation and
+    /// synchronously clears and closes its stale snapshot.</summary>
+    [Fact]
+    public void Resolver_WhenCleared_CancelsPendingGenerationAndClearsSnapshot()
+    {
+        // Arrange
+        var pending = new TaskCompletionSource<IReadOnlyList<object?>>();
+        CancellationToken cancellation = default;
+        using var input = new SuggestionInput
+        {
+            Resolver = static (searchTerms, _) =>
+                ValueTask.FromResult<IReadOnlyList<object?>>([searchTerms]),
+            Text = "query"
+        };
+        input.Resolver = (_, cancellationToken) =>
+        {
+            cancellation = cancellationToken;
+            return new ValueTask<IReadOnlyList<object?>>(pending.Task);
+        };
+
+        // Act
+        input.Resolver = null;
+
+        // Assert
+        cancellation.IsCancellationRequested.ShouldBeTrue();
+        input.Suggestions.ShouldBeEmpty();
+        input.IsResolving.ShouldBeFalse();
+        input.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies publishing equal resolver values still replaces caller storage but does
+    /// not raise a false changed-snapshot notification.</summary>
+    [Fact]
+    public void Refresh_WhenSnapshotValuesAreEqual_CopiesWithoutRepublishingChange()
+    {
+        // Arrange
+        var source = new List<object?> { "same" };
+        using var input = new SuggestionInput
+        {
+            Resolver = (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(source),
+            Text = "query"
+        };
+        var changes = 0;
+        input.SuggestionsChanged += (_, _) => changes++;
+
+        // Act
+        input.Refresh();
+        source[0] = "mutated";
+
+        // Assert
+        changes.ShouldBe(0);
+        input.Suggestions.ShouldBe(["same"]);
+    }
+
+    /// <summary>Verifies explicitly closing while a current request is pending preserves the
+    /// request and snapshot publication but suppresses its automatic open.</summary>
+    [Fact]
+    public async Task Close_WhenResolutionIsPending_PublishesWithoutReopeningAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var published = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var input = new SuggestionInput
+        {
+            Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task)
+        };
+        input.SuggestionsChanged += (_, _) => _ = published.TrySetResult();
+        input.Text = "query";
+
+        // Act
+        input.Close();
+        completion.SetResult(["result"]);
+        await published.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        input.Suggestions.ShouldBe(["result"]);
+        input.IsResolving.ShouldBeFalse();
+        input.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies threshold eligibility counts Unicode extended grapheme clusters,
+    /// including combining and emoji ZWJ sequences, rather than UTF-16 code units.</summary>
+    [Fact]
+    public void MinimumPrefixLength_WhenTextContainsCombiningAndZwjSequences_CountsGraphemes()
+    {
+        // Arrange
+        var queries = new List<string>();
+        using var input = new SuggestionInput
+        {
+            MinimumPrefixLength = 2,
+            Resolver = (searchTerms, _) =>
+            {
+                queries.Add(searchTerms);
+                return ValueTask.FromResult<IReadOnlyList<object?>>([searchTerms]);
+            }
+        };
+        queries.Clear();
+
+        // Act
+        input.Text = "e\u0301";
+        input.Text = "e\u0301👩‍👩‍👧‍👦";
+
+        // Assert
+        queries.ShouldBe(["e\u0301👩‍👩‍👧‍👦"]);
+        input.Suggestions.ShouldBe(["e\u0301👩‍👩‍👧‍👦"]);
+        input.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies raising the threshold past the committed grapheme count publishes the
+    /// threshold first, then synchronously clears results and closes.</summary>
+    [Fact]
+    public void MinimumPrefixLength_WhenRaisedPastCurrentGraphemeCount_ClearsAndCloses()
+    {
+        // Arrange
+        using var input = new SuggestionInput
+        {
+            Resolver = static (searchTerms, _) =>
+                ValueTask.FromResult<IReadOnlyList<object?>>([searchTerms]),
+            Text = "e\u0301👩‍👩‍👧‍👦"
+        };
+        var publications = new List<string>();
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SuggestionInput.MinimumPrefixLength))
+            {
+                publications.Add("threshold");
+            }
+            else if (eventArgs.PropertyName == nameof(SuggestionInput.Suggestions))
+            {
+                publications.Add("suggestions");
+            }
+            else if (eventArgs.PropertyName == nameof(SuggestionInput.IsOpen))
+            {
+                publications.Add("closed");
+            }
+        };
+        input.SuggestionsChanged += (_, _) => publications.Add("event");
+
+        // Act
+        input.MinimumPrefixLength = 3;
+
+        // Assert
+        input.Suggestions.ShouldBeEmpty();
+        input.IsResolving.ShouldBeFalse();
+        input.IsOpen.ShouldBeFalse();
+        publications.ShouldBe(["threshold", "suggestions", "event", "closed"]);
+    }
+
+    /// <summary>Verifies lowering the threshold starts resolution only after the changed
+    /// threshold is visible to its property observers.</summary>
+    [Fact]
+    public void MinimumPrefixLength_WhenLowered_ReevaluatesAfterPropertyNotification()
+    {
+        // Arrange
+        var publications = new List<string>();
+        using var input = new SuggestionInput
+        {
+            MinimumPrefixLength = 2,
+            Text = "e\u0301",
+            Resolver = (searchTerms, _) =>
+            {
+                publications.Add($"resolver:{searchTerms}");
+                return ValueTask.FromResult<IReadOnlyList<object?>>(["eligible"]);
+            }
+        };
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SuggestionInput.MinimumPrefixLength))
+            {
+                publications.Add($"threshold:{input.Suggestions.Count}");
+            }
+        };
+
+        // Act
+        input.MinimumPrefixLength = 1;
+
+        // Assert
+        publications.ShouldBe(["threshold:0", "resolver:e\u0301"]);
+        input.Suggestions.ShouldBe(["eligible"]);
+    }
+
+    /// <summary>Verifies a reentrant resolver-property observer supersedes the outer assignment
+    /// even when the outer continuation would otherwise start a request.</summary>
+    [Fact]
+    public void Resolver_WhenPropertyObserverReplacesResolver_InvokesOnlyReentrantResolver()
+    {
+        // Arrange
+        var calls = new List<string>();
+        using var input = new SuggestionInput { Text = "query" };
+        SuggestionResolver replacement = (searchTerms, _) =>
+        {
+            calls.Add($"replacement:{searchTerms}");
+            return ValueTask.FromResult<IReadOnlyList<object?>>(["new"]);
+        };
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SuggestionInput.Resolver) &&
+                !ReferenceEquals(input.Resolver, replacement))
+            {
+                input.Resolver = replacement;
+            }
+        };
+
+        // Act
+        input.Resolver = (searchTerms, _) =>
+        {
+            calls.Add($"outer:{searchTerms}");
+            return ValueTask.FromResult<IReadOnlyList<object?>>(["old"]);
+        };
+
+        // Assert
+        calls.ShouldBe(["replacement:query"]);
+        input.Suggestions.ShouldBe(["new"]);
+    }
+
+    /// <summary>Verifies a reentrant Text property observer makes the nested commit the only
+    /// resolver search admitted after notification.</summary>
+    [Fact]
+    public void Text_WhenPropertyObserverCommitsNewerText_ResolvesOnlyNewestCommit()
+    {
+        // Arrange
+        var queries = new List<string>();
+        using var input = new SuggestionInput
+        {
+            Resolver = (searchTerms, _) =>
+            {
+                queries.Add(searchTerms);
+                return ValueTask.FromResult<IReadOnlyList<object?>>([searchTerms]);
+            }
+        };
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SuggestionInput.Text) && input.Text == "old")
+            {
+                input.Text = "new";
+            }
+        };
+
+        // Act
+        input.Text = "old";
+
+        // Assert
+        input.Text.ShouldBe("new");
+        queries.ShouldBe(["new"]);
+        input.Suggestions.ShouldBe(["new"]);
+    }
+
+    /// <summary>Verifies a Text observer that replaces the resolver starts the dependent
+    /// generation once rather than letting the outer Text continuation repeat it.</summary>
+    [Fact]
+    public void Text_WhenPropertyObserverReplacesResolver_ResolvesCurrentTextOnce()
+    {
+        // Arrange
+        var queries = new List<string>();
+        using var input = new SuggestionInput
+        {
+            Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>([])
+        };
+        ValueTask<IReadOnlyList<object?>> ResolveReplacement(
+            string searchTerms,
+            CancellationToken cancellationToken)
+        {
+            _ = cancellationToken;
+            queries.Add(searchTerms);
+            return ValueTask.FromResult<IReadOnlyList<object?>>([searchTerms]);
+        }
+
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SuggestionInput.Text))
+            {
+                input.Resolver = ResolveReplacement;
+            }
+        };
+
+        // Act
+        input.Text = "query";
+
+        // Assert
+        queries.ShouldBe(["query"]);
+        input.Suggestions.ShouldBe(["query"]);
+        input.IsResolving.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies cancellation reentry can start the authoritative text generation without
+    /// the superseded outer Begin call stranding the resolving flag.</summary>
+    [Fact]
+    public void Text_WhenCancellationCallbackStartsNewGeneration_KeepsReentrantCompletionCurrent()
+    {
+        // Arrange
+        var queries = new List<string>();
+        var first = new TaskCompletionSource<IReadOnlyList<object?>>();
+        using var input = new SuggestionInput();
+        input.Resolver = (searchTerms, cancellationToken) =>
+        {
+            queries.Add(searchTerms);
+
+            if (searchTerms == "first")
+            {
+                _ = cancellationToken.Register(() => input.Text = "third");
+                return new ValueTask<IReadOnlyList<object?>>(first.Task);
+            }
+
+            return ValueTask.FromResult<IReadOnlyList<object?>>([searchTerms]);
+        };
+        input.Text = "first";
+
+        // Act
+        input.Text = "second";
+
+        // Assert
+        input.Text.ShouldBe("third");
+        queries.ShouldBe(["first", "third"]);
+        input.Suggestions.ShouldBe(["third"]);
+        input.IsResolving.ShouldBeFalse();
+        input.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a current synchronous failure clears prior suggestions, closes, and
+    /// publishes the failure after state notifications in the specified order.</summary>
+    [Fact]
+    public void Resolver_WhenCurrentCallFailsSynchronously_ClearsClosesThenRaisesFailure()
+    {
+        // Arrange
+        using var input = new SuggestionInput
+        {
+            Resolver = static (searchTerms, _) => searchTerms == "success"
+                ? ValueTask.FromResult<IReadOnlyList<object?>>([searchTerms])
+                : throw new InvalidOperationException("broken"),
+            Text = "success"
+        };
+        var publications = new List<string>();
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SuggestionInput.IsResolving))
+            {
+                publications.Add($"resolving:{input.IsResolving}");
+            }
+            else if (eventArgs.PropertyName == nameof(SuggestionInput.Suggestions))
+            {
+                publications.Add("property");
+            }
+            else if (eventArgs.PropertyName == nameof(SuggestionInput.IsOpen))
+            {
+                publications.Add("closed");
+            }
+        };
+        input.SuggestionsChanged += (_, _) => publications.Add("changed");
+        input.ResolutionFailed += (_, eventArgs) => publications.Add(
+            $"failure:{eventArgs.SearchTerms}:{eventArgs.Exception.Message}");
+
+        // Act
+        input.Text = "failure";
+
+        // Assert
+        input.Suggestions.ShouldBeEmpty();
+        input.IsResolving.ShouldBeFalse();
+        input.IsOpen.ShouldBeFalse();
+        publications.ShouldBe([
+            "resolving:True",
+            "resolving:False",
+            "property",
+            "changed",
+            "closed",
+            "failure:failure:broken"
+        ]);
+    }
+
+    /// <summary>Verifies a null asynchronous completion is a current failure with the captured
+    /// search text and never publishes an invalid snapshot.</summary>
+    [Fact]
+    public async Task Resolver_WhenAsyncCompletionIsNull_RaisesCurrentFailureAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var failed = new TaskCompletionSource<SuggestionResolutionFailedEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var input = new SuggestionInput
+        {
+            Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task)
+        };
+        input.ResolutionFailed += (_, eventArgs) => failed.TrySetResult(eventArgs);
+        input.Text = "query";
+
+        // Act
+        completion.SetResult(null!);
+        var failure = await failed.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        failure.SearchTerms.ShouldBe("query");
+        _ = failure.Exception.ShouldBeOfType<InvalidOperationException>();
+        input.Suggestions.ShouldBeEmpty();
+        input.IsResolving.ShouldBeFalse();
+        input.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a current cancelled asynchronous resolver settles silently without a
+    /// failure event or stale results.</summary>
+    [Fact]
+    public async Task Resolver_WhenCurrentCompletionIsCancelled_SettlesSilentlyAsync()
+    {
+        // Arrange
+        var settled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var failures = 0;
+        using var input = new SuggestionInput
+        {
+            Resolver = static (_, _) => ValueTask.FromCanceled<IReadOnlyList<object?>>(
+                new CancellationToken(canceled: true))
+        };
+        input.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SuggestionInput.IsResolving) && !input.IsResolving)
+            {
+                _ = settled.TrySetResult();
+            }
+        };
+        input.ResolutionFailed += (_, _) => failures++;
+
+        // Act
+        input.Text = "cancel";
+        await settled.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        failures.ShouldBe(0);
+        input.Suggestions.ShouldBeEmpty();
+        input.IsResolving.ShouldBeFalse();
+        input.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies attaching after a detached request starts revokes that request and drops
+    /// its later non-cooperative completion.</summary>
+    [Fact]
+    public async Task Resolver_WhenDetachedRequestIsAttachedBeforeCompletion_DiscardsCompletionAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken cancellation = default;
+        var input = new SuggestionInput
+        {
+            Resolver = (_, cancellationToken) =>
+            {
+                cancellation = cancellationToken;
+                return new ValueTask<IReadOnlyList<object?>>(completion.Task);
+            },
+            Text = "query"
+        };
+        await using var dispatcher = Dispatcher.Start();
+        await dispatcher.InvokeAsync(() => input.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        // Act
+        completion.SetResult(["stale"]);
+        await dispatcher.InvokeAsync(() => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        cancellation.IsCancellationRequested.ShouldBeTrue();
+        input.Suggestions.ShouldBeEmpty();
+        input.IsResolving.ShouldBeFalse();
+        await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an attached completion is discarded after same-dispatcher detach and
+    /// reattach invalidate its captured identity.</summary>
+    [Fact]
+    public async Task Resolver_WhenAttachmentChangesBeforeCompletion_DiscardsCompletionAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var publications = 0;
+        var input = new SuggestionInput
+        {
+            Resolver = (_, _) => new ValueTask<IReadOnlyList<object?>>(completion.Task)
+        };
+        await using var dispatcher = Dispatcher.Start();
+        await dispatcher.InvokeAsync(() =>
+        {
+            input.Attach(dispatcher);
+            input.SuggestionsChanged += (_, _) => publications++;
+            input.Text = "query";
+            input.Detach();
+            input.Attach(dispatcher);
+        }, TestContext.Current.CancellationToken);
+
+        // Act
+        completion.SetResult(["stale"]);
+        await dispatcher.InvokeAsync(() => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        publications.ShouldBe(0);
+        input.Suggestions.ShouldBeEmpty();
+        input.IsResolving.ShouldBeFalse();
+        await dispatcher.InvokeAsync(input.Dispose, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies disposal revokes a detached pending request and suppresses every late
+    /// state and event publication.</summary>
+    [Fact]
+    public async Task Resolver_WhenDisposedBeforeCompletion_DiscardsCompletionAsync()
+    {
+        // Arrange
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var publications = 0;
+        CancellationToken cancellation = default;
+        var input = new SuggestionInput
+        {
+            Resolver = (_, cancellationToken) =>
+            {
+                cancellation = cancellationToken;
+                return new ValueTask<IReadOnlyList<object?>>(completion.Task);
+            },
+            Text = "query"
+        };
+        input.SuggestionsChanged += (_, _) => publications++;
+
+        // Act
+        input.Dispose();
+        completion.SetResult(["late"]);
+        await Task.Yield();
+
+        // Assert
+        cancellation.IsCancellationRequested.ShouldBeTrue();
+        input.IsResolving.ShouldBeFalse();
+        publications.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a current failure callback that starts a successful request prevents the
+    /// stale outer failure continuation from closing or publishing its typed event.</summary>
+    [Fact]
+    public void SuggestionsChanged_WhenFailureClearStartsNewResolution_KeepsNewerSuccess()
+    {
+        // Arrange
+        var failures = 0;
+        using var input = new SuggestionInput
+        {
+            Resolver = static (searchTerms, _) => searchTerms == "old"
+                ? ValueTask.FromResult<IReadOnlyList<object?>>(["old result"])
+                : ValueTask.FromResult<IReadOnlyList<object?>>(["new result"]),
+            Text = "old"
+        };
+        input.SuggestionsChanged += (_, _) =>
+        {
+            if (input.Suggestions.Count == 0)
+            {
+                input.Resolver = static (_, _) =>
+                    ValueTask.FromResult<IReadOnlyList<object?>>(["new result"]);
+            }
+        };
+        input.ResolutionFailed += (_, _) => failures++;
+
+        // Act
+        input.Resolver = static (_, _) => throw new InvalidOperationException("stale failure");
+
+        // Assert
+        failures.ShouldBe(0);
+        input.Suggestions.ShouldBe(["new result"]);
+        input.IsOpen.ShouldBeTrue();
+        input.IsResolving.ShouldBeFalse();
     }
 
     /// <summary>Verifies null constructor arguments are rejected while an empty eligible query is retained.</summary>

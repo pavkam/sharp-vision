@@ -415,6 +415,33 @@ public static class BindingExtensions
             mode,
             string.Empty);
 
+    /// <summary>Binds optional model text two-way to an editable suggestion input.</summary>
+    [MustDisposeResource]
+    public static Binding Bind<TModel>(
+        this SuggestionInput target,
+        TModel source,
+        Expression<Func<TModel, string?>> sourceProperty)
+        where TModel : class =>
+        Bind(target, source, sourceProperty, BindingMode.TwoWay);
+
+    /// <summary>Binds optional model text to an editable suggestion input with an explicit direction.</summary>
+    [MustDisposeResource]
+    public static Binding Bind<TModel>(
+        this SuggestionInput target,
+        TModel source,
+        Expression<Func<TModel, string?>> sourceProperty,
+        BindingMode mode)
+        where TModel : class =>
+        BindProperty(
+            target,
+            static control => control.Text,
+            source,
+            sourceProperty,
+            static value => value ?? string.Empty,
+            static value => value,
+            mode,
+            string.Empty);
+
     /// <summary>Binds one finite observable item snapshot to a list.</summary>
     [MustDisposeResource]
     public static Binding BindItems<TModel, TItem>(
