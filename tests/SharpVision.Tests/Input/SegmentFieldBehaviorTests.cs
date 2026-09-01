@@ -479,6 +479,51 @@ public sealed class SegmentFieldBehaviorTests
 
     #endregion
 
+    #region HandleKey
+
+    /// <summary>Verifies Delete on an already-empty field (nothing left for the supplied clear
+    /// callback to change) is still recognized and handled, exactly like every sibling arm of the
+    /// HandleKey switch (Backspace included) that gates <c>recognized</c> on
+    /// <see cref="SegmentFieldBehavior.HasEditableSegments"/> alone rather than on whether the
+    /// commanded mutation actually produced a change. Before the fix, Delete's outcome-dependent
+    /// <c>recognized</c> flag let an already-empty field's Delete key bubble to ancestors instead
+    /// of being consumed here.</summary>
+    [Fact]
+    public void HandleKey_WhenDeleteIsPressedOnAlreadyEmptyField_IsHandled()
+    {
+        var behavior = CreateHourMinute();
+        var options = new SegmentFieldKeyOptions(
+            resolveStepDelta: static _ => null,
+            clearValue: static () => false, // Nothing to clear: the field is already empty.
+            handleRecognizedWithoutChange: true); // Matches DateInput's own options.
+        var eventArgs = new KeyEventArgs(new Stroke(
+            Code.Delete, character: null, nativeCode: 0, Modifiers.None, KeyAction.Press));
+
+        behavior.HandleKey(eventArgs, options);
+
+        eventArgs.IsHandled.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies Backspace on an already-empty field is handled the same way, confirming
+    /// Delete's fixed behavior now matches its sibling rather than diverging from it.</summary>
+    [Fact]
+    public void HandleKey_WhenBackspaceIsPressedOnAlreadyEmptyField_IsHandled()
+    {
+        var behavior = CreateHourMinute();
+        var options = new SegmentFieldKeyOptions(
+            resolveStepDelta: static _ => null,
+            clearValue: static () => false,
+            handleRecognizedWithoutChange: true);
+        var eventArgs = new KeyEventArgs(new Stroke(
+            Code.Backspace, character: null, nativeCode: 0, Modifiers.None, KeyAction.Press));
+
+        behavior.HandleKey(eventArgs, options);
+
+        eventArgs.IsHandled.ShouldBeTrue();
+    }
+
+    #endregion
+
     #region Pointer hit-testing
 
     /// <summary>Verifies ActivateSegmentAtColumn resolves the editable segment whose rendered

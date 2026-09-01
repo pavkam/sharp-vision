@@ -327,8 +327,8 @@ internal sealed class SegmentFieldBehavior
                 changed = recognized && MoveToEdge(first: false);
                 break;
             case Code.Delete:
-                changed = options.ClearValue();
-                recognized = changed;
+                recognized = HasEditableSegments;
+                changed = recognized && options.ClearValue();
                 break;
             case Code.Backspace:
                 recognized = HasEditableSegments;
