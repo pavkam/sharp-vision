@@ -108,8 +108,17 @@ public sealed class Spinner: ControlBase, IStyled<SpinnerStyle>
         }
 
         var frames = Frames();
+
+        // Resolve against the live Ambiguous-width policy rather than drawing the frame raw:
+        // SpinnerStyle only validates frames under Ambiguous.Narrow at construction, so a frame
+        // that is one cell under Narrow can still be two cells under Wide. The fallback is drawn
+        // per-index from the built-in Ascii rotation (cycling if the custom sequence is longer)
+        // so the animation still reads as motion instead of collapsing to one repeated glyph.
+        var asciiFrames = SpinnerStyle.Ascii.Frames;
+        var fallback = asciiFrames[_frameIndex % asciiFrames.Length];
+        var frame = frames[_frameIndex].Resolve(fallback, CellPolicy.AmbiguousWidth);
         canvas.DrawRune(
-            frames[_frameIndex],
+            frame,
             new Point(Bounds.X, Bounds.Y),
             ResolvedStyle,
             BackgroundMode.Transparent);
