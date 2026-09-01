@@ -1790,7 +1790,7 @@ namespace SharpVision.Terminal.Runtime
     public sealed class StreamTransport : SharpVision.Terminal.Abstractions.ITransport, System.IAsyncDisposable
     {
         public StreamTransport(System.IO.Stream input, System.IO.Stream output, bool leaveOpen = false) { }
-        public StreamTransport(System.IO.Stream input, System.IO.Stream output, bool leaveInputOpen, bool leaveOutputOpen, System.TimeSpan? readDrainTimeout = default) { }
+        public StreamTransport(System.IO.Stream input, System.IO.Stream output, bool leaveInputOpen, bool leaveOutputOpen, System.TimeSpan? readDrainTimeout = default, System.TimeSpan? writeDrainTimeout = default) { }
         public System.Threading.Tasks.ValueTask DisposeAsync() { }
         public System.Threading.Tasks.ValueTask FlushAsync(System.Threading.CancellationToken cancellationToken) { }
         public System.Threading.Tasks.ValueTask<int> ReadAsync(System.Memory<byte> destination, System.Threading.CancellationToken cancellationToken) { }

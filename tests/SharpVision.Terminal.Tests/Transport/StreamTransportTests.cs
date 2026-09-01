@@ -88,10 +88,18 @@ public sealed class StreamTransportTests
 
     /// <summary>Verifies disposal cannot invalidate the serialization gate while writes and a
     /// flush that were admitted before disposal are still queued on it.</summary>
+    /// <remarks>
+    /// The in-flight write uses a stream that ignores cancellation, the same way the read-side
+    /// drain tests below model a non-cooperative stream: <see cref="StreamTransport.WriteAsync"/>
+    /// now links disposal's cancellation into the underlying write, so a stream that honored it would race
+    /// disposal's own cancel signal against this test's explicit <c>Release</c> for the outcome of
+    /// the first write, which is not what this test is about. What this test verifies is that the
+    /// gate itself stays correct for the writes and flush still queued behind it.
+    /// </remarks>
     [Fact]
     public async Task DisposeAsync_WhenWritesAndFlushAreQueued_AllOperationsSettleBeforeStreamDisposalAsync()
     {
-        await using BlockingStream output = new();
+        var output = new BlockingWriteStream(ignoresCancellation: true);
         var transport = new StreamTransport(Stream.Null, output, leaveInputOpen: true, leaveOutputOpen: false);
         var first = transport.WriteAsync("one"u8.ToArray(), TestContext.Current.CancellationToken).AsTask();
         await output.FirstStarted;
@@ -175,6 +183,118 @@ public sealed class StreamTransportTests
         watch.Elapsed.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(30));
         input.DisposeCount.ShouldBe(1);
         read.IsCompleted.ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Verifies disposal waits for a write that is still in flight and only disposes the output
+    /// stream once that write has genuinely completed, even though the stream never honors the
+    /// cancellation disposal requests of it.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenWriteIsQueued_WaitsForWriteBeforeStreamDisposalAsync()
+    {
+        var output = new BlockingWriteStream(ignoresCancellation: true);
+        var transport = new StreamTransport(
+            Stream.Null,
+            output,
+            leaveInputOpen: true,
+            leaveOutputOpen: false,
+            writeDrainTimeout: TimeSpan.FromSeconds(5));
+        var write = transport.WriteAsync("one"u8.ToArray(), TestContext.Current.CancellationToken).AsTask();
+        await output.FirstStarted;
+
+        var disposal = transport.DisposeAsync().AsTask();
+        await Task.Delay(TimeSpan.FromMilliseconds(200), TestContext.Current.CancellationToken);
+
+        // Disposal must still be blocked on the write admission here: an implementation that
+        // disposes the streams without waiting for in-flight writes would already show completed,
+        // regardless of what Release does next.
+        disposal.IsCompleted.ShouldBeFalse();
+        output.DisposeCount.ShouldBe(0);
+
+        output.Release();
+
+        await write.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await disposal.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        output.DisposeCount.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies a write that neither completes nor honors the disposal-triggered cancellation
+    /// cannot stall disposal past the configured write drain timeout: the streams are disposed
+    /// out from under the abandoned write rather than blocking forever.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenWriteIgnoresCancellation_AbandonsItAfterWriteDrainTimeoutAsync()
+    {
+        var output = new BlockingWriteStream(ignoresCancellation: true);
+        var transport = new StreamTransport(
+            Stream.Null,
+            output,
+            leaveInputOpen: true,
+            leaveOutputOpen: false,
+            writeDrainTimeout: TimeSpan.FromMilliseconds(50));
+        var write = transport.WriteAsync("one"u8.ToArray(), TestContext.Current.CancellationToken).AsTask();
+        await output.FirstStarted;
+
+        var watch = Stopwatch.StartNew();
+        await transport.DisposeAsync().AsTask().WaitAsync(
+            TimeSpan.FromSeconds(5),
+            TestContext.Current.CancellationToken);
+        watch.Stop();
+
+        // An implementation that never waits for in-flight writes would dispose near-instantly;
+        // this bounds disposal from below to prove it genuinely waited out the drain budget
+        // before abandoning the non-cooperative write, not just abandoned it immediately.
+        watch.Elapsed.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(30));
+        output.DisposeCount.ShouldBe(1);
+        write.IsCompleted.ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Verifies an abandoned write's eventual completion, after the write gate it shares with
+    /// other writes has already been disposed by <see cref="StreamTransport.DisposeAsync"/>, never
+    /// surfaces an <see cref="ObjectDisposedException"/> thrown from releasing that disposed gate.
+    /// </summary>
+    /// <remarks>
+    /// The write gate is released inside each write's own inner <c>finally</c>, after the
+    /// underlying I/O call returns - so an abandoned write that is still blocked when the gate is
+    /// disposed must tolerate the gate being gone by the time it finally unblocks. The mock here
+    /// does not itself touch stream state once unblocked, so its own <see cref="ValueTask"/>
+    /// return carries no exception of its own: whether the awaited <c>write</c> task below
+    /// completes successfully or faults is determined entirely by whether the gate release that
+    /// runs in <see cref="StreamTransport.WriteAsync"/>'s <c>finally</c> is guarded. This directly
+    /// exercises that guard rather than merely asserting it exists syntactically.
+    /// </remarks>
+    [Fact]
+    public async Task DisposeAsync_WhenAbandonedWriteLaterCompletes_DoesNotThrowFromDisposedWriteGateAsync()
+    {
+        var output = new BlockingWriteStream(ignoresCancellation: true);
+        var transport = new StreamTransport(
+            Stream.Null,
+            output,
+            leaveInputOpen: true,
+            leaveOutputOpen: false,
+            writeDrainTimeout: TimeSpan.FromMilliseconds(50));
+        var write = transport.WriteAsync("one"u8.ToArray(), TestContext.Current.CancellationToken).AsTask();
+        await output.FirstStarted;
+
+        await transport.DisposeAsync().AsTask().WaitAsync(
+            TimeSpan.FromSeconds(5),
+            TestContext.Current.CancellationToken);
+        output.DisposeCount.ShouldBe(1);
+        write.IsCompleted.ShouldBeFalse();
+
+        // The write gate was disposed as part of the DisposeAsync call above, while this write
+        // was still abandoned mid-flight. Releasing it now lets it genuinely resume and reach its
+        // own finally's gate release, which runs against that already-disposed gate.
+        output.Release();
+        await output.Completed.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        // The mock's own WriteAsync never touches the disposed stream directly, so an unguarded
+        // gate release is the only way this can fault: it would surface here as an
+        // ObjectDisposedException propagating out of StreamTransport.WriteAsync's finally.
+        await write.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
     }
 
     /// <summary>

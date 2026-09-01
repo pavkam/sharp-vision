@@ -29,6 +29,7 @@ public sealed class StreamTransport: ITransport
     private readonly TaskCompletionSource _readsDrained =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TimeSpan _readDrainTimeout;
+    private readonly TimeSpan _writeDrainTimeout;
 
     // POSIX EIO. .NET maps a failing Unix read to IOException carrying the raw errno in
     // HResult, so this compares against the errno value rather than an HRESULT.
@@ -75,19 +76,26 @@ public sealed class StreamTransport: ITransport
     /// leave before abandoning it and disposing the streams anyway. Defaults to one second when
     /// null.
     /// </param>
+    /// <param name="writeDrainTimeout">
+    /// How long <see cref="DisposeAsync"/> waits for in-flight <see cref="WriteAsync"/> and
+    /// <see cref="FlushAsync"/> calls to leave before abandoning them and disposing the streams
+    /// anyway. Defaults to one second when null.
+    /// </param>
     /// <exception cref="ArgumentNullException">A stream is null.</exception>
     /// <exception cref="ArgumentException">
     /// <paramref name="input"/> is unreadable or <paramref name="output"/> is unwritable.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="readDrainTimeout"/> is not positive and finite.
+    /// <paramref name="readDrainTimeout"/> or <paramref name="writeDrainTimeout"/> is not
+    /// positive and finite.
     /// </exception>
     public StreamTransport(
         Stream input,
         Stream output,
         bool leaveInputOpen,
         bool leaveOutputOpen,
-        TimeSpan? readDrainTimeout = null)
+        TimeSpan? readDrainTimeout = null,
+        TimeSpan? writeDrainTimeout = null)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(output);
@@ -110,11 +118,21 @@ public sealed class StreamTransport: ITransport
                 "The read drain timeout must be positive and finite.");
         }
 
+        if (writeDrainTimeout is { } writeTimeout &&
+            (writeTimeout <= TimeSpan.Zero || writeTimeout == Timeout.InfiniteTimeSpan))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(writeDrainTimeout),
+                writeDrainTimeout,
+                "The write drain timeout must be positive and finite.");
+        }
+
         _input = input;
         _output = output;
         _leaveInputOpen = leaveInputOpen;
         _leaveOutputOpen = leaveOutputOpen;
         _readDrainTimeout = readDrainTimeout ?? TimeSpan.FromSeconds(1);
+        _writeDrainTimeout = writeDrainTimeout ?? TimeSpan.FromSeconds(1);
     }
 
     /// <inheritdoc/>
@@ -185,16 +203,30 @@ public sealed class StreamTransport: ITransport
 
         try
         {
+            // The gate wait itself is left observing only the caller's token, unchanged: a write
+            // still queued behind another has not started any I/O yet, and disposal already
+            // guarantees it will observe ObjectDisposedException as soon as it is admitted to the
+            // gate (see ThrowIfDisposed below), the same as before this fix. What is new is the
+            // link below, which lets a concurrent DisposeAsync nudge a write that is genuinely
+            // blocked inside the underlying I/O call to cancel cooperatively, rather than leaving
+            // it to run against streams that may be disposed out from under it. See the
+            // abandon-on-timeout comment in DisposeAsync for what happens when it does not honor
+            // this.
             await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
             try
             {
                 ThrowIfDisposed();
-                await _output.WriteAsync(source, cancellationToken).ConfigureAwait(false);
+
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(
+                    cancellationToken,
+                    _disposalCancellation.Token);
+
+                await _output.WriteAsync(source, linked.Token).ConfigureAwait(false);
             }
             finally
             {
-                _ = _writeGate.Release();
+                ReleaseWriteGate();
             }
         }
         finally
@@ -211,21 +243,50 @@ public sealed class StreamTransport: ITransport
 
         try
         {
+            // See the identical comment in WriteAsync for why only the underlying I/O call below
+            // is linked to disposal cancellation, and the gate wait above it is not.
             await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
             try
             {
                 ThrowIfDisposed();
-                await _output.FlushAsync(cancellationToken).ConfigureAwait(false);
+
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(
+                    cancellationToken,
+                    _disposalCancellation.Token);
+
+                await _output.FlushAsync(linked.Token).ConfigureAwait(false);
             }
             finally
             {
-                _ = _writeGate.Release();
+                ReleaseWriteGate();
             }
         }
         finally
         {
             ExitOperation();
+        }
+    }
+
+    /// <summary>
+    /// Releases the write gate, tolerating a gate already disposed by <see cref="DisposeAsync"/>.
+    /// </summary>
+    /// <remarks>
+    /// The gate is released here, after the underlying I/O call returns or throws - not before -
+    /// so a write abandoned past the write drain timeout can still be running when
+    /// <see cref="DisposeAsync"/> disposes the gate. When that abandoned write eventually
+    /// completes on its own, this would otherwise call <see cref="SemaphoreSlim.Release()"/> on an
+    /// already-disposed gate from an unobserved background task. The transport is already being
+    /// torn down at that point, so there is nothing meaningful left to release into.
+    /// </remarks>
+    private void ReleaseWriteGate()
+    {
+        try
+        {
+            _ = _writeGate.Release();
+        }
+        catch (ObjectDisposedException)
+        {
         }
     }
 
@@ -254,39 +315,19 @@ public sealed class StreamTransport: ITransport
             }
         }
 
-        await _operationsDrained.Task.ConfigureAwait(false);
-
-        // Ask any in-flight read to cancel, then give it one bounded chance to leave before
-        // disposing the streams out from under it. A read can legitimately block forever
-        // waiting on terminal input, and if the underlying stream's cancellation support is
-        // imperfect, joining it unconditionally (like the write/flush drain above) would trade
-        // a rare use-after-dispose race for a much more common indefinite hang here. A read that
-        // outlives the budget is abandoned instead: it keeps running against already-disposed
-        // streams and is left to fault or complete on its own, mirroring the same
-        // abandon-on-timeout tradeoff Session.DrainAsync makes for its own read loop.
+        // Ask any in-flight write, flush, or read to cancel, then give each its own bounded
+        // chance to leave before disposing the streams out from under it. A blocked write or
+        // flush - flow control pausing output, a stalled or backpressured PTY/SSH session - can
+        // hang exactly like a blocked read, and if the underlying stream's cancellation support
+        // is imperfect, joining either drain unconditionally would trade a rare use-after-dispose
+        // race for a much more common indefinite hang here. An operation that outlives its budget
+        // is abandoned instead: it keeps running against already-disposed streams and is left to
+        // fault or complete on its own, mirroring the same abandon-on-timeout tradeoff
+        // Session.DrainAsync makes for its own read loop.
         await _disposalCancellation.CancelAsync().ConfigureAwait(false);
 
-        using (var expiry = new CancellationTokenSource())
-        {
-            var budget = Task.Delay(_readDrainTimeout, expiry.Token);
-            _ = await Task.WhenAny(_readsDrained.Task, budget).ConfigureAwait(false);
-            await expiry.CancelAsync().ConfigureAwait(false);
-
-            // A canceled Task.Delay is never reported as unobserved, but the exception is
-            // touched anyway to mirror Session.DrainAsync's own budget cleanup exactly.
-            if (budget.IsCompleted)
-            {
-                _ = budget.Exception;
-            }
-            else
-            {
-                _ = budget.ContinueWith(
-                    static completed => _ = completed.Exception,
-                    CancellationToken.None,
-                    TaskContinuationOptions.ExecuteSynchronously,
-                    TaskScheduler.Default);
-            }
-        }
+        await DrainWithBudgetAsync(_operationsDrained.Task, _writeDrainTimeout).ConfigureAwait(false);
+        await DrainWithBudgetAsync(_readsDrained.Task, _readDrainTimeout).ConfigureAwait(false);
 
         try
         {
@@ -333,6 +374,33 @@ public sealed class StreamTransport: ITransport
         {
             _writeGate.Dispose();
             _disposalCancellation.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Waits for <paramref name="drained"/> up to <paramref name="budget"/>, then returns without
+    /// waiting further, abandoning whatever admitted operations have not yet exited.
+    /// </summary>
+    private static async ValueTask DrainWithBudgetAsync(Task drained, TimeSpan budget)
+    {
+        using var expiry = new CancellationTokenSource();
+        var timeout = Task.Delay(budget, expiry.Token);
+        _ = await Task.WhenAny(drained, timeout).ConfigureAwait(false);
+        await expiry.CancelAsync().ConfigureAwait(false);
+
+        // A canceled Task.Delay is never reported as unobserved, but the exception is touched
+        // anyway to mirror Session.DrainAsync's own budget cleanup exactly.
+        if (timeout.IsCompleted)
+        {
+            _ = timeout.Exception;
+        }
+        else
+        {
+            _ = timeout.ContinueWith(
+                static completed => _ = completed.Exception,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
         }
     }
 
