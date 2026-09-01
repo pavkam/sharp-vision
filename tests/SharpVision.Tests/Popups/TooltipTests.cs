@@ -540,6 +540,56 @@ public sealed class TooltipTests
         tooltip.IsOpen.ShouldBeFalse();
     }
 
+    /// <summary>Verifies a tooltip force-closed by its own Visibility being set to Hidden - the
+    /// same release reason Popup already force-closes identically alongside Detached and Disposed
+    /// - releases its dispatcher-owned show/hide timers and drops its presented-surface relayout
+    /// subscription, matching what Detached (via OnDetached) and Disposed (via OnUnavailable)
+    /// already did. Before this fix, a merely-hidden tooltip released neither: Hidden never
+    /// cascades OnDetached (it is a pure visibility change), and OnUnavailable only special-cased
+    /// Disposed.</summary>
+    [Fact]
+    public async Task Visibility_WhenSetToHiddenWhileOpen_ReleasesTimersAndRelayoutSubscriptionAsync()
+    {
+        var anchor = new Button
+        {
+            Text = "Anchor",
+            Width = Length.Cells(8),
+            Height = Length.Cells(3)
+        };
+        Tooltip.SetText(anchor, "Save");
+        var tooltip = Tooltip.GetTooltip(anchor).ShouldNotBeNull();
+        tooltip.ShowDelay = TimeSpan.FromMilliseconds(10);
+        tooltip.HideDelay = TimeSpan.FromMilliseconds(10);
+        var clock = new ManualTimeProvider();
+        await using var surface = await ComponentSurface.MountAsync(
+            anchor,
+            new Size(18, 7),
+            clock,
+            TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel },
+            TestContext.Current.CancellationToken);
+
+        await surface.Pointer.MoveToAsync(anchor);
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(10), "show Tooltip after hover delay");
+
+        tooltip.IsOpen.ShouldBeTrue();
+        tooltip.HasSurfaceRelayoutSubscription.ShouldBeTrue();
+
+        await surface.Pointer.LeaveAsync();
+
+        // A pending hide timer (and the already-ticked-but-not-yet-released show timer) prove
+        // real timer objects exist to release, not just an absence the fix could accidentally
+        // pass by doing nothing.
+        tooltip.HasShowTimer.ShouldBeTrue();
+        tooltip.HideTimerTickSubscribers.ShouldBe(1);
+
+        await surface.UpdateAsync(() => tooltip.Visibility = Visibility.Hidden, "hide the open Tooltip surface directly");
+
+        tooltip.HasShowTimer.ShouldBeFalse();
+        tooltip.ShowTimerTickSubscribers.ShouldBe(0);
+        tooltip.HideTimerTickSubscribers.ShouldBe(0);
+        tooltip.HasSurfaceRelayoutSubscription.ShouldBeFalse();
+    }
+
     /// <summary>Verifies a tooltip migrated between dispatchers creates its next delay on the new
     /// dispatcher instead of restarting the stopped timer owned by the former attachment.</summary>
     [Fact]
