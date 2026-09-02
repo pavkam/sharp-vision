@@ -378,6 +378,51 @@ public sealed class FlyoutTests
         openingOpened.ShouldBe(0);
     }
 
+    /// <summary>Verifies Flyout family exclusion runs before candidate content becomes visible or
+    /// takes focus, so a retained peer's close veto observes and preserves the original focus.</summary>
+    [Fact]
+    public async Task IsOpen_WhenSiblingFlyoutVetoesReplacement_DoesNotExposeOrFocusCandidateAsync()
+    {
+        var anchor = new Button { Text = "Anchor" };
+        var retainedContent = new Button { Text = "Retained" };
+        var retained = new Flyout { Anchor = anchor, Content = retainedContent };
+        var candidateContent = new Button { Text = "Candidate" };
+        var candidate = new Flyout { Anchor = anchor, Content = candidateContent };
+        var root = new Overlay { Children = { anchor, retained, candidate } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => retained.IsOpen = true, "open focused retained Flyout");
+        surface.ShouldHaveFocus(retainedContent);
+        Visibility? candidateVisibilityDuringRequest = null;
+        bool? candidateFocusDuringRequest = null;
+        ControlBase? focusedDuringRequest = null;
+        var closeRequests = 0;
+        retained.CloseRequested += (_, eventArgs) =>
+        {
+            closeRequests++;
+            candidateVisibilityDuringRequest = candidateContent.Visibility;
+            candidateFocusDuringRequest = candidateContent.IsFocused;
+            focusedDuringRequest = surface.Application.Focus.Focused;
+            eventArgs.Cancel = true;
+        };
+
+        await surface.UpdateAsync(() => candidate.IsOpen = true, "veto before candidate exposure");
+
+        closeRequests.ShouldBe(1);
+        candidateVisibilityDuringRequest.ShouldBe(Visibility.Collapsed);
+        candidateFocusDuringRequest.ShouldBe(false);
+        focusedDuringRequest.ShouldBeSameAs(retainedContent);
+        candidate.IsOpen.ShouldBeFalse();
+        candidateContent.Visibility.ShouldBe(Visibility.Collapsed);
+        candidateContent.IsFocused.ShouldBeFalse();
+        surface.ShouldHaveFocus(retainedContent);
+        retained.IsOpen.ShouldBeTrue();
+        retained.HasLightDismissRegistration.ShouldBeTrue();
+        candidate.HasLightDismissRegistration.ShouldBeFalse();
+    }
+
     /// <summary>Verifies Flyout exclusion closes only its exact family and leaves an ordinary
     /// owner-managed Popup open.</summary>
     [Fact]

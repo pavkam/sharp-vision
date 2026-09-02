@@ -41,8 +41,8 @@ public sealed class Flyout: Popup
     internal override void OnAnchorReflow() => IsOpen = false;
 
     /// <inheritdoc/>
-    internal override bool OnContentAvailable() => ExcludePopupPeers(
+    internal override bool CompleteOpenContent(bool suppressFocusOnOpen) => ExcludePopupPeers(
         static candidate => candidate is Flyout,
         candidate => IsAncestorOf(candidate, this),
-        base.OnContentAvailable);
+        () => base.CompleteOpenContent(suppressFocusOnOpen));
 }

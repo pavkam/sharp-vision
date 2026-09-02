@@ -1164,7 +1164,14 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         return ownsContinuation;
     }
 
-    private bool CompleteOpenContent(bool suppressFocusOnOpen)
+    /// <summary>Completes content visibility, optional focus, and family setup for one current
+    /// opening transaction.</summary>
+    /// <param name="suppressFocusOnOpen">Whether this opening stage must leave focus unchanged.</param>
+    /// <returns>True while this exact opening still owns continuation.</returns>
+    /// <remarks>Families that must exclude peers before exposing candidate content override this
+    /// member and wrap the base continuation in their exclusion transaction.</remarks>
+    /// <exception cref="Exception">Content availability, focus, or family setup fails.</exception>
+    internal virtual bool CompleteOpenContent(bool suppressFocusOnOpen)
     {
         ExceptionDispatchInfo? failure = null;
         var ownsContinuation = true;

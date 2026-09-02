@@ -80,8 +80,9 @@ family-specific setup and revalidates root, family, ancestry, modality, and the
 initiating open identity before each close. A callback may mutate the tree or
 open another peer without letting stale traversal close the newer presentation.
 If an eligible peer vetoes its required close, the initiating Popup or Flyout
-rolls back before `Opened`, presentation, light-dismiss, or modality commits;
-the retained peer remains the sole active surface.
+rolls back before candidate content visibility or focus, `Opened`, presentation,
+light-dismiss, or modality commits; the retained peer remains the sole active
+surface.
 
 Disposal releases every shared lifecycle subscription, including `Opened`,
 `CloseRequested`, `Closing`, and `Closed`, so retaining a disposed surface does

@@ -257,12 +257,12 @@ and ancestor exclusion immediately before closure. If a callback reparents or
 disposes a peer, opens another peer, or supersedes the initiating opening, the
 stale traversal cannot continue under the newer identity. Peer failures are
 aggregated without skipping other eligible cleanup. A peer that vetoes its close
-remains the sole active presentation; the initiating Popup or Flyout rolls its
-provisional open state and content availability back before `Opened`,
-light-dismiss registration, or modality can commit. Internal exclusive peer
-replacement and submenu switching force the zero-duration path so two elevated
-interaction planes never overlap; public close and light dismiss honor the
-configured fade.
+remains the sole active presentation; the initiating Popup or Flyout never
+exposes candidate content or moves focus, and rolls its provisional open state
+back before `Opened`, light-dismiss registration, or modality can commit.
+Internal exclusive peer replacement and submenu switching force the
+zero-duration path so two elevated interaction planes never overlap; public
+close and light dismiss honor the configured fade.
 
 Popup also owns any framework-configured light-dismiss registration. It installs
 the handler only after presentation and `Opened` commit, preserves the focus
@@ -325,7 +325,8 @@ popup.IsOpen = true;
 - Sibling exclusion snapshots identities before publishing close callbacks and
   revalidates ownership before each close, so callback-driven tree mutation
   cannot skip or index past a sibling. A vetoed peer keeps its sole presentation
-  while the initiating open rolls back before `Opened` or modality.
+  while the initiating open remains collapsed, leaves focus unchanged, and rolls
+  back before `Opened` or modality.
 - Owner-managed menu, input, and CommandPalette popups do not run the global
   sibling sweep, so opening one leaves unrelated owner-managed surfaces open.
 - Focus discovery crosses private slots on open, and closing restores focus.
