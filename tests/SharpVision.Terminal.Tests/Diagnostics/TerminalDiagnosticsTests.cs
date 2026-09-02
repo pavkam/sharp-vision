@@ -83,7 +83,39 @@ public sealed class TerminalDiagnosticsTests
         route.CanRouteCapabilityQueries.ShouldBeFalse();
         route.CanRouteClipboard.ShouldBeFalse();
         route.CanRouteGraphics.ShouldBeFalse();
+        route.CanRouteNotifications.ShouldBeFalse();
+        route.CanRouteTitle.ShouldBeFalse();
+        route.CanRouteBell.ShouldBeFalse();
         route.SupportsStringTerminatedQueries.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a fully authorized tmux route reports every effective route as enabled.</summary>
+    [Fact]
+    public void Constructor_WhenTmuxIsFullyAuthorized_ReportsEnabledEffectiveRoutes()
+    {
+        // Arrange
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.CapabilityQueries |
+                MultiplexingOperation.Clipboard |
+                MultiplexingOperation.Graphics |
+                MultiplexingOperation.Notifications |
+                MultiplexingOperation.Title |
+                MultiplexingOperation.Bell);
+
+        // Act
+        var route = new TerminalRouteDiagnostics(policy);
+
+        // Assert
+        route.CanRouteCapabilityQueries.ShouldBeTrue();
+        route.CanRouteClipboard.ShouldBeTrue();
+        route.CanRouteGraphics.ShouldBeTrue();
+        route.CanRouteNotifications.ShouldBeTrue();
+        route.CanRouteTitle.ShouldBeTrue();
+        route.CanRouteBell.ShouldBeTrue();
     }
 
     /// <summary>Verifies effective optional modes follow capability authority and keyboard fallback order.</summary>

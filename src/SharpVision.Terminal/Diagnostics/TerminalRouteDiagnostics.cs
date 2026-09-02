@@ -26,6 +26,9 @@ public sealed class TerminalRouteDiagnostics
         CanRouteCapabilityQueries = route?.CanRouteCapabilityQueries == true;
         CanRouteClipboard = route?.CanRouteClipboard == true;
         CanRouteGraphics = route?.CanRouteGraphics == true;
+        CanRouteNotifications = route?.CanRouteNotifications == true;
+        CanRouteTitle = route?.CanRouteTitle == true;
+        CanRouteBell = route?.CanRouteBell == true;
         SupportsStringTerminatedQueries = CanRouteCapabilityQueries && route!.SupportsStringTerminatedQueries;
     }
 
@@ -61,6 +64,15 @@ public sealed class TerminalRouteDiagnostics
 
     /// <summary>Gets whether graphics strings can traverse the configured route.</summary>
     public bool CanRouteGraphics { get; }
+
+    /// <summary>Gets whether notification strings can traverse the configured route.</summary>
+    public bool CanRouteNotifications { get; }
+
+    /// <summary>Gets whether title commands can traverse the configured route.</summary>
+    public bool CanRouteTitle { get; }
+
+    /// <summary>Gets whether bell commands can traverse the configured route.</summary>
+    public bool CanRouteBell { get; }
 
     /// <summary>Gets whether routed capability queries preserve string terminators.</summary>
     public bool SupportsStringTerminatedQueries { get; }
