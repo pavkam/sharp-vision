@@ -2120,6 +2120,78 @@ public sealed class WindowSurfaceTests
         surface.ShouldRender(string.Empty);
     }
 
+    /// <summary>Verifies descendant shadow cells beyond the Window's own visual bounds participate
+    /// in the same stable entrance and exit dissolve as the root surface.</summary>
+    [Fact]
+    public async Task Render_WhenFadingWindowDescendantOverflowsVisualBounds_DissolvesCompleteSubtreeAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var content = new Button
+        {
+            Text = "Go",
+            Width = Length.Cells(6),
+            Height = Length.Cells(3),
+            Style = TestButtonStyles.WithShadow(
+                AppearanceTestValues.Shadow(
+                    visible: true,
+                    mode: ShadowMode.BlockGlyph,
+                    offset: new Point(3, 2),
+                    glyph: new Rune('▓')))
+        };
+        var window = new Window
+        {
+            CanClose = false,
+            Content = content,
+            Width = Length.Cells(8),
+            Height = Length.Cells(5),
+            FadeInDuration = TimeSpan.FromMilliseconds(100),
+            FadeOutDuration = TimeSpan.FromMilliseconds(100),
+            Shadow = AppearanceTestValues.Shadow(visible: false),
+            Visibility = Visibility.Collapsed
+        };
+        var root = new Overlay { Children = { window } };
+        Overlay.SetLeft(window, Length.Cells(1));
+        Overlay.SetTop(window, Length.Cells(1));
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(16, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => window.Visibility = Visibility.Visible, "begin overflowing Window entrance");
+        var overflow = OverflowPoints();
+        CaptureOverflow().ShouldAllBe(static cell => cell == " ");
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "advance overflowing Window entrance halfway");
+        var midpoint = CaptureOverflow();
+        midpoint.ShouldContain(" ");
+        midpoint.ShouldContain("▓");
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "finish overflowing Window entrance");
+        CaptureOverflow().ShouldAllBe(static cell => cell == "▓");
+
+        await surface.UpdateAsync(window.Close, "begin overflowing Window exit");
+        CaptureOverflow().ShouldAllBe(static cell => cell == "▓");
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "advance overflowing Window exit halfway");
+        CaptureOverflow().ShouldBe(midpoint);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "finish overflowing Window exit");
+        CaptureOverflow().ShouldAllBe(static cell => cell == " ");
+
+        Point[] OverflowPoints() =>
+        [
+            new Point(window.SurfaceBounds.Right, content.Bounds.Y + 2),
+            new Point(window.SurfaceBounds.Right + 1, content.Bounds.Y + 2),
+            new Point(window.SurfaceBounds.Right, content.Bounds.Y + 3),
+            new Point(window.SurfaceBounds.Right + 1, content.Bounds.Y + 3),
+            new Point(window.SurfaceBounds.Right, content.Bounds.Y + 4),
+            new Point(window.SurfaceBounds.Right + 1, content.Bounds.Y + 4)
+        ];
+
+        string[] CaptureOverflow() => [.. overflow.Select(surface.Cell).Select(static cell => cell.Text)];
+    }
+
     /// <summary>Verifies dragging a modal window preserves the modal scope and pointer capture.</summary>
     [Fact]
     public async Task Drag_WhenModalWindowIsDragged_PreservesModalScopeAsync()

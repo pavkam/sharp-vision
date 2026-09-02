@@ -140,6 +140,45 @@ public sealed class PopupTests
         surface.Application.Modality.Active.ShouldNotBeNull().Root.ShouldBeSameAs(opening);
     }
 
+    /// <summary>Verifies an exclusive Popup opening cannot commit a second presentation when the
+    /// current modal peer vetoes its required synchronous replacement.</summary>
+    [Fact]
+    public async Task IsOpen_WhenExclusivePeerVetoesReplacement_LeavesPeerAsSoleModalPresentationAsync()
+    {
+        var firstContent = new ControlText("First");
+        var first = new Popup
+        {
+            Content = firstContent,
+            SuppressCloseOtherPopups = true
+        };
+        var openingContent = new ControlText("Opening");
+        var opening = new Popup { Content = openingContent };
+        var root = new Overlay { Children = { first, opening } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        var openingOpened = 0;
+        var firstClosing = 0;
+        first.CloseRequested += (_, eventArgs) => eventArgs.Cancel = true;
+        first.Closing += (_, _) => firstClosing++;
+        opening.Opened += (_, _) => openingOpened++;
+        await surface.UpdateAsync(() => first.IsOpen = true, "open retained modal Popup peer");
+        var firstBounds = first.SurfaceBounds;
+
+        await surface.UpdateAsync(() => opening.IsOpen = true, "veto exclusive Popup replacement");
+
+        first.IsOpen.ShouldBeTrue();
+        first.SurfaceBounds.ShouldBe(firstBounds);
+        firstContent.Visibility.ShouldBe(Visibility.Visible);
+        firstClosing.ShouldBe(0);
+        opening.IsOpen.ShouldBeFalse();
+        opening.SurfaceBounds.ShouldBe(default);
+        openingContent.Visibility.ShouldBe(Visibility.Collapsed);
+        openingOpened.ShouldBe(0);
+        surface.Application.Modality.Active.ShouldNotBeNull().Root.ShouldBeSameAs(first);
+    }
+
     /// <summary>Verifies exclusive replacement immediately finishes a peer exit that already
     /// started, without publishing a second close lifecycle or retaining its modal barrier.</summary>
     [Fact]

@@ -79,6 +79,9 @@ before wrapper policy continues. Exclusive family opening snapshots peers around
 family-specific setup and revalidates root, family, ancestry, modality, and the
 initiating open identity before each close. A callback may mutate the tree or
 open another peer without letting stale traversal close the newer presentation.
+If an eligible peer vetoes its required close, the initiating Popup or Flyout
+rolls back before `Opened`, presentation, light-dismiss, or modality commits;
+the retained peer remains the sole active surface.
 
 Disposal releases every shared lifecycle subscription, including `Opened`,
 `CloseRequested`, `Closing`, and `Closed`, so retaining a disposed surface does
@@ -245,13 +248,15 @@ those controls in an Overlay.
 The shared dissolve surrounds the complete surface render, including content,
 descendants, adornment, border, shadow, and family overlay. It snapshots the
 underlay already drawn in the current frame rather than copying the previous
-frame. A stable absolute-cell hash chooses complete unions of rendered and
-underlay grapheme owners, so increasing progress only reveals cells, decreasing
-progress only hides them, and a wide cluster is never split during movement,
-resize, clipping, or reflow. Surface-authored semantic images are omitted until
-entrance completes and immediately omitted when exit is accepted; underlying
-image placements remain available because terminal image protocols have no
-portable per-cell alpha.
+frame. The snapshot uses the finite inherited hard canvas clip, matching the
+scope through which descendant shadows and other deliberate visual overflow may
+paint beyond the surface root's own `VisualBounds`. A stable absolute-cell hash
+chooses complete unions of rendered and underlay grapheme owners, so increasing
+progress only reveals cells, decreasing progress only hides them, and a wide
+cluster is never split during movement, resize, clipping, or reflow.
+Surface-authored semantic images are omitted until entrance completes and
+immediately omitted when exit is accepted; underlying image placements remain
+available because terminal image protocols have no portable per-cell alpha.
 
 ## Expected behavior
 

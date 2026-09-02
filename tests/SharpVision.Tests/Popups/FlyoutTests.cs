@@ -341,6 +341,43 @@ public sealed class FlyoutTests
         second.IsOpen.ShouldBeTrue();
     }
 
+    /// <summary>Verifies Flyout family exclusion cannot commit a second elevated light-dismiss
+    /// surface when the eligible peer vetoes its required synchronous replacement.</summary>
+    [Fact]
+    public async Task IsOpen_WhenSiblingFlyoutVetoesReplacement_LeavesPeerAsSolePresentationAsync()
+    {
+        var anchor = new Button { Text = "Anchor" };
+        var firstContent = new ControlText("First");
+        var first = new Flyout { Anchor = anchor, Content = firstContent };
+        var openingContent = new ControlText("Opening");
+        var opening = new Flyout { Anchor = anchor, Content = openingContent };
+        var root = new Overlay { Children = { anchor, first, opening } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        var openingOpened = 0;
+        var firstClosing = 0;
+        first.CloseRequested += (_, eventArgs) => eventArgs.Cancel = true;
+        first.Closing += (_, _) => firstClosing++;
+        opening.Opened += (_, _) => openingOpened++;
+        await surface.UpdateAsync(() => first.IsOpen = true, "open retained Flyout peer");
+        var firstBounds = first.SurfaceBounds;
+
+        await surface.UpdateAsync(() => opening.IsOpen = true, "veto Flyout replacement");
+
+        first.IsOpen.ShouldBeTrue();
+        first.SurfaceBounds.ShouldBe(firstBounds);
+        firstContent.Visibility.ShouldBe(Visibility.Visible);
+        first.HasLightDismissRegistration.ShouldBeTrue();
+        firstClosing.ShouldBe(0);
+        opening.IsOpen.ShouldBeFalse();
+        opening.SurfaceBounds.ShouldBe(default);
+        openingContent.Visibility.ShouldBe(Visibility.Collapsed);
+        opening.HasLightDismissRegistration.ShouldBeFalse();
+        openingOpened.ShouldBe(0);
+    }
+
     /// <summary>Verifies Flyout exclusion closes only its exact family and leaves an ordinary
     /// owner-managed Popup open.</summary>
     [Fact]

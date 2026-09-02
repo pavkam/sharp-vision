@@ -75,7 +75,8 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <summary>Gets or sets the duration of the shared terminal-cell entrance fade.</summary>
     /// <remarks>
     /// The default zero completes synchronously. Positive transitions use the owning dispatcher's
-    /// monotonic clock and dissolve the complete rendered surface over the current-frame underlay.
+    /// monotonic clock and dissolve the complete rendered subtree, including descendant overflow
+    /// inside the inherited hard clip, over the current-frame underlay.
     /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative or exceeds timer limits.</exception>
     /// <exception cref="InvalidOperationException">The attached surface is presented, exiting, or mutated off-dispatcher.</exception>
@@ -199,6 +200,32 @@ public abstract class FloatingSurfaceBase: ContentControl
     protected void OpenSurface([InstantHandle] Action commitOpenState)
     {
         ArgumentNullException.ThrowIfNull(commitOpenState);
+        _ = OpenSurfaceCore(
+            () =>
+            {
+                commitOpenState();
+                return true;
+            });
+    }
+
+    /// <summary>Attempts one common presentation while allowing a family transaction to decline
+    /// its provisional open commit without publishing <see cref="Opened"/>.</summary>
+    /// <param name="tryCommitOpenState">The non-null family commit that returns false after
+    /// rolling back its provisional state.</param>
+    /// <returns>True when common presentation committed; false when the family declined it.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="tryCommitOpenState"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The ordinary <see cref="OpenSurface"/>
+    /// presentation preconditions fail.</exception>
+    /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
+    /// <exception cref="Exception">A family callback, Opened subscriber, or transition startup fails.</exception>
+    private protected bool TryOpenSurface([InstantHandle] Func<bool> tryCommitOpenState)
+    {
+        ArgumentNullException.ThrowIfNull(tryCommitOpenState);
+        return OpenSurfaceCore(tryCommitOpenState);
+    }
+
+    private bool OpenSurfaceCore([InstantHandle] Func<bool> tryCommitOpenState)
+    {
         VerifyMutable();
 
         if (Dispatcher is null)
@@ -229,12 +256,19 @@ public abstract class FloatingSurfaceBase: ContentControl
 
         try
         {
-            commitOpenState();
+            var familyCommitted = tryCommitOpenState();
 
             if (_openingInvalidated || Dispatcher is null)
             {
                 throw new InvalidOperationException(
                     "A floating surface cannot finish opening after it becomes unavailable.");
+            }
+
+            if (!familyCommitted)
+            {
+                SurfaceBounds = default;
+                IsSurfacePresented = false;
+                return false;
             }
 
             IsSurfacePresented = true;
@@ -270,6 +304,7 @@ public abstract class FloatingSurfaceBase: ContentControl
         }
 
         failure?.Throw();
+        return true;
     }
 
     /// <summary>Closes one presented surface through the common ordered cleanup transaction.</summary>
@@ -992,7 +1027,7 @@ public abstract class FloatingSurfaceBase: ContentControl
         TerminalCanvas canvas,
         TerminalCanvas visual,
         Rect contentClip) =>
-        visual.DrawWithCurrentFrameDissolve(
+        canvas.DrawWithCurrentFrameDissolve(
             FadeProgress,
             revealNewImages: !IsSurfaceExiting && FadeProgress >= 1,
             () => base.RenderFreshWithCompleteEffect(canvas, visual, contentClip));
