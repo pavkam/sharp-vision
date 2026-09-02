@@ -169,7 +169,12 @@ public sealed class DateInput: InputBase
                 ref _culture,
                 value,
                 InvalidationImpact.Measure,
-                () => _calendarDropDown.SyncCulture(Culture),
+                () =>
+                {
+                    _calendarDropDown.SyncCulture(Culture);
+                    _segments.ClampActiveSegment();
+                    _segments.ResetDigitBuffer();
+                },
                 ReferenceEqualityComparer.Instance);
         }
     }
@@ -190,7 +195,12 @@ public sealed class DateInput: InputBase
             ArgumentException.ThrowIfNullOrEmpty(value);
             TemporalFormatValidation.Validate(
                 value, _culture, nameof(value), "DateOnly", static (f, c) => _probeDate.ToString(f, c));
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+
+            if (SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                _segments.ClampActiveSegment();
+                _segments.ResetDigitBuffer();
+            }
         }
     } = "d";
 

@@ -944,6 +944,62 @@ public sealed class DateInputTests
         control.Value.ShouldBe(new DateOnly(2026, 2, 15));
     }
 
+    /// <summary>Verifies a Format change that collapses the segment count clamps the active
+    /// segment back into range instead of leaving it stranded past the new layout's last
+    /// editable segment, so a digit typed afterward still applies instead of silently
+    /// no-opping.</summary>
+    [Fact]
+    public void Format_WhenChangeCollapsesSegmentCount_ClampsActiveSegmentSoDigitEntryStillApplies()
+    {
+        // Arrange: default Format "d" under en-US renders "M/d/yyyy" - Month(0), Day(1),
+        // Year(2). Two Right presses move the active segment to Year.
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 7, 19),
+            Culture = new CultureInfo("en-US")
+        };
+        PressKey(control, Code.Right);
+        PressKey(control, Code.Right);
+
+        // Act: collapse to a single editable segment - a bare "yyyy" pattern is only ever
+        // Year, so the previously active index 2 no longer exists. Without clamping, the
+        // active segment stays stranded at 2 and a typed digit is silently dropped.
+        control.Format = "yyyy";
+        TypeCharacter(control, '5');
+
+        // Assert: the digit committed against the sole remaining segment (Year) instead of
+        // being silently ignored, which would have left Year at its original 2026.
+        control.Value.ShouldNotBeNull().Year.ShouldBe(5);
+    }
+
+    /// <summary>Verifies a Culture change clears any digit already buffered against the
+    /// previous segment kind, instead of silently combining it with a digit typed for a
+    /// different segment kind that now occupies the same editable index.</summary>
+    [Fact]
+    public void Culture_WhenChangeReordersSegmentKinds_DiscardsBufferedDigitFromPreviousKind()
+    {
+        // Arrange: en-US's "M/d/yyyy" places Month at editable index 0. '1' is a valid
+        // leading digit for a two-digit month (10, 11, 12), so it buffers instead of
+        // committing outright.
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 6, 10),
+            Culture = new CultureInfo("en-US")
+        };
+        TypeCharacter(control, '1');
+        control.Value.ShouldNotBeNull().Month.ShouldBe(1);
+
+        // Act: de-DE's "dd.MM.yyyy" places Day at that same editable index 0. Without
+        // clearing the stale buffer, typing '5' next would combine into 15 - a value the
+        // user never intended for Day - instead of starting a fresh entry against it.
+        control.Culture = new CultureInfo("de-DE");
+        TypeCharacter(control, '5');
+
+        // Assert
+        control.Value.ShouldNotBeNull().Day.ShouldBe(5);
+        control.Value.ShouldNotBeNull().Day.ShouldNotBe(15);
+    }
+
     private static void TypeCharacter(DateInput control, char digit) =>
         Router.Route(
             control,
