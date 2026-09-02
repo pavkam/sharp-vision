@@ -161,6 +161,7 @@ internal sealed class WindowPane: CompositeControlBase
             Visibility = Visibility.Collapsed
         };
         var dialogStatus = new Text("Dialog: closed");
+        var dialogCompletionStatus = "Dialog: frame close; focus restored";
         var workspaceStatus = new Text("Workspace action: untouched");
         var workspaceAction = new Button { Text = "Wor&kspace action" };
         var closeButton = new Button
@@ -177,14 +178,14 @@ internal sealed class WindowPane: CompositeControlBase
 
         void CloseDialog(string status)
         {
-            dialogStatus.Content = status;
+            dialogCompletionStatus = status;
             dialog.Close();
         }
 
         closeButton.Click += (_, _) => CloseDialog("Dialog: cancelled; focus restored");
         okButton.Click += (_, _) => CloseDialog("Dialog: confirmed; focus restored");
         dialog.Closing += (_, _) => dialogStatus.Content = "Dialog: fading out; focus confined";
-        dialog.Closed += (_, _) => dialogStatus.Content = "Dialog: closed; focus restored";
+        dialog.Closed += (_, _) => dialogStatus.Content = dialogCompletionStatus;
         dialog.Content = new DocColumn(
             new Text("Proceed with deployment?") { Overflow = Overflow.Wrap },
             new DocRow(okButton, closeButton));
@@ -193,6 +194,7 @@ internal sealed class WindowPane: CompositeControlBase
         openButton.Click += (_, _) =>
         {
             // Ignore blocks background activation while the modal scope owns focus.
+            dialogCompletionStatus = "Dialog: frame close; focus restored";
             _ = dialog.ShowModal(OutsideInteraction.Ignore, okButton);
             dialogStatus.Content = "Dialog: modal (Ignore); focus confined";
         };
