@@ -1358,6 +1358,25 @@ public sealed class TerminalCanvasTests
         AssertBlank(frame);
     }
 
+    /// <summary>
+    /// Verifies a double-width cluster whose x origin sits near the integer maximum still trips
+    /// the edge-overflow check instead of silently wrapping the unchecked `x + cellWidth` sum
+    /// negative and falling through as if the cluster fit, which would degrade a configured
+    /// <see cref="Edge.Wrap"/> policy into <see cref="Edge.Clip"/> behavior.
+    /// </summary>
+    [Fact]
+    public void Draw_WhenWideClusterOriginXIsNearIntMaxValueAndPolicyIsWrap_DetectsOverflowAndWraps()
+    {
+        using Frame frame = new(new Size(2, 2));
+
+        var result = frame.Canvas.Draw("界".AsSpan(), new Point(int.MaxValue - 1, 0), edge: Edge.Wrap);
+
+        result.Clipped.ShouldBe(0);
+        result.Final.ShouldBe(new Point(2, 1));
+        FrameTests.GetText(frame, new Point(0, 1)).ShouldBe("界");
+        frame.GetCell(new Point(1, 1)).Continuation.ShouldBeTrue();
+    }
+
     private static void AssertBlank(Frame frame)
     {
         for (var y = 0; y < frame.Size.Height; y++)

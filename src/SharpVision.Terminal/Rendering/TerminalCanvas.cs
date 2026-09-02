@@ -1035,7 +1035,7 @@ public readonly struct TerminalCanvas
                 replaced = checked(replaced + 1);
             }
 
-            if (cellWidth == 2 && x + cellWidth > _clip.Right)
+            if (cellWidth == 2 && SaturatingAdd(x, cellWidth) > _clip.Right)
             {
                 switch (edge)
                 {
