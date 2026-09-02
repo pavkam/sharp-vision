@@ -109,10 +109,14 @@ into the result list. Selection and current state are provisional until Enter or
 a primary pointer activation accepts a result. Navigation accepts incidental
 lock state but leaves Shift and every application-command-modified movement key
 unhandled. `Close()`, `IsOpen = false`, Escape, direct popup closure, light
-dismissal, and unavailability cancel instead and restore the opening rows. If
-refreshed results no longer contain an opening index, rollback uses the stable
-unselected state. A later session is not closed, invoked, or rolled back by a
-stale activation from an earlier one.
+dismissal, and unavailability cancel instead and restore the opening rows.
+Restoring an opening index also requires the items and selection versions to
+match the opening snapshot: if refreshed results no longer contain an opening
+index, or `Items` or the selection were reassigned since the session opened
+(even when a same-or-larger result count leaves the index numerically in range),
+rollback uses the stable unselected state instead of that stale index. A later
+session is not closed, invoked, or rolled back by a stale activation from an
+earlier one.
 
 Every public callback is a generation boundary. If `ResultsChanged`, popup
 lifecycle, or property notification code starts another query or disposes the
