@@ -512,9 +512,18 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
         // legitimate, merely stale, anchor.
         var anchorRange = new ScrollRange(range.Minimum, range.Maximum, range.Clamp(_dragValueStart), range.Viewport);
         var anchorThumb = ScrollThumb.Resolve(anchorRange, trackLength);
-        var start = anchorThumb.Start + delta;
-        var value = ScrollThumb.ValueAt(range, trackLength, start);
-        _ = Commit(value, ScrollCause.Pointer);
+
+        // A thumb that fills its track - a one-cell track, a span of zero, or a track that shrank
+        // to nothing mid-drag - has no travel, so no pointer offset can name a different value.
+        // ValueAt reports Minimum for that geometry, and committing it would collapse the live
+        // value on the first held move; leave the value alone until the track can travel again.
+        if (anchorThumb.Length < trackLength)
+        {
+            var start = anchorThumb.Start + delta;
+            var value = ScrollThumb.ValueAt(range, trackLength, start);
+            _ = Commit(value, ScrollCause.Pointer);
+        }
+
         eventArgs.IsHandled = true;
 
         if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
