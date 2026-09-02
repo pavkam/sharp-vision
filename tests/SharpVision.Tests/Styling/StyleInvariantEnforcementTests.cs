@@ -5,6 +5,8 @@ namespace SharpVision.Tests.Styling;
 
 using System.Text.Json;
 
+using SharpVision.Tests.Controls;
+
 /// <summary>Verifies a style value cannot be brought into existence in a state its own constructor
 /// would refuse, whichever door it comes through.
 ///
@@ -132,6 +134,30 @@ public sealed class StyleInvariantEnforcementTests
             """, "pressed": { "face": { "attributes": ["underline"], "underline": "straight" } } """)));
 
         error.Message.ShouldContain("styles.control.pressed.face");
+    }
+
+    /// <summary>Verifies the theme-authored counterpart to
+    /// <see cref="Constructor_WhenDecorationsConflict_StillThrows"/> - the issue's exact
+    /// reproduction, a document authoring a semantic underline color with no active underline (no
+    /// typed underline, no legacy attribute flag) - parses cleanly and resolves cleanly too, rather
+    /// than installing successfully only to throw the first time this state is actually resolved.
+    /// The two channels involved are semantic at parse time - "accent" is a color-role reference,
+    /// not a literal - so <c>Face.ValidateDecorations</c>'s literal-only gate never runs during
+    /// parsing; <c>AppearanceResolver.ResolveFace</c> reconciles the triple once every channel
+    /// becomes literal, clearing the color to <see cref="Color.Default"/> per
+    /// <see cref="DecorationResolver.Resolve"/>'s third rule.</summary>
+    [Fact]
+    public void ResolveSnapshot_WhenAThemeAuthorsAnUnderlineColorWithNoActiveUnderline_ReconcilesInsteadOfThrowing()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            controlExtra: """, "pressed": { "face": { "underlineColor": "accent" } } """));
+        var states = theme.Control;
+        var control = new StyledProbe { AppearanceStatesOverride = states };
+
+        var resolved = control.ResolveSnapshot(VisualState.Pressed, theme, states, parentAmbientFace: null);
+
+        resolved.Face.Underline.ShouldBe(Underline.None);
+        resolved.Face.UnderlineColor.Literal.ShouldBe(Color.Default);
     }
 
     /// <summary>Verifies a <c>with</c> expression on <c>Face</c> is checked exactly as the

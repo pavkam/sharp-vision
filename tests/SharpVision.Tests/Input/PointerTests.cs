@@ -702,6 +702,125 @@ public sealed class PointerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a throwing hover callback during disposal still fully severs manager
+    /// ownership, so the root is left free for a replacement manager afterward.</summary>
+    [Fact]
+    public async Task Dispose_WhenHoverCallbackThrows_StillSeversRootOwnershipAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl { Bounds = new Rect(0, 0, 10, 10) };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            var manager = new PointerManager(root);
+
+            _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Move));
+            manager.Hovered.ShouldBeSameAs(child);
+
+            child.ThrowOnPointerOverChanged = true;
+
+            _ = Should.Throw<InvalidOperationException>(manager.Dispose);
+
+            root.CaptureOwner.ShouldBeNull();
+            using var replacement = new PointerManager(root);
+            replacement.Hovered.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies terminal-focus loss also forgets the last known pointer cell, so a later
+    /// hover reconciliation - e.g. from a layout pass - does not resurrect the hover it just
+    /// cancelled.</summary>
+    [Fact]
+    public async Task TerminalFocusLost_WhenHoverIsReconciledAfterward_DoesNotResurrectHoverAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl { Bounds = new Rect(0, 0, 10, 10) };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using PointerManager manager = new(root);
+
+            _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Move));
+            manager.Hovered.ShouldBeSameAs(child);
+
+            manager.TerminalFocusLost();
+            manager.Hovered.ShouldBeNull();
+
+            manager.ReconcileHover();
+
+            manager.Hovered.ShouldBeNull();
+            child.IsPointerOver.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies disabling a hovered leaf clears only its own hover instead of collapsing
+    /// the whole path, restoring hover on its still-eligible ancestors.</summary>
+    [Fact]
+    public async Task Unavailable_WhenHoveredControlDisables_PreservesAncestorHoverAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var panel = new ProbeContainer { Bounds = new Rect(0, 0, 12, 8) };
+            var button = new ProbeControl { Bounds = new Rect(2, 2, 6, 4) };
+            panel.Children.Add(button);
+            root.Children.Add(panel);
+            root.Attach(dispatcher);
+            using PointerManager manager = new(root);
+
+            _ = manager.Dispatch(CreatePointer(new Point(4, 3), PointerAction.Move));
+
+            root.IsPointerOver.ShouldBeTrue();
+            panel.IsPointerOver.ShouldBeTrue();
+            button.IsPointerOver.ShouldBeTrue();
+
+            button.IsEnabled = false;
+
+            button.IsPointerOver.ShouldBeFalse();
+            panel.IsPointerOver.ShouldBeTrue();
+            root.IsPointerOver.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies hiding a hovered leaf clears only its own hover instead of collapsing the
+    /// whole path, restoring hover on its still-eligible ancestors.</summary>
+    [Fact]
+    public async Task Unavailable_WhenHoveredControlHides_PreservesAncestorHoverAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var panel = new ProbeContainer { Bounds = new Rect(0, 0, 12, 8) };
+            var button = new ProbeControl { Bounds = new Rect(2, 2, 6, 4) };
+            panel.Children.Add(button);
+            root.Children.Add(panel);
+            root.Attach(dispatcher);
+            using PointerManager manager = new(root);
+
+            _ = manager.Dispatch(CreatePointer(new Point(4, 3), PointerAction.Move));
+
+            root.IsPointerOver.ShouldBeTrue();
+            panel.IsPointerOver.ShouldBeTrue();
+            button.IsPointerOver.ShouldBeTrue();
+
+            button.Visibility = Visibility.Hidden;
+
+            button.IsPointerOver.ShouldBeFalse();
+            panel.IsPointerOver.ShouldBeTrue();
+            root.IsPointerOver.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies hover transitions and press cancellation clear visual state.</summary>
     [Fact]
     public async Task Dispatch_WhenPointerMovesPressesAndLeaves_UpdatesVisualStatesAsync()

@@ -16,7 +16,7 @@ public sealed record HyperlinkButtonStyle: ControlStyle
     /// <summary>Gets the primary hyperlink-button-style definition. Falls back through
     /// <see cref="Theme.GetInteractiveControlStyleSet"/>; the forced accent-colored underline is
     /// code-owned and applied on top of every resolved state.</summary>
-    internal static StyleDefinition<HyperlinkButtonStyle> Definition { get; } = StyleDefinitions.Control(
+    internal static StyleDefinition<HyperlinkButtonStyle> Definition { get; } = StyleDefinitions.ControlWithThemeOwnedStateDefaults(
         static theme => theme.GetInteractiveControlStyleSet(),
         Complete,
         static (previous, _, current, _) =>

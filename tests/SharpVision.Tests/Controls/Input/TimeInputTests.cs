@@ -909,4 +909,105 @@ public sealed class TimeInputTests
         KeyAction.Press));
 
     #endregion
+
+    /// <summary>Verifies TimeInput's digit and increment segment-editing paths already seed a
+    /// value after Value is cleared to null (e.g. via Delete), instead of refusing to act -
+    /// confirming existing correct behavior, unlike DateInput's equivalent paths before they were
+    /// fixed to do the same.</summary>
+    [Fact]
+    public void SegmentEdit_WhenValueIsNullAfterClear_SeedsForDigitAndIncrement()
+    {
+        // Arrange
+        using var control = new TimeInput { Value = new TimeOnly(9, 30) };
+
+        // Act and assert - a digit typed right after a clear lands on a seeded value instead of
+        // being silently dropped.
+        control.Value = null;
+        TypeCharacter(control, '5');
+        _ = control.Value.ShouldNotBeNull();
+
+        // Act and assert - Up after a clear seeds a value instead of refusing to act.
+        control.Value = null;
+        _ = Router.Route(control, Events.Key, Key(Code.Up));
+        _ = control.Value.ShouldNotBeNull();
+    }
+
+    #region Value width invalidation
+
+    // TimeInput's default zero-padded 'HH:mm'/'hh:mm' layout is fixed-width, so it cannot exercise
+    // the shared width-invalidation mechanism on its own; a custom non-padded 'h:mm' format (hour
+    // without a leading zero) is used here purely to force a demonstrable width variance, mirroring
+    // the same mechanism DateInput and DateTimeInput exercise under their own default formats.
+
+    /// <summary>Verifies a value transition that changes the resolved formatted width invalidates
+    /// Measure, not just Render, since the field's reserved geometry depends on that width.</summary>
+    [Fact]
+    public void Value_WhenFormattedWidthChanges_InvalidatesMeasure()
+    {
+        // Arrange - the non-padded 'h' hour token renders a single-digit hour one cell narrower
+        // than a double-digit one.
+        using var control = new TimeInput
+        {
+            Format = "h:mm",
+            Value = new TimeOnly(9, 0)
+        };
+        control.Clear(Invalidation.All);
+
+        // Act
+        control.Value = new TimeOnly(12, 0);
+
+        // Assert
+        control.Pending.ShouldBe(Invalidation.All);
+    }
+
+    /// <summary>Verifies a value transition that keeps the same resolved formatted width
+    /// invalidates rendering only.</summary>
+    [Fact]
+    public void Value_WhenFormattedWidthIsUnchanged_InvalidatesRenderOnly()
+    {
+        // Arrange
+        using var control = new TimeInput
+        {
+            Format = "h:mm",
+            Value = new TimeOnly(9, 0)
+        };
+        control.Clear(Invalidation.All);
+
+        // Act - both times render with a single-digit hour under 'h:mm'.
+        control.Value = new TimeOnly(9, 30);
+
+        // Assert
+        control.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies a Measure-impact value transition actually remeasures the field: the
+    /// relaid-out DesiredSize matches a fresh control constructed directly with the new value,
+    /// rather than leaving geometry sized for the previous, narrower value.</summary>
+    [Fact]
+    public void Value_WhenFormattedWidthChanges_RelayoutProducesFreshDesiredSize()
+    {
+        // Arrange
+        using var control = new TimeInput
+        {
+            Format = "h:mm",
+            Value = new TimeOnly(9, 0)
+        };
+        new LayoutEngine().Layout(control, new Size(40, 3));
+
+        // Act
+        control.Value = new TimeOnly(12, 0);
+        new LayoutEngine().Layout(control, new Size(40, 3));
+
+        using var fresh = new TimeInput
+        {
+            Format = "h:mm",
+            Value = new TimeOnly(12, 0)
+        };
+        new LayoutEngine().Layout(fresh, new Size(40, 3));
+
+        // Assert
+        control.DesiredSize.ShouldBe(fresh.DesiredSize);
+    }
+
+    #endregion
 }

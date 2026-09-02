@@ -39,6 +39,21 @@ public sealed class ToastStyleTests
         resolved.Shadow.ShouldBe(theme.GetStyleSet(PopupStyle.Default).Normal.Shadow);
     }
 
+    /// <summary>Verifies a theme-authored non-Flat popup relief reaches the resolved Toast border
+    /// instead of being forced Flat, matching every other popup-derived surface.</summary>
+    [Fact]
+    public void Definition_Resolve_WhenThemeAuthorsPopupRelief_PreservesRelief()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create().Replace(
+            "\"popup\": { \"normal\": { \"border\": { \"sides\":\"all\", \"glyphStyle\":\"rounded\" } } }",
+            "\"popup\": { \"normal\": { \"border\": { \"sides\":\"all\", \"glyphStyle\":\"rounded\", \"relief\":\"sunken\" } } }",
+            StringComparison.Ordinal));
+
+        var resolved = ToastStyle.Definition.Resolve(null, theme);
+
+        resolved.Border.Relief.ShouldBe(BorderRelief.Sunken);
+    }
+
     /// <summary>Verifies geometry members schedule measure while color-only members use the appearance pipeline.</summary>
     [Fact]
     public void Definition_Compare_WhenPaddingChanges_IsMeasure()

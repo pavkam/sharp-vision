@@ -151,6 +151,73 @@ public sealed class ApplicationTests
         application.Theme.ShouldBeSameAs(ThemeCatalog.Dark);
     }
 
+    /// <summary>Verifies a plan-phase publication failure, with no reentrancy involved, rolls
+    /// Application.Theme back to the theme the tree still shows instead of committing the rejected value.</summary>
+    [Fact]
+    public async Task Theme_WhenPlanPhaseThrows_RollsBackToPreviousThemeAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var root = new StyledProbe { AppearanceStatesFailureTheme = ThemeCatalog.White };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+
+        _ = await application.Dispatcher.InvokeAsync(
+            () => Should.Throw<InvalidOperationException>(() => application.Theme = ThemeCatalog.White),
+            TestContext.Current.CancellationToken);
+
+        application.Theme.ShouldBeSameAs(ThemeCatalog.Dark);
+        root.Theme.ShouldBeNull();
+    }
+
+    /// <summary>Verifies a subscriber that throws after the tree has already committed the new theme
+    /// does not roll Application.Theme back, since the tree genuinely moved.</summary>
+    [Fact]
+    public async Task Theme_WhenPostCommitSubscriberThrows_KeepsNewThemeAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var root = new StyledProbe();
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        root.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(root.Theme))
+            {
+                throw new InvalidOperationException("post-commit");
+            }
+        };
+
+        _ = await application.Dispatcher.InvokeAsync(
+            () => Should.Throw<InvalidOperationException>(() => application.Theme = ThemeCatalog.White),
+            TestContext.Current.CancellationToken);
+
+        application.Theme.ShouldBeSameAs(ThemeCatalog.White);
+        root.Theme.ShouldBeSameAs(ThemeCatalog.White);
+    }
+
+    /// <summary>Verifies reassigning the same theme that a failed publish rejected is no longer a
+    /// silent no-op, and now actually converges the tree.</summary>
+    [Fact]
+    public async Task Theme_WhenSameThemeReassignedAfterFailedPublish_ConvergesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        var root = new StyledProbe { AppearanceStatesFailureTheme = ThemeCatalog.White };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+
+        _ = await application.Dispatcher.InvokeAsync(
+            () => Should.Throw<InvalidOperationException>(() => application.Theme = ThemeCatalog.White),
+            TestContext.Current.CancellationToken);
+
+        application.Theme.ShouldBeSameAs(ThemeCatalog.Dark);
+        root.Theme.ShouldBeNull();
+
+        root.AppearanceStatesFailureTheme = null;
+
+        _ = await application.Dispatcher.InvokeAsync(
+            () => application.Theme = ThemeCatalog.White,
+            TestContext.Current.CancellationToken);
+
+        application.Theme.ShouldBeSameAs(ThemeCatalog.White);
+        root.Theme.ShouldBeSameAs(ThemeCatalog.White);
+    }
+
     /// <summary>Verifies Window activation is an empty read model before the control tree initializes.</summary>
     [Fact]
     public async Task ActiveWindow_WhenApplicationIsNotStarted_IsNullAsync()
@@ -1658,6 +1725,242 @@ public sealed class ApplicationTests
         application.Failure.ShouldBeSameAs(thrown);
     }
 
+    /// <summary>Verifies a throwing Diagnostic subscriber does not skip the promotion check that
+    /// follows it. The raise site used to be a bare <c>?.Invoke</c>, so a throwing handler
+    /// propagated straight out of Dispatch and
+    /// ApplicationDiagnosticPromotionClassifier.ThrowIfConfigured never ran for that occurrence -
+    /// the promotion still has to fire even though the subscriber blew up first.</summary>
+    [Fact]
+    public async Task Input_WhenADiagnosticHandlerThrowsAndPromotionIsConfigured_StillPromotesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var options = TerminalOptions.Minimal with
+        {
+            DiagnosticPromotions = DiagnosticPromotion.MalformedInput
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        List<Exception> reported = [];
+        var promoted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+
+            if (eventArgs.Exception is TerminalDiagnosticException)
+            {
+                _ = promoted.TrySetResult();
+            }
+        };
+        application.Diagnostic += (_, _) => throw new InvalidOperationException("diagnostic-boom");
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+        var diagnostic = new Diagnostic(
+            DiagnosticCode.Malformed,
+            SequenceKind.Csi,
+            offset: 4,
+            discardedBytes: 2);
+
+        application.Input(in diagnostic);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without
+        // the fix, ThrowIfConfigured never runs and promoted.Task never settles, so this test
+        // must fail on a timeout instead of hanging.
+        await promoted.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "diagnostic-boom");
+        var promotedException = reported.OfType<TerminalDiagnosticException>().ShouldHaveSingleItem();
+        promotedException.Promotion.ShouldBe(DiagnosticPromotion.MalformedInput);
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("diagnostic-boom");
+    }
+
+    /// <summary>Verifies a throwing ResponseReceived subscriber does not force the dispatch loop
+    /// to unwind. The raise site used to be a bare <c>?.Invoke</c>, so a throwing handler
+    /// propagated straight out of Dispatch instead of surfacing through
+    /// <see cref="Application.UnhandledException"/> like its RaiseIsolated-routed siblings in the
+    /// same switch.</summary>
+    [Fact]
+    public async Task Response_WhenAResponseReceivedHandlerThrows_IsIsolatedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        List<Exception> reported = [];
+        var reportedException = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+            _ = reportedException.TrySetResult();
+        };
+        application.ResponseReceived += (_, _) => throw new InvalidOperationException("response-boom");
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+
+        terminal.QueueInput("[?1;2c"u8);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without
+        // the fix, the exception propagates straight out of Dispatch and reportedException never
+        // settles, so this test must fail on a timeout instead of hanging.
+        await reportedException.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "response-boom");
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("response-boom");
+    }
+
+    /// <summary>Verifies a throwing PaletteResponseReceived subscriber does not force the dispatch
+    /// loop to unwind, mirroring the ResponseReceived regression test above for the palette raise
+    /// site.</summary>
+    [Fact]
+    public async Task Response_WhenAPaletteResponseReceivedHandlerThrows_IsIsolatedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        List<Exception> reported = [];
+        var reportedException = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+            _ = reportedException.TrySetResult();
+        };
+        application.PaletteResponseReceived += (_, _) => throw new InvalidOperationException("palette-response-boom");
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+
+        terminal.QueueInput("]4;0;rgb:1111/2222/3333\\"u8);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without
+        // the fix, the exception propagates straight out of Dispatch and reportedException never
+        // settles, so this test must fail on a timeout instead of hanging.
+        await reportedException.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "palette-response-boom");
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("palette-response-boom");
+    }
+
+    /// <summary>Verifies a throwing MetricsResponseReceived subscriber does not force the dispatch
+    /// loop to unwind, mirroring the ResponseReceived regression test above for the metrics raise
+    /// site.</summary>
+    [Fact]
+    public async Task Response_WhenAMetricsResponseReceivedHandlerThrows_IsIsolatedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        List<Exception> reported = [];
+        var reportedException = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+            _ = reportedException.TrySetResult();
+        };
+        application.MetricsResponseReceived += (_, _) => throw new InvalidOperationException("metrics-response-boom");
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+
+        terminal.QueueInput("[4;800;1200t"u8);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without
+        // the fix, the exception propagates straight out of Dispatch and reportedException never
+        // settles, so this test must fail on a timeout instead of hanging.
+        await reportedException.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "metrics-response-boom");
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("metrics-response-boom");
+    }
+
+    /// <summary>Verifies a throwing StatusResponseReceived subscriber does not force the dispatch
+    /// loop to unwind, mirroring the ResponseReceived regression test above for the DECRQSS status
+    /// raise site.</summary>
+    [Fact]
+    public async Task Response_WhenAStatusResponseReceivedHandlerThrows_IsIsolatedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        List<Exception> reported = [];
+        var reportedException = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+            _ = reportedException.TrySetResult();
+        };
+        application.StatusResponseReceived += (_, _) => throw new InvalidOperationException("status-response-boom");
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+
+        terminal.QueueInput("P1$r0m\\"u8);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without
+        // the fix, the exception propagates straight out of Dispatch and reportedException never
+        // settles, so this test must fail on a timeout instead of hanging.
+        await reportedException.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "status-response-boom");
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("status-response-boom");
+    }
+
+    /// <summary>Verifies a throwing CapabilityResponseReceived subscriber does not force the
+    /// dispatch loop to unwind, mirroring the ResponseReceived regression test above for the
+    /// XTGETTCAP capability raise site.</summary>
+    [Fact]
+    public async Task Response_WhenACapabilityResponseReceivedHandlerThrows_IsIsolatedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        List<Exception> reported = [];
+        var reportedException = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+            _ = reportedException.TrySetResult();
+        };
+        application.CapabilityResponseReceived += (_, _) =>
+            throw new InvalidOperationException("capability-response-boom");
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+
+        terminal.QueueInput("P1+r524742=3234\\"u8);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without
+        // the fix, the exception propagates straight out of Dispatch and reportedException never
+        // settles, so this test must fail on a timeout instead of hanging.
+        await reportedException.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "capability-response-boom");
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("capability-response-boom");
+    }
+
     /// <summary>Verifies unavailable synchronized output is a frame fallback promoted after commit.</summary>
     [Fact]
     public async Task StartAsync_WhenSynchronizedOutputIsUnavailableAndFallbackPromoted_StopsAfterFrameAsync()
@@ -2104,6 +2407,58 @@ public sealed class ApplicationTests
 
         thrown.Promotion.ShouldBe(DiagnosticPromotion.Fallback);
         application.Failure.ShouldBeSameAs(thrown);
+    }
+
+    /// <summary>Verifies a throwing GraphicsDiagnostic subscriber does not skip the promotion
+    /// check that follows it, mirroring the Diagnostic regression test above for the fallback
+    /// raise site.</summary>
+    [Fact]
+    public async Task StartAsync_WhenAGraphicsDiagnosticHandlerThrowsAndPromotionIsConfigured_StillPromotesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(2, 1), new Size(5, 3)));
+        var image = new Image
+        {
+            Source = UndecodablePng(),
+            AlternateText = "PN",
+            Width = Length.Cells(2),
+            Height = Length.Cells(1)
+        };
+        var options = Options(sixel: true) with
+        {
+            DiagnosticPromotions = DiagnosticPromotion.Fallback
+        };
+        await using Application application = new(image, terminal, terminal, options);
+        List<Exception> reported = [];
+        var promoted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+
+            if (eventArgs.Exception is TerminalDiagnosticException)
+            {
+                _ = promoted.TrySetResult();
+            }
+        };
+        application.GraphicsDiagnostic += (_, _) => throw new InvalidOperationException("graphics-diagnostic-boom");
+
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without
+        // the fix, ThrowIfConfigured never runs and promoted.Task never settles, so this test
+        // must fail on a timeout instead of hanging.
+        await promoted.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "graphics-diagnostic-boom");
+        var promotedException = reported.OfType<TerminalDiagnosticException>().ShouldHaveSingleItem();
+        promotedException.Promotion.ShouldBe(DiagnosticPromotion.Fallback);
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("graphics-diagnostic-boom");
     }
 
     /// <summary>
@@ -3229,6 +3584,80 @@ public sealed class ApplicationTests
         await application.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         terminal.Writes.ShouldContain(write => write.Length == 1 && write[0] == 0x07); // BUG (pre-fix): stranded
+        application.Failure.ShouldBeNull();
+        application.LastCleanupException.ShouldBeNull();
+    }
+
+    /// <summary>Verifies out-of-band bytes are still flushed when a forced stop commits while the
+    /// application is suspended (a zero-cell size), matching
+    /// <see cref="DrainOutOfBand_WhenStopCommitsWhileOutOfBandIsBuffered_FlushesBufferedOutOfBandBytesAsync"/>
+    /// but with <c>Suspended()</c> true throughout. DrainOutOfBand used to gate its <c>_stopping</c>
+    /// flush behind a combined <c>IsRendering || Suspended()</c> short-circuit, so this callback
+    /// returned without ever reaching the <c>_stopping</c> branch while suspended, stranding the
+    /// bytes silently, with <c>Failure</c> and <c>LastCleanupException</c> both staying null.</summary>
+    [Fact]
+    public async Task DrainOutOfBand_WhenStopCommitsWhileSuspendedWithOutOfBandBuffered_FlushesBufferedOutOfBandBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(0, 0)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        application.Size.ShouldBe(new Size(0, 0));
+
+        using var release = new SemaphoreSlim(0, 1);
+
+        // Block the dispatcher on a placeholder so the Closed record and the out-of-band post
+        // below both land in the queue before either is processed - otherwise the dispatcher could
+        // latch _stopping from the Closed record before PostOutOfBand's own _stopping check (on
+        // this thread) runs, and the write would never even be buffered.
+        application.Dispatcher.Post(release.Wait);
+
+        // Commit a forced stop - its Closed record is queued behind the placeholder above - then
+        // buffer an out-of-band write. Posting it strictly after Shutdown() guarantees its own
+        // queued DrainOutOfBand callback lands behind the Closed record, so DrainOutOfBand is the
+        // first thing to observe _stopping once the placeholder releases below.
+        application.Shutdown();
+        application.PostOutOfBand(new byte[] { 0x07 });
+
+        _ = release.Release();
+
+        await application.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        terminal.Writes.ShouldContain(write => write.Length == 1 && write[0] == 0x07);
+        application.Failure.ShouldBeNull();
+        application.LastCleanupException.ShouldBeNull();
+    }
+
+    /// <summary>Verifies out-of-band bytes buffered while suspended-but-not-stopping are still
+    /// flushed once a later stop commits, even though no further out-of-band post - and therefore no
+    /// further DrainOutOfBand callback - ever happens. DrainOutOfBand bails at its
+    /// <c>Suspended()</c> gate while suspended and not yet stopping, clearing <c>_outOfBandWake</c>
+    /// with bytes still buffered; PostOutOfBand refuses to post once <c>_stopping</c> is set, so
+    /// nothing would otherwise ever revisit those bytes. Reordering DrainOutOfBand's guards alone
+    /// does not rescue this shape - only the explicit flush in ObserveSessionAsync's BeginStopping
+    /// step does - so this exercises that flush directly, with <c>Failure</c> and
+    /// <c>LastCleanupException</c> both staying null.</summary>
+    [Fact]
+    public async Task Stop_WhenCommittedAfterOutOfBandWasBufferedWhileSuspended_FlushesBufferedOutOfBandBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(0, 0)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        application.Size.ShouldBe(new Size(0, 0));
+
+        // Buffer the write and let its queued DrainOutOfBand callback run to completion while still
+        // suspended and not stopping, so it bails at the Suspended() gate with bytes still buffered
+        // and _outOfBandWake cleared - exactly the state a later stop with no intervening resize or
+        // post must still rescue.
+        application.PostOutOfBand(new byte[] { 0x07 });
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        application.Shutdown();
+
+        await application.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        terminal.Writes.ShouldContain(write => write.Length == 1 && write[0] == 0x07);
         application.Failure.ShouldBeNull();
         application.LastCleanupException.ShouldBeNull();
     }
@@ -5101,6 +5530,69 @@ public sealed class ApplicationTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an <c>Idle</c> handler that throws after invalidating a control does not skip
+    /// the invalidation-flush check that follows the Idle raise: the pending invalidation must still
+    /// reach a render instead of being stranded until unrelated dispatcher activity happens to arrive
+    /// and re-arm idle detection.</summary>
+    [Fact]
+    public async Task Idle_WhenAHandlerThrowsAfterInvalidatingAControl_StillFlushesTheInvalidationAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var probe = new ProbeControl { Content = "a".AsMemory() };
+        await using Application application = new(probe, terminal, terminal, TerminalOptions.Minimal);
+        var frames = 0;
+        var idles = 0;
+        Exception? reported = null;
+        var secondFrame = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported = eventArgs.Exception;
+            eventArgs.IsHandled = true;
+        };
+        application.FrameRendered += (_, _) =>
+        {
+            frames++;
+
+            if (frames == 2)
+            {
+                _ = secondFrame.TrySetResult();
+            }
+        };
+        application.Idle += (_, _) =>
+        {
+            idles++;
+
+            if (idles == 1)
+            {
+                // Invalidate first, exactly like the non-throwing counterpart test, then throw -
+                // the flush check after the Idle raise must still run despite the throw.
+                probe.Content = "b".AsMemory();
+                probe.InvalidateKernel(InvalidationImpact.Render);
+
+                throw new InvalidOperationException("idle-boom");
+            }
+        };
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        // With nothing else happening on the dispatcher, the invalidation raised from inside the
+        // throwing Idle callback must still reach a render without waiting for unrelated dispatcher
+        // work to arrive and re-arm idle detection.
+        await secondFrame.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        frames.ShouldBe(2);
+        reported.ShouldBeOfType<InvalidOperationException>().Message.ShouldBe("idle-boom");
+
+        // The recorded Failure persists past the handled report and resurfaces once the
+        // application actually stops - the same shape as the other "handler throws, marked
+        // handled" tests in this class (e.g. the Resize counterpart above).
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+
+        thrown.Message.ShouldBe("idle-boom");
+    }
+
     /// <summary>Verifies a record enqueued while DrainInput's finally block is between resetting the
     /// wake latch and re-checking the queue is still delivered, instead of being stranded until some
     /// unrelated later Enqueue happens to re-arm the latch. The window is a handful of CPU
@@ -5170,6 +5662,114 @@ public sealed class ApplicationTests
 
         codes.ShouldBe([Code.Enter, Code.Escape]);
         await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a throwing layout pass inside DrainInput's finally block does not strand
+    /// the input wake latch. Once <see cref="Application.UnhandledException"/> marks the failure
+    /// handled, a record that raced its way into the queue during that same drain pass - exactly
+    /// like <see cref="Input_WhenEnqueueRacesDrainFinally_DeliversStrandedRecordAsync"/> above -
+    /// must still be delivered by the reposted <c>DrainInput</c>, instead of the application going
+    /// permanently and silently deaf because the throw skipped the repost entirely.</summary>
+    [Fact]
+    public async Task Input_WhenDrainFinallyLayoutPassThrows_StillDeliversLaterInputAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var child = new ProbeControl { IsFocusable = true };
+        var root = new Stack { Children = { child } };
+        await using Application application = new(
+            root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+
+        var unhandled = 0;
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            unhandled++;
+            eventArgs.IsHandled = true;
+        };
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        List<Code> codes = [];
+        var delivered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            application.Focus.Focus(child).ShouldBeTrue();
+            _ = child.AddHandler(Events.Key, (_, eventArgs) =>
+            {
+                if (eventArgs.Phase != RoutingPhase.Bubble)
+                {
+                    return;
+                }
+
+                codes.Add(eventArgs.Stroke.Code);
+
+                if (eventArgs.Stroke.Code == Code.Enter)
+                {
+                    // Arm the next measure pass to throw and invalidate measure so
+                    // ProcessInvalidation - called from DrainInput's finally block below - has a
+                    // real layout pass pending to run and blow up on. ControlBase.Measure's catch
+                    // block re-invalidates Measure before rethrowing, so this must disarm itself
+                    // on the way out - otherwise the still-dirty flag makes the reposted drain's
+                    // own ProcessInvalidation() measure (and throw) a second time.
+                    child.Measuring = probe =>
+                    {
+                        probe.Measuring = null;
+                        throw new InvalidOperationException("The probe measure pass failed.");
+                    };
+                    child.InvalidateKernel(InvalidationImpact.Measure);
+                }
+
+                if (codes.Count == 2)
+                {
+                    _ = delivered.TrySetResult();
+                }
+            });
+        }, TestContext.Current.CancellationToken);
+        var strokeA = new Stroke(Code.Enter, character: null, nativeCode: 0, Modifiers.None, KeyAction.Press);
+        var strokeB = new Stroke(Code.Escape, character: null, nativeCode: 0, Modifiers.None, KeyAction.Press);
+        var hookReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new();
+        application.DrainInputRaceHookForTests = () =>
+        {
+            hookReached.SetResult();
+            release.Wait();
+        };
+
+        // strokeA's Enqueue arms the latch and posts DrainInput, which dequeues strokeA, dispatches
+        // it (arming the child's next measure pass to throw and invalidating it), observes the
+        // queue empty, releases the dequeue lock, and then parks in the hook above - latch still
+        // true, finally's reset/ProcessInvalidation not yet run.
+        application.Input(in strokeA);
+        await hookReached.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // strokeB's Enqueue now races the parked drain: it observes _inputWake already true and
+        // returns without posting a repost, exactly like the sibling race test above - so only the
+        // finally block's own repost decision can ever schedule delivery for it.
+        await Task.Run(() => application.Input(in strokeB), TestContext.Current.CancellationToken);
+
+        // Clear the hook before releasing the drain so the reposted DrainInput this triggers does
+        // not re-enter a hook that already fired.
+        application.DrainInputRaceHookForTests = null;
+        release.Set();
+
+        // The reset/repost decision now sees strokeB queued and sets repost = true, then
+        // ProcessInvalidation() runs the pending measure pass and throws. Before the fix, that
+        // throw escaped past the repost call entirely, leaving _inputWake stuck true with strokeB
+        // stranded forever and the application silently deaf from then on. The fix's inner
+        // try/finally around ProcessInvalidation runs the repost regardless of the throw, so
+        // strokeB still arrives once UnhandledException marks the resulting failure handled.
+        await delivered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        unhandled.ShouldBe(1);
+        codes.ShouldBe([Code.Enter, Code.Escape]);
+
+        // Handling UnhandledException lets the dispatcher continue but does not erase Failure
+        // (docs/architecture/error-handling.md), so StopAsync still surfaces the original throw.
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("The probe measure pass failed.");
     }
 
     /// <summary>Verifies DrainInput's finally-block repost tolerates a dispatcher disposal landing

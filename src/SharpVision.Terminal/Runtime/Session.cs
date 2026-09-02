@@ -439,6 +439,7 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(alternateScreen, cancellationToken).ConfigureAwait(false);
             alternateScreenActive = true;
+            PublishModes(Diagnostics.Modes.WithBaseActivation(alternateScreenActive, cursorHiddenActive));
         }
         else if (_options.AlternateScreen)
         {
@@ -450,6 +451,7 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(cursor, cancellationToken).ConfigureAwait(false);
             cursorHiddenActive = true;
+            PublishModes(Diagnostics.Modes.WithBaseActivation(alternateScreenActive, cursorHiddenActive));
         }
         else if (_options.HideCursor)
         {
@@ -483,6 +485,13 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(CreateFocusLease(), cancellationToken).ConfigureAwait(false);
             focusActive = true;
+            PublishModes(Diagnostics.Modes.WithOptionalActivation(
+                focusActive,
+                pasteActive,
+                mouseActive,
+                kittyKeyboardActive,
+                modifyOtherKeysActive,
+                clipboardPasteEventsActive));
         }
         else if (_options.Focus)
         {
@@ -493,6 +502,13 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(CreatePasteLease(), cancellationToken).ConfigureAwait(false);
             pasteActive = true;
+            PublishModes(Diagnostics.Modes.WithOptionalActivation(
+                focusActive,
+                pasteActive,
+                mouseActive,
+                kittyKeyboardActive,
+                modifyOtherKeysActive,
+                clipboardPasteEventsActive));
         }
         else if (_options.Paste)
         {
@@ -505,6 +521,13 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(clipboardPasteEvents, cancellationToken).ConfigureAwait(false);
             clipboardPasteEventsActive = true;
+            PublishModes(Diagnostics.Modes.WithOptionalActivation(
+                focusActive,
+                pasteActive,
+                mouseActive,
+                kittyKeyboardActive,
+                modifyOtherKeysActive,
+                clipboardPasteEventsActive));
         }
         else if (_options.ClipboardPasteEvents)
         {
@@ -519,6 +542,13 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(CreateMouseLease(), cancellationToken).ConfigureAwait(false);
             mouseActive = true;
+            PublishModes(Diagnostics.Modes.WithOptionalActivation(
+                focusActive,
+                pasteActive,
+                mouseActive,
+                kittyKeyboardActive,
+                modifyOtherKeysActive,
+                clipboardPasteEventsActive));
         }
         else if (_options.Tracking.HasValue)
         {
@@ -529,6 +559,13 @@ public sealed class Session: IAsyncDisposable
         {
             await EnableAsync(CreateKeyboardLease(), cancellationToken).ConfigureAwait(false);
             kittyKeyboardActive = true;
+            PublishModes(Diagnostics.Modes.WithOptionalActivation(
+                focusActive,
+                pasteActive,
+                mouseActive,
+                kittyKeyboardActive,
+                modifyOtherKeysActive,
+                clipboardPasteEventsActive));
 
             if ((_options.Keyboard.Value &
                  (Kitty.Keyboard.KittyKeyboardEnhancement.Disambiguate |
@@ -546,6 +583,13 @@ public sealed class Session: IAsyncDisposable
 
             await EnableAsync(CreateModifyOtherKeysLease(), cancellationToken).ConfigureAwait(false);
             modifyOtherKeysActive = true;
+            PublishModes(Diagnostics.Modes.WithOptionalActivation(
+                focusActive,
+                pasteActive,
+                mouseActive,
+                kittyKeyboardActive,
+                modifyOtherKeysActive,
+                clipboardPasteEventsActive));
         }
         else if (_options.Keyboard.HasValue || _options.ModifyOtherKeys.HasValue)
         {
@@ -563,14 +607,21 @@ public sealed class Session: IAsyncDisposable
 
     private void ReportAndPromote(DiagnosticPromotion promotion, DiagnosticCode code)
     {
-        if ((_options.DiagnosticPromotions & promotion) == 0)
-        {
-            return;
-        }
-
+        // When the sink is an Application, _sink.Input enqueues the same diagnostic record for
+        // its own dispatcher-thread promotion classifier (ApplicationDiagnosticPromotionClassifier
+        // .ThrowIfConfigured) in addition to the throw below - a pre-existing double-fault
+        // exposure for every promoted family, not one this method's own report-then-throw shape
+        // creates or changes. Reporting was already unconditional for every promoted family before
+        // this method stopped gating it: the old early-return only ever suppressed the unpromoted
+        // case, which never threw either way. Resolving which of the two sites should defer is a
+        // separate, cross-cutting design decision outside this method's own scope.
         var diagnostic = new Diagnostic(code, SequenceKind.None, offset: 0, discardedBytes: 0);
         _sink.Input(in diagnostic);
-        throw new TerminalDiagnosticException(promotion);
+
+        if ((_options.DiagnosticPromotions & promotion) != 0)
+        {
+            throw new TerminalDiagnosticException(promotion);
+        }
     }
 
     private async ValueTask EnableAsync(Lease lease, CancellationToken cancellationToken)
@@ -764,13 +815,25 @@ public sealed class Session: IAsyncDisposable
 
             if (started)
             {
+                // A low caller-supplied query budget can crowd the CSI 6n cursor-position fence
+                // out of the written batch entirely (it is registered last, after every other
+                // family). Gating only on FenceQueried - not on the whole negotiation window -
+                // matters: a modified F3 keystroke arriving while the flag is set is classified
+                // as a query reply instead of a key, so enabling this when no fence was actually
+                // sent would misclassify and silently swallow the keystroke for no reason, one
+                // the fix this flag exists for was written to eliminate.
+                if (negotiator.FenceQueried)
+                {
+                    router.EnableCursorPositionQuery();
+                }
+
                 await _transport.WriteAsync(queries.WrittenMemory, cancellationToken)
                     .ConfigureAwait(false);
                 await _transport.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
             else
             {
-                _ = PublishNegotiation(negotiator);
+                _ = PublishNegotiation(negotiator, router);
             }
         }
 
@@ -873,7 +936,7 @@ public sealed class Session: IAsyncDisposable
                         continue;
                     }
 
-                    var capabilities = PublishNegotiation(negotiator);
+                    var capabilities = PublishNegotiation(negotiator, router);
                     modes = await EnableOptionalAsync(
                             capabilities,
                             router,
@@ -952,7 +1015,7 @@ public sealed class Session: IAsyncDisposable
                     if (!ready)
                     {
                         _ = negotiator!.Complete();
-                        _ = PublishNegotiation(negotiator);
+                        _ = PublishNegotiation(negotiator, router);
                         ready = true;
                         deadline = null;
 
@@ -1003,7 +1066,7 @@ public sealed class Session: IAsyncDisposable
 
                 if (!ready && negotiator!.Completed)
                 {
-                    var capabilities = PublishNegotiation(negotiator);
+                    var capabilities = PublishNegotiation(negotiator, router);
                     modes = await EnableOptionalAsync(
                             capabilities,
                             router,
@@ -1226,9 +1289,15 @@ public sealed class Session: IAsyncDisposable
             : capabilities.CellMouse.Supported;
     }
 
-    private TerminalCapabilities PublishNegotiation(Negotiator negotiator)
+    private TerminalCapabilities PublishNegotiation(Negotiator negotiator, ProtocolRouter router)
     {
         Debug.Assert(negotiator.Completed, "Only a completed negotiation can publish diagnostics.");
+
+        // Every completion path funnels through here, so this is the one place that reliably
+        // closes the cursor-position query window regardless of which of the four routes above
+        // (route-encoding failure, deadline expiry, transport EOF, or an in-band match) actually
+        // finished negotiation.
+        router.DisableCursorPositionQuery();
         var capabilities = negotiator.Capabilities;
         _context = _context.WithCapabilities(capabilities);
         Diagnostics = Diagnostics.WithNegotiation(

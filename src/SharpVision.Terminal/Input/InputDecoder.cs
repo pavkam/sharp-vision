@@ -39,6 +39,7 @@ public sealed class InputDecoder: IDisposable
     private bool _disposed;
     private bool _escapePending;
     private bool _kittyKeyboardDisambiguationEnabled;
+    private bool _cursorPositionQueryPending;
     private bool _ss3Pending;
 
     /// <summary>Initializes a decoder with a stable synchronous event sink.</summary>
@@ -104,6 +105,18 @@ public sealed class InputDecoder: IDisposable
     /// Kitty disambiguation lease.</summary>
     internal void EnableKittyKeyboardDisambiguation() =>
         _kittyKeyboardDisambiguationEnabled = true;
+
+    /// <summary>Marks a DSR cursor-position query (<c>CSI 6n</c>) as genuinely outstanding, so the
+    /// byte-identical <c>CSI 1;&lt;mod&gt;R</c> shape is trusted as that reply instead of the
+    /// legacy-grammar encoding of a modified F3 keystroke.</summary>
+    internal void EnableCursorPositionQuery() =>
+        _cursorPositionQueryPending = true;
+
+    /// <summary>Marks the outstanding DSR cursor-position query as no longer pending, so
+    /// <c>CSI 1;&lt;mod&gt;R</c> is decoded as a modified F3 keystroke again instead of being
+    /// claimed as a cursor-position reply.</summary>
+    internal void DisableCursorPositionQuery() =>
+        _cursorPositionQueryPending = false;
 
     /// <summary>Consumes one borrowed transport fragment synchronously.</summary>
     /// <param name="input">The borrowed bytes.</param>
@@ -211,6 +224,8 @@ public sealed class InputDecoder: IDisposable
         _escapePending = false;
         _skippedBytes = checked(_skippedBytes + 1);
         _utf8.Flush();
+        _mouseDecoder.EndIfPending();
+        EndSs3IfPending();
         EmitEscape();
         return true;
     }
@@ -658,7 +673,11 @@ public sealed class InputDecoder: IDisposable
     /// enhancement-flags query reply, <c>CSI ? &lt;flags&gt; u</c>) and
     /// <see cref="TryHandleKittyCsi"/> (a Kitty keyboard event report, <c>CSI &lt;code&gt;u</c>
     /// with no private marker) — the former runs first and only claims its own marker/shape, so
-    /// the latter still sees every report the former does not recognize.
+    /// the latter still sees every report the former does not recognize. A CSI ending in
+    /// <c>R</c> with no private marker and exactly two positive parameters is likewise
+    /// byte-identical between a DSR cursor-position reply and a modified F3 keystroke;
+    /// <see cref="TryHandleXtermCsi"/> only claims that shape while a cursor-position query is
+    /// genuinely outstanding, so <see cref="TryHandleLegacyCsiKey"/> still sees it otherwise.
     /// </summary>
     private readonly CsiHandler[] _csiHandlers;
 
@@ -703,6 +722,16 @@ public sealed class InputDecoder: IDisposable
     private bool TryHandleXtermCsi(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final)
     {
         if (!XtermResponses.TryCsi(parameters, intermediates, final, out var response))
+        {
+            return false;
+        }
+
+        // CSI 1;<mod>R is byte-identical between a real DSR cursor-position reply and the
+        // legacy-grammar encoding of a modified F3 keystroke (Shift/Ctrl/Alt+F3). No parse-level
+        // discriminator can tell them apart, so this only trusts the shape as a reply while a
+        // cursor-position query is genuinely outstanding; otherwise it falls through to
+        // TryHandleLegacyCsiKey below, which maps the same final byte to Code.F3.
+        if (response.Kind == ResponseKind.CursorPosition && !_cursorPositionQueryPending)
         {
             return false;
         }
@@ -772,12 +801,26 @@ public sealed class InputDecoder: IDisposable
         return true;
     }
 
-    private bool TryHandleLegacyCsiKey(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final) =>
-        intermediates.IsEmpty &&
-        (_options.UseAnsiKeyGrammar ||
-         _kittyKeyboardDisambiguationEnabled ||
-         HasKittyEventType(parameters)) &&
-        TryHandleCsiKey(parameters, final);
+    private bool TryHandleLegacyCsiKey(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final)
+    {
+        if (!intermediates.IsEmpty)
+        {
+            return false;
+        }
+
+        // Deliberately excludes UseAnsiKeyGrammar: that flag only controls whether this
+        // legacy-shape handler fires at all, not what bit 3 of the modifier byte means. The
+        // disambiguation lease alone (with no event sub-parameter present) is enough to call this
+        // Kitty grammar: the lease is already the signal the decoder trusts to accept this
+        // otherwise-ambiguous shape as a real Kitty keystroke, so reading its modifier byte with
+        // legacy ctlseqs.txt semantics afterward would be internally inconsistent - a byte
+        // sequence decoding differently before vs after Kitty-keyboard negotiation is intentional
+        // here, not accidental.
+        var isKittyGrammar = _kittyKeyboardDisambiguationEnabled || HasKittyEventType(parameters);
+
+        return (_options.UseAnsiKeyGrammar || isKittyGrammar) &&
+            TryHandleCsiKey(parameters, final, isKittyGrammar);
+    }
 
     // Kitty reuses the legacy CSI cursor-key finals when progressive event reporting is active.
     // Repeat and release carry a distinguishing event sub-parameter, while press may omit its
@@ -805,6 +848,17 @@ public sealed class InputDecoder: IDisposable
             return true;
         }
 
+        // Kitty reports repeat/release on tilde-form functional keys (Delete, Insert,
+        // PageUp/Down, F5-F12) as a colon-separated event type appended to the modifier field -
+        // e.g. "3;1:2~" for a Delete repeat. That colon is only valid in this second field, so it
+        // is decoded here before falling through to the plain-modifier reader below, which would
+        // otherwise reject any colon outright.
+        if (TryReadTildeEventParameters(parameters, out var eventNative, out var eventModifiers, out var eventAction))
+        {
+            HandleTilde(eventNative, eventModifiers, eventAction);
+            return true;
+        }
+
         Span<int> values = stackalloc int[3];
 
         if (!TryReadParameters(parameters, values, out var count))
@@ -818,7 +872,56 @@ public sealed class InputDecoder: IDisposable
             return true;
         }
 
-        HandleTilde(values, count);
+        if (count is < 1 or > 2 || values[0] < 0 ||
+            !TryGetModifier(count == 2 ? values[1] : 1, out var modifiers))
+        {
+            Report(DiagnosticCode.Malformed, SequenceKind.Csi);
+            return true;
+        }
+
+        HandleTilde(values[0], modifiers, KeyAction.Press);
+        return true;
+    }
+
+    /// <summary>Attempts to read a tilde-form functional key's native code together with a
+    /// Kitty-style colon-delimited modifier/event-type field (e.g. "3;1:2" for a Delete repeat).
+    /// Returns false whenever the modifier field carries no colon, leaving the plain
+    /// legacy-modifier path above to handle it instead.</summary>
+    private static bool TryReadTildeEventParameters(
+        ReadOnlySpan<byte> parameters,
+        out int native,
+        out Modifiers modifiers,
+        out KeyAction action)
+    {
+        native = 0;
+        modifiers = Modifiers.None;
+        action = KeyAction.Press;
+
+        var semicolon = parameters.IndexOf((byte) ';');
+
+        if (semicolon < 0)
+        {
+            return false;
+        }
+
+        var nativeField = parameters[..semicolon];
+        var modifierField = parameters[(semicolon + 1)..];
+
+        if (modifierField.IndexOf((byte) ':') < 0 || modifierField.IndexOf((byte) ';') >= 0)
+        {
+            return false;
+        }
+
+        if (!Kitty.Keyboard.KittyKeyDecoder.TryDecimal(nativeField, allowEmpty: false, out native, out var nativeSeparator) ||
+            nativeSeparator != ParameterSeparator.None ||
+            !Kitty.Keyboard.KittyKeyDecoder.TryReadModifiers(modifierField, out modifiers, out action))
+        {
+            return false;
+        }
+
+        // See the matching remap in TryReadCsiModifiers: Kitty's own bit 3 is Super, but this
+        // legacy ANSI grammar (guarded by UseAnsiKeyGrammar above) defines bit 3 as Meta.
+        RemapLegacySuperToMeta(ref modifiers);
         return true;
     }
 
@@ -866,7 +969,7 @@ public sealed class InputDecoder: IDisposable
         }
     }
 
-    private bool TryHandleCsiKey(ReadOnlySpan<byte> parameters, byte final)
+    private bool TryHandleCsiKey(ReadOnlySpan<byte> parameters, byte final, bool isKittyGrammar)
     {
         // CSI Z (cursor back-tab / Shift+Tab) has no SS3 equivalent, so it stays CSI-only. An
         // unmapped final byte returns false rather than Code.Unknown: CSI sits in an extensible
@@ -881,7 +984,7 @@ public sealed class InputDecoder: IDisposable
             return false;
         }
 
-        if (!TryReadCsiModifiers(parameters, out var modifiers, out var action))
+        if (!TryReadCsiModifiers(parameters, isKittyGrammar, out var modifiers, out var action))
         {
             Report(DiagnosticCode.Malformed, SequenceKind.Csi);
             return true;
@@ -896,16 +999,8 @@ public sealed class InputDecoder: IDisposable
         return true;
     }
 
-    private void HandleTilde(ReadOnlySpan<int> values, int count)
+    private void HandleTilde(int native, Modifiers modifiers, KeyAction action)
     {
-        if (count is < 1 or > 2 || values[0] < 0 ||
-            !TryGetModifier(count == 2 ? values[1] : 1, out var modifiers))
-        {
-            Report(DiagnosticCode.Malformed, SequenceKind.Csi);
-            return;
-        }
-
-        var native = values[0];
         var code = native switch
         {
             1 or 7 => Code.Home,
@@ -928,7 +1023,7 @@ public sealed class InputDecoder: IDisposable
             24 => Code.F12,
             _ => Code.Unknown
         };
-        EmitStroke(code, null, native, modifiers);
+        EmitStroke(code, null, native, modifiers, action);
     }
 
     private bool TryHandleModifiedOtherKey(int encodedModifiers, int native)
@@ -1011,9 +1106,16 @@ public sealed class InputDecoder: IDisposable
 
     private bool TryHandleOscSequence(SequenceKind kind, ReadOnlySpan<byte> value, StringTerminator terminator)
     {
-        if (kind != SequenceKind.Osc || !XtermResponses.TryOsc(value, out var response))
+        if (kind != SequenceKind.Osc ||
+            !(value.StartsWith("4;"u8) || value.StartsWith("10;rgb:"u8) || value.StartsWith("11;rgb:"u8)))
         {
             return false;
+        }
+
+        if (!XtermResponses.TryOsc(value, out var response))
+        {
+            Report(DiagnosticCode.Malformed, kind);
+            return true;
         }
 
         if (_protocolSink is { } protocolSink)
@@ -1265,6 +1367,7 @@ public sealed class InputDecoder: IDisposable
 
     private static bool TryReadCsiModifiers(
         ReadOnlySpan<byte> parameters,
+        bool isKittyGrammar,
         out Modifiers modifiers,
         out KeyAction action)
     {
@@ -1303,8 +1406,14 @@ public sealed class InputDecoder: IDisposable
 
         // KittyKeyDecoder.TryReadModifiers decodes into Kitty's own CSI-u bit layout, where bit 3
         // is Super. Legacy-grammar CSI modifiers reuse the same wire encoding but define bit 3 as
-        // Meta (per ctlseqs.txt), so remap it here rather than in the shared Kitty decoder.
-        RemapLegacySuperToMeta(ref modifiers);
+        // Meta (per ctlseqs.txt), so remap it here rather than in the shared Kitty decoder - but
+        // only when this sequence is not itself Kitty grammar (event sub-parameter present, or the
+        // disambiguation lease active), since then bit 3 already means Super.
+        if (!isKittyGrammar)
+        {
+            RemapLegacySuperToMeta(ref modifiers);
+        }
+
         return true;
     }
 

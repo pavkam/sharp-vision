@@ -54,17 +54,19 @@ each control's default behavior. A handled route keeps the key. Only an
 unhandled stroke reaches access-key discovery, so an application or control can
 reserve Alt input using the normal routed-event API.
 
-Legacy terminals represent an Alt character as an adjacent stroke/text pair.
-When the stroke activates an access key, `Application` consumes only the
-immediately adjacent equal text Rune, so the character cannot leak into the
-newly focused editor. Only a stroke that is both declined by routing and not
-discovered as an access key leaves its text record untouched: a stroke consumed
-anywhere on or around its route - a preview handler, an ordinary routed default
-such as `TextInput`'s Ctrl+A/Z/Y, or a framework-level clipboard shortcut -
-suppresses its paired text record the same way an access key does, so the same
-principle stated below for `MenuItem.Shortcut` applies uniformly to every
-consume path, not only the two named here (see
-[route construction](input-routing.md#route-construction)).
+Legacy terminals represent an Alt character as an adjacent stroke/text pair, and
+Kitty associated text can report several text records for one stroke. When the
+stroke activates an access key, `Application` consumes every adjacent text
+record unconditionally - it does not compare Runes, since a consumed stroke's
+paired record(s) may carry scalars that differ from the stroke's own character -
+so the mnemonic cannot leak into the newly focused editor. Only a stroke that is
+both declined by routing and not discovered as an access key leaves its text
+record untouched: a stroke consumed anywhere on or around its route - a preview
+handler, an ordinary routed default such as `TextInput`'s Ctrl+A/Z/Y, or a
+framework-level clipboard shortcut - suppresses its paired text record the same
+way an access key does, so the same principle stated below for
+`MenuItem.Shortcut` applies uniformly to every consume path, not only the two
+named here (see [route construction](input-routing.md#route-construction)).
 
 `MenuItem.Shortcut` dispatch is the mirror image: it runs _before_ the ordinary
 route, not after. A matching chord invokes its item and the stroke never reaches

@@ -673,7 +673,10 @@ public sealed class TreeViewSurfaceTests
     }
 
     /// <summary>Verifies replacing the theme re-resolves the fallback rather than latching the
-    /// family observed at attachment.</summary>
+    /// family observed at attachment - including the row's own measured width, not only the
+    /// glyphs painted into whatever cells the last layout pass reserved. The default mount theme
+    /// resolves the three-cell Brackets family; <see cref="TickTheme"/>'s "blocks" family resolves
+    /// the one-cell Square family, so a correct remeasure narrows the row by exactly two cells.</summary>
     [Fact]
     public async Task ActualCheckMark_WhenThemeIsReplaced_FollowsTheNewFamilyAsync()
     {
@@ -684,11 +687,15 @@ public sealed class TreeViewSurfaceTests
             new Size(24, 8),
             TestContext.Current.CancellationToken);
         var before = item.ActualCheckMark.Glyphs;
+        var beforeDesiredSize = item.DesiredSize;
+        item.ActualCheckMark.Width.ShouldBe(3);
 
         await surface.UpdateAsync(() => surface.Application.Theme = TickTheme(), "swap to tick glyphs");
 
         item.ActualCheckMark.Glyphs.ShouldNotBe(before);
         item.ActualCheckMark.Glyphs.Checked.ShouldBe(new Rune('☒'));
+        item.ActualCheckMark.Width.ShouldBe(1);
+        item.DesiredSize.Width.ShouldBe(beforeDesiredSize.Width - 2);
     }
 
     /// <summary>The counter-case that keeps the change honest: an explicit per-item override still
@@ -888,6 +895,48 @@ public sealed class TreeViewSurfaceTests
                                 • Loading…
 
                               """);
+    }
+
+    /// <summary>Verifies a Theme swap that moves the resolved loading-row color reaches the
+    /// status row itself, not only the owning TreeView - the row shares <c>_itemsStack.Children</c>
+    /// with <see cref="TreeViewItem"/> but resolves its color by reaching sideways into the
+    /// owner's <see cref="TreeView.ActualStyle"/> during render, with no style slot or dependency
+    /// of its own, so the tree's own correctly-computed impact would otherwise never travel down
+    /// to it.</summary>
+    [Fact]
+    public async Task Render_WhenThemeChangesLoadingColor_InvalidatesTheStatusRowAsync()
+    {
+        var source = new FakeTreeViewChildSource();
+        _ = source.DeferNext(null);
+        var root = new TreeViewItem("Root") { ChildSource = source };
+        var tree = CreateTree(20);
+        tree.Items.Add(root);
+        // Far enough apart that no color-depth quantization the surface applies could round both
+        // to the same bucket and defeat the before/after comparison below.
+        var previousTheme = ThemeCatalog.Parse(ThemeJson.Create(muted: "#000000"));
+        var currentTheme = ThemeCatalog.Parse(ThemeJson.Create(muted: "#ffffff"));
+
+        await using var surface = await ComponentSurface.MountAsync(
+            tree,
+            new Size(20, 4),
+            previousTheme,
+            TestContext.Current.CancellationToken);
+        await DialogWait.UntilAsync(surface, root, () => root.ChildState == TreeViewChildState.Loading);
+        _ = OwnedTree.Find<TreeViewStatusRow>(tree).ShouldNotBeNull();
+
+        // Row 0/3 are the container's own border, row 1 is "Root", row 2 is the status row's
+        // "  • Loading..." - its glyph sits at column 3 (1 for the border, 2 for the one-level
+        // indent).
+        var glyphCell = new Point(3, 2);
+        var beforeForeground = surface.Cell(glyphCell).Style.Foreground;
+
+        await surface.UpdateAsync(() => surface.Application.Theme = currentTheme, "swap loading color");
+
+        // Pending is consumed by UpdateAsync's own render pass, so the only way to observe the
+        // invalidation actually reached the status row (as opposed to only the owning TreeView)
+        // is to check the row's own rendered output changed - mirroring the before/after pattern
+        // ActualCheckMark_WhenThemeIsReplaced_FollowsTheNewFamilyAsync uses for the same reason.
+        surface.Cell(glyphCell).Style.Foreground.ShouldNotBe(beforeForeground);
     }
 
     /// <summary>Verifies a failed request draws the configured failed text with its own status

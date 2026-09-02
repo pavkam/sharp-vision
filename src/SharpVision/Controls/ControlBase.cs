@@ -37,6 +37,16 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         static theme => theme.GetStyleSet(InputStyle.Default).Normal.AffixGap,
         InvalidationImpact.Measure);
 
+    // Backs the common ApplyTextSelectionStyle base implementation below: both semantic colors
+    // are resolved bare, outside any style member, so neither the slot walk nor the appearance
+    // diff can see a Theme swap that moves them - only a registered dependency does.
+    private static readonly ThemeValueDependency<Color> _selectedTextThemeDependency = new(
+        static theme => ResolveColor(new ControlColor(SemanticColor.SelectedText), theme),
+        InvalidationImpact.Render);
+    private static readonly ThemeValueDependency<Color> _selectedControlThemeDependency = new(
+        static theme => ResolveColor(new ControlColor(SemanticColor.SelectedControl), theme),
+        InvalidationImpact.Render);
+
     private IThemeValueDependency[]? _themeValueDependencies;
     private AppearanceStatesOverlay? _appearanceOverlay;
     private bool? _effectiveIsVisible;
@@ -1543,20 +1553,30 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             if (!IsDisposed)
             {
                 ArrangeOverride(contentSlot);
-                ArrangeOverlays(content);
+
+                // ArrangeOverride can synchronously dispose `this` via a subscriber-owned event.
+                if (!IsDisposed)
+                {
+                    ArrangeOverlays(content);
+                }
             }
 
-            if (ContextMenu?.Presentation is { } contextMenuPresentation)
+            // ArrangeOverride can synchronously dispose `this` via a subscriber-owned event, and
+            // this block has no early exit between its own statements to catch that on its own.
+            if (!IsDisposed)
             {
-                _ = MeasureChild(contextMenuPresentation, new Constraint(null, null));
-                ArrangeChild(contextMenuPresentation, RootBounds(bounds), ResolvedAxes.Both);
-            }
+                if (ContextMenu?.Presentation is { } contextMenuPresentation)
+                {
+                    _ = MeasureChild(contextMenuPresentation, new Constraint(null, null));
+                    ArrangeChild(contextMenuPresentation, RootBounds(bounds), ResolvedAxes.Both);
+                }
 
-            ClearCollapsedOwnedChildBounds();
+                ClearCollapsedOwnedChildBounds();
 
-            if (bounds != previousBounds)
-            {
-                BoundsChanged?.Invoke(this, EventArgs.Empty);
+                if (bounds != previousBounds)
+                {
+                    BoundsChanged?.Invoke(this, EventArgs.Empty);
+                }
             }
         }
         catch
@@ -2535,15 +2555,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
         var eventArgs = new PropertyChangedEventArgs(propertyName);
 
-        foreach (var subscriber in handlers.GetInvocationList())
-        {
-            if (_synchronizedPropertyVersions[propertyName] != version)
-            {
-                break;
-            }
-
-            ((PropertyChangedEventHandler) subscriber)(this, eventArgs);
-        }
+        EventPublication.Publish<PropertyChangedEventHandler>(
+            handlers,
+            () => _synchronizedPropertyVersions[propertyName] == version,
+            handler => handler(this, eventArgs));
     }
 
     /// <summary>Commits an ownership edge without invoking user callbacks.</summary>
@@ -2556,6 +2571,14 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             "The slot belongs to the committed parent.");
         Parent = parent;
         ReleaseInvalidStyleBindings();
+        if (parent is null)
+        {
+            // This control's own Parent is already cleared above, so the whole detached subtree
+            // is now unreachable from any surviving ancestor chain - release every descendant's
+            // now-invalid style bindings too, not just this control's.
+            ReleaseInvalidStyleBindingsInSubtree();
+        }
+
         InvalidateEffectiveState();
         OwningSlot = slot;
     }
@@ -4481,6 +4504,19 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             slot.ReleaseInvalidBinding();
         }
     }
+
+    /// <summary>Releases every no-longer-valid style-binding edge on this control's whole owned
+    /// subtree. A control removed from its owner only has its own bindings reconciled by
+    /// <see cref="ReleaseInvalidStyleBindings"/> - a deeper descendant never observes its ancestor
+    /// leaving the tree, so its binding edges would otherwise survive the detach and permanently
+    /// poison its style slots. Mirrors the recursive-descendant-walk shape of
+    /// <see cref="InvalidateDescendants"/>.</summary>
+    private void ReleaseInvalidStyleBindingsInSubtree() =>
+        VisitChildren(child =>
+        {
+            child.ReleaseInvalidStyleBindings();
+            child.ReleaseInvalidStyleBindingsInSubtree();
+        });
 
     private void RegisterStyleSlot(StyleSlotBase slot)
     {
@@ -6768,16 +6804,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             return;
         }
 
-        foreach (var subscriber in handlers.GetInvocationList())
-        {
-            if (TextSelectionTransitionVersion != transitionVersion)
-            {
-                break;
-            }
-
-            var handler = (EventHandler<TextSelectionChangedEventArgs>) subscriber;
-            handler(this, eventArgs);
-        }
+        EventPublication.Publish<EventHandler<TextSelectionChangedEventArgs>>(
+            handlers,
+            () => TextSelectionTransitionVersion == transitionVersion,
+            handler => handler(this, eventArgs));
     }
 
     /// <summary>Invokes a component's own compatibility selection-changed event without redelivering
@@ -6795,15 +6825,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             return;
         }
 
-        foreach (var subscriber in handlers.GetInvocationList())
-        {
-            if (TextSelectionTransitionVersion != transitionVersion)
-            {
-                break;
-            }
-
-            ((EventHandler) subscriber)(sender, EventArgs.Empty);
-        }
+        EventPublication.Publish<EventHandler>(
+            handlers,
+            () => TextSelectionTransitionVersion == transitionVersion,
+            handler => handler(sender, EventArgs.Empty));
     }
 
     /// <summary>Invokes a component's own compatibility selection-changed event without redelivering
@@ -6824,15 +6849,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             return;
         }
 
-        foreach (var subscriber in handlers.GetInvocationList())
-        {
-            if (TextSelectionTransitionVersion != transitionVersion)
-            {
-                break;
-            }
-
-            ((EventHandler<TEventArgs>) subscriber)(sender, eventArgs);
-        }
+        EventPublication.Publish<EventHandler<TEventArgs>>(
+            handlers,
+            () => TextSelectionTransitionVersion == transitionVersion,
+            handler => handler(sender, eventArgs));
     }
 
     /// <summary>Publishes component compatibility state after base selection commits.</summary>
@@ -6925,9 +6945,17 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     internal bool ShouldCaptureTextSelectionOnPress => CaptureTextSelectionOnPress;
 
     /// <summary>Gets the common final-adornment colors for this owner.</summary>
+    /// <remarks>
+    /// Routed through <see cref="ResolveThemeValue{T}"/> rather than a bare
+    /// <see cref="ResolveColor(ControlColor)"/> call, so a Theme swap that changes what either
+    /// semantic color resolves to is covered by a registered dependency instead of being invisible
+    /// to every mechanism that normally notices a swap - the same gap already closed for
+    /// <c>TextInput</c>, <c>CodeView</c>, and <c>Document</c>, which never reach this base
+    /// implementation because each overrides it.
+    /// </remarks>
     protected virtual TerminalStyle ApplyTextSelectionStyle(TerminalStyle current) => new(
-        ResolveColor(new ControlColor(SemanticColor.SelectedText)),
-        ResolveColor(new ControlColor(SemanticColor.SelectedControl)),
+        ResolveThemeValue(_selectedTextThemeDependency),
+        ResolveThemeValue(_selectedControlThemeDependency),
         current.Attributes,
         current.Hyperlink,
         current.Underline,

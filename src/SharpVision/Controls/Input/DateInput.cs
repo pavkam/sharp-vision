@@ -55,7 +55,8 @@ public sealed class DateInput: InputBase
             () => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime),
             RaiseValueChanged,
             SynchronizeCalendarValue,
-            SyncCalendarBounds);
+            SyncCalendarBounds,
+            resolveValueImpact: ResolveValueWidthImpact);
         _calendarDropDown = new CalendarDropDownCoordinator<DateOnly>(
             _culture,
             EnsureSeeded,
@@ -81,6 +82,16 @@ public sealed class DateInput: InputBase
             cancelSession: _calendarDropDown.CancelSession,
             acceptSession: _calendarDropDown.AcceptSession);
         _popup.ContentHeightLimit = Length.Cells(10);
+
+        // ActualCalendarStyle is a live projection of the owned Calendar's own ActualStyle rather
+        // than a style slot DateInput owns directly, so nothing raises PropertyChanged for it on
+        // either a local CalendarStyle assignment or a theme swap unless something forwards
+        // Calendar's own notification through. This bridge does exactly that.
+        _ = RegisterRetainedPartProperty(
+            _calendarDropDown.Calendar,
+            nameof(Calendar.ActualStyle),
+            nameof(ActualCalendarStyle),
+            () => _calendarDropDown.Calendar.ActualStyle);
         EnablePressActivation();
         _segments = EnableSegmentEditing(
             BuildSegments,
@@ -158,7 +169,12 @@ public sealed class DateInput: InputBase
                 ref _culture,
                 value,
                 InvalidationImpact.Measure,
-                () => _calendarDropDown.SyncCulture(Culture),
+                () =>
+                {
+                    _calendarDropDown.SyncCulture(Culture);
+                    _segments.ClampActiveSegment();
+                    _segments.ResetDigitBuffer();
+                },
                 ReferenceEqualityComparer.Instance);
         }
     }
@@ -179,7 +195,12 @@ public sealed class DateInput: InputBase
             ArgumentException.ThrowIfNullOrEmpty(value);
             TemporalFormatValidation.Validate(
                 value, _culture, nameof(value), "DateOnly", static (f, c) => _probeDate.ToString(f, c));
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+
+            if (SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                _segments.ClampActiveSegment();
+                _segments.ResetDigitBuffer();
+            }
         }
     } = "d";
 
@@ -537,7 +558,11 @@ public sealed class DateInput: InputBase
     {
         if (_state.Value is not { } date)
         {
-            return false;
+            // AllowNull defaults to true, so a prior Delete (or an explicit Value = null) can
+            // leave the value unset. Rather than refusing the increment outright, seed today's
+            // date - the same seed DateInput resolves lazily at construction - so Up/Down starts
+            // producing a value instead of silently doing nothing forever.
+            return CommitSegmentValue(_state.Clamp(DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime)));
         }
 
         if (kind == TemporalSegmentKind.Year)
@@ -584,7 +609,16 @@ public sealed class DateInput: InputBase
     {
         if (_state.Value is not { } date)
         {
-            return false;
+            // Same rationale as ApplySegmentIncrement: seed today's date instead of refusing,
+            // so a digit typed after Delete lands on a real value rather than being dropped.
+            _ = _state.SetValue(_state.Clamp(DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime)));
+
+            if (_state.Value is not { } seeded)
+            {
+                return false;
+            }
+
+            date = seeded;
         }
 
         try
@@ -662,14 +696,16 @@ public sealed class DateInput: InputBase
 
     #region Rendering helpers
 
-    private SegmentDescriptor[] BuildSegments()
+    private SegmentDescriptor[] BuildSegments() => BuildSegments(_state.Value);
+
+    private SegmentDescriptor[] BuildSegments(DateOnly? value)
     {
         var pattern = ResolveDatePattern();
         var tokens = TemporalPatternSegmenter.ParseTokens(pattern, _tokenKinds, _culture);
 
         IReadOnlyList<string> text;
 
-        if (_state.Value is { } date)
+        if (value is { } date)
         {
             var renderingCulture = Format.Length == 1 && Format[0] is 'r' or 'R'
                 ? CultureInfo.InvariantCulture
@@ -706,7 +742,14 @@ public sealed class DateInput: InputBase
         {
             var token = tokens[index];
 
-            descriptors[index] = token.Kind is not { } kind
+            // A weekday (dddd) or month-name (MMMM) run of length >= 3 is a name, not a
+            // zero-padded number: rendering it as an ordinary editable segment would let a typed
+            // digit be misinterpreted as a day-of-month or month-number and corrupt the date.
+            // Building it as a literal instead makes it inert for digit entry, tab/arrow
+            // traversal, and Increment alike, since SegmentFieldBehavior gates all three purely
+            // on SegmentDescriptor.IsEditable.
+            descriptors[index] = token.Kind is not { } kind ||
+                (kind is TemporalSegmentKind.Month or TemporalSegmentKind.Day && token.RunLength >= 3)
                 ? new SegmentDescriptor(text[index])
                 : new SegmentDescriptor(
                     text[index],
@@ -726,17 +769,31 @@ public sealed class DateInput: InputBase
         return descriptors;
     }
 
-    private string FormatValue()
+    private string FormatValue() => FormatValue(_state.Value);
+
+    private string FormatValue(DateOnly? value)
     {
         var builder = new StringBuilder();
 
-        foreach (var segment in BuildSegments())
+        foreach (var segment in BuildSegments(value))
         {
             _ = builder.Append(segment.Text);
         }
 
         return builder.ToString();
     }
+
+    /// <summary>Grades a value transition by its resolved display-width delta, mirroring
+    /// <see cref="ControlBase.GetAffixChangeImpact"/> for affixes: a same-width transition (for
+    /// example incrementing a zero-padded day segment) needs only
+    /// <see cref="InvalidationImpact.Render"/>, while a transition that widens or narrows the
+    /// formatted text (a single-digit month or day widening to two digits under a non-padded
+    /// <see cref="Format"/>) needs <see cref="InvalidationImpact.Measure"/> so the field box is
+    /// remeasured instead of leaving stale geometry behind.</summary>
+    private InvalidationImpact ResolveValueWidthImpact(DateOnly? previous, DateOnly? candidate) =>
+        MeasureCells(FormatValue(previous)) == MeasureCells(FormatValue(candidate))
+            ? InvalidationImpact.Render
+            : InvalidationImpact.Measure;
 
     [Pure]
     private static TerminalStyle SegmentHighlightStyle(TerminalStyle source) => new(

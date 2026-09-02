@@ -1265,7 +1265,6 @@ public sealed class Frame: IDisposable
     private void RefreshRowFingerprints()
     {
         const ulong offsetBasis = 14695981039346656037;
-        const ulong prime = 1099511628211;
 
         for (var row = 0; row < Size.Height; row++)
         {
@@ -1275,11 +1274,13 @@ public sealed class Frame: IDisposable
             for (var column = 0; column < Size.Width; column++)
             {
                 var cell = GetCellByIndex(offset + column);
-                value = (value ^ cell.Width) * prime;
-                value = (value ^ (uint) (cell.IsContinuation ? (cell.LeadIndex % Size.Width) + 2 : 1)) * prime;
-                value = (value ^ (uint) cell.Style.GetHashCode()) * prime;
-                value = (value ^ cell.Hash) * prime;
-                value = (value ^ (uint) cell.Length) * prime;
+                value = MixCellFingerprint(
+                    value,
+                    cell.Width,
+                    (uint) (cell.IsContinuation ? (cell.LeadIndex % Size.Width) + 2 : 1),
+                    (uint) cell.Style.GetHashCode(),
+                    cell.Hash,
+                    (uint) cell.Length);
             }
 
             _rowFingerprints![row] = value;
@@ -1287,5 +1288,27 @@ public sealed class Frame: IDisposable
 
         _rowFingerprintRevision = _mutationRevision;
         _rowFingerprintsValid = true;
+    }
+
+    /// <summary>Mixes one cell's semantic fields into a row fingerprint accumulator.</summary>
+    /// <remarks>
+    /// Shared with <see cref="Damage"/> so a row hashes identically whether its content comes from
+    /// committed cells or from synthetic overlay-projected fields standing in for them.
+    /// </remarks>
+    internal static ulong MixCellFingerprint(
+        ulong value,
+        uint width,
+        uint continuationMarker,
+        uint styleHash,
+        uint semanticHash,
+        uint length)
+    {
+        const ulong prime = 1099511628211;
+        value = (value ^ width) * prime;
+        value = (value ^ continuationMarker) * prime;
+        value = (value ^ styleHash) * prime;
+        value = (value ^ semanticHash) * prime;
+        value = (value ^ length) * prime;
+        return value;
     }
 }

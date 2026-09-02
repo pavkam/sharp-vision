@@ -40,6 +40,7 @@ internal sealed class JsonViewPane: CompositeControlBase
               "contributors": [
                 {
                   "name": "Alex",
+                  "名前": "アレックス",
                   "roles": ["maintainer", "design"],
                   "contact": {
                     "email": "alex@example.com",

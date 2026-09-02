@@ -23,10 +23,12 @@ public interface INotifications
     /// <param name="body">The non-null notification body without terminal control characters.</param>
     /// <exception cref="ArgumentNullException"><paramref name="body"/> is null.</exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="body"/> contains a terminal control character.
+    /// <see cref="IsSupported"/> is <see langword="true"/> and <paramref name="body"/> contains a
+    /// terminal control character.
     /// </exception>
     /// <exception cref="InvalidOperationException">
-    /// The dispatcher's bounded post queue was full at the moment of the call.
+    /// <see cref="IsSupported"/> is <see langword="true"/> and the dispatcher's bounded post queue
+    /// was full at the moment of the call.
     /// </exception>
     public void Notify(string body);
 
@@ -40,11 +42,13 @@ public interface INotifications
     /// <paramref name="title"/> or <paramref name="body"/> is null.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="title"/> or <paramref name="body"/> contains a terminal control character,
-    /// or <paramref name="title"/> contains a <c>;</c> character.
+    /// <see cref="IsSupported"/> is <see langword="true"/> and <paramref name="title"/> or
+    /// <paramref name="body"/> contains a terminal control character, or <paramref name="title"/>
+    /// contains a <c>;</c> character.
     /// </exception>
     /// <exception cref="InvalidOperationException">
-    /// The dispatcher's bounded post queue was full at the moment of the call.
+    /// <see cref="IsSupported"/> is <see langword="true"/> and the dispatcher's bounded post queue
+    /// was full at the moment of the call.
     /// </exception>
     public void Notify(string title, string body);
 }

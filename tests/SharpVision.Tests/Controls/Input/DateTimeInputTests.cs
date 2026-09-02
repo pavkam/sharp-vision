@@ -416,6 +416,41 @@ public sealed class DateTimeInputTests
         control.ActualCalendarStyle.ShouldBe(calendar.ActualStyle);
     }
 
+    /// <summary>Verifies assigning CalendarStyle raises PropertyChanged for ActualCalendarStyle
+    /// when the resolved presentation actually changes.</summary>
+    [Fact]
+    public void CalendarStyle_WhenAssignedStyleChangesResolvedValue_RaisesActualCalendarStylePropertyChanged()
+    {
+        using var control = new DateTimeInput();
+        var style = CalendarStyle.Default with { SelectedDayColor = Color.Rgb(65, 43, 21) };
+        var notifications = new List<string?>();
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        control.CalendarStyle = style;
+
+        notifications.ShouldContain(nameof(DateTimeInput.ActualCalendarStyle));
+        control.ActualCalendarStyle.ShouldBe(style);
+    }
+
+    /// <summary>Verifies a Theme swap that changes the owned Calendar's resolved presentation
+    /// raises PropertyChanged for ActualCalendarStyle on the host.</summary>
+    [Fact]
+    public void PropagateTheme_WhenCalendarPresentationDiffers_RaisesActualCalendarStylePropertyChanged()
+    {
+        var previousTheme = ThemeCatalog.Parse(ThemeJson.Create(accent: "#010203"));
+        var currentTheme = ThemeCatalog.Parse(ThemeJson.Create(accent: "#040506"));
+        using var control = new DateTimeInput();
+        control.PropagateTheme(previousTheme);
+        var calendar = OwnedTree.Find<UiCalendar>(control).ShouldNotBeNull();
+        var notifications = new List<string?>();
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        control.PropagateTheme(currentTheme);
+
+        notifications.ShouldContain(nameof(DateTimeInput.ActualCalendarStyle));
+        control.ActualCalendarStyle.ShouldBe(calendar.ActualStyle);
+    }
+
     /// <summary>Verifies reading Value on a detached, never-mounted control falls back to the
     /// system clock instead of throwing or returning null, proving the lazy default still
     /// resolves without a dispatcher to observe.</summary>
@@ -654,6 +689,84 @@ public sealed class DateTimeInputTests
         control.Value.Value.Date.ShouldBe(new DateTime(2026, 7, 20));
         control.Value.Value.TimeOfDay.ShouldBe(new TimeSpan(0, 14, 30, 0, 789).Add(TimeSpan.FromTicks(4321)));
         control.Value.Value.Kind.ShouldBe(DateTimeKind.Utc);
+    }
+
+    /// <summary>Verifies clicking the Minimum boundary day in the popup, when the preserved
+    /// time-of-day would undershoot Minimum's time-of-day on that day, advances the accepted date
+    /// forward one day instead of silently rewriting the untouched time to Minimum's.</summary>
+    [Fact]
+    public void Popup_WhenBoundaryDayUndershootsMinimumTime_AdvancesDatePreservesTime()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Minimum = new DateTime(2024, 6, 10, 14, 0, 0),
+            Maximum = new DateTime(2024, 6, 20, 23, 59, 59),
+            Value = new DateTime(2024, 6, 15, 9, 0, 0),
+            IsOpen = true
+        };
+
+        // Act: move the active date from June 15 to the Minimum boundary day, June 10.
+        for (var i = 0; i < 5; i++)
+        {
+            _ = Router.Route(control, Events.Key, Key(Code.Left));
+        }
+
+        _ = Router.Route(control, Events.Key, Key(Code.Enter));
+
+        // Assert: the naive combine (June 10 at 09:00) undershoots Minimum's 14:00, so the date
+        // moves forward to June 11 rather than the time jumping to Minimum's 14:00.
+        control.Value.ShouldBe(new DateTime(2024, 6, 11, 9, 0, 0));
+    }
+
+    /// <summary>Verifies clicking the Maximum boundary day in the popup, when the preserved
+    /// time-of-day would overshoot Maximum's time-of-day on that day, retreats the accepted date
+    /// back one day instead of silently rewriting the untouched time to Maximum's.</summary>
+    [Fact]
+    public void Popup_WhenBoundaryDayOvershootsMaximumTime_RetreatsDatePreservesTime()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Minimum = new DateTime(2024, 6, 10, 0, 0, 0),
+            Maximum = new DateTime(2024, 6, 20, 10, 0, 0),
+            Value = new DateTime(2024, 6, 15, 14, 0, 0),
+            IsOpen = true
+        };
+
+        // Act: move the active date from June 15 to the Maximum boundary day, June 20.
+        for (var i = 0; i < 5; i++)
+        {
+            _ = Router.Route(control, Events.Key, Key(Code.Right));
+        }
+
+        _ = Router.Route(control, Events.Key, Key(Code.Enter));
+
+        // Assert: the naive combine (June 20 at 14:00) overshoots Maximum's 10:00, so the date
+        // moves back to June 19 rather than the time jumping to Maximum's 10:00.
+        control.Value.ShouldBe(new DateTime(2024, 6, 19, 14, 0, 0));
+    }
+
+    /// <summary>Verifies clicking a day that is not a Minimum/Maximum boundary combines with the
+    /// preserved time-of-day unadjusted, even though it is close to a boundary.</summary>
+    [Fact]
+    public void Popup_WhenSelectedDayIsNotABoundary_CombinesWithoutAdjustment()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Minimum = new DateTime(2024, 6, 10, 14, 0, 0),
+            Maximum = new DateTime(2024, 6, 20, 23, 59, 59),
+            Value = new DateTime(2024, 6, 15, 9, 0, 0),
+            IsOpen = true
+        };
+
+        // Act: move the active date one day forward, to June 16 - not a boundary day.
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Enter));
+
+        // Assert: the naive combine is already in range, so it is returned unadjusted.
+        control.Value.ShouldBe(new DateTime(2024, 6, 16, 9, 0, 0));
     }
 
     #endregion
@@ -1412,6 +1525,198 @@ public sealed class DateTimeInputTests
         var value = control.Value.ShouldNotBeNull();
         value.Year.ShouldBe(2027);
         value.Millisecond.ShouldBe(450);
+    }
+
+    #endregion
+
+    /// <summary>Verifies DateTimeInput's digit and increment segment-editing paths already seed a
+    /// value after Value is cleared to null (e.g. via Delete), instead of refusing to act -
+    /// confirming existing correct behavior, unlike DateInput's equivalent paths before they were
+    /// fixed to do the same.</summary>
+    [Fact]
+    public void SegmentEdit_WhenValueIsNullAfterClear_SeedsForDigitAndIncrement()
+    {
+        // Arrange
+        using var control = new DateTimeInput { Value = new DateTime(2026, 1, 15, 10, 15, 30) };
+
+        // Act and assert - a digit typed right after a clear lands on a seeded value instead of
+        // being silently dropped.
+        control.Value = null;
+        _ = Router.Route(control, Events.Key, CharacterKey('5'));
+        _ = control.Value.ShouldNotBeNull();
+
+        // Act and assert - Up after a clear seeds a value instead of refusing to act.
+        control.Value = null;
+        _ = Router.Route(control, Events.Key, Key(Code.Up));
+        _ = control.Value.ShouldNotBeNull();
+    }
+
+    #region Name-run segments
+
+    /// <summary>Verifies a month-name run (MMMM) is skipped entirely by segment entry: the first
+    /// active segment lands on the following numeric Day run instead of the name, so typing digits
+    /// there edits Day - not the Month the name run displays - proving the fix for the weekday/
+    /// month-name corruption bug.</summary>
+    [Fact]
+    public void TypeDigit_WhenFormatStartsWithMonthNameRun_EditsFollowingNumericDaySegment()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Value = new DateTime(2026, 8, 1, 10, 30, 0),
+            Format = "MMMM d yyyy HH:mm"
+        };
+
+        // Act: no navigation - the MMMM run must not be the initial active segment.
+        _ = Router.Route(control, Events.Key, CharacterKey('1'));
+        _ = Router.Route(control, Events.Key, CharacterKey('5'));
+
+        // Assert: Day was edited, and Month (implied by the skipped name run) is untouched.
+        control.Value.ShouldBe(new DateTime(2026, 8, 15, 10, 30, 0));
+    }
+
+    /// <summary>Verifies a weekday-name run (dddd) is likewise skipped, using a format whose first
+    /// run is the weekday name so any failure to exclude it would edit Day - the same kind the
+    /// name run itself carries - through a segment that displays text, not digits.</summary>
+    [Fact]
+    public void TypeDigit_WhenFormatStartsWithWeekdayNameRun_EditsFollowingNumericMonthSegment()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Value = new DateTime(2026, 8, 1, 10, 30, 0),
+            Format = "dddd, MM/dd/yyyy HH:mm"
+        };
+
+        // Act: no navigation - the dddd run must not be the initial active segment.
+        _ = Router.Route(control, Events.Key, CharacterKey('4'));
+
+        // Assert: the numeric Month segment (single-digit "4" overflows a two-digit month, so it
+        // auto-commits at once) was edited instead of Day being corrupted through the weekday text.
+        control.Value.ShouldBe(new DateTime(2026, 4, 1, 10, 30, 0));
+    }
+
+    /// <summary>Verifies Right navigation moves directly across the real editable segments (Day,
+    /// Year, Hour, Minute) without ever landing on the interstitial MMMM name run, and that a
+    /// further Right past Minute is a no-op - proving the name run does not occupy a navigable
+    /// slot.</summary>
+    [Fact]
+    public void MoveSegment_WhenFormatContainsMonthNameRun_NavigatesOnlyRealEditableSegments()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Value = new DateTime(2026, 8, 1, 10, 30, 0),
+            Format = "MMMM d yyyy HH:mm"
+        };
+
+        // Act: three Right presses reach Minute (Day -> Year -> Hour -> Minute); a fourth must not
+        // move past it, since MMMM contributes no editable slot to move into.
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Up));
+
+        // Assert: Up still incremented Minute - not Month or Day, which a phantom name-run slot
+        // ahead of or after Minute would have redirected navigation onto.
+        control.Value.ShouldBe(new DateTime(2026, 8, 1, 10, 31, 0));
+    }
+
+    /// <summary>Verifies Up/Down increment is inert on a month-name run: with the name run as the
+    /// only prior segment, Up on the first active segment increments the real numeric Day segment
+    /// it lands on, never the Month a stray increment through the name run would have changed.</summary>
+    [Fact]
+    public void Increment_WhenFormatStartsWithMonthNameRun_AdjustsFollowingNumericDaySegment()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Value = new DateTime(2026, 8, 1, 10, 30, 0),
+            Format = "MMMM d yyyy HH:mm"
+        };
+
+        // Act
+        _ = Router.Route(control, Events.Key, Key(Code.Up));
+
+        // Assert: Day incremented; Month - which a reachable name run would have exposed to
+        // Increment instead - is untouched.
+        control.Value.ShouldBe(new DateTime(2026, 8, 2, 10, 30, 0));
+    }
+
+    #endregion
+
+    #region Value width invalidation
+
+    /// <summary>Verifies a value transition that changes the resolved formatted width invalidates
+    /// Measure, not just Render, since the field's reserved geometry depends on that width.</summary>
+    [Fact]
+    public void Value_WhenFormattedWidthChanges_InvalidatesMeasure()
+    {
+        // Arrange - en-US's non-padded 'M/d/yyyy' date portion renders a single-digit month or
+        // day one cell narrower than a double-digit one; the fixed-width 'HH:mm' time portion
+        // never varies.
+        using var control = new DateTimeInput
+        {
+            Culture = new CultureInfo("en-US"),
+            Value = new DateTime(2026, 9, 1, 10, 0, 0)
+        };
+        control.Clear(Invalidation.All);
+
+        // Act
+        control.Value = new DateTime(2026, 12, 31, 10, 0, 0);
+
+        // Assert
+        control.Pending.ShouldBe(Invalidation.All);
+    }
+
+    /// <summary>Verifies a value transition that keeps the same resolved formatted width
+    /// invalidates rendering only.</summary>
+    [Fact]
+    public void Value_WhenFormattedWidthIsUnchanged_InvalidatesRenderOnly()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Culture = new CultureInfo("en-US"),
+            Value = new DateTime(2026, 9, 1, 10, 0, 0)
+        };
+        control.Clear(Invalidation.All);
+
+        // Act - both dates render with a single-digit month and day under 'M/d/yyyy'.
+        control.Value = new DateTime(2026, 9, 2, 10, 0, 0);
+
+        // Assert
+        control.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies a Measure-impact value transition actually remeasures the field: the
+    /// relaid-out DesiredSize matches a fresh control constructed directly with the new value,
+    /// rather than leaving geometry sized for the previous, narrower value.</summary>
+    [Fact]
+    public void Value_WhenFormattedWidthChanges_RelayoutProducesFreshDesiredSize()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Culture = new CultureInfo("en-US"),
+            Value = new DateTime(2026, 9, 1, 10, 0, 0)
+        };
+        new LayoutEngine().Layout(control, new Size(40, 3));
+
+        // Act
+        control.Value = new DateTime(2026, 12, 31, 10, 0, 0);
+        new LayoutEngine().Layout(control, new Size(40, 3));
+
+        using var fresh = new DateTimeInput
+        {
+            Culture = new CultureInfo("en-US"),
+            Value = new DateTime(2026, 12, 31, 10, 0, 0)
+        };
+        new LayoutEngine().Layout(fresh, new Size(40, 3));
+
+        // Assert
+        control.DesiredSize.ShouldBe(fresh.DesiredSize);
     }
 
     #endregion

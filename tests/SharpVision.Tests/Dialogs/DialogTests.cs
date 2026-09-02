@@ -147,6 +147,30 @@ public sealed class DialogTests
         messageBox.SelectedResult.ShouldBe(MessageBoxResult.Cancel);
     }
 
+    /// <summary>Verifies a PropertyChanged subscriber that disposes a never-attached modeless
+    /// dialog while SelectedResult is being republished does not let the following
+    /// HasSelectedResult notification (and ResultSelected raise) run against a disposed control -
+    /// PublishSelectedResult's own currency check previously only detected a newer selected result,
+    /// not disposal, between its own notifications.</summary>
+    [Fact]
+    public void Close_WhenPropertyChangedSubscriberDisposesOnSelectedResult_DoesNotThrow()
+    {
+        var messageBox = new MessageBox("Ready.", "Status", MessageBoxButtons.YesNo);
+        messageBox.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Dialog<>.SelectedResult))
+            {
+                messageBox.Dispose();
+            }
+        };
+
+        Should.NotThrow(messageBox.Close);
+
+        messageBox.IsDisposed.ShouldBeTrue();
+        messageBox.HasSelectedResult.ShouldBeTrue();
+        messageBox.SelectedResult.ShouldBe(MessageBoxResult.Cancel);
+    }
+
     /// <summary>
     /// Verifies Escape (which calls the protected Cancel() helper) publishes ResultSelected for a
     /// directly mounted modeless dialog (never PresentAsync'd), the same way clicking an ordinary

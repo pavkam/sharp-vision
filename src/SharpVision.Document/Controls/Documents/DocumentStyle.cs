@@ -23,10 +23,20 @@ namespace SharpVision.Controls.Documents;
 [PublicAPI]
 public sealed record DocumentStyle: ControlStyle
 {
-    /// <summary>Gets the primary document-style definition.</summary>
+    /// <summary>Gets the primary document-style definition. Falls back through the theme's focused
+    /// tabular control set rather than the bare "control" role section so a directly focused
+    /// Document gets the theme's focused text cue instead of none at all. The tabular set
+    /// deliberately omits the generic borderless reverse-video fallback because Document paints one
+    /// large owner surface behind independently colored heading, quote, code, table, and link faces;
+    /// reversing that surface would produce a solid focus slab with normal-colored islands wherever
+    /// those faces paint their own colors.</summary>
+    // theme.GetTabularControlStyleSet() is public, so this fallback relies on the same public
+    // Theme contract that TableStyle itself uses, not on SharpVision's InternalsVisibleTo grant
+    // to this assembly - see the Default property below for the property that still deliberately
+    // avoids that grant.
     internal static StyleDefinition<DocumentStyle> Definition { get; } =
         StyleDefinitions.Control(
-        static theme => theme.GetStyleSet(ControlStyle.Default),
+        static theme => theme.GetTabularControlStyleSet(),
         Complete,
         static (previous, previousTheme, current, currentTheme) =>
             Compare(previous, previousTheme, current, currentTheme));

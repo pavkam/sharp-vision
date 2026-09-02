@@ -486,6 +486,10 @@ public sealed class Tooltip: Popup
     /// without exposing the timer object itself.</summary>
     internal bool IsShowTimerRunning => _showTimer?.IsRunning == true;
 
+    /// <summary>Gets whether this tooltip still holds a presented surface's relayout
+    /// subscription, proving release without exposing the subscribed root itself.</summary>
+    internal bool HasSurfaceRelayoutSubscription => _layoutRoot is not null;
+
     /// <summary>Starts the ordinary show delay for lifecycle tests whose anchor detachment would
     /// otherwise synthesize pointer-exit cancellation before the target state can be observed.</summary>
     internal void StartShowTimerForLifecycleTest() => StartShowTimer();
@@ -607,15 +611,31 @@ public sealed class Tooltip: Popup
     {
         ExceptionDispatchInfo? failure = null;
 
-        if (reason == ReleaseReason.Disposed)
+        if (reason == ReleaseReason.Disposed && _attachedAnchor is { } anchor)
         {
-            if (_attachedAnchor is { } anchor)
-            {
-                CaptureFailure(() => Detach(anchor, clearOwnership: false), ref failure);
-                CaptureFailure(() => _ = _attachedTooltips.Remove(anchor), ref failure);
-            }
+            CaptureFailure(() => Detach(anchor, clearOwnership: false), ref failure);
+            CaptureFailure(() => _ = _attachedTooltips.Remove(anchor), ref failure);
+        }
 
+        // Popup force-closes identically for Hidden and Disposed (see FloatingSurfaceBase and
+        // Popup.OnUnavailable), but that force-close commits closed state directly rather than
+        // running the normal CloseSurface sequence, so it never raises the public Closed event -
+        // OnSurfaceClosed's UnsubscribeSurfaceRelayout call above never runs for either reason.
+        // Disposed also reaches OnDetached (disposal cascades a slot removal that detaches this
+        // control), which already releases both; widening this to Hidden too - and calling
+        // UnsubscribeSurfaceRelayout here unconditionally for both reasons - means a merely-hidden
+        // tooltip stops leaking its dispatcher timers and relayout subscription the same way an
+        // already-covered Detached/Disposed tooltip does. A later duplicate call from OnDetached
+        // on the Disposed path is a safe no-op: UnsubscribeSurfaceRelayout clears _layoutRoot on
+        // its first call and only unsubscribes when a root is still recorded. No resume-from-Hidden
+        // flow depends on either surviving: Visibility's setter has no re-arm hook, so any real
+        // reshow goes through fresh hover/focus/Attach logic that re-arms timers and
+        // re-subscribes (SubscribeSurfaceRelayout is itself ref-equality guarded against
+        // redundant resubscription).
+        if (reason is ReleaseReason.Hidden or ReleaseReason.Disposed)
+        {
             CaptureFailure(ReleaseTimers, ref failure);
+            CaptureFailure(UnsubscribeSurfaceRelayout, ref failure);
         }
 
         CaptureFailure(() => base.OnUnavailable(reason), ref failure);

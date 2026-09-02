@@ -418,6 +418,51 @@ public sealed class ThemeTests
         }
     }
 
+    /// <summary>Verifies the reverse-video safety net keys off Normal's own resolved Reverse bit
+    /// rather than blindly OR-ing Reverse onto Focused. A custom theme may already author Reverse
+    /// on a borderless control's Normal face - independently of the color collapse that triggers
+    /// the fallback, which only compares Foreground/Background - in which case OR-ing Reverse again
+    /// onto Focused would be a no-op and leave Focused byte-identical to Normal, silently defeating
+    /// the whole safety net. The fallback must instead clear Reverse on Focused so it stays visually
+    /// distinct from Normal regardless of which direction Normal already points.</summary>
+    [Fact]
+    public void ApplyBorderlessFocusFallback_WhenNormalAlreadyHasReverse_ClearsReverseOnFocusedInstead()
+    {
+        var theme = new Theme();
+        var normalFace = ControlStyle.DefaultFace with
+        {
+            Foreground = Color.Rgb(200, 200, 200),
+            Background = Color.Rgb(10, 10, 10),
+            Attributes = TerminalAttributes.Reverse
+        };
+
+        // Borderless Control geometry whose Normal face already carries Reverse.
+        theme.SetStyleSet(new StyleStates<ControlStyle> { Normal = ControlStyle.Default with { Face = normalFace } });
+
+        // Input authors no color/attribute delta between its own Normal and Focused, so the rebase
+        // trivially collapses onto Control's Normal geometry - including its Reverse - engaging the
+        // fallback exactly the way a bundled theme's collapsed focusedControl/focusedText does.
+        theme.SetStyleSet(new StyleStates<InputStyle>
+        {
+            Normal = InputStyle.Default with { Face = normalFace },
+            Focused = InputStyle.Default with { Face = normalFace }
+        });
+        theme.Freeze();
+
+        var states = theme.GetInteractiveControlStyleSet();
+        var normal = states.Normal;
+        var focused = states.Focused!;
+
+        normal.Face.Attributes.IsLiteral.ShouldBeTrue();
+        normal.Face.Attributes.Literal.ShouldBe(TerminalAttributes.Reverse);
+
+        focused.Face.Foreground.ShouldBe(normal.Face.Foreground);
+        focused.Face.Background.ShouldBe(normal.Face.Background);
+        focused.Face.Attributes.IsLiteral.ShouldBeTrue();
+        focused.Face.Attributes.Literal.ShouldBe(TerminalAttributes.None);
+        focused.Face.Attributes.Literal.ShouldNotBe(normal.Face.Attributes.Literal);
+    }
+
     /// <summary>Verifies selectable borderless rows use Input's pointer foreground while
     /// retaining Control's passive background until a semantic selection state owns the fill.</summary>
     [Fact]

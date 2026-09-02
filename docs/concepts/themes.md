@@ -77,6 +77,14 @@ bundled `selectedControl` pairing likewise retains at least 4.5:1 contrast with
 `selectedText` and `hotkey` at truecolor and xterm-256 depth so a selected bar
 row does not make either its caption or mnemonic disappear.
 
+`reliefHighlight` and `reliefShade` model one light source above and to the left
+of the surface: `BorderRelief.Raised` paints the top and left edges with
+`reliefHighlight` and the bottom and right edges with `reliefShade`, and
+`BorderRelief.Sunken` reverses the assignment. A theme author cannot infer the
+correct direction from the color names alone - `reliefHighlight` must resolve
+lighter than `reliefShade`, or every `Raised`/`Sunken` border in that theme
+reads as the opposite of what it asked for.
+
 `attributes` requires these nine properties:
 
 ```text
@@ -540,9 +548,8 @@ tree.
 Input is limited to 64 KiB, a JSON depth of eight, 256 palette entries, and
 2,048 characters per metadata string. Comments, trailing commas, malformed
 UTF-8, invalid element kinds, unknown top-level or `styles.*` key names, and
-malformed colors all fail with a source-labelled `InvalidDataException` - for
-`styles.*` leaf values specifically, at first resolution rather than at parse
-time (see [Style types](#style-types) above).
+malformed colors all fail with a source-labelled `InvalidDataException` (see
+[Style types](#style-types) above).
 
 Style-property metadata is cached once per style type; rejected JSON member
 names are never retained, so repeated invalid external documents cannot grow a

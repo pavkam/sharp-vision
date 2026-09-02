@@ -34,6 +34,7 @@ internal sealed class WindowsConsoleMode: IDisposable
 
     /// <summary>Saves the current console modes and enters VT input and VT processing.</summary>
     /// <param name="captureControlKeys">Whether Ctrl+C is delivered as input.</param>
+    /// <param name="enableMouseInput">Whether mouse tracking is negotiated for this run.</param>
     /// <param name="setConsoleMode">
     /// The console-mode write boundary, or null for the real native call. Tests supply this to
     /// reach the restoration-failure path, which cannot be provoked against a real console.
@@ -43,6 +44,7 @@ internal sealed class WindowsConsoleMode: IDisposable
     [MustDisposeResource]
     public static WindowsConsoleMode Enter(
         bool captureControlKeys,
+        bool enableMouseInput,
         Func<nint, uint, bool>? setConsoleMode = null)
     {
         var write = setConsoleMode ?? RuntimeInterop.TrySetConsoleMode;
@@ -55,7 +57,7 @@ internal sealed class WindowsConsoleMode: IDisposable
             throw Failure();
         }
 
-        if (!write(input, RuntimeInterop.ComputeInputMode(savedInput, captureControlKeys)))
+        if (!write(input, RuntimeInterop.ComputeInputMode(savedInput, captureControlKeys, enableMouseInput)))
         {
             throw Failure();
         }

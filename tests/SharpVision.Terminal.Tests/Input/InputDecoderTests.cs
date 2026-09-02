@@ -57,6 +57,7 @@ public sealed class InputDecoderTests
     [InlineData("\u001b[<8;10;5M", Buttons.Primary, InputAction.Press, 0, 0,
         Modifiers.Meta, false)]
     [InlineData("\u001b[<128;10;5M", Buttons.Back, InputAction.Press, 0, 0, Modifiers.None, false)]
+    [InlineData("\u001b[<128;10;5m", Buttons.Back, InputAction.Release, 0, 0, Modifiers.None, false)]
     [InlineData("\u001b[<129;10;5M", Buttons.Forward, InputAction.Press, 0, 0, Modifiers.None, false)]
     [InlineData("\u001b[<130;10;5M", Buttons.Extended10, InputAction.Press, 0, 0, Modifiers.None, false)]
     [InlineData("\u001b[<131;10;5M", Buttons.Extended11, InputAction.Press, 0, 0, Modifiers.None, false)]
@@ -195,6 +196,29 @@ public sealed class InputDecoderTests
         sink.Diagnostics.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies Kitty's bit-8 SGR pixel marker emits a coordinate-free leave on the SGR
+    /// release final byte too, not just the press final byte — the release half of a leave must
+    /// not fall through and be decoded as an unbalanced extended-button Release.</summary>
+    [Fact]
+    public void Decode_WhenKittyPixelMouseLeavesOnRelease_EmitsLeaveWithoutCoordinates()
+    {
+        var sink = new RecordingInputSink();
+        using InputDecoder decoder = new(sink, new InputOptions { PixelMouse = true });
+
+        decoder.Decode("\u001b[<160;77;99m"u8);
+        decoder.Complete();
+
+        var pointer = sink.Pointers.ShouldHaveSingleItem();
+
+        pointer.Action.ShouldBe(InputAction.Leave);
+        pointer.Cells.ShouldBe(default);
+        pointer.Pixels.ShouldBe(default);
+        pointer.Buttons.ShouldBe(Buttons.None);
+        pointer.Modifiers.ShouldBe(Modifiers.None);
+        pointer.MotionReported.ShouldBeTrue();
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies every other button/modifier bit and both zero and positive coordinates
     /// are ignored for a Kitty leave marker at every read boundary.</summary>
     /// <param name="code">The bit-8-marked button value.</param>
@@ -224,6 +248,43 @@ public sealed class InputDecoderTests
             pointer.Action.ShouldBe(InputAction.Leave);
             pointer.Cells.ShouldBeNull();
             pointer.Pixels.ShouldBeNull();
+            pointer.Modifiers.ShouldBe(Modifiers.None);
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
+    /// <summary>Verifies every other button/modifier bit and both zero and positive coordinates
+    /// are ignored for a Kitty leave marker on the SGR release final byte, at every read
+    /// boundary — the release half of a leave must decode identically to its press half rather
+    /// than being reinterpreted as an extended-button Release with no matching press.</summary>
+    /// <param name="code">The bit-8-marked button value.</param>
+    /// <param name="x">The ignored wire x coordinate.</param>
+    /// <param name="y">The ignored wire y coordinate.</param>
+    [Theory]
+    [InlineData(128, 0, 0)]
+    [InlineData(165, 77, 99)]
+    [InlineData(255, 1, 2)]
+    public void Decode_WhenKittyLeaveBitsAndCoordinatesVaryAtEverySplitOnRelease_EmitsOneLeave(
+        int code,
+        int x,
+        int y)
+    {
+        var sequence = Encoding.ASCII.GetBytes($"\u001b[<{code};{x};{y}m");
+
+        for (var split = 0; split <= sequence.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink, new InputOptions { PixelMouse = true });
+
+            decoder.Decode(sequence.AsSpan(0, split));
+            decoder.Decode(sequence.AsSpan(split));
+            decoder.Complete();
+
+            var pointer = sink.Pointers.ShouldHaveSingleItem($"split {split}");
+            pointer.Action.ShouldBe(InputAction.Leave);
+            pointer.Cells.ShouldBeNull();
+            pointer.Pixels.ShouldBeNull();
+            pointer.Buttons.ShouldBe(Buttons.None);
             pointer.Modifiers.ShouldBe(Modifiers.None);
             sink.Diagnostics.ShouldBeEmpty($"split {split}");
         }
@@ -1716,17 +1777,48 @@ public sealed class InputDecoderTests
     }
 
     /// <summary>
-    /// Verifies tilde keys with colon-separated event types are reported as malformed
-    /// because the tilde path uses <c>TryReadParameters</c> which rejects colons.
+    /// Verifies tilde-form functional keys with a Kitty-style colon-separated event type
+    /// decode successfully, carrying the repeat/release action through instead of being
+    /// reported malformed.
     /// </summary>
     [Theory]
-    [InlineData("[15;1:1~")]
-    [InlineData("[3;2:1~")]
-    public void Decode_WhenTildeKeyHasEventTypeColon_ReportsMalformed(string input)
+    [InlineData("[3;1:2~", Code.Delete, Modifiers.None, KeyAction.Repeat, 3)]
+    [InlineData("[3;1:3~", Code.Delete, Modifiers.None, KeyAction.Release, 3)]
+    [InlineData("[5;1:2~", Code.PageUp, Modifiers.None, KeyAction.Repeat, 5)]
+    [InlineData("[15;1:2~", Code.F5, Modifiers.None, KeyAction.Repeat, 15)]
+    [InlineData("[2;1:3~", Code.Insert, Modifiers.None, KeyAction.Release, 2)]
+    [InlineData("[3;2:1~", Code.Delete, Modifiers.Shift, KeyAction.Press, 3)]
+    public void Decode_WhenTildeKeyHasEventTypeColon_DecodesEventAction(
+        string input,
+        Code code,
+        Modifiers modifiers,
+        KeyAction action,
+        int native)
     {
         var sink = Decode(Encoding.UTF8.GetBytes(input));
 
-        sink.Diagnostics.Count.ShouldBe(1);
+        sink.Strokes.ShouldBe(
+        [
+            new Stroke(code, null, native, modifiers, action)
+        ]);
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies a tilde-form functional key without a colon-separated event type still
+    /// decodes as a plain press, confirming the colon-aware parsing path added for Kitty
+    /// event types doesn't regress the simple legacy-modifier case.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenTildeKeyHasNoEventTypeColon_DecodesAsPress()
+    {
+        var sink = Decode(Encoding.UTF8.GetBytes("[3~"));
+
+        sink.Strokes.ShouldBe(
+        [
+            new Stroke(Code.Delete, null, 3, Modifiers.None, KeyAction.Press)
+        ]);
+        sink.Diagnostics.ShouldBeEmpty();
     }
 
     /// <summary>
@@ -1906,6 +1998,82 @@ public sealed class InputDecoderTests
 
             sink.Strokes.ShouldBe(
                 [new Stroke(Code.Down, null, 0, Modifiers.None, KeyAction.Press)],
+                $"split {split}");
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
+    /// <summary>Verifies a cursor-key CSI carrying a Kitty event sub-parameter reports Super
+    /// unremapped: the event sub-parameter alone is enough to identify Kitty grammar, where bit 3
+    /// of the modifier byte is Super rather than the legacy ctlseqs.txt Meta.</summary>
+    [Fact]
+    public void Decode_WhenKittyEventTypeIsPresent_MapsSuperCursorKeyAtEverySplit()
+    {
+        var bytes = "[1;9:3A"u8.ToArray();
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink);
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+            decoder.Complete();
+
+            sink.Strokes.ShouldBe(
+                [new Stroke(Code.Up, null, 0, Modifiers.Super, KeyAction.Release)],
+                $"split {split}");
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
+    /// <summary>Verifies a bare cursor-key CSI (no event sub-parameter) still reports Super, not
+    /// Meta, once the Kitty disambiguation lease is active: the lease is already the signal the
+    /// decoder trusts to accept this otherwise-ambiguous shape as a real Kitty keystroke, so its
+    /// modifier byte must be read with Kitty semantics too.</summary>
+    [Fact]
+    public void Decode_WhenKittyDisambiguationIsEnabled_MapsSuperCursorPressAtEverySplit()
+    {
+        var bytes = "[1;9A"u8.ToArray();
+        var options = InputOptions.Default with { UseAnsiKeyGrammar = false };
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+
+            using (InputDecoder decoder = new(sink, options))
+            {
+                decoder.EnableKittyKeyboardDisambiguation();
+                decoder.Decode(bytes.AsSpan(0, split));
+                decoder.Decode(bytes.AsSpan(split));
+                decoder.Complete();
+            }
+
+            sink.Strokes.ShouldBe(
+                [new Stroke(Code.Up, null, 0, Modifiers.Super, KeyAction.Press)],
+                $"split {split}");
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
+    /// <summary>Verifies the same bare cursor-key CSI still reports Meta, not Super, when neither
+    /// the Kitty disambiguation lease nor an event sub-parameter is present: this is the
+    /// genuinely-ambiguous legacy shape (also pinned in
+    /// <c>Decode_WhenLegacyKeyIsFragmented_MapsAtEverySplit</c>) and must not regress.</summary>
+    [Fact]
+    public void Decode_WhenKittyDisambiguationIsNotEnabled_MapsMetaCursorPressAtEverySplit()
+    {
+        var bytes = "[1;9A"u8.ToArray();
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink);
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+            decoder.Complete();
+
+            sink.Strokes.ShouldBe(
+                [new Stroke(Code.Up, null, 0, Modifiers.Meta, KeyAction.Press)],
                 $"split {split}");
             sink.Diagnostics.ShouldBeEmpty($"split {split}");
         }
@@ -2154,6 +2322,66 @@ public sealed class InputDecoderTests
         decoder.Decode("]5522;type=read:status=OK\\"u8);
 
         sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Unsupported);
+    }
+
+    #endregion
+
+    #region OSC 4/10/11 palette routing
+
+    /// <summary>Verifies a well-formed OSC 4/10/11 color reply still dispatches as a typed
+    /// <see cref="PaletteResponse"/>, guarding against a regression from the selector-prefix
+    /// check that now guards <c>TryHandleOscSequence</c> ahead of decoding the body.</summary>
+    [Theory]
+    [InlineData("]4;5;rgb:ffff/0000/8080\\", ResponseKind.PaletteColor)]
+    [InlineData("]10;rgb:ffff/0000/aaaa\\", ResponseKind.ForegroundColor)]
+    [InlineData("]11;rgb:0000/ffff/1111\\", ResponseKind.BackgroundColor)]
+    public void Decode_WhenPaletteReplyIsWellFormed_DispatchesTypedResponse(string sequence, ResponseKind kind)
+    {
+        var sink = new RecordingProtocolSink();
+        using var decoder = new InputDecoder(sink);
+
+        decoder.Decode(Encoding.ASCII.GetBytes(sequence));
+
+        var response = sink.PaletteResponses.ShouldHaveSingleItem();
+        response.Kind.ShouldBe(kind);
+        sink.Sequences.ShouldBeEmpty();
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a selector-prefix-matched but corrupt OSC 4/10/11 payload (here: a
+    /// 6-hex-digit color field, one too many for the 4-digit <c>rr/gg/bb</c> grammar) is reported
+    /// as <see cref="DiagnosticCode.Malformed"/> rather than falling through the handler chain and
+    /// being silently forwarded as an untagged <see cref="ProtocolSequence"/> with no diagnostic at
+    /// all, per docs/protocols/runtime-routing.md's contract that malformed occurrences always
+    /// raise a diagnostic.</summary>
+    [Theory]
+    [InlineData("]4;5;rgb:ffff/0000/ffffff\\")]
+    [InlineData("]10;rgb:ffff/0000/ffffff\\")]
+    [InlineData("]11;rgb:ffff/ffff/ffffff\\")]
+    public void Decode_WhenPaletteReplyIsCorrupt_ReportsMalformedInsteadOfUntaggedSequence(string sequence)
+    {
+        var sink = new RecordingProtocolSink();
+        using var decoder = new InputDecoder(sink);
+
+        decoder.Decode(Encoding.ASCII.GetBytes(sequence));
+
+        sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Malformed);
+        sink.PaletteResponses.ShouldBeEmpty();
+        sink.Sequences.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies the same corrupt payload is still reported Malformed even without a
+    /// protocol sink registered, confirming the selector-prefix match — not sink presence —
+    /// decides whether the sequence is claimed and diagnosed.</summary>
+    [Fact]
+    public void Decode_WhenPaletteReplyIsCorruptWithoutProtocolSink_ReportsMalformed()
+    {
+        var sink = new RecordingInputSink();
+        using var decoder = new InputDecoder(sink);
+
+        decoder.Decode("]11;rgb:ffff/ffff/ffffff\\"u8);
+
+        sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Malformed);
     }
 
     #endregion
@@ -2741,6 +2969,64 @@ public sealed class InputDecoderTests
         stroke.Character.ShouldBe(new Rune('a'));
     }
 
+    /// <summary>Verifies a modified F3 keystroke (<c>CSI 1;&lt;mod&gt;R</c>) is decoded as a key
+    /// event rather than claimed as a DSR cursor-position reply when no cursor-position query is
+    /// outstanding. The two are byte-identical, so a reply-shaped match here would otherwise
+    /// swallow the keystroke permanently: this shape has no further CSI fallback beyond the legacy
+    /// key handler once the xterm response handler stops claiming it.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenModifiedF3ArrivesWithNoQueryOutstanding_IsDecodedAsKeyNotReply()
+    {
+        var sink = new RecordingProtocolSink();
+        using var decoder = new InputDecoder(sink);
+
+        decoder.Decode("[1;2R"u8);
+
+        sink.Responses.ShouldBeEmpty();
+        var stroke = sink.Strokes.ShouldHaveSingleItem();
+        stroke.Code.ShouldBe(Code.F3);
+        stroke.Modifiers.ShouldBe(Modifiers.Shift);
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies the same shape is still claimed as the genuine reply while a
+    /// cursor-position query is outstanding, so <see cref="InputDecoder.EnableCursorPositionQuery"/>
+    /// preserves correlation during active negotiation instead of always preferring the key
+    /// grammar.</summary>
+    [Fact]
+    public void Decode_WhenModifiedF3ArrivesWithQueryOutstanding_IsClaimedAsReplyNotKey()
+    {
+        var sink = new RecordingProtocolSink();
+        using var decoder = new InputDecoder(sink);
+        decoder.EnableCursorPositionQuery();
+
+        decoder.Decode("[1;2R"u8);
+
+        var response = sink.Responses.ShouldHaveSingleItem();
+        response.Kind.ShouldBe(ResponseKind.CursorPosition);
+        response.Values.ToArray().ShouldBe([1, 2]);
+        sink.Strokes.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies disabling the cursor-position query restores modified F3 key delivery,
+    /// mirroring the lifecycle Session drives around a completed negotiation.</summary>
+    [Fact]
+    public void Decode_WhenCursorPositionQueryIsDisabledAfterEnabling_RestoresKeyDelivery()
+    {
+        var sink = new RecordingProtocolSink();
+        using var decoder = new InputDecoder(sink);
+        decoder.EnableCursorPositionQuery();
+        decoder.DisableCursorPositionQuery();
+
+        decoder.Decode("[1;5R"u8);
+
+        sink.Responses.ShouldBeEmpty();
+        var stroke = sink.Strokes.ShouldHaveSingleItem();
+        stroke.Code.ShouldBe(Code.F3);
+        stroke.Modifiers.ShouldBe(Modifiers.Control);
+    }
+
     #endregion
 
     #region xterm modifyOtherKeys
@@ -2779,6 +3065,30 @@ public sealed class InputDecoderTests
             stroke.Code.ShouldBe(Code.Character, $"split {split}");
             stroke.Character.ShouldBe(new Rune('x'), $"split {split}");
             stroke.Modifiers.ShouldBe(Modifiers.Alt, $"split {split}");
+        }
+    }
+
+    /// <summary>Verifies the modifyOtherKeys legacy tilde form's Super-bit modifier encoding
+    /// still reports Meta: it is decoded by TryGetModifier/TryHandleModifiedOtherKey, an entirely
+    /// separate legacy code path from the CSI cursor/function-key grammar's isKittyGrammar
+    /// threading, so it is unaffected by Kitty-grammar detection regardless of the terminal's
+    /// Kitty-keyboard capability.</summary>
+    [Fact]
+    public void Decode_WhenEnhancedCharacterCarriesSuperBit_ReportsMetaAtEverySplit()
+    {
+        var bytes = "[27;9;97~"u8.ToArray();
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingProtocolSink();
+            using var decoder = new InputDecoder(sink);
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+
+            var stroke = sink.Strokes.ShouldHaveSingleItem($"split {split}");
+            stroke.Code.ShouldBe(Code.Character, $"split {split}");
+            stroke.Character.ShouldBe(new Rune('a'), $"split {split}");
+            stroke.Modifiers.ShouldBe(Modifiers.Meta, $"split {split}");
         }
     }
 
@@ -2962,6 +3272,78 @@ public sealed class InputDecoderTests
         [
             new Stroke(Code.Escape, null, 0, Modifiers.None, KeyAction.Press)
         ]);
+    }
+
+    /// <summary>
+    /// Verifies escape-timeout expiry ends a pending SS3 continuation along with the lone
+    /// Escape, so the next byte decodes as an ordinary keystroke instead of being consumed as
+    /// the SS3 final byte.
+    /// </summary>
+    [Fact]
+    public void ExpireEscape_WhenSs3IsPending_EndsSs3BeforeNextByteArrives()
+    {
+        var sink = new RecordingInputSink();
+        var clock = new ManualTimeProvider();
+        using InputDecoder decoder = new(
+            sink,
+            new InputOptions { EscapeTimeout = TimeSpan.FromMilliseconds(25) },
+            clock);
+
+        // ESC O arms a pending SS3 continuation.
+        decoder.Decode([0x1b, (byte) 'O']);
+
+        // A second, unrelated Escape arms the lone-Escape ambiguity deadline while the SS3
+        // continuation is still pending underneath it.
+        decoder.Decode([0x1b]);
+
+        clock.Advance(TimeSpan.FromMilliseconds(25));
+        decoder.ExpireEscape().ShouldBeTrue();
+
+        // Without ending the SS3 continuation here, this byte would be consumed as the SS3
+        // final byte and produce Code.Unknown instead of an ordinary keystroke.
+        decoder.Decode([(byte) 'a']);
+        decoder.Complete();
+
+        sink.Strokes.Count.ShouldBe(2);
+        sink.Strokes[0].Code.ShouldBe(Code.Escape);
+        sink.Strokes[1].Code.ShouldBe(Code.Character);
+        sink.Strokes[1].Character.ShouldBe(new Rune('a'));
+        sink.Strokes[1].Modifiers.ShouldBe(Modifiers.None);
+    }
+
+    /// <summary>
+    /// Verifies escape-timeout expiry ends a pending X10 mouse continuation along with the lone
+    /// Escape, so the following bytes decode as ordinary input instead of being consumed as a
+    /// synthetic pointer report.
+    /// </summary>
+    [Fact]
+    public void ExpireEscape_WhenX10MouseIsPending_EndsMouseBeforeNextBytesArrive()
+    {
+        var sink = new RecordingInputSink();
+        var clock = new ManualTimeProvider();
+        using InputDecoder decoder = new(
+            sink,
+            new InputOptions { EscapeTimeout = TimeSpan.FromMilliseconds(25) },
+            clock);
+
+        // ESC [ M arms a pending X10 mouse report awaiting its three field bytes.
+        decoder.Decode([0x1b, (byte) '[', (byte) 'M']);
+
+        // A second, unrelated Escape arms the lone-Escape ambiguity deadline while the X10
+        // report is still pending underneath it.
+        decoder.Decode([0x1b]);
+
+        clock.Advance(TimeSpan.FromMilliseconds(25));
+        decoder.ExpireEscape().ShouldBeTrue();
+
+        // Without ending the mouse continuation here, these three bytes would be consumed as
+        // the X10 report fields and fabricate a spurious pointer event.
+        decoder.Decode([(byte) ' ', (byte) '*', (byte) '%']);
+        decoder.Complete();
+
+        sink.Pointers.ShouldBeEmpty();
+        sink.Strokes.ShouldContain(static value => value.Code == Code.Escape);
+        sink.Text.ShouldNotBeEmpty();
     }
 
     /// <summary>

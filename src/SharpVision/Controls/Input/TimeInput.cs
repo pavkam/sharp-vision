@@ -53,7 +53,8 @@ public sealed class TimeInput: InputBase
             VerifyMutable,
             NotifyPropertyChanged,
             () => TimeOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime),
-            PublishValueChanged);
+            PublishValueChanged,
+            resolveValueImpact: ResolveValueWidthImpact);
         _segments = EnableSegmentEditing(
             BuildSegments,
             ApplyDigitValue,
@@ -535,7 +536,9 @@ public sealed class TimeInput: InputBase
         return pattern.ToString();
     }
 
-    private SegmentDescriptor[] BuildSegments()
+    private SegmentDescriptor[] BuildSegments() => BuildSegments(_state.Value);
+
+    private SegmentDescriptor[] BuildSegments(TimeOnly? value)
     {
         var pattern = ResolveTimePattern();
         var tokens = TemporalPatternSegmenter.ParseTokens(pattern, _tokenKinds, _culture);
@@ -552,7 +555,7 @@ public sealed class TimeInput: InputBase
 
         IReadOnlyList<string> text;
 
-        if (_state.Value is { } time)
+        if (value is { } time)
         {
             text = TemporalPatternSegmenter.FormatSegments(
                 pattern,
@@ -589,6 +592,36 @@ public sealed class TimeInput: InputBase
 
         return descriptors;
     }
+
+    /// <summary>Sums the resolved cell width of every rendered segment for a candidate value,
+    /// without committing it, so a value transition can be graded before it is applied.</summary>
+    private int MeasureFormattedWidth(TimeOnly? value)
+    {
+        var width = 0;
+
+        foreach (var segment in BuildSegments(value))
+        {
+            width += MeasureCells(segment.Text);
+        }
+
+        return width;
+    }
+
+    /// <summary>Grades a value transition by its resolved display-width delta, mirroring
+    /// <see cref="ControlBase.GetAffixChangeImpact"/> for affixes: a same-width transition (for
+    /// example incrementing a zero-padded minute segment) needs only
+    /// <see cref="InvalidationImpact.Render"/>, while a transition that widens or narrows the
+    /// formatted text (a single-digit hour widening to two digits under a non-padded
+    /// <see cref="Format"/>) needs <see cref="InvalidationImpact.Measure"/> so the field box is
+    /// remeasured instead of leaving stale geometry behind. The default zero-padded
+    /// <see cref="Use24HourFormat"/>/<see cref="ShowSeconds"/> layout is fixed-width, so this
+    /// predicate is latent until a non-padded custom <see cref="Format"/> is set - it is still
+    /// wired here so every <see cref="TemporalValueState{T}"/> consumer shares the same
+    /// mechanism.</summary>
+    private InvalidationImpact ResolveValueWidthImpact(TimeOnly? previous, TimeOnly? candidate) =>
+        MeasureFormattedWidth(previous) == MeasureFormattedWidth(candidate)
+            ? InvalidationImpact.Render
+            : InvalidationImpact.Measure;
 
 #pragma warning disable IDE0072 // Month, Day, Year, and AmPmDesignator are unreachable from TimeInput's time-only layout.
     [Pure]

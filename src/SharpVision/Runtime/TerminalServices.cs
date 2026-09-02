@@ -121,7 +121,10 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
             }
         }
 
-        _application.PostOutOfBand(destination.WrittenMemory);
+        if (TryRouteBell(destination.WrittenMemory, out var routed))
+        {
+            _application.PostOutOfBand(routed);
+        }
     }
 
     /// <inheritdoc/>
@@ -147,9 +150,9 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
             {
                 WriteDescribedTitle(rented.AsSpan(0, written));
             }
-            else
+            else if (TryRouteTitle(destination.WrittenMemory, out var routed))
             {
-                _application.PostOutOfBand(destination.WrittenMemory);
+                _application.PostOutOfBand(routed);
             }
         }
         finally
@@ -175,7 +178,11 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
         destination.Write(prefix.Span);
         destination.Write(title);
         destination.Write(suffix.Span);
-        _application.PostOutOfBand(destination.WrittenMemory);
+
+        if (TryRouteTitle(destination.WrittenMemory, out var routed))
+        {
+            _application.PostOutOfBand(routed);
+        }
     }
 
     /// <inheritdoc/>
@@ -196,7 +203,11 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
         {
             var written = Encoding.UTF8.GetBytes(body, rented);
             Osc.Notify(new ProtocolWriter(destination), rented.AsSpan(0, written));
-            _application.PostOutOfBand(destination.WrittenMemory);
+
+            if (TryRouteNotification(destination.WrittenMemory, out var routed))
+            {
+                _application.PostOutOfBand(routed);
+            }
         }
         finally
         {
@@ -229,7 +240,11 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
                 new ProtocolWriter(destination),
                 titleRented.AsSpan(0, titleWritten),
                 bodyRented.AsSpan(0, bodyWritten));
-            _application.PostOutOfBand(destination.WrittenMemory);
+
+            if (TryRouteNotification(destination.WrittenMemory, out var routed))
+            {
+                _application.PostOutOfBand(routed);
+            }
         }
         finally
         {
@@ -388,7 +403,10 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
                 KittyClipboardReplyStatus.None,
                 new Diagnostic(DiagnosticCode.Malformed, SequenceKind.Osc, offset: 0, discardedBytes: 0));
 
-        KittyClipboardReplyReceived?.Invoke(this, eventArgs);
+        if (_application.RaiseIsolated(KittyClipboardReplyReceived, eventArgs) is { } failure)
+        {
+            _application.Report(failure);
+        }
     }
 
     /// <summary>Feeds a decoded Kitty OSC 5522 packet to the live transaction, if any.</summary>
@@ -619,9 +637,13 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
 
         // Same shape the Kitty TimedOut arm reports: an outcome with no data and no diagnostic,
         // so a consumer distinguishes "no answer" from a terminal-reported failure.
-        KittyClipboardReplyReceived?.Invoke(
-            this,
-            new KittyClipboardReplyEventArgs(selection, null, null, KittyClipboardReplyStatus.None, null));
+        if (_application.RaiseIsolated(
+                KittyClipboardReplyReceived,
+                new KittyClipboardReplyEventArgs(selection, null, null, KittyClipboardReplyStatus.None, null))
+            is { } failure)
+        {
+            _application.Report(failure);
+        }
     }
 
     private void CancelPendingOsc52Request()
@@ -700,29 +722,49 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
         switch (transaction.State)
         {
             case KittyClipboardTransactionState.Completed:
-                KittyClipboardReplyReceived?.Invoke(
-                    this,
-                    new KittyClipboardReplyEventArgs(
-                        selection,
-                        transaction.Result,
-                        null,
-                        KittyClipboardReplyStatus.None,
-                        null));
+                if (_application.RaiseIsolated(
+                        KittyClipboardReplyReceived,
+                        new KittyClipboardReplyEventArgs(
+                            selection,
+                            transaction.Result,
+                            null,
+                            KittyClipboardReplyStatus.None,
+                            null))
+                    is { } completedFailure)
+                {
+                    _application.Report(completedFailure);
+                }
+
                 break;
             case KittyClipboardTransactionState.Failed:
-                KittyClipboardReplyReceived?.Invoke(
-                    this,
-                    new KittyClipboardReplyEventArgs(
-                        selection,
-                        null,
-                        null,
-                        transaction.Failure,
-                        transaction.Diagnostic));
+                if (_application.RaiseIsolated(
+                        KittyClipboardReplyReceived,
+                        new KittyClipboardReplyEventArgs(
+                            selection,
+                            null,
+                            null,
+                            transaction.Failure,
+                            transaction.Diagnostic))
+                    is { } failedFailure)
+                {
+                    _application.Report(failedFailure);
+                }
+
                 break;
             case KittyClipboardTransactionState.TimedOut:
-                KittyClipboardReplyReceived?.Invoke(
-                    this,
-                    new KittyClipboardReplyEventArgs(selection, null, null, KittyClipboardReplyStatus.None, null));
+                if (_application.RaiseIsolated(
+                        KittyClipboardReplyReceived,
+                        new KittyClipboardReplyEventArgs(
+                            selection,
+                            null,
+                            null,
+                            KittyClipboardReplyStatus.None,
+                            null))
+                    is { } timedOutFailure)
+                {
+                    _application.Report(timedOutFailure);
+                }
+
                 break;
             case KittyClipboardTransactionState.Created:
             case KittyClipboardTransactionState.Accepted:
@@ -805,9 +847,9 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
             CancelPendingKittyPasteTransaction();
         }
 
-        if (eventArgs is not null)
+        if (eventArgs is not null && _application.RaiseIsolated(ClipboardPasteReceived, eventArgs) is { } failure)
         {
-            ClipboardPasteReceived?.Invoke(this, eventArgs);
+            _application.Report(failure);
         }
     }
 
@@ -857,6 +899,66 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
             }
 
             remaining = remaining[packetLength..];
+        }
+
+        routed = destination.WrittenMemory.ToArray();
+        return true;
+    }
+
+    private bool TryRouteNotification(ReadOnlyMemory<byte> command, out ReadOnlyMemory<byte> routed)
+    {
+        if (_multiplexerRoute is null)
+        {
+            routed = command;
+            return true;
+        }
+
+        var destination = new ArrayBufferWriter<byte>(command.Length + 16);
+
+        if (!_multiplexerRoute.TryWriteNotification(destination, command.Span))
+        {
+            routed = default;
+            return false;
+        }
+
+        routed = destination.WrittenMemory.ToArray();
+        return true;
+    }
+
+    private bool TryRouteTitle(ReadOnlyMemory<byte> command, out ReadOnlyMemory<byte> routed)
+    {
+        if (_multiplexerRoute is null)
+        {
+            routed = command;
+            return true;
+        }
+
+        var destination = new ArrayBufferWriter<byte>(command.Length + 16);
+
+        if (!_multiplexerRoute.TryWriteTitle(destination, command.Span))
+        {
+            routed = default;
+            return false;
+        }
+
+        routed = destination.WrittenMemory.ToArray();
+        return true;
+    }
+
+    private bool TryRouteBell(ReadOnlyMemory<byte> command, out ReadOnlyMemory<byte> routed)
+    {
+        if (_multiplexerRoute is null)
+        {
+            routed = command;
+            return true;
+        }
+
+        var destination = new ArrayBufferWriter<byte>(command.Length + 16);
+
+        if (!_multiplexerRoute.TryWriteBell(destination, command.Span))
+        {
+            routed = default;
+            return false;
         }
 
         routed = destination.WrittenMemory.ToArray();

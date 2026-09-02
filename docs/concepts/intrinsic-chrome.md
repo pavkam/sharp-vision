@@ -109,6 +109,26 @@ code never emits terminal bytes.
 Appearance resolves in the order defined by [Styling](styling.md#visual-states).
 For chrome specifically:
 
+```mermaid
+flowchart TD
+    A[Resolve the style type's complete Normal border and shadow] --> B[Overlay active theme-state BorderOverlay and ShadowOverlay contributions]
+    B --> C[Apply the complete local control Style and any derived-control chrome]
+    C --> D[Overlay protected derived-control state contributions]
+    D --> E{Active visual state authored Border.Foreground itself?}
+    E -->|"No, or the state itself authors Relief"| F{Border.Relief}
+    E -->|"Yes, and the state does not author Relief"| G[That flat color paints every edge]
+    F -->|Flat| G
+    F -->|Raised| H[Top/left = Theme ReliefHighlight; right/bottom = Theme ReliefShade]
+    F -->|Sunken| I[Top/left = Theme ReliefShade; right/bottom = Theme ReliefHighlight]
+    G --> J[Compute border inset and shadow visual overflow]
+    H --> J
+    I --> J
+    J --> K[Paint shadow and body]
+    K --> L[OnRenderContent]
+    L --> M[Render children]
+    M --> N[Overlay the border]
+```
+
 1. Resolve the semantic style's complete normal border and shadow.
 2. Overlay active theme-state `BorderOverlay` and `ShadowOverlay` contributions.
 3. Apply the complete local control Style and any derived-control chrome.

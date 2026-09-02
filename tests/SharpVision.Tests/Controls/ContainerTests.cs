@@ -863,6 +863,29 @@ public sealed class ContainerTests
         observed.ShouldBe([(new Point(0, 4), new Point(0, 4))]);
     }
 
+    /// <summary>Verifies a ScrollChanged subscriber that throws does not prevent delivery to later
+    /// subscribers, and that the original exception is what ultimately propagates.</summary>
+    [Fact]
+    public void ScrollChanged_WhenSubscriberThrows_StillNotifiesLaterSubscribersAndRethrows()
+    {
+        // Arrange
+        var container = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+        var expected = new InvalidOperationException("first subscriber failed");
+        var secondRan = false;
+        container.ScrollChanged += (_, _) => throw expected;
+        container.ScrollChanged += (_, _) => secondRan = true;
+
+        // Act
+        var exception = Should.Throw<InvalidOperationException>(
+            () => container.ScrollBy(0, 3, ScrollCause.Keyboard));
+
+        // Assert
+        exception.ShouldBeSameAs(expected);
+        secondRan.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a wheel scroll completes without throwing when a ScrollChanged subscriber
     /// disposes the container mid-propagation, rather than letting PropagateScroll's post-scroll
     /// offset re-read discover the disposal by throwing ObjectDisposedException.</summary>

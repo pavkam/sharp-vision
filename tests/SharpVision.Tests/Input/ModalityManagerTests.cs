@@ -2903,6 +2903,53 @@ public sealed class ModalityManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a queued initial-focus candidate that becomes ineligible before the deferred
+    /// commit settles still activates the modal root's owner, even though the pre-commit target
+    /// inspected at entry time was non-null.</summary>
+    [Fact]
+    public async Task Enter_WhenQueuedInitialFocusBecomesIneligible_ActivatesModalRootAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var background = new ProbeControl { IsFocusable = true };
+            var requested = new ProbeControl { IsFocusable = true };
+            var plane = new ProbeContainer();
+            var initial = new ProbeControl { IsFocusable = true };
+            plane.Children.Add(initial);
+            root.Children.Add(background);
+            root.Children.Add(requested);
+            root.Children.Add(plane);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            var activated = new List<ControlBase?>();
+            using var modality = new ModalityManager(root, focus, pointer, target => activated.Add(target));
+            focus.Focus(background).ShouldBeTrue();
+            ModalScope? scope = null;
+            focus.Changing += (_, eventArgs) =>
+            {
+                if (scope is null && ReferenceEquals(eventArgs.Next, requested))
+                {
+                    scope = modality.Enter(plane, initialFocus: initial);
+                    initial.IsFocusable = false;
+                }
+            };
+
+            focus.Focus(requested).ShouldBeFalse();
+
+            var active = scope.ShouldNotBeNull();
+            active.IsActive.ShouldBeTrue();
+            modality.Active.ShouldBeSameAs(active);
+            focus.Focused.ShouldBeNull();
+            background.IsFocused.ShouldBeFalse();
+            activated.ShouldHaveSingleItem().ShouldBeSameAs(plane);
+            active.Dispose();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies modal fallback tries each candidate once while retaining descendant search.</summary>
     [Fact]
     public async Task Enter_WhenFallbackCandidatesToggle_DoesNotRetryAttemptedTargetsAsync()
@@ -4526,6 +4573,35 @@ public sealed class ModalityManagerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a DismissRequested subscriber that ends the scope stops later subscribers on
+    /// the same publication from running.</summary>
+    [Fact]
+    public async Task Dispatch_WhenDismissSubscriberDisposesScope_SkipsRemainingSubscribersAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 24, 8) };
+            var plane = new ProbeControl { Bounds = new Rect(0, 0, 8, 6) };
+            root.Children.Add(plane);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            var scope = modality.Enter(plane, OutsideInteraction.Dismiss);
+            var secondSubscriberCalls = 0;
+
+            scope.DismissRequested += (_, _) => scope.Dispose();
+            scope.DismissRequested += (_, _) => secondSubscriberCalls++;
+
+            _ = pointer.Dispatch(CreatePointer(new Point(14, 2), PointerAction.Press, Buttons.Primary));
+
+            secondSubscriberCalls.ShouldBe(0);
+            scope.IsActive.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies ignored outside transitions never route or create background press bookkeeping.</summary>
     [Fact]
     public async Task Dispatch_WhenOutsideInteractionIsIgnored_ConsumesPressReleaseAndWheelAsync()
@@ -4672,6 +4748,42 @@ public sealed class ModalityManagerTests
 
             dismissals.ShouldBe(2);
             backgroundRoutes.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a failing DismissRequested subscriber cannot suppress a later subscriber on the
+    /// same publication, and that the failure still propagates out of dispatch.</summary>
+    [Fact]
+    public async Task Dispatch_WhenDismissSubscriberThrows_RunsRemainingSubscribersThenRethrowsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 24, 8) };
+            var plane = new ProbeControl { Bounds = new Rect(0, 0, 8, 6) };
+            root.Children.Add(plane);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            using var scope = modality.Enter(plane, OutsideInteraction.Dismiss);
+            var failure = new InvalidOperationException("The first dismissal callback failed.");
+            var firstCalls = 0;
+            var secondCalls = 0;
+            scope.DismissRequested += (_, _) =>
+            {
+                firstCalls++;
+                throw failure;
+            };
+            scope.DismissRequested += (_, _) => secondCalls++;
+            var input = CreatePointer(new Point(14, 2), PointerAction.Press, Buttons.Primary);
+
+            Should.Throw<InvalidOperationException>(() => pointer.Dispatch(input)).ShouldBeSameAs(failure);
+
+            firstCalls.ShouldBe(1);
+            secondCalls.ShouldBe(1);
+            scope.IsActive.ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
     }
 

@@ -418,6 +418,46 @@ public sealed class MenuTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies Home and End jump straight to the first and last available entries,
+    /// skipping a disabled boundary entry exactly like the existing directional keys already skip
+    /// separators, collapsed, and hidden entries elsewhere in the collection. Neither key wraps:
+    /// unlike Left/Right/Up/Down/Tab, a disabled entry at the far boundary is skipped toward the
+    /// interior, never around to the opposite end, mirroring NavigationView's sibling contract.</summary>
+    [Fact]
+    public async Task Dispatch_WhenHomeOrEndKeyArrives_SelectsBoundaryAvailableEntrySkippingDisabledAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var first = new MenuItem { Text = "First", IsEnabled = false };
+            var second = new MenuItem { Text = "Second" };
+            var third = new MenuItem { Text = "Third" };
+            var fourth = new MenuItem { Text = "Fourth", IsEnabled = false };
+            menu.Items.Add(first);
+            menu.Items.Add(second);
+            menu.Items.Add(third);
+            menu.Items.Add(fourth);
+            menu.Attach(dispatcher);
+            using FocusManager focus = new(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            menu.SelectedIndex = 1;
+
+            _ = Router.Route(menu, Events.Key, new KeyEventArgs(new Stroke(
+                Code.End, default, nativeCode: 0, Modifiers.None, KeyAction.Press)));
+
+            // Skips the disabled Fourth entry and lands on the last genuinely available one.
+            menu.SelectedIndex.ShouldBe(2);
+
+            _ = Router.Route(menu, Events.Key, new KeyEventArgs(new Stroke(
+                Code.Home, default, nativeCode: 0, Modifiers.None, KeyAction.Press)));
+
+            // Skips the disabled First entry and lands on the first genuinely available one.
+            menu.SelectedIndex.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies the vertical shared shortcut-column measurement - which scans every owned
     /// MenuItem for its widest label and shortcut columns - excludes a Collapsed item's own label
     /// width from that shared maximum, matching the general Collapsed-excludes-size contract for a
@@ -722,6 +762,91 @@ public sealed class MenuTests
         item.Dispose();
 
         _ = Should.Throw<ObjectDisposedException>(item.PerformInvoke);
+    }
+
+    /// <summary>Verifies InvokeAccessKey selects and activates an ordinary available item.</summary>
+    [Fact]
+    public void InvokeAccessKey_WhenItemIsAvailable_SelectsAndActivatesWithKeyboardCause()
+    {
+        var item = new MenuItem { Text = "Save" };
+        var menu = new Menu();
+        menu.Items.Add(item);
+        var invocations = new List<ActivationCause>();
+        item.Invoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);
+
+        var result = menu.InvokeAccessKey(item);
+
+        result.ShouldBeTrue();
+        menu.SelectedItem.ShouldBeSameAs(item);
+        invocations.ShouldBe([ActivationCause.Keyboard]);
+    }
+
+    /// <summary>Verifies InvokeAccessKey re-validates its target after SelectFromInput runs
+    /// application callbacks. SelectFromInput publishes SelectedIndex/SelectedItem before
+    /// InvokeAccessKey activates the item, and a reentrant subscriber can disable the very item
+    /// being invoked during that publish. Before this fix, the target was never re-checked after
+    /// the callback ran, so a callback-disabled item was still activated.</summary>
+    [Fact]
+    public void InvokeAccessKey_WhenSelectionPublishDisablesTheTarget_ReturnsFalseWithoutActivating()
+    {
+        // A menu auto-selects the first item it gains while nothing is selected yet, so `other`
+        // has to exist first: InvokeAccessKey(item) then drives a real 0->1 SelectedIndex
+        // transition (and its notification) instead of a same-index no-op Select never publishes.
+        var other = new MenuItem { Text = "Other" };
+        var item = new MenuItem { Text = "Save" };
+        var menu = new Menu();
+        menu.Items.Add(other);
+        menu.Items.Add(item);
+        menu.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Menu.SelectedIndex))
+            {
+                item.IsEnabled = false;
+            }
+        };
+        var invocations = new List<ActivationCause>();
+        item.Invoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);
+
+        var result = menu.InvokeAccessKey(item);
+
+        result.ShouldBeFalse();
+        invocations.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies InvokeAccessKey re-validates that the target still occupies the selected
+    /// slot after SelectFromInput runs callbacks, mirroring the enabled/visible re-check. A
+    /// reentrant subscriber that moves selection to a different item during the publish must
+    /// prevent the original target from activating.</summary>
+    [Fact]
+    public void InvokeAccessKey_WhenSelectionPublishMovesSelectionElsewhere_ReturnsFalseWithoutActivating()
+    {
+        // Same ordering requirement as the sibling disable test above: `other` has to be added
+        // first so it - not `item` - claims the menu's auto-selected slot, leaving a real
+        // transition for InvokeAccessKey(item) to publish and a reentrant handler to observe.
+        var other = new MenuItem { Text = "Other" };
+        var item = new MenuItem { Text = "Save" };
+        var menu = new Menu();
+        menu.Items.Add(other);
+        menu.Items.Add(item);
+        var reentered = false;
+        menu.PropertyChanged += (_, eventArgs) =>
+        {
+            if (reentered || eventArgs.PropertyName != nameof(Menu.SelectedIndex))
+            {
+                return;
+            }
+
+            reentered = true;
+            menu.SelectedIndex = 0;
+        };
+        var invocations = new List<ActivationCause>();
+        item.Invoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);
+
+        var result = menu.InvokeAccessKey(item);
+
+        result.ShouldBeFalse();
+        invocations.ShouldBeEmpty();
+        menu.SelectedItem.ShouldBeSameAs(other);
     }
 
     /// <summary>Verifies a separator is never focusable, hit-testable, selectable, or invokable.</summary>
@@ -1712,6 +1837,31 @@ public sealed class MenuTests
         notifications.ShouldContain(nameof(Menu.SelectedItem));
     }
 
+    /// <summary>Verifies removing the selected entry, where a MenuSeparator slides into its vacated
+    /// slot, does not throw - the same reclaimed-slot hazard as
+    /// <see cref="Dispose_WhenReclaimedSelectedSlotHoldsASeparator_StillNotifiesSelectedItem"/>, but
+    /// reached through the ordinary Items.Remove API instead of MenuItem.Dispose(), which exercises
+    /// Select's own outgoing-slot read directly rather than OnItemControlsChanged's disposal branch.
+    /// Before this fix, Select's hard cast of the outgoing slot threw InvalidCastException the
+    /// moment a plain removal left a separator in the old selected index.</summary>
+    [Fact]
+    public void Remove_WhenSuccessorSeparatorSlidesIntoSelectedSlot_DoesNotThrowAndRepairsSelection()
+    {
+        var a = new MenuItem { Text = "A" };
+        var separator = new MenuSeparator();
+        var b = new MenuItem { Text = "B" };
+        var menu = new Menu();
+        menu.Items.Add(a);
+        menu.Items.Add(separator);
+        menu.Items.Add(b);
+        menu.SelectedIndex = 0;
+
+        _ = Should.NotThrow(() => menu.Items.Remove(a));
+
+        menu.Items.ShouldBe([separator, b]);
+        menu.SelectedItem.ShouldBeSameAs(b);
+    }
+
     /// <summary>Verifies an authored Width survives attachment: only Height is a semantic requirement
     /// (menu rows are exactly one cell tall), so Width must never be clobbered to Auto.</summary>
     [Fact]
@@ -1824,6 +1974,94 @@ public sealed class MenuTests
 
         menu.Items.ShouldBe([first, successor, fourth]);
         menu.SelectedItem.ShouldBeSameAs(successor);
+    }
+
+    /// <summary>Verifies that when a removed selected entry's successor slides into the exact same
+    /// index - the collision FindNearest's inclusive scan produces whenever an available MenuItem
+    /// takes the vacated slot - the identity change is still committed and published. Select's own
+    /// "_selectedIndex == index" guard treats that collision as a no-op, so before this fix
+    /// SelectedItem's identity moved from the removed entry to its successor with no
+    /// PropertyChanged(SelectedItem), no CommitSelection(false) on the outgoing entry, and no
+    /// CommitSelection(true) on the incoming one - only the co-located index-based SelectedItem
+    /// assertion in RemoveAt_WhenSelectedEntryIsRemoved_RepairsSelectionToNearestAvailable passed,
+    /// masking the gap.</summary>
+    [Fact]
+    public void RemoveAt_WhenSuccessorSlidesIntoSelectedSlot_PublishesIdentityChangeAndCommitsSelection()
+    {
+        var first = new MenuItem { Text = "First" };
+        var selected = new MenuItem { Text = "Selected" };
+        var successor = new MenuItem { Text = "Successor" };
+        var fourth = new MenuItem { Text = "Fourth" };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(selected);
+        menu.Items.Add(successor);
+        menu.Items.Add(fourth);
+        menu.SelectedIndex = 1;
+        var notifications = new List<string>();
+        menu.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName!);
+
+        menu.Items.RemoveAt(1);
+
+        menu.Items.ShouldBe([first, successor, fourth]);
+        menu.SelectedItem.ShouldBeSameAs(successor);
+        notifications.ShouldContain(nameof(Menu.SelectedItem));
+    }
+
+    /// <summary>Verifies a reentrant SelectedItem subscriber that removes the very successor which
+    /// just slid into the selected slot does not leave RemoveEntry's outer frame re-selecting that
+    /// now-detached entry off a stale local reference. The nested RemoveEntry call correctly moves
+    /// selection on to a third entry and decommits the successor; before this fix, the outer frame
+    /// would resume afterward and unconditionally call CommitSelection(ContainsFocus) on its own
+    /// stale `current` (the successor), re-marking a detached zombie entry as selected. Requires a
+    /// focused menu - ContainsFocus is false for an unmounted one, which would make the incorrect
+    /// re-commit indistinguishable from a correct no-op.</summary>
+    [Fact]
+    public async Task RemoveAt_WhenSelectedItemSubscriberReentrantlyRemovesTheSuccessor_DoesNotReselectTheDetachedEntryAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var first = new MenuItem { Text = "First" };
+            var selected = new MenuItem { Text = "Selected" };
+            var successor = new MenuItem { Text = "Successor" };
+            var fourth = new MenuItem { Text = "Fourth" };
+            var menu = new Menu();
+            menu.Items.Add(first);
+            menu.Items.Add(selected);
+            menu.Items.Add(successor);
+            menu.Items.Add(fourth);
+            menu.SelectedIndex = 1;
+            new LayoutEngine().Layout(menu, new Size(12, 4));
+            menu.Attach(dispatcher);
+            using FocusManager focus = new(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            var reentered = false;
+            menu.PropertyChanged += (_, eventArgs) =>
+            {
+                if (reentered ||
+                    eventArgs.PropertyName != nameof(Menu.SelectedItem) ||
+                    !ReferenceEquals(menu.SelectedItem, successor))
+                {
+                    return;
+                }
+
+                reentered = true;
+                _ = menu.Items.Remove(successor);
+            };
+
+            menu.Items.RemoveAt(1);
+
+            reentered.ShouldBeTrue();
+            menu.Items.ShouldBe([first, fourth]);
+            menu.SelectedItem.ShouldBeSameAs(fourth);
+            var isSelectedFact = typeof(ControlBase).GetProperty(
+                "IsSelectedFact",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            _ = isSelectedFact.ShouldNotBeNull();
+            ((bool) isSelectedFact.GetValue(successor)!).ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies removing the last entry while it is selected falls back to the nearest
@@ -1947,6 +2185,34 @@ public sealed class MenuTests
         menu.SelectedItem.ShouldBeSameAs(replacement);
         first.IsDisposed.ShouldBeFalse();
         first.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies replacing the sole selected entry with a MenuSeparator - leaving no other
+    /// selectable entry - still publishes the cleared selection. ReplaceEntry force-sets
+    /// _selectedIndex to -1 before computing the repaired target; when that target is also -1,
+    /// routing through Select's own "_selectedIndex == index" guard would silently return before
+    /// its PropertyChanged notifications, and _selectedEntry would keep pointing at the just-detached
+    /// old item.</summary>
+    [Fact]
+    public void Indexer_WhenSelectedItemIsReplacedBySeparatorWithNoOtherSelectableEntry_PublishesClearedSelection()
+    {
+        var selected = new MenuItem { Text = "Selected" };
+        var menu = new Menu();
+        menu.Items.Add(selected);
+        menu.SelectedIndex = 0;
+        var notifications = new List<string>();
+        menu.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName!);
+        var separator = new MenuSeparator();
+
+        menu.Items[0] = separator;
+
+        menu.Items.ShouldBe([separator]);
+        menu.SelectedIndex.ShouldBe(-1);
+        menu.SelectedItem.ShouldBeNull();
+        notifications.ShouldContain(nameof(Menu.SelectedIndex));
+        notifications.ShouldContain(nameof(Menu.SelectedItem));
+        selected.IsDisposed.ShouldBeFalse();
+        selected.Parent.ShouldBeNull();
     }
 
     /// <summary>Verifies the indexer rejects a replacement that is not a MenuItem or MenuSeparator.</summary>

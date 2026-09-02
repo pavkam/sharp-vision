@@ -64,7 +64,8 @@ Overlapping hover and focus transitions restart a single timer subscription
 rather than stacking callbacks. The timers run on the owning dispatcher and are
 released on detach, so reattachment creates timers from the new dispatcher's
 clock and queue instead of retaining the previous owner. They are also released
-when the Tooltip is disposed.
+when the Tooltip is disposed, or when `Visibility` becomes `Hidden` while the
+Tooltip is still attached.
 
 Tooltip defaults to a passive surface policy: no automatic modal scope, no focus
 transfer, no keyboard navigation, no Escape handling, and no hit testing. These
@@ -126,6 +127,7 @@ Tooltip.SetText(
   Popup's rounded frame, and a theme's `styles.tooltip` entry can still override
   it.
 - The first open frame has committed geometry and renders its text, the
-  lifecycle cleans up as documented, and clear or disposal releases association,
-  ownership, anchor, relayout, and timer subscriptions even when a close
-  observer fails; the earliest failure is rethrown after cleanup.
+  lifecycle cleans up as documented, and clear, disposal, or hiding an attached
+  Tooltip releases association, ownership, anchor, relayout, and timer
+  subscriptions even when a close observer fails; the earliest failure is
+  rethrown after cleanup.

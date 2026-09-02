@@ -85,6 +85,13 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         IsFocusable = false;
         PropertyChanged += OnPopupPropertyChanged;
         EnableChromeAuthoring();
+
+        // A Popup (and every subclass - Flyout, Tooltip - plus every composed drop-down/menu
+        // surface built directly on this base type) is a floating surface anchored elsewhere in
+        // the tree. It must never blend the anchor's ambient Foreground/Attributes/Underline into
+        // its own resolved Face just because a custom theme happens to leave styles.popup's
+        // background transparent; it should always start fresh instead.
+        IsAppearanceBoundary = true;
     }
 
     /// <summary>Configures the one Popup-owned light-dismiss policy before attachment.</summary>
@@ -397,13 +404,19 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
             // User callbacks reached during modal entry may synchronously close
             // the Popup or dispose the just-entered manager scope. Preserve that
             // decision and never retain a stale presentation handle.
-            if (!scope.IsActive || !IsOpen)
+            if (!IsOpen)
             {
                 if (scope.IsActive)
                 {
                     scope.Dispose();
                 }
 
+                return scope;
+            }
+
+            if (!scope.IsActive)
+            {
+                RollbackExposure();
                 return scope;
             }
 
@@ -425,6 +438,14 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                 }
             }
 
+            RollbackExposure();
+
+            failure.Throw();
+            throw;
+        }
+
+        void RollbackExposure()
+        {
             if (exposed && IsOpen)
             {
                 try
@@ -436,9 +457,6 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                     // Entry rollback is complete enough to keep the initiating failure.
                 }
             }
-
-            failure.Throw();
-            throw;
         }
     }
 
@@ -763,13 +781,14 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
             PropertyChanged -= OnPopupPropertyChanged;
         }
 
+        ExceptionDispatchInfo? failure = null;
+
         if (reason is ReleaseReason.Hidden or ReleaseReason.Detached or ReleaseReason.Disposed)
         {
             ClearAvailabilityAncestor();
+            ExceptionAggregation.Capture(ReleaseLightDismiss, ref failure);
         }
 
-        ExceptionDispatchInfo? failure = null;
-        CaptureFailure(ReleaseLightDismiss, ref failure);
         CaptureFailure(() => base.OnUnavailable(reason), ref failure);
 
         // Disposal joins Hidden/Detached here rather than only clearing the backing
@@ -943,7 +962,14 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
         if (IsOpenTransitioning)
         {
-            throw new InvalidOperationException("Popup open-state transitions cannot be reentered.");
+            // A CloseRequested handler repeating the same close request synchronously is a
+            // documented no-op: the outer request remains authoritative, and this call has
+            // nothing left to contribute. IsRequestingClose narrows this to exactly that phase -
+            // it clears before the family's closing state commits and before Closing runs, so
+            // reentry from those later phases still falls through to the throw below.
+            return !value && IsRequestingClose
+                ? null
+                : throw new InvalidOperationException("Popup open-state transitions cannot be reentered.");
         }
 
         if (_isOpen == value)
@@ -952,6 +978,15 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         }
 
         var wasOpen = _isOpen;
+        // Captured before the transaction so the post-transaction check below can tell whether a
+        // close was actually committed here - mirroring IsCurrentClosedState's before/after version
+        // comparison - instead of unconditionally trusting the field's current value. A reentrant
+        // disposal from CloseRequested (see OnUnavailable) can commit its own close and publish
+        // CloseTransitionCompleted for it before this call resumes; RaiseCloseTransitionCompleted's
+        // own exact-once guard is what actually prevents republishing that version, but gating the
+        // call on a version change keeps this call site from assuming it owns whichever commit
+        // produced the current value.
+        var precedingCloseCommitVersion = _closeCommitVersion;
         FloatingSurfaceCloseOutcome? closeOutcome = null;
         IsOpenTransitioning = true;
         ExceptionDispatchInfo? failure = null;
@@ -971,7 +1006,13 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                         ClearAvailabilityAncestor();
 
                         closeOutcome = ResolveFadeOutDuration() == TimeSpan.Zero
-                            ? CloseSurfaceWithOutcome(CommitClosedState, CollapseContent)
+                            ? CloseSurfaceWithOutcome(
+                                () =>
+                                {
+                                    CommitClosedState();
+                                    IsOpenTransitioning = false;
+                                },
+                                CollapseContent)
                             : CloseSurfaceWithOutcome(
                                 static () => { },
                                 CommitClosedAndCollapseContent,
@@ -997,7 +1038,9 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                 () => RaiseCloseTransitionCompleted(pendingCloseTransitionVersion),
                 ref failure);
         }
-        else if (wasOpen && !_isOpen)
+        else if (wasOpen &&
+                 !_isOpen &&
+                 _closeCommitVersion != precedingCloseCommitVersion)
         {
             CaptureFailure(() => RaiseCloseTransitionCompleted(_closeCommitVersion), ref failure);
         }
@@ -1334,18 +1377,46 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     {
         // CommitClosedState is the first mutation on this path (SetOpen never assigns
         // _isOpen), so a veto here leaves _isOpen == true untouched - matching the presented
-        // path, where CloseSurfaceCore returns before committing.
-        if (!RaiseCloseRequested())
+        // path, where CloseSurfaceCore returns before committing. Raised through the
+        // request-phase helper - not RaiseCloseRequested directly - so a handler that repeats
+        // this same close reentrantly hits SetOpen's IsRequestingClose no-op instead of the
+        // reentrancy throw; this path has its own IsOpenTransitioning armed by SetOpen already,
+        // but nothing arms IsRequestingClose for it otherwise, since only CloseSurfaceCore did.
+        if (!RaiseCloseRequestedInRequestPhase())
         {
             return FloatingSurfaceCloseOutcome.Vetoed;
         }
 
+        // A CloseRequested subscriber may have disposed the surface synchronously while the event
+        // above was raising - bail out before touching any mutable state that ThrowIfDisposed()-
+        // guarded members (like CommitClosedState's NotifyPropertyChanged) would reject. By this
+        // point OnUnavailable(Disposed) has already performed the full close (IsOpen was still
+        // true, since SetOpen never assigns _isOpen on this path), so there is nothing left for
+        // this transaction to commit - mirroring CloseSurfaceCore's identical guard.
+        if (IsDisposed)
+        {
+            return FloatingSurfaceCloseOutcome.Completed;
+        }
+
+        // Captured before any mutation below so a Closing handler that disposes the popup
+        // synchronously (nulling the live Closed field) cannot strand this invocation list -
+        // mirroring CloseSurfaceCore's identical capture-ahead-of-time treatment for the
+        // presented path.
+        var closedHandlers = CaptureClosedHandlers();
+
         ExceptionDispatchInfo? failure = null;
         CaptureFailure(CommitClosedState, ref failure);
-        CaptureFailure(RaiseSurfaceClosing, ref failure);
+        // Closing runs under the same reentrant-open guard CloseSurfaceCore holds for its own
+        // Closing publication, so a Closing observer that tries to reopen here is blocked by
+        // OpenSurface's existing check rather than corrupting this in-flight transaction.
+        CaptureFailure(RaiseSurfaceClosingWithReentrantOpenGuard, ref failure);
+        // Release the reentrancy guard once Closing has fully run, mirroring the presented close
+        // path, so a Closed observer that reopens the popup synchronously does not hit SetOpen's
+        // reentrancy throw.
+        CaptureFailure(() => IsOpenTransitioning = false, ref failure);
         CaptureFailure(CollapseContent, ref failure);
         SurfaceBounds = default;
-        CaptureFailure(RaiseSurfaceClosed, ref failure);
+        CaptureFailure(() => closedHandlers?.Invoke(this, EventArgs.Empty), ref failure);
         failure?.Throw();
         return FloatingSurfaceCloseOutcome.Completed;
     }

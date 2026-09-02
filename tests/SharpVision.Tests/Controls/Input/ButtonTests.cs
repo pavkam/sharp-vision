@@ -340,6 +340,63 @@ public sealed class ButtonTests
         content.Bounds.ShouldBe(new Rect(2, 1, 6, 1));
     }
 
+    /// <summary>Verifies a Center-aligned face position saturates at int.MaxValue instead of
+    /// wrapping negative when the button's own bounds already sit near the integer coordinate
+    /// limit, matching the sibling fix applied to Dock/Expander/CheckBox/RadioButton/MenuItem/
+    /// NavigationViewGroup arrange arithmetic.</summary>
+    [Fact]
+    public void Arrange_WhenFaceXIsNearIntMaxValueAndTextIsCentered_SaturatesInsteadOfWrapping()
+    {
+        var button = new Button
+        {
+            Style = TestButtonStyles.FlatWithPadding(default),
+            TextAlignment = Alignment.Center,
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            Text = "Hi"
+        };
+        var content = button.TextControl!;
+        content.Width = Length.Cells(2);
+        content.Height = Length.Cells(1);
+
+        button.Measure(new Constraint(10, 1));
+        button.Arrange(new Rect(int.MaxValue - 2, 0, 10, 1));
+
+        button.Bounds.X.ShouldBe(int.MaxValue - 2);
+        content.Bounds.X.ShouldBe(int.MaxValue);
+        content.Bounds.Width.ShouldBe(2);
+    }
+
+    /// <summary>Verifies an End-aligned face position stays exact at the opposite (negative)
+    /// extreme of the integer coordinate range, mirroring the Center-alignment saturation test
+    /// above and the sibling fix applied to Dock/Expander/CheckBox/RadioButton/MenuItem/
+    /// NavigationViewGroup arrange arithmetic: the arithmetic now goes through
+    /// <c>SaturatingSubtract</c> rather than raw subtraction, so this pins the boundary case
+    /// where the content fills the entire face (leaving zero headroom against
+    /// <see cref="int.MinValue"/>) to the same correct result as before the change.</summary>
+    [Fact]
+    public void Arrange_WhenFaceXIsIntMinValueAndTextIsEndAligned_StaysExactInsteadOfWrapping()
+    {
+        var button = new Button
+        {
+            Style = TestButtonStyles.FlatWithPadding(default),
+            TextAlignment = Alignment.End,
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            Text = "HelloThere"
+        };
+        var content = button.TextControl!;
+        content.Width = Length.Cells(10);
+        content.Height = Length.Cells(1);
+
+        button.Measure(new Constraint(10, 1));
+        button.Arrange(new Rect(int.MinValue, 0, 10, 1));
+
+        button.Bounds.X.ShouldBe(int.MinValue);
+        content.Bounds.X.ShouldBe(int.MinValue);
+        content.Bounds.Width.ShouldBe(10);
+    }
+
     /// <summary>Verifies pressed shadow translation commits content exactly one cell from its released bounds.</summary>
     [Fact]
     public void Arrange_WhenPressedWithShadow_TranslatesContentByShadowOffset()

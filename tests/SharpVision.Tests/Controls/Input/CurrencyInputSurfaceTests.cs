@@ -540,6 +540,37 @@ public sealed class CurrencyInputSurfaceTests
         input.Bounds.Width.ShouldBeGreaterThanOrEqualTo(4);
     }
 
+    /// <summary>Verifies a focused CurrencyInput composes CurrencyNegativePattern 16 ("$- n":
+    /// symbol, sign, space, number) without throwing. .NET's ICU data assigns this pattern to the
+    /// "luy"/"luy-KE" cultures, but this test synthesizes it on a cloned invariant culture instead
+    /// of depending on that specific culture's data being present on the running platform.</summary>
+    [Fact]
+    public async Task Render_WhenFocusedAndCurrencyNegativePatternIsSixteen_ComposesSymbolSignSpaceNumberAsync()
+    {
+        // Arrange
+        var culture = (CultureInfo) CultureInfo.InvariantCulture.Clone();
+        culture.NumberFormat.CurrencyNegativePattern = 16;
+        var symbol = culture.NumberFormat.CurrencySymbol;
+        var sign = culture.NumberFormat.NegativeSign;
+        var input = new CurrencyInput { Culture = culture, Value = -5m, DecimalPlaces = 0 };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(20, 1),
+            TestThemes.BorderlessInput,
+            TestContext.Current.CancellationToken);
+
+        // Act - focus the control so rendering flows through the caret-aware BuildFocusedDisplay
+        // path, rather than the idle "C"-format path exercised by the other tests in this region.
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(input);
+
+        // Assert - symbol, sign, space, magnitude with no separating space before the sign.
+        surface.Cell(new Point(0, 0)).Text.ShouldBe(symbol);
+        surface.Cell(new Point(1, 0)).Text.ShouldBe(sign);
+        surface.Cell(new Point(2, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(3, 0)).Text.ShouldBe("5");
+    }
+
     #endregion
 
     #region Cursor and affix rendering

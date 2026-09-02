@@ -189,15 +189,19 @@ fallback does not author still runs `Complete` against the fallback's own
 `Normal`, which is the only place a per-state code-owned default - a checked
 accent color, a glyph-family lookup through `theme.Glyphs` - can be expressed.
 `fallbackTo` may resolve any public per-state set: one of the six well-known
-types through `Theme.GetStyleSet`, or one of `Theme`'s four derived interaction
+types through `Theme.GetStyleSet`, or one of `Theme`'s five derived interaction
 sets - `GetInteractiveControlStyleSet`, `GetInteractiveRowStyleSet`,
-`GetFocusableContainerStyleSet`, and `GetFocusableControlStyleSet`. Choose a
-derived set the same way a library leaf style does: the Interactive pair for a
-borderless control that owns direct interaction outright (Row alone keeps the
-passive background under pointer hover, for a row whose selection owns the fill
-instead), and the narrower Focusable pair - Container or Control geometry - for
-a control that is merely a direct focus target whose own content already owns
-hover, press, and selection more specifically.
+`GetFocusableContainerStyleSet`, `GetFocusableControlStyleSet`, and
+`GetTabularControlStyleSet`. Choose a derived set the same way a library leaf
+style does: the Interactive pair for a borderless control that owns direct
+interaction outright (Row alone keeps the passive background under pointer
+hover, for a row whose selection owns the fill instead), the narrower Focusable
+pair - Container or Control geometry - for a control that is merely a direct
+focus target whose own content already owns hover, press, and selection more
+specifically, and `GetTabularControlStyleSet` for an owner-surface control -
+Table, Document - that paints independently-colored content over one shared
+surface and must skip the generic reverse-video safety net that would otherwise
+flatten that content into a solid focus slab.
 
 `CommandTile` derives directly from `ControlBase` here, but the same
 `IStyled<TStyle>` declaration plus `InitializeStyle`/`StyleSlot<TStyle>`

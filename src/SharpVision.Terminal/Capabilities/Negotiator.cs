@@ -37,6 +37,11 @@ public sealed class Negotiator
     /// <summary>Gets whether the query batch was emitted.</summary>
     public bool Started => _strategy.Started;
 
+    /// <summary>Gets whether the written batch included the CSI 6n cursor-position completion
+    /// fence. A low caller-supplied query budget can crowd the fence out of the batch entirely.
+    /// </summary>
+    internal bool FenceQueried => _strategy.FenceQueried;
+
     /// <summary>Gets whether one immutable profile was published.</summary>
     public bool Completed => _strategy.Completed;
 

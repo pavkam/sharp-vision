@@ -66,6 +66,59 @@ public sealed class ConsoleApplicationBuilderTests
         builder.Options.ShouldBeSameAs(before);
     }
 
+    /// <summary>Verifies disabling negotiation no longer fabricates a conservative ANSI profile as a
+    /// side effect: doing so used to silently pin a Profile, which both discarded a subsequent
+    /// UseNegotiation() call and bypassed real terminal-description discovery in Build().</summary>
+    [Fact]
+    public void WithoutNegotiation_WhenCalled_LeavesProfileAndCapabilitiesNull()
+    {
+        var builder = new ConsoleApplicationBuilder(new ProbeScreen())
+            .WithoutNegotiation();
+
+        builder.Options.Negotiation.ShouldBeNull();
+        builder.Options.NegotiationDisabled.ShouldBeTrue();
+        builder.Options.Profile.ShouldBeNull();
+        builder.Options.Capabilities.ShouldBeNull();
+    }
+
+    /// <summary>Verifies re-enabling negotiation after disabling it clears the disabled flag, so the
+    /// caller-supplied negotiation actually resolves instead of being silently discarded.</summary>
+    [Fact]
+    public void WithoutNegotiationThenUseNegotiation_WhenChained_ResolvesSuppliedNegotiation()
+    {
+        var negotiation = new NegotiationOptions(new Dictionary<string, string?>());
+        var builder = new ConsoleApplicationBuilder(new ProbeScreen())
+            .WithoutNegotiation()
+            .UseNegotiation(negotiation);
+
+        builder.Options.NegotiationDisabled.ShouldBeFalse();
+        var terminal = builder.Options.ToTerminalOptions();
+
+        terminal.Negotiation.ShouldBeSameAs(negotiation);
+    }
+
+    /// <summary>Verifies disabling negotiation still lets Build() perform real terminal-description
+    /// discovery, rather than short-circuiting <c>ConsoleConnection.ResolveDescription</c> the way a
+    /// fabricated Profile previously did.</summary>
+    [Fact]
+    public async Task Build_WhenNegotiationDisabled_StillPerformsDescriptionDiscoveryAsync()
+    {
+        var fixture = CreateFixture("ansi-fallback");
+        _ = fixture.Builder.WithoutNegotiation();
+
+        var application = fixture.Builder.Build();
+
+        try
+        {
+            fixture.Provider.Request.ShouldNotBeNull().TerminalName.ShouldBe("dumb");
+            application.TerminalProfile.Description.Name.ShouldBe("xterm-256color");
+        }
+        finally
+        {
+            await application.DisposeAsync();
+        }
+    }
+
     /// <summary>Verifies the unsupported-terminal message fluent setter is independent of redirect output.</summary>
     [Fact]
     public void WithUnsupportedTerminalMessage_WhenCalled_SetsOnlyUnsupportedMessage()

@@ -342,11 +342,14 @@ public sealed class PopupDropDownCoordinatorTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies the critical close-path reentrancy ordering: PopupModalTracker.Exit
-    /// synchronously restores focus and can itself close the popup (firing Closing/Closed, and
-    /// therefore this coordinator's cancellation hook, from inside Exit), so Closing/Closed must
-    /// fire exactly once each - never once from the reentrant path and again from the coordinator's
-    /// own explicit assignment - while owner close completion waits until Exit has returned.</summary>
+    /// <summary>Verifies the critical close-path reentrancy ordering: the close path calls
+    /// PopupModalTracker.Exit before assigning Popup.IsOpen = false, and that assignment
+    /// synchronously raises Popup.Closing, reentrantly invoking this coordinator's own
+    /// OnPopupClosing handler, which calls Exit again - a second, no-op call, since the first
+    /// call already cleared the modal scope. Closing/Closed must fire exactly once each - never
+    /// once from the reentrant handler and again from the coordinator's own explicit assignment -
+    /// while owner close completion waits until the assignment (and its reentrant handler) has
+    /// returned.</summary>
     [Fact]
     public async Task SetOpen_WhenClosing_ExitsModalBeforePopupFlipsAndNeverDoubleFiresPopupEventsAsync()
     {
@@ -391,8 +394,9 @@ public sealed class PopupDropDownCoordinatorTests
             closingCount.ShouldBe(1);
             closedCount.ShouldBe(1);
 
-            // BeforeCloseFocusRestore runs from the reentrant Popup Closing fired inside Exit().
-            // Owner property and close publication wait for that modal unwind to return, then run
+            // BeforeCloseFocusRestore runs from OnPopupClosing, reentrantly invoked when the
+            // Popup.IsOpen = false assignment below synchronously raises Popup.Closing. Owner
+            // property and close publication wait for that assignment to return, then run
             // exactly once from the popup's committed-close completion.
             events.ShouldBe(["BeforeCloseFocusRestore", "PropertyChanged", "DropDownClosed"]);
         }, TestContext.Current.CancellationToken);

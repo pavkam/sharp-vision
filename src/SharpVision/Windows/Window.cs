@@ -62,6 +62,12 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         BeginSurfaceOpenLifetime();
         PropertyChanged += OnWindowPropertyChanged;
         EnableChromeAuthoring();
+
+        // A Window is a top-level floating surface: it must never blend an ambient parent's
+        // Foreground/Attributes/Underline into its own resolved Face just because a custom
+        // theme happens to leave styles.window's background transparent. Opting out here keeps
+        // that behavior correct regardless of which theme is active.
+        IsAppearanceBoundary = true;
     }
 
     /// <summary>Gets the retained close-chrome hover detail used to prove reconciliation with the
@@ -674,7 +680,23 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         if (eventArgs is PointerEventArgs pointer)
         {
             UpdateClosePointerOver(pointer);
-            _closeInteraction.Handle(pointer);
+
+            // While a title-bar drag or corner resize is in flight, the gesture owns pointer
+            // capture and every subsequent event until it ends. Routing those events through
+            // the close chrome's PressBehavior first is wrong regardless of whether it is
+            // pressed: PressBehavior.HandlePointer's Leave branch releases capture whenever
+            // _hasPointerCapture() is true, with no check for whether *it* is the one holding
+            // it, so a Leave mid-drag would release the drag's own capture out from under it
+            // and leave HandlePointerDrag's matching Leave/Release branch permanently
+            // unreachable (its (_dragging || _resizing) guard is already false by the time it
+            // runs, since OnLostPointerCapture unconditionally clears both flags first). Skip
+            // the close chrome entirely while a gesture is active so HandlePointerDrag's own
+            // Leave/Release branch can run and correctly end the gesture and mark the event
+            // handled.
+            if (!_dragging && !_resizing)
+            {
+                _closeInteraction.Handle(pointer);
+            }
 
             if (!pointer.IsHandled)
             {
@@ -728,12 +750,12 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// <remarks>
     /// Raises <see cref="FloatingSurfaceBase.CloseRequested"/> first; a handler that cancels leaves the
     /// Window untouched. Otherwise raises <see cref="FloatingSurfaceBase.Closing"/> and, by default,
-    /// collapses the Window - synchronously by default or after a configured dismissal fade - unless a <see cref="FloatingSurfaceBase.Closing"/> handler already took
-    /// responsibility for <see cref="Visibility"/> itself, in which case
-    /// <see cref="FloatingSurfaceBase.Closed"/> is suppressed. Unlike <see cref="CanClose"/>, which only
-    /// gates the close affordance and <see cref="CloseOnEscape"/>, this method always attempts to
-    /// close regardless of <see cref="CanClose"/>, matching how modal outside-dismissal already
-    /// behaves.
+    /// collapses the Window - synchronously by default or after a configured dismissal fade - unless
+    /// a <see cref="FloatingSurfaceBase.Closing"/> handler itself changes <see cref="Visibility"/> and
+    /// leaves the Window visible and presented, in which case it has taken responsibility for the
+    /// outcome and <see cref="FloatingSurfaceBase.Closed"/> is suppressed. Unlike <see cref="CanClose"/>,
+    /// which only gates the close affordance and <see cref="CloseOnEscape"/>, this method always attempts
+    /// to close regardless of <see cref="CanClose"/>, matching how modal outside-dismissal already behaves.
     /// </remarks>
     public void Close() => RequestClose();
 
@@ -1214,13 +1236,19 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             // Modal-entry callbacks may synchronously hide the Window or dispose
             // the just-entered manager scope. Preserve that owner decision and
             // never retain an inactive presentation handle.
-            if (!scope.IsActive || Visibility != Visibility.Visible)
+            if (Visibility != Visibility.Visible)
             {
                 if (scope.IsActive)
                 {
                     scope.Dispose();
                 }
 
+                return scope;
+            }
+
+            if (!scope.IsActive)
+            {
+                RollbackVisibility();
                 return scope;
             }
 
@@ -1242,6 +1270,14 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
                 }
             }
 
+            RollbackVisibility();
+
+            failure.Throw();
+            throw;
+        }
+
+        void RollbackVisibility()
+        {
             if (Visibility != previousVisibility)
             {
                 try
@@ -1254,9 +1290,6 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
                     // even when rollback publication fails.
                 }
             }
-
-            failure.Throw();
-            throw;
         }
     }
 

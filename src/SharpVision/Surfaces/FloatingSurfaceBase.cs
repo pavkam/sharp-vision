@@ -32,7 +32,6 @@ public abstract class FloatingSurfaceBase: ContentControl
     private bool _isClosing;
     private bool _isCompletingClose;
     private bool _isEnteringFade;
-    private bool _isRequestingClose;
     private bool _isEnteringModal;
     private bool _isOpening;
     private bool _allowsOpeningDuringClosing;
@@ -127,6 +126,18 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <summary>Gets whether this surface currently owns one active application modality scope.</summary>
     protected bool HasActiveSurfaceModal => _modalSession.IsActive;
 
+    /// <summary>
+    /// Gets whether the common close transaction is currently inside its <see cref="CloseRequested"/>
+    /// request phase.
+    /// </summary>
+    /// <remarks>
+    /// This is narrower than the whole close transaction: it clears before the family-specific
+    /// closing state commits and before <see cref="Closing"/> runs, so a family can special-case
+    /// only a reentrant call that lands synchronously from a <see cref="CloseRequested"/> handler
+    /// without also swallowing reentry from those later phases.
+    /// </remarks>
+    private protected bool IsRequestingClose { get; private set; }
+
     /// <summary>Gets the identity of the current common presentation transaction.</summary>
     internal long SurfacePresentationVersion { get; private set; }
 
@@ -161,6 +172,24 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <summary>Raises the inherited closing notification for a family-specific close request.</summary>
     protected void RaiseSurfaceClosing() => Closing?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>Raises <see cref="Closing"/> while arming the same reentrant-open guard
+    /// <see cref="CloseSurfaceCore"/> holds for its own <see cref="Closing"/> publication, for a
+    /// family close route - an unpresented close, which never calls <see cref="OpenSurface"/>'s
+    /// presented sibling - that does not go through it.</summary>
+    protected void RaiseSurfaceClosingWithReentrantOpenGuard()
+    {
+        _isClosing = true;
+
+        try
+        {
+            RaiseSurfaceClosing();
+        }
+        finally
+        {
+            _isClosing = false;
+        }
+    }
+
     /// <summary>Raises the inherited closed notification after a family confirms presentation unavailability.</summary>
     protected void RaiseSurfaceClosed() => Closed?.Invoke(this, EventArgs.Empty);
 
@@ -176,6 +205,27 @@ public abstract class FloatingSurfaceBase: ContentControl
         var requestArgs = new SurfaceCloseRequestedEventArgs();
         closeRequested.Invoke(this, requestArgs);
         return !requestArgs.Cancel;
+    }
+
+    /// <summary>Raises <see cref="CloseRequested"/> with <see cref="IsRequestingClose"/> armed for
+    /// its duration, so a reentrant close landing synchronously from the handler can recognize the
+    /// request phase and no-op instead of throwing. Every close path that publishes
+    /// <see cref="CloseRequested"/> - presented or not - must use this rather than
+    /// <see cref="RaiseCloseRequested"/> directly, or reentry during its own request phase throws
+    /// instead of the documented no-op.</summary>
+    /// <returns>False when a handler vetoed the request; otherwise true.</returns>
+    private protected bool RaiseCloseRequestedInRequestPhase()
+    {
+        IsRequestingClose = true;
+
+        try
+        {
+            return RaiseCloseRequested();
+        }
+        finally
+        {
+            IsRequestingClose = false;
+        }
     }
 
     /// <summary>
@@ -555,23 +605,24 @@ public abstract class FloatingSurfaceBase: ContentControl
             return FloatingSurfaceCloseOutcome.Ignored;
         }
 
-        if (_isRequestingClose)
+        if (IsRequestingClose)
         {
             return FloatingSurfaceCloseOutcome.Ignored;
         }
 
-        _isRequestingClose = true;
-
-        try
+        if (publishCloseRequested && !RaiseCloseRequestedInRequestPhase())
         {
-            if (publishCloseRequested && !RaiseCloseRequested())
-            {
-                return FloatingSurfaceCloseOutcome.Vetoed;
-            }
+            return FloatingSurfaceCloseOutcome.Vetoed;
         }
-        finally
+
+        // A CloseRequested subscriber may have disposed the surface synchronously while the event
+        // above was raising - bail out before touching any mutable state that ThrowIfDisposed()-
+        // guarded members (like the family's closing-state commit) would reject. By this point
+        // OnUnavailable(Disposed) has already performed the full close, so there is nothing left
+        // for this transaction to commit.
+        if (IsDisposed)
         {
-            _isRequestingClose = false;
+            return FloatingSurfaceCloseOutcome.Ignored;
         }
 
         _isClosing = true;

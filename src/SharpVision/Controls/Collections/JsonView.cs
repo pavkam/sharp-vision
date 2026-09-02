@@ -3,6 +3,7 @@
 
 namespace SharpVision.Controls.Collections;
 
+using System.Text.Encodings.Web;
 using System.Text.Json;
 
 using Scrolling;
@@ -26,6 +27,17 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
 
     /// <summary>Gets the maximum indentation prefix materialized for any projected line.</summary>
     internal const int MaximumProjectedIndentationCells = 4096;
+
+    // Object-key labels are serialized back to a JSON string literal for display, matching the
+    // control's other punctuation. The default encoder escapes every non-ASCII scalar as \uXXXX,
+    // which would render a key like "café" or "名前" unreadable even though the sibling string
+    // VALUE for the same property renders those exact characters verbatim via GetRawText(). This
+    // still escapes the characters a JSON string literal requires escaped (quote, backslash,
+    // control characters) - only the blanket non-ASCII escaping is relaxed.
+    private static readonly JsonSerializerOptions _labelSerializerOptions = new()
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
 
     private JsonViewNode _root;
     private List<JsonViewNode> _visibleNodes = [];
@@ -590,7 +602,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
                 node.Children.Add(BuildNode(
                     property.Value,
                     childPath,
-                    JsonSerializer.Serialize(property.Name),
+                    JsonSerializer.Serialize(property.Name, _labelSerializerOptions),
                     node,
                     false));
             }
@@ -1213,6 +1225,8 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     // clickable region away from the drawn arrow.
     [Pure]
     private Rune DisclosureGlyph(bool expanded) =>
-        expanded ? ActualStyle.ExpandedGlyph : ActualStyle.CollapsedGlyph;
+        expanded
+            ? ActualStyle.ExpandedGlyph.Resolve(ControlGlyphs.Disclosure.Expanded.Fallback, CellPolicy.AmbiguousWidth)
+            : ActualStyle.CollapsedGlyph.Resolve(ControlGlyphs.Disclosure.Collapsed.Fallback, CellPolicy.AmbiguousWidth);
 
 }

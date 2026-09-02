@@ -137,6 +137,9 @@ public sealed record ConsoleRunOptions
     /// <summary>Gets a negotiation override, or null for default startup negotiation.</summary>
     public NegotiationOptions? Negotiation { get; init; }
 
+    /// <summary>Gets whether startup negotiation was explicitly disabled.</summary>
+    public bool NegotiationDisabled { get; init; }
+
     /// <summary>Gets diagnostic families promoted to exceptions at completed recovery boundaries.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown bits.</exception>
     public DiagnosticPromotion DiagnosticPromotions
@@ -227,7 +230,8 @@ public sealed record ConsoleRunOptions
     public ConsoleHostOptions ToHostOptions() => new()
     {
         ResizeInterval = ResizeInterval,
-        CaptureControlKeys = TreatControlCAsInput
+        CaptureControlKeys = TreatControlCAsInput,
+        EnableMouseInput = MouseTracking.HasValue
     };
 
     /// <summary>
@@ -272,7 +276,7 @@ public sealed record ConsoleRunOptions
             });
         }
 
-        var resolvedNegotiation = Profile is null && Capabilities is null
+        var resolvedNegotiation = !NegotiationDisabled && Profile is null && Capabilities is null
             ? Negotiation ?? DefaultNegotiation()
             : null;
 

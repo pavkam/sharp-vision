@@ -3,6 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 /// <summary>Verifies the embedded theme catalog discovers, orders, loads, and caches themes.</summary>
@@ -85,6 +86,118 @@ public sealed class ThemeCatalogTests
         var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse("{ not json", "broken"));
 
         error.Message.ShouldContain("broken");
+    }
+
+    /// <summary>Verifies a syntax error nested inside "styles" - where <see cref="JsonException.Path"/>
+    /// stops descending because that subtree binds to a raw <c>JsonElement</c> - still surfaces the
+    /// reader's line and column, computed the same way the underlying reader itself reports the
+    /// failure rather than by hand-counting characters in the fixture below.</summary>
+    [Fact]
+    public void Deserialize_WhenMalformedJsonIsNestedInStyles_ReportsLineAndColumn()
+    {
+        // A plain escaped literal, not a raw string: a triple-quoted raw string is JSON-injected
+        // by the analyzer, which then reports this deliberately malformed content as an error.
+        const string malformed =
+            "{\n" +
+            "  \"name\": \"Test\",\n" +
+            "  \"styles\": {\n" +
+            "    \"control\": {\n" +
+            "      \"normal\": {,\n" +
+            "      }\n" +
+            "    }\n" +
+            "  }\n" +
+            "}";
+
+        var readerError = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<JsonElement>(malformed));
+        _ = readerError.LineNumber.ShouldNotBeNull();
+        _ = readerError.BytePositionInLine.ShouldNotBeNull();
+
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(malformed, "broken"));
+
+        error.Message.ShouldContain("broken");
+        error.Message.ShouldContain(
+            $"line {readerError.LineNumber + 1}, column {readerError.BytePositionInLine + 1}");
+    }
+
+    /// <summary>Verifies a semantic color that references an unknown palette key - a malformed
+    /// "colors.*" entry, as opposed to a missing one - reports the exact line and column of that
+    /// entry's value, the same way the JSON syntax-error path already does. The expected position is
+    /// derived independently from the fixture's own text (counting the '\n' bytes and the column
+    /// since the last one, before the injected value), never hand-counted, so the assertion catches
+    /// a real regression rather than pinning whatever the implementation currently emits.</summary>
+    [Fact]
+    public void SetSemanticColors_WhenColorReferencesUnknownPaletteKey_ReportsLineAndColumn()
+    {
+        const string marker = "\"controlBorder\":\"__foreground\"";
+        const string replacement = "\"controlBorder\":\"zzz-missing-palette-key\"";
+
+        var json = ThemeJson.Create();
+        json.ShouldContain(marker);
+        var mutated = json.Replace(marker, replacement, StringComparison.Ordinal);
+        mutated.ShouldNotBe(json);
+
+        var expected = ExpectedPosition(mutated, "\"zzz-missing-palette-key\"");
+
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(mutated, "broken"));
+
+        error.Message.ShouldContain("colors.controlBorder");
+        error.Message.ShouldContain("references unknown palette key 'zzz-missing-palette-key'");
+        error.Message.ShouldContain(expected);
+    }
+
+    /// <summary>Verifies an invalid palette hex entry reports the exact line and column of that
+    /// palette entry's value.</summary>
+    [Fact]
+    public void ResolvePalette_WhenEntryHasInvalidHex_ReportsLineAndColumn()
+    {
+        var json = ThemeJson.Create(palette: "\"bg\":\"not-a-hex-color\",\"fg\":\"#e0e0e0\"");
+        json.ShouldContain("\"bg\":\"not-a-hex-color\"");
+
+        var expected = ExpectedPosition(json, "\"not-a-hex-color\"");
+
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "broken"));
+
+        error.Message.ShouldContain("palette entry 'bg' has invalid color 'not-a-hex-color'");
+        error.Message.ShouldContain(expected);
+    }
+
+    /// <summary>Verifies an invalid "glyphs" family name reports the exact line and column of that
+    /// top-level property's value.</summary>
+    [Fact]
+    public void ReadGlyphFamily_WhenValueIsUnknown_ReportsLineAndColumn()
+    {
+        var json = ThemeJson.Create(glyphs: "not-a-glyph-family");
+        json.ShouldContain("\"glyphs\": \"not-a-glyph-family\"");
+
+        var expected = ExpectedPosition(json, "\"not-a-glyph-family\"");
+
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "broken"));
+
+        error.Message.ShouldContain("has invalid glyphs 'not-a-glyph-family'");
+        error.Message.ShouldContain(expected);
+    }
+
+    /// <summary>Computes the "(line N, column N)" segment a correct implementation would append for
+    /// the first occurrence of <paramref name="valueToken"/> (a quoted JSON value, opening quote
+    /// included) in <paramref name="content"/> - 1-based, counting '\n' bytes for lines and bytes
+    /// since the preceding one for columns, independently of ThemeCatalog's own position-map code.</summary>
+    private static string ExpectedPosition(string content, string valueToken)
+    {
+        var offset = content.IndexOf(valueToken, StringComparison.Ordinal);
+        offset.ShouldBeGreaterThanOrEqualTo(0);
+
+        var line = 0;
+        var lineStart = 0;
+        for (var index = 0; index < offset; index++)
+        {
+            if (content[index] == '\n')
+            {
+                line++;
+                lineStart = index + 1;
+            }
+        }
+
+        return $"(line {line + 1}, column {offset - lineStart + 1})";
     }
 
     /// <summary>Verifies a complete semantic theme loads metadata and concrete global colors.</summary>

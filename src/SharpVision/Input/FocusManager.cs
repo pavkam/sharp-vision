@@ -609,7 +609,7 @@ public sealed class FocusManager: IDisposable
 
                         if (IsCommittedTargetValid(control))
                         {
-                            Lost?.Invoke(this, changed);
+                            RaisePerSubscriber(Lost, changed, () => IsCommittedTargetValid(control));
                         }
                     }
 
@@ -631,7 +631,7 @@ public sealed class FocusManager: IDisposable
 
                         if (IsCommittedTargetValid(control))
                         {
-                            Gained?.Invoke(this, changed);
+                            RaisePerSubscriber(Gained, changed, () => IsCommittedTargetValid(control));
                         }
                     }
                     else if (control is null)
@@ -929,16 +929,26 @@ public sealed class FocusManager: IDisposable
             return;
         }
 
-        foreach (var subscriber in handlers.GetInvocationList())
-        {
-            if (changingPublicationVersion != ChangingPublicationVersion)
-            {
-                break;
-            }
+        EventPublication.Publish<EventHandler<FocusChangingEventArgs>>(
+            handlers,
+            () => changingPublicationVersion == ChangingPublicationVersion,
+            handler => handler(this, eventArgs));
+    }
 
-            var handler = (EventHandler<FocusChangingEventArgs>) subscriber;
-            handler(this, eventArgs);
+    private void RaisePerSubscriber<TEventArgs>(
+        EventHandler<TEventArgs>? handlers,
+        TEventArgs eventArgs,
+        Func<bool> isStillValid)
+    {
+        if (handlers is null)
+        {
+            return;
         }
+
+        EventPublication.Publish<EventHandler<TEventArgs>>(
+            handlers,
+            isStillValid,
+            handler => handler(this, eventArgs));
     }
 
     private void PublishEligibilityNotifications()

@@ -165,6 +165,34 @@ public sealed class StyleSlotTests
         control.Target.Parent.ShouldBeSameAs(newParent);
     }
 
+    /// <summary>Verifies removing an INTERMEDIATE ancestor - never the bound target itself - still
+    /// releases the target's binding edge. The target's own removal never fires in this scenario, so
+    /// only a recursive release through the whole detached subtree can reach it; otherwise the edge
+    /// survives forever and the target's style slot is permanently poisoned.</summary>
+    [Fact]
+    public void BindStyle_WhenIntermediateAncestorIsDetached_ReleasesTheDescendantBindingEdge()
+    {
+        // Arrange
+        var control = new StyleSlotBindingProbe();
+
+        // Act
+        control.DetachIntermediate();
+        control.ButtonStyle = ButtonStyle.Filled;
+        control.GrandchildTarget.Style = ButtonStyle.Standard;
+
+        // DetachIntermediate only removes the intermediate container from the root - exactly the
+        // scenario under test, where the grandchild's own removal never fires - so the grandchild's
+        // Parent still points at that now-unreachable intermediate and must be cleared here before
+        // it can join a new tree, same as any control leaving one parent for another.
+        _ = ((Overlay) control.GrandchildTarget.Parent!).Children.Remove(control.GrandchildTarget);
+        var newParent = new Overlay { Children = { control.GrandchildTarget } };
+
+        // Assert
+        control.GrandchildTarget.Style.ShouldBe(ButtonStyle.Standard);
+        control.SecondTarget.Style.ShouldBe(ButtonStyle.Filled);
+        control.GrandchildTarget.Parent.ShouldBeSameAs(newParent);
+    }
+
     /// <summary>Verifies reentrant source publication supersedes the outer value across the entire
     /// graph and prevents stale resolved-style notifications from resuming afterward.</summary>
     [Fact]

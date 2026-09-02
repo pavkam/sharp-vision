@@ -357,6 +357,32 @@ public sealed class SaveFileDialogTests
         saveButton.IsEnabled.ShouldBeFalse();
     }
 
+    /// <summary>Verifies the Save button is disabled when InitialFileName is whitespace-only - the
+    /// accept path already treats a whitespace-only name as "no file name" and silently no-ops, so
+    /// seeding the button as enabled would produce a no-op default button.</summary>
+    [Fact]
+    public async Task SaveButton_WhenInitialFileNameIsWhitespace_IsDisabledAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "save-initial-whitespace"));
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory);
+        var dialog = new SaveFileDialog(
+            new SaveFileOptions { InitialDirectory = directory, InitialFileName = "   " },
+            source);
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(100, 40),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        var saveButton = OwnedTree.FindAll<Button>(dialog)
+            .First(static button => button.Text.Contains("Save"));
+        saveButton.IsEnabled.ShouldBeFalse();
+    }
+
     /// <summary>Verifies the Save button is enabled when the filename input is non-empty.</summary>
     [Fact]
     public async Task SaveButton_WhenFileNameIsProvided_IsEnabledAsync()
@@ -438,6 +464,45 @@ public sealed class SaveFileDialogTests
 
         // Assert
         fileNameInput.Text.ShouldBe("readme.md");
+    }
+
+    /// <summary>Verifies a PropertyChanged subscriber that disposes the dialog while FileName is
+    /// being republished from a selection change does not let UpdateSaveEnabled's own subsequent
+    /// work (the IsEnabled write and its own FileName notification) run against a disposed
+    /// control - UpdateSaveEnabled previously had no disposal guard of its own, and
+    /// PopulateFileNameFromSelection calls it a second time unconditionally after TrySetFileName
+    /// already triggered it once through OnFileNameChanged.</summary>
+    [Fact]
+    public async Task PopulateFileNameFromSelection_WhenPropertyChangedSubscriberDisposesOnFileName_DoesNotThrowAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "save-dispose-on-filename"));
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(
+            directory,
+            new FilePickerEntry("readme.md", Path.Combine(directory, "readme.md"), false, false));
+        var dialog = new SaveFileDialog(
+            new SaveFileOptions { InitialDirectory = directory },
+            source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(100, 40),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(static () => { }, "settle load");
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+        dialog.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(SaveFileDialog.FileName))
+            {
+                dialog.Dispose();
+            }
+        };
+
+        // Act
+        await Should.NotThrowAsync(() => surface.UpdateAsync(() => list.SelectedIndex = 0, "select file"));
+
+        // Assert
+        dialog.IsDisposed.ShouldBeTrue();
     }
 
     /// <summary>Verifies selecting a file whose name contains a control character - legal filesystem

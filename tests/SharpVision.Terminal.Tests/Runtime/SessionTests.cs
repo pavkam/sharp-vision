@@ -42,6 +42,99 @@ public sealed class SessionTests
         transport.JoinedWrites.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies an explicitly requested unsupported mode still reports when promotion is off.</summary>
+    [Fact]
+    public async Task RunAsync_WhenRequestedFocusIsUnsupportedAndNotPromoted_ReportsWithoutThrowingAsync()
+    {
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var options = TerminalOptions.Minimal with
+        {
+            Focus = true
+        };
+        transport.Close();
+        await using Session session = new(transport, resize, sink, options);
+
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Unsupported);
+        sink.Faults.ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies a later optional mode's promoted diagnostic does not discard an earlier optional
+    /// mode's already-successful activation from the published diagnostics snapshot.
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenLaterOptionalModePromotionThrows_PublishesEarlierActivationAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var options = TerminalOptions.Minimal with
+        {
+            Focus = true,
+            Paste = true,
+            Profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
+            {
+                FocusReporting = new Feature(CapabilitySupport.Supported, Origin.Override)
+            }),
+            DiagnosticPromotions = DiagnosticPromotion.UnsupportedFeature
+        };
+        await using Session session = new(transport, resize, sink, options);
+
+        // Act
+        var thrown = await Should.ThrowAsync<TerminalDiagnosticException>(async () =>
+            await session.RunAsync(TestContext.Current.CancellationToken));
+
+        // Assert
+        thrown.Promotion.ShouldBe(DiagnosticPromotion.UnsupportedFeature);
+        session.Diagnostics.Modes.FocusReportingActive.ShouldBeTrue();
+        sink.DiagnosticSnapshots.ShouldNotBeEmpty();
+        sink.DiagnosticSnapshots[^1].Modes.FocusReportingActive.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies a later base mode's promoted diagnostic does not discard an earlier base mode's
+    /// already-successful activation from the published diagnostics snapshot.
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenCursorHidingPromotionThrows_PublishesAlternateScreenActivationAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
+        {
+            ["smcup"] = new DescriptionProgram("enter"u8),
+            ["rmcup"] = new DescriptionProgram("exit"u8)
+        });
+        await using Session session = new(
+            transport,
+            resize,
+            sink,
+            TerminalOptions.Minimal with
+            {
+                Profile = profile,
+                AlternateScreen = true,
+                HideCursor = true,
+                DiagnosticPromotions = DiagnosticPromotion.UnsupportedFeature
+            });
+
+        // Act
+        var thrown = await Should.ThrowAsync<TerminalDiagnosticException>(async () =>
+            await session.RunAsync(TestContext.Current.CancellationToken));
+
+        // Assert
+        thrown.Promotion.ShouldBe(DiagnosticPromotion.UnsupportedFeature);
+        session.Diagnostics.Modes.AlternateScreenActive.ShouldBeTrue();
+        sink.DiagnosticSnapshots.ShouldNotBeEmpty();
+        sink.DiagnosticSnapshots[^1].Modes.AlternateScreenActive.ShouldBeTrue();
+    }
+
     /// <summary>Verifies cleanup promotion wraps the exact restoration failure after cleanup finishes.</summary>
     [Fact]
     public async Task RunAsync_WhenCleanupFailureIsPromoted_ThrowsTypedExceptionWithCauseAsync()
@@ -137,8 +230,11 @@ public sealed class SessionTests
         session.Diagnostics.Modes.FocusReportingConfigured.ShouldBeTrue();
         session.Diagnostics.Modes.FocusReportingAuthorized.ShouldBeTrue();
         session.Diagnostics.Modes.FocusReportingActive.ShouldBeTrue();
-        sink.DiagnosticSnapshots.ShouldHaveSingleItem().ShouldBeSameAs(session.Diagnostics);
-        sink.Order.ShouldBe(["diagnostics", "closed"]);
+        // Focus activation now publishes its own incremental snapshot as soon as it succeeds, in
+        // addition to the final snapshot published once RunAsync's startup walk completes.
+        sink.DiagnosticSnapshots.Count.ShouldBe(2);
+        sink.DiagnosticSnapshots[^1].ShouldBeSameAs(session.Diagnostics);
+        sink.Order.ShouldBe(["diagnostics", "diagnostics", "closed"]);
     }
 
     /// <summary>Verifies atomic route failure publishes immediately without transport output or deadline work.</summary>
@@ -716,6 +812,39 @@ public sealed class SessionTests
         transport.JoinedWrites.ShouldBe("\u001b[c");
         _ = sink.Profiles.ShouldHaveSingleItem();
         sink.Order.ShouldBe(["response", "diagnostics", "profile", "closed"]);
+    }
+
+    /// <summary>Verifies a capacity too low to include the CSI 6n completion fence in the written
+    /// batch does not enable cursor-position-reply disambiguation, so a modified F3 keystroke
+    /// (byte-identical to a CSI 6n reply) still decodes as a key rather than a bogus, unmatched
+    /// capability response. Enabling disambiguation for the whole negotiation window regardless
+    /// of whether the fence itself was actually queried would misclassify and silently swallow
+    /// the keystroke for no reason - the exact defect this gating exists to prevent.</summary>
+    [Fact]
+    public async Task RunAsync_WhenCapacityCrowdsOutCursorPositionFence_StillDecodesModifiedF3AsKeyAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var options = TerminalOptions.Minimal with
+        {
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?>(),
+                limits: QueryLimits.Default with { MaxConcurrentQueries = 1 })
+        };
+        transport.Input(Encoding.ASCII.GetBytes("[1;2R"));
+        transport.Close();
+        await using Session session = new(transport, resize, sink, options);
+
+        // Act
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert: only the DA1 query fits the capacity, so the fence was never sent.
+        sink.Responses.ShouldBeEmpty();
+        var stroke = sink.Strokes.ShouldHaveSingleItem();
+        stroke.Code.ShouldBe(Code.F3);
+        stroke.Modifiers.ShouldBe(Modifiers.Shift);
     }
 
     /// <summary>Verifies a pre-publication resize storm retains only its newest value.</summary>

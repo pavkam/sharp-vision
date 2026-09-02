@@ -18,8 +18,11 @@ wiring, or repository-wide evidence policy.
 
 ## Code map
 
-- Test projects: `tests/SharpVision.Terminal.Tests`, `SharpVision.Tests`, and
-  `SharpVision.Compatibility.Tests`
+- Test projects: `tests/SharpVision.Tests`, `SharpVision.Terminal.Tests`,
+  `SharpVision.Document.Tests`, `SharpVision.FigletFonts.Tests`,
+  `SharpVision.SyntaxHighlighting.Tests`, and `SharpVision.Compatibility.Tests`;
+  the shared mounted-surface test harness lives in `SharpVision.Test.Shared`
+  (not itself a test project)
 - Shared build configuration: `Directory.Build.props`,
   `Directory.Packages.props`
 - Local gates: `Makefile` and `package.json`

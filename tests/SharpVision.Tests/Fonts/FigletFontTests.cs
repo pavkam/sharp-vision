@@ -359,6 +359,36 @@ public sealed class FigletFontTests
         font.Render(content, options).ShouldBe(expected);
     }
 
+    /// <summary>Verifies universal smushing (HorizontalSmushing with no specific rule bits set,
+    /// as declared by the bundled shadow.flf, smshadow.flf, and mini.flf fonts) resolves a
+    /// visible-versus-visible collision by direction: composing right-to-left text works by
+    /// reversing the rune array up front and then always appending - never prepending - each
+    /// subsequent glyph, so the character that wins a collision under right-to-left rendering
+    /// must be the one typed later in the original (pre-reversal) input, matching left-to-right
+    /// rendering's own already-correct outcome, rather than always favoring whichever side a
+    /// direction-blind implementation happens to label "right" post-reversal. Glyph 'A' is "AX"
+    /// and glyph 'B' is "YB", so composing "AB" collides B's leading 'Y'/'B' against A's
+    /// trailing 'X' at the boundary while leaving the outer, non-colliding columns intact -
+    /// letting the assertion see exactly which glyph's pixel won the collision.</summary>
+    [Theory]
+    [InlineData(FigletDirection.LeftToRight, "AYB")]
+    [InlineData(FigletDirection.RightToLeft, "YBX")]
+    public void Render_WhenUniversalSmushingCombinesDistinctVisibleGlyphs_HonorsDirection(
+        FigletDirection direction,
+        string expected)
+    {
+        using var stream = Stream(CreateFont(code => code switch
+        {
+            'A' => "AX",
+            'B' => "YB",
+            _ => RuneFor(code)
+        }));
+        var font = FigletFont.Load(stream, "universal-smush");
+        var options = new FigletOptions(direction, FigletLayout.HorizontalSmushing);
+
+        font.Render("AB", options).ShouldBe(expected);
+    }
+
     #endregion
 
     private static string CreateFont(

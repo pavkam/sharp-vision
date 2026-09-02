@@ -89,7 +89,7 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
         {
             Text = SaveText,
             IsDefault = true,
-            IsEnabled = !string.IsNullOrEmpty(options.InitialFileName)
+            IsEnabled = !string.IsNullOrWhiteSpace(options.InitialFileName)
         };
         Initialize();
         _saveButtonStyle = InitializePartStyle(
@@ -598,6 +598,11 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
 
     private void UpdateSaveEnabled()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         _saveButton.IsEnabled = !string.IsNullOrWhiteSpace(_fileNameInput.Text);
         NotifyPropertyChanged(nameof(FileName), InvalidationImpact.None);
     }

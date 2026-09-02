@@ -147,12 +147,13 @@ public sealed class Menu: ItemsControl
     /// <exception cref="ObjectDisposedException">The menu is disposed.</exception>
     public MenuItem? SelectedItem
     {
-        // A hard cast assumed the selected slot always holds a MenuItem, an invariant every
-        // ordinary selection path (Select, SingleSelectionIndex.FindWrapped/FindNearest) upholds
-        // by construction - but a disposed sibling's slot can be reclaimed by a MenuSeparator
-        // through OnItemControlsChanged without going through any of them, which used to leave
-        // this getter one read away from InvalidCastException instead of reporting the absence
-        // of a selectable item.
+        // A hard cast assumed the selected slot always holds a MenuItem. That invariant does not
+        // hold by construction: a disposed sibling's slot can be reclaimed by a MenuSeparator
+        // through OnItemControlsChanged, and RemoveEntry's own pre-repair shift can leave a
+        // MenuSeparator in the selected slot before Select/CommitSelectionPresentation ever read
+        // it - which used to leave this getter, Select, and CommitSelectionPresentation each one
+        // read away from InvalidCastException instead of reporting the absence of a selectable
+        // item.
         get => _selectedIndex < 0 ? null : ItemAt(_selectedIndex) as MenuItem;
         set => SelectedIndex = value is null ? -1 : IndexOfItem(value);
     }
@@ -275,7 +276,14 @@ public sealed class Menu: ItemsControl
                 ? SingleSelectionIndex.FindWrapped(_selectedIndex, 1, ItemControlCount, Available)
                 : key.Stroke.Code == Code.Tab && KeyboardModifierPolicy.IsTabTraversalEligible(key.Stroke.Modifiers)
                     ? SingleSelectionIndex.FindWrapped(_selectedIndex, (key.Stroke.Modifiers & Modifiers.Shift) == 0 ? 1 : -1, ItemControlCount, Available)
-                    : -1;
+                    // Unlike the wrapping Left/Right/Up/Down/Tab cases above, Home and End are
+                    // explicit boundary requests: FindLinear stops at either end of the collection
+                    // instead of cycling back around it.
+                    : scalarNavigationEligible && key.Stroke.Code == Code.Home
+                        ? SingleSelectionIndex.FindLinear(0, 1, ItemControlCount, Available)
+                        : scalarNavigationEligible && key.Stroke.Code == Code.End
+                            ? SingleSelectionIndex.FindLinear(ItemControlCount - 1, -1, ItemControlCount, Available)
+                            : -1;
 
         if (target >= 0)
         {
@@ -360,6 +368,17 @@ public sealed class Menu: ItemsControl
             focus: true,
             switchSubmenu: false,
             openedFromPointerSelection: false);
+
+        // A callback run by the publish above may have disabled, hidden, or reselected away from
+        // the target. Falling through unhandled (rather than swallowing the keystroke while
+        // skipping activation) mirrors AccessKeyManager's own contract: an access key that cannot
+        // reach a real target is simply not this control's to handle.
+        if (item is not { EffectiveIsEnabled: true, EffectiveIsVisible: true } ||
+            _selectedIndex < 0 || !ReferenceEquals(ItemAt(_selectedIndex), item))
+        {
+            return false;
+        }
+
         item.ActivateFromMenu(ActivationCause.Keyboard);
         return true;
     }
@@ -536,6 +555,44 @@ public sealed class Menu: ItemsControl
         else if (index == _selectedIndex)
         {
             Select(SingleSelectionIndex.FindNearest(Math.Min(index, ItemControlCount - 1), ItemControlCount, Available), focus: false);
+
+            // Select's "_selectedIndex == index" guard is a no-op precisely when FindNearest's
+            // inclusive forward scan lands an available MenuItem successor in the very slot the
+            // removed entry vacated - the collision this repair exists for. Detect the identity
+            // change Select's early return skipped the same way OnItemControlsChanged's disposal
+            // branch does: compare the slot's current occupant against the retained
+            // _selectedEntry rather than trusting index equality, then finish the work Select
+            // would otherwise have done.
+            if (_selectedIndex >= 0 && _selectedIndex < ItemControlCount)
+            {
+                var current = ItemAt(_selectedIndex);
+
+                if (!ReferenceEquals(current, _selectedEntry))
+                {
+                    if (item is MenuItem outgoing)
+                    {
+                        outgoing.CommitSelection(false);
+                    }
+
+                    _selectedEntry = current;
+                    NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
+
+                    // NotifyPropertyChanged raises SelectedItem synchronously, so a reentrant
+                    // subscriber may have mutated this menu again from inside it - e.g. removing
+                    // `current` itself, which would already have re-run this same repair against
+                    // whatever slid into its place. Committing `current` below in that case would
+                    // wrongly re-select an entry a nested call has already moved on from.
+                    if (!ReferenceEquals(_selectedEntry, current))
+                    {
+                        return true;
+                    }
+                }
+
+                if (current is MenuItem incoming)
+                {
+                    incoming.CommitSelection(ContainsFocus);
+                }
+            }
         }
 
         return true;
@@ -591,8 +648,19 @@ public sealed class Menu: ItemsControl
 
         if (wasSelected)
         {
+            var target = item is MenuItem ? index : SingleSelectionIndex.FindWrapped(index, 1, ItemControlCount, Available);
             _selectedIndex = -1;
-            Select(item is MenuItem ? index : SingleSelectionIndex.FindWrapped(index, 1, ItemControlCount, Available), focus: false);
+
+            if (target < 0)
+            {
+                _selectedEntry = null;
+                NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Render);
+                NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
+            }
+            else
+            {
+                Select(target, focus: false);
+            }
         }
 
         if (item is MenuItem { Kind: MenuItemKind.Radio, IsChecked: true } radio)
@@ -1324,9 +1392,9 @@ public sealed class Menu: ItemsControl
             return;
         }
 
-        if (_selectedIndex >= 0 && _selectedIndex < ItemControlCount)
+        if (_selectedIndex >= 0 && _selectedIndex < ItemControlCount && ItemAt(_selectedIndex) is MenuItem outgoing)
         {
-            ((MenuItem) ItemAt(_selectedIndex)).CommitSelection(false);
+            outgoing.CommitSelection(false);
         }
 
         _selectedIndex = index;
@@ -1377,9 +1445,9 @@ public sealed class Menu: ItemsControl
 
     private void CommitSelectionPresentation(bool value)
     {
-        if (_selectedIndex >= 0 && _selectedIndex < ItemControlCount)
+        if (_selectedIndex >= 0 && _selectedIndex < ItemControlCount && ItemAt(_selectedIndex) is MenuItem outgoing)
         {
-            ((MenuItem) ItemAt(_selectedIndex)).CommitSelection(value);
+            outgoing.CommitSelection(value);
         }
     }
 

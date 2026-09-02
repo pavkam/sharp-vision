@@ -19,18 +19,19 @@ classDiagram
 
 ## API
 
-| Member                          | Type             | Default | Description                                                             |
-| ------------------------------- | ---------------- | ------- | ----------------------------------------------------------------------- |
-| Inherited `Content`             | `ControlBase?`   | `null`  | The flyout body; the flyout owns it.                                    |
-| Inherited `Anchor`              | `ControlBase?`   | `null`  | Identifies the sibling used for placement.                              |
-| Inherited `Placement`           | `PopupPlacement` | `Below` | Selects the preferred anchor-relative placement.                        |
-| Inherited `IsOpen`              | `bool`           | `false` | Controls the direct inherited popup presentation.                       |
-| Inherited `CloseOnEscape`       | `bool`           | `true`  | Lets a bubbling Escape close the surface.                               |
-| Inherited `FocusOnOpen`         | `bool`           | `true`  | Transfers focus to the first eligible descendant.                       |
-| Inherited `ShowAnchorIndicator` | `bool`           | `false` | Draws an arrow toward the anchor when enabled.                          |
-| `ShowAt(ControlBase anchor)`    | `void`           | —       | Validates, assigns the anchor, and opens the same Flyout instance.      |
-| Inherited `Closing`             | `EventHandler`   | —       | Raised when closure is requested or after closing state commits.        |
-| Inherited `Closed`              | `EventHandler`   | —       | Raised only after the surface becomes unavailable and its bounds clear. |
+| Member                          | Type                                           | Default | Description                                                             |
+| ------------------------------- | ---------------------------------------------- | ------- | ----------------------------------------------------------------------- |
+| Inherited `Content`             | `ControlBase?`                                 | `null`  | The flyout body; the flyout owns it.                                    |
+| Inherited `Anchor`              | `ControlBase?`                                 | `null`  | Identifies the sibling used for placement.                              |
+| Inherited `Placement`           | `PopupPlacement`                               | `Below` | Selects the preferred anchor-relative placement.                        |
+| Inherited `IsOpen`              | `bool`                                         | `false` | Controls the direct inherited popup presentation.                       |
+| Inherited `CloseOnEscape`       | `bool`                                         | `true`  | Lets a bubbling Escape close the surface.                               |
+| Inherited `FocusOnOpen`         | `bool`                                         | `true`  | Transfers focus to the first eligible descendant.                       |
+| Inherited `ShowAnchorIndicator` | `bool`                                         | `false` | Draws an arrow toward the anchor when enabled.                          |
+| `ShowAt(ControlBase anchor)`    | `void`                                         | —       | Validates, assigns the anchor, and opens the same Flyout instance.      |
+| Inherited `CloseRequested`      | `EventHandler<SurfaceCloseRequestedEventArgs>` | —       | Raised before anything commits; a handler can veto by setting `Cancel`. |
+| Inherited `Closing`             | `EventHandler`                                 | —       | Raised when closure is requested or after closing state commits.        |
+| Inherited `Closed`              | `EventHandler`                                 | —       | Raised only after the surface becomes unavailable and its bounds clear. |
 
 ## Keyboard
 

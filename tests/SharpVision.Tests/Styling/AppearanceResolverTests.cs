@@ -93,11 +93,13 @@ public sealed class AppearanceResolverTests
     }
 
     /// <summary>Verifies a Face whose theme-referenced attributes only conflict with its typed
-    /// underline once the theme resolves them still throws, and that the exception now names the
-    /// offending semantic roles instead of only the generic decoration-conflict message, because
-    /// Face's own constructor cannot catch this: the attribute channel isn't literal yet.</summary>
+    /// underline once the theme resolves them no longer throws: <c>ResolveFace</c> reconciles the
+    /// triple against the already-resolved literals - a typed underline clears the legacy attribute
+    /// flag - exactly as every other <see cref="DecorationResolver.Resolve"/> call site already
+    /// does, instead of deferring to Face's constructor, which can only see the conflict once every
+    /// channel happens to be literal.</summary>
     [Fact]
-    public void ResolveSnapshot_WhenThemeResolvedAttributesConflictWithUnderline_ThrowsWithOffendingRoles()
+    public void ResolveSnapshot_WhenThemeResolvedAttributesConflictWithUnderline_ReconcilesInsteadOfThrowing()
     {
         var theme = new Theme();
         theme.SetAttributes(SemanticDecoration.NormalText, TerminalAttributes.Underline);
@@ -114,11 +116,110 @@ public sealed class AppearanceResolverTests
                 AppearanceTestValues.Shadow(visible: false)));
         var control = new StyledProbe { AppearanceStatesOverride = profile };
 
-        var exception = Should.Throw<ArgumentException>(
-            () => control.ResolveSnapshot(VisualState.Normal, theme, profile, parentAmbientFace: null));
+        var resolved = control.ResolveSnapshot(VisualState.Normal, theme, profile, parentAmbientFace: null);
 
-        exception.Message.ShouldContain("SemanticDecoration.NormalText");
-        exception.Message.ShouldContain("Straight");
+        resolved.Face.Attributes.Literal.ShouldBe(TerminalAttributes.None);
+        resolved.Face.Underline.ShouldBe(Underline.Straight);
+        resolved.Face.UnderlineColor.Literal.ShouldBe(Color.Rgb(3, 3, 3));
+    }
+
+    /// <summary>Verifies the funnel's second reachable route: ordinary application code setting a
+    /// semantic <see cref="Face.UnderlineColor"/> with no active underline at all - no typed
+    /// underline and no legacy attribute flag. The color is cleared to <see cref="Color.Default"/>
+    /// once resolved, per <see cref="DecorationResolver.Resolve"/>'s third rule, rather than the
+    /// resolved Face construction throwing because the channel only becomes literal - and only
+    /// conflicts - once the theme resolves it.</summary>
+    [Fact]
+    public void ResolveSnapshot_WhenSemanticUnderlineColorHasNoActiveUnderline_ClearsItInsteadOfThrowing()
+    {
+        var theme = new Theme();
+        theme.SetColor(SemanticColor.Accent, Color.Rgb(3, 3, 3));
+        var face = AppearanceTestValues.Face(underlineColor: SemanticColor.Accent);
+        var profile = new AppearanceStates(
+            new ControlAppearance(
+                face,
+                AppearanceTestValues.Border(BorderSide.None),
+                AppearanceTestValues.Shadow(visible: false)));
+        var control = new StyledProbe { AppearanceStatesOverride = profile };
+
+        var resolved = control.ResolveSnapshot(VisualState.Normal, theme, profile, parentAmbientFace: null);
+
+        resolved.Face.Attributes.Literal.ShouldBe(TerminalAttributes.None);
+        resolved.Face.Underline.ShouldBe(Underline.None);
+        resolved.Face.UnderlineColor.Literal.ShouldBe(Color.Default);
+    }
+
+    /// <summary>Verifies <see cref="AppearanceStates.StateAuthorsOwnRelief"/> actually gates the
+    /// resolved border split rather than being scanned for nothing: a state overlay that authors
+    /// both <see cref="BorderRelief.Raised"/> and a differing <see cref="Border.Foreground"/> on the
+    /// same slot must still resolve to the highlight/shade split, because the state that asked for
+    /// its own relief owns that edge feedback. Paired with the counter-case below, this proves the
+    /// suppression conjunct in <c>AppearanceResolver.FoldAuthoredAppearance</c> - consumed by <see
+    /// cref="ResolvedBorderStyles.Create"/> - is load-bearing: deleting it would make this case
+    /// behave like the flattened one instead.</summary>
+    [Fact]
+    public void ResolveSnapshot_WhenAStateAuthorsBothReliefAndForeground_KeepsTheReliefSplit()
+    {
+        var theme = new Theme();
+        theme.SetColor(SemanticColor.ReliefHighlight, Color.Rgb(10, 10, 10));
+        theme.SetColor(SemanticColor.ReliefShade, Color.Rgb(20, 20, 20));
+        var normal = new ControlAppearance(
+            AppearanceTestValues.Face(),
+            new Border(
+                BorderSide.All,
+                BorderGlyphStyle.Heavy,
+                Color.Rgb(1, 1, 1),
+                BorderRelief.Raised,
+                Color.Transparent,
+                SemanticDecoration.Border),
+            AppearanceTestValues.Shadow(visible: false));
+        var profile = new AppearanceStates(
+            normal,
+            focused: new AppearanceOverlay(
+                border: new BorderOverlay(foreground: Color.Rgb(3, 3, 3), relief: BorderRelief.Raised)));
+        var control = new StyledProbe { AppearanceStatesOverride = profile };
+
+        var resolved = control.ResolveSnapshot(VisualState.Focused, theme, profile, parentAmbientFace: null);
+
+        resolved.BorderStyles.Top.Foreground.ShouldBe(Color.Rgb(10, 10, 10));
+        resolved.BorderStyles.Left.Foreground.ShouldBe(Color.Rgb(10, 10, 10));
+        resolved.BorderStyles.Right.Foreground.ShouldBe(Color.Rgb(20, 20, 20));
+        resolved.BorderStyles.Bottom.Foreground.ShouldBe(Color.Rgb(20, 20, 20));
+    }
+
+    /// <summary>The counter-case: a state overlay that authors only a differing <see
+    /// cref="Border.Foreground"/> - no relief of its own - keeps the flat authored-foreground bypass
+    /// and flattens every edge despite the Raised baseline. Together with the case above, this proves
+    /// <see cref="AppearanceStates.StateAuthorsOwnRelief"/> is exactly what tells the two apart, since
+    /// both scenarios author the same differing foreground and only whether relief is also authored
+    /// on that slot changes the outcome.</summary>
+    [Fact]
+    public void ResolveSnapshot_WhenAStateAuthorsOnlyForeground_FlattensDespiteTheRaisedBaseline()
+    {
+        var theme = new Theme();
+        theme.SetColor(SemanticColor.ReliefHighlight, Color.Rgb(10, 10, 10));
+        theme.SetColor(SemanticColor.ReliefShade, Color.Rgb(20, 20, 20));
+        var normal = new ControlAppearance(
+            AppearanceTestValues.Face(),
+            new Border(
+                BorderSide.All,
+                BorderGlyphStyle.Heavy,
+                Color.Rgb(1, 1, 1),
+                BorderRelief.Raised,
+                Color.Transparent,
+                SemanticDecoration.Border),
+            AppearanceTestValues.Shadow(visible: false));
+        var profile = new AppearanceStates(
+            normal,
+            focused: new AppearanceOverlay(border: new BorderOverlay(foreground: Color.Rgb(3, 3, 3))));
+        var control = new StyledProbe { AppearanceStatesOverride = profile };
+
+        var resolved = control.ResolveSnapshot(VisualState.Focused, theme, profile, parentAmbientFace: null);
+
+        resolved.BorderStyles.Top.Foreground.ShouldBe(Color.Rgb(3, 3, 3));
+        resolved.BorderStyles.Right.Foreground.ShouldBe(Color.Rgb(3, 3, 3));
+        resolved.BorderStyles.Bottom.Foreground.ShouldBe(Color.Rgb(3, 3, 3));
+        resolved.BorderStyles.Left.Foreground.ShouldBe(Color.Rgb(3, 3, 3));
     }
 
     /// <summary>Verifies mode is treated as geometry by the resolved-value comparison, alongside

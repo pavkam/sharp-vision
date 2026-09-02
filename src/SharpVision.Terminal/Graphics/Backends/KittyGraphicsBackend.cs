@@ -342,7 +342,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                 // flag captured on _placements[index] once this state is committed — see the
                 // placeholder-eligibility checks below and in PlaceholderEligibilityChanged.
                 placementState = placementState.WithUsedPlaceholder(
-                    CanUsePlaceholder(placementState, placeholderColorDepth));
+                    CanUsePlaceholder(back, placementState, placeholderColorDepth));
                 placements.Add(placementState);
             }
 
@@ -357,6 +357,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             if (!virtualPlacementsChanged)
             {
                 virtualPlacementsChanged = PlacementsChanged(
+                    back,
                     placements,
                     placeholderColorDepth,
                     placeholders: true);
@@ -378,7 +379,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                 {
                     var placementState = placements[index];
 
-                    if (CanUsePlaceholder(placementState, placeholderColorDepth))
+                    if (CanUsePlaceholder(back, placementState, placeholderColorDepth))
                     {
                         WriteVirtualPlacement(placementState, index, output);
                         cellPreludeCount++;
@@ -724,7 +725,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
         foreach (var state in placements)
         {
-            if (!CanUsePlaceholder(state, colorDepth))
+            if (!CanUsePlaceholder(back, state, colorDepth))
             {
                 continue;
             }
@@ -742,6 +743,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     }
 
     private static bool CanUsePlaceholder(
+        Frame back,
         KittyGraphicsPlacementState state,
         ColorDepth colorDepth) =>
         !state.UsesImageNumber &&
@@ -755,9 +757,55 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                 nameof(colorDepth), colorDepth, "The color depth is unknown.")
         }) &&
         state.Placement.Destination.Width <= KittyGraphicsPlaceholderWriter.CoordinateLimit &&
-        state.Placement.Destination.Height <= KittyGraphicsPlaceholderWriter.CoordinateLimit;
+        state.Placement.Destination.Height <= KittyGraphicsPlaceholderWriter.CoordinateLimit &&
+        !SplitsWideGrapheme(back, state.Placement.Destination);
+
+    /// <summary>
+    /// Reports whether any column of a placeholder destination would fall in the middle of a
+    /// wide (two-column) grapheme: any interior or edge column landing on a continuation cell -
+    /// which the encoder silently skips regardless of an active overlay, desynchronizing the
+    /// row's emitted column count from every column after it - or the right edge landing on a
+    /// wide lead cell whose trailing continuation cell sits outside the rect and would be left
+    /// orphaned with no lead. A Kitty placeholder is exactly one protocol column wide regardless
+    /// of the frame content it replaces, so either case corrupts the row - see
+    /// <see cref="GraphicsCellOverlay.Paint"/>, which blind-fills every destination cell with no
+    /// continuation-boundary awareness of its own.
+    /// </summary>
+    private static bool SplitsWideGrapheme(Frame back, Rect destination)
+    {
+        if (destination.Width <= 0 || destination.Height <= 0)
+        {
+            return false;
+        }
+
+        var leftColumn = destination.X;
+        var rightColumn = destination.Right - 1;
+
+        for (var row = destination.Y; row < destination.Bottom; row++)
+        {
+            var rowStart = checked(row * back.Size.Width);
+
+            for (var column = leftColumn; column <= rightColumn; column++)
+            {
+                var cell = back.GetCellByIndex(checked(rowStart + column));
+
+                if (cell.IsContinuation)
+                {
+                    return true;
+                }
+
+                if (column == rightColumn && cell.Width == 2)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 
     private bool PlacementsChanged(
+        Frame back,
         List<KittyGraphicsPlacementState> placements,
         ColorDepth colorDepth,
         bool placeholders)
@@ -769,7 +817,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
         for (var index = 0; index < placements.Count; index++)
         {
-            if (CanUsePlaceholder(placements[index], colorDepth) == placeholders &&
+            if (CanUsePlaceholder(back, placements[index], colorDepth) == placeholders &&
                 placements[index].Placement != _placements[index].Placement)
             {
                 return true;
@@ -810,7 +858,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         GraphicsCellOverlay? right) =>
         left is null ? right is null : left.SemanticallyEquals(right);
 
-    private void WriteVirtualPlacement(
+    private static void WriteVirtualPlacement(
         KittyGraphicsPlacementState state,
         int zIndex,
         IBufferWriter<byte> destination)
@@ -824,7 +872,13 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             zIndex,
             unicodePlaceholder: true);
 
-        WritePlacementCommand(command, destination);
+        // Written raw, unlike the sibling real-placement phase's WritePlacementCommand call: the
+        // cell-prelude phase contains only APC frames (no interleaved raw CSI cursor moves) and is
+        // finalized by the caller's own FinishApcPhase call, which performs the single tmux-route
+        // wrap. Routing through WritePlacementCommand here would wrap this command through _route
+        // a first time and then FinishApcPhase would wrap the already-wrapped buffer a second time,
+        // leaving the outer terminal with a nested envelope instead of the Kitty APC.
+        KittyGraphicsWriter.Write(command, [], destination);
     }
 
     private void WritePlacement(KittyGraphicsPlacementState state, int zIndex, IBufferWriter<byte> destination)

@@ -530,6 +530,21 @@ public sealed class ListView: ItemsControl
         return changed;
     }
 
+    /// <summary>Selects every available item when multiple selection is enabled.</summary>
+    /// <exception cref="InvalidOperationException">The selection mode is not multiple.</exception>
+    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    public void SelectAll()
+    {
+        VerifyMutable();
+
+        if (SelectionMode != ListSelectionMode.Multiple)
+        {
+            throw new InvalidOperationException("SelectAll requires multiple selection mode.");
+        }
+
+        _ = ApplySelection([.. Enumerable.Range(0, _items.Count)], cancellable: true);
+    }
+
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
@@ -764,6 +779,13 @@ public sealed class ListView: ItemsControl
         var selectionVersion = _selectionVersion;
         var applied = ApplySelection(normalized, cancellable: false, requireAvailability: false);
 
+        // ApplySelection can synchronously reach a subscriber that disposes the control - matches
+        // the guard the SelectedIndex setter already applies before this same continuation.
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (_selectionVersion == selectionVersion + (applied ? 1 : 0))
         {
             SetActiveIndex(nextActiveIndex);
@@ -846,6 +868,13 @@ public sealed class ListView: ItemsControl
             cancellable: false,
             requireAvailability: false,
             afterSelectionInstalled: RebuildVirtualizedPresentation);
+
+        // ApplySelection can synchronously reach a subscriber that disposes the control - matches
+        // the guard the SelectedIndex setter already applies before this same continuation.
+        if (IsDisposed)
+        {
+            return;
+        }
 
         if (_selectionVersion == selectionVersion + (applied ? 1 : 0))
         {
@@ -1209,6 +1238,14 @@ public sealed class ListView: ItemsControl
         // now-stale continuation must be skipped rather than overwriting that newer state.
         var selectionVersion = _selectionVersion;
         var applied = ApplySelection(shifted, cancellable: false, added, removed, requireAvailability: false);
+
+        // ApplySelection can synchronously reach a subscriber that disposes the control - matches
+        // the guard the SelectedIndex setter already applies before this same continuation.
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var nextActiveIndex = ActiveIndex > index
             ? ActiveIndex - 1
             : ActiveIndex >= _items.Count
@@ -1310,6 +1347,13 @@ public sealed class ListView: ItemsControl
         // now-stale continuation must be skipped rather than overwriting that newer state.
         var selectionVersion = _selectionVersion;
         var applied = ApplySelection(normalized, cancellable: false, requireAvailability: false);
+
+        // ApplySelection can synchronously reach a subscriber that disposes the control - matches
+        // the guard the SelectedIndex setter already applies before this same continuation.
+        if (IsDisposed)
+        {
+            return;
+        }
 
         if (_selectionVersion == selectionVersion + (applied ? 1 : 0))
         {
@@ -1827,6 +1871,13 @@ public sealed class ListView: ItemsControl
         _ = normalized.Remove(index);
         _ = ApplySelection(normalized, cancellable: false, requireAvailability: false);
 
+        // ApplySelection can synchronously reach a subscriber that disposes the control - matches
+        // the guard the SelectedIndex setter already applies before this same continuation.
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (_selectionAnchor == index)
         {
             _selectionAnchor = _selection.Contains(ActiveIndex) ? ActiveIndex : -1;
@@ -1858,6 +1909,13 @@ public sealed class ListView: ItemsControl
             ShiftEligibleRange);
 
         var accepted = ApplySelection(next, cancellable: true) || _selection.SetEquals(next);
+
+        // ApplySelection can synchronously reach a subscriber that disposes the control - matches
+        // the guard the SelectedIndex setter already applies before this same continuation.
+        if (IsDisposed)
+        {
+            return accepted;
+        }
 
         if (accepted)
         {
@@ -1897,6 +1955,18 @@ public sealed class ListView: ItemsControl
                 ActivationCause.Keyboard,
                 eventArgs.Stroke.Code,
                 eventArgs.Stroke.Modifiers);
+            return;
+        }
+
+        if (eventArgs.IsInitialKeyDown &&
+            eventArgs.Stroke.Code == Code.Character &&
+            eventArgs.Stroke.Character is { } character &&
+            Rune.ToLowerInvariant(character) == new Rune('a') &&
+            KeyboardModifierPolicy.MatchesCommand(eventArgs.Stroke.Modifiers, Modifiers.Control) &&
+            SelectionMode == ListSelectionMode.Multiple)
+        {
+            SelectAll();
+            eventArgs.IsHandled = true;
             return;
         }
 
@@ -1942,14 +2012,27 @@ public sealed class ListView: ItemsControl
             return false;
         }
 
-        if (SelectionMode != ListSelectionMode.None && !ApplyInputSelection(target.Index, Modifiers.None))
+        if (SelectionMode != ListSelectionMode.None)
         {
-            if (SelectionMode == ListSelectionMode.None)
+            var accepted = ApplyInputSelection(target.Index, Modifiers.None);
+
+            // ApplyInputSelection can synchronously reach a subscriber that disposes the control -
+            // matches the guard the SelectedIndex setter already applies before this same
+            // continuation.
+            if (IsDisposed)
             {
-                _ = TryCommitCurrent(target);
+                return true;
             }
 
-            return true;
+            if (!accepted)
+            {
+                if (SelectionMode == ListSelectionMode.None)
+                {
+                    _ = TryCommitCurrent(target);
+                }
+
+                return true;
+            }
         }
 
         _ = TryCommitCurrent(target);

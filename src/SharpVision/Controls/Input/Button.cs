@@ -272,8 +272,8 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
         var x = TextAlignment switch
         {
             Alignment.Start => face.X,
-            Alignment.Center => face.X + ((face.Width - width) / 2),
-            Alignment.End => face.Right - width,
+            Alignment.Center => face.X.SaturatingAdd((face.Width - width) / 2),
+            Alignment.End => face.Right.SaturatingSubtract(width),
             _ => throw new UnreachableException()
         };
         ArrangeChild(

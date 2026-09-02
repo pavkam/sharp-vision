@@ -39,7 +39,6 @@ internal sealed class ActiveQueryDiscoveryStrategy
     private bool? _itermImages;
     private bool _keyboardQueried;
     private bool _graphicsQueried;
-    private bool _fenceQueried;
     private bool _usesExplicitOuterProfile;
     private string? _planningTerminalName;
     private PaletteResponse? _paletteColor;
@@ -87,6 +86,15 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
     /// <summary>Gets whether the query batch was emitted.</summary>
     public bool Started { get; private set; }
+
+    /// <summary>
+    /// Gets whether the written batch included the CSI 6n cursor-position completion fence. A
+    /// low caller-supplied <see cref="QueryLimits.MaxConcurrentQueries"/> budget can crowd the
+    /// fence out of the batch entirely; callers that gate CSI 1;&lt;mod&gt;R disambiguation on the
+    /// negotiation window must also gate on this, or a modified F3 keystroke arriving during that
+    /// window would be misclassified as a reply to a query that was never actually sent.
+    /// </summary>
+    public bool FenceQueried { get; private set; }
 
     /// <summary>Gets whether one immutable profile was published.</summary>
     public bool Completed { get; private set; }
@@ -348,18 +356,18 @@ internal sealed class ActiveQueryDiscoveryStrategy
             _graphicsQueried = true;
         }
 
-        // A terminating fence, written last so an in-order terminal answers it only after every
-        // other standard query. Only 2 of the other families ever retire early on their own
-        // (Keyboard and KittyGraphics, both piggybacked on PrimaryAttributes); every other silent
-        // family would otherwise hold the first frame for the full shared deadline. CSI 6n (DSR
-        // cursor position) is answered by effectively every terminal that speaks any of the other
-        // protocols in this batch, so its reply retiring every still-outstanding family turns the
-        // deadline into a genuine backstop instead of the normal path. A fence-resolved
-        // family supplies no evidence and must not be recorded as Origin.Query - see the same rule
-        // RetireOutstandingFamilies already follows for ordinary deadline expiration.
-        _fenceQueried = TryRegister(QueryKind.CursorPosition, ref remaining);
+        // A trailing probe, written last so an in-order terminal answers it only after every
+        // other standard query - but CSI 6n (DSR cursor position) shares its exact reply grammar
+        // with a modified F3 keystroke (CSI 1;<mod>R), which a user, tty typeahead, or a
+        // multiplexer replaying buffered input can deliver at any point in the shared deadline
+        // window with no way to tell it apart from a genuine answer. Accept below therefore only
+        // resolves this query's own family from a match; it never treats the match as proof that
+        // every other still-outstanding family stayed silent, because an unsolicited keystroke
+        // would then falsely retire all of them. Every other silent family still resolves,
+        // through its own matching reply or the shared deadline below.
+        FenceQueried = TryRegister(QueryKind.CursorPosition, ref remaining);
 
-        if (_fenceQueried)
+        if (FenceQueried)
         {
             Csi.ReportCursorPosition(writer);
         }
@@ -443,14 +451,12 @@ internal sealed class ActiveQueryDiscoveryStrategy
                 _kittyGraphics = false;
             }
 
-            // The fence reply retires every family still outstanding at this instant. It is
-            // written last in the batch, so an in-order terminal answers it only after every
-            // other reply it is going to send at all.
-            if (response.Kind == ResponseKind.CursorPosition && _fenceQueried)
-            {
-                RetireOutstandingFamilies(now);
-            }
-
+            // A CSI 6n reply only ever resolves its own tracked family here (via the _tracker.Match
+            // call above). It deliberately does not retire any other still-outstanding family: the
+            // reply grammar is byte-identical to a modified F3 keystroke, which a user or replayed
+            // typeahead can deliver at any point in the shared deadline window, so a match here is
+            // never trustworthy proof that every other family stayed silent. Every other family
+            // still resolves through its own matching reply or the shared deadline.
             TryPublish();
         }
 
@@ -848,10 +854,12 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
     /// <summary>
     /// Retires every still-outstanding query family and DEC private mode without recording any
-    /// evidence for them - the shared step behind deadline expiration, transport completion, and
-    /// the terminating fence reply. None of these callers observed an actual reply for the
-    /// families retired here, so their fields stay unset and <see cref="Publish"/> leaves them
-    /// absent rather than inventing <see cref="Origin.Query"/> support or non-support.
+    /// evidence for them - the shared step behind deadline expiration and transport completion.
+    /// Neither caller observed an actual reply for the families retired here, so their fields stay
+    /// unset and <see cref="Publish"/> leaves them absent rather than inventing
+    /// <see cref="Origin.Query"/> support or non-support. A matched cursor-position reply
+    /// deliberately does not call this: that reply's grammar cannot be told apart from an
+    /// unrelated keystroke, so it is not evidence that any other family stayed silent.
     /// </summary>
     private void RetireOutstandingFamilies(DateTimeOffset now)
     {

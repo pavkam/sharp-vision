@@ -36,7 +36,6 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
     private Overflow _cachedOverflow;
     private Alignment _cachedAlignment;
     private Ambiguous _cachedAmbiguous;
-    private bool _hasAmbiguousWidth;
     private Line[] _lines = [];
     private int _lineCount;
     private bool _layoutValid;
@@ -117,29 +116,16 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
         }
     }
 
-    /// <summary>Gets or sets the East Asian Ambiguous cell-width policy.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Ambiguous AmbiguousWidth
-    {
-        get => _hasAmbiguousWidth ? AmbiguousWidthValue : CellPolicy.AmbiguousWidth;
-        set
-        {
-            ArgumentOutOfRangeException.ThrowIfNotDefined(value);
-            VerifyMutable();
-
-            if (_hasAmbiguousWidth && AmbiguousWidthValue == value)
-            {
-                return;
-            }
-
-            AmbiguousWidthValue = value;
-            _hasAmbiguousWidth = true;
-            _layoutValid = false;
-            NotifyPropertyChanged(nameof(AmbiguousWidth), InvalidationImpact.Measure);
-        }
-    }
+    /// <summary>Gets the East Asian Ambiguous cell-width policy inherited from the ambient
+    /// <see cref="ControlBase.CellPolicy"/>.</summary>
+    /// <remarks>
+    /// This always tracks the ambient policy the rest of the render pipeline uses - it cannot be
+    /// overridden per-instance. <see cref="TerminalCanvas"/> classifies every
+    /// rune it draws against the frame's single ambiguous-width policy, so a <see cref="Text"/>
+    /// whose own layout diverged from that policy could format an ellipsis or wrap boundary using
+    /// a cell width the canvas would then measure differently, which is unsound.
+    /// </remarks>
+    public Ambiguous AmbiguousWidth => CellPolicy.AmbiguousWidth;
 
     /// <summary>Gets or sets the complete local presentation, or null for theme ownership.</summary>
     /// <exception cref="InvalidOperationException">The attached text control is mutated off-dispatcher.</exception>
@@ -152,8 +138,6 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
 
     /// <summary>Gets the complete local, theme-owned, or code-owned presentation.</summary>
     public TextStyle ActualStyle => _style.Actual;
-
-    private Ambiguous AmbiguousWidthValue { get; set; }
 
     /// <summary>
     /// Gets this control's private, in-place-mutated render/measurement line cache.
@@ -347,7 +331,13 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
             // A widened arrange slot that still exceeds every existing line's own cell count would
             // then wrongly compare as "already fits" and skip the reformat that should have
             // merged those wrapped lines back together.
-            if (Overflow is not (Overflow.Wrap or Overflow.WrapAnywhere) &&
+            //
+            // Only Overflow.Visible guarantees a line's Cells never depends on width (FormatUnwrapped
+            // always emits the full completeCells for Visible), so only Visible can safely skip
+            // reformat on widen. Clip and Ellipsis routinely leave cells < width after truncation
+            // (word-boundary snap-back, or a wide grapheme that doesn't fit the last cell), so reusing
+            // stale line data there can leave truncated text stuck forever.
+            if (Overflow == Overflow.Visible &&
                 width >= _measuredMaxCells && _cachedWidth > _measuredMaxCells)
             {
                 Align(width);

@@ -694,6 +694,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         Debug.Assert(direction is -1 or 1, "Calendar movement has a direction.");
         var lower = Math.Max(MinimumDate.DayNumber, minimum ?? DateOnly.MinValue.DayNumber);
         var upper = Math.Min(MaximumDate.DayNumber, maximum ?? DateOnly.MaxValue.DayNumber);
+        candidate = direction > 0 ? Math.Max(candidate, lower) : Math.Min(candidate, upper);
 
         while (candidate >= lower && candidate <= upper)
         {

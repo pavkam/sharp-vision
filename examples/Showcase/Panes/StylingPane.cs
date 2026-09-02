@@ -106,7 +106,7 @@ internal sealed class StylingPane: CompositeControlBase
                     faceChannels),
                 new DocExample(
                     "Flat, raised, and sunken borders",
-                    "Relief changes which theme-authored highlight and shade colors paint each one-cell edge; the glyph geometry stays fixed.",
+                    "Each sample explicitly selects a relief mode while the active Theme supplies its highlight and shade colors. Turbo Vision applies relief automatically only to containers; glyph geometry stays fixed.",
                     borders),
                 new DocExample(
                     "Composite, block-glyph, and fractional shadows",

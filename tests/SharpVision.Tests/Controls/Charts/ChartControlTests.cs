@@ -84,6 +84,80 @@ public sealed class ChartControlTests
         chart.ActualStyle.ShouldBe(defaultStyle);
     }
 
+    /// <summary>Verifies a Theme swap re-resolves a semantic color assigned to a series, instead
+    /// of leaving it painted with the literal observed under the previous Theme - the gap
+    /// ChartRenderer's direct <c>ResolveColor</c> call left, since a color assigned to
+    /// <see cref="ChartSeries.Color"/> lives on the data rather than on <see cref="ChartStyle"/>,
+    /// so neither <c>ChartStyle.Compare</c> nor the appearance diff can see it move.</summary>
+    [Fact]
+    public void ResolveSeriesColor_WhenThemeChangesAnAssignedSeriesColor_ReResolvesAndInvalidatesRender()
+    {
+        // Arrange
+        var previousTheme = ThemeWithAccent(Color.Rgb(1, 2, 3));
+        var currentTheme = ThemeWithAccent(Color.Rgb(4, 5, 6));
+        var chart = new LineChart { Series = [new ChartSeries("A") { Color = SemanticColor.Accent }] };
+        var iChart = (IChartControl) chart;
+        chart.SetTheme(previousTheme);
+        iChart.ResolveSeriesColor(SemanticColor.Accent).ShouldBe(Color.Rgb(1, 2, 3));
+        chart.Clear(Invalidation.All);
+
+        // Act
+        chart.SetTheme(currentTheme);
+
+        // Assert
+        chart.Pending.ShouldBe(Invalidation.Render);
+        iChart.ResolveSeriesColor(SemanticColor.Accent).ShouldBe(Color.Rgb(4, 5, 6));
+    }
+
+    /// <summary>Verifies the same re-resolution for a point-level override, which shadows the
+    /// series color and is otherwise invisible to the same mechanisms for the same reason.</summary>
+    [Fact]
+    public void ResolveSeriesColor_WhenThemeChangesAnAssignedPointColor_ReResolvesAndInvalidatesRender()
+    {
+        // Arrange
+        var previousTheme = ThemeWithAccent(Color.Rgb(7, 8, 9));
+        var currentTheme = ThemeWithAccent(Color.Rgb(10, 11, 12));
+        var point = new ChartDataPoint("p", 1) { Color = SemanticColor.Accent };
+        var chart = new LineChart { Series = [new ChartSeries("A", [point])] };
+        var iChart = (IChartControl) chart;
+        chart.SetTheme(previousTheme);
+        iChart.ResolveSeriesColor(SemanticColor.Accent).ShouldBe(Color.Rgb(7, 8, 9));
+        chart.Clear(Invalidation.All);
+
+        // Act
+        chart.SetTheme(currentTheme);
+
+        // Assert
+        chart.Pending.ShouldBe(Invalidation.Render);
+        iChart.ResolveSeriesColor(SemanticColor.Accent).ShouldBe(Color.Rgb(10, 11, 12));
+    }
+
+    /// <summary>Verifies a Theme swap that moves nothing an unadorned chart's own colors touch,
+    /// and authors no series or point override, requests no repaint - the counter-case that keeps
+    /// the two tests above honest.</summary>
+    [Fact]
+    public void ResolveSeriesColor_WhenNoSeriesOrPointOverrideIsAssigned_DoesNotInvalidate()
+    {
+        // Arrange
+        var previousTheme = ThemeWithAccent(Color.Rgb(1, 2, 3));
+        var currentTheme = ThemeWithAccent(Color.Rgb(4, 5, 6));
+        var chart = new LineChart { Series = [new ChartSeries("A", [new ChartDataPoint("p", 1)])] };
+        var iChart = (IChartControl) chart;
+        chart.SetTheme(previousTheme);
+        _ = iChart.ResolveSeriesColor(SemanticColor.Accent);
+        chart.Clear(Invalidation.All);
+
+        // Act
+        chart.SetTheme(currentTheme);
+
+        // Assert
+        chart.Pending.ShouldBe(Invalidation.None);
+    }
+
+    private static string Hex(Color color) => $"#{color.Red:x2}{color.Green:x2}{color.Blue:x2}";
+
+    private static Theme ThemeWithAccent(Color accent) => ThemeCatalog.Parse(ThemeJson.Create(accent: Hex(accent)));
+
     /// <summary>Verifies assigning a genuinely different Scale round-trips and invalidates
     /// rendering, and that re-assigning the identical value afterward is a no-op notification.</summary>
     [Fact]

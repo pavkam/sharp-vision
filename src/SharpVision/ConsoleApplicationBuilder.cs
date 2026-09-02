@@ -230,7 +230,7 @@ public sealed class ConsoleApplicationBuilder
     public ConsoleApplicationBuilder UseNegotiation(NegotiationOptions negotiation)
     {
         ArgumentNullException.ThrowIfNull(negotiation);
-        Options = Options with { Negotiation = negotiation };
+        Options = Options with { Negotiation = negotiation, NegotiationDisabled = false };
         return this;
     }
 
@@ -239,13 +239,7 @@ public sealed class ConsoleApplicationBuilder
     [MustUseReturnValue(IsFluentBuilderMethod = true)]
     public ConsoleApplicationBuilder WithoutNegotiation()
     {
-        Options = Options with
-        {
-            Negotiation = null,
-            Profile = Options.Profile ?? (Options.Capabilities is null
-                ? TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative)
-                : null)
-        };
+        Options = Options with { Negotiation = null, NegotiationDisabled = true };
         return this;
     }
 

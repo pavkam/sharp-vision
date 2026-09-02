@@ -157,4 +157,25 @@ public sealed class SpinnerTests
         stack.IsEnabled = false;
         spinner.EffectiveIsEnabled.ShouldBeFalse();
     }
+
+    /// <summary>Verifies a custom frame set that is one cell under Narrow but two cells under Wide
+    /// renders its per-index Ascii fallback instead of throwing at draw time.</summary>
+    [Fact]
+    public void Render_WhenCustomFrameIsAmbiguousWidthAndPolicyIsWide_UsesPortableFallback()
+    {
+        // Arrange - U+25C6 BLACK DIAMOND (the same glyph ChaseIndicatorStyle.Diamond uses to
+        // exercise this identical policy split) is one cell under Ambiguous.Narrow (so it passes
+        // SpinnerStyle construction) but two cells under Ambiguous.Wide.
+        var style = SpinnerStyle.Default with { Frames = [new Rune('◆'), new Rune('*')] };
+        var spinner = new Spinner { Style = style };
+        spinner.SetCellPolicy(new UnicodePolicy(Ambiguous.Wide));
+        new LayoutEngine().Layout(spinner, new Size(1, 1));
+        using Frame frame = new(new Size(1, 1), ambiguousWidth: Ambiguous.Wide);
+
+        // Act
+        spinner.Render(frame.Canvas);
+
+        // Assert - falls back to the first Ascii frame ('|') at index 0 rather than throwing.
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("|");
+    }
 }

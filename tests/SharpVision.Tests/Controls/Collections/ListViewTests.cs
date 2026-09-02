@@ -590,6 +590,51 @@ public sealed class ListViewTests
         control.SelectedIndex.ShouldBe(1);
     }
 
+    /// <summary>Verifies Ctrl+A selects every item in Multiple mode, including indexes virtualization
+    /// has never realized because they sit outside the current viewport window - the same optimistic
+    /// availability ApplySelection already grants an unrealized index applies here too.</summary>
+    [Fact]
+    public void Dispatch_WhenCtrlAIsPressedWithUnrealizedVirtualizedRows_SelectsEveryItem()
+    {
+        // Arrange
+        var control = CreateNavigationList(ListSelectionMode.Multiple);
+        var expected = Enumerable.Range(0, 12).Select(index => (object?) $"Item {index}").ToArray();
+
+        // The 3-row viewport over 12 items leaves most rows unrealized - a genuine virtualization
+        // case, not just a nominal RowHeight setting.
+        OwnedTree.FindAll<ListItem>(control).Count.ShouldBeLessThan(expected.Length);
+
+        // Act
+        var key = CharacterKeyWithModifiers(control, new Rune('a'), Modifiers.Control);
+
+        // Assert
+        key.IsHandled.ShouldBeTrue();
+        control.SelectedItems.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies SelectAll refuses to run outside Multiple selection mode, since a single
+    /// or none-selection ListView has no way to represent the result, and leaves selection state
+    /// untouched.</summary>
+    [Theory]
+    [InlineData(ListSelectionMode.Single)]
+    [InlineData(ListSelectionMode.None)]
+    public void SelectAll_WhenModeIsNotMultiple_ThrowsInvalidOperationExceptionAndPreservesSelection(
+        ListSelectionMode mode)
+    {
+        // Arrange
+        var control = new UiListView
+        {
+            SelectionMode = ListSelectionMode.Multiple,
+            Items = new object?[] { "A", "B", "C" }
+        };
+        _ = control.SetSelected(0, true);
+        control.SelectionMode = mode;
+
+        // Act & Assert
+        _ = Should.Throw<InvalidOperationException>(control.SelectAll);
+        control.SelectedItems.ShouldBe(mode == ListSelectionMode.Single ? new object?[] { "A" } : []);
+    }
+
     /// <summary>Verifies assigning a disabled SelectedIndex preserves the existing valid selection.</summary>
     [Fact]
     public void SelectedIndex_WhenTargetIsDisabled_PreservesExistingSelection()
@@ -1426,6 +1471,183 @@ public sealed class ListViewTests
         var changed = Should.NotThrow(() => control.SetSelected(0, selected: true));
 
         changed.ShouldBeTrue();
+        control.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies a PropertyChanged subscriber that disposes the control mid-commit does not leave
+    /// Replace's post-ApplySelection continuation running against disposed-guarded members.
+    /// </summary>
+    [Fact]
+    public void Replace_WhenPropertyChangedSubscriberDisposesControl_DoesNotThrow()
+    {
+        var control = new UiListView { Items = ["Zero", "One"], SelectedIndex = 0 };
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiListView.SelectedIndex))
+            {
+                control.Dispose();
+            }
+        };
+
+        _ = Should.NotThrow(() => control.Items = ["Two", "Three"]);
+
+        control.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies a PropertyChanged subscriber that disposes the control mid-commit does not leave
+    /// ReplaceVirtualized's post-ApplySelection continuation running against disposed-guarded
+    /// members.
+    /// </summary>
+    [Fact]
+    public void ReplaceVirtualized_WhenPropertyChangedSubscriberDisposesControl_DoesNotThrow()
+    {
+        var control = new UiListView
+        {
+            RowHeight = Length.Cells(1),
+            Items = ["Zero", "One"],
+            SelectedIndex = 0
+        };
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiListView.SelectedIndex))
+            {
+                control.Dispose();
+            }
+        };
+
+        _ = Should.NotThrow(() => control.Items = ["Two", "Three"]);
+
+        control.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies a PropertyChanged subscriber that disposes the control mid-commit does not leave
+    /// RemoveItem's post-ApplySelection continuation running against disposed-guarded members.
+    /// </summary>
+    [Fact]
+    public void RemoveItem_WhenPropertyChangedSubscriberDisposesControl_DoesNotThrow()
+    {
+        var control = new UiListView { Items = ["Zero", "One"], SelectedIndex = 0 };
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiListView.SelectedIndex))
+            {
+                control.Dispose();
+            }
+        };
+
+        Should.NotThrow(() => control.RemoveItem(0));
+
+        control.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies a PropertyChanged subscriber that disposes the control mid-commit does not leave
+    /// ReplaceItem's post-ApplySelection continuation running against disposed-guarded members.
+    /// </summary>
+    [Fact]
+    public void ReplaceItem_WhenPropertyChangedSubscriberDisposesControl_DoesNotThrow()
+    {
+        var control = new UiListView { Items = ["Zero", "One"], SelectedIndex = 0 };
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiListView.SelectedIndex))
+            {
+                control.Dispose();
+            }
+        };
+
+        Should.NotThrow(() => control.ReplaceItem(0, "Replaced"));
+
+        control.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies a PropertyChanged subscriber that disposes the control mid-commit does not leave
+    /// RepairIneligibleIndex's post-ApplySelection continuation running against disposed-guarded
+    /// members.
+    /// </summary>
+    [Fact]
+    public void RepairIneligibleIndex_WhenPropertyChangedSubscriberDisposesControl_DoesNotThrow()
+    {
+        List<ControlText> realized = [];
+        var control = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new ControlText((string) item!)),
+            Items = ["A", "B"],
+            SelectedIndex = 1
+        };
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiListView.SelectedIndex))
+            {
+                control.Dispose();
+            }
+        };
+
+        _ = Should.NotThrow(() => realized.Single(item => item.Content == "B").IsEnabled = false);
+
+        control.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies a PropertyChanged subscriber that disposes the control mid-commit does not leave
+    /// ApplyInputSelection's post-ApplySelection continuation running against disposed-guarded
+    /// members.
+    /// </summary>
+    [Fact]
+    public async Task ApplyInputSelection_WhenPropertyChangedSubscriberDisposesControl_DoesNotThrowAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = new UiListView { Items = ["A", "B"] };
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiListView.SelectedIndex))
+            {
+                control.Dispose();
+            }
+        };
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            control.Attach(dispatcher);
+            new LayoutEngine().Layout(control, new Size(10, 2));
+            using PointerManager pointer = new(control);
+            Should.NotThrow(() => Click(pointer, new Point(0, 0), Modifiers.None));
+        }, TestContext.Current.CancellationToken);
+
+        control.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies a PropertyChanged subscriber that disposes the control mid-commit does not leave
+    /// MoveSelection's post-ApplyInputSelection continuation running against disposed-guarded
+    /// members.
+    /// </summary>
+    [Fact]
+    public async Task MoveSelection_WhenPropertyChangedSubscriberDisposesControl_DoesNotThrowAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = new UiListView { Items = ["A", "B"] };
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiListView.SelectedIndex))
+            {
+                control.Dispose();
+            }
+        };
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            control.Attach(dispatcher);
+            new LayoutEngine().Layout(control, new Size(10, 2));
+            using FocusManager focus = new(control);
+            focus.Focus(control).ShouldBeTrue();
+            Should.NotThrow(() => Key(control, Code.Down));
+        }, TestContext.Current.CancellationToken);
+
         control.IsDisposed.ShouldBeTrue();
     }
 

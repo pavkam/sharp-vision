@@ -83,7 +83,7 @@ public sealed class RuntimeInteropTests
     {
         var current = RuntimeInterop.EnableProcessedInput | RuntimeInterop.EnableLineInput | RuntimeInterop.EnableEchoInput;
 
-        var result = RuntimeInterop.ComputeInputMode(current, captureControlKeys: false);
+        var result = RuntimeInterop.ComputeInputMode(current, captureControlKeys: false, enableMouseInput: false);
 
         (result & RuntimeInterop.EnableVirtualTerminalInput).ShouldNotBe(0u);
         (result & RuntimeInterop.EnableLineInput).ShouldBe(0u);
@@ -99,10 +99,51 @@ public sealed class RuntimeInteropTests
     {
         var current = RuntimeInterop.EnableProcessedInput | RuntimeInterop.EnableLineInput | RuntimeInterop.EnableEchoInput;
 
-        var result = RuntimeInterop.ComputeInputMode(current, captureControlKeys: true);
+        var result = RuntimeInterop.ComputeInputMode(current, captureControlKeys: true, enableMouseInput: false);
 
         (result & RuntimeInterop.EnableProcessedInput).ShouldBe(0u);
         (result & RuntimeInterop.EnableVirtualTerminalInput).ShouldNotBe(0u);
+    }
+
+    /// <summary>
+    /// Verifies QuickEdit is always cleared and extended flags are always set, regardless of
+    /// the other parameters, because a stray QuickEdit selection freezes the console outright.
+    /// </summary>
+    [Fact]
+    public void ComputeInputMode_Always_ClearsQuickEditAndSetsExtendedFlags()
+    {
+        var current = RuntimeInterop.EnableQuickEditMode;
+
+        var result = RuntimeInterop.ComputeInputMode(current, captureControlKeys: true, enableMouseInput: true);
+
+        (result & RuntimeInterop.EnableQuickEditMode).ShouldBe(0u);
+        (result & RuntimeInterop.EnableExtendedFlags).ShouldNotBe(0u);
+    }
+
+    /// <summary>
+    /// Verifies mouse input is enabled only when mouse tracking is requested.
+    /// </summary>
+    [Fact]
+    public void ComputeInputMode_WhenMouseInputRequested_SetsEnableMouseInput()
+    {
+        const uint current = 0;
+
+        var result = RuntimeInterop.ComputeInputMode(current, captureControlKeys: false, enableMouseInput: true);
+
+        (result & RuntimeInterop.EnableMouseInput).ShouldNotBe(0u);
+    }
+
+    /// <summary>
+    /// Verifies mouse input is left disabled when mouse tracking is not requested.
+    /// </summary>
+    [Fact]
+    public void ComputeInputMode_WhenMouseInputNotRequested_LeavesEnableMouseInputClear()
+    {
+        const uint current = 0;
+
+        var result = RuntimeInterop.ComputeInputMode(current, captureControlKeys: false, enableMouseInput: false);
+
+        (result & RuntimeInterop.EnableMouseInput).ShouldBe(0u);
     }
 
     /// <summary>

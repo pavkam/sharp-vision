@@ -35,6 +35,43 @@ public sealed class WindowTests
         window.Face.Background.ShouldBe(SemanticColor.WindowSurface);
     }
 
+    /// <summary>Verifies a Window opts out of ambient text-appearance inheritance by construction,
+    /// so a floating surface always starts fresh regardless of which theme is active.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_IsAppearanceBoundary()
+    {
+        var window = new Window();
+
+        window.IsAppearanceBoundary.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a Window does not inherit an ambient parent's Foreground even when the
+    /// active theme leaves "control" (and every well-known style section) entirely unauthored -
+    /// the one condition under which the code-owned <see cref="ControlStyle.DefaultFace"/>
+    /// (transparent background, no LocalFace) would otherwise satisfy AppearanceResolver's
+    /// ambient-inheritance gate. Every bundled theme, and every other <see cref="ThemeJson.Create"/>
+    /// call, authors "control" with a face - which "window"/"popup"/"tooltip" cascade onto their
+    /// own Normal regardless of whether they author a "face" of their own - so this only
+    /// reproduces with a theme whose "styles" object is empty.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenThemeLeavesWindowFaceUnauthored_DoesNotInheritAmbientForeground()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(stylesOverride: "{}"));
+        var ambientForeground = Color.Rgb(200, 30, 40);
+        var parent = new ProbeContainer
+        {
+            Face = AppearanceTestValues.Face(foreground: ambientForeground, background: Color.Rgb(1, 1, 1))
+        };
+        var window = new Window();
+        parent.Children.Add(window);
+
+        var resolved = window.ResolveAppearance(theme);
+
+        resolved.Face.Background.Literal.ShouldBe(Color.Transparent);
+        resolved.Face.Foreground.Literal.ShouldBe(Color.Default);
+        resolved.Face.Foreground.Literal.ShouldNotBe(ambientForeground);
+    }
+
     /// <summary>Verifies Window proves direct and ancestor-inherited disabled state at the
     /// detached unit level, and that clearing IsEnabled on each recovers EffectiveIsEnabled - the
     /// same disabled contract exercised on a live mounted terminal surface.</summary>
@@ -2837,7 +2874,9 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies a scope disposed from entry callbacks is returned inactive without stale Window tracking.</summary>
+    /// <summary>Verifies a scope disposed from entry callbacks is returned inactive without stale
+    /// Window tracking, and that the visibility this call itself forced is rolled back to its prior
+    /// value since the callback's decision ended modality, not visibility.</summary>
     [Fact]
     public async Task ShowModal_WhenEntryCallbackDisposesScope_ReturnsInactiveAndAllowsReopenAsync()
     {
@@ -2865,7 +2904,7 @@ public sealed class WindowTests
 
             first.IsActive.ShouldBeFalse();
             modality.Active.ShouldBeNull();
-            window.Visibility.ShouldBe(Visibility.Visible);
+            window.Visibility.ShouldBe(Visibility.Collapsed);
             disposeOnEntry = false;
 
             using var second = window.ShowModal();

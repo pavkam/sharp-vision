@@ -66,7 +66,8 @@ public sealed class DateTimeInput: InputBase
             () => TimeProvider.GetLocalNow().DateTime,
             PublishValueChanged,
             SynchronizeCalendarValue,
-            SyncCalendarBounds);
+            SyncCalendarBounds,
+            resolveValueImpact: ResolveValueWidthImpact);
         _calendarDropDown = new CalendarDropDownCoordinator<DateTime>(
             _culture,
             EnsureSeeded,
@@ -91,6 +92,16 @@ public sealed class DateTimeInput: InputBase
             cancelSession: _calendarDropDown.CancelSession,
             acceptSession: _calendarDropDown.AcceptSession);
         _popup.ContentHeightLimit = Length.Cells(10);
+
+        // ActualCalendarStyle is a live projection of the owned Calendar's own ActualStyle rather
+        // than a style slot DateTimeInput owns directly, so nothing raises PropertyChanged for it
+        // on either a local CalendarStyle assignment or a theme swap unless something forwards
+        // Calendar's own notification through. This bridge does exactly that.
+        _ = RegisterRetainedPartProperty(
+            _calendarDropDown.Calendar,
+            nameof(Calendar.ActualStyle),
+            nameof(ActualCalendarStyle),
+            () => _calendarDropDown.Calendar.ActualStyle);
         EnablePressActivation();
 
         _segments = EnableSegmentEditing(
@@ -748,11 +759,45 @@ public sealed class DateTimeInput: InputBase
         : DateOnly.MaxValue;
 
     [Pure]
-    private static DateTime CombineCalendarDate(DateOnly date, DateTime? current)
+    private DateTime CombineCalendarDate(DateOnly date, DateTime? current)
     {
         var timePart = current?.TimeOfDay ?? TimeSpan.Zero;
         var kind = current?.Kind ?? DateTimeKind.Unspecified;
-        return date.ToDateTime(TimeOnly.FromTimeSpan(timePart), kind);
+        var naive = date.ToDateTime(TimeOnly.FromTimeSpan(timePart), kind);
+
+        // The day-granularity Calendar projects Minimum/Maximum onto whole days
+        // (ResolveCalendarMinimum/ResolveCalendarMaximum), so a boundary day renders as a fully
+        // selectable cell even when only part of it actually falls in range - the rest of the
+        // day sits below Minimum's time-of-day or above Maximum's. Combining that day with the
+        // preserved, untouched current time-of-day can therefore land outside [Minimum, Maximum]
+        // even though the user only manipulated the date through the popup click. Rather than
+        // let that fall through to Clamp - which repairs by substituting the whole boundary
+        // instant, silently rewriting the time the user never touched - prefer nudging the date
+        // itself to the nearest adjacent day that admits the original time-of-day, keeping the
+        // axis the user actually chose authoritative. This can only be reached at the boundary
+        // day itself: every other selectable day lies strictly between Minimum's and Maximum's
+        // dates, so any time-of-day on it is already in range. Clamp remains the fallback for a
+        // window so narrow that even the adjacent day does not help.
+        if (naive < Minimum && date == DateOnly.FromDateTime(Minimum) && date < DateOnly.MaxValue)
+        {
+            var advanced = date.AddDays(1).ToDateTime(TimeOnly.FromTimeSpan(timePart), kind);
+
+            if (advanced >= Minimum && advanced <= Maximum)
+            {
+                return advanced;
+            }
+        }
+        else if (naive > Maximum && date == DateOnly.FromDateTime(Maximum) && date > DateOnly.MinValue)
+        {
+            var retreated = date.AddDays(-1).ToDateTime(TimeOnly.FromTimeSpan(timePart), kind);
+
+            if (retreated >= Minimum && retreated <= Maximum)
+            {
+                return retreated;
+            }
+        }
+
+        return naive;
     }
 
     #endregion
@@ -800,7 +845,9 @@ public sealed class DateTimeInput: InputBase
         return $"{datePattern} {timePattern}";
     }
 
-    private SegmentDescriptor[] BuildSegments()
+    private SegmentDescriptor[] BuildSegments() => BuildSegments(_state.Value);
+
+    private SegmentDescriptor[] BuildSegments(DateTime? value)
     {
         var pattern = ResolveDateTimePattern();
         var tokens = TemporalPatternSegmenter.ParseTokens(pattern, _tokenKinds, _culture);
@@ -817,7 +864,7 @@ public sealed class DateTimeInput: InputBase
 
         IReadOnlyList<string> text;
 
-        if (_state.Value is { } dt)
+        if (value is { } dt)
         {
             var renderingPattern = hasAmPm ? pattern : NormalizeDesignatorlessHourPattern(pattern);
             text = TemporalPatternSegmenter.FormatSegments(
@@ -852,7 +899,14 @@ public sealed class DateTimeInput: InputBase
         {
             var token = tokens[index];
 
-            descriptors[index] = token.Kind is not { } kind
+            // A weekday (dddd) or month-name (MMMM) run of length >= 3 is a name, not a
+            // zero-padded number: rendering it as an ordinary editable segment would let a typed
+            // digit be misinterpreted as a day-of-month or month-number and corrupt the date.
+            // Building it as a literal instead makes it inert for digit entry, tab/arrow
+            // traversal, and Increment alike, since SegmentFieldBehavior gates all three purely
+            // on SegmentDescriptor.IsEditable.
+            descriptors[index] = token.Kind is not { } kind ||
+                (kind is TemporalSegmentKind.Month or TemporalSegmentKind.Day && token.RunLength >= 3)
                 ? new SegmentDescriptor(text[index])
                 : new SegmentDescriptor(
                     text[index],
@@ -896,6 +950,32 @@ public sealed class DateTimeInput: InputBase
 
         return normalized.ToString();
     }
+
+    /// <summary>Sums the resolved cell width of every rendered segment for a candidate value,
+    /// without committing it, so a value transition can be graded before it is applied.</summary>
+    private int MeasureFormattedWidth(DateTime? value)
+    {
+        var width = 0;
+
+        foreach (var segment in BuildSegments(value))
+        {
+            width += MeasureCells(segment.Text);
+        }
+
+        return width;
+    }
+
+    /// <summary>Grades a value transition by its resolved display-width delta, mirroring
+    /// <see cref="ControlBase.GetAffixChangeImpact"/> for affixes: a same-width transition (for
+    /// example incrementing a zero-padded minute segment) needs only
+    /// <see cref="InvalidationImpact.Render"/>, while a transition that widens or narrows the
+    /// formatted text (a single-digit month or day widening to two digits under a non-padded
+    /// <see cref="Culture"/> pattern) needs <see cref="InvalidationImpact.Measure"/> so the field
+    /// box is remeasured instead of leaving stale geometry behind.</summary>
+    private InvalidationImpact ResolveValueWidthImpact(DateTime? previous, DateTime? candidate) =>
+        MeasureFormattedWidth(previous) == MeasureFormattedWidth(candidate)
+            ? InvalidationImpact.Render
+            : InvalidationImpact.Measure;
 
 #pragma warning disable IDE0072 // Every segment kind is individually handled.
     [Pure]

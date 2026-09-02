@@ -712,6 +712,41 @@ public sealed class DateInputTests
         control.ActualCalendarStyle.ShouldBe(calendar.ActualStyle);
     }
 
+    /// <summary>Verifies assigning CalendarStyle raises PropertyChanged for ActualCalendarStyle
+    /// when the resolved presentation actually changes.</summary>
+    [Fact]
+    public void CalendarStyle_WhenAssignedStyleChangesResolvedValue_RaisesActualCalendarStylePropertyChanged()
+    {
+        using var control = new DateInput();
+        var style = CalendarStyle.Default with { SelectedDayColor = Color.Rgb(65, 43, 21) };
+        var notifications = new List<string?>();
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        control.CalendarStyle = style;
+
+        notifications.ShouldContain(nameof(DateInput.ActualCalendarStyle));
+        control.ActualCalendarStyle.ShouldBe(style);
+    }
+
+    /// <summary>Verifies a Theme swap that changes the owned Calendar's resolved presentation
+    /// raises PropertyChanged for ActualCalendarStyle on the host.</summary>
+    [Fact]
+    public void PropagateTheme_WhenCalendarPresentationDiffers_RaisesActualCalendarStylePropertyChanged()
+    {
+        var previousTheme = ThemeCatalog.Parse(ThemeJson.Create(accent: "#010203"));
+        var currentTheme = ThemeCatalog.Parse(ThemeJson.Create(accent: "#040506"));
+        using var control = new DateInput();
+        control.PropagateTheme(previousTheme);
+        var calendar = OwnedTree.Find<UiCalendar>(control).ShouldNotBeNull();
+        var notifications = new List<string?>();
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        control.PropagateTheme(currentTheme);
+
+        notifications.ShouldContain(nameof(DateInput.ActualCalendarStyle));
+        control.ActualCalendarStyle.ShouldBe(calendar.ActualStyle);
+    }
+
     /// <summary>Verifies reading Value on a detached, never-mounted control falls back to the
     /// system clock instead of throwing or returning null, proving the lazy default still
     /// resolves without a dispatcher to observe.</summary>
@@ -907,6 +942,62 @@ public sealed class DateInputTests
 
         // Assert
         control.Value.ShouldBe(new DateOnly(2026, 2, 15));
+    }
+
+    /// <summary>Verifies a Format change that collapses the segment count clamps the active
+    /// segment back into range instead of leaving it stranded past the new layout's last
+    /// editable segment, so a digit typed afterward still applies instead of silently
+    /// no-opping.</summary>
+    [Fact]
+    public void Format_WhenChangeCollapsesSegmentCount_ClampsActiveSegmentSoDigitEntryStillApplies()
+    {
+        // Arrange: default Format "d" under en-US renders "M/d/yyyy" - Month(0), Day(1),
+        // Year(2). Two Right presses move the active segment to Year.
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 7, 19),
+            Culture = new CultureInfo("en-US")
+        };
+        PressKey(control, Code.Right);
+        PressKey(control, Code.Right);
+
+        // Act: collapse to a single editable segment - a bare "yyyy" pattern is only ever
+        // Year, so the previously active index 2 no longer exists. Without clamping, the
+        // active segment stays stranded at 2 and a typed digit is silently dropped.
+        control.Format = "yyyy";
+        TypeCharacter(control, '5');
+
+        // Assert: the digit committed against the sole remaining segment (Year) instead of
+        // being silently ignored, which would have left Year at its original 2026.
+        control.Value.ShouldNotBeNull().Year.ShouldBe(5);
+    }
+
+    /// <summary>Verifies a Culture change clears any digit already buffered against the
+    /// previous segment kind, instead of silently combining it with a digit typed for a
+    /// different segment kind that now occupies the same editable index.</summary>
+    [Fact]
+    public void Culture_WhenChangeReordersSegmentKinds_DiscardsBufferedDigitFromPreviousKind()
+    {
+        // Arrange: en-US's "M/d/yyyy" places Month at editable index 0. '1' is a valid
+        // leading digit for a two-digit month (10, 11, 12), so it buffers instead of
+        // committing outright.
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 6, 10),
+            Culture = new CultureInfo("en-US")
+        };
+        TypeCharacter(control, '1');
+        control.Value.ShouldNotBeNull().Month.ShouldBe(1);
+
+        // Act: de-DE's "dd.MM.yyyy" places Day at that same editable index 0. Without
+        // clearing the stale buffer, typing '5' next would combine into 15 - a value the
+        // user never intended for Day - instead of starting a fresh entry against it.
+        control.Culture = new CultureInfo("de-DE");
+        TypeCharacter(control, '5');
+
+        // Assert
+        control.Value.ShouldNotBeNull().Day.ShouldBe(5);
+        control.Value.ShouldNotBeNull().Day.ShouldNotBe(15);
     }
 
     private static void TypeCharacter(DateInput control, char digit) =>
@@ -1491,6 +1582,207 @@ public sealed class DateInputTests
         nativeCode: 0,
         modifiers,
         action));
+
+    #endregion
+
+    /// <summary>Verifies both the digit and increment segment-editing paths recover from a null
+    /// value (e.g. after a Delete, since AllowNull defaults to true) by seeding today's date,
+    /// instead of refusing to act because there is no value to mutate.</summary>
+    [Fact]
+    public void SegmentEdit_WhenValueIsNullAfterClear_SeedsTodayForDigitAndIncrement()
+    {
+        // Arrange - InvariantCulture's short date pattern orders segments Month/Day/Year, so
+        // focus starts on Month (segment 0).
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 7, 19),
+            Culture = CultureInfo.InvariantCulture
+        };
+
+        // Act and assert - a digit typed right after a clear lands on a seeded date instead of
+        // being silently dropped.
+        control.Value = null;
+        TypeCharacter(control, '9');
+        _ = control.Value.ShouldNotBeNull();
+        control.Value.Value.Month.ShouldBe(9);
+
+        // Act and assert - Up after a clear seeds today's date instead of refusing to act.
+        control.Value = null;
+        PressKey(control, Code.Up);
+        _ = control.Value.ShouldNotBeNull();
+    }
+
+    #region Name-run segments
+
+    /// <summary>Verifies a month-name run (MMMM) is skipped entirely by segment entry: the first
+    /// active segment lands on the following numeric Day run instead of the name, so typing digits
+    /// there edits Day - not the Month the name run displays - proving the fix for the weekday/
+    /// month-name corruption bug.</summary>
+    [Fact]
+    public void TypeDigit_WhenFormatStartsWithMonthNameRun_EditsFollowingNumericDaySegment()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 8, 1),
+            Culture = CultureInfo.InvariantCulture,
+            Format = "MMMM d yyyy"
+        };
+
+        // Act: no navigation - the MMMM run must not be the initial active segment.
+        TypeCharacter(control, '1');
+        TypeCharacter(control, '5');
+
+        // Assert: Day was edited, and Month (implied by the skipped name run) is untouched.
+        control.Value.ShouldBe(new DateOnly(2026, 8, 15));
+    }
+
+    /// <summary>Verifies a weekday-name run (dddd) is likewise skipped, using a format whose first
+    /// run is the weekday name so any failure to exclude it would edit Day - the same kind the
+    /// name run itself carries - through a segment that displays text, not digits.</summary>
+    [Fact]
+    public void TypeDigit_WhenFormatStartsWithWeekdayNameRun_EditsFollowingNumericMonthSegment()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 8, 1),
+            Culture = CultureInfo.InvariantCulture,
+            Format = "dddd, MM/dd/yyyy"
+        };
+
+        // Act: no navigation - the dddd run must not be the initial active segment.
+        TypeCharacter(control, '4');
+
+        // Assert: the numeric Month segment (single-digit "4" overflows a two-digit month, so it
+        // auto-commits at once) was edited instead of Day being corrupted through the weekday text.
+        control.Value.ShouldBe(new DateOnly(2026, 4, 1));
+    }
+
+    /// <summary>Verifies Right navigation moves directly between the two real editable segments
+    /// (Day, Year) without ever landing on the interstitial MMMM name run, and that a further Right
+    /// past Year is a no-op - proving the name run does not occupy a navigable slot.</summary>
+    [Fact]
+    public void MoveSegment_WhenFormatContainsMonthNameRun_NavigatesOnlyRealEditableSegments()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 8, 1),
+            Culture = CultureInfo.InvariantCulture,
+            Format = "MMMM d yyyy"
+        };
+
+        // Act: one Right reaches Year (the only other editable segment); a second Right must not
+        // move further, since MMMM contributes no editable slot to move into.
+        PressKey(control, Code.Right);
+        TypeCharacter(control, '2');
+        TypeCharacter(control, '0');
+        TypeCharacter(control, '2');
+        TypeCharacter(control, '5');
+        PressKey(control, Code.Right);
+        PressKey(control, Code.Up);
+
+        // Assert: the second Right stayed on Year (2025 -> 2026 via the trailing Up), so
+        // navigation never landed on - or passed through - a phantom Month-name segment.
+        control.Value.ShouldNotBeNull().Year.ShouldBe(2026);
+    }
+
+    /// <summary>Verifies Up/Down increment is inert on a month-name run: with the name run as the
+    /// only prior segment, Up on the first active segment increments the real numeric Day segment
+    /// it lands on, never the Month a stray increment through the name run would have changed.</summary>
+    [Fact]
+    public void Increment_WhenFormatStartsWithMonthNameRun_AdjustsFollowingNumericDaySegment()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 8, 1),
+            Culture = CultureInfo.InvariantCulture,
+            Format = "MMMM d yyyy"
+        };
+
+        // Act
+        PressKey(control, Code.Up);
+
+        // Assert: Day incremented; Month - which a reachable name run would have exposed to
+        // Increment instead - is untouched.
+        control.Value.ShouldBe(new DateOnly(2026, 8, 2));
+    }
+
+    #endregion
+
+    #region Value width invalidation
+
+    /// <summary>Verifies a value transition that changes the resolved formatted width invalidates
+    /// Measure, not just Render, since the field's reserved geometry depends on that width.</summary>
+    [Fact]
+    public void Value_WhenFormattedWidthChanges_InvalidatesMeasure()
+    {
+        // Arrange - en-US's non-padded 'M/d/yyyy' short pattern renders a single-digit month or
+        // day one cell narrower than a double-digit one.
+        using var control = new DateInput
+        {
+            Culture = new CultureInfo("en-US"),
+            Value = new DateOnly(2026, 9, 1)
+        };
+        control.Clear(Invalidation.All);
+
+        // Act
+        control.Value = new DateOnly(2026, 12, 31);
+
+        // Assert
+        control.Pending.ShouldBe(Invalidation.All);
+    }
+
+    /// <summary>Verifies a value transition that keeps the same resolved formatted width
+    /// invalidates rendering only.</summary>
+    [Fact]
+    public void Value_WhenFormattedWidthIsUnchanged_InvalidatesRenderOnly()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Culture = new CultureInfo("en-US"),
+            Value = new DateOnly(2026, 9, 1)
+        };
+        control.Clear(Invalidation.All);
+
+        // Act - both dates render with a single-digit month and day under 'M/d/yyyy'.
+        control.Value = new DateOnly(2026, 9, 2);
+
+        // Assert
+        control.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies a Measure-impact value transition actually remeasures the field: the
+    /// relaid-out DesiredSize matches a fresh control constructed directly with the new value,
+    /// rather than leaving geometry sized for the previous, narrower value.</summary>
+    [Fact]
+    public void Value_WhenFormattedWidthChanges_RelayoutProducesFreshDesiredSize()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Culture = new CultureInfo("en-US"),
+            Value = new DateOnly(2026, 9, 1)
+        };
+        new LayoutEngine().Layout(control, new Size(40, 3));
+
+        // Act
+        control.Value = new DateOnly(2026, 12, 31);
+        new LayoutEngine().Layout(control, new Size(40, 3));
+
+        using var fresh = new DateInput
+        {
+            Culture = new CultureInfo("en-US"),
+            Value = new DateOnly(2026, 12, 31)
+        };
+        new LayoutEngine().Layout(fresh, new Size(40, 3));
+
+        // Assert
+        control.DesiredSize.ShouldBe(fresh.DesiredSize);
+    }
 
     #endregion
 }

@@ -125,7 +125,7 @@ public sealed class WindowsConsoleModeTests
     }
 
     private static WindowsConsoleMode Enter(Func<nint, uint, bool> setConsoleMode) =>
-        WindowsConsoleMode.Enter(captureControlKeys: false, setConsoleMode);
+        WindowsConsoleMode.Enter(captureControlKeys: false, enableMouseInput: false, setConsoleMode);
 
     /// <summary>
     /// Builds a lease directly via its private constructor, bypassing <see cref="WindowsConsoleMode.Enter"/>

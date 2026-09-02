@@ -18,6 +18,7 @@ public sealed class StyleSlotBindingProbe: CompositeControlBase
                 : InvalidationImpact.Measure);
     private readonly StyleSlot<ButtonStyle> _buttonStyle;
     private readonly Overlay _root;
+    private readonly Overlay _intermediate;
 
     /// <summary>Initializes a retained target and binds its primary slot.</summary>
     public StyleSlotBindingProbe()
@@ -26,11 +27,14 @@ public sealed class StyleSlotBindingProbe: CompositeControlBase
         SecondTarget = new StyleSlotProbe();
         Slider = new Slider();
         UnboundTarget = new StyleSlotProbe();
-        _root = new Overlay { Children = { Target, SecondTarget, UnboundTarget, Slider } };
+        GrandchildTarget = new StyleSlotProbe();
+        _intermediate = new Overlay { Children = { GrandchildTarget } };
+        _root = new Overlay { Children = { Target, SecondTarget, UnboundTarget, Slider, _intermediate } };
         InitializeContent(_root);
         _buttonStyle = InitializePartStyle(_definition, nameof(ButtonStyle));
         BindStyle(_buttonStyle, Target);
         BindStyle(_buttonStyle, SecondTarget);
+        BindStyle(_buttonStyle, GrandchildTarget);
     }
 
     /// <summary>Gets the retained target.</summary>
@@ -41,6 +45,10 @@ public sealed class StyleSlotBindingProbe: CompositeControlBase
 
     /// <summary>Gets a retained matching target that starts without a binding.</summary>
     public StyleSlotProbe UnboundTarget { get; }
+
+    /// <summary>Gets a retained matching target nested two levels deep, behind an intermediate
+    /// container that is never itself bound.</summary>
+    public StyleSlotProbe GrandchildTarget { get; }
 
     /// <summary>Gets a retained mismatched style target.</summary>
     public Slider Slider { get; }
@@ -67,6 +75,10 @@ public sealed class StyleSlotBindingProbe: CompositeControlBase
 
     /// <summary>Removes the first target without disposing it.</summary>
     public void DetachTarget() => _root.Children.Remove(Target);
+
+    /// <summary>Removes the intermediate container - and with it, <see cref="GrandchildTarget"/> -
+    /// without ever removing the grandchild itself directly.</summary>
+    public void DetachIntermediate() => _root.Children.Remove(_intermediate);
 
     /// <summary>Binds the initially unbound retained target.</summary>
     public void BindUnboundTarget() => BindStyle(_buttonStyle, UnboundTarget);

@@ -2295,6 +2295,73 @@ public sealed class TreeViewTests
         item.ActualCheckMark.Width.ShouldBe(3);
     }
 
+    /// <summary>Verifies the same width-graded rule fires for the theme-driven fallback, not only
+    /// the local setter above: a bundled-theme swap that moves the check-box glyph family across
+    /// the Brackets/Square width boundary must reach an attached item's own measure, even though
+    /// neither <see cref="TreeView"/> nor <see cref="TreeViewItem"/> owns a style slot for the
+    /// mark.</summary>
+    [Fact]
+    public void ActualCheckMark_WhenThemeChangesWidth_InvalidatesItemMeasure()
+    {
+        var tree = new TreeView();
+        var item = new TreeViewItem { Header = "a", IsCheckable = true };
+        tree.Items.Add(item);
+        var previousTheme = ThemeCatalog.Parse(ThemeJson.Create());
+        var currentTheme = ThemeCatalog.Parse(ThemeJson.Create(glyphs: "blocks"));
+        tree.PropagateTheme(previousTheme);
+        item.ActualCheckMark.Width.ShouldBe(3);
+        tree.Clear(Invalidation.All);
+        item.Clear(Invalidation.All);
+
+        tree.PropagateTheme(currentTheme);
+
+        (item.Pending & Invalidation.Measure).ShouldNotBe(Invalidation.None);
+        item.ActualCheckMark.Width.ShouldBe(1);
+    }
+
+    /// <summary>Verifies the theme-driven fallback also fires for a value-only change - a swap that
+    /// moves the checked/unchecked glyphs without crossing the Brackets/Square width boundary needs
+    /// only a repaint, mirroring the local setter's own Render-only grading.</summary>
+    [Fact]
+    public void ActualCheckMark_WhenThemeChangesGlyphsOnly_InvalidatesItemRenderNotMeasure()
+    {
+        var tree = new TreeView();
+        var item = new TreeViewItem { Header = "a", IsCheckable = true };
+        tree.Items.Add(item);
+        var previousTheme = ThemeCatalog.Parse(ThemeJson.Create());
+        var currentTheme = ThemeCatalog.Parse(ThemeJson.Create(glyphs: "dots"));
+        tree.PropagateTheme(previousTheme);
+        var before = item.ActualCheckMark;
+        tree.Clear(Invalidation.All);
+        item.Clear(Invalidation.All);
+
+        tree.PropagateTheme(currentTheme);
+
+        item.ActualCheckMark.Width.ShouldBe(before.Width);
+        item.ActualCheckMark.ShouldNotBe(before);
+        (item.Pending & Invalidation.Measure).ShouldBe(Invalidation.None);
+        (item.Pending & Invalidation.Render).ShouldNotBe(Invalidation.None);
+    }
+
+    /// <summary>Verifies a detached item - no owning tree - still notices a theme swap through its
+    /// own registered dependency, since it resolves the library default directly rather than
+    /// through an owner that would otherwise fan the change out.</summary>
+    [Fact]
+    public void ActualCheckMark_WhenDetachedItemThemeChangesWidth_InvalidatesMeasure()
+    {
+        var item = new TreeViewItem { Header = "a", IsCheckable = true };
+        var previousTheme = ThemeCatalog.Parse(ThemeJson.Create());
+        var currentTheme = ThemeCatalog.Parse(ThemeJson.Create(glyphs: "blocks"));
+        item.SetTheme(previousTheme);
+        item.ActualCheckMark.Width.ShouldBe(3);
+        item.Clear(Invalidation.All);
+
+        item.SetTheme(currentTheme);
+
+        (item.Pending & Invalidation.Measure).ShouldNotBe(Invalidation.None);
+        item.ActualCheckMark.Width.ShouldBe(1);
+    }
+
     /// <summary>Verifies a throwing owner observer cannot skip invalidating retained rows for the
     /// already-committed shared check-mark presentation.</summary>
     [Fact]

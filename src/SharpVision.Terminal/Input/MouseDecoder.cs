@@ -202,10 +202,14 @@ internal sealed class MouseDecoder
             return;
         }
 
-        // Kitty reserves bit 8 as a leave marker only in SGR pixel mode. Every other button,
-        // modifier, and coordinate field is explicitly unreliable for this event and must not
-        // influence the coordinate-free value published to the UI.
-        if (_pixelMouse && !release && (code & 128) != 0)
+        // Kitty reserves bit 8 as a leave marker only in SGR pixel mode, and it is the complete
+        // leave identity there: both the press and the SGR release final byte carry it, so this
+        // gate must not be narrowed to press-only reports, or a leave's release half falls through
+        // to the extended-button decoding below and is republished as an unbalanced Release for a
+        // button that was never pressed. Every other button, modifier, and coordinate field is
+        // explicitly unreliable for this event and must not influence the coordinate-free value
+        // published to the UI.
+        if (_pixelMouse && (code & 128) != 0)
         {
             var leave = new Pointer(
                 null,
@@ -308,6 +312,12 @@ internal sealed class MouseDecoder
         _sink.Input(in pointer);
     }
 
+    // Invariant: bit 8 (code & 128) is only ever set here while in SGR pixel mode if the caller
+    // is wrong somewhere upstream. EmitPointer intercepts every bit-8 report (press and release
+    // alike) as a Leave before reaching this call whenever _pixelMouse is true, so the extended-
+    // button branch below is reachable with bit 8 set only in cell mode, where it retains xterm's
+    // Back/Forward/Extended10/Extended11 meaning. Do not reintroduce a press/release asymmetry by
+    // narrowing that upstream gate without threading pixel-mode awareness back into this method.
     private static Buttons DecodeButtons(int code)
     {
         var selector = code & 3;

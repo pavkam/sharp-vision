@@ -242,18 +242,19 @@ public static class ThemeCatalog
     // the moment anything touched Entries, because BuildCatalog scans every resource strictly.
     private static Theme ParseUtf8(ReadOnlyMemory<byte> utf8, string source, bool embedded)
     {
-        var definition = Deserialize(utf8, source);
-        ValidateMetadata(definition, source);
+        var (definition, positions) = Deserialize(utf8, source);
+        ValidateMetadata(definition, source, positions);
 
-        var palette = ResolvePalette(definition.Palette, source);
-        return BuildSemanticTheme(definition, palette, source, embedded);
+        var palette = ResolvePalette(definition.Palette, source, positions);
+        return BuildSemanticTheme(definition, palette, source, embedded, positions);
     }
 
     private static Theme BuildSemanticTheme(
         ThemeDocument definition,
         Dictionary<string, Color> palette,
         string source,
-        bool embedded)
+        bool embedded,
+        IReadOnlyDictionary<string, (int Line, int Column)> positions)
     {
         // An external document substitutes for blank as well as missing. Substituting for null
         // alone let "slug": "" reach Theme's constructor, which threw an undeclared
@@ -261,19 +262,19 @@ public static class ThemeCatalog
         // string - and which a caller catching the documented InvalidDataException did not catch.
         var theme = new Theme(
             palette,
-            embedded ? ReadRequiredMetadata(definition.Name, "name", source) : Or(definition.Name, "Custom"),
-            ReadSlug(definition.Slug, source, required: embedded),
-            ReadColorScheme(definition.ColorScheme, source, required: embedded),
-            embedded ? ReadRequiredMetadata(definition.Author, "author", source) : Or(definition.Author, "SharpVision contributors"),
-            ReadLicense(definition.License, source, required: embedded),
-            ReadSource(definition.Source, source, required: embedded));
+            embedded ? ReadRequiredMetadata(definition.Name, "name", source, positions) : Or(definition.Name, "Custom"),
+            ReadSlug(definition.Slug, source, positions, required: embedded),
+            ReadColorScheme(definition.ColorScheme, source, positions, required: embedded),
+            embedded ? ReadRequiredMetadata(definition.Author, "author", source, positions) : Or(definition.Author, "SharpVision contributors"),
+            ReadLicense(definition.License, source, positions, required: embedded),
+            ReadSource(definition.Source, source, positions, required: embedded));
 
         theme.SetDiagnosticSource(source);
 
-        SetSemanticColors(theme, definition.Colors, palette, source);
-        SetSemanticAttributes(theme, definition.Attributes, source);
-        ApplyStyleSections(theme, definition.Styles, source);
-        theme.SetGlyphs(ReadGlyphFamily(definition.Glyphs, source));
+        SetSemanticColors(theme, definition.Colors, palette, source, positions);
+        SetSemanticAttributes(theme, definition.Attributes, source, positions);
+        ApplyStyleSections(theme, definition.Styles, source, positions);
+        theme.SetGlyphs(ReadGlyphFamily(definition.Glyphs, source, positions));
         theme.ValidateStyleSections();
         theme.Freeze();
         return theme;
@@ -283,66 +284,81 @@ public static class ThemeCatalog
         Theme theme,
         ThemeDocumentColors? values,
         Dictionary<string, Color> palette,
-        string source)
+        string source,
+        IReadOnlyDictionary<string, (int Line, int Column)> positions)
     {
         if (values is null)
         {
-            throw new InvalidDataException($"Theme '{source}' must define every known semantic color exactly once.");
+            throw new InvalidDataException(
+                $"Theme '{source}' must define every known semantic color exactly once{FormatPosition(positions, "colors")}.");
         }
 
         foreach (var color in Enum.GetValues<SemanticColor>())
         {
             var value = values.Get(color);
+            var path = $"colors.{JsonName(color)}";
             if (string.IsNullOrWhiteSpace(value))
             {
-                throw new InvalidDataException($"Theme '{source}' is missing colors.{JsonName(color)}.");
+                throw new InvalidDataException($"Theme '{source}' is missing {path}{FormatPosition(positions, path)}.");
             }
 
-            theme.SetColor(color, ResolveColor(value, palette, source, $"colors.{JsonName(color)}"));
+            theme.SetColor(color, ResolveColor(value, palette, source, path, positions));
         }
     }
 
     private static void SetSemanticAttributes(
         Theme theme,
         ThemeDocumentAttributes? values,
-        string source)
+        string source,
+        IReadOnlyDictionary<string, (int Line, int Column)> positions)
     {
         if (values is null)
         {
-            throw new InvalidDataException($"Theme '{source}' must define every known semantic decoration exactly once.");
+            throw new InvalidDataException(
+                $"Theme '{source}' must define every known semantic decoration exactly once{FormatPosition(positions, "attributes")}.");
         }
 
         foreach (var decoration in Enum.GetValues<SemanticDecoration>())
         {
             var value = values.Get(decoration);
+            var path = $"attributes.{JsonName(decoration)}";
             if (!value.HasValue)
             {
-                throw new InvalidDataException($"Theme '{source}' is missing attributes.{JsonName(decoration)}.");
+                throw new InvalidDataException($"Theme '{source}' is missing {path}{FormatPosition(positions, path)}.");
             }
 
-            theme.SetAttributes(decoration, ParseAttributes(value.Value, source, $"attributes.{JsonName(decoration)}"));
+            theme.SetAttributes(decoration, ParseAttributes(value.Value, source, path, positions));
         }
     }
 
-    private static void ApplyStyleSections(Theme theme, JsonElement? styles, string source)
+    private static void ApplyStyleSections(
+        Theme theme,
+        JsonElement? styles,
+        string source,
+        IReadOnlyDictionary<string, (int Line, int Column)> positions)
     {
         if (styles is not { } stylesElement)
         {
-            throw new InvalidDataException($"Theme '{source}' must define a 'styles' object, which may be empty.");
+            throw new InvalidDataException(
+                $"Theme '{source}' must define a 'styles' object, which may be empty{FormatPosition(positions, "styles")}.");
         }
 
-        var rawSections = ReadObject(stylesElement, source, "styles");
-        theme.SetStyleSections(ReadStyleSections(rawSections, source));
+        var rawSections = ReadObject(stylesElement, source, "styles", positions);
+        theme.SetStyleSections(ReadStyleSections(rawSections, source, positions));
     }
 
     /// <summary>Reads one required JSON object without exposing serializer shape exceptions.</summary>
-    internal static Dictionary<string, JsonElement> ReadObject(JsonElement element, string source, string path)
+    internal static Dictionary<string, JsonElement> ReadObject(
+        JsonElement element,
+        string source,
+        string path,
+        IReadOnlyDictionary<string, (int Line, int Column)>? positions = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(path);
 
         return element.ValueKind != JsonValueKind.Object
-            ? throw new InvalidDataException($"Theme '{source}' '{path}' must be an object.")
+            ? throw new InvalidDataException($"Theme '{source}' '{path}' must be an object{FormatPosition(positions, path)}.")
             : element.EnumerateObject().ToDictionary(
                 static property => property.Name,
                 static property => property.Value,
@@ -356,7 +372,8 @@ public static class ThemeCatalog
     // this closed the vocabulary.
     private static Dictionary<string, JsonElement> ReadStyleSections(
         Dictionary<string, JsonElement>? sections,
-        string source)
+        string source,
+        IReadOnlyDictionary<string, (int Line, int Column)> positions)
     {
         if (sections is null)
         {
@@ -367,8 +384,9 @@ public static class ThemeCatalog
         {
             if (!_knownStyleSections.Contains(name))
             {
+                var path = $"styles.{name}";
                 throw new InvalidDataException(
-                    $"Theme '{source}' has unknown styles section '{name}'. Sections are limited to the six well-known styles: control, input, container, window, popup, tooltip.");
+                    $"Theme '{source}' has unknown styles section '{name}'. Sections are limited to the six well-known styles: control, input, container, window, popup, tooltip{FormatPosition(positions, path)}.");
             }
         }
 
@@ -381,7 +399,9 @@ public static class ThemeCatalog
 
     private static readonly byte[] _utf8Preamble = Encoding.UTF8.GetPreamble();
 
-    private static ThemeDocument Deserialize(ReadOnlyMemory<byte> utf8, string source)
+    private static (ThemeDocument Document, IReadOnlyDictionary<string, (int Line, int Column)> Positions) Deserialize(
+        ReadOnlyMemory<byte> utf8,
+        string source)
     {
         if (utf8.Length > MaximumDocumentBytes)
         {
@@ -396,24 +416,163 @@ public static class ThemeCatalog
 
         try
         {
-            return JsonSerializer.Deserialize<ThemeDocument>(content.Span, JsonOptions)
-                   ?? throw new InvalidDataException($"Theme '{source}' deserialized to null.");
+            var document = JsonSerializer.Deserialize<ThemeDocument>(content.Span, JsonOptions)
+                           ?? throw new InvalidDataException($"Theme '{source}' deserialized to null.");
+
+            // JsonSerializer.Deserialize materializes ThemeDocument (and its Colors/Attributes
+            // sub-objects) into plain POCOs, discarding the Utf8JsonReader position state that made
+            // the JsonException catch block below able to report a line/column. A second, independent
+            // pass over the same already-validated-as-syntactically-correct bytes recovers that
+            // position for every scalar property, keyed by the same dotted-path convention every
+            // semantic validation error below already uses (e.g. "colors.controlBorder"), so those
+            // messages can append a position too instead of being path-only.
+            return (document, BuildPositionMap(content.Span));
         }
         catch (JsonException error)
         {
             // error.Path is "$" at the document root, which is not whitespace, so this must test
             // the trimmed value - trimming first and then checking would otherwise interpolate an
             // empty string while the untrimmed guard let it through, leaving "... at ''." on every
-            // root-level failure.
+            // root-level failure. error.Path also stops descending once it reaches a raw-JsonElement
+            // subtree such as "styles", so a syntax error nested inside one reports only the shallow
+            // path above it; LineNumber/BytePositionInLine come from the underlying Utf8JsonReader
+            // instead and are unaffected by that truncation, so they are appended unconditionally
+            // whenever the reader captured them. Both are 0-based in JsonException; +1 them here so
+            // the message reads as a human would count lines and columns in an editor.
             var trimmedPath = error.Path?.TrimStart('$', '.') ?? string.Empty;
             var path = string.IsNullOrWhiteSpace(trimmedPath) ? string.Empty : $" at '{trimmedPath}'";
-            throw new InvalidDataException($"Theme '{source}' is not valid JSON{path}.", error);
+            var position = error.LineNumber is { } line && error.BytePositionInLine is { } column
+                ? $" (line {line + 1}, column {column + 1})"
+                : string.Empty;
+            throw new InvalidDataException($"Theme '{source}' is not valid JSON{path}{position}.", error);
         }
     }
 
+    // Walks the same bytes JsonSerializer.Deserialize just parsed successfully, tracking the
+    // enclosing object-property path (array elements contribute no named segment, since no
+    // semantic-validation message below ever addresses one by index) and recording the 0-based
+    // (line, column) of every scalar and every object/array's opening token. A document this small
+    // (bounded by MaximumDocumentBytes) makes a full second pass cheap; this only ever runs once,
+    // after the primary Deserialize call already succeeded.
+    private static Dictionary<string, (int Line, int Column)> BuildPositionMap(ReadOnlySpan<byte> content)
+    {
+        var positions = new Dictionary<string, (int Line, int Column)>(StringComparer.Ordinal);
+
+        try
+        {
+            var reader = new Utf8JsonReader(content, new JsonReaderOptions { MaxDepth = JsonOptions.MaxDepth });
+            var path = new List<string>();
+            string? pendingProperty = null;
+
+            while (reader.Read())
+            {
+                switch (reader.TokenType)
+                {
+                    case JsonTokenType.PropertyName:
+                        pendingProperty = reader.GetString();
+                        break;
+
+                    case JsonTokenType.StartObject:
+                    case JsonTokenType.StartArray:
+                        if (pendingProperty is not null)
+                        {
+                            path.Add(pendingProperty);
+                            RecordPosition(positions, path, content, reader.TokenStartIndex);
+                            pendingProperty = null;
+                        }
+                        else
+                        {
+                            path.Add(string.Empty);
+                        }
+
+                        break;
+
+                    case JsonTokenType.EndObject:
+                    case JsonTokenType.EndArray:
+                        if (path.Count > 0)
+                        {
+                            path.RemoveAt(path.Count - 1);
+                        }
+
+                        break;
+
+                    case JsonTokenType.String:
+                    case JsonTokenType.Number:
+                    case JsonTokenType.True:
+                    case JsonTokenType.False:
+                    case JsonTokenType.Null:
+                        if (pendingProperty is not null)
+                        {
+                            path.Add(pendingProperty);
+                            RecordPosition(positions, path, content, reader.TokenStartIndex);
+                            path.RemoveAt(path.Count - 1);
+                            pendingProperty = null;
+                        }
+
+                        break;
+
+                    case JsonTokenType.None:
+                    case JsonTokenType.Comment:
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            // This is a diagnostics-only second pass over bytes JsonSerializer.Deserialize already
+            // parsed without error; it should never fail. If it somehow does, semantic errors simply
+            // fall back to their existing path-only message instead of throwing an unrelated
+            // exception out of what is otherwise a successful load.
+        }
+
+        return positions;
+    }
+
+    private static void RecordPosition(
+        Dictionary<string, (int Line, int Column)> positions,
+        List<string> path,
+        ReadOnlySpan<byte> content,
+        long tokenStartIndex)
+    {
+        var dotted = string.Join('.', path.Where(static segment => segment.Length > 0));
+        if (dotted.Length > 0)
+        {
+            positions[dotted] = ComputeLineColumn(content, tokenStartIndex);
+        }
+    }
+
+    // Mirrors how JsonException's own LineNumber/BytePositionInLine are computed: '\n' delimits
+    // lines and the column is counted in UTF-8 bytes since the start of that line - both 0-based,
+    // matching the syntax-error catch block above, which also +1s before formatting.
+    private static (int Line, int Column) ComputeLineColumn(ReadOnlySpan<byte> content, long offset)
+    {
+        var limit = (int) Math.Min(offset, content.Length);
+        var line = 0;
+        var lineStart = 0;
+
+        for (var index = 0; index < limit; index++)
+        {
+            if (content[index] == (byte) '\n')
+            {
+                line++;
+                lineStart = index + 1;
+            }
+        }
+
+        return (line, limit - lineStart);
+    }
+
+    private static string FormatPosition(IReadOnlyDictionary<string, (int Line, int Column)>? positions, string path) =>
+        positions is not null && positions.TryGetValue(path, out var position)
+            ? $" (line {position.Line + 1}, column {position.Column + 1})"
+            : string.Empty;
+
     private static Dictionary<string, Color> ResolvePalette(
         Dictionary<string, string>? entries,
-        string source)
+        string source,
+        IReadOnlyDictionary<string, (int Line, int Column)> positions)
     {
         var result = new Dictionary<string, Color>(StringComparer.Ordinal);
         if (entries is null)
@@ -424,7 +583,7 @@ public static class ThemeCatalog
         if (entries.Count > _maximumPaletteEntries)
         {
             throw new InvalidDataException(
-                $"Theme '{source}' palette exceeds {_maximumPaletteEntries} entries.");
+                $"Theme '{source}' palette exceeds {_maximumPaletteEntries} entries{FormatPosition(positions, "palette")}.");
         }
 
         foreach (var (name, value) in entries)
@@ -432,7 +591,7 @@ public static class ThemeCatalog
             result[name] = Color.TryFromHex(value, out var color)
                 ? color
                 : throw new InvalidDataException(
-                    $"Theme '{source}' palette entry '{name}' has invalid color '{value}'.");
+                    $"Theme '{source}' palette entry '{name}' has invalid color '{value}'{FormatPosition(positions, $"palette.{name}")}.");
         }
 
         return result;
@@ -442,13 +601,18 @@ public static class ThemeCatalog
         string value,
         Dictionary<string, Color> palette,
         string source,
-        string context) =>
+        string context,
+        IReadOnlyDictionary<string, (int Line, int Column)> positions) =>
         palette.TryGetValue(value, out var paletteColor)
             ? paletteColor
             : throw new InvalidDataException(
-                $"Theme '{source}' {context} references unknown palette key '{value}'.");
+                $"Theme '{source}' {context} references unknown palette key '{value}'{FormatPosition(positions, context)}.");
 
-    private static TerminalAttributes ParseAttributes(JsonElement value, string source, string context)
+    private static TerminalAttributes ParseAttributes(
+        JsonElement value,
+        string source,
+        string context,
+        IReadOnlyDictionary<string, (int Line, int Column)> positions)
     {
         if (value.ValueKind == JsonValueKind.String)
         {
@@ -456,12 +620,13 @@ public static class ThemeCatalog
             return _attributeNames.TryGetValue(name, out var attribute)
                 ? attribute
                 : throw new InvalidDataException(
-                    $"Theme '{source}' {context} has unknown attribute '{name}'.");
+                    $"Theme '{source}' {context} has unknown attribute '{name}'{FormatPosition(positions, context)}.");
         }
 
         if (value.ValueKind != JsonValueKind.Array)
         {
-            throw new InvalidDataException($"Theme '{source}' {context} must be a string or array.");
+            throw new InvalidDataException(
+                $"Theme '{source}' {context} must be a string or array{FormatPosition(positions, context)}.");
         }
 
         var result = TerminalAttributes.None;
@@ -469,14 +634,15 @@ public static class ThemeCatalog
         {
             if (item.ValueKind != JsonValueKind.String)
             {
-                throw new InvalidDataException($"Theme '{source}' {context} must contain strings.");
+                throw new InvalidDataException(
+                    $"Theme '{source}' {context} must contain strings{FormatPosition(positions, context)}.");
             }
 
             var name = item.GetString()!;
             if (!_attributeNames.TryGetValue(name, out var attribute))
             {
                 throw new InvalidDataException(
-                    $"Theme '{source}' {context} has unknown attribute '{name}'.");
+                    $"Theme '{source}' {context} has unknown attribute '{name}'{FormatPosition(positions, context)}.");
             }
 
             result |= attribute;
@@ -494,20 +660,23 @@ public static class ThemeCatalog
         string resource,
         out int order)
     {
-        var definition = Deserialize(utf8, resource);
-        ValidateMetadata(definition, resource);
+        var (definition, positions) = Deserialize(utf8, resource);
+        ValidateMetadata(definition, resource, positions);
         order = definition.Order;
         return new ThemeCatalogEntry(
-            ReadRequiredMetadata(definition.Name, "name", resource),
-            ReadSlug(definition.Slug, resource, required: true),
-            ReadColorScheme(definition.ColorScheme, resource, required: true),
-            ReadRequiredMetadata(definition.Author, "author", resource),
-            ReadLicense(definition.License, resource, required: true),
-            ReadSource(definition.Source, resource, required: true),
+            ReadRequiredMetadata(definition.Name, "name", resource, positions),
+            ReadSlug(definition.Slug, resource, positions, required: true),
+            ReadColorScheme(definition.ColorScheme, resource, positions, required: true),
+            ReadRequiredMetadata(definition.Author, "author", resource, positions),
+            ReadLicense(definition.License, resource, positions, required: true),
+            ReadSource(definition.Source, resource, positions, required: true),
             definition.Order);
     }
 
-    private static void ValidateMetadata(ThemeDocument definition, string source)
+    private static void ValidateMetadata(
+        ThemeDocument definition,
+        string source,
+        IReadOnlyDictionary<string, (int Line, int Column)> positions)
     {
         foreach (var (name, value) in new[]
                  {
@@ -523,7 +692,7 @@ public static class ThemeCatalog
             if (value is { Length: > _maximumMetadataLength })
             {
                 throw new InvalidDataException(
-                    $"Theme '{source}' field '{name}' exceeds {_maximumMetadataLength} characters.");
+                    $"Theme '{source}' field '{name}' exceeds {_maximumMetadataLength} characters{FormatPosition(positions, name)}.");
             }
         }
     }
@@ -531,41 +700,63 @@ public static class ThemeCatalog
     private static string Or(string? value, string fallback) =>
         string.IsNullOrWhiteSpace(value) ? fallback : value;
 
-    private static string ReadRequiredMetadata(string? value, string name, string source) =>
+    private static string ReadRequiredMetadata(
+        string? value,
+        string name,
+        string source,
+        IReadOnlyDictionary<string, (int Line, int Column)> positions) =>
         string.IsNullOrWhiteSpace(value)
-            ? throw new InvalidDataException($"Theme '{source}' is missing required field '{name}'.")
+            ? throw new InvalidDataException($"Theme '{source}' is missing required field '{name}'{FormatPosition(positions, name)}.")
             : value;
 
-    private static string ReadSlug(string? value, string source, bool required)
+    private static string ReadSlug(
+        string? value,
+        string source,
+        IReadOnlyDictionary<string, (int Line, int Column)> positions,
+        bool required)
     {
         var slug = required
-            ? ReadRequiredMetadata(value, "slug", source)
+            ? ReadRequiredMetadata(value, "slug", source, positions)
             : Or(value, "custom");
 
         return ThemeSlug.IsValid(slug)
             ? slug
-            : throw new InvalidDataException($"Theme '{source}' has invalid slug '{slug}'.");
+            : throw new InvalidDataException($"Theme '{source}' has invalid slug '{slug}'{FormatPosition(positions, "slug")}.");
     }
 
-    private static string ReadLicense(string? value, string source, bool required)
+    private static string ReadLicense(
+        string? value,
+        string source,
+        IReadOnlyDictionary<string, (int Line, int Column)> positions,
+        bool required)
     {
-        var license = required ? ReadRequiredMetadata(value, "license", source) : Or(value, "MIT");
+        var license = required ? ReadRequiredMetadata(value, "license", source, positions) : Or(value, "MIT");
         return ThemeProvenance.IsLicense(license)
             ? license
-            : throw new InvalidDataException($"Theme '{source}' has invalid SPDX license identifier '{license}'.");
+            : throw new InvalidDataException(
+                $"Theme '{source}' has invalid SPDX license identifier '{license}'{FormatPosition(positions, "license")}.");
     }
 
-    private static string ReadSource(string? value, string source, bool required)
+    private static string ReadSource(
+        string? value,
+        string source,
+        IReadOnlyDictionary<string, (int Line, int Column)> positions,
+        bool required)
     {
         var provenance = required
-            ? ReadRequiredMetadata(value, "source", source)
+            ? ReadRequiredMetadata(value, "source", source, positions)
             : Or(value, "https://github.com/sharpvision/sharpvision");
         return ThemeProvenance.IsSource(provenance)
             ? provenance
-            : throw new InvalidDataException($"Theme '{source}' has invalid source URL '{provenance}'.");
+            : throw new InvalidDataException(
+                $"Theme '{source}' has invalid source URL '{provenance}'{FormatPosition(positions, "source")}.");
     }
 
-    private static ColorScheme ReadColorScheme(string? value, string source, bool required)
+    private static ColorScheme ReadColorScheme(
+        string? value,
+        string source,
+        IReadOnlyDictionary<string, (int Line, int Column)> positions,
+        bool required)
     {
         return string.IsNullOrWhiteSpace(value) && !required
             ? ColorScheme.Dark
@@ -573,7 +764,8 @@ public static class ThemeCatalog
             {
                 "dark" => ColorScheme.Dark,
                 "light" => ColorScheme.Light,
-                _ => throw new InvalidDataException($"Theme '{source}' has invalid colorScheme '{value}'.")
+                _ => throw new InvalidDataException(
+                    $"Theme '{source}' has invalid colorScheme '{value}'{FormatPosition(positions, "colorScheme")}.")
             };
     }
 
@@ -581,7 +773,10 @@ public static class ThemeCatalog
     // instance leniency rather than ReadColorScheme's exact-case switch: "glyphs" is authored
     // freely by any theme document, not just the fifteen curated ones ReadColorScheme's stricter
     // metadata rules already assume complete, embedded documents for.
-    private static GlyphFamily ReadGlyphFamily(string? value, string source) =>
+    private static GlyphFamily ReadGlyphFamily(
+        string? value,
+        string source,
+        IReadOnlyDictionary<string, (int Line, int Column)> positions) =>
         value is null
             ? GlyphFamily.Default
             : value.ToLowerInvariant() switch
@@ -591,7 +786,8 @@ public static class ThemeCatalog
                 "ascii" => GlyphFamily.Ascii,
                 "shades" => GlyphFamily.Shades,
                 "lines" => GlyphFamily.Lines,
-                _ => throw new InvalidDataException($"Theme '{source}' has invalid glyphs '{value}'.")
+                _ => throw new InvalidDataException(
+                    $"Theme '{source}' has invalid glyphs '{value}'{FormatPosition(positions, "glyphs")}.")
             };
 
     #endregion

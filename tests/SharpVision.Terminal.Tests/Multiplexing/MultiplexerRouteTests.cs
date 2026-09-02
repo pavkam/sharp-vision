@@ -213,6 +213,147 @@ public sealed class MultiplexerRouteTests
         destination.WrittenCount.ShouldBe(0);
     }
 
+    /// <summary>Verifies notification OSC strings use the same single-layer tmux wrapping and ESC
+    /// doubling as every other explicitly authorized passthrough family.</summary>
+    [Fact]
+    public void TryWriteNotification_WhenRouteHasTmux_WritesExactEnvelope()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Notifications);
+        var route = new MultiplexerRoute(policy);
+        var destination = new ArrayBufferWriter<byte>();
+
+        var written = route.TryWriteNotification(destination, "]9;hi\\"u8);
+
+        written.ShouldBeTrue();
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "Ptmux;]9;hi\\\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies a route approved only for clipboard traffic cannot carry notification
+    /// bytes, and that a Screen-containing route cannot carry notifications either, leaving the
+    /// destination untouched in both cases.</summary>
+    [Theory]
+    [InlineData(new[] { MultiplexerKind.Tmux }, MultiplexingOperation.Clipboard)]
+    [InlineData(new[] { MultiplexerKind.Screen }, MultiplexingOperation.Notifications)]
+    public void TryWriteNotification_WhenRouteCannotCarryTheFamily_RejectsAtomically(
+        MultiplexerKind[] layers,
+        MultiplexingOperation approved)
+    {
+        var policy = new MultiplexingPolicy(
+            layers,
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            approved);
+        var destination = new ArrayBufferWriter<byte>();
+
+        var written = new MultiplexerRoute(policy).TryWriteNotification(
+            destination,
+            "]9;hi\\"u8);
+
+        written.ShouldBeFalse();
+        destination.WrittenCount.ShouldBe(0);
+    }
+
+    /// <summary>Verifies title commands use the same single-layer tmux wrapping and ESC doubling as
+    /// every other explicitly authorized passthrough family.</summary>
+    [Fact]
+    public void TryWriteTitle_WhenRouteHasTmux_WritesExactEnvelope()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Title);
+        var route = new MultiplexerRoute(policy);
+        var destination = new ArrayBufferWriter<byte>();
+
+        var written = route.TryWriteTitle(destination, "]2;hi\\"u8);
+
+        written.ShouldBeTrue();
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "Ptmux;]2;hi\\\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies a route approved only for clipboard traffic cannot carry title bytes, and
+    /// that a Screen-containing route cannot carry titles either, leaving the destination untouched
+    /// in both cases.</summary>
+    [Theory]
+    [InlineData(new[] { MultiplexerKind.Tmux }, MultiplexingOperation.Clipboard)]
+    [InlineData(new[] { MultiplexerKind.Screen }, MultiplexingOperation.Title)]
+    public void TryWriteTitle_WhenRouteCannotCarryTheFamily_RejectsAtomically(
+        MultiplexerKind[] layers,
+        MultiplexingOperation approved)
+    {
+        var policy = new MultiplexingPolicy(
+            layers,
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            approved);
+        var destination = new ArrayBufferWriter<byte>();
+
+        var written = new MultiplexerRoute(policy).TryWriteTitle(
+            destination,
+            "]2;hi\\"u8);
+
+        written.ShouldBeFalse();
+        destination.WrittenCount.ShouldBe(0);
+    }
+
+    /// <summary>Verifies bell commands use the same single-layer tmux wrapping and ESC doubling as
+    /// every other explicitly authorized passthrough family.</summary>
+    [Fact]
+    public void TryWriteBell_WhenRouteHasTmux_WritesExactEnvelope()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Bell);
+        var route = new MultiplexerRoute(policy);
+        var destination = new ArrayBufferWriter<byte>();
+
+        var written = route.TryWriteBell(destination, "\u0007"u8);
+
+        written.ShouldBeTrue();
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001bPtmux;\u0007\u001b\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies a route approved only for clipboard traffic cannot carry bell bytes, and
+    /// that a Screen-containing route cannot carry bells either, leaving the destination untouched
+    /// in both cases.</summary>
+    [Theory]
+    [InlineData(new[] { MultiplexerKind.Tmux }, MultiplexingOperation.Clipboard)]
+    [InlineData(new[] { MultiplexerKind.Screen }, MultiplexingOperation.Bell)]
+    public void TryWriteBell_WhenRouteCannotCarryTheFamily_RejectsAtomically(
+        MultiplexerKind[] layers,
+        MultiplexingOperation approved)
+    {
+        var policy = new MultiplexingPolicy(
+            layers,
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            approved);
+        var destination = new ArrayBufferWriter<byte>();
+
+        var written = new MultiplexerRoute(policy).TryWriteBell(
+            destination,
+            "\u0007"u8);
+
+        written.ShouldBeFalse();
+        destination.WrittenCount.ShouldBe(0);
+    }
+
     /// <summary>Verifies an authorized clipboard route unwraps one exact OSC 5522 packet for the
     /// ordinary decoder rather than restricting inbound envelopes to capability replies.</summary>
     [Fact]
@@ -864,11 +1005,12 @@ public sealed class MultiplexerRouteTests
         negotiator.Capabilities.KittyGraphics.State.ShouldNotBe(CapabilitySupport.Supported);
     }
 
-    /// <summary>Verifies a routed fence CPR reply retires every still-outstanding family and
-    /// completes negotiation immediately, exercising the real router wire path instead of calling
-    /// the negotiator directly.</summary>
+    /// <summary>Verifies a routed fence CPR reply resolves only its own tracked family and does
+    /// not retire any other still-outstanding family, exercising the real router wire path instead
+    /// of calling the negotiator directly. The reply grammar is byte-identical to a modified F3
+    /// keystroke, so it is never trustworthy proof that every other family stayed silent.</summary>
     [Fact]
-    public void Route_WhenFenceCprArrivesWrapped_RetiresOutstandingFamiliesBeforeDeadline()
+    public void Route_WhenFenceCprArrivesWrapped_ResolvesOnlyItsOwnFamily()
     {
         var policy = ActivePolicy([MultiplexerKind.Tmux]);
         var route = new MultiplexerRoute(policy);
@@ -888,8 +1030,8 @@ public sealed class MultiplexerRouteTests
 
         router.Route(wrapped.WrittenSpan);
 
-        negotiator.Completed.ShouldBeTrue();
-        negotiator.HasPendingWork.ShouldBeFalse();
+        negotiator.Completed.ShouldBeFalse();
+        negotiator.HasPendingWork.ShouldBeTrue();
     }
 
     /// <summary>Creates one query-only explicit outer-terminal route.</summary>

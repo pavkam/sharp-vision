@@ -235,29 +235,30 @@ internal static class AppearanceResolver
         var attributes = Resolve(theme, face.Attributes);
         var underlineColor = Resolve(theme, face.UnderlineColor);
 
-        // Reported here, against the channel that actually failed, and before the catch below can
-        // see them. That catch exists for one specific failure and names three channels as its
-        // cause; a transparent paint channel is a different failure in a channel it does not even
-        // mention, so letting it fall through produced a message asserting a conflict between
-        // three values that were all fine.
+        // Reported here, against the channel that actually failed. A transparent paint channel is
+        // a different failure than a decoration conflict, so it is diagnosed directly rather than
+        // folded into the reconciliation below.
         ValidatePaint(foreground, face.Foreground, "foreground");
-        ValidatePaint(underlineColor, face.UnderlineColor, "underline color");
 
-        try
-        {
-            return new Face(foreground, background, attributes, face.Underline, underlineColor);
-        }
-        catch (ArgumentException exception)
-        {
-            // The Face constructor only validates decoration conflicts once every channel is a
-            // literal: a theme-referenced attribute or underline color defers the
-            // check to here, where the semantic colors that produced the conflict are still known.
-            throw new ArgumentException(
-                $"Resolving this face against the active theme produced a decoration conflict: " +
-                $"attributes '{face.Attributes}', underline '{face.Underline}', underline color " +
-                $"'{face.UnderlineColor}'. {exception.Message}",
-                exception);
-        }
+        // Theme values (and application-authored semantic values) are resolved independently, so a
+        // combination that is individually legal per channel can still conflict once every channel
+        // becomes a literal - e.g. a semantic underline color with no active underline, or a
+        // semantic attribute carrying the legacy Underline flag alongside a distinct typed
+        // underline. Reconciling here, against the already-resolved literals and before Face ever
+        // sees them, applies the same precedence already shipped at every other decoration call
+        // site: a typed underline wins over the legacy flag, a legacy flag with no typed underline
+        // wins over the typed value, and an underline color with neither active is cleared. That
+        // makes the combination degrade gracefully instead of surviving validation only to throw
+        // the moment it becomes literal.
+        var (reconciledAttributes, reconciledUnderline, reconciledUnderlineColor) = DecorationResolver.Resolve(
+            inherited: default,
+            attributes: attributes,
+            underline: face.Underline == Underline.None ? null : face.Underline,
+            underlineColor: underlineColor);
+
+        ValidatePaint(reconciledUnderlineColor, face.UnderlineColor, "underline color");
+
+        return new Face(foreground, background, reconciledAttributes, reconciledUnderline, reconciledUnderlineColor);
     }
 
     private static Border ResolveBorder(Theme? theme, Border border)

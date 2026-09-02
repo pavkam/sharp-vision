@@ -12,10 +12,10 @@ using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 
 /// <summary>
-/// Verifies <see cref="Theme"/>'s four interaction-derived style sets -
+/// Verifies <see cref="Theme"/>'s five interaction-derived style sets -
 /// <see cref="Theme.GetInteractiveControlStyleSet"/>, <see cref="Theme.GetInteractiveRowStyleSet"/>,
-/// <see cref="Theme.GetFocusableContainerStyleSet"/>, and
-/// <see cref="Theme.GetFocusableControlStyleSet"/> - are a genuinely usable, sanctioned one-hop
+/// <see cref="Theme.GetFocusableContainerStyleSet"/>, <see cref="Theme.GetFocusableControlStyleSet"/>,
+/// and <see cref="Theme.GetTabularControlStyleSet"/> - are a genuinely usable, sanctioned one-hop
 /// fallback path for a control library with no access to SharpVision's internals. Unlike every
 /// other test project in this repository, this one carries no <c>InternalsVisibleTo</c>
 /// relationship with SharpVision, so every member this file touches - <see cref="GaugeStyle"/>'s
@@ -25,7 +25,7 @@ using SharpVision.Terminal.Rendering;
 /// <remarks>
 /// <see cref="GaugeStyle"/> and <see cref="Gauge"/> model a complete third-party control the way
 /// <c>docs/concepts/theming-new-controls.md</c> describes a control with its own typed style,
-/// substituting one of the four derived interaction sets for the fallback a library-owned leaf
+/// substituting one of the five derived interaction sets for the fallback a library-owned leaf
 /// control such as <c>SliderStyle</c> would use. A theme's "styles" object is closed to exactly
 /// the six well-known role sections, so a third-party style - like every library leaf style - now
 /// declares no <c>styles.*</c> key of its own at all: its only sources of appearance are its
@@ -190,7 +190,29 @@ public sealed class ThemeConsumerTests
         focusableContainer.IsPointerOver.ShouldBe(passiveContainer.IsPointerOver);
     }
 
-    /// <summary>Models a third-party control that reuses one of the four derived interaction sets
+    /// <summary>Verifies <see cref="Theme.GetTabularControlStyleSet"/> - the owner-surface sibling
+    /// for a control such as Table or Document that paints independently colored content over one
+    /// shared surface - compiles and resolves from a genuinely public, non-<c>InternalsVisibleTo</c>
+    /// call site, and populates only Focused/FocusWithin while leaving IsPointerOver exactly as the
+    /// passive "control" key resolves it, the same narrowing <see cref="Theme.GetFocusableControlStyleSet"/>
+    /// applies.</summary>
+    [Fact]
+    public void GetTabularControlStyleSet_WhenResolvedAgainstTheDarkTheme_PopulatesOnlyFocusedOverThePassiveControl()
+    {
+        // Arrange
+        var theme = ThemeCatalog.Dark;
+        var passiveControl = theme.GetStyleSet(ControlStyle.Default);
+
+        // Act
+        var tabularControl = theme.GetTabularControlStyleSet();
+
+        // Assert
+        var focused = tabularControl.Focused.ShouldNotBeNull();
+        focused.ShouldNotBe(tabularControl.Normal);
+        tabularControl.IsPointerOver.ShouldBe(passiveControl.IsPointerOver);
+    }
+
+    /// <summary>Models a third-party control that reuses one of the five derived interaction sets
     /// through the protected <c>GetDefaultAppearanceStates</c> hook instead of a primary style
     /// slot - the no-structural-members extension path
     /// <c>docs/concepts/theming-new-controls.md</c> documents for a control that only wants an

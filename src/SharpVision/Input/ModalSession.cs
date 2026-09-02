@@ -74,13 +74,15 @@ internal sealed class ModalSession
         {
             scope = enterScope();
 
-            if (!scope.IsActive || !isCurrent())
+            if (!scope.IsActive)
             {
-                if (scope.IsActive)
-                {
-                    scope.Dispose();
-                }
+                return scope;
+            }
 
+            if (!isCurrent())
+            {
+                scope.Dispose();
+                InvokeRollback();
                 return scope;
             }
 
@@ -110,6 +112,18 @@ internal sealed class ModalSession
                 }
             }
 
+            InvokeRollback();
+
+            failure.Throw();
+            throw;
+        }
+        finally
+        {
+            IsEntering = false;
+        }
+
+        void InvokeRollback()
+        {
             if (rollback is not null)
             {
                 try
@@ -121,13 +135,6 @@ internal sealed class ModalSession
                     // Entry remains the authoritative failure.
                 }
             }
-
-            failure.Throw();
-            throw;
-        }
-        finally
-        {
-            IsEntering = false;
         }
     }
 

@@ -495,6 +495,7 @@ public sealed class PointerManager: IDisposable
     public void TerminalFocusLost()
     {
         VerifyAccess();
+        _lastPointerCells = null;
         Cancel(ReleaseReason.TerminalFocusLost, Root);
     }
 
@@ -503,6 +504,12 @@ public sealed class PointerManager: IDisposable
     #region Cleanup
 
     /// <summary>Releases pointer ownership and all manager references.</summary>
+    /// <remarks>
+    /// A control that held capture is not notified of the loss (no <c>LostPointerCapture</c>, no
+    /// <see cref="IControlLifecycleParticipant.CaptureLost(PointerCaptureLossReason)"/>) - disposal is terminal teardown, and
+    /// publishing a new callback surface here would only reopen the failure mode this method's
+    /// ordering exists to close.
+    /// </remarks>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     public void Dispose()
     {
@@ -512,13 +519,15 @@ public sealed class PointerManager: IDisposable
         }
 
         Root.VerifyMutable();
+
         Captured = null;
-        SetPointerPath(control: null, boundary: null);
         ClearPressState();
         _lastClickTarget = null;
         Root.SetCaptureOwner(null);
         IsDisposed = true;
         GC.SuppressFinalize(this);
+
+        SetPointerPath(control: null, boundary: null);
     }
 
     /// <summary>Cancels state owned within one unavailable subtree.</summary>
@@ -541,6 +550,15 @@ public sealed class PointerManager: IDisposable
         if (IsWithin(_lastClickTarget, subtree))
         {
             _lastClickTarget = null;
+        }
+
+        // Only Disabled/Hidden leave the subtree attached with unchanged tree structure, so
+        // re-hit-testing here is safe. Detached/Disposed/TerminalFocusLost/Transferred fire mid-
+        // teardown or off a structural change already in flight; hit-testing then would reenter
+        // the very mutation this callback is running inside of.
+        if (reason is ReleaseReason.Disabled or ReleaseReason.Hidden)
+        {
+            ReconcileHover();
         }
     }
 

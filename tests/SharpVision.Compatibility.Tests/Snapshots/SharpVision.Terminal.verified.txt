@@ -1155,10 +1155,16 @@ namespace SharpVision.Terminal.Multiplexing
     public sealed class MultiplexerRoute
     {
         public MultiplexerRoute(SharpVision.Terminal.Multiplexing.MultiplexingPolicy policy) { }
+        public bool CanRouteBell { get; }
         public bool CanRouteClipboard { get; }
+        public bool CanRouteNotifications { get; }
+        public bool CanRouteTitle { get; }
         public SharpVision.Terminal.Multiplexing.MultiplexingPolicy Policy { get; }
         public bool TryUnwrapReply(System.ReadOnlySpan<byte> envelope, out System.ReadOnlyMemory<byte> reply) { }
+        public bool TryWriteBell(System.Buffers.IBufferWriter<byte> destination, System.ReadOnlySpan<byte> command) { }
         public bool TryWriteClipboard(System.Buffers.IBufferWriter<byte> destination, System.ReadOnlySpan<byte> commands) { }
+        public bool TryWriteNotification(System.Buffers.IBufferWriter<byte> destination, System.ReadOnlySpan<byte> command) { }
+        public bool TryWriteTitle(System.Buffers.IBufferWriter<byte> destination, System.ReadOnlySpan<byte> command) { }
     }
     public enum MultiplexingOperation
     {
@@ -1166,6 +1172,9 @@ namespace SharpVision.Terminal.Multiplexing
         CapabilityQueries = 1,
         Clipboard = 2,
         Graphics = 4,
+        Notifications = 8,
+        Title = 16,
+        Bell = 32,
     }
     public sealed class MultiplexingPolicy
     {
@@ -1746,6 +1755,7 @@ namespace SharpVision.Terminal.Runtime
     {
         public ConsoleHostOptions() { }
         public bool CaptureControlKeys { get; init; }
+        public bool EnableMouseInput { get; init; }
         public System.TimeSpan ResizeInterval { get; init; }
     }
     public sealed class ConsoleResizeSource : SharpVision.Terminal.Abstractions.IResizeSource, System.IAsyncDisposable
@@ -1781,7 +1791,7 @@ namespace SharpVision.Terminal.Runtime
     public sealed class StreamTransport : SharpVision.Terminal.Abstractions.ITransport, System.IAsyncDisposable
     {
         public StreamTransport(System.IO.Stream input, System.IO.Stream output, bool leaveOpen = false) { }
-        public StreamTransport(System.IO.Stream input, System.IO.Stream output, bool leaveInputOpen, bool leaveOutputOpen) { }
+        public StreamTransport(System.IO.Stream input, System.IO.Stream output, bool leaveInputOpen, bool leaveOutputOpen, System.TimeSpan? readDrainTimeout = default, System.TimeSpan? writeDrainTimeout = default) { }
         public System.Threading.Tasks.ValueTask DisposeAsync() { }
         public System.Threading.Tasks.ValueTask FlushAsync(System.Threading.CancellationToken cancellationToken) { }
         public System.Threading.Tasks.ValueTask<int> ReadAsync(System.Memory<byte> destination, System.Threading.CancellationToken cancellationToken) { }

@@ -336,6 +336,12 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
         SetStatus(SelectedPaths.Count == 0
             ? SnapshotStatus
             : SelectionFormat(SelectedPaths.Count));
+
+        if (IsDisposed)
+        {
+            return;
+        }
+
         NotifyPropertyChanged(nameof(SelectedPaths), InvalidationImpact.None);
     }
 

@@ -12,7 +12,7 @@ internal sealed class SegmentFieldKeyOptions
     /// <param name="clearValue">Attempts to clear the whole nullable value.</param>
     /// <param name="handleCharacterCommand">Optionally handles a non-digit character command such as AM/PM selection.</param>
     /// <param name="handlePopupCommand">Optionally opens or otherwise handles a popup command before inline editing.</param>
-    /// <param name="handleRecognizedWithoutChange">Whether an admitted inline command is handled even when it cannot change the value or active segment.</param>
+    /// <param name="handleRecognizedWithoutChange">Whether an admitted inline command is handled even when it cannot change the value or active segment. Only <see cref="Controls.Input.DateInput"/> opts in; <see cref="Controls.Input.TimeInput"/> and <see cref="Controls.Input.DateTimeInput"/> deliberately keep the default so a no-op edit at an already-empty or already-clamped field bubbles to ancestors there, matching their pre-existing behavior on every recognized key, not only Delete.</param>
     /// <exception cref="ArgumentNullException"><paramref name="resolveStepDelta"/> or <paramref name="clearValue"/> is null.</exception>
     public SegmentFieldKeyOptions(
         Func<KeyEventArgs, int?> resolveStepDelta,

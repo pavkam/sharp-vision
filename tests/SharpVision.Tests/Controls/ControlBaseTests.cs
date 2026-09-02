@@ -2152,6 +2152,28 @@ public sealed class ControlBaseTests
         disabledChild.DesiredSize.ShouldBe(enabledChild.DesiredSize);
     }
 
+    /// <summary>Verifies a layout pass completes without throwing when a control's own
+    /// ArrangeOverride synchronously disposes it - unlike the ScrollChanged cases elsewhere, the
+    /// disposing event here fires from inside the override itself, so the pass must also skip the
+    /// trailing context menu arrange, collapsed-child cleanup, and BoundsChanged notification that
+    /// follow ArrangeOverride with no early exit of their own.</summary>
+    [Fact]
+    public void Layout_WhenArrangeOverrideDisposesControl_SkipsTrailingArrangeStepsWithoutThrowing()
+    {
+        var contextMenu = new ContextMenu();
+        var control = new ProbeControl(new Size(2, 1)) { ContextMenu = contextMenu };
+        var presentation = contextMenu.Presentation;
+        var boundsChanged = 0;
+        control.BoundsChanged += (_, _) => boundsChanged++;
+        control.Arranging = self => self.Dispose();
+
+        Should.NotThrow(() => new LayoutEngine().Layout(control, new Size(4, 3)));
+
+        control.IsDisposed.ShouldBeTrue();
+        boundsChanged.ShouldBe(0);
+        presentation.Bounds.ShouldBe(default);
+    }
+
     /// <summary>Verifies non-specialized controls resolve the universal ControlStyle appearance.</summary>
     [Fact]
     public void ActualAppearance_WhenControlIsNotSpecialized_UsesTheUniversalControlStyle()
@@ -3871,6 +3893,98 @@ public sealed class ControlBaseTests
         Row(second, 0).ShouldBe("Z");
     }
 
+    /// <summary>Verifies a focused, render-clean <see cref="NumberInput"/> re-asserts its terminal
+    /// cursor through the copy path instead of losing it: <see cref="TerminalCanvas.SetCursor(Point, bool, CursorShape)"/> is
+    /// authored inside <c>OnRenderContent</c>'s focused branch, which the reuse path's cell copy
+    /// alone never replays, so <c>NumberInput.OnReuseCleanRender</c> must recompute the caret
+    /// column from the control's own current buffer state and reassert it.</summary>
+    [Fact]
+    public async Task Render_WhenNumberInputIsRenderClean_PreservesCursorThroughTheCopyPathAsync()
+    {
+        var input = new NumberInput { Value = 42m, DecimalPlaces = 0 };
+        input.SetFocused(true);
+        var size = new Size(12, 3);
+        new LayoutEngine().Layout(input, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
+        using var first = new Frame(size);
+        input.Render(first.Canvas);
+        first.Cursor.Visible.ShouldBeTrue();
+        var expectedPosition = first.Cursor.Position;
+        _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
+
+        using var second = new Frame(size);
+        _ = renderer.AttachCommittedFrame(second);
+        second.Canvas.HasPreviousFrame.ShouldBeTrue();
+        input.Render(second.Canvas);
+
+        second.Cursor.Visible.ShouldBeTrue();
+        second.Cursor.Position.ShouldBe(expectedPosition);
+    }
+
+    /// <summary>Verifies a focused, render-clean <see cref="CurrencyInput"/> re-asserts its
+    /// terminal cursor through the copy path instead of losing it, exactly like
+    /// <see cref="NumberInput"/> above but exercising the sign-aware
+    /// <c>BuildFocusedDisplay</c>-derived caret math that <c>CurrencyInput.OnReuseCleanRender</c>
+    /// must reproduce identically to the focused branch of <c>OnRenderContent</c>.</summary>
+    [Fact]
+    public async Task Render_WhenCurrencyInputIsRenderClean_PreservesCursorThroughTheCopyPathAsync()
+    {
+        var input = new CurrencyInput { Value = -12.5m, DecimalPlaces = 2 };
+        input.SetFocused(true);
+        var size = new Size(16, 3);
+        new LayoutEngine().Layout(input, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
+        using var first = new Frame(size);
+        input.Render(first.Canvas);
+        first.Cursor.Visible.ShouldBeTrue();
+        var expectedPosition = first.Cursor.Position;
+        _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
+
+        using var second = new Frame(size);
+        _ = renderer.AttachCommittedFrame(second);
+        second.Canvas.HasPreviousFrame.ShouldBeTrue();
+        input.Render(second.Canvas);
+
+        second.Cursor.Visible.ShouldBeTrue();
+        second.Cursor.Position.ShouldBe(expectedPosition);
+    }
+
+    /// <summary>Verifies a focused <see cref="TextInput"/>'s cursor survives the identical
+    /// attach-and-render-again sequence that strands <see cref="NumberInput"/> and
+    /// <see cref="CurrencyInput"/>'s cursor above - not by any cursor-specific protection of its
+    /// own, but because owning two scroll bars keeps <c>OwnedControlCount</c> above zero and
+    /// disqualifies it from the clean-subtree-reuse path entirely, so its cursor is freshly
+    /// recomputed by a real <c>OnRenderContent</c> on every render. This locks in that protection
+    /// as a regression guard so it stops being merely incidental.</summary>
+    [Fact]
+    public async Task Render_WhenTextInputIsRenderClean_KeepsCursorBecauseItIsReuseIneligibleAsync()
+    {
+        var input = new TextInput { Text = "AB" };
+        input.SetFocused(true);
+        var size = new Size(12, 3);
+        new LayoutEngine().Layout(input, size);
+        using var renderer = new Renderer();
+        var transport = new ConsoleApplicationTransport();
+        var profile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative);
+        using var first = new Frame(size);
+        input.Render(first.Canvas);
+        first.Cursor.Visible.ShouldBeTrue();
+        var expectedPosition = first.Cursor.Position;
+        _ = await renderer.RenderAsync(first, transport, profile, TestContext.Current.CancellationToken);
+
+        using var second = new Frame(size);
+        _ = renderer.AttachCommittedFrame(second);
+        second.Canvas.HasPreviousFrame.ShouldBeTrue();
+        input.Render(second.Canvas);
+
+        second.Cursor.Visible.ShouldBeTrue();
+        second.Cursor.Position.ShouldBe(expectedPosition);
+    }
+
     /// <summary>Verifies a Source change invalidates render and produces a fresh, updated
     /// placement instead of one carried forward through reuse - a regression guard that removing
     /// Image's unconditional full-render requirement did not weaken ordinary invalidation.</summary>
@@ -4650,6 +4764,45 @@ public sealed class ControlBaseTests
         selection.ShouldBe(new Selection(0, 2));
         observed.ShouldBe([new Selection(0, 2)]);
     }
+
+    /// <summary>Verifies the base <c>ApplyTextSelectionStyle</c> implementation re-resolves
+    /// SelectedText and SelectedControl under a new Theme instead of latching the colors observed
+    /// under the previous one - the gap a bare <c>ResolveColor</c> call left, since neither the
+    /// slot walk nor the appearance diff sees a value resolved outside any style member. Only a
+    /// registered Theme dependency closes it, which is also why <see cref="ControlBase.Pending"/>
+    /// gains Render even though nothing about this probe's own appearance changed.</summary>
+    [Fact]
+    public void ApplyTextSelectionStyle_WhenThemeChangesSelectionColors_ReResolvesAndInvalidatesRender()
+    {
+        // Arrange
+        var previousTheme = ThemeWithSelectionColors(Color.Rgb(1, 2, 3), Color.Rgb(4, 5, 6));
+        var currentTheme = ThemeWithSelectionColors(Color.Rgb(7, 8, 9), Color.Rgb(10, 11, 12));
+        var control = new ProbeControl();
+        control.SetTheme(previousTheme);
+        var before = control.ProbeApplyTextSelectionStyle(TerminalStyle.Default);
+        control.Clear(Invalidation.All);
+
+        // Act
+        control.SetTheme(currentTheme);
+
+        // Assert
+        before.Foreground.ShouldBe(Color.Rgb(1, 2, 3));
+        before.Background.ShouldBe(Color.Rgb(4, 5, 6));
+        control.Pending.ShouldBe(Invalidation.Render);
+        var after = control.ProbeApplyTextSelectionStyle(TerminalStyle.Default);
+        after.Foreground.ShouldBe(Color.Rgb(7, 8, 9));
+        after.Background.ShouldBe(Color.Rgb(10, 11, 12));
+    }
+
+    /// <summary>Builds a theme whose "selectedText" and "selectedControl" keys carry the given
+    /// literal colors, pinning <c>controlBorderForeground</c> so the bare <c>foreground</c>/
+    /// <c>accent</c> parameters never also move Face or Border - isolating the swap to exactly the
+    /// two colors <see cref="ControlBase.ApplyTextSelectionStyle(TerminalStyle)"/> resolves.</summary>
+    private static Theme ThemeWithSelectionColors(Color selectedText, Color selectedControl) =>
+        ThemeCatalog.Parse(ThemeJson.Create(
+            controlBorderForeground: "#888888",
+            selectedText: Hex(selectedText),
+            selectedControl: Hex(selectedControl)));
 
     #endregion
 }

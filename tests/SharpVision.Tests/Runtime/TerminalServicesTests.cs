@@ -203,6 +203,164 @@ public sealed class TerminalServicesTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies the OSC 2 title path emits unwrapped bytes when no multiplexer route is
+    /// configured, matching today's default behavior for a route-free session.</summary>
+    [Fact]
+    public async Task SetTitle_WhenNoMultiplexerRoute_EmitsUnwrappedAnsiTitleBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var title = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += memory =>
+        {
+            if (memory.Span.SequenceEqual("]2;hi\\"u8))
+            {
+                _ = title.TrySetResult();
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.IsTitleSupported.ShouldBeTrue();
+        application.Terminal.SetTitle("hi");
+
+        await title.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an explicitly authorized tmux title route wraps the OSC 2 string in DCS
+    /// passthrough before the ordered out-of-band write reaches the transport, matching the
+    /// existing clipboard and notification routing precedent instead of posting bare bytes that
+    /// tmux would otherwise swallow.</summary>
+    [Fact]
+    public async Task SetTitle_WhenTmuxRouteApprovesTitleFamily_WrapsAnsiTitleBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Title);
+        var options = TerminalOptions.Minimal with { Multiplexing = policy };
+        var written = new TaskCompletionSource<ReadOnlyMemory<byte>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += bytes =>
+        {
+            if (bytes.Span.IndexOf("Ptmux;"u8) >= 0)
+            {
+                _ = written.TrySetResult(bytes.ToArray());
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.SetTitle("hi");
+
+        var bytes = await written.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        bytes.ToArray().ShouldBe(
+            "Ptmux;]2;hi\\\\"u8.ToArray());
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a configured multiplexer route that has not approved the title family
+    /// suppresses the OSC 2 title entirely rather than posting an unwrapped OSC that the
+    /// multiplexer would otherwise consume and never forward.</summary>
+    [Fact]
+    public async Task SetTitle_WhenTmuxRouteDoesNotApproveTitleFamily_AnsiPathIsSuppressedAndByteQuietAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var options = TerminalOptions.Minimal with { Multiplexing = policy };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var before = terminal.Writes.Count;
+
+        application.Terminal.IsTitleSupported.ShouldBeTrue();
+        application.Terminal.SetTitle("hi");
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        terminal.Writes.Count.ShouldBe(before);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an explicitly authorized tmux title route also wraps the described TS/fsl
+    /// title program's bytes, matching the OSC 2 path's routing exactly.</summary>
+    [Fact]
+    public async Task SetTitle_WhenTmuxRouteApprovesTitleFamily_WrapsDescribedTitleBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var profile = CreateProfile(new Dictionary<string, DescriptionProgram>
+        {
+            ["TS"] = new DescriptionProgram("PREFIX:"u8),
+            ["fsl"] = new DescriptionProgram(":SUFFIX"u8)
+        });
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            profile,
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Title);
+        var options = TerminalOptions.Minimal with { Profile = profile, Multiplexing = policy };
+        var written = new TaskCompletionSource<ReadOnlyMemory<byte>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += bytes =>
+        {
+            if (bytes.Span.IndexOf("Ptmux;"u8) >= 0)
+            {
+                _ = written.TrySetResult(bytes.ToArray());
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.IsTitleSupported.ShouldBeTrue();
+        application.Terminal.SetTitle("hi");
+
+        var bytes = await written.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        bytes.ToArray().ShouldBe("Ptmux;PREFIX:hi:SUFFIX\\"u8.ToArray());
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a configured multiplexer route that has not approved the title family
+    /// suppresses the described TS/fsl title program's bytes as well, matching the OSC 2 path.</summary>
+    [Fact]
+    public async Task SetTitle_WhenTmuxRouteDoesNotApproveTitleFamily_DescribedPathIsSuppressedAndByteQuietAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var profile = CreateProfile(new Dictionary<string, DescriptionProgram>
+        {
+            ["TS"] = new DescriptionProgram("PREFIX:"u8),
+            ["fsl"] = new DescriptionProgram(":SUFFIX"u8)
+        });
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            profile,
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var options = TerminalOptions.Minimal with { Profile = profile, Multiplexing = policy };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var before = terminal.Writes.Count;
+
+        application.Terminal.IsTitleSupported.ShouldBeTrue();
+        application.Terminal.SetTitle("hi");
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        terminal.Writes.Count.ShouldBe(before);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies non-executable described bell programs are unsupported and byte-quiet.</summary>
     /// <param name="source">The bell program with a broken zero-parameter contract.</param>
     [Theory]
@@ -381,6 +539,58 @@ public sealed class TerminalServicesTests
         args.Failure.ShouldBe(KittyClipboardReplyStatus.None);
         args.Diagnostic.ShouldBeNull();
         await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a throwing KittyClipboardReplyReceived subscriber does not force the
+    /// application to stop as a direct, raw propagation out of the raise call. The raise site used
+    /// to be a bare <c>?.Invoke</c> on <see cref="TerminalServices"/>, so a throwing handler
+    /// propagated straight out unhandled instead of being caught and routed through
+    /// <see cref="Application.Report"/> and <see cref="Application.UnhandledException"/> like the
+    /// Application-level events already were (see the ResponseReceived isolation tests in
+    /// ApplicationTests). The exception still surfaces - as the recorded <see
+    /// cref="Application.Failure"/> that a graceful stop rethrows - it just no longer unwinds raw
+    /// through the terminal-input dispatch path.</summary>
+    [Fact]
+    public async Task Clipboard_WhenKittyClipboardReplyHandlerThrows_IsIsolatedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { KittyClipboard = supported }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        List<Exception> reported = [];
+        var reportedException = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+            _ = reportedException.TrySetResult();
+        };
+        application.Terminal.Clipboard.KittyClipboardReplyReceived +=
+            (_, _) => throw new InvalidOperationException("kitty-clipboard-reply-boom");
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+
+        application.Terminal.Clipboard.Write("hello");
+        // The Kitty id is assigned inside the posted callback, so a dispatcher round-trip is
+        // needed before the reply below can carry a matching id.
+        await application.Dispatcher.InvokeAsync(static () => { }, timeout.Token);
+        terminal.QueueInput("]5522;type=write:status=DONE:id=sv1\\"u8);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without the
+        // fix, the exception propagates straight out of the raise call and reportedException never
+        // settles, so this test must fail on a timeout instead of hanging or crashing the process.
+        await reportedException.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "kitty-clipboard-reply-boom");
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("kitty-clipboard-reply-boom");
     }
 
     /// <summary>Verifies a completed Kitty read transfers the owned MIME result through the reply
@@ -1788,6 +1998,67 @@ public sealed class TerminalServicesTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an explicitly authorized tmux bell route wraps the BEL byte in DCS
+    /// passthrough before the ordered out-of-band write reaches the transport, matching the
+    /// existing clipboard, notification, and title routing precedent instead of posting a bare
+    /// byte that tmux would otherwise swallow.</summary>
+    [Fact]
+    public async Task Bell_WhenTmuxRouteApprovesBellFamily_WrapsBelByteAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Bell);
+        var options = TerminalOptions.Minimal with { Multiplexing = policy };
+        var written = new TaskCompletionSource<ReadOnlyMemory<byte>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += bytes =>
+        {
+            if (bytes.Span.IndexOf("Ptmux;"u8) >= 0)
+            {
+                _ = written.TrySetResult(bytes.ToArray());
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.Bell.Ring();
+
+        var bytes = await written.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        bytes.ToArray().ShouldBe("Ptmux;\\"u8.ToArray());
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a configured multiplexer route that has not approved the bell family
+    /// suppresses the BEL byte entirely rather than posting a bare byte that the multiplexer
+    /// would otherwise consume and never forward.</summary>
+    [Fact]
+    public async Task Bell_WhenTmuxRouteDoesNotApproveBellFamily_IsSuppressedAndByteQuietAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var options = TerminalOptions.Minimal with { Multiplexing = policy };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var before = terminal.Writes.Count;
+
+        application.Terminal.Bell.Ring();
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        terminal.Writes.Count.ShouldBe(before);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>
     /// Verifies notifications are wired through <see cref="INotifications"/> and gated on an
     /// explicit opt-in override: since there is no reliable environment or query signal for OSC 9
@@ -1914,6 +2185,82 @@ public sealed class TerminalServicesTests
         application.Terminal.Notifications.Notify("title", "bo;dy");
         await complete.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an explicitly authorized tmux notification route wraps the OSC 777 string
+    /// in DCS passthrough before the ordered out-of-band write reaches the transport, matching the
+    /// existing clipboard and graphics routing precedent instead of posting bare bytes that tmux
+    /// would otherwise swallow.</summary>
+    [Fact]
+    public async Task Notify_WhenTmuxRouteApprovesFamily_WrapsNotificationBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var capabilities = TerminalCapabilities.Conservative with { Notifications = supported };
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(capabilities),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Notifications);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = capabilities,
+            Multiplexing = policy
+        };
+        var written = new TaskCompletionSource<ReadOnlyMemory<byte>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += bytes =>
+        {
+            if (bytes.Span.IndexOf("\u001bPtmux;"u8) >= 0)
+            {
+                _ = written.TrySetResult(bytes.ToArray());
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.Notifications.Notify("hi");
+
+        var bytes = await written.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        bytes.ToArray().ShouldBe(
+            "\u001bPtmux;\u001b\u001b]9;hi\u001b\u001b\\\u001b\\"u8.ToArray());
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a configured multiplexer route that has not approved the notification
+    /// family suppresses the notification entirely rather than posting an unwrapped OSC that the
+    /// multiplexer would otherwise consume and never forward.</summary>
+    [Fact]
+    public async Task Notify_WhenTmuxRouteDoesNotApproveFamily_IsSuppressedAndByteQuietAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var capabilities = TerminalCapabilities.Conservative with { Notifications = supported };
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(capabilities),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = capabilities,
+            Multiplexing = policy
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var before = terminal.Writes.Count;
+
+        application.Terminal.Notifications.IsSupported.ShouldBeTrue();
+        application.Terminal.Notifications.Notify("hi");
+        application.Terminal.Notifications.Notify("title", "hi");
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        terminal.Writes.Count.ShouldBe(before);
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 

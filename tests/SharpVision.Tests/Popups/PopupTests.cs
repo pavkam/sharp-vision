@@ -444,6 +444,46 @@ public sealed class PopupTests
         popup.Border.Foreground.ShouldBe(SemanticColor.ControlBorder);
     }
 
+    /// <summary>Verifies a Popup opts out of ambient text-appearance inheritance by construction,
+    /// so a floating surface always starts fresh regardless of which theme is active. Every
+    /// composed drop-down/menu surface built directly on this base type (ComboBox, DateInput,
+    /// ContextMenu, MenuItem) and every subclass (Flyout, Tooltip) inherits this from the base
+    /// constructor.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_IsAppearanceBoundary()
+    {
+        using var popup = new Popup();
+
+        popup.IsAppearanceBoundary.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a Popup does not inherit an ambient parent's Foreground even when the
+    /// active theme leaves "control" (and every well-known style section) entirely unauthored -
+    /// the one condition under which the code-owned <see cref="ControlStyle.DefaultFace"/>
+    /// (transparent background, no LocalFace) would otherwise satisfy AppearanceResolver's
+    /// ambient-inheritance gate. Every bundled theme, and every other <see cref="ThemeJson.Create"/>
+    /// call, authors "control" with a face - which "window"/"popup"/"tooltip" cascade onto their
+    /// own Normal regardless of whether they author a "face" of their own - so this only
+    /// reproduces with a theme whose "styles" object is empty.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenThemeLeavesPopupFaceUnauthored_DoesNotInheritAmbientForeground()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(stylesOverride: "{}"));
+        var ambientForeground = Color.Rgb(200, 30, 40);
+        var parent = new ProbeContainer
+        {
+            Face = AppearanceTestValues.Face(foreground: ambientForeground, background: Color.Rgb(1, 1, 1))
+        };
+        using var popup = new Popup();
+        parent.Children.Add(popup);
+
+        var resolved = popup.ResolveAppearance(theme);
+
+        resolved.Face.Background.Literal.ShouldBe(Color.Transparent);
+        resolved.Face.Foreground.Literal.ShouldBe(Color.Default);
+        resolved.Face.Foreground.Literal.ShouldNotBe(ambientForeground);
+    }
+
     /// <summary>Verifies every Popup-declared property starts at its documented default.</summary>
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
@@ -1094,6 +1134,203 @@ public sealed class PopupTests
 
             closed.ShouldBe(1);
         }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Closed still fires exactly once when a Closing handler disposes a
+    /// staged-detached Popup synchronously, mirroring the presented path's identical contract for
+    /// the CloseUnpresented route: the invocation list must be captured before Closing can null it
+    /// out from under the close transaction.</summary>
+    [Fact]
+    public void Closed_WhenClosingHandlerDisposesStagedDetachedPopupSynchronously_FiresOnce()
+    {
+        var popup = new Popup { Content = new ProbeControl(), IsOpen = true };
+        var closed = 0;
+        popup.Closing += (_, _) => popup.Dispose();
+        popup.Closed += (_, _) => closed++;
+
+        popup.IsOpen = false;
+
+        closed.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a Closed handler can reopen the Popup synchronously instead of being
+    /// rejected by SetOpen's reentrancy guard - the guard now releases as soon as the closed state
+    /// commits rather than staying armed for the rest of the close transaction, so it is no longer
+    /// armed by the time Closed observers run.</summary>
+    [Fact]
+    public async Task IsOpen_WhenClosedHandlerReopensSynchronously_ReopensWithoutThrowingAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var popup = new Popup { Content = new ProbeControl() };
+            var root = new Overlay();
+            root.Children.Add(popup);
+            root.Attach(dispatcher);
+            popup.IsOpen = true;
+            new LayoutEngine().Layout(root, new Size(12, 6));
+            var reopened = false;
+            popup.Closed += (_, _) =>
+            {
+                if (!reopened)
+                {
+                    reopened = true;
+                    popup.IsOpen = true;
+                }
+            };
+
+            popup.IsOpen = false;
+
+            reopened.ShouldBeTrue();
+            popup.IsOpen.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a Closed handler can reopen a staged-detached Popup synchronously through
+    /// the CloseUnpresented route instead of being rejected by SetOpen's reentrancy guard, mirroring
+    /// the presented path's identical relaxation.</summary>
+    [Fact]
+    public void IsOpen_WhenClosedHandlerReopensStagedDetachedPopupSynchronously_ReopensWithoutThrowing()
+    {
+        var popup = new Popup { Content = new ProbeControl(), IsOpen = true };
+        var reopened = false;
+        popup.Closed += (_, _) =>
+        {
+            if (!reopened)
+            {
+                reopened = true;
+                popup.IsOpen = true;
+            }
+        };
+
+        popup.IsOpen = false;
+
+        reopened.ShouldBeTrue();
+        popup.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a Closing handler cannot reopen a staged-detached Popup mid-transaction
+    /// through the CloseUnpresented route: unlike Closed, the close transition has not committed
+    /// yet, so a reopen that silently succeeded here would leave the popup's content collapsed
+    /// while IsOpen reports true. The reentrancy guard stays armed through Closing and rejects the
+    /// attempt - the aggregated failure surfaces to the caller, but the rest of the close
+    /// transaction still runs to completion (matching every other throwing-Closing-handler
+    /// scenario in this file), leaving the popup consistently closed rather than corrupted.</summary>
+    [Fact]
+    public void IsOpen_WhenClosingHandlerReopensStagedDetachedPopupSynchronously_ThrowsAndLeavesPopupClosed()
+    {
+        var popup = new Popup { Content = new ProbeControl(), IsOpen = true };
+        popup.Closing += (_, _) => popup.IsOpen = true;
+
+        _ = Should.Throw<InvalidOperationException>(() => popup.IsOpen = false);
+
+        popup.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a CloseRequested handler that repeats the same close request synchronously
+    /// is a documented no-op instead of reentering the open-state transition, mirroring Window's
+    /// equivalent contract.</summary>
+    [Fact]
+    public async Task CloseRequested_WhenHandlerRepeatsTheCloseReentrantly_IsANoOpAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var popup = new Popup { Content = new ProbeControl() };
+            var root = new Overlay();
+            root.Children.Add(popup);
+            root.Attach(dispatcher);
+            popup.IsOpen = true;
+            new LayoutEngine().Layout(root, new Size(12, 6));
+            var requestedCalls = 0;
+            popup.CloseRequested += (_, _) =>
+            {
+                requestedCalls++;
+
+                if (requestedCalls == 1)
+                {
+                    popup.IsOpen = false;
+                }
+            };
+
+            popup.IsOpen = false;
+
+            requestedCalls.ShouldBe(1);
+            popup.IsOpen.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies disposing the Popup from a CloseRequested handler completes the close
+    /// without throwing ObjectDisposedException, and that the internal CloseTransitionCompleted
+    /// boundary - which private composite owners rely on to finish their own lifecycle exactly
+    /// once - still publishes exactly once for that one logical close.</summary>
+    [Fact]
+    public async Task CloseRequested_WhenHandlerDisposesPopupSynchronously_ClosesWithoutThrowingAndPublishesTransitionOnceAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var popup = new Popup { Content = new ProbeControl() };
+            var root = new Overlay();
+            root.Children.Add(popup);
+            root.Attach(dispatcher);
+            popup.IsOpen = true;
+            new LayoutEngine().Layout(root, new Size(12, 6));
+            var transitionCompletedCalls = 0;
+            popup.CloseRequested += (_, _) => popup.Dispose();
+            popup.CloseTransitionCompleted += (_, _) => transitionCompletedCalls++;
+
+            popup.IsOpen = false;
+
+            popup.IsDisposed.ShouldBeTrue();
+            popup.IsOpen.ShouldBeFalse();
+            transitionCompletedCalls.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a CloseRequested handler that repeats the same close request
+    /// synchronously is a documented no-op on the UNPRESENTED close path too (never attached to
+    /// a live Dispatcher, so SetOpen(false) takes CloseUnpresented rather than CloseSurfaceCore) -
+    /// only CloseSurfaceCore armed IsRequestingClose before this fix, leaving CloseUnpresented's
+    /// own reentrant close to fall through to the "cannot be reentered" throw.</summary>
+    [Fact]
+    public void CloseRequested_WhenHandlerRepeatsTheCloseReentrantlyOnAnUnpresentedPopup_IsANoOp()
+    {
+        var popup = new Popup { Content = new ProbeControl(), IsOpen = true };
+        var requestedCalls = 0;
+        popup.CloseRequested += (_, _) =>
+        {
+            requestedCalls++;
+
+            if (requestedCalls == 1)
+            {
+                popup.IsOpen = false;
+            }
+        };
+
+        _ = Should.NotThrow(() => popup.IsOpen = false);
+
+        requestedCalls.ShouldBe(1);
+        popup.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies disposing an UNPRESENTED Popup from its own CloseRequested handler
+    /// completes the close without throwing ObjectDisposedException - OnUnavailable(Disposed)
+    /// performs the full close since IsOpen is still true at that point, so CloseUnpresented's own
+    /// resumed CommitClosedState must recognize the disposal and stop rather than commit again.</summary>
+    [Fact]
+    public void CloseRequested_WhenHandlerDisposesAnUnpresentedPopupSynchronously_ClosesWithoutThrowing()
+    {
+        var popup = new Popup { Content = new ProbeControl(), IsOpen = true };
+        popup.CloseRequested += (_, _) => popup.Dispose();
+
+        _ = Should.NotThrow(() => popup.IsOpen = false);
+
+        popup.IsDisposed.ShouldBeTrue();
+        popup.IsOpen.ShouldBeFalse();
     }
 
     /// <summary>Verifies a callback cannot reverse an active open-state transaction.</summary>
@@ -1785,7 +2022,9 @@ public sealed class PopupTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies a scope disposed from entry callbacks is returned inactive without stale Popup tracking.</summary>
+    /// <summary>Verifies a scope disposed from entry callbacks is returned inactive without stale
+    /// Popup tracking, and that the popup this call itself opened is rolled back closed since the
+    /// callback's decision ended modality, not visibility.</summary>
     [Fact]
     public async Task OpenModal_WhenEntryCallbackDisposesScope_ReturnsInactiveAndAllowsReopenAsync()
     {
@@ -1813,7 +2052,7 @@ public sealed class PopupTests
 
             first.IsActive.ShouldBeFalse();
             modality.Active.ShouldBeNull();
-            popup.IsOpen.ShouldBeTrue();
+            popup.IsOpen.ShouldBeFalse();
             disposeOnEntry = false;
 
             using var second = popup.OpenModal();

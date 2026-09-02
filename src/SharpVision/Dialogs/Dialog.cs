@@ -553,19 +553,21 @@ public abstract class Dialog<TResult>: Window
         HasSelectedResult = true;
         NotifyPropertyChanged(nameof(SelectedResult), InvalidationImpact.None);
 
-        if (version != _selectedResultVersion)
+        if (!StillCurrent())
         {
             return;
         }
 
         NotifyPropertyChanged(nameof(HasSelectedResult), InvalidationImpact.None);
 
-        if (version != _selectedResultVersion)
+        if (!StillCurrent())
         {
             return;
         }
 
         ResultSelected?.Invoke(this, EventArgs.Empty);
+
+        bool StillCurrent() => !IsDisposed && version == _selectedResultVersion;
     }
 
     private void SettleCompletion()

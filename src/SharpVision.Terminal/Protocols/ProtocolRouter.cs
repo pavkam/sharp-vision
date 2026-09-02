@@ -104,6 +104,17 @@ public sealed class ProtocolRouter: IDisposable
     internal void EnableKittyKeyboardDisambiguation() =>
         _decoder.EnableKittyKeyboardDisambiguation();
 
+    /// <summary>Marks a DSR cursor-position query (<c>CSI 6n</c>) as genuinely outstanding, so the
+    /// byte-identical modified F3 keystroke shape is trusted as that reply until the query
+    /// completes.</summary>
+    internal void EnableCursorPositionQuery() =>
+        _decoder.EnableCursorPositionQuery();
+
+    /// <summary>Marks the outstanding DSR cursor-position query as no longer pending, restoring
+    /// modified F3 key delivery.</summary>
+    internal void DisableCursorPositionQuery() =>
+        _decoder.DisableCursorPositionQuery();
+
     private void InvokeDecoder(ReadOnlySpan<byte> input)
     {
         DecoderInvocationCount++;

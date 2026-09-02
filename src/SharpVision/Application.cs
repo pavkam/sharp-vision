@@ -345,8 +345,22 @@ public sealed class Application:
         }
 
         ObjectDisposedException.ThrowIf(_stopping, this);
+        var previous = _theme;
         _theme = value;
-        PublishTheme();
+
+        try
+        {
+            PublishTheme();
+        }
+        catch
+        {
+            if (!ReferenceEquals(Root.InheritedTheme, value))
+            {
+                _theme = previous;
+            }
+
+            throw;
+        }
 
         if (!_initialized)
         {
@@ -1431,33 +1445,56 @@ public sealed class Application:
                     new TerminalFocusEventArgs(record.Focus));
                 break;
             case RecordKind.Diagnostic:
-                Diagnostic?.Invoke(this, new DiagnosticEventArgs(record.Diagnostic));
+                if (RaiseIsolated(Diagnostic, new DiagnosticEventArgs(record.Diagnostic)) is { } diagnosticFailure)
+                {
+                    Report(diagnosticFailure);
+                }
+
                 ApplicationDiagnosticPromotionClassifier.ThrowIfConfigured(
                     _options.DiagnosticPromotions,
                     ApplicationDiagnosticPromotionClassifier.Classify(record.Diagnostic.Code));
                 break;
             case RecordKind.Response:
-                ResponseReceived?.Invoke(this, new ProtocolResponseEventArgs(record.Response));
+                if (RaiseIsolated(ResponseReceived, new ProtocolResponseEventArgs(record.Response))
+                    is { } responseFailure)
+                {
+                    Report(responseFailure);
+                }
+
                 break;
             case RecordKind.PaletteResponse:
-                PaletteResponseReceived?.Invoke(
-                    this,
-                    new PaletteResponseEventArgs(record.PaletteResponse));
+                if (RaiseIsolated(PaletteResponseReceived, new PaletteResponseEventArgs(record.PaletteResponse))
+                    is { } paletteResponseFailure)
+                {
+                    Report(paletteResponseFailure);
+                }
+
                 break;
             case RecordKind.MetricsResponse:
-                MetricsResponseReceived?.Invoke(
-                    this,
-                    new MetricsResponseEventArgs(record.MetricsResponse));
+                if (RaiseIsolated(MetricsResponseReceived, new MetricsResponseEventArgs(record.MetricsResponse))
+                    is { } metricsResponseFailure)
+                {
+                    Report(metricsResponseFailure);
+                }
+
                 break;
             case RecordKind.StatusResponse:
-                StatusResponseReceived?.Invoke(
-                    this,
-                    new StatusResponseEventArgs(record.StatusResponse));
+                if (RaiseIsolated(StatusResponseReceived, new StatusResponseEventArgs(record.StatusResponse))
+                    is { } statusResponseFailure)
+                {
+                    Report(statusResponseFailure);
+                }
+
                 break;
             case RecordKind.CapabilityResponse:
-                CapabilityResponseReceived?.Invoke(
-                    this,
-                    new CapabilityResponseEventArgs(record.CapabilityResponse!));
+                if (RaiseIsolated(
+                        CapabilityResponseReceived,
+                        new CapabilityResponseEventArgs(record.CapabilityResponse!))
+                    is { } capabilityResponseFailure)
+                {
+                    Report(capabilityResponseFailure);
+                }
+
                 break;
             case RecordKind.KittyGraphicsResponse:
                 _renderer?.AcceptKittyGraphicsResponse(record.KittyGraphicsResponse!);
@@ -1469,7 +1506,12 @@ public sealed class Application:
                 _terminalServices.ReceiveKittyClipboardPacket(record.KittyClipboardPacket!);
                 break;
             case RecordKind.GraphicsDiagnostic:
-                GraphicsDiagnostic?.Invoke(this, new GraphicsDiagnosticEventArgs(record.GraphicsDiagnostics));
+                if (RaiseIsolated(GraphicsDiagnostic, new GraphicsDiagnosticEventArgs(record.GraphicsDiagnostics))
+                    is { } graphicsDiagnosticFailure)
+                {
+                    Report(graphicsDiagnosticFailure);
+                }
+
                 ApplicationDiagnosticPromotionClassifier.ThrowIfConfigured(
                     _options.DiagnosticPromotions,
                     DiagnosticPromotion.Fallback);
@@ -1729,11 +1771,20 @@ public sealed class Application:
                 }
             }
 
-            ProcessInvalidation();
-
-            if (repost)
+            // ProcessInvalidation runs arbitrary consumer layout/render code and can throw. The
+            // repost below must still run in that case - otherwise a throwing pass leaves
+            // _inputWake stuck true (re-armed above because a record was already queued) with no
+            // drain scheduled to ever clear it, permanently starving Enqueue's early-return path.
+            try
             {
-                PostOrResetWake(DrainInput, () => _inputWake = false);
+                ProcessInvalidation();
+            }
+            finally
+            {
+                if (repost)
+                {
+                    PostOrResetWake(DrainInput, () => _inputWake = false);
+                }
             }
         }
     }
@@ -2212,7 +2263,7 @@ public sealed class Application:
     /// <param name="handler">The event's current invocation list, or null when unsubscribed.</param>
     /// <param name="eventArgs">The arguments to raise with.</param>
     /// <returns>The handler's failure, or null.</returns>
-    private Exception? RaiseIsolated(EventHandler? handler, EventArgs eventArgs)
+    internal Exception? RaiseIsolated(EventHandler? handler, EventArgs eventArgs)
     {
         if (handler is null)
         {
@@ -2232,7 +2283,7 @@ public sealed class Application:
 
     /// <inheritdoc cref="RaiseIsolated(EventHandler?, EventArgs)"/>
     /// <typeparam name="TArgs">The event argument type.</typeparam>
-    private Exception? RaiseIsolated<TArgs>(EventHandler<TArgs>? handler, TArgs eventArgs)
+    internal Exception? RaiseIsolated<TArgs>(EventHandler<TArgs>? handler, TArgs eventArgs)
     {
         if (handler is null)
         {
@@ -2254,7 +2305,7 @@ public sealed class Application:
     /// skip a following transition either.</summary>
     /// <param name="action">The step to run.</param>
     /// <returns>The step's failure, or null.</returns>
-    private static Exception? RaiseIsolated(Action action)
+    internal static Exception? RaiseIsolated(Action action)
     {
         try
         {
@@ -2320,7 +2371,10 @@ public sealed class Application:
             return;
         }
 
-        Idle?.Invoke(this, EventArgs.Empty);
+        if (RaiseIsolated(Idle, EventArgs.Empty) is { } idleFailure)
+        {
+            Report(idleFailure);
+        }
 
         if (!IsRendering && !Suspended() && Root.Pending != Invalidation.None)
         {
@@ -2407,7 +2461,21 @@ public sealed class Application:
         // whole CleanupTimeout window does this still propagate, same as before this loop existed.
         try
         {
-            var beginStoppingFailure = await InvokeWithQueueRetryAsync(() => BeginStopping(forced: true, failure));
+            var beginStoppingFailure = await InvokeWithQueueRetryAsync(() =>
+            {
+                _ = BeginStopping(forced: true, failure);
+
+                // BeginStopping's _lifetime.Cancel() does not itself flush _outOfBand: a prior
+                // DrainOutOfBand call can have bailed out at the Suspended() gate while the
+                // application was suspended-but-not-stopping, clearing _outOfBandWake with bytes
+                // still buffered. PostOutOfBand refuses to post once _stopping is set, so no later
+                // callback would ever revisit those bytes - flush them here, in the same spirit as
+                // FinishWithoutSessionAsync's equivalent flush for the never-started path.
+                if (!IsRendering && HasPendingOutOfBand())
+                {
+                    FlushOutOfBandOnStop();
+                }
+            });
 
             if (beginStoppingFailure is not null)
             {
@@ -2496,7 +2564,7 @@ public sealed class Application:
         }
     }
 
-    private void Report(Exception exception)
+    internal void Report(Exception exception)
     {
         Failure ??= exception;
         var eventArgs = new UnhandledEventArgs(exception);
@@ -2559,7 +2627,7 @@ public sealed class Application:
         }
 
         // A frame render owns the writer; CompleteRender re-drains afterward.
-        if (IsRendering || Suspended())
+        if (IsRendering)
         {
             return;
         }
@@ -2571,6 +2639,11 @@ public sealed class Application:
                 FlushOutOfBandOnStop();
             }
 
+            return;
+        }
+
+        if (Suspended())
+        {
             return;
         }
 

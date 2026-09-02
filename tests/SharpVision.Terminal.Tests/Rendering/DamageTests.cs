@@ -255,6 +255,26 @@ public sealed class DamageTests
         Damage.PlacementsChanged(occluded, copy).ShouldBeFalse();
     }
 
+    /// <summary>
+    /// Verifies a present overlay with no active cell anywhere hashes identically to a null overlay,
+    /// so pairing a null-overlay frame against an all-inactive-overlay frame still finds a scroll
+    /// instead of every row probe mismatching purely from the overlay's presence.
+    /// </summary>
+    [Fact]
+    public void TryFindVerticalScroll_WhenOneOverlayIsNullAndTheOtherHasNoActiveCells_DetectsScroll()
+    {
+        using var front = CreateRows("head", "1111", "2222", "3333", "4444");
+        using var back = CreateRows("head", "2222", "3333", "4444", "5555");
+        var backOverlay = new GraphicsCellOverlay(back);
+
+        var found = Damage.TryFindVerticalScroll(front, back, frontOverlay: null, backOverlay, out var scroll);
+
+        found.ShouldBeTrue();
+        scroll.Top.ShouldBe(1);
+        scroll.Bottom.ShouldBe(4);
+        scroll.SourceOffset.ShouldBe(1);
+    }
+
     internal static List<DamageSpan> GetSpans(Frame? front, Frame back, bool full = false)
     {
         List<DamageSpan> result = [.. Damage.Enumerate(front, back, full)];
@@ -266,6 +286,19 @@ public sealed class DamageTests
     {
         var frame = new Frame(new Size(width ?? value.Length, 1));
         _ = frame.Canvas.Draw(value.AsSpan(), new Point(0, 0));
+        return frame;
+    }
+
+    private static Frame CreateRows(params string[] rows)
+    {
+        var width = rows.Max(static row => row.Length);
+        var frame = new Frame(new Size(width, rows.Length));
+
+        for (var row = 0; row < rows.Length; row++)
+        {
+            _ = frame.Canvas.Draw(rows[row], new Point(0, row));
+        }
+
         return frame;
     }
 

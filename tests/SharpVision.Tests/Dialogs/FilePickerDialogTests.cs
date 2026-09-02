@@ -260,6 +260,39 @@ public sealed class FilePickerDialogTests
         result.Paths.ShouldHaveSingleItem().ShouldBe(file);
     }
 
+    /// <summary>Verifies a PropertyChanged subscriber that disposes the dialog while Status is
+    /// being republished as part of a selection change does not let the following SelectedPaths
+    /// notification run against a disposed control - PublishSelection previously notified
+    /// SelectedPaths unconditionally after SetStatus with no disposal guard between them.</summary>
+    [Fact]
+    public async Task PublishSelection_WhenPropertyChangedSubscriberDisposesOnStatus_DoesNotThrowAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-dispose-on-status"));
+        var file = Path.Combine(directory, "notes.txt");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory, new FilePickerEntry("notes.txt", file, isDirectory: false, isHidden: false));
+        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(80, 24),
+            TestContext.Current.CancellationToken);
+        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
+        dialog.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(FilePickerDialog.Status))
+            {
+                dialog.Dispose();
+            }
+        };
+
+        // Act
+        await Should.NotThrowAsync(() => surface.Pointer.ClickAsync(list, new Point(1, 0)));
+
+        // Assert
+        dialog.IsDisposed.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a double pointer click on a file accepts the dialog exactly like invoking it
     /// with the keyboard, instead of only updating the selection and leaving the dialog open.</summary>
     [Fact]

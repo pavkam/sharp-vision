@@ -26,10 +26,11 @@ documentation, tests, and showcase example agree.
   package so an application does not carry the embedded language definitions
   unless it wants them.
 - `examples/` contains runnable sample applications (`Showcase`, `Snake`,
-  `TextEditor`, `ProcessMonitor`). None of them has, or needs, a dedicated test
-  project: an example demonstrates and visually proves behavior that the owning
-  library's own test project already covers; testing the example itself would
-  only duplicate that coverage against throwaway application code.
+  `TextEditor`, `ProcessMonitor`, `TerminalDebugger`). None of them has, or
+  needs, a dedicated test project: an example demonstrates and visually proves
+  behavior that the owning library's own test project already covers; testing
+  the example itself would only duplicate that coverage against throwaway
+  application code.
 - `tests/` contains one test project per packable `src/` project
   (`SharpVision.Tests`, `SharpVision.Terminal.Tests`,
   `SharpVision.Document.Tests`, `SharpVision.FigletFonts.Tests`,

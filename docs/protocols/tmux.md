@@ -39,15 +39,16 @@ envelope limit is 1 MiB with a hard maximum of 16 MiB. Construction rejects
 it has at least one layer, an explicit outer profile, an approved operation, and
 a visibility-compatible passthrough mode.
 
-The route's capability-query, clipboard, and Kitty/sixel/iTerm2 graphics
-families are connected typed output operations. A route wraps the farthest layer
-first, then works inward so the nearest multiplexer sees the outermost wire
-envelope. Each tmux layer doubles every ESC again. It prepares the complete
-bounded result before mutating the caller's destination. Each complete Kitty
-APC, sixel DCS, iTerm2 multipart OSC, OSC 52, or Kitty OSC 5522 string is routed
-independently. This includes the mode-5522 enable and cleanup strings used for
-terminal-initiated paste notifications. Controls receive no raw tunneling
-surface; only the protocol and runtime layers call the bounded route writers.
+The route's capability-query, clipboard, Kitty/sixel/iTerm2 graphics, desktop
+notification, title, and bell families are connected typed output operations. A
+route wraps the farthest layer first, then works inward so the nearest
+multiplexer sees the outermost wire envelope. Each tmux layer doubles every ESC
+again. It prepares the complete bounded result before mutating the caller's
+destination. Each complete Kitty APC, sixel DCS, iTerm2 multipart OSC, OSC 52,
+or Kitty OSC 5522 string is routed independently. This includes the mode-5522
+enable and cleanup strings used for terminal-initiated paste notifications.
+Controls receive no raw tunneling surface; only the protocol and runtime layers
+call the bounded route writers.
 
 A mixed route may contain at most one GNU screen layer, and that layer must be
 farthest. Screen therefore receives the original CSI query batch rather than a
@@ -107,13 +108,14 @@ and ST boundary. Both reject malformed input before destination mutation.
 ## Supported features
 
 SharpVision provides typed passthrough wrapping for approved query, clipboard,
-and graphics operations, bounded unwrapping of replies, correct ESC doubling,
-nested-depth limits, and an explicit policy when passthrough is disabled.
-Capability queries, OSC 52 and Kitty OSC 5522 clipboard traffic, and
-Kitty/sixel/iTerm2 graphics are implemented. Clipboard output and matching
-inbound packets cross only a route explicitly approved for the `Clipboard`
-family; Screen routes are unavailable for that family. Arbitrary payloads from
-controls are never tunneled.
+graphics, notification, title, and bell operations, bounded unwrapping of
+replies, correct ESC doubling, nested-depth limits, and an explicit policy when
+passthrough is disabled. Capability queries, OSC 52 and Kitty OSC 5522 clipboard
+traffic, Kitty/sixel/iTerm2 graphics, desktop notifications, and terminal title
+and bell events are implemented. Clipboard output and matching inbound packets
+cross only a route explicitly approved for the `Clipboard` family; Screen routes
+are unavailable for that family. Arbitrary payloads from controls are never
+tunneled.
 
 ## Compatibility evidence
 

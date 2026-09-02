@@ -146,13 +146,11 @@ public sealed class ModalityManager: IDisposable
         }
 
         var previousFocus = _focus.Focused;
-        var previousCapture = _pointer.Captured;
         var scope = new ModalScope(
             this,
             root,
             outsideInteraction,
-            previousFocus,
-            previousCapture);
+            previousFocus);
         _stack.Add(scope);
         scope.IsActive = true;
 
@@ -168,11 +166,6 @@ public sealed class ModalityManager: IDisposable
                 excludedSubtrees: null,
                 scope,
                 previousFocus);
-
-            if (target is null)
-            {
-                _activate?.Invoke(root);
-            }
 
             ObjectDisposedException.ThrowIf(_isDisposed, this);
             return scope;
@@ -1045,6 +1038,13 @@ public sealed class ModalityManager: IDisposable
                         attempted,
                         entryScope,
                         entryPreviousFocus);
+
+                    return;
+                }
+
+                if (preferred is null && entryScope is not null)
+                {
+                    _activate?.Invoke(entryScope.Root);
                 }
             },
             isValid);

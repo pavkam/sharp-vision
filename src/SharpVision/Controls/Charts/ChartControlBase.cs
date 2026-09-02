@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Charts;
 
+using System.Collections.Immutable;
+
 /// <summary>Provides the state, style, and <see cref="IChartControl"/> plumbing shared by every
 /// concrete chart control.</summary>
 [PublicAPI]
@@ -14,6 +16,14 @@ public abstract class ChartControlBase: ControlBase, IStyled<ChartStyle>, IChart
     private ChartScale _scale;
     private bool _showCategoryLabels;
     private bool _showValueLabels;
+
+    // Instance-level rather than the usual static readonly field: unlike every other registered
+    // Theme value dependency in this codebase, the resolved value here depends on this control's
+    // own live series and point data, not on the Theme alone, so it cannot be shared across
+    // instances of the type. Registered through SetThemeValueDependency (not ResolveThemeValue) so
+    // registration itself never re-walks every series and point - only an actual Theme swap does,
+    // by calling the resolver through GetImpact.
+    private readonly ThemeValueDependency<ImmutableArray<Color>> _seriesColorsThemeDependency;
 
     /// <summary>Initializes common chart state with family-specific presentation defaults.</summary>
     /// <param name="scale">The authored scale bounds and zero-inclusion policy.</param>
@@ -35,6 +45,10 @@ public abstract class ChartControlBase: ControlBase, IStyled<ChartStyle>, IChart
         _showCategoryLabels = showCategoryLabels;
         _showValueLabels = showValueLabels;
         _observer = new ChartDataObserver(this);
+        _seriesColorsThemeDependency = new ThemeValueDependency<ImmutableArray<Color>>(
+            ResolveAssignedSeriesColors,
+            InvalidationImpact.Render,
+            SeriesColorSnapshotComparer.Instance);
         IsHitTestVisible = false;
     }
 
@@ -153,6 +167,64 @@ public abstract class ChartControlBase: ControlBase, IStyled<ChartStyle>, IChart
 
     void IChartControl.OnChartPropertyChanged(string propertyName, InvalidationImpact impact) =>
         NotifyPropertyChanged(propertyName, impact);
+
+    Color IChartControl.ResolveSeriesColor(ControlColor color)
+    {
+        // Registers, but deliberately does not resolve: resolving would re-walk every series and
+        // point on every point ChartRenderer draws, turning an O(points) render into O(points^2).
+        // The framework only ever calls the dependency's own resolver from GetImpact, which runs
+        // once per actual Theme swap - exactly the frequency this snapshot needs.
+        SetThemeValueDependency(_seriesColorsThemeDependency, active: true);
+        return ResolveColor(color, Theme);
+    }
+
+    /// <summary>Resolves every currently assigned series or point color override against one
+    /// Theme, skipping series and points that fall back to the style-owned palette - that path is
+    /// already covered by <see cref="ChartStyle"/>'s own slot comparison.</summary>
+    private ImmutableArray<Color> ResolveAssignedSeriesColors(Theme theme)
+    {
+        var builder = ImmutableArray.CreateBuilder<Color>();
+
+        foreach (var series in Series)
+        {
+            if (series.Color is { } seriesColor)
+            {
+                builder.Add(ResolveColor(seriesColor, theme));
+            }
+
+            foreach (var point in series.Points)
+            {
+                if (point.Color is { } pointColor)
+                {
+                    builder.Add(ResolveColor(pointColor, theme));
+                }
+            }
+        }
+
+        return builder.ToImmutable();
+    }
+
+    // ImmutableArray<T>'s own Equals compares the underlying array reference, not its elements -
+    // wrong here, since ResolveAssignedSeriesColors builds a fresh array on every call. This
+    // compares the resolved colors themselves, in assignment order.
+    private sealed class SeriesColorSnapshotComparer: IEqualityComparer<ImmutableArray<Color>>
+    {
+        internal static readonly SeriesColorSnapshotComparer Instance = new();
+
+        public bool Equals(ImmutableArray<Color> x, ImmutableArray<Color> y) => x.AsSpan().SequenceEqual(y.AsSpan());
+
+        public int GetHashCode(ImmutableArray<Color> obj)
+        {
+            var hash = new HashCode();
+
+            foreach (var color in obj.AsSpan())
+            {
+                hash.Add(color);
+            }
+
+            return hash.ToHashCode();
+        }
+    }
 
     /// <inheritdoc/>
     protected sealed override Size MeasureOverride(Constraint constraint)

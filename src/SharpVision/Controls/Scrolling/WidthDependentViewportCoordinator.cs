@@ -189,14 +189,9 @@ internal sealed class WidthDependentViewportCoordinator
             return;
         }
 
-        foreach (var subscriber in handlers.GetInvocationList())
-        {
-            if (_transitionVersion != version)
-            {
-                break;
-            }
-
-            ((EventHandler<ScrollChangedEventArgs>) subscriber)(_eventSender, eventArgs);
-        }
+        EventPublication.Publish<EventHandler<ScrollChangedEventArgs>>(
+            handlers,
+            () => _transitionVersion == version,
+            handler => handler(_eventSender, eventArgs));
     }
 }

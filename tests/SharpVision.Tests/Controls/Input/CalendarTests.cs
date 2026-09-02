@@ -469,6 +469,76 @@ public sealed class CalendarTests
         calendar.ActiveDate.ShouldBe(new DateOnly(2026, 7, 13));
     }
 
+    /// <summary>Verifies Home snaps to MinimumDate when it falls inside the active week rather
+    /// than silently no-opping because the week start precedes MinimumDate.</summary>
+    [Fact]
+    public void Dispatch_WhenMinimumDateFallsInsideActiveWeek_MovesHomeToMinimumDate()
+    {
+        // Arrange
+        var active = new DateOnly(2026, 7, 17);
+        using var calendar = new UiCalendar
+        {
+            Culture = CultureInfo.InvariantCulture,
+            Selection = new DateInterval(active, active)
+        };
+        calendar.Selection = null;
+        calendar.MinimumDate = new DateOnly(2026, 7, 15);
+
+        // Act
+        var eventArgs = Key(calendar, Code.Home);
+
+        // Assert
+        eventArgs.IsHandled.ShouldBeTrue();
+        calendar.ActiveDate.ShouldBe(calendar.MinimumDate);
+    }
+
+    /// <summary>Verifies End snaps to MaximumDate when it falls inside the active week rather
+    /// than silently no-opping because the week end exceeds MaximumDate.</summary>
+    [Fact]
+    public void Dispatch_WhenMaximumDateFallsInsideActiveWeek_MovesEndToMaximumDate()
+    {
+        // Arrange
+        var active = new DateOnly(2026, 7, 13);
+        using var calendar = new UiCalendar
+        {
+            Culture = CultureInfo.InvariantCulture,
+            Selection = new DateInterval(active, active)
+        };
+        calendar.Selection = null;
+        calendar.MaximumDate = new DateOnly(2026, 7, 15);
+
+        // Act
+        var eventArgs = Key(calendar, Code.End);
+
+        // Assert
+        eventArgs.IsHandled.ShouldBeTrue();
+        calendar.ActiveDate.ShouldBe(calendar.MaximumDate);
+    }
+
+    /// <summary>Verifies Home continues walking inward past MinimumDate when MinimumDate itself
+    /// is also blocked, rather than stopping on or misfiring at the blocked boundary.</summary>
+    [Fact]
+    public void Dispatch_WhenMinimumDateInsideActiveWeekIsBlocked_MovesHomePastIt()
+    {
+        // Arrange
+        var active = new DateOnly(2026, 7, 17);
+        using var calendar = new UiCalendar
+        {
+            Culture = CultureInfo.InvariantCulture,
+            Selection = new DateInterval(active, active)
+        };
+        calendar.Selection = null;
+        calendar.MinimumDate = new DateOnly(2026, 7, 15);
+        calendar.BlockedDates.Block(new DateOnly(2026, 7, 15));
+
+        // Act
+        var eventArgs = Key(calendar, Code.Home);
+
+        // Assert
+        eventArgs.IsHandled.ShouldBeTrue();
+        calendar.ActiveDate.ShouldBe(new DateOnly(2026, 7, 16));
+    }
+
     /// <summary>Verifies directional movement skips blocked dates and follows the active month.</summary>
     [Fact]
     public void Dispatch_WhenRightMovesAcrossMonth_SkipsBlockedDate()

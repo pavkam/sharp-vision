@@ -46,6 +46,128 @@ public sealed class TableSurfaceTests
         invoked.ShouldBe(0);
     }
 
+    /// <summary>Verifies a selection callback that disables or detaches an eager Table during
+    /// keyboard-driven active-cell navigation does not let MoveActive, MovePage, or MoveToEndpoint
+    /// bring a no-longer-available cell into view - the keyboard counterpart of the pointer
+    /// regression above, covering every navigation keystroke that funnels through one of those
+    /// three methods.</summary>
+    [Theory]
+    [InlineData(Code.Up, false)]
+    [InlineData(Code.Up, true)]
+    [InlineData(Code.Down, false)]
+    [InlineData(Code.Down, true)]
+    [InlineData(Code.Left, false)]
+    [InlineData(Code.Left, true)]
+    [InlineData(Code.Right, false)]
+    [InlineData(Code.Right, true)]
+    [InlineData(Code.PageUp, false)]
+    [InlineData(Code.PageUp, true)]
+    [InlineData(Code.PageDown, false)]
+    [InlineData(Code.PageDown, true)]
+    [InlineData(Code.Home, false)]
+    [InlineData(Code.Home, true)]
+    [InlineData(Code.End, false)]
+    [InlineData(Code.End, true)]
+    public async Task Keyboard_WhenSelectionCallbackMakesTableUnavailableDuringNavigation_DoesNotThrowAsync(
+        Code code,
+        bool detach)
+    {
+        // Arrange
+        var row = new TableRow([new ControlText("One")]);
+        var table = new Table { ShowHeader = false, ShowGridLines = false };
+        table.Columns.Add(TableColumn.Fixed("Name", 5));
+        table.Rows.Add(row);
+        var root = new Overlay { Children = { table } };
+        table.SelectionChanged += (_, _) =>
+        {
+            if (detach)
+            {
+                _ = root.Children.Remove(table);
+            }
+            else
+            {
+                table.IsEnabled = false;
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(8, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(table);
+
+        // Act
+        await Should.NotThrowAsync(() => surface.Keyboard.PressAsync(code));
+
+        // Assert - the callback above actually ran and made the table unavailable, so the
+        // preceding line exercised the guard rather than passing vacuously.
+        if (detach)
+        {
+            root.Children.ShouldNotContain(table);
+        }
+        else
+        {
+            table.IsEnabled.ShouldBeFalse();
+        }
+    }
+
+    /// <summary>Verifies a PropertyChanged subscriber that removes the active row, or disposes the
+    /// table outright, while ActivateCurrent's own SetActive call is still publishing that
+    /// transition, stops ActivateCurrent from touching the now-stale row afterward - matching the
+    /// pointer path's equivalent guard against a subscriber tearing down its target mid-gesture.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Keyboard_WhenActiveRowChangeCallbackMakesRowUnavailable_DoesNotInvokeRowAsync(bool disposeTable)
+    {
+        // Arrange
+        var first = new TableRow([new ControlText("One")]);
+        var table = new Table { ShowHeader = false, ShowGridLines = false };
+        table.Columns.Add(TableColumn.Fixed("Name", 5));
+        table.Rows.Add(first);
+        var root = new Overlay { Children = { table } };
+        var invoked = 0;
+        table.RowInvoked += (_, _) => invoked++;
+        table.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName != nameof(Table.ActiveRow))
+            {
+                return;
+            }
+
+            if (disposeTable)
+            {
+                table.Dispose();
+            }
+            else
+            {
+                _ = table.Rows.Remove(first);
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(8, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(table);
+        table.ActiveRow.ShouldBeNull();
+
+        // Act
+        await Should.NotThrowAsync(() => surface.Keyboard.PressAsync(Code.Enter));
+
+        // Assert
+        invoked.ShouldBe(0);
+
+        if (disposeTable)
+        {
+            table.IsDisposed.ShouldBeTrue();
+        }
+        else
+        {
+            table.Rows.ShouldNotContain(first);
+        }
+    }
+
     /// <summary>Verifies every column kind aligns headers, grid lines, combining text, and wide cells exactly.</summary>
     [Fact]
     public async Task Render_WhenColumnsMixKinds_DrawsExactHeaderGridAndUnicodeCellsAsync()
@@ -382,6 +504,126 @@ public sealed class TableSurfaceTests
                               Three
                                One
                              """);
+    }
+
+    /// <summary>Verifies toggling ShowGridLines after an already-completed layout pass, under the
+    /// SAME outer constraint, actually recomputes the retained TablePresenter's column gap instead
+    /// of leaving cell positions stale. Table's ShowGridLines setter only ever invalidated Table
+    /// itself; the presenter's own dirty bit stayed clear and its cached measure constraint was
+    /// unchanged, so its Measure/Arrange short-circuited and the second column never actually
+    /// slid over to close the freed grid-line gap.</summary>
+    [Fact]
+    public async Task Property_WhenShowGridLinesChangesAfterLayout_RepositionsColumnsAsync()
+    {
+        // Arrange - two one-cell-wide fixed columns; the mount is exactly wide enough for both
+        // columns plus the one-cell grid-line gap between them.
+        var table = new Table
+        {
+            ShowHeader = false,
+            ScrollBars = ScrollBars.None,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        table.Columns.Add(TableColumn.Fixed("A", 1));
+        table.Columns.Add(TableColumn.Fixed("B", 1));
+        table.Rows.Add(new TableRow([new ControlText("X"), new ControlText("Y")]));
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(3, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert the first layout pass placed the grid-line-separated columns as expected.
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("X");
+        surface.Cell(new Point(2, 0)).Text.ShouldBe("Y");
+
+        // Act - disable grid lines with the identical outer constraint (same mount Size) and force
+        // another layout pass.
+        await surface.UpdateAsync(() => table.ShowGridLines = false, "disable Table grid lines");
+
+        // Assert - removing the one-cell grid-line gap must shift column B left by one cell,
+        // leaving the freed trailing cell blank.
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("X");
+        surface.Cell(new Point(1, 0)).Text.ShouldBe("Y");
+        surface.Cell(new Point(2, 0)).Text.ShouldBe(" ");
+    }
+
+    /// <summary>Verifies adding a column after an already-completed layout pass, under the SAME
+    /// outer constraint, actually grows the retained TablePresenter's cached column-width array
+    /// instead of leaving it stale. Table's ColumnsChanged handler only ever invalidated Table
+    /// itself; without also invalidating the presenter, its Measure never reran, so its header
+    /// render loop kept iterating the live (now larger) Columns collection against the presenter's
+    /// stale, shorter ColumnWidths array.</summary>
+    [Fact]
+    public async Task Columns_WhenColumnIsAddedAfterLayout_RepositionsHeaderColumnsAsync()
+    {
+        // Arrange - a single already-laid-out column with no data rows, since every existing row
+        // must retain one cell per column across a column-count change.
+        var table = new Table
+        {
+            ScrollBars = ScrollBars.None,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        table.Columns.Add(TableColumn.Fixed("A", 4));
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(9, 1),
+            TestContext.Current.CancellationToken);
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("A");
+
+        // Act - add a second column with the identical outer constraint and force another layout
+        // pass.
+        await Should.NotThrowAsync(() => surface.UpdateAsync(
+            () => table.Columns.Add(TableColumn.Fixed("B", 4)),
+            "add second Table column"));
+
+        // Assert - the new column's header is drawn immediately after the first (past its width
+        // and the one-cell grid-line gap), matching a fresh layout pass rather than a stale one.
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("A");
+        surface.Cell(new Point(5, 0)).Text.ShouldBe("B");
+    }
+
+    /// <summary>Verifies changing RowSpacing after an already-completed layout pass, under the SAME
+    /// outer constraint, actually recomputes the retained TablePresenter's row gap instead of
+    /// leaving row positions stale. Table's RowSpacing setter only ever invalidated Table itself;
+    /// the presenter's own dirty bit stayed clear and its cached arrange slot was unchanged, so its
+    /// Measure/Arrange short-circuited and the second row never actually moved down to open the
+    /// newly requested gap.</summary>
+    [Fact]
+    public async Task Property_WhenRowSpacingChangesAfterLayout_RepositionsRowsAsync()
+    {
+        // Arrange - two one-row-tall cells in a single fixed column, mounted exactly tall enough
+        // for both rows plus one spare cell - just enough room for one row of spacing once added.
+        var table = new Table
+        {
+            ShowHeader = false,
+            ShowGridLines = false,
+            ScrollBars = ScrollBars.None,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        table.Columns.Add(TableColumn.Fixed("V", 1));
+        table.Rows.Add(new TableRow([new ControlText("X")]));
+        table.Rows.Add(new TableRow([new ControlText("Y")]));
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(1, 3),
+            TestContext.Current.CancellationToken);
+
+        // Assert the first layout pass stacked the rows with no gap between them.
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("X");
+        surface.Cell(new Point(0, 1)).Text.ShouldBe("Y");
+        surface.Cell(new Point(0, 2)).Text.ShouldBe(" ");
+
+        // Act - request one cell of row spacing with the identical outer constraint (same mount
+        // Size) and force another layout pass.
+        await surface.UpdateAsync(() => table.RowSpacing = 1, "add Table row spacing");
+
+        // Assert - the second row must move down into the previously spare cell, opening a blank
+        // gap where it used to sit.
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("X");
+        surface.Cell(new Point(0, 1)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 2)).Text.ShouldBe("Y");
     }
 
     /// <summary>Verifies both-axis wheel scrolling stays aligned and resize clamps offsets while revealing all rows.</summary>

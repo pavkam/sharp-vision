@@ -41,6 +41,15 @@ public sealed class MultiplexerRoute
     /// <summary>Gets whether bounded clipboard OSC strings can reach the explicit outer terminal.</summary>
     public bool CanRouteClipboard => Policy.Allows(MultiplexingOperation.Clipboard) && !Policy.ContainsScreen;
 
+    /// <summary>Gets whether a bounded notification OSC string can reach the explicit outer terminal.</summary>
+    public bool CanRouteNotifications => Policy.Allows(MultiplexingOperation.Notifications) && !Policy.ContainsScreen;
+
+    /// <summary>Gets whether a bounded title command can reach the explicit outer terminal.</summary>
+    public bool CanRouteTitle => Policy.Allows(MultiplexingOperation.Title) && !Policy.ContainsScreen;
+
+    /// <summary>Gets whether a bounded bell command can reach the explicit outer terminal.</summary>
+    public bool CanRouteBell => Policy.Allows(MultiplexingOperation.Bell) && !Policy.ContainsScreen;
+
     /// <summary>Gets the exact largest inner graphics frame for a known ESC count.</summary>
     /// <param name="escapeBytes">The non-negative ESC byte count in the complete inner frame.</param>
     /// <returns>A positive inner byte bound, or zero when graphics cannot be routed.</returns>
@@ -112,6 +121,48 @@ public sealed class MultiplexerRoute
                !commands.IsEmpty &&
                commands.Length <= Policy.MaxEnvelopeBytes &&
                TryWritePassthrough(destination, commands, allowScreen: false);
+    }
+
+    /// <summary>Writes one complete bounded notification OSC string through authorized tmux layers.</summary>
+    /// <param name="destination">The non-null synchronous destination.</param>
+    /// <param name="command">The complete OSC 9 or OSC 777 notification string.</param>
+    /// <returns>True on complete atomic encoding; otherwise false without destination mutation.</returns>
+    public bool TryWriteNotification(IBufferWriter<byte> destination, ReadOnlySpan<byte> command)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+
+        return CanRouteNotifications &&
+               !command.IsEmpty &&
+               command.Length <= Policy.MaxEnvelopeBytes &&
+               TryWritePassthrough(destination, command, allowScreen: false);
+    }
+
+    /// <summary>Writes one complete bounded title command through authorized tmux layers.</summary>
+    /// <param name="destination">The non-null synchronous destination.</param>
+    /// <param name="command">The complete OSC 2/0 title string or described terminfo title program.</param>
+    /// <returns>True on complete atomic encoding; otherwise false without destination mutation.</returns>
+    public bool TryWriteTitle(IBufferWriter<byte> destination, ReadOnlySpan<byte> command)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+
+        return CanRouteTitle &&
+               !command.IsEmpty &&
+               command.Length <= Policy.MaxEnvelopeBytes &&
+               TryWritePassthrough(destination, command, allowScreen: false);
+    }
+
+    /// <summary>Writes one complete bounded bell command through authorized tmux layers.</summary>
+    /// <param name="destination">The non-null synchronous destination.</param>
+    /// <param name="command">The complete BEL byte or described terminfo bell program.</param>
+    /// <returns>True on complete atomic encoding; otherwise false without destination mutation.</returns>
+    public bool TryWriteBell(IBufferWriter<byte> destination, ReadOnlySpan<byte> command)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+
+        return CanRouteBell &&
+               !command.IsEmpty &&
+               command.Length <= Policy.MaxEnvelopeBytes &&
+               TryWritePassthrough(destination, command, allowScreen: false);
     }
 
     private bool TryWritePassthrough(
@@ -284,13 +335,20 @@ public sealed class MultiplexerRoute
     {
         var sink = new ReplyValidationSink();
         using var decoder = new InputDecoder(sink);
+
+        // This decoder only ever validates bytes already unwrapped from an authorized route
+        // reply, never live keyboard input, so a CSI 1;<n>R shape here is always a genuine
+        // cursor-position reply and never a modified-F3 keystroke to disambiguate.
+        decoder.EnableCursorPositionQuery();
         decoder.Decode(reply);
         decoder.Complete();
         return sink.Valid && sink.Operation switch
         {
             MultiplexingOperation.CapabilityQueries => CanRouteCapabilityQueries,
             MultiplexingOperation.Clipboard => CanRouteClipboard,
-            MultiplexingOperation.None or MultiplexingOperation.Graphics => false,
+            MultiplexingOperation.None or MultiplexingOperation.Graphics or
+                MultiplexingOperation.Notifications or MultiplexingOperation.Title or
+                MultiplexingOperation.Bell => false,
             _ => throw new UnreachableException("Reply validation emits only defined operation families.")
         };
     }

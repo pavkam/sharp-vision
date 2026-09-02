@@ -253,4 +253,32 @@ public sealed class DocumentSurfaceTests
         // Assert
         result.ShouldBe((true, 1, 0));
     }
+
+    /// <summary>Verifies keyboard focus is genuinely observable on a mounted Document's own
+    /// rendered body through the theme's focused text cue without reversing the whole surface
+    /// behind its independently colored heading, quote, code, table, and link faces.</summary>
+    [Fact]
+    public async Task Input_WhenMountedDocumentReceivesFocus_UsesTextCueWithoutReversingSurfaceAsync()
+    {
+        // Arrange
+        var document = new Document { Blocks = { new DocumentParagraph("Body") } };
+        await using var surface = await ComponentSurface.MountAsync(
+            document,
+            new Size(12, 2),
+            ThemeCatalog.Load("default-dark"),
+            TestContext.Current.CancellationToken);
+        var restingStyle = surface.Cell(default).Style;
+        (restingStyle.Attributes & TerminalAttributes.Bold).ShouldBe(TerminalAttributes.None);
+
+        // Act
+        await surface.UpdateAsync(() => document.Focus().ShouldBeTrue(), "focus document");
+
+        // Assert
+        document.IsFocused.ShouldBeTrue();
+        var focusedStyle = surface.Cell(default).Style;
+        (focusedStyle.Attributes & TerminalAttributes.Bold).ShouldBe(TerminalAttributes.Bold);
+        (focusedStyle.Attributes & TerminalAttributes.Reverse).ShouldBe(TerminalAttributes.None);
+        focusedStyle.Foreground.ShouldBe(restingStyle.Foreground);
+        focusedStyle.Background.ShouldBe(restingStyle.Background);
+    }
 }

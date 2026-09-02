@@ -117,6 +117,14 @@ internal sealed class RetainedPartProperty<T>: IDisposable
         Dispose();
     }
 
+    // Trusts the source's own notification rather than re-deriving "did it change" from T's
+    // equality: for a style-valued T (e.g. CalendarStyle), the value can hold an unresolved
+    // semantic color token (SemanticColor.Accent) that compares equal before and after a theme
+    // swap even though the source's own theme-aware invalidation logic already decided the swap
+    // was meaningful enough to raise its PropertyChanged. Re-checking with the default T comparer
+    // here would silently swallow exactly that class of change. The explicit Value setter and the
+    // external no-arg Refresh() below are different: they have no such authoritative signal to
+    // trust, so they keep the equality-gated Refresh(long) path.
     private void OnSourcePropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
         _ = sender;
@@ -125,7 +133,13 @@ internal sealed class RetainedPartProperty<T>: IDisposable
             string.Equals(eventArgs.PropertyName, _sourcePropertyName, StringComparison.Ordinal))
         {
             _sourceVersion++;
-            Refresh(_sourceVersion);
+            var version = _sourceVersion;
+            _observed = _get();
+
+            if (_sourceVersion == version)
+            {
+                _owner.NotifyRetainedPartPropertyChanged(_ownerPropertyName);
+            }
         }
     }
 

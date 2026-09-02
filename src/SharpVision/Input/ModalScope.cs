@@ -19,13 +19,11 @@ public sealed class ModalScope: IDisposable
     /// <param name="root">The validated primary plane root.</param>
     /// <param name="outsideInteraction">The validated outside-interaction policy.</param>
     /// <param name="previousFocus">The focus target observed before entry, or null.</param>
-    /// <param name="previousCapture">The capture target observed before entry, or null.</param>
     internal ModalScope(
         ModalityManager manager,
         ControlBase root,
         OutsideInteraction outsideInteraction,
-        ControlBase? previousFocus,
-        ControlBase? previousCapture)
+        ControlBase? previousFocus)
     {
         Debug.Assert(manager is not null, "A modal scope requires an owning manager.");
         Debug.Assert(root is not null, "A modal scope requires a primary root.");
@@ -35,7 +33,6 @@ public sealed class ModalScope: IDisposable
         Root = root;
         OutsideInteraction = outsideInteraction;
         PreviousFocus = previousFocus;
-        PreviousCapture = previousCapture;
     }
 
     /// <summary>Raised when qualifying outside interaction asks the active owner to dismiss.</summary>
@@ -55,9 +52,6 @@ public sealed class ModalScope: IDisposable
 
     /// <summary>Gets the focus target observed immediately before this scope entered, or null.</summary>
     internal ControlBase? PreviousFocus { get; }
-
-    /// <summary>Gets the capture target observed immediately before this scope entered, or null.</summary>
-    internal ControlBase? PreviousCapture { get; }
 
     /// <summary>Gets the number of roots in deterministic inclusion order.</summary>
     internal int RootCount => _roots.Count;
@@ -139,10 +133,38 @@ public sealed class ModalScope: IDisposable
     /// <summary>Publishes one dismissal request when this active scope opted into dismissal.</summary>
     internal void PublishDismissRequested()
     {
-        if (IsActive && OutsideInteraction == OutsideInteraction.Dismiss)
+        if (!IsActive || OutsideInteraction != OutsideInteraction.Dismiss)
         {
-            DismissRequested?.Invoke(this, EventArgs.Empty);
+            return;
         }
+
+        var handlers = DismissRequested;
+
+        if (handlers is null)
+        {
+            return;
+        }
+
+        ExceptionDispatchInfo? failure = null;
+
+        foreach (var subscriber in handlers.GetInvocationList())
+        {
+            if (!IsActive)
+            {
+                break;
+            }
+
+            try
+            {
+                ((EventHandler) subscriber).Invoke(this, EventArgs.Empty);
+            }
+            catch (Exception exception)
+            {
+                failure ??= ExceptionDispatchInfo.Capture(exception);
+            }
+        }
+
+        failure?.Throw();
     }
 
     /// <summary>Publishes the single committed exit and releases retained event handlers.</summary>

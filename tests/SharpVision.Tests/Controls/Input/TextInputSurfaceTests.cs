@@ -848,7 +848,9 @@ public sealed class TextInputSurfaceTests
         surface.ShouldHaveState(input, VisualState.IsPointerOver);
         AssertFlatEdges(input, ThemeColorHelper.HoveredBorder(theme));
 
-        // Act - move away, so the hover cue is not a fixed accident of relief substitution.
+        // Act - move away: TextInput's InputStyle relief default is Flat (IntrinsicBorderSurfaceTests.cs:58
+        // is the suite's sole surviving non-Flat specimen), so the hover cue is authored per-state
+        // feedback, not a fixed accident of relief substitution.
         await surface.Pointer.MoveToAsync(new Point(20, 20));
 
         // Assert - the normal flat border returns once the authored color no longer applies.

@@ -44,6 +44,61 @@ public sealed class WindowSurfaceTests
         await surface.UpdateAsync(scope.Dispose, "close passive modal Window");
     }
 
+    /// <summary>Verifies a modal Window whose only focusable content becomes ineligible while the
+    /// deferred initial-focus commit is still queued still becomes the active Window, even though
+    /// the target inspected at entry time was non-null.</summary>
+    [Fact]
+    public async Task ShowModal_WhenQueuedInitialFocusBecomesIneligible_ActivatesModalWindowAsync()
+    {
+        // Arrange
+        var backgroundInput = new Button { Text = "Background" };
+        var background = new Window { Content = backgroundInput };
+        var requested = new Button { Text = "Requested" };
+        var modalInput = new Button { Text = "Modal" };
+        var modal = new Window
+        {
+            Content = modalInput,
+            Visibility = Visibility.Collapsed
+        };
+        var root = new Overlay { Children = { background, requested, modal } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(32, 10),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(
+            () => surface.Application.Focus.Focus(backgroundInput).ShouldBeTrue(),
+            "activate background Window");
+        surface.Application.ActiveWindow.ShouldBeSameAs(background);
+        ModalScope? scope = null;
+
+        void OnChanging(object? _, FocusChangingEventArgs eventArgs)
+        {
+            if (scope is null && ReferenceEquals(eventArgs.Next, requested))
+            {
+                scope = modal.ShowModal();
+                modalInput.IsEnabled = false;
+            }
+        }
+
+        surface.Application.Focus.Changing += OnChanging;
+
+        // Act
+        await surface.UpdateAsync(
+            () => surface.Application.Focus.Focus(requested).ShouldBeFalse(),
+            "request focus while the modal's initial target becomes ineligible before it settles");
+
+        // Assert
+        var active = scope.ShouldNotBeNull();
+        active.IsActive.ShouldBeTrue();
+        surface.Application.ActiveWindow.ShouldBeSameAs(modal);
+        modal.IsActive.ShouldBeTrue();
+        background.IsActive.ShouldBeFalse();
+        surface.Application.Focus.Focused.ShouldBeNull();
+
+        surface.Application.Focus.Changing -= OnChanging;
+        await surface.UpdateAsync(scope.Dispose, "close modal Window");
+    }
+
     /// <summary>Verifies ancestor availability and reparenting transitions clear retained close
     /// hover when the framework pointer path is retired without routing a raw Leave event.</summary>
     [Theory]
@@ -149,8 +204,12 @@ public sealed class WindowSurfaceTests
     }
 
     /// <summary>Verifies active Window chrome consumes Turbo Vision's explicit
-    /// "window.focusWithin.border.foreground" delta - a flat "activeBorder" color on every edge -
-    /// rather than the passive Raised bezel a Sunken/Raised relief would otherwise substitute.</summary>
+    /// "window.focusWithin.border.foreground" delta - a flat "activeBorder" color reaching every
+    /// edge against WindowStyle's own Flat relief baseline, since turbo-vision's own window relief is
+    /// also Flat (only Container gets Sunken there). IntrinsicBorderSurfaceTests.cs:58
+    /// (turbo-vision's "container.normal.border.relief": "sunken") is the sole surviving non-Flat
+    /// specimen in the whole test suite, which is why Flat is the correct default assumption
+    /// everywhere else.</summary>
     /// <remarks>
     /// Before the border-relief-vs-authored-Foreground fix, this authored per-state color was
     /// silently discarded for every non-Flat relief, and every edge showed the same
@@ -575,8 +634,10 @@ public sealed class WindowSurfaceTests
     ///
     /// <para>The frame itself only reacts to genuine Window activation (FocusWithin), not to mere
     /// pointer-over of the close mark - "window" authors no "pointerOver" delta, so hovering alone
-    /// leaves the frame at its passive Raised bezel exactly like Normal, and only pressing (which
-    /// also focuses/activates the Window) switches it to the flat ActiveBorder color
+    /// leaves the frame at its Flat baseline exactly like Normal (WindowStyle's own relief default is
+    /// Flat; IntrinsicBorderSurfaceTests.cs:58 is the sole surviving non-Flat specimen in the whole
+    /// test suite, which is why Flat is the correct default assumption everywhere else), and only
+    /// pressing (which also focuses/activates the Window) switches it to the flat ActiveBorder color
     /// Theme.BuildWindowStyleSet's code-owned default has always intended.</para>
     /// </remarks>
     [Fact]
@@ -640,6 +701,42 @@ public sealed class WindowSurfaceTests
         // Act and assert pointer departure
         await surface.Pointer.MoveToAsync(window, new Point(9, 0));
         surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(normal);
+    }
+
+    /// <summary>Verifies leaving the terminal entirely while the close mark is pressed - with no
+    /// drag or resize in flight - still cancels the press and releases capture, matching
+    /// PressBehavior's ordinary Leave handling unchanged. This is the non-dragging counterpart to
+    /// the drag/resize-in-flight Leave tests: Window must route a Leave to the close chrome
+    /// normally whenever no gesture actually owns the capture, and only skip it while one does.</summary>
+    [Fact]
+    public async Task Close_WhenPointerLeavesTerminalWhilePressedWithoutDragging_CancelsPressAndReleasesCaptureAsync()
+    {
+        // Arrange
+        var window = new Window
+        {
+            CanClose = true,
+            Width = Length.Cells(12),
+            Height = Length.Cells(4)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(14, 6),
+            TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel },
+            TestContext.Current.CancellationToken);
+        var closeCell = new Point(4, 0);
+        var normalForeground = surface.Cell(closeCell).Style.Foreground;
+
+        // Act - press and hold the close mark, then leave the terminal without ever dragging
+        await surface.Pointer.MoveToAsync(window, closeCell);
+        await surface.Pointer.PressAsync();
+        surface.Cell(closeCell).Style.Foreground.ShouldNotBe(normalForeground);
+        surface.ShouldHaveCapture(window);
+        await surface.Pointer.LeaveAsync();
+
+        // Assert - the press is cancelled and capture is released, exactly as before Window
+        // learned to withhold routing to the close chrome while a drag or resize is in flight
+        surface.ShouldHaveCapture(null);
+        surface.Cell(closeCell).Style.Foreground.ShouldBe(normalForeground);
     }
 
     /// <summary>Verifies a theme swap confined to the directly-resolved Accent role still
@@ -866,14 +963,33 @@ public sealed class WindowSurfaceTests
             TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel },
             TestContext.Current.CancellationToken);
 
+        // A bubble handler registered on the stage (without handledEventsToo) only runs for a
+        // route that reaches it still unhandled - see Router.RouteCore. Window defaults CanClose
+        // to true, so its close-chrome PressBehavior gets first crack at every pointer event
+        // ahead of HandlePointerDrag; this proves the in-flight drag's own Leave/Release branch -
+        // not the close chrome, which never armed a press here - is the one that claims this
+        // Leave, instead of the event silently escaping the Window unhandled.
+        var leaveEscapedWindowUnhandled = false;
+        var unhandledLeaveProbe = await surface.Application.Dispatcher.InvokeAsync(
+            () => stage.AddHandler(Events.Pointer, (_, args) =>
+            {
+                if (args.Phase == RoutingPhase.Bubble && args.Pointer.Action == PointerAction.Leave)
+                {
+                    leaveEscapedWindowUnhandled = true;
+                }
+            }),
+            TestContext.Current.CancellationToken);
+
         // Act — begin a title drag, then leave the terminal with the button still held
         await surface.Pointer.MoveToAsync(window, new Point(4, 0));
         await surface.Pointer.PressAsync();
         await surface.Pointer.MovePressedToAsync(stage, new Point(10, 6));
         await surface.Pointer.LeaveAsync();
 
-        // Assert — the gesture ended and capture is released
+        // Assert — the gesture ended and capture is released, and the Window itself claimed the
+        // Leave that ended it (matching every other in-flight drag/resize termination).
         surface.ShouldHaveCapture(null);
+        leaveEscapedWindowUnhandled.ShouldBeFalse();
         var boundsAfterLeave = window.Bounds;
 
         // Act — a plain move with no button held must not drag the window
@@ -881,6 +997,10 @@ public sealed class WindowSurfaceTests
 
         // Assert — the window did not follow the bare cursor
         window.Bounds.ShouldBe(boundsAfterLeave);
+
+        await surface.Application.Dispatcher.InvokeAsync(
+            unhandledLeaveProbe.Dispose,
+            TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies dragging the bottom-right corner grows the Window without moving its origin.</summary>
@@ -1337,14 +1457,30 @@ public sealed class WindowSurfaceTests
             TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel },
             TestContext.Current.CancellationToken);
 
+        // See the analogous drag test above for why an unhandled-only stage handler proves the
+        // Window's own gesture-ending Leave branch - not the close-chrome PressBehavior that
+        // otherwise gets first crack at every pointer event - is the one that claims this Leave.
+        var leaveEscapedWindowUnhandled = false;
+        var unhandledLeaveProbe = await surface.Application.Dispatcher.InvokeAsync(
+            () => stage.AddHandler(Events.Pointer, (_, args) =>
+            {
+                if (args.Phase == RoutingPhase.Bubble && args.Pointer.Action == PointerAction.Leave)
+                {
+                    leaveEscapedWindowUnhandled = true;
+                }
+            }),
+            TestContext.Current.CancellationToken);
+
         // Act — begin a corner resize, then leave the terminal with the button still held
         await surface.Pointer.MoveToAsync(window, new Point(9, 3));
         await surface.Pointer.PressAsync();
         await surface.Pointer.MovePressedToAsync(stage, new Point(13, 6));
         await surface.Pointer.LeaveAsync();
 
-        // Assert — the gesture ended and capture is released
+        // Assert — the gesture ended and capture is released, and the Window itself claimed the
+        // Leave that ended it.
         surface.ShouldHaveCapture(null);
+        leaveEscapedWindowUnhandled.ShouldBeFalse();
         var boundsAfterLeave = window.Bounds;
 
         // Act — a plain move with no button held must not resize the window
@@ -1352,6 +1488,10 @@ public sealed class WindowSurfaceTests
 
         // Assert — the window did not keep resizing under the bare cursor
         window.Bounds.ShouldBe(boundsAfterLeave);
+
+        await surface.Application.Dispatcher.InvokeAsync(
+            unhandledLeaveProbe.Dispose,
+            TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies terminal resize pushes an Overlay-hosted Window inside the new client bounds.</summary>

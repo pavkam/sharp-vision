@@ -26,4 +26,26 @@ public sealed class KittyGraphicsPlaceholderWriterTests
 
         destination.WrittenSpan.ToArray().ShouldBe("\U0010EEEE\u0305\u030D\u030E"u8.ToArray());
     }
+
+    /// <summary>Verifies the protocol diacritic table matches the Kitty specification's full coordinate range.</summary>
+    [Fact]
+    public void CoordinateLimit_MatchesSpecifiedTableLength() => KittyGraphicsPlaceholderWriter.CoordinateLimit.ShouldBe(297);
+
+    /// <summary>Verifies a coordinate in the table's non-BMP tail encodes correctly as UTF-8 via <see cref="Rune"/>.</summary>
+    [Fact]
+    public void WriteText_WhenCoordinateUsesNonBmpDiacritic_EncodesCorrectUtf8()
+    {
+        var value = new GraphicsCellOverlayValue(
+            1,
+            1,
+            row: 283,
+            column: 296,
+            default,
+            ColorDepth.TrueColor);
+        var destination = new ArrayBufferWriter<byte>();
+
+        KittyGraphicsPlaceholderWriter.WriteText(value, destination);
+
+        destination.WrittenSpan.ToArray().ShouldBe("\U0010EEEE\U00010A0F\U0001D244"u8.ToArray());
+    }
 }

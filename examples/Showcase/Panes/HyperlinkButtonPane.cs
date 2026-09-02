@@ -44,6 +44,27 @@ internal sealed class HyperlinkButtonPane: CompositeControlBase
         // Disabled state.
         var disabled = new HyperlinkButton("&Unavailable link") { IsEnabled = false };
 
+        // Custom local style: a complete HyperlinkButtonStyle stays authoritative in every visual
+        // state instead of being diffed against the theme, so its warning-colored underline
+        // survives hover, press, and disabled rather than collapsing to the muted default.
+        var customStyle = new HyperlinkButtonStyle(
+            new Face(
+                SemanticColor.Warning,
+                Color.Transparent,
+                SemanticDecoration.NormalText,
+                Underline.Straight,
+                SemanticColor.Warning),
+            HyperlinkButtonStyle.Default.Border,
+            HyperlinkButtonStyle.Default.Shadow);
+        var customStatus = new Text("Activation log: waiting");
+        var customLink = new HyperlinkButton("&Styled link") { Style = customStyle };
+        customLink.Click += (_, eventArgs) => customStatus.Content = $"Activation log: {eventArgs.Cause}";
+        var customDisabled = new HyperlinkButton("Styled &unavailable")
+        {
+            Style = customStyle,
+            IsEnabled = false
+        };
+
         // Side-by-side comparison with a regular Button.
         var comparisonStatus = new Text("Comparison log: waiting");
         var linkVersion = new HyperlinkButton("&Navigate")
@@ -101,6 +122,15 @@ internal sealed class HyperlinkButtonPane: CompositeControlBase
                     "Both controls respond to the same input paths. HyperlinkButton uses accent-underlined text; Button uses bordered chrome.",
                     new DocColumn(new DocRow(linkVersion, buttonVersion), comparisonStatus),
                     "var link = new HyperlinkButton(\"&Navigate\");\nvar button = new Button(\"Na&vigate\");")),
+            new DocSection(
+                "🎨",
+                "Custom style",
+                "A complete local <info>Style</info> stays authoritative in every visual state rather than being diffed against the theme's own hover, press, and disabled colors.",
+                new DocExample(
+                    "Locally styled specimen",
+                    "Hover, press, and compare against the disabled specimen: the warning-colored underline survives every state instead of collapsing to the muted default foreground.",
+                    new DocColumn(customLink, customDisabled, customStatus),
+                    "link.Style = new HyperlinkButtonStyle(\n    new Face(SemanticColor.Warning, Color.Transparent, SemanticDecoration.NormalText, Underline.Straight, SemanticColor.Warning),\n    HyperlinkButtonStyle.Default.Border,\n    HyperlinkButtonStyle.Default.Shadow);")),
             new DocSection(
                 "🌐",
                 "Affixes",
