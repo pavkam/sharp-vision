@@ -475,7 +475,16 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             var offset = HeaderPlacement switch
             {
                 WindowTitlePlacement.Left => 0,
-                WindowTitlePlacement.Center => Math.Max(0, ((fullInterior - cells) / 2) - laneOffset),
+                // Centered against the whole interior so the title sits under the frame's
+                // midpoint, but never past the lane's far end: with right-placed close chrome the
+                // lane starts at the interior origin and ends seven cells short of it, so an
+                // interior-centered run that fits the lane can still overhang the chrome. The
+                // ellipsis branch above only fires for a header wider than the lane, so without
+                // this upper clamp the overhanging cells were simply clipped away.
+                WindowTitlePlacement.Center => Math.Clamp(
+                    ((fullInterior - cells) / 2) - laneOffset,
+                    0,
+                    Math.Max(0, titleLane.Width - cells)),
                 WindowTitlePlacement.Right => Math.Max(0, titleLane.Width - cells),
                 _ => throw new InvalidOperationException("The validated title placement is unknown.")
             };
