@@ -463,8 +463,16 @@ public sealed class ComboBox: InputBase
                 stroke.Character is { } character &&
                 KeyboardModifierPolicy.IsTextEntryEligible(stroke.Modifiers))
             {
-                eventArgs.IsHandled = SelectTypeAhead(character);
-                return;
+                if (SelectTypeAhead(character))
+                {
+                    eventArgs.IsHandled = true;
+                    return;
+                }
+
+                // A printable character that matched no item is not consumed by type-ahead, so
+                // it must still reach press activation below: Space is documented to toggle the
+                // field closed while open (without accepting the browsed row), and returning here
+                // would leave an open drop-down that Space can never close.
             }
 
             if (keyEventArgs.IsInitialKeyDown &&
