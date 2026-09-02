@@ -181,6 +181,28 @@ separator, file rows use `·`, and names are markup-escaped and ellipsized.
   retrying Save, detaching, or migrating the modeless dialog supersedes that
   request, so its later answer cannot publish an abandoned path.
 
+```mermaid
+sequenceDiagram
+    participant User
+    participant SaveFileDialog
+    participant MessageBox
+    User->>SaveFileDialog: Commit Save (Enter, double-click, or Save button)
+    SaveFileDialog->>SaveFileDialog: Bump _acceptanceVersion, capture attachment
+    alt ConfirmOverwrite is false, or the path does not exist
+        SaveFileDialog-->>User: Complete(SaveFileResult) with the canonical path
+    else ConfirmOverwrite is true and the path exists
+        SaveFileDialog->>MessageBox: ShowAsync(Yes/No, OverwriteTitle/Message/...)
+        User->>MessageBox: Choose Yes, choose No, or dismiss
+        MessageBox-->>SaveFileDialog: MessageBoxResult (on a background thread)
+        SaveFileDialog->>SaveFileDialog: Post to the captured attachment's dispatcher
+        alt Yes AND attachment still current AND _acceptanceVersion unchanged
+            SaveFileDialog-->>User: Complete(SaveFileResult) with the canonical path
+        else No, dismissed, or superseded (name edited, Save retried, dialog detached or migrated)
+            Note over SaveFileDialog: Stale answer is dropped; dialog stays open, no result is published
+        end
+    end
+```
+
 > [!WARNING]
 >
 > With `ConfirmOverwrite` disabled, an existing file's path comes back with no
