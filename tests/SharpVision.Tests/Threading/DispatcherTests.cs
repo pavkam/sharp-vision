@@ -220,6 +220,39 @@ public sealed class DispatcherTests
         cancelledRan.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a throwing <c>onCancelled</c> delegate does not propagate out of
+    /// <see cref="Dispatcher.DisposeAsync"/> - disposal must complete normally in every case - and
+    /// that it does not set <see cref="Dispatcher.FatalException"/>, which stays null specifically
+    /// when <c>DisposeAsync</c> is what stopped the dispatcher. Also verifies isolation: a
+    /// throwing cancellation does not prevent a later queued item's own cancellation from
+    /// running.</summary>
+    [Fact]
+    public async Task DisposeAsync_WhenAnOnCancelledCallbackThrows_CompletesNormallyAndCancelsTheRestAsync()
+    {
+        using var releaseGate = new ManualResetEventSlim(initialState: false);
+        var dispatcher = Dispatcher.StartPaused(releaseGate);
+        var cancelFailure = new InvalidOperationException("cancel-boom");
+        var firstCancelled = false;
+        var secondCancelled = false;
+
+        dispatcher.Post(
+            static () => { },
+            () =>
+            {
+                firstCancelled = true;
+                throw cancelFailure;
+            });
+        dispatcher.Post(static () => { }, () => secondCancelled = true);
+
+        var disposing = dispatcher.DisposeAsync();
+        releaseGate.Set();
+        await disposing;
+
+        firstCancelled.ShouldBeTrue();
+        secondCancelled.ShouldBeTrue("a throwing cancellation must not stop later work from being cancelled");
+        dispatcher.FatalException.ShouldBeNull();
+    }
+
     /// <summary>Verifies Idle fires for a freshly started dispatcher that never receives any work.</summary>
     /// <remarks>
     /// Ordinary <see cref="Dispatcher.Start"/> returns as soon as the background thread exists,
@@ -455,6 +488,42 @@ public sealed class DispatcherTests
 
         await dispatcher.DisposeAsync();
         _ = dispatcher.FatalException.ShouldNotBeNull("the cause survives the successful disposal");
+    }
+
+    /// <summary>Verifies a throwing <c>onCancelled</c> delegate reached through the dispatcher's own
+    /// failure path - an unrelated first callback failure inside <c>Run()</c>'s catch reports
+    /// through <c>RequestStop()</c>, which then cancels the remaining queued work - is itself
+    /// reported rather than escaping unhandled and crashing the dedicated background thread. The
+    /// first failure still wins <see cref="Dispatcher.FatalException"/>, and the cancellation
+    /// failure surfaces only through the second <see cref="Dispatcher.UnhandledException"/>
+    /// notification.</summary>
+    [Fact]
+    public async Task RequestStop_WhenACancelledWorkOnCancelledThrows_ReportsItInsteadOfCrashingTheThreadAsync()
+    {
+        var dispatcher = Dispatcher.Start();
+        InvalidOperationException originalFailure = new("callback-boom");
+        InvalidOperationException cancelFailure = new("cancel-boom");
+        List<Exception> observed = [];
+        using ManualResetEventSlim release = new();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        dispatcher.UnhandledException += (_, eventArgs) => observed.Add(eventArgs.Exception);
+
+        dispatcher.Post(() =>
+        {
+            entered.SetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        dispatcher.Post(() => throw originalFailure);
+        dispatcher.Post(static () => { }, () => throw cancelFailure);
+
+        release.Set();
+        await WaitForStopAsync(dispatcher);
+
+        observed.ShouldBe([originalFailure, cancelFailure]);
+        dispatcher.FatalException.ShouldBeSameAs(originalFailure);
+        await dispatcher.DisposeAsync();
     }
 
     /// <summary>The counter-case that keeps the property honest: an ordinary requested shutdown

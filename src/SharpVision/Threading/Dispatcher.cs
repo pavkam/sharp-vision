@@ -474,7 +474,17 @@ public sealed class Dispatcher: IAsyncDisposable
 
         foreach (var work in cancelled)
         {
-            work.Cancel();
+            try
+            {
+                work.Cancel();
+            }
+            catch (Exception)
+            {
+                // Swallowed, not reported: FatalException stays null when DisposeAsync is what
+                // stopped the dispatcher, and this method itself completes normally in every case
+                // - see the doc remarks on both. Calling Report here would set fault state and
+                // contradict both contracts.
+            }
         }
 
         return CheckAccess()
@@ -645,7 +655,17 @@ public sealed class Dispatcher: IAsyncDisposable
 
         foreach (var work in cancelled)
         {
-            work.Cancel();
+            try
+            {
+                work.Cancel();
+            }
+            catch (Exception exception)
+            {
+                // Mirrors Run()'s own Execute() isolation. Safe to report here: _stopping is
+                // already true by the time this loop runs, so the nested Report -> RequestStop
+                // re-entry short-circuits on the guard above instead of looping.
+                Report(exception);
+            }
         }
     }
 
