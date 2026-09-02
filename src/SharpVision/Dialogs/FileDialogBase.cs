@@ -970,7 +970,17 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
             return;
         }
 
-        IsLoading = false;
+        // The rejected request has already published IsLoading as true, so the reset must be
+        // published as well: a silent field write leaves every IsLoading observer - a binding or a
+        // busy indicator - stuck on "loading" after the status line has reported the failure. A
+        // dialog disposed by one of the notifications reached above cannot publish anything more.
+        if (IsDisposed)
+        {
+            IsLoading = false;
+            return;
+        }
+
+        SetLoading(false);
     }
 
     private void CancelLoad() => _loadOperation.Cancel();
