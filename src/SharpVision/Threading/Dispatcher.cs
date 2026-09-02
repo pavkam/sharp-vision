@@ -228,6 +228,10 @@ public sealed class Dispatcher: IAsyncDisposable
     /// A disposed dispatcher is silent. A full queue gets one bounded attempt to post a callback
     /// that throws the original rejection; the real completion is already abandoned either way.
     /// Accepted work uses the queue's cancellation callback so shutdown cannot strand resources.
+    /// <paramref name="onAbandoned"/> itself throwing is isolated the same way: it is reported
+    /// through the same one-bounded-attempt path rather than propagating to whatever thread called
+    /// this method, mirroring how a throwing <c>onCancelled</c> is isolated when accepted work is
+    /// later cancelled by shutdown instead.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="completion"/> is null.</exception>
     internal void PostBackgroundCompletion(Action completion, Action? onAbandoned = null)
@@ -255,7 +259,14 @@ public sealed class Dispatcher: IAsyncDisposable
             ReportRejectedBackgroundCompletion(exception);
         }
 
-        onAbandoned?.Invoke();
+        try
+        {
+            onAbandoned?.Invoke();
+        }
+        catch (Exception exception)
+        {
+            ReportRejectedBackgroundCompletion(exception);
+        }
     }
 
     /// <summary>Variant of <see cref="PostBackgroundCompletion(Action, Action?)"/> for a caller
@@ -267,8 +278,11 @@ public sealed class Dispatcher: IAsyncDisposable
     /// run.</param>
     /// <remarks>
     /// When posting itself fails immediately (a full queue or a disposed dispatcher), this method
-    /// awaits <paramref name="onAbandonedAsync"/> directly before returning. When posting succeeds
-    /// but the queued work is later cancelled by dispatcher shutdown instead, nothing can await it
+    /// awaits <paramref name="onAbandonedAsync"/> directly before returning, isolating a failure
+    /// from it the same bounded way <see cref="PostBackgroundCompletion(Action, Action?)"/>
+    /// isolates a throwing <c>onAbandoned</c> - reported rather than left to fault this method's own
+    /// Task, which every current caller starts fire-and-forget. When posting succeeds but the
+    /// queued work is later cancelled by dispatcher shutdown instead, nothing can await it
     /// - <see cref="DisposeAsync"/>'s own cancellation loop is synchronous and has already returned
     /// by the time cleanup would finish - so it runs fire-and-forget there, guarded against becoming
     /// a process-wide <see cref="TaskScheduler.UnobservedTaskException"/> the same way
@@ -294,7 +308,14 @@ public sealed class Dispatcher: IAsyncDisposable
             ReportRejectedBackgroundCompletion(exception);
         }
 
-        await onAbandonedAsync().ConfigureAwait(false);
+        try
+        {
+            await onAbandonedAsync().ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            ReportRejectedBackgroundCompletion(exception);
+        }
     }
 
     /// <summary>Observes a fire-and-forget task's eventual outcome so it never surfaces later as a
@@ -319,9 +340,10 @@ public sealed class Dispatcher: IAsyncDisposable
             TaskScheduler.Default);
     }
 
-    /// <summary>Attempts once to report an already-rejected background completion through the
+    /// <summary>Attempts once to report a background-completion failure - the original queue
+    /// rejection, or a caller-supplied abandonment cleanup that itself threw - through the
     /// dispatcher's callback-failure path.</summary>
-    /// <param name="exception">The original non-null queue rejection.</param>
+    /// <param name="exception">The non-null failure to report.</param>
     internal void ReportRejectedBackgroundCompletion(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
@@ -338,7 +360,15 @@ public sealed class Dispatcher: IAsyncDisposable
     }
 
     /// <summary>Gets or sets a test-only synchronization hook invoked between a rejected
-    /// background-completion post and its single fault-reporting attempt.</summary>
+    /// background-completion failure and its single fault-reporting attempt.</summary>
+    /// <remarks>
+    /// One <see cref="PostBackgroundCompletion"/>/<see cref="PostBackgroundCompletionAsync"/> call
+    /// can reach <see cref="ReportRejectedBackgroundCompletion"/> - and therefore this hook - up to
+    /// twice: once for the original rejected post, and again if the caller's own
+    /// <c>onAbandoned</c>/<c>onAbandonedAsync</c> cleanup then also throws. Each invocation still
+    /// gets its own single bounded retry attempt; a test relying on this hook firing exactly once
+    /// must not also arrange for the abandonment cleanup to throw.
+    /// </remarks>
     internal Action? BackgroundCompletionRetryHookForTests { get; set; }
 
     /// <summary>Invokes an action on the dispatcher and observes completion.</summary>

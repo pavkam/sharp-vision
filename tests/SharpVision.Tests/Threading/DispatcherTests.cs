@@ -731,6 +731,116 @@ public sealed class DispatcherTests
         abandoned.ShouldBe(1);
     }
 
+    /// <summary>Verifies a throwing <c>onAbandoned</c> is isolated rather than propagating out of
+    /// <see cref="Dispatcher.PostBackgroundCompletion"/> when the dispatcher is already disposed -
+    /// the reporting retry it now goes through fails silently with
+    /// <see cref="ObjectDisposedException"/>, matching the documented "a disposed dispatcher is
+    /// silent" contract, and leaves <see cref="Dispatcher.FatalException"/> null.</summary>
+    [Fact]
+    public async Task PostBackgroundCompletion_WhenDisposedAndOnAbandonedThrows_SwallowsInsteadOfPropagatingAsync()
+    {
+        var dispatcher = Dispatcher.Start();
+        await dispatcher.DisposeAsync();
+        var abandoned = 0;
+
+        Should.NotThrow(() => dispatcher.PostBackgroundCompletion(
+            static () => { },
+            () =>
+            {
+                abandoned++;
+                throw new InvalidOperationException("abandon-boom");
+            }));
+
+        abandoned.ShouldBe(1);
+        dispatcher.FatalException.ShouldBeNull();
+    }
+
+    /// <summary>Verifies a throwing <c>onAbandoned</c> is isolated rather than propagating out of
+    /// <see cref="Dispatcher.PostBackgroundCompletion"/> when the completion itself was rejected for
+    /// a full queue - the same root-cause shape as the throwing <c>onCancelled</c> isolation already
+    /// covered for shutdown cancellation.</summary>
+    [Fact]
+    public async Task PostBackgroundCompletion_WhenQueueIsFullAndOnAbandonedThrows_DoesNotPropagateAsync()
+    {
+        using var release = new ManualResetEventSlim();
+        await using var dispatcher = Dispatcher.Start(capacity: 1);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        dispatcher.Post(() =>
+        {
+            entered.SetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        dispatcher.Post(static () => { });
+        var completed = 0;
+        var abandoned = 0;
+
+        Should.NotThrow(() => dispatcher.PostBackgroundCompletion(
+            () => completed++,
+            () =>
+            {
+                abandoned++;
+                throw new InvalidOperationException("abandon-boom");
+            }));
+
+        completed.ShouldBe(0);
+        abandoned.ShouldBe(1);
+        release.Set();
+    }
+
+    /// <summary>Verifies the async variant isolates a throwing <c>onAbandonedAsync</c> when the
+    /// dispatcher is already disposed, mirroring
+    /// <see cref="Dispatcher.PostBackgroundCompletion"/>'s own isolation.</summary>
+    [Fact]
+    public async Task PostBackgroundCompletionAsync_WhenDisposedAndOnAbandonedAsyncThrows_SwallowsInsteadOfPropagatingAsync()
+    {
+        var dispatcher = Dispatcher.Start();
+        await dispatcher.DisposeAsync();
+        var abandoned = 0;
+
+        await Should.NotThrowAsync(() => dispatcher.PostBackgroundCompletionAsync(
+            static () => { },
+            () =>
+            {
+                abandoned++;
+                throw new InvalidOperationException("abandon-boom");
+            }));
+
+        abandoned.ShouldBe(1);
+        dispatcher.FatalException.ShouldBeNull();
+    }
+
+    /// <summary>Verifies the async variant isolates a throwing <c>onAbandonedAsync</c> when the
+    /// completion itself was rejected for a full queue.</summary>
+    [Fact]
+    public async Task PostBackgroundCompletionAsync_WhenQueueIsFullAndOnAbandonedAsyncThrows_DoesNotPropagateAsync()
+    {
+        using var release = new ManualResetEventSlim();
+        await using var dispatcher = Dispatcher.Start(capacity: 1);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        dispatcher.Post(() =>
+        {
+            entered.SetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        dispatcher.Post(static () => { });
+        var completed = 0;
+        var abandoned = 0;
+
+        await Should.NotThrowAsync(() => dispatcher.PostBackgroundCompletionAsync(
+            () => completed++,
+            () =>
+            {
+                abandoned++;
+                throw new InvalidOperationException("abandon-boom");
+            }));
+
+        completed.ShouldBe(0);
+        abandoned.ShouldBe(1);
+        release.Set();
+    }
+
     /// <summary>Verifies work accepted before shutdown is abandoned when cancellation prevents execution.</summary>
     [Fact]
     public async Task PostBackgroundCompletion_WhenAcceptedWorkIsCancelledByShutdown_AbandonsOnceAsync()
