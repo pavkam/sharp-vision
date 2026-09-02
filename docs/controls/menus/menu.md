@@ -35,6 +35,7 @@ classDiagram
 | Left / Right        | Moves through a horizontal menu, wrapping and skipping unavailable entries. |
 | Up / Down           | Moves through a vertical menu, wrapping and skipping unavailable entries.   |
 | Tab / Shift+Tab     | Moves to the next or previous menu item regardless of orientation.          |
+| Home / End          | Selects the first or last available entry without wrapping.                 |
 | Enter               | Activates the selected item.                                                |
 | Space               | Activates the selected item on key release.                                 |
 | Escape              | Closes the active menu chain.                                               |

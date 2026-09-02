@@ -267,7 +267,14 @@ public sealed class Menu: ItemsControl
                 ? SingleSelectionIndex.FindWrapped(_selectedIndex, 1, ItemControlCount, Available)
                 : key.Stroke.Code == Code.Tab && KeyboardModifierPolicy.IsTabTraversalEligible(key.Stroke.Modifiers)
                     ? SingleSelectionIndex.FindWrapped(_selectedIndex, (key.Stroke.Modifiers & Modifiers.Shift) == 0 ? 1 : -1, ItemControlCount, Available)
-                    : -1;
+                    // Unlike the wrapping Left/Right/Up/Down/Tab cases above, Home and End are
+                    // explicit boundary requests: FindLinear stops at either end of the collection
+                    // instead of cycling back around it.
+                    : scalarNavigationEligible && key.Stroke.Code == Code.Home
+                        ? SingleSelectionIndex.FindLinear(0, 1, ItemControlCount, Available)
+                        : scalarNavigationEligible && key.Stroke.Code == Code.End
+                            ? SingleSelectionIndex.FindLinear(ItemControlCount - 1, -1, ItemControlCount, Available)
+                            : -1;
 
         if (target >= 0)
         {

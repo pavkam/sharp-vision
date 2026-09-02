@@ -417,6 +417,46 @@ public sealed class MenuTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies Home and End jump straight to the first and last available entries,
+    /// skipping a disabled boundary entry exactly like the existing directional keys already skip
+    /// separators, collapsed, and hidden entries elsewhere in the collection. Neither key wraps:
+    /// unlike Left/Right/Up/Down/Tab, a disabled entry at the far boundary is skipped toward the
+    /// interior, never around to the opposite end, mirroring NavigationView's sibling contract.</summary>
+    [Fact]
+    public async Task Dispatch_WhenHomeOrEndKeyArrives_SelectsBoundaryAvailableEntrySkippingDisabledAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var first = new MenuItem { Text = "First", IsEnabled = false };
+            var second = new MenuItem { Text = "Second" };
+            var third = new MenuItem { Text = "Third" };
+            var fourth = new MenuItem { Text = "Fourth", IsEnabled = false };
+            menu.Items.Add(first);
+            menu.Items.Add(second);
+            menu.Items.Add(third);
+            menu.Items.Add(fourth);
+            menu.Attach(dispatcher);
+            using FocusManager focus = new(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            menu.SelectedIndex = 1;
+
+            _ = Router.Route(menu, Events.Key, new KeyEventArgs(new Stroke(
+                Code.End, default, nativeCode: 0, Modifiers.None, KeyAction.Press)));
+
+            // Skips the disabled Fourth entry and lands on the last genuinely available one.
+            menu.SelectedIndex.ShouldBe(2);
+
+            _ = Router.Route(menu, Events.Key, new KeyEventArgs(new Stroke(
+                Code.Home, default, nativeCode: 0, Modifiers.None, KeyAction.Press)));
+
+            // Skips the disabled First entry and lands on the first genuinely available one.
+            menu.SelectedIndex.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies the vertical shared shortcut-column measurement - which scans every owned
     /// MenuItem for its widest label and shortcut columns - excludes a Collapsed item's own label
     /// width from that shared maximum, matching the general Collapsed-excludes-size contract for a
