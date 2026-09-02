@@ -38,6 +38,26 @@ public sealed class Tooltip: Popup
         // taken out in OnContentAvailable so a closed tooltip does not keep reacting to a
         // surface it is no longer presenting on.
         Closed += OnSurfaceClosed;
+
+        // A Popup whose anchor (or an ancestor of it) becomes hidden deliberately stays logically
+        // open so it can re-present when that ancestor recovers - right for a drop-down the user
+        // explicitly opened, wrong for a passive hint: a tooltip that reappeared on its own once
+        // the anchor was shown again would have no hover or focus behind it. Effective visibility
+        // is published to every descendant of the changed subtree, so the tooltip can simply hide
+        // itself and let a fresh hover or focus start over. A disabled anchor is different: the
+        // presentation stays and merely paints disabled, and the pointer path retiring from the
+        // disabled anchor already runs the ordinary exit-then-hide-delay flow.
+        PropertyChanged += OnTooltipPropertyChanged;
+    }
+
+    private void OnTooltipPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.PropertyName == nameof(EffectiveIsVisible) && !EffectiveIsVisible)
+        {
+            Hide();
+        }
     }
 
     /// <summary>Gets the passive, non-interactive hint role, distinct from Popup's framed
@@ -610,6 +630,11 @@ public sealed class Tooltip: Popup
     protected override void OnUnavailable(ReleaseReason reason)
     {
         ExceptionDispatchInfo? failure = null;
+
+        if (reason == ReleaseReason.Disposed)
+        {
+            PropertyChanged -= OnTooltipPropertyChanged;
+        }
 
         if (reason == ReleaseReason.Disposed && _attachedAnchor is { } anchor)
         {

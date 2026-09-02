@@ -22,7 +22,9 @@ internal sealed class LightDismiss: IDisposable
     private readonly ControlBase? _focusBeforeOpen;
     private readonly ModalityManager? _modality;
     private readonly ControlBase? _routeBoundary;
+    private readonly ControlBase _surface;
     private IDisposable? _registration;
+    private ControlBase? _focusDisplacedByPointer;
 
     /// <summary>Registers one outside-press dismissal handler for an already committed surface.</summary>
     /// <param name="surface">The attached surface that owns the registration.</param>
@@ -55,6 +57,12 @@ internal sealed class LightDismiss: IDisposable
         _buttons = buttons;
         _focusOwner = surface.FocusOwner;
         _focusBeforeOpen = focusBeforeOpen;
+        _surface = surface;
+
+        if (_focusOwner is { } focusOwner)
+        {
+            focusOwner.Lost += OnFocusLost;
+        }
 
         var root = surface;
         while (root.Parent is { } parent)
@@ -79,6 +87,29 @@ internal sealed class LightDismiss: IDisposable
         _modality?.UnregisterLightDismiss(this);
         _registration?.Dispose();
         _registration = null;
+        _focusDisplacedByPointer = null;
+
+        if (_focusOwner is { } focusOwner)
+        {
+            focusOwner.Lost -= OnFocusLost;
+        }
+    }
+
+    private void OnFocusLost(object? sender, FocusChangedEventArgs eventArgs)
+    {
+        _ = sender;
+
+        // The pointer manager moves focus toward the pressed background control before the press
+        // is routed, so by the time an outside press reaches this handler the surface has already
+        // lost whatever focus it owned. Remember exactly that displaced control (and nothing
+        // else): a vetoed dismiss has to hand focus back to it, since the surface remains open.
+        _focusDisplacedByPointer =
+            eventArgs.Reason == FocusReason.Pointer &&
+            eventArgs.Previous is { } previous &&
+            ModalityManager.IsWithin(previous, _surface) &&
+            !ModalityManager.IsWithin(eventArgs.Current, _surface)
+                ? previous
+                : null;
     }
 
     /// <summary>Dismisses for one eligible press while this registration still belongs to the active plane.</summary>
@@ -123,13 +154,24 @@ internal sealed class LightDismiss: IDisposable
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(_dismiss, ref failure);
 
-        if (_focusBeforeOpen is not null &&
-            !_focusBeforeOpen.IsDisposed &&
-            _focusBeforeOpen.Dispatcher is not null &&
-            _focusBeforeOpen.EffectiveIsVisible &&
-            _focusBeforeOpen.EffectiveIsEnabled)
+        var displaced = _focusDisplacedByPointer;
+        _focusDisplacedByPointer = null;
+
+        // The dismiss request is vetoable (a CloseRequested handler may cancel it). A surface that
+        // is still open after the request must keep the focus it owned before the press displaced
+        // it; restoring the pre-open focus here would instead pull focus out from under a
+        // presentation the owner just refused to close. The outside press itself stays consumed
+        // either way, exactly as an ignored or vetoed modal dismissal never replays to the
+        // background.
+        var restoreTarget = _isOpen() ? displaced : _focusBeforeOpen;
+
+        if (restoreTarget is not null &&
+            !restoreTarget.IsDisposed &&
+            restoreTarget.Dispatcher is not null &&
+            restoreTarget.EffectiveIsVisible &&
+            restoreTarget.EffectiveIsEnabled)
         {
-            ExceptionAggregation.Capture(() => _ = _focusOwner?.Focus(_focusBeforeOpen), ref failure);
+            ExceptionAggregation.Capture(() => _ = _focusOwner?.Focus(restoreTarget), ref failure);
         }
 
         failure?.Throw();
