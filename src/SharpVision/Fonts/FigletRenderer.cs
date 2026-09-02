@@ -29,16 +29,18 @@ internal static class FigletRenderer
         var composedWidth = 0;
         var composedLength = 0;
 
+        var rightToLeft = direction == FigletDirection.RightToLeft;
+
         foreach (var t in logicalLines)
         {
             Rune[] runes = [.. t.EnumerateRunes()];
 
-            if (direction == FigletDirection.RightToLeft)
+            if (rightToLeft)
             {
                 Array.Reverse(runes);
             }
 
-            var rows = RenderLine(font, runes, layout);
+            var rows = RenderLine(font, runes, layout, rightToLeft);
 
             if ((layout & (FigletLayout.HorizontalFitting | FigletLayout.HorizontalSmushing)) != 0)
             {
@@ -68,7 +70,8 @@ internal static class FigletRenderer
     private static StringBuilder[] RenderLine(
         FigletFont font,
         ReadOnlySpan<Rune> runes,
-        FigletLayout layout)
+        FigletLayout layout,
+        bool rightToLeft)
     {
         var rows = new StringBuilder[font.Height];
 
@@ -80,11 +83,11 @@ internal static class FigletRenderer
         foreach (var rune in runes)
         {
             var glyph = font.GetGlyph(rune.Value);
-            var overlap = GetOverlap(rows, glyph, layout, font.HardBlank);
+            var overlap = GetOverlap(rows, glyph, layout, font.HardBlank, rightToLeft);
 
             for (var row = 0; row < rows.Length; row++)
             {
-                Merge(rows[row], glyph.Rows[row], overlap, layout, font.HardBlank);
+                Merge(rows[row], glyph.Rows[row], overlap, layout, font.HardBlank, rightToLeft);
             }
 
             // Every row stays equally wide after each merge pass (glyph rows are themselves
@@ -121,7 +124,8 @@ internal static class FigletRenderer
         StringBuilder[] left,
         FigletGlyph right,
         FigletLayout layout,
-        char hardBlank)
+        char hardBlank,
+        bool rightToLeft)
     {
         if ((layout & (FigletLayout.HorizontalFitting | FigletLayout.HorizontalSmushing)) == 0 ||
             left[0].Length == 0)
@@ -153,7 +157,7 @@ internal static class FigletRenderer
 
             if (leftIndex >= 0 &&
                 leading < right.Width &&
-                Smush(left[row][leftIndex], right.Rows[row][leading], layout, hardBlank) != '\0')
+                Smush(left[row][leftIndex], right.Rows[row][leading], layout, hardBlank, rightToLeft) != '\0')
             {
                 rowOverlap = Math.Min(maximum, rowOverlap + 1);
             }
@@ -169,7 +173,8 @@ internal static class FigletRenderer
         string right,
         int overlap,
         FigletLayout layout,
-        char hardBlank)
+        char hardBlank,
+        bool rightToLeft)
     {
         var start = left.Length - overlap;
 
@@ -181,14 +186,14 @@ internal static class FigletRenderer
                 ? r
                 : r == ' '
                     ? l
-                    : Smush(l, r, layout, hardBlank);
+                    : Smush(l, r, layout, hardBlank, rightToLeft);
         }
 
         _ = left.Append(right.AsSpan(overlap));
     }
 
     [Pure]
-    private static char Smush(char left, char right, FigletLayout layout, char hardBlank)
+    private static char Smush(char left, char right, FigletLayout layout, char hardBlank, bool rightToLeft)
     {
         if ((layout & FigletLayout.HorizontalSmushing) == 0)
         {
@@ -202,9 +207,28 @@ internal static class FigletRenderer
             // Universal smushing (HorizontalSmushing set with no specific rule bits, as declared
             // by the bundled shadow.flf, smshadow.flf, and mini.flf fonts) must still let a
             // visible pixel win over the other glyph's hardblank, matching the reference FIGlet
-            // smushem algorithm's hardblank special case; only a genuine visible-vs-visible
-            // collision falls back to preferring the right glyph's pixel.
-            return right == hardBlank ? left : right;
+            // smushem algorithm's hardblank special case. A genuine visible-vs-visible collision
+            // instead prefers whichever side represents the character that was typed later in the
+            // caller's original (pre-reversal) input: Render composes right-to-left text by
+            // reversing the rune array up front and then always appending - never prepending -
+            // each subsequent glyph, so during right-to-left composition the "right" parameter
+            // here (the incoming glyph being merged in) is always the earlier-typed original
+            // character, and the accumulated "left" side is always the later-typed one - the
+            // opposite of left-to-right composition, where appending keeps "right" as the
+            // later-typed side. Preferring "right" unconditionally - as a direction-blind
+            // implementation would - silently flips which original character wins a collision
+            // under right-to-left rendering.
+            if (left == hardBlank)
+            {
+                return right;
+            }
+
+            if (right == hardBlank)
+            {
+                return left;
+            }
+
+            return rightToLeft ? left : right;
         }
 
         if ((rules & FigletLayout.Equal) != 0 && left == right && left != hardBlank)
