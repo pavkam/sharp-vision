@@ -105,6 +105,60 @@ public sealed class CommandBarSurfaceTests
         ReadRow(surface, menu.Bounds.Y + 1, 12).ShouldContain("Print");
     }
 
+    /// <summary>Verifies a CommandBar overflow below its trigger remains a fully framed menu surface.</summary>
+    [Fact]
+    public async Task Overflow_WhenPlacedBelow_RendersTopFrameEdgeAsync()
+    {
+        // Arrange
+        var bar = CreateBar(out _, out _, out _);
+        bar.Height = Length.Cells(1);
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(30, 6),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => bar.Width = Length.Cells(12), "constrain command bar to create overflow");
+        var trigger = OwnedTree.Find<CommandBarOverflowButton>(bar).ShouldNotBeNull();
+        var popup = OwnedTree.Find<Popup>(bar).ShouldNotBeNull();
+
+        // Act
+        await surface.Pointer.ClickAsync(trigger);
+
+        // Assert
+        popup.SurfaceBounds.Y.ShouldBe(bar.Bounds.Bottom);
+        surface.Cell(new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y)).Text.ShouldBe("╭");
+    }
+
+    /// <summary>Verifies a CommandBar overflow flipped above its trigger retains its bottom frame edge.</summary>
+    [Fact]
+    public async Task Overflow_WhenPlacedAbove_RendersBottomFrameEdgeAsync()
+    {
+        // Arrange
+        var bar = CreateBar(out _, out _, out _);
+        bar.Width = Length.Cells(12);
+        var root = new Stack
+        {
+            Orientation = Orientation.Vertical,
+            Children =
+            {
+                new ControlText("filler") { Height = Length.Cells(5) },
+                bar
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 8),
+            TestContext.Current.CancellationToken);
+        var trigger = OwnedTree.Find<CommandBarOverflowButton>(bar).ShouldNotBeNull();
+        var popup = OwnedTree.Find<Popup>(bar).ShouldNotBeNull();
+
+        // Act
+        await surface.Pointer.ClickAsync(trigger);
+
+        // Assert
+        popup.SurfaceBounds.Bottom.ShouldBe(bar.Bounds.Y);
+        surface.Cell(new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Bottom - 1)).Text.ShouldBe("╰");
+    }
+
     /// <summary>Verifies disabled and hidden rows follow their distinct sizing, projection, and selection contracts.</summary>
     [Fact]
     public async Task Layout_WhenAvailabilityVaries_PreservesHiddenSlotAndProjectsDisabledTailAsync()
@@ -432,10 +486,19 @@ public sealed class CommandBarSurfaceTests
     {
         var bar = CreateBar(out _, out _, out _);
         var outside = new Button("Outside");
-        var root = new Stack { Spacing = 1, Children = { bar, outside } };
+        var root = new Stack
+        {
+            Spacing = 1,
+            Children =
+            {
+                bar,
+                new ControlText("spacer") { Height = Length.Cells(5) },
+                outside
+            }
+        };
         await using var surface = await ComponentSurface.MountAsync(
             root,
-            new Size(20, 8),
+            new Size(20, 10),
             TestContext.Current.CancellationToken);
         var trigger = OwnedTree.Find<CommandBarOverflowButton>(bar).ShouldNotBeNull();
         await surface.Pointer.ClickAsync(trigger);

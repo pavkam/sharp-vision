@@ -55,7 +55,7 @@ internal sealed class CommandBarPane: CompositeControlBase
 
         return new DocPage(
             Title,
-            "<info>CommandBar</info> is one keyboard stop whose typed semantic actions remain retained while a stable tail moves into private Menu projections.",
+            "<info>CommandBar</info> is one keyboard stop whose typed semantic actions remain retained while a stable tail moves into private Menu projections with a framed 15-cell minimum surface.",
             new DocSection(
                 "⌘",
                 "Retained command surface",

@@ -40,21 +40,21 @@ public sealed class MenuTests
     }
     /// <summary>Verifies menus begin with a useful minimum while retaining inherited width configuration.</summary>
     [Fact]
-    public void Constructor_WhenCreated_UsesConfigurableTenCellMinimumWidth()
+    public void Constructor_WhenCreated_UsesConfigurableFifteenCellMinimumWidth()
     {
         // Arrange and act
         var menu = new Menu();
 
         // Assert default and validation-before-mutation
-        menu.MinWidth.ShouldBe(Length.Cells(10));
+        menu.MinWidth.ShouldBe(Length.Cells(15));
         menu.MaxWidth.ShouldBeNull();
         _ = Should.Throw<ArgumentException>(() => menu.MaxWidth = Length.Cells(9));
         menu.MaxWidth.ShouldBeNull();
 
         // Act and assert direct inherited configuration
-        menu.MinWidth = Length.Cells(0);
+        menu.MinWidth = Length.Cells(8);
         menu.MaxWidth = Length.Cells(24);
-        menu.MinWidth.ShouldBe(Length.Cells(0));
+        menu.MinWidth.ShouldBe(Length.Cells(8));
         menu.MaxWidth.ShouldBe(Length.Cells(24));
     }
 

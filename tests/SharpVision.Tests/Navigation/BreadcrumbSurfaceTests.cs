@@ -202,6 +202,28 @@ public sealed class BreadcrumbSurfaceTests
         invoked.ShouldBe(1);
     }
 
+    /// <summary>Verifies the private breadcrumb overflow uses the shared Menu minimum.</summary>
+    [Fact]
+    public async Task Overflow_WhenShortProjectionOpens_UsesFifteenCellMenuWidthAsync()
+    {
+        // Arrange
+        var breadcrumb = Create("Root", "Docs", "Leaf");
+        breadcrumb.CurrentIndex = 0;
+        await using var surface = await ComponentSurface.MountAsync(
+            breadcrumb,
+            new Size(20, 4),
+            TestContext.Current.CancellationToken);
+        var trigger = OwnedTree.Find<BreadcrumbOverflowButton>(breadcrumb).ShouldNotBeNull();
+
+        // Act
+        await surface.Pointer.ClickAsync(trigger);
+
+        // Assert
+        var menu = OwnedTree.Find<Menu>(trigger).ShouldNotBeNull();
+        menu.MinWidth.ShouldBe(Length.Cells(15));
+        menu.Bounds.Width.ShouldBe(15);
+    }
+
     /// <summary>Verifies an overflow projection refreshes when equal-width source text changes.</summary>
     [Fact]
     public async Task Overflow_WhenSourceTextChangesAtEqualWidth_RefreshesProjectionAsync()

@@ -128,7 +128,8 @@ fits, but cannot become current, active, invoked, or projected. An item omitted
 only because of finite width receives empty bounds while the private projection
 owns its presentation.
 
-Overflow menu entries capture their source and ownership generations. Resize,
+Overflow menu entries capture their source and ownership generations. Their
+private vertical menu inherits the shared 15-cell default minimum width. Resize,
 path mutation, availability changes, menu dismissal, or owner disposal makes a
 stale projection inert. A resize that changes the visible window also cancels
 any in-progress pointer press, so a physical cell cannot be reinterpreted as a

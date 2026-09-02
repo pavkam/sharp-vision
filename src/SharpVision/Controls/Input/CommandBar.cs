@@ -71,14 +71,12 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
             Orientation = Orientation.Vertical,
             Spacing = 0,
             UsesExternalModalSession = true,
-            IsTabStop = false,
-            MinWidth = Length.Cells(1)
+            IsTabStop = false
         };
         _overflowMenu.ItemInvocationCompleted += OnOverflowItemInvocationCompleted;
         _overflowPopup = new Popup
         {
             Anchor = _overflowButton,
-            ConnectsToAnchor = true,
             Content = _overflowMenu,
             FocusOnOpen = true,
             ModalBehavior = PopupModalBehavior.None,

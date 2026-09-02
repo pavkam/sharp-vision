@@ -25,7 +25,7 @@ internal sealed class BreadcrumbOverflowButton: InputBase
         IsTabStop = false;
         Border = ControlStyle.NoBorder;
         Shadow = ControlStyle.NoShadow;
-        var menu = new Menu { Orientation = Orientation.Vertical, MinWidth = Length.Cells(1) };
+        var menu = new Menu { Orientation = Orientation.Vertical };
         _contextMenu = new ContextMenu(menu);
         ContextMenu = _contextMenu;
     }

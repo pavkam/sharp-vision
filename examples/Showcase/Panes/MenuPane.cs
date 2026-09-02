@@ -229,7 +229,7 @@ internal sealed class MenuPane: CompositeControlBase
             new DocSection(
                 "📑",
                 "Menu bar with submenus",
-                "The top menu owns one <info>Dismiss</info> plane for its complete popup chain. Submenus default to a 10-cell minimum; Open Recent demonstrates direct <info>MinWidth</info>/<info>MaxWidth</info> bounds. Hover or arrows switch an open sibling inside that plane, and <reverse>Escape</reverse> restores the owning menu.",
+                "The top menu owns one <info>Dismiss</info> plane for its complete popup chain. Submenus default to a 15-cell minimum; Open Recent demonstrates direct <info>MinWidth</info>/<info>MaxWidth</info> bounds. Hover or arrows switch an open sibling inside that plane, and <reverse>Escape</reverse> restores the owning menu.",
                 new DocExample(
                     "Application menu bar",
                     "Click or press <reverse>Enter</reverse> on File, Edit, View, or Help, then hover another heading to switch without leaving the menu plane. <reverse>Tab</reverse> and arrows move selection; Open Recent extends the same plane to the right.",

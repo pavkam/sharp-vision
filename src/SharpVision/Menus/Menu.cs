@@ -39,10 +39,10 @@ public sealed class Menu: ItemsControl
     private int _submenuSurfaceCloseDepth;
     private int _submenuTransitionDepth;
 
-    /// <summary>Initializes an empty horizontal menu with typed managed items and a 10-cell minimum width.</summary>
+    /// <summary>Initializes an empty horizontal menu with typed managed items and a 15-cell minimum width.</summary>
     public Menu()
     {
-        MinWidth = Length.Cells(10);
+        MinWidth = Length.Cells(15);
         _stack = new LayoutStack
         {
             Orientation = Orientation.Horizontal,

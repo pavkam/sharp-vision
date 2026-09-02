@@ -122,7 +122,7 @@ public sealed class MenuSurfaceTests
 
     /// <summary>Verifies a short submenu uses the shipped menu minimum before popup framing.</summary>
     [Fact]
-    public async Task Submenu_WhenShortDefaultOpens_UsesTenCellMenuWidthAsync()
+    public async Task Submenu_WhenShortDefaultOpens_UsesFifteenCellMenuWidthAsync()
     {
         // Arrange
         var submenu = new Menu { Orientation = Orientation.Vertical };
@@ -140,16 +140,44 @@ public sealed class MenuSurfaceTests
         await surface.Pointer.ClickAsync(help);
 
         // Assert
-        submenu.MinWidth.ShouldBe(Length.Cells(10));
-        submenu.Bounds.Width.ShouldBe(10);
-        popup.SurfaceBounds.Width.ShouldBe(12);
+        submenu.MinWidth.ShouldBe(Length.Cells(15));
+        submenu.Bounds.Width.ShouldBe(15);
+        popup.SurfaceBounds.Width.ShouldBe(17);
         surface.ShouldRender("""
             Help
-            ╭──────────╮
-            │About     │
-            ╰──────────╯
+            ╭───────────────╮
+            │About          │
+            ╰───────────────╯
 
             """);
+    }
+
+    /// <summary>Verifies a caller can deliberately make one submenu narrower than the shared default.</summary>
+    [Fact]
+    public async Task Submenu_WhenMinimumWidthIsNarrowerThanDefault_UsesConfiguredInteriorWidthAsync()
+    {
+        // Arrange
+        var submenu = new Menu
+        {
+            Orientation = Orientation.Vertical,
+            MinWidth = Length.Cells(8)
+        };
+        submenu.Items.Add(new MenuItem { Text = "About" });
+        var help = new MenuItem { Text = "Help", Submenu = submenu };
+        var menu = new Menu();
+        menu.Items.Add(help);
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(20, 5),
+            TestContext.Current.CancellationToken);
+        var popup = OwnedTree.Find<Popup>(help).ShouldNotBeNull();
+
+        // Act
+        await surface.Pointer.ClickAsync(help);
+
+        // Assert
+        submenu.Bounds.Width.ShouldBe(8);
+        popup.SurfaceBounds.Width.ShouldBe(10);
     }
 
     /// <summary>Verifies an explicit submenu minimum controls the popup interior before framing.</summary>
@@ -253,7 +281,7 @@ public sealed class MenuSurfaceTests
             TestContext.Current.CancellationToken);
         var popup = OwnedTree.Find<Popup>(help).ShouldNotBeNull();
         await surface.Pointer.ClickAsync(help);
-        popup.SurfaceBounds.Width.ShouldBe(12);
+        popup.SurfaceBounds.Width.ShouldBe(17);
 
         // Act
         await surface.UpdateAsync(() => submenu.MinWidth = Length.Cells(14), "increase open submenu minimum width");

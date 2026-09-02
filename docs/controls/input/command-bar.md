@@ -158,11 +158,13 @@ later stages. A newer nested activation likewise supersedes the older action.
 Required cleanup and still-current stages complete before the earliest callback
 failure is rethrown.
 
-Overflow uses one stable private trigger, one vertical `Menu`, one anchored
-`Popup`, and one dismissing modal coordinator for the bar's lifetime. Opening
-transfers focus into the menu. Escape, outside interaction, a layout-generation
-change, or direct unavailability of the `CommandBar` closes it and restores
-focus according to the shared
+Overflow uses one stable private trigger, one vertical `Menu` with the shared
+15-cell default minimum width, one anchored framed `Popup`, and one dismissing
+modal coordinator for the bar's lifetime. The overflow keeps every frame edge
+when it opens below or flips above the trigger; it is a submenu surface, not a
+connected input dropdown. Opening transfers focus into the menu. Escape, outside
+interaction, a layout-generation change, or direct unavailability of the
+`CommandBar` closes it and restores focus according to the shared
 [popup modality rules](../../concepts/modality.md#popup-and-window-presentations).
 Ancestor unavailability instead suspends the modal scope while the popup stays
 logically open, then restores that scope once the ancestor becomes available.
