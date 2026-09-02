@@ -29,7 +29,8 @@ public sealed record ColorPickerStyle: ControlStyle
             ? InvalidationImpact.None
             : InvalidationImpact.Measure);
 
-    /// <summary>Gets the default status-face mechanics before value-dependent contrast is applied.</summary>
+    /// <summary>Gets the default value-editor face before value-dependent contrast or invalid-text
+    /// error presentation is applied.</summary>
     internal static Face DefaultStatusFace { get; } = new(
         SemanticColor.ControlText,
         Color.Transparent,
@@ -42,7 +43,7 @@ public sealed record ColorPickerStyle: ControlStyle
     /// <param name="border">The vestigial normal border.</param>
     /// <param name="shadow">The vestigial normal shadow.</param>
     /// <param name="sliderStyle">The style forwarded to every retained Slider, or null for semantic ownership.</param>
-    /// <param name="statusFace">The status mechanics, or null for the library fallback.</param>
+    /// <param name="statusFace">The value-editor face mechanics, or null for the library fallback.</param>
     /// <param name="selectedMarker">The marker forwarded to the retained ColorPlane's currently-selected-
     /// coordinate indicator, or null for the library default.</param>
     /// <param name="hueSliderStyle">The Hue Slider contribution, or null to derive it from
@@ -74,7 +75,8 @@ public sealed record ColorPickerStyle: ControlStyle
     /// <see cref="SliderStyle"/> while preserving the transparent rainbow backdrop.</summary>
     public SliderStyle? HueSliderStyle { get; init; }
 
-    /// <summary>Gets the status face contribution, or null for the library fallback.</summary>
-    /// <remarks>The foreground is ignored because ColorPicker recomputes contrast from its value.</remarks>
+    /// <summary>Gets the value-editor face contribution, or null for the library fallback.</summary>
+    /// <remarks>The foreground is ignored because ColorPicker recomputes contrast from its value or
+    /// the active Theme's error color.</remarks>
     public Face? StatusFace { get; init; }
 }
