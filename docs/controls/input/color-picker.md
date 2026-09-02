@@ -52,11 +52,11 @@ parts themselves. `SliderStyle` (`SliderStyle?`) is applied to all three RGB
 `Slider`s. `HueSliderStyle` (`SliderStyle?`) independently styles the retained
 hue slider; when unset, it derives from `SliderStyle`, and its background is
 always made transparent so the rainbow ramp remains visible. `StatusFace`
-(`Face?`) styles the value field's valid background, attributes, and underline;
-the Foreground component is always ignored, because `ColorPicker` recomputes the
-field foreground from the current value on every commit. Invalid text
-temporarily replaces the background with `SemanticColor.Error` and derives a
-contrasting foreground while preserving the authored decorations.
+(`Face?`) styles the value field's attributes and underline. For an RGB value,
+`ColorPicker` replaces both face colors with the selected RGB background and a
+contrasting foreground on every commit; authored colors apply when the value is
+`Color.Default`. Invalid text temporarily replaces both colors with the active
+theme's error background and contrast while preserving authored decorations.
 `SelectedMarker` (`Rune?`) replaces the printable glyph the plane draws over the
 currently selected coordinate; a value that cannot occupy exactly one cell under
 the active width policy falls back to the same code-owned repair glyph as an

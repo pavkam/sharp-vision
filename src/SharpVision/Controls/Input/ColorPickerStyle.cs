@@ -76,7 +76,8 @@ public sealed record ColorPickerStyle: ControlStyle
     public SliderStyle? HueSliderStyle { get; init; }
 
     /// <summary>Gets the value-editor face contribution, or null for the library fallback.</summary>
-    /// <remarks>The foreground is ignored because ColorPicker recomputes contrast from its value or
-    /// the active Theme's error color.</remarks>
+    /// <remarks>For an RGB value, ColorPicker replaces the foreground and background with the
+    /// contrasting text and selected color. Invalid text uses the active Theme's error colors.
+    /// Authored colors apply to <see cref="Color.Default"/>; decorations always remain authored.</remarks>
     public Face? StatusFace { get; init; }
 }

@@ -420,18 +420,22 @@ public sealed class ColorPickerSurfaceTests
         Color background,
         Color foreground)
     {
-        _ = background;
-        _ = foreground;
-        var origin = new Point(picker.Preview.Bounds.X, picker.Preview.Bounds.Y);
-        picker.Preview.Bounds.Width.ShouldBeGreaterThan(0);
-        picker.Preview.Bounds.Height.ShouldBeGreaterThan(0);
-        var textX = origin.X;
+        var bounds = picker.ValueTextInput.Bounds;
+        var projectedBackground = TerminalPalette.Project(background, picker.EffectiveColorDepth);
+        var projectedForeground = TerminalPalette.Project(foreground, picker.EffectiveColorDepth);
+        bounds.Width.ShouldBeGreaterThan(0);
+        bounds.Height.ShouldBe(1);
 
-        for (var index = 0; index < text.Length; index++)
+        for (var index = 0; index < bounds.Width; index++)
         {
-            var cell = surface.Cell(new Point(textX + index, origin.Y));
-            cell.Text.ShouldBe(text[index].ToString());
-            cell.Style.Background.IsRgb.ShouldBeTrue();
+            var cell = surface.Cell(new Point(bounds.X + index, bounds.Y));
+            cell.Style.Background.ShouldBe(projectedBackground);
+
+            if (index < text.Length)
+            {
+                cell.Text.ShouldBe(text[index].ToString());
+                cell.Style.Foreground.ShouldBe(projectedForeground);
+            }
         }
     }
 }

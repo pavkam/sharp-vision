@@ -510,7 +510,7 @@ public sealed class ColorPickerTests
     }
 
     /// <summary>Verifies the resolved presentation defaults to each Slider's own semantic profile
-    /// and the library-default status face until an explicit local style is assigned.</summary>
+    /// and a value-colored editor face until an explicit local style is assigned.</summary>
     [Fact]
     public void Style_WhenUnset_SlidersAndStatusFollowTheLibraryDefault()
     {
@@ -525,18 +525,17 @@ public sealed class ColorPickerTests
         picker.ActualStyle.SliderStyle.ShouldBe(expectedSlider.ActualStyle);
         picker.ActualStyle.HueSliderStyle.ShouldBe(picker.HueSlider.ActualStyle);
         var statusFace = picker.ActualStyle.StatusFace.ShouldNotBeNull();
-        statusFace.Background.ShouldBe(Color.Transparent);
+        statusFace.Background.ShouldBe(Color.Rgb(255, 0, 0));
         statusFace.Attributes.ShouldBe((ControlDecoration) SemanticDecoration.NormalText);
         statusFace.Underline.ShouldBe(Underline.None);
         picker.ActualStyle.SelectedMarker.ShouldBeNull();
         picker.Plane.SelectedMarker.ShouldBeNull();
     }
 
-    /// <summary>Verifies an explicit local style propagates to all four owned Sliders and to the
-    /// status readout's background, attributes, and underline, while the foreground stays the
-    /// contrast color computed for the current value.</summary>
+    /// <summary>Verifies an explicit local style propagates to all four owned Sliders and preserves
+    /// value-derived editor colors while applying authored attributes and underline.</summary>
     [Fact]
-    public void Style_WhenSet_PropagatesToAllFourSlidersAndTheStatusBackground()
+    public void Style_WhenSet_PropagatesSlidersAndPreservesValueColoredStatus()
     {
         var picker = new ColorPicker { Value = Color.Rgb(10, 20, 30) };
         var sliderStyle = new SliderStyle(
@@ -570,7 +569,7 @@ public sealed class ColorPickerTests
         picker.ActualStyle.SliderStyle.ShouldBe(sliderStyle);
         picker.ActualStyle.HueSliderStyle.ShouldBe(picker.HueSlider.ActualStyle);
         var statusFace = picker.ActualStyle.StatusFace.ShouldNotBeNull();
-        statusFace.Background.ShouldBe(face.Background);
+        statusFace.Background.ShouldBe(Color.Rgb(10, 20, 30));
         statusFace.Attributes.ShouldBe(face.Attributes);
         statusFace.Underline.ShouldBe(face.Underline);
         statusFace.Foreground.ShouldBe(ColorMath.Contrast(Color.Rgb(10, 20, 30)));
@@ -800,11 +799,10 @@ public sealed class ColorPickerTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies a caller-supplied status background survives a later value commit, while
-    /// the foreground is refreshed to the newly computed contrast color rather than the value that
-    /// was current when the style was applied.</summary>
+    /// <summary>Verifies a later value commit refreshes both value-derived editor colors while
+    /// preserving the caller-supplied status decorations.</summary>
     [Fact]
-    public void Value_WhenCommittedAfterStatusStyleIsSet_PreservesContrastForegroundAndCallerBackground()
+    public void Value_WhenCommittedAfterStatusStyleIsSet_RefreshesValueColorsAndPreservesDecorations()
     {
         var picker = new ColorPicker { Value = Color.Rgb(10, 20, 30) };
         var face = new Face(
@@ -824,9 +822,11 @@ public sealed class ColorPickerTests
         picker.Value = Color.Rgb(200, 210, 220);
 
         var statusFace = picker.ActualStyle.StatusFace.ShouldNotBeNull();
-        statusFace.Background.ShouldBe(face.Background);
+        statusFace.Background.ShouldBe(Color.Rgb(200, 210, 220));
         statusFace.Foreground.ShouldBe(ColorMath.Contrast(Color.Rgb(200, 210, 220)));
         statusFace.Foreground.ShouldNotBe(ColorMath.Contrast(Color.Rgb(10, 20, 30)));
+        statusFace.Attributes.ShouldBe(face.Attributes);
+        statusFace.Underline.ShouldBe(face.Underline);
     }
 
     /// <summary>Verifies replacing Style notifies observers exactly once per distinct value and

@@ -423,8 +423,13 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
 
         if (_isValueTextValid)
         {
-            var rgb = _value.IsRgb ? _value : Color.Rgb(0, 0, 0);
-            return authored with { Foreground = rgb.Contrast() };
+            return _value.IsRgb
+                ? authored with
+                {
+                    Foreground = _value.Contrast(),
+                    Background = _value
+                }
+                : authored;
         }
 
         var error = (Theme ?? ThemeCatalog.Dark).Error;
