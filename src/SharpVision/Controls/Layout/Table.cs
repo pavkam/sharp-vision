@@ -172,7 +172,13 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     public bool ShowHeader
     {
         get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        set
+        {
+            if (SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                InvalidateRetainedDescendant(_presenter, InvalidationImpact.Measure);
+            }
+        }
     } = true;
 
     /// <summary>Gets or sets the complete local presentation, or null for theme ownership.</summary>
@@ -198,7 +204,11 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+
+            if (SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                InvalidateRetainedDescendant(_presenter, InvalidationImpact.Measure);
+            }
         }
     }
 
@@ -213,7 +223,11 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+
+            if (SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                InvalidateRetainedDescendant(_presenter, InvalidationImpact.Measure);
+            }
         }
     }
 
@@ -223,7 +237,13 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
     public bool ShowGridLines
     {
         get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        set
+        {
+            if (SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                InvalidateRetainedDescendant(_presenter, InvalidationImpact.Measure);
+            }
+        }
     } = true;
 
     /// <summary>Gets the committed non-negative scrolling content extent.</summary>
@@ -2295,6 +2315,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         }
 
         Invalidate(Invalidation.Measure);
+        InvalidateRetainedDescendant(_presenter, InvalidationImpact.Measure);
     }
 
     /// <summary>Validates one public column definition before collection ownership.</summary>
@@ -2359,6 +2380,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         }
 
         Invalidate(Invalidation.Measure);
+        InvalidateRetainedDescendant(_presenter, InvalidationImpact.Measure);
         ApplyCellStates();
 
         // Re-splicing into the active sorted order does not change SortColumnIndex or
@@ -2432,6 +2454,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         }
 
         Invalidate(Invalidation.Measure);
+        InvalidateRetainedDescendant(_presenter, InvalidationImpact.Measure);
         ApplyCellStates();
     }
 
@@ -2516,6 +2539,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         }
 
         Invalidate(Invalidation.Measure);
+        InvalidateRetainedDescendant(_presenter, InvalidationImpact.Measure);
         ApplyCellStates();
 
         // Re-splicing into the active sorted order does not change SortColumnIndex or
