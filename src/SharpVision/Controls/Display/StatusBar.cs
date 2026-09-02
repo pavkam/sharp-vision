@@ -19,6 +19,10 @@ public sealed class StatusBar: ItemsControl
         HorizontalAlignment = HorizontalAlignment.Stretch;
     }
 
+    /// <inheritdoc/>
+    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
+        BarAppearance.Rebase((theme ?? ThemeCatalog.Dark).GetStyleSet(ControlStyle.Default));
+
     /// <summary>Gets the typed managed status-item collection.</summary>
     public StatusBarItemCollection Items { get; }
 

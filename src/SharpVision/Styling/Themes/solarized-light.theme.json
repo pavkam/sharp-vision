@@ -34,6 +34,7 @@
     "windowText": "base00",
     "surface": "base2",
     "surfaceText": "base00",
+    "bar": "base2",
     "control": "base2",
     "controlText": "base00",
     "controlBorder": "base1",

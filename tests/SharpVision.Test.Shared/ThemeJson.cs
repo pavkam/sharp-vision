@@ -26,7 +26,7 @@ public static class ThemeJson
     public const int DefaultReservedPaletteEntryCount = 17;
 
     /// <summary>Creates one complete semantic theme document. <paramref name="background"/>,
-    /// <paramref name="foreground"/>, <paramref name="accent"/>, <paramref name="hotkey"/>, and
+    /// <paramref name="foreground"/>, <paramref name="bar"/>, <paramref name="accent"/>, <paramref name="hotkey"/>, and
     /// <paramref name="controlBorderForeground"/> each accept either a raw hex literal - which this
     /// method synthesizes into its own reserved palette entry, since a hex literal is no longer
     /// legal directly in "colors.*" - or the name of a key already present in
@@ -36,6 +36,7 @@ public static class ThemeJson
         string name = "T",
         string background = "#101010",
         string foreground = "#e0e0e0",
+        string? bar = null,
         string accent = "#77aaff",
         string? hotkey = null,
         string inputGlyphStyle = "\"heavy\"",
@@ -55,6 +56,9 @@ public static class ThemeJson
         var glyphsField = glyphs is null ? "" : $", \"glyphs\": \"{glyphs}\"";
         var (backgroundRef, backgroundEntry) = ColorRef("background", background);
         var (foregroundRef, foregroundEntry) = ColorRef("foreground", foreground);
+        var (barRef, barEntry) = bar is null
+            ? (backgroundRef, null)
+            : ColorRef("bar", bar);
         var (accentRef, accentEntry) = ColorRef("accent", accent);
 
         string hotkeyRef;
@@ -82,7 +86,7 @@ public static class ThemeJson
         }
 
         var extraPalette = string.Concat(
-            backgroundEntry, foregroundEntry, accentEntry, hotkeyEntry, controlBorderEntry);
+            backgroundEntry, foregroundEntry, barEntry, accentEntry, hotkeyEntry, controlBorderEntry);
 
         return $$"""
             { "name": "{{name}}", "slug": "t", "colorScheme": "dark", "order": 1,
@@ -91,6 +95,7 @@ public static class ThemeJson
               "colors": {
                 "window":"{{backgroundRef}}", "windowSurface":"{{backgroundRef}}", "windowText":"{{foregroundRef}}",
                 "surface":"{{backgroundRef}}", "surfaceText":"{{foregroundRef}}",
+                "bar":"{{barRef}}",
                 "control":"{{backgroundRef}}", "controlText":"{{foregroundRef}}",
                 "controlBorder":"{{controlBorderRef}}", "controlShadow":"__controlShadow",
                 "reliefHighlight":"{{foregroundRef}}", "reliefShade":"__controlShadow",

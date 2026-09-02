@@ -31,6 +31,7 @@
     "windowText": "fg",
     "surface": "cursor-grey",
     "surfaceText": "fg",
+    "bar": "cursor-grey",
     "control": "cursor-grey",
     "controlText": "fg",
     "controlBorder": "gutter-grey",

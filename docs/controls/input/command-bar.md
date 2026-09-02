@@ -174,7 +174,10 @@ The bar's padding, overflow glyph, and overflow color resolve through
 `ActualStyle`. Item-specific captions, affixes, and presentation belong to the
 [`CommandBarItem` appearance rules](command-bar-item.md#appearance-and-unicode),
 and passive divider glyph fallback belongs to
-[`CommandBarSeparator`](command-bar-separator.md#appearance-and-unicode).
+[`CommandBarSeparator`](command-bar-separator.md#appearance-and-unicode). The
+bar, normal primary entries, overflow trigger, separators, gaps, and unused
+cells use `SemanticColor.Bar`; authored interactive states and complete local
+styles retain precedence.
 
 ## Example
 

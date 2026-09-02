@@ -12,7 +12,7 @@ public sealed class CommandBarStyleTests
     {
         var style = CommandBarStyle.Default;
 
-        style.Face.ShouldBe(ControlStyle.Default.Face);
+        style.Face.ShouldBe(ControlStyle.Default.Face with { Background = SemanticColor.Bar });
         style.Border.ShouldBe(ControlStyle.Default.Border);
         style.Shadow.ShouldBe(ControlStyle.Default.Shadow);
         style.Padding.ShouldBe(default);

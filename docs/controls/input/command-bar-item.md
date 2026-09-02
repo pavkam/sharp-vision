@@ -88,7 +88,10 @@ one.
 ## Appearance and Unicode
 
 `CommandBarItemStyle.Default` is a compact borderless input presentation with
-one horizontal cell of padding. Caption and affix drawing uses the shared
+one horizontal cell of padding and a `SemanticColor.Bar` normal background.
+Focused, selected, pressed, and disabled fallback contributions overlay that
+normal plane, while a complete local `Style` wins in every state. Caption and
+affix drawing uses the shared
 [Unicode cell geometry](../../concepts/unicode-cell-geometry.md#overview):
 extended grapheme clusters are never split, caption cells clip before a trailing
 affix, the trailing affix drops whole next, and the leading affix drops last.

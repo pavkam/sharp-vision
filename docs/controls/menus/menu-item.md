@@ -98,6 +98,11 @@ assigned, `ActualStyle` completes from the library's code-owned markers; the
 theme's `glyphs` family does not cover menu markers, so a local `Style` is the
 only way to move them.
 
+The normal `MenuItem` and `MenuSeparator` faces use `SemanticColor.Bar` so rows
+and gaps remain one continuous menu plane. The interactive fallback's focused,
+selected, pressed, and disabled contributions still overlay that normal face; a
+complete local `Style` replaces the theme-owned appearance in every state.
+
 > [!NOTE]
 >
 > To override a marker, assign a complete local `Style` — for example
@@ -227,7 +232,7 @@ save.Invoked += (_, _) => SaveDocument();
 
 `Submenu` gives the item one retained popup that it owns. Activating the item
 toggles the submenu, and an armed owning menu may also open it while moving
-selection. The popup uses a light square frame and the semantic surface
+selection. The popup uses a light square frame around the semantic Bar
 background so it reads as part of the menu system. It prefers to open below the
 item in a horizontal menu and to the right of the item in a vertical menu.
 Generic popup fallback, promotion, light dismissal, and ancestor-chain

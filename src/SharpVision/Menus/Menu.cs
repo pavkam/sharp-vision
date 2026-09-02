@@ -43,7 +43,12 @@ public sealed class Menu: ItemsControl
     public Menu()
     {
         MinWidth = Length.Cells(10);
-        _stack = new LayoutStack { Orientation = Orientation.Horizontal, Spacing = 0 };
+        _stack = new LayoutStack
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 0,
+            Face = ControlStyle.Default.Face
+        };
         InitializeItemsHost(_stack);
         _propertyOverrides = new RetainedPropertyOverrideService(this, ItemControlsSlot);
         _modalSession = new ModalSession(OnModalDismissRequested, OnModalScopeExited);
@@ -54,6 +59,10 @@ public sealed class Menu: ItemsControl
         FocusEntered += OnFocusEntered;
         FocusLeft += OnFocusLeft;
     }
+
+    /// <inheritdoc/>
+    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
+        BarAppearance.Rebase((theme ?? ThemeCatalog.Dark).GetStyleSet(ControlStyle.Default));
 
     /// <summary>Raised after an owned item invokes through keyboard, pointer, or programmatic input.</summary>
     public event EventHandler<MenuItemInvokedEventArgs>? ItemInvoked;

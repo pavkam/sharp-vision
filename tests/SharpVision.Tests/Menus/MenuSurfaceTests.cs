@@ -6,6 +6,56 @@ namespace SharpVision.Tests.Menus;
 /// <summary>Proves menu entries and navigation through mounted terminal surfaces.</summary>
 public sealed class MenuSurfaceTests
 {
+    /// <summary>Verifies the semantic bar plane fills normal entries and unused cells while state
+    /// colors and a complete local item style remain authoritative.</summary>
+    [Fact]
+    public async Task BarAppearance_WhenThemeAndLocalStyleVary_PreservesTheRequiredPrecedenceAsync()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            bar: "#345678",
+            controlExtra: """, "disabled": { "face": { "foreground":"disabledText", "background":"disabledControl" } }""",
+            inputStates: """, "selected": { "face": { "foreground":"selectedText", "background":"selectedControl" } }"""));
+        var normal = new MenuItem { Text = "Normal" };
+        var disabled = new MenuItem { Text = "Disabled", IsEnabled = false };
+        var localBackground = Color.Rgb(120, 30, 60);
+        var local = new MenuItem
+        {
+            Text = "Local",
+            Style = MenuItemStyle.Default with
+            {
+                Face = MenuItemStyle.Default.Face with { Background = localBackground }
+            }
+        };
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        menu.Items.Add(normal);
+        menu.Items.Add(disabled);
+        menu.Items.Add(local);
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(14, 3),
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => surface.Application.Theme = theme, "apply semantic bar theme");
+
+        var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), ColorDepth.Basic16);
+        var expectedDisabled = TerminalPalette.Project(
+            theme.ResolveColor(SemanticColor.DisabledControl),
+            ColorDepth.Basic16);
+        surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(menu.Bounds.Right - 1, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldBe(expectedDisabled);
+        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), ColorDepth.Basic16));
+        surface.Cell(new Point(local.Bounds.X, local.Bounds.Y)).Style.Background.ShouldBe(
+            TerminalPalette.Project(localBackground, ColorDepth.Basic16));
+
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.UpdateAsync(() => menu.SelectedIndex = 0, "select normal menu item");
+
+        surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), ColorDepth.Basic16));
+    }
+
     /// <summary>Verifies an owner-managed submenu opening does not close an unrelated
     /// owner-managed popup elsewhere in the same tree.</summary>
     [Fact]

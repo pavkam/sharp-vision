@@ -205,6 +205,14 @@ active theme-resolved appearance. Ordinary controls follow theme changes
 automatically, so application code needs no Theme plumbing. Local complete Style
 values remain authoritative.
 
+Bar surfaces use `SemanticColor.Bar` for their complete normal face rather than
+borrowing `Control` or `Surface` by accident. Menus, command bars, status bars,
+their ordinary items and separators, and otherwise unoccupied cells therefore
+form one continuous theme-authored plane. This rebase keeps the fallback's
+foreground, hotkey decoration, border, shadow, and explicitly authored focus,
+selection, press, and disabled contributions; a caller's complete local style
+still wins in every state.
+
 The [Control page](../controls/control.md#intrinsic-appearance) defines the
 public properties, layout effects, and rendering order. The
 [themes page](themes.md#overview) defines the JSON schema and global values. The

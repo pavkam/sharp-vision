@@ -12,7 +12,7 @@ public sealed class CommandBarSeparatorStyleTests
     {
         var style = CommandBarSeparatorStyle.Default;
 
-        style.Face.ShouldBe(ControlStyle.Default.Face);
+        style.Face.ShouldBe(ControlStyle.Default.Face with { Background = SemanticColor.Bar });
         style.Border.ShouldBe(ControlStyle.Default.Border);
         style.Shadow.ShouldBe(ControlStyle.Default.Shadow);
         style.Glyph.ShouldBe(ControlGlyphs.Separators.Vertical);

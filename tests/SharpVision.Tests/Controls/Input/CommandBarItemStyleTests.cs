@@ -12,7 +12,7 @@ public sealed class CommandBarItemStyleTests
     {
         var style = CommandBarItemStyle.Default;
 
-        style.Face.ShouldBe(InputStyle.Default.Face);
+        style.Face.ShouldBe(InputStyle.Default.Face with { Background = SemanticColor.Bar });
         style.Border.Sides.ShouldBe(BorderSide.None);
         style.Shadow.IsVisible.ShouldBeFalse();
         style.Padding.ShouldBe(new Thickness(horizontal: 1, vertical: 0));
@@ -69,5 +69,41 @@ public sealed class CommandBarItemStyleTests
 
         item.Style.ShouldBe(local);
         item.ActualStyle.ShouldBe(local);
+    }
+
+    /// <summary>Verifies Bar supplies the resting plane without erasing inherited focus,
+    /// selection, disabled, or complete local-style precedence.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenBarAndStatesAreAuthored_PreservesStateAndLocalPrecedence()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            bar: "#345678",
+            controlExtra: """, "disabled": { "face": { "foreground":"disabledText", "background":"disabledControl" } }""",
+            inputStates: """, "selected": { "face": { "foreground":"selectedText", "background":"selectedControl" } }"""));
+        using var item = new CommandBarItem();
+
+        var normal = item.ResolveAppearance(theme);
+        var focused = item.ResolveAppearance(theme, VisualState.Focused);
+        var selected = item.ResolveAppearance(theme, VisualState.Selected);
+        var disabled = item.ResolveAppearance(theme, VisualState.Disabled);
+
+        normal.Face.Background.Literal.ShouldBe(theme.ResolveColor(SemanticColor.Bar));
+        focused.Face.Background.ShouldBe(normal.Face.Background);
+        focused.Face.Foreground.Literal.ShouldBe(theme.ResolveColor(SemanticColor.FocusedText));
+        focused.Face.Attributes.Literal.ShouldBe(TerminalAttributes.Bold);
+        selected.Face.Background.Literal.ShouldBe(theme.ResolveColor(SemanticColor.SelectedControl));
+        disabled.Face.Foreground.Literal.ShouldBe(theme.ResolveColor(SemanticColor.DisabledText));
+        disabled.Face.Background.Literal.ShouldBe(theme.ResolveColor(SemanticColor.DisabledControl));
+
+        var localBackground = Color.Rgb(120, 30, 60);
+        item.Style = CommandBarItemStyle.Default with
+        {
+            Face = CommandBarItemStyle.Default.Face with { Background = localBackground }
+        };
+
+        foreach (var state in new[] { VisualState.Focused, VisualState.Selected, VisualState.Disabled })
+        {
+            item.ResolveAppearance(theme, state).Face.Background.Literal.ShouldBe(localBackground);
+        }
     }
 }

@@ -32,6 +32,7 @@
     "windowText": "text",
     "surface": "surface0",
     "surfaceText": "text",
+    "bar": "surface0",
     "control": "surface0",
     "controlText": "text",
     "controlBorder": "overlay0",

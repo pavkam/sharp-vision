@@ -36,6 +36,36 @@ public sealed class CuratedThemesTests
         }
     }
 
+    /// <summary>Verifies every curated theme resolves its deliberately authored raised-navigation color.</summary>
+    [Fact]
+    public void EveryTheme_WhenBarColorResolves_UsesCuratedRaisedNavigationValue()
+    {
+        var expected = new Dictionary<string, Color>(StringComparer.Ordinal)
+        {
+            ["catppuccin-latte"] = Color.FromHex("#ccd0da"),
+            ["catppuccin-mocha"] = Color.FromHex("#313244"),
+            ["default-dark"] = Color.FromHex("#262626"),
+            ["default-light"] = Color.FromHex("#e5e5e5"),
+            ["dracula"] = Color.FromHex("#44475a"),
+            ["gruvbox-dark"] = Color.FromHex("#3c3836"),
+            ["gruvbox-light"] = Color.FromHex("#ebdbb2"),
+            ["monokai"] = Color.FromHex("#3e3d32"),
+            ["nord"] = Color.FromHex("#3b4252"),
+            ["one-dark"] = Color.FromHex("#2c323c"),
+            ["solarized-dark"] = Color.FromHex("#073642"),
+            ["solarized-light"] = Color.FromHex("#eee8d5"),
+            ["tokyo-night"] = Color.FromHex("#16161e"),
+            ["tokyo-night-day"] = Color.FromHex("#c4c8da"),
+            ["tokyo-night-storm"] = Color.FromHex("#292e42"),
+            ["turbo-vision"] = Color.FromHex("#aaaaaa")
+        };
+
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            ThemeCatalog.Load(slug).ResolveColor(SemanticColor.Bar).ShouldBe(expected[slug], slug);
+        }
+    }
+
     /// <summary>Verifies every curated theme's six well-known role sections ("control"/"input"/
     /// "container"/"window"/"popup"/"tooltip") round-trip through the real reflective engine: each
     /// role's resolved Normal face differs from that role's bare code-owned default, proving the

@@ -95,6 +95,11 @@ to another item closes the previous sibling and opens the new item's submenu.
 Moving to an item without a submenu closes the previous submenu without invoking
 the command.
 
+The menu, its normal item and separator faces, and unoccupied host cells use the
+theme's `SemanticColor.Bar` background. Explicitly authored focus, selection,
+press, and disabled faces overlay that normal plane, while a complete local item
+style remains authoritative.
+
 Selection callbacks may synchronously mutate or detach the menu. A pending
 submenu transition retains the selected item's identity and continues only if
 that same item remains selected under the same attached menu session. Moving

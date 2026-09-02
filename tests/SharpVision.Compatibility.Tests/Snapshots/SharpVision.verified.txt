@@ -1293,6 +1293,7 @@ namespace SharpVision.Controls.Display
         public StatusBar() { }
         public SharpVision.Controls.Display.StatusBarItemCollection Items { get; }
         public int Spacing { get; set; }
+        protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
     }
     public sealed class StatusBarItem : SharpVision.Controls.ContentControl, SharpVision.Controls.IStyled<SharpVision.Controls.Display.StatusBarItemStyle>
     {
@@ -3410,6 +3411,7 @@ namespace SharpVision.Menus
         public SharpVision.Menus.MenuItem? SelectedItem { get; set; }
         public int Spacing { get; set; }
         public event System.EventHandler<SharpVision.Menus.MenuItemInvokedEventArgs>? ItemInvoked;
+        protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
@@ -4321,6 +4323,7 @@ namespace SharpVision.Styling
         Blue = 35,
         Magenta = 36,
         Cyan = 37,
+        Bar = 38,
     }
     public enum SemanticDecoration
     {

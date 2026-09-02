@@ -113,16 +113,18 @@ from their code-owned defaults.
 ## Defaults and appearance
 
 `StatusBar` defaults to a one-cell fixed height, stretched horizontal alignment,
-the shared code-owned control appearance for its background, and one cell of
-inter-item spacing. It stays hit-testable so ordinary routed pointer events can
-be observed, but it is not focusable and is not a Tab stop. `StatusBarItem` is
-also non-focusable by default. Interactive retained content keeps its own normal
-input and focus behavior.
+the theme's `SemanticColor.Bar` background, and one cell of inter-item spacing.
+It stays hit-testable so ordinary routed pointer events can be observed, but it
+is not focusable and is not a Tab stop. `StatusBarItem` is also non-focusable by
+default. Interactive retained content keeps its own normal input and focus
+behavior.
 
-The inherited `Face` remains theme-owned, so the shared normal appearance
-supplies foreground and background and retained text follows ambient
-inheritance. Assign a complete local `Face` only for a deliberate
-product-specific treatment.
+The inherited `Face` remains theme-owned: Bar supplies the normal background,
+the shared control appearance supplies foreground and state overlays, and
+retained text follows ambient inheritance. `StatusBarItem` uses the same Bar
+normal background while preserving disabled appearance and a complete local item
+style. Assign a complete local `Face` only for a deliberate product-specific
+treatment.
 
 Applications may change the inherited control appearance, height, padding,
 border, and shadow properties. Multi-line or taller retained content is clipped

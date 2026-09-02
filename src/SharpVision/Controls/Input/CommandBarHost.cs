@@ -15,6 +15,7 @@ internal sealed class CommandBarHost: Container
         ArgumentNullException.ThrowIfNull(owner);
         _owner = owner;
         HorizontalAlignment = HorizontalAlignment.Stretch;
+        Face = ControlStyle.Default.Face;
     }
 
     /// <inheritdoc/>

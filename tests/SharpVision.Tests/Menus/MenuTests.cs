@@ -69,6 +69,7 @@ public sealed class MenuTests
         menu.SelectedIndex.ShouldBe(-1);
         menu.SelectedItem.ShouldBeNull();
         menu.Items.Count.ShouldBe(0);
+        menu.Face.Background.ShouldBe(SemanticColor.Bar);
     }
 
     /// <summary>Verifies an unknown orientation is rejected before the previous value changes,

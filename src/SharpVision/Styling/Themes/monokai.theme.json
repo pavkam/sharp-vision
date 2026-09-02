@@ -30,6 +30,7 @@
     "windowText": "fg",
     "surface": "raised",
     "surfaceText": "fg",
+    "bar": "raised",
     "control": "raised",
     "controlText": "fg",
     "controlBorder": "comment",

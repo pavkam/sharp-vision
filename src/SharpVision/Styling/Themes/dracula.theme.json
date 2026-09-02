@@ -30,6 +30,7 @@
     "windowText": "fg",
     "surface": "current",
     "surfaceText": "fg",
+    "bar": "current",
     "control": "current",
     "controlText": "fg",
     "controlBorder": "comment",

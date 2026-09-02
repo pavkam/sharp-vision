@@ -583,6 +583,7 @@ public sealed class ThemeTests
           "colors": {
             "window":"bg", "windowSurface":"bg", "windowText":"fg",
             "surface":"bg", "surfaceText":"fg",
+            "bar":"bg",
             "control":"bg", "controlText":"fg",
             "controlBorder":"fg", "controlShadow":"shadow",
             "reliefHighlight":"fg", "reliefShade":"shadow",
@@ -629,6 +630,7 @@ public sealed class ThemeTests
           "colors": {
             "window":"bg", "windowSurface":"bg", "windowText":"fg",
             "surface":"bg", "surfaceText":"fg",
+            "bar":"bg",
             "control":"bg", "controlText":"fg",
             "controlBorder":"fg", "controlShadow":"shadow",
             "reliefHighlight":"fg", "reliefShade":"shadow",

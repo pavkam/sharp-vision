@@ -23,7 +23,7 @@ internal sealed class CommandBarOverflowButton: InputBase
 
     /// <inheritdoc/>
     protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
-        (theme ?? ThemeCatalog.Dark).GetInteractiveControlStyleSet().ToAppearanceStates();
+        BarAppearance.Rebase((theme ?? ThemeCatalog.Dark).GetInteractiveControlStyleSet());
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)

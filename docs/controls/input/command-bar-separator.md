@@ -67,7 +67,9 @@ activation event because no activation surface exists.
 render time the preferred glyph is selected only when it occupies one terminal
 cell under the live ambiguous-width policy; otherwise the validated portable
 fallback is used. The resolved `Face` supplies semantic color and attributes,
-and drawing never extends beyond the separator's single arranged cell.
+using `SemanticColor.Bar` for its normal background, and drawing never extends
+beyond the separator's single arranged cell. A complete local `Style` remains
+authoritative.
 
 ## Example
 

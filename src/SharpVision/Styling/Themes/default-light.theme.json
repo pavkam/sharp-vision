@@ -30,6 +30,7 @@
     "windowText": "black",
     "surface": "lightGray",
     "surfaceText": "black",
+    "bar": "lightGray",
     "control": "lightGray",
     "controlText": "black",
     "controlBorder": "steelGray",

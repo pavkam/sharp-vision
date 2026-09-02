@@ -40,7 +40,7 @@ public sealed class StatusBarTests
         bar.Spacing.ShouldBe(1);
         bar.Height.ShouldBe(Length.Cells(1));
         bar.HorizontalAlignment.ShouldBe(HorizontalAlignment.Stretch);
-        bar.Face.Background.ShouldBe(SemanticColor.Control);
+        bar.Face.Background.ShouldBe(SemanticColor.Bar);
         bar.CanFocus.ShouldBeFalse();
         item.Alignment.ShouldBe(StatusBarItemAlignment.Left);
         item.LeftSeparator.ShouldBeNull();

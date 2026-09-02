@@ -25,10 +25,9 @@ public sealed record CommandBarItemStyle: InputStyle
 
     private static CommandBarItemStyle Complete(InputStyle input, VisualState state, Theme theme)
     {
-        _ = state;
-        _ = theme;
+        var states = theme.GetStyleSet(InputStyle.Default);
         return new CommandBarItemStyle(
-            input.Face,
+            BarAppearance.CompleteFace(input, state, states),
             NoBorder,
             NoShadow,
             new Thickness(horizontal: 1, vertical: 0))

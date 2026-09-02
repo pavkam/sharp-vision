@@ -31,6 +31,7 @@
     "windowText": "fg",
     "surface": "bg-highlight",
     "surfaceText": "fg",
+    "bar": "bg-highlight",
     "control": "bg-highlight",
     "controlText": "fg",
     "controlBorder": "comment",

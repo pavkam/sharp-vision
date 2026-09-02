@@ -6,6 +6,54 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves command-bar layout, rendering, focus, input, and popup behavior on a mounted surface.</summary>
 public sealed class CommandBarSurfaceTests
 {
+    /// <summary>Verifies the semantic bar plane fills command faces and unused cells while disabled,
+    /// selected, and complete local styles retain precedence.</summary>
+    [Fact]
+    public async Task BarAppearance_WhenThemeAndLocalStyleVary_PreservesTheRequiredPrecedenceAsync()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            bar: "#345678",
+            controlExtra: """, "disabled": { "face": { "foreground":"disabledText", "background":"disabledControl" } }""",
+            inputStates: """, "selected": { "face": { "foreground":"selectedText", "background":"selectedControl" } }"""));
+        var normal = new CommandBarItem { Text = "Normal" };
+        var disabled = new CommandBarItem { Text = "Disabled", IsEnabled = false };
+        var localBackground = Color.Rgb(120, 30, 60);
+        var local = new CommandBarItem
+        {
+            Text = "Local",
+            Style = CommandBarItemStyle.Default with
+            {
+                Face = CommandBarItemStyle.Default.Face with { Background = localBackground }
+            }
+        };
+        var bar = new CommandBar { Spacing = 0 };
+        bar.Items.Add(normal);
+        bar.Items.Add(disabled);
+        bar.Items.Add(local);
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(28, 1),
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => surface.Application.Theme = theme, "apply semantic bar theme");
+
+        var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), ColorDepth.Basic16);
+        surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(bar.Bounds.Right - 1, 0)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledControl), ColorDepth.Basic16));
+        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), ColorDepth.Basic16));
+        surface.Cell(new Point(local.Bounds.X, local.Bounds.Y)).Style.Background.ShouldBe(
+            TerminalPalette.Project(localBackground, ColorDepth.Basic16));
+
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.UpdateAsync(() => bar.SelectedItem = normal, "select normal command");
+
+        surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), ColorDepth.Basic16));
+    }
+
     /// <summary>Verifies the ordinary row renders each semantic command once with an independently normalized separator.</summary>
     [Fact]
     public async Task Render_WhenEveryCommandFits_DrawsOnePrimaryRowWithoutTriggerAsync()

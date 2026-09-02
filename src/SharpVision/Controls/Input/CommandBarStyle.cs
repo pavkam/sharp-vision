@@ -15,7 +15,7 @@ using System.Diagnostics.CodeAnalysis;
 public sealed record CommandBarStyle: ControlStyle
 {
     /// <summary>Gets the command-bar style definition with a one-hop ControlStyle fallback.</summary>
-    internal static StyleDefinition<CommandBarStyle> Definition { get; } = StyleDefinitions.Control(
+    internal static StyleDefinition<CommandBarStyle> Definition { get; } = StyleDefinitions.ControlWithThemeOwnedStateDefaults(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,
         static (previous, _, current, _) =>
@@ -28,10 +28,9 @@ public sealed record CommandBarStyle: ControlStyle
 
     private static CommandBarStyle Complete(ControlStyle control, VisualState state, Theme theme)
     {
-        _ = state;
-        _ = theme;
+        var states = theme.GetStyleSet(ControlStyle.Default);
         return new CommandBarStyle(
-            control.Face,
+            BarAppearance.CompleteFace(control, state, states),
             control.Border,
             control.Shadow,
             default,

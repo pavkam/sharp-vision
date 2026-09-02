@@ -32,6 +32,7 @@
     "windowText": "white",
     "surface": "charcoal",
     "surfaceText": "white",
+    "bar": "charcoal",
     "control": "charcoal",
     "controlText": "white",
     "controlBorder": "slateGray",

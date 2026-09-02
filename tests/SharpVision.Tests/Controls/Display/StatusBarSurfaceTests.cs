@@ -6,6 +6,45 @@ namespace SharpVision.Tests.Controls.Display;
 /// <summary>Verifies StatusBar rendering and retained-content behavior through a mounted terminal surface.</summary>
 public sealed class StatusBarSurfaceTests
 {
+    /// <summary>Verifies the semantic bar plane fills status faces and unused cells while disabled
+    /// and complete local item styles retain precedence.</summary>
+    [Fact]
+    public async Task BarAppearance_WhenThemeAndLocalStyleVary_PreservesTheRequiredPrecedenceAsync()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            bar: "#345678",
+            controlExtra: """, "disabled": { "face": { "foreground":"disabledText", "background":"disabledControl" } }"""));
+        var normal = Item("Normal");
+        var disabled = Item("Disabled");
+        disabled.IsEnabled = false;
+        var localBackground = Color.Rgb(120, 30, 60);
+        var local = Item("Local");
+        local.Style = StatusBarItemStyle.Default with
+        {
+            Face = StatusBarItemStyle.Default.Face with { Background = localBackground }
+        };
+        var bar = new StatusBar { Spacing = 1 };
+        bar.Items.Add(normal);
+        bar.Items.Add(disabled);
+        bar.Items.Add(local);
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(28, 1),
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => surface.Application.Theme = theme, "apply semantic bar theme");
+
+        var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), ColorDepth.Basic16);
+        surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(bar.Bounds.Right - 1, 0)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledControl), ColorDepth.Basic16));
+        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), ColorDepth.Basic16));
+        surface.Cell(new Point(local.Bounds.X, local.Bounds.Y)).Style.Background.ShouldBe(
+            TerminalPalette.Project(localBackground, ColorDepth.Basic16));
+    }
+
     /// <summary>Verifies exact edge layout while the bar and item remain passive focus exclusions.</summary>
     [Fact]
     public async Task Render_WhenItemsUseBothAlignments_DrawsEdgeAnchoredStatusAsync()

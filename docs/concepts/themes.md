@@ -47,10 +47,10 @@ consistently by programmatic, parsed, and catalog-entry metadata.
 
 ## Global values
 
-`colors` requires these 38 properties:
+`colors` requires these 39 properties:
 
 ```text
-window, windowSurface, windowText, surface, surfaceText, control, controlText,
+window, windowSurface, windowText, surface, surfaceText, bar, control, controlText,
 controlBorder, controlShadow, reliefHighlight, reliefShade, activeControl, activeText, activeBorder,
 focusedControl, focusedText, focusedBorder, pressedControl, pressedText,
 pressedBorder, selectedControl, selectedText, disabledControl,
@@ -63,6 +63,13 @@ literal is legal only inside `palette` itself, never here. Palette entries are
 RGB literals and cannot reference each other. Loading a theme resolves every
 value to a concrete `Color` instance, and `Theme.ResolveColor(SemanticColor)` is
 the typed public lookup.
+
+`bar` is the normal raised-navigation background for `Menu`, `MenuItem`,
+`MenuSeparator`, `CommandBar`, `CommandBarItem`, `CommandBarSeparator`,
+`StatusBar`, and `StatusBarItem`. Each bundled theme maps it deliberately to a
+palette tier that remains readable with `controlText` and distinct from its
+authored active, selected, pressed, and disabled faces. State-authored faces and
+complete local styles continue to win over the normal Bar value.
 
 `attributes` requires these nine properties:
 

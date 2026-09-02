@@ -20,7 +20,7 @@ public sealed record MenuItemStyle: ControlStyle
     /// <summary>Gets the primary menu-item style definition. Falls back through
     /// <see cref="Theme.GetInteractiveControlStyleSet"/>; all four check and radio markers are
     /// code-owned from <see cref="ControlGlyphs.Selection"/>.</summary>
-    internal static StyleDefinition<MenuItemStyle> Definition { get; } = StyleDefinitions.Control(
+    internal static StyleDefinition<MenuItemStyle> Definition { get; } = StyleDefinitions.ControlWithThemeOwnedStateDefaults(
         static theme => theme.GetInteractiveControlStyleSet(),
         Complete,
         static (previous, _, current, _) =>
@@ -30,15 +30,18 @@ public sealed record MenuItemStyle: ControlStyle
                     ? InvalidationImpact.Render
                     : InvalidationImpact.None);
 
-    private static MenuItemStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
-        new(
-            control.Face,
+    private static MenuItemStyle Complete(ControlStyle control, VisualState state, Theme theme)
+    {
+        var states = theme.GetInteractiveControlStyleSet();
+        return new MenuItemStyle(
+            BarAppearance.CompleteFace(control, state, states),
             control.Border,
             control.Shadow,
             ControlGlyphs.Selection.MenuCheckUnchecked.Value,
             ControlGlyphs.Selection.MenuCheckChecked.Value,
             ControlGlyphs.Selection.MenuRadioUnchecked.Value,
             ControlGlyphs.Selection.MenuRadioChecked.Value);
+    }
 
     /// <summary>Initializes a complete menu-entry presentation.</summary>
     /// <param name="face">The complete normal face.</param>
