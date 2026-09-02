@@ -24,7 +24,11 @@ internal sealed class FilePickerPane: CompositeControlBase
         var save = CreateSaveLauncher(status);
         var localized = CreateLocalizedLauncher(status);
         var localizedSave = CreateLocalizedSaveLauncher(status);
-        var launchers = new DocRow(single, multiple, directory, save, localized, localizedSave) { Spacing = 1 };
+        // Six launchers overflow the reading column on an ordinary terminal; a clamped-away button
+        // is still a Tab stop, so keep each row narrow enough to stay visible.
+        var launchers = new DocColumn(
+            new DocRow(single, multiple, directory) { Spacing = 1 },
+            new DocRow(save, localized, localizedSave) { Spacing = 1 });
 
         return new DocPage(
             Title,

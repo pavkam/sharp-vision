@@ -93,11 +93,14 @@ internal sealed class ToastPane: CompositeControlBase
                     "toast.Style = ToastStyle.Error;")));
     }
 
+    // Every picker feeds an array index into the launch handler, so Delete/Backspace must not be
+    // allowed to clear it to -1.
     private static ComboBox CreatePicker(string[] items, int selectedIndex) => new()
     {
         Width = Length.Cells(20),
         Items = items,
-        SelectedIndex = selectedIndex
+        SelectedIndex = selectedIndex,
+        AllowNull = false
     };
 
     private static ToastStyle ResolveStyle(int index) => index switch
