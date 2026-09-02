@@ -329,11 +329,19 @@ public sealed class TimeInput: InputBase
     private int? ResolveStepDelta(KeyEventArgs eventArgs) =>
         TryGetStepDelta(eventArgs, out var delta) ? delta : null;
 
+    // "a" selects AM and "p" selects PM rather than toggling: a user who presses the letter of
+    // the half of the day they want must never be flipped to the other half because the value
+    // already happened to be there.
     private bool HandleCharacterCommand(Rune character) =>
-        TemporalSegmentClassification.IsAmPmToggle(character) && ToggleAmPm();
+        TemporalSegmentClassification.TryGetAmPmSelection(character, out var selectPm) && SelectAmPm(selectPm);
 
-    private bool ToggleAmPm() =>
-        TemporalSegmentClassification.ToggleAmPm(BuildSegments, () => _state.Value.HasValue, _segments);
+    private bool SelectAmPm(bool selectPm) =>
+        TemporalSegmentClassification.SelectAmPm(
+            BuildSegments,
+            () => _state.Value.HasValue,
+            () => _state.Value is { Hour: >= 12 },
+            _segments,
+            selectPm);
 
     /// <summary>Gets whether the current layout - whether derived from <see cref="Use24HourFormat"/>
     /// or overridden by <see cref="Format"/> - includes an AM/PM designator segment, used as the

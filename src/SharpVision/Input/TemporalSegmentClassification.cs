@@ -57,6 +57,58 @@ internal static class TemporalSegmentClassification
         return segments.Increment(1);
     }
 
+    /// <summary>Moves the AM/PM designator segment to the requested half of the day, if the current
+    /// layout has one and the control currently has a value. Unlike <see cref="ToggleAmPm"/>, an
+    /// "a" pressed while the value is already AM (or "p" while already PM) activates the designator
+    /// segment without changing the value, so a repeated keystroke never flips the half of the day
+    /// the user just asked for.</summary>
+    /// <param name="segmentsProvider">Returns the current, possibly culture- or format-dependent, segment layout.</param>
+    /// <param name="hasValue">Reports whether the owning control currently has a non-null value.</param>
+    /// <param name="isPm">Reports whether the owning control's current value falls in the PM half of the day.</param>
+    /// <param name="segments">The owning control's own segment navigation engine.</param>
+    /// <param name="selectPm">True to select PM; false to select AM.</param>
+    /// <returns>True if the value changed.</returns>
+    /// <exception cref="ArgumentNullException">Any parameter is null.</exception>
+    public static bool SelectAmPm(
+        [InstantHandle] Func<IReadOnlyList<SegmentDescriptor>> segmentsProvider,
+        [InstantHandle] Func<bool> hasValue,
+        [InstantHandle] Func<bool> isPm,
+        SegmentFieldBehavior segments,
+        bool selectPm)
+    {
+        ArgumentNullException.ThrowIfNull(segmentsProvider);
+        ArgumentNullException.ThrowIfNull(hasValue);
+        ArgumentNullException.ThrowIfNull(isPm);
+        ArgumentNullException.ThrowIfNull(segments);
+
+        if (!hasValue())
+        {
+            return false;
+        }
+
+        var index = FindEditableIndex(segmentsProvider, TemporalSegmentKind.AmPmDesignator);
+
+        if (index < 0)
+        {
+            return false;
+        }
+
+        segments.ActivateSegment(index);
+        return isPm() != selectPm && segments.Increment(1);
+    }
+
+    /// <summary>Classifies a typed character as the fixed "a"/"p" AM/PM selection shortcut,
+    /// independent of the owning control's localized designator text.</summary>
+    /// <param name="character">The typed character.</param>
+    /// <param name="selectPm">Set to true for "p"/"P" and false for "a"/"A".</param>
+    /// <returns>True when the character is an AM/PM selection shortcut.</returns>
+    [Pure]
+    public static bool TryGetAmPmSelection(Rune character, out bool selectPm)
+    {
+        selectPm = character.Value is 'p' or 'P';
+        return selectPm || character.Value is 'a' or 'A';
+    }
+
     /// <summary>Finds the zero-based editable-segment index of the first segment of a given kind
     /// in the current layout.</summary>
     /// <param name="segmentsProvider">Returns the current, possibly culture- or format-dependent, segment layout.</param>
