@@ -462,33 +462,61 @@ public sealed class ButtonSurfaceTests
         surface.Cell(new Point(14, 1)).Style.Background.ShouldBe(ReferenceColors.Get(0));
     }
 
-    /// <summary>Verifies a mounted filled style does not replace the Button's layout alignment.</summary>
+    /// <summary>Verifies a Button keeps its desired chrome height and centers it in an oversized
+    /// horizontal row by default.</summary>
     [Fact]
-    public async Task Render_WhenFilledButtonSharesTallRow_PreservesStretchAlignmentAsync()
+    public async Task Render_WhenButtonSharesOversizedHorizontalRow_CentersDesiredChromeByDefaultAsync()
     {
         // Arrange
-        var filled = new Button { Style = ButtonStyle.Filled, Text = "Add" };
-        var standard = new Button { Text = "Ok" };
+        var button = new Button { Text = "Go", Width = Length.Cells(12) };
         var row = new Stack
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 2,
-            Children = { filled, standard }
+            Children = { button }
         };
 
         // Act
         await using var surface = await ComponentSurface.MountAsync(
             row,
-            new Size(14, 3),
+            new Size(12, 5),
             TestContext.Current.CancellationToken);
 
         // Assert
-        filled.Bounds.ShouldBe(new Rect(0, 0, 7, 3));
-        standard.Bounds.ShouldBe(new Rect(9, 0, 5, 3));
-        filled.TextControl.ShouldNotBeNull().Bounds.ShouldBe(new Rect(2, 0, 3, 3));
-        surface.Cell(new Point(2, 0)).Text.ShouldBe("A");
-        surface.Cell(new Point(7, 0)).Text.ShouldBe("▄");
-        surface.Cell(new Point(9, 0)).Text.ShouldBe("┏");
+        button.Bounds.ShouldBe(new Rect(0, 1, 12, 3));
+        surface.Cell(new Point(0, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 1)).Text.ShouldBe("┏");
+        surface.Cell(new Point(5, 2)).Text.ShouldBe("G");
+        surface.Cell(new Point(0, 3)).Text.ShouldBe("┗");
+        surface.Cell(new Point(0, 4)).Text.ShouldBe(" ");
+    }
+
+    /// <summary>Verifies a Button can explicitly stretch its chrome across an oversized horizontal row.</summary>
+    [Fact]
+    public async Task Render_WhenButtonSharesOversizedHorizontalRowAndStretchIsSelected_FillsRowAsync()
+    {
+        // Arrange
+        var button = new Button
+        {
+            Text = "Go",
+            Width = Length.Cells(12),
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var row = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Children = { button }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            row,
+            new Size(12, 5),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        button.Bounds.ShouldBe(new Rect(0, 0, 12, 5));
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("┏");
+        surface.Cell(new Point(0, 4)).Text.ShouldBe("┗");
     }
 
     /// <summary>Verifies a held filled Button removes depth without translating its opaque face.</summary>

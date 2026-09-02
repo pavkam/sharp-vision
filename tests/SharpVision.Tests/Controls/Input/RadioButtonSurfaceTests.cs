@@ -291,6 +291,62 @@ public sealed class RadioButtonSurfaceTests
         radio.DesiredSize.ShouldBe(reference.DesiredSize);
     }
 
+    /// <summary>Verifies a RadioButton keeps its desired mark height and centers it in an oversized
+    /// horizontal row by default.</summary>
+    [Fact]
+    public async Task Render_WhenRadioButtonSharesOversizedHorizontalRow_CentersDesiredMarkByDefaultAsync()
+    {
+        // Arrange
+        var radio = new RadioButton { Text = "Go", Width = Length.Cells(12) };
+        var row = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Children = { radio }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            row,
+            new Size(12, 5),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        radio.Bounds.ShouldBe(new Rect(0, 2, 12, 1));
+        surface.Cell(new Point(0, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 2)).Text.ShouldBe("(");
+        surface.Cell(new Point(4, 2)).Text.ShouldBe("G");
+        surface.Cell(new Point(0, 4)).Text.ShouldBe(" ");
+    }
+
+    /// <summary>Verifies a RadioButton can explicitly stretch its mark face across an oversized horizontal row.</summary>
+    [Fact]
+    public async Task Render_WhenRadioButtonSharesOversizedHorizontalRowAndStretchIsSelected_FillsRowAsync()
+    {
+        // Arrange
+        var radio = new RadioButton
+        {
+            Text = "Go",
+            Width = Length.Cells(12),
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var row = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Children = { radio }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            row,
+            new Size(12, 5),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        radio.Bounds.ShouldBe(new Rect(0, 0, 12, 5));
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("(");
+        surface.Cell(new Point(0, 4)).Text.ShouldBe(" ");
+    }
+
     /// <summary>Verifies both affixes reserve their own cell column, the start affix drawn before
     /// the mark and the end affix drawn after the caption, matching the documented layout.</summary>
     [Fact]

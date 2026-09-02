@@ -15,13 +15,15 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
     private int _checkedVersion;
     private readonly StyleSlot<RadioButtonStyle> _style;
 
-    /// <summary>Initializes an unselected RadioButton.</summary>
+    /// <summary>Initializes an unselected RadioButton that centers its desired mark and caption vertically
+    /// by default.</summary>
     public RadioButton()
     {
         EnablePressActivation();
         EnableCaption();
         EnableCommand();
         _style = InitializeStyle(RadioButtonStyle.Definition);
+        VerticalAlignment = VerticalAlignment.Center;
     }
 
     /// <summary>Gets or sets the complete local presentation, or null for theme ownership.</summary>

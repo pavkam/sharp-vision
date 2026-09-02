@@ -17,24 +17,25 @@ classDiagram
 
 ## API
 
-| Member                       | Type                                  | Default        | Description                                                                      |
-| ---------------------------- | ------------------------------------- | -------------- | -------------------------------------------------------------------------------- |
-| `CheckBox()`                 | —                                     | —              | Initializes an unchecked two-state CheckBox.                                     |
-| `CheckBox(string text)`      | —                                     | —              | Initializes an unchecked two-state CheckBox with the given text; rejects `null`. |
-| Inherited `Text`             | `string`                              | `""`           | The checkbox's label.                                                            |
-| `IsChecked`                  | `bool?`                               | `false`        | `false`, `true`, or `null` when three-state mode permits it.                     |
-| `ThreeState`                 | `bool`                                | `false`        | Selects the two-state or three-state activation cycle.                           |
-| `StartAffix`                 | `Affix?`                              | `null`         | Optional leading edge-pinned decoration, reserved before the mark glyph.         |
-| `EndAffix`                   | `Affix?`                              | `null`         | Optional trailing edge-pinned decoration, reserved after the caption.            |
-| `Style`                      | `CheckBoxStyle?`                      | `null`         | Optional complete developer-authored presentation.                               |
-| `ActualStyle`                | `CheckBoxStyle`                       | Resolved       | Read-only; the complete local, theme-owned, or code-owned presentation.          |
-| Inherited `Command`          | `ICommand?`                           | `null`         | Runs after the toggle commits, when bound and `CanExecute` allows it.            |
-| Inherited `CommandParameter` | `object?`                             | `null`         | The borrowed parameter passed to `Command` queries and execution.                |
-| `PerformClick()`             | `void`                                | —              | Activates an available, visible, enabled CheckBox through its public API.        |
-| `Checked`                    | `EventHandler<CheckChangedEventArgs>` | No subscribers | Raised after a `true` state commits.                                             |
-| `Unchecked`                  | `EventHandler<CheckChangedEventArgs>` | No subscribers | Raised after a `false` state commits.                                            |
-| `Indeterminate`              | `EventHandler<CheckChangedEventArgs>` | No subscribers | Raised after a `null` (indeterminate) state commits.                             |
-| `StateChanged`               | `EventHandler<CheckChangedEventArgs>` | No subscribers | Raised after the state-specific event, for every committed transition.           |
+| Member                        | Type                                  | Default                    | Description                                                                                              |
+| ----------------------------- | ------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `CheckBox()`                  | —                                     | —                          | Initializes an unchecked two-state CheckBox.                                                             |
+| `CheckBox(string text)`       | —                                     | —                          | Initializes an unchecked two-state CheckBox with the given text; rejects `null`.                         |
+| Inherited `Text`              | `string`                              | `""`                       | The checkbox's label.                                                                                    |
+| Inherited `VerticalAlignment` | `VerticalAlignment`                   | `VerticalAlignment.Center` | Centers the desired mark and caption vertically in its arranged slot; assign `Stretch` to fill the slot. |
+| `IsChecked`                   | `bool?`                               | `false`                    | `false`, `true`, or `null` when three-state mode permits it.                                             |
+| `ThreeState`                  | `bool`                                | `false`                    | Selects the two-state or three-state activation cycle.                                                   |
+| `StartAffix`                  | `Affix?`                              | `null`                     | Optional leading edge-pinned decoration, reserved before the mark glyph.                                 |
+| `EndAffix`                    | `Affix?`                              | `null`                     | Optional trailing edge-pinned decoration, reserved after the caption.                                    |
+| `Style`                       | `CheckBoxStyle?`                      | `null`                     | Optional complete developer-authored presentation.                                                       |
+| `ActualStyle`                 | `CheckBoxStyle`                       | Resolved                   | Read-only; the complete local, theme-owned, or code-owned presentation.                                  |
+| Inherited `Command`           | `ICommand?`                           | `null`                     | Runs after the toggle commits, when bound and `CanExecute` allows it.                                    |
+| Inherited `CommandParameter`  | `object?`                             | `null`                     | The borrowed parameter passed to `Command` queries and execution.                                        |
+| `PerformClick()`              | `void`                                | —                          | Activates an available, visible, enabled CheckBox through its public API.                                |
+| `Checked`                     | `EventHandler<CheckChangedEventArgs>` | No subscribers             | Raised after a `true` state commits.                                                                     |
+| `Unchecked`                   | `EventHandler<CheckChangedEventArgs>` | No subscribers             | Raised after a `false` state commits.                                                                    |
+| `Indeterminate`               | `EventHandler<CheckChangedEventArgs>` | No subscribers             | Raised after a `null` (indeterminate) state commits.                                                     |
+| `StateChanged`                | `EventHandler<CheckChangedEventArgs>` | No subscribers             | Raised after the state-specific event, for every committed transition.                                   |
 
 Completing an activation always commits the toggle and raises the state events
 first; the bound command, if any and if `CanExecute` allows it, runs last. A

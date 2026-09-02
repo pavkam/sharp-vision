@@ -17,24 +17,25 @@ classDiagram
 
 ## API
 
-| Member                       | Type                                                 | Default        | Description                                                                                             |
-| ---------------------------- | ---------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------- |
-| `RadioButton()`              | —                                                    | —              | Initializes an unselected RadioButton.                                                                  |
-| `RadioButton(string text)`   | —                                                    | —              | Initializes an unselected RadioButton with the given text; rejects `null`.                              |
-| Inherited `Text`             | `string`                                             | `""`           | The radio button's label.                                                                               |
-| `IsChecked`                  | `bool`                                               | `false`        | Selects the member; setting `false` programmatically may leave a group empty.                           |
-| `GroupName`                  | `string?`                                            | `null`         | Exact-slot unnamed grouping, or ordinal named grouping when set.                                        |
-| `StartAffix`                 | `Affix?`                                             | `null`         | Optional leading edge-pinned decoration, reserved before the mark glyph.                                |
-| `EndAffix`                   | `Affix?`                                             | `null`         | Optional trailing edge-pinned decoration, reserved after the caption.                                   |
-| `Style`                      | `RadioButtonStyle?`                                  | `null`         | Optional complete developer-authored presentation.                                                      |
-| `ActualStyle`                | `RadioButtonStyle`                                   | Resolved       | Read-only; the complete local, theme-owned, or code-owned presentation.                                 |
-| Inherited `Command`          | `ICommand?`                                          | `null`         | Runs after the group selection commits, when bound and `CanExecute` allows it.                          |
-| Inherited `CommandParameter` | `object?`                                            | `null`         | The borrowed parameter passed to `Command` queries and execution.                                       |
-| `CanTabStop`                 | `bool`                                               | Computed       | Overridden so only the checked member — or the first eligible one when none is checked — is a Tab stop. |
-| `PerformClick()`             | `void`                                               | —              | Activates an available, visible, enabled RadioButton through its public API.                            |
-| `Checked`                    | `EventHandler<RadioButtonSelectionChangedEventArgs>` | No subscribers | Raised after this member becomes selected.                                                              |
-| `Unchecked`                  | `EventHandler<RadioButtonSelectionChangedEventArgs>` | No subscribers | Raised after this member loses selection.                                                               |
-| `SelectionChanged`           | `EventHandler<RadioButtonSelectionChangedEventArgs>` | No subscribers | Raised on the newly selected or explicitly cleared member.                                              |
+| Member                        | Type                                                 | Default                    | Description                                                                                              |
+| ----------------------------- | ---------------------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `RadioButton()`               | —                                                    | —                          | Initializes an unselected RadioButton.                                                                   |
+| `RadioButton(string text)`    | —                                                    | —                          | Initializes an unselected RadioButton with the given text; rejects `null`.                               |
+| Inherited `Text`              | `string`                                             | `""`                       | The radio button's label.                                                                                |
+| Inherited `VerticalAlignment` | `VerticalAlignment`                                  | `VerticalAlignment.Center` | Centers the desired mark and caption vertically in its arranged slot; assign `Stretch` to fill the slot. |
+| `IsChecked`                   | `bool`                                               | `false`                    | Selects the member; setting `false` programmatically may leave a group empty.                            |
+| `GroupName`                   | `string?`                                            | `null`                     | Exact-slot unnamed grouping, or ordinal named grouping when set.                                         |
+| `StartAffix`                  | `Affix?`                                             | `null`                     | Optional leading edge-pinned decoration, reserved before the mark glyph.                                 |
+| `EndAffix`                    | `Affix?`                                             | `null`                     | Optional trailing edge-pinned decoration, reserved after the caption.                                    |
+| `Style`                       | `RadioButtonStyle?`                                  | `null`                     | Optional complete developer-authored presentation.                                                       |
+| `ActualStyle`                 | `RadioButtonStyle`                                   | Resolved                   | Read-only; the complete local, theme-owned, or code-owned presentation.                                  |
+| Inherited `Command`           | `ICommand?`                                          | `null`                     | Runs after the group selection commits, when bound and `CanExecute` allows it.                           |
+| Inherited `CommandParameter`  | `object?`                                            | `null`                     | The borrowed parameter passed to `Command` queries and execution.                                        |
+| `CanTabStop`                  | `bool`                                               | Computed                   | Overridden so only the checked member — or the first eligible one when none is checked — is a Tab stop.  |
+| `PerformClick()`              | `void`                                               | —                          | Activates an available, visible, enabled RadioButton through its public API.                             |
+| `Checked`                     | `EventHandler<RadioButtonSelectionChangedEventArgs>` | No subscribers             | Raised after this member becomes selected.                                                               |
+| `Unchecked`                   | `EventHandler<RadioButtonSelectionChangedEventArgs>` | No subscribers             | Raised after this member loses selection.                                                                |
+| `SelectionChanged`            | `EventHandler<RadioButtonSelectionChangedEventArgs>` | No subscribers             | Raised on the newly selected or explicitly cleared member.                                               |
 
 The bound command, if any and if `CanExecute` allows it, runs after the group
 selection commits and its events raise. Unlike selection itself — which is a
