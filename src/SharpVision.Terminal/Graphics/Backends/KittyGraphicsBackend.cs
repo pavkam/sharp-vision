@@ -43,6 +43,8 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     private Dictionary<uint, uint> _uncertainImages;
     private Dictionary<uint, uint> _priorUncertainImages;
     private readonly ConcurrentQueue<KittyGraphicsResponse> _responses = new();
+    private List<GraphicsPlacementDiagnostic>? _pendingUploadFailureDiagnostics;
+    private readonly HashSet<uint> _ambiguousTransferredNumbers = [];
     private List<KittyGraphicsUncertainPlacementState> _uncertainPlacements;
     private List<KittyGraphicsUncertainPlacementState> _priorUncertainPlacements;
     private Dictionary<ulong, KittyGraphicsImageState>? _preparedImages;
@@ -115,7 +117,13 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     {
         ArgumentNullException.ThrowIfNull(response);
 
-        if (response.Valid && response.Succeeded && response.ImageId != 0 && response.ImageNumber != 0)
+        // A successful reply is only meaningful once it carries both the terminal-assigned image
+        // id and the client's echoed number. A failed reply (the terminal explicitly rejected a
+        // number-addressed upload, e.g. "i=5,I=1;ENOENT") carries no reliable assigned id, so only
+        // its echoed number is required - it still needs to reach ApplyAssignedImageIds so the
+        // rejected upload is not silently dropped with no diagnostic.
+        if (response.Valid && response.ImageNumber != 0 &&
+            (!response.Succeeded || response.ImageId != 0))
         {
             _responses.Enqueue(response);
         }
@@ -157,6 +165,17 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         var encodable = new bool[back.PlacementCount];
         List<GraphicsPlacementDiagnostic>? skippedPlacements = null;
 
+        // Merges in diagnostics ApplyAssignedImageIds (called just above, and asynchronously on
+        // every Accept-driven drain) queued for a terminal-rejected number-addressed upload. Those
+        // are discovered whenever a reply arrives, not synchronously with the rest of this method's
+        // own diagnostics, so they are stashed on the backend until the next Prepare call folds
+        // them in here.
+        if (_pendingUploadFailureDiagnostics is { Count: > 0 })
+        {
+            skippedPlacements = [.. _pendingUploadFailureDiagnostics];
+            _pendingUploadFailureDiagnostics.Clear();
+        }
+
         for (var index = 0; index < encodable.Length; index++)
         {
             encodable[index] = enabled && back.IsPlacementEffective(index);
@@ -194,7 +213,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             }
         }
 
-        var retiringImageIds = new Queue<uint>();
+        var retiringImageIds = new Queue<(uint Number, bool WasUnconfirmed)>();
 
         foreach (var previous in _images)
         {
@@ -208,7 +227,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             // if the allocator has no other room) is the conservative choice.
             if (!neededImageIdentities.Contains(previous.Key) && !IsUncertainImage(previous.Value.Number))
             {
-                retiringImageIds.Enqueue(previous.Value.Number);
+                retiringImageIds.Enqueue((previous.Value.Number, previous.Value.UsesImageNumber));
             }
         }
 
@@ -274,10 +293,21 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                     {
                         uint id;
 
-                        if (retiringImageIds.TryDequeue(out var transferredId))
+                        if (retiringImageIds.TryDequeue(out var transferred))
                         {
-                            id = transferredId;
+                            id = transferred.Number;
                             transferredImageIds.Add(id);
+
+                            // The retiring image this number came from is still unconfirmed (its
+                            // own transmit reply, success or failure, has not yet arrived): the
+                            // terminal may yet deliver that stale reply correlated by this exact
+                            // number, indistinguishable from one meant for the image now taking it
+                            // over. Recording the number as ambiguous makes a later reply drop
+                            // instead of misattribute once ApplyAssignedImageIds sees it.
+                            if (transferred.WasUnconfirmed)
+                            {
+                                _ = _ambiguousTransferredNumbers.Add(id);
+                            }
                         }
                         else
                         {
@@ -997,6 +1027,12 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     {
         while (_responses.TryDequeue(out var response))
         {
+            if (!response.Succeeded)
+            {
+                RecordUploadFailureDiagnostics(response);
+                continue;
+            }
+
             foreach (var identity in _images
                 .Where(pair => pair.Value.UsesImageNumber && pair.Value.Number == response.ImageNumber)
                 .Select(static pair => pair.Key)
@@ -1019,6 +1055,41 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             ApplyAssignedUncertainImageId(_priorUncertainImages, response);
             ApplyAssignedUncertainPlacementId(_uncertainPlacements, response);
             ApplyAssignedUncertainPlacementId(_priorUncertainPlacements, response);
+        }
+    }
+
+    /// <summary>
+    /// Records a skip diagnostic for every currently tracked image whose number-addressed upload
+    /// the terminal explicitly rejected (a valid but unsuccessful reply, e.g. <c>i=5,I=1;ENOENT</c>).
+    /// Without this, a rejected upload's placement would never be retried and would silently never
+    /// render, with no observable signal. The diagnostic is queued here and merged into the next
+    /// <see cref="Prepare"/> call's <c>skippedPlacements</c>, since Prepare's own diagnostics are all
+    /// computed synchronously at Prepare-time while this is discovered asynchronously, whenever the
+    /// terminal's reply arrives. The terminal's raw <see cref="KittyGraphicsResponse.Message"/> is
+    /// never carried into the diagnostic - see that property's own redaction note.
+    /// </summary>
+    private void RecordUploadFailureDiagnostics(KittyGraphicsResponse response)
+    {
+        // A number that was transferred directly to its current tenant while the retiring image
+        // it came from was still unconfirmed cannot be told apart from that stale retiring image's
+        // own late reply: attributing this response to the current tenant here risks reporting a
+        // healthy, unrelated image as terminal-rejected. Dropping it silently for this one number
+        // is the same conservative outcome every failure reply had before this diagnostic existed,
+        // and is consumed here (one-shot) rather than left to suppress a genuinely later,
+        // unambiguous failure for whichever image eventually settles on this same number.
+        if (_ambiguousTransferredNumbers.Remove(response.ImageNumber))
+        {
+            return;
+        }
+
+        foreach (var identity in _images
+            .Where(pair => pair.Value.UsesImageNumber && pair.Value.Number == response.ImageNumber)
+            .Select(static pair => pair.Key)
+            .ToArray())
+        {
+            (_pendingUploadFailureDiagnostics ??= []).Add(new GraphicsPlacementDiagnostic(
+                identity,
+                GraphicsPlacementSkipReason.TerminalRejectedUpload));
         }
     }
 
