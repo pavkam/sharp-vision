@@ -196,7 +196,7 @@ public sealed class ListView: ItemsControl
                 {
                     if (IsVirtualized)
                     {
-                        ResolveHostRowHeight(Viewport.Height);
+                        ResolveHostRowHeight(Viewport.Height, withinLayout: false);
                     }
                     else
                     {
@@ -550,7 +550,11 @@ public sealed class ListView: ItemsControl
     {
         if (IsVirtualized)
         {
-            ResolveHostRowHeight(constraint.Height ?? Viewport.Height);
+            // Provisional only: the constraint is the best estimate of the final viewport this
+            // early, and ArrangeOverride re-resolves against the real one. Both commits stay
+            // inside this control's own layout transaction, so neither may propagate an
+            // invalidation upward - see ListViewHost.SetRowHeightWithinLayout.
+            ResolveHostRowHeight(constraint.Height ?? Viewport.Height, withinLayout: true);
         }
 
         return MeasureChild(_stack, constraint);
@@ -585,7 +589,7 @@ public sealed class ListView: ItemsControl
                     break;
                 }
 
-                _stack.RowHeight = resolved;
+                _stack.SetRowHeightWithinLayout(resolved);
                 _ = MeasureChild(_stack, new Constraint(bounds.Width, bounds.Height));
                 ArrangeChild(_stack, bounds, ResolvedAxes.Both);
             }
@@ -1013,7 +1017,14 @@ public sealed class ListView: ItemsControl
         }
     }
 
-    private void ResolveHostRowHeight(int viewportHeight)
+    /// <summary>Resolves the uniform row height against one viewport height and commits it to the
+    /// host, recording the previous height and offset once so the next arrange can remap the
+    /// offset onto the same logical row.</summary>
+    /// <param name="viewportHeight">The viewport height to resolve a percentage row against.</param>
+    /// <param name="withinLayout">Whether the caller is this control's own measure or arrange
+    /// pass, which measures and arranges the host itself and therefore must not schedule another
+    /// ancestor layout for the change.</param>
+    private void ResolveHostRowHeight(int viewportHeight, bool withinLayout)
     {
         var resolved = UniformRowHeight.Resolve(RowHeight, viewportHeight);
 
@@ -1028,7 +1039,14 @@ public sealed class ListView: ItemsControl
             _rowHeightAnchorOffset = VerticalOffset;
         }
 
-        _stack.RowHeight = resolved;
+        if (withinLayout)
+        {
+            _stack.SetRowHeightWithinLayout(resolved);
+        }
+        else
+        {
+            _stack.RowHeight = resolved;
+        }
     }
 
     [Pure]
