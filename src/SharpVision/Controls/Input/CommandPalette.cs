@@ -798,7 +798,7 @@ public sealed class CommandPalette: CompositeControlBase
             return;
         }
 
-        _popupCoordinator.SetOpen(_wantsOpen && Items.Count > 0);
+        SetResultsOpenState(_wantsOpen && Items.Count > 0);
 
         if (IsCurrentResolution(lease) &&
             _popupCoordinator.IsOpen &&
@@ -808,6 +808,45 @@ public sealed class CommandPalette: CompositeControlBase
         }
 
         _ = _resolutionOperation.TryComplete(lease);
+    }
+
+    /// <summary>Applies a results-driven open-state change: never enters a modal scope for an
+    /// unavailable owner, and never lets a close the user did not ask for pull focus out of the
+    /// editor.</summary>
+    private void SetResultsOpenState(bool open)
+    {
+        if (open)
+        {
+            if (!EffectiveIsEnabled || !EffectiveIsVisible)
+            {
+                // Mirrors the IsOpen setter. A completion can land while the palette is hidden or
+                // disabled (availability does not cancel the live request), and ModalityManager
+                // refuses a hidden or disabled modal root; letting that refusal escape here would
+                // surface as an unhandled dispatcher exception from the asynchronous completion.
+                // The committed items stay; only the open intent is dropped.
+                _wantsOpen = false;
+                return;
+            }
+
+            _popupCoordinator.SetOpen(true);
+            return;
+        }
+
+        var editorHadFocus = _input.IsFocused;
+        _popupCoordinator.SetOpen(false);
+
+        // Exiting the modal scope restores the focus that preceded Open(), which is right for
+        // Escape, activation, and light dismissal but wrong for a close the user did not request:
+        // a query that yields no results (or fails) must leave the editor focused so the next
+        // keystroke still edits the query instead of landing on whatever was focused before.
+        if (editorHadFocus &&
+            !IsDisposed &&
+            !_input.IsFocused &&
+            _input.EffectiveIsEnabled &&
+            _input.EffectiveIsVisible)
+        {
+            _ = _input.Focus();
+        }
     }
 
     /// <summary>Retains refreshed-result selection intent until an attached dispatcher can run it
@@ -928,7 +967,7 @@ public sealed class CommandPalette: CompositeControlBase
             return;
         }
 
-        _popupCoordinator.SetOpen(false);
+        SetResultsOpenState(false);
 
         if (!IsCurrentResolution(lease))
         {
