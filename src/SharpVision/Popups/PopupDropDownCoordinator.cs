@@ -144,8 +144,11 @@ internal sealed class PopupDropDownCoordinator
     /// <exception cref="Exception">A focus, scope, pointer-cleanup, or user callback fails after committed cleanup.</exception>
     public void SetOpen(bool value)
     {
-        VerifyAvailable();
+        // The owner's own guard runs first so a disposed owner reports the documented
+        // ObjectDisposedException rather than the detached-coordinator InvalidOperationException
+        // that disposal also leaves behind.
         _owner.VerifyMutable();
+        VerifyAvailable();
         TransitionVersion++;
 
         if (_popup.IsOpen != value)
@@ -169,8 +172,8 @@ internal sealed class PopupDropDownCoordinator
     /// <exception cref="Exception">An acceptance or close callback fails after close cleanup completes.</exception>
     public void AcceptAndClose()
     {
-        VerifyAvailable();
         _owner.VerifyMutable();
+        VerifyAvailable();
 
         if (!_popup.IsOpen || !_hasActiveSession)
         {
