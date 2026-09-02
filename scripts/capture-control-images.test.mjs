@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import test from "node:test";
 
 import * as captureHelpers from "./capture-control-images.mjs";
@@ -230,6 +232,45 @@ test("manifest_WhenFocusedExamplesMutate_CapturesBothWrapAxesAndWindowDefault", 
             actions: [{ click: "Focus command target" }, { key: "Enter" }],
         },
     ]);
+});
+
+test("manifest_WhenStylingConceptIsCaptured_UsesPaletteAndRealInputStates", () => {
+    const styling = controls.find(({ doc }) => doc === "concepts/styling");
+
+    assert.equal(styling.page, "Styling");
+    assert.equal(styling.imageDirectory, "concepts");
+    assert.deepEqual(styling.states, [
+        { name: "palette", example: "Complete semantic palette" },
+        {
+            name: "states",
+            example: "Live element states",
+            actions: [{ click: "Selected row" }],
+        },
+        {
+            name: "states-focused",
+            example: "Live element states",
+            actions: [{ click: "Focus target" }],
+        },
+        {
+            name: "states-pressed",
+            example: "Live element states",
+            actions: [{ press: "Press target" }],
+        },
+    ]);
+});
+
+test("StylingPane_WhenBuildingSemanticPalette_EnumeratesTheEnumDirectly", async () => {
+    const root = path.resolve(import.meta.dirname, "..");
+    const source = await readFile(
+        path.join(root, "examples", "Showcase", "Panes", "StylingPane.cs"),
+        "utf8",
+    );
+
+    assert.match(
+        source,
+        /foreach \(var semanticColor in Enum\.GetValues<SemanticColor>\(\)\)/u,
+    );
+    assert.doesNotMatch(source, /ThemeCatalog\.|ResolveAppearance\(/u);
 });
 
 test("manifest_WhenOverflowSurfacesOpen_UsesPopupCaptureAndSourceExamples", () => {

@@ -6,6 +6,29 @@
 /// `popup: true` widens the crop to rows the actions changed, and `animated:
 /// true` skips the stable-frame wait for continuously moving pages.
 export const controls = [
+    {
+        doc: "concepts/styling",
+        page: "Styling",
+        imageDirectory: "concepts",
+        states: [
+            { name: "palette", example: "Complete semantic palette" },
+            {
+                name: "states",
+                example: "Live element states",
+                actions: [{ click: "Selected row" }],
+            },
+            {
+                name: "states-focused",
+                example: "Live element states",
+                actions: [{ click: "Focus target" }],
+            },
+            {
+                name: "states-pressed",
+                example: "Live element states",
+                actions: [{ press: "Press target" }],
+            },
+        ],
+    },
     { doc: "controls/control", page: "Control" },
     {
         doc: "controls/input/button",

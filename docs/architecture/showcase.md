@@ -255,18 +255,17 @@ to case, collapses nonmatching items, and collapses any group with no remaining
 item. Each page entry is a single-content, caption-and-command-enabled
 `InputBase` row whose `Text` content is measured and arranged beside its marker;
 the selected, focused, hovered, and pressed states follow the active application
-theme. The Styling concept page shows every Color representation, the complete
-visual-state overlay vocabulary, theme metadata, zero-configuration built-in
-controls, and an ordinary third-party control. The active theme updates type and
-state colors while local RGB values, code-owned glyphs, and geometry stay
-stable. Passive Control-role content remains visually stable under pointer and
-focus ancestry; Input-role and specialized interactive specimens carry those
-cues. `Ctrl+Q` exits from anywhere: the gallery handles it as a key in the
-preview pass without stealing ordinary text-editing input. The executable app
-runs through `ConsoleApplication.RunAsync` with a `Gallery` screen and one
-builder call, `TreatControlCAsInput()`, which is why `Ctrl+Q` rather than
-`Ctrl+C` is the exit chord - Ctrl+C reaches the application as ordinary input
-instead of requesting cooperative shutdown (see
+theme. The Styling concept page enumerates every `SemanticColor` into compact
+theme-resolved swatches, keeps concrete `Color` samples literal, and compares
+bounded `Face`, border, and shadow channels. Its normal, focused, pressed,
+selected, and disabled specimens are ordinary mounted controls driven by real
+focus, pointer, selection, and availability state. `Ctrl+Q` exits from anywhere:
+the gallery handles it as a key in the preview pass without stealing ordinary
+text-editing input. The executable app runs through
+`ConsoleApplication.RunAsync` with a `Gallery` screen and one builder call,
+`TreatControlCAsInput()`, which is why `Ctrl+Q` rather than `Ctrl+C` is the exit
+chord - Ctrl+C reaches the application as ordinary input instead of requesting
+cooperative shutdown (see
 [hosting.md](../concepts/hosting.md#treatcontrolcasinput)). Everything else is
 default, so it gets the default xterm any-event (`1003`) SGR cell mouse
 reporting from `ConsoleRunOptions`, while `ConsoleApplication` owns the Unix

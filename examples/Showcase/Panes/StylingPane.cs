@@ -5,7 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Display.Text;
 
-/// <summary>Demonstrates direct appearance values, visual states, themes, and custom controls.</summary>
+/// <summary>Demonstrates concrete colors, semantic colors, appearance channels, and live visual states.</summary>
 internal sealed class StylingPane: CompositeControlBase
 {
     /// <summary>Initializes the retained Styling concept page.</summary>
@@ -16,145 +16,218 @@ internal sealed class StylingPane: CompositeControlBase
 
     private static DocPage CreateContent()
     {
-        var colorKinds = new DocColumn(
-            CreateColorSample("Terminal default", Color.Default),
-            CreateColorSample("24-bit RGB", Color.Rgb(120, 70, 180)),
-            CreateColorSample("Transparent composition", Color.Transparent));
+        var concreteColors = new Wrap { Spacing = 1, LineSpacing = 1 };
+        concreteColors.Children.Add(CreateColorSample("Terminal default", Color.Default));
+        concreteColors.Children.Add(CreateColorSample("24-bit RGB", Color.Rgb(120, 70, 180)));
+        concreteColors.Children.Add(CreateColorSample("Transparent", Color.Transparent));
 
-        var defaultControls = new DocColumn(
-            new Button { Text = "Default button", UseMnemonic = false },
-            new TextInput { Width = Length.Cells(24), Text = "Default text field" },
-            new ComboBox { Width = Length.Cells(24), Items = ["Default choice"], SelectedIndex = 0 },
-            new CheckBox { Text = "Default toggle", IsChecked = true, UseMnemonic = false });
-
-        var stateVocabulary = CreateVisualStates();
-
-        var catalogEntry = ThemeCatalog.Entries.First(static entry => entry.Slug == "turbo-vision");
-        var catalog = new Text(
-            $"Catalog entry: {Text.Escape(catalogEntry.Name)}\n" +
-            $"Slug: {Text.Escape(catalogEntry.Slug)} · Scheme: {catalogEntry.ColorScheme}\n" +
-            $"Author: {Text.Escape(catalogEntry.Author)} · License: {Text.Escape(catalogEntry.License)}")
+        var semanticColors = new Wrap
         {
-            Overflow = Overflow.Wrap
+            Width = Length.Percent(100),
+            Spacing = 1,
+            LineSpacing = 1
         };
 
-        var panel = new ShowcasePanel();
-        var placementPreview = new ShowcasePanel();
-        var left = new Button { Text = "Left", UseMnemonic = false };
-        var right = new Button { Text = "Right", UseMnemonic = false };
-        var above = new Button { Text = "Above", UseMnemonic = false };
-        var below = new Button { Text = "Below", UseMnemonic = false };
-        ShowcasePaneHelpers.WireLabelPlacement(left, right, above, below, panel, placementPreview);
+        foreach (var semanticColor in Enum.GetValues<SemanticColor>())
+        {
+            semanticColors.Children.Add(CreateSemanticColorSample(semanticColor));
+        }
+
+        var faceChannels = new Wrap { Spacing = 1, LineSpacing = 1 };
+        faceChannels.Children.Add(CreateFaceSample(
+            "Foreground: Accent",
+            new Face(
+                SemanticColor.Accent,
+                SemanticColor.Control,
+                SemanticDecoration.NormalText,
+                Underline.None,
+                Color.Default)));
+        faceChannels.Children.Add(CreateFaceSample(
+            "Background: Blue",
+            new Face(
+                SemanticColor.WindowText,
+                SemanticColor.Blue,
+                SemanticDecoration.NormalText,
+                Underline.None,
+                Color.Default)));
+        faceChannels.Children.Add(CreateFaceSample(
+            "Bold + curly underline",
+            new Face(
+                SemanticColor.ControlText,
+                SemanticColor.Control,
+                TerminalAttributes.Bold,
+                Underline.Curly,
+                SemanticColor.Accent)));
+
+        var borders = new Wrap { Spacing = 2, LineSpacing = 1 };
+        borders.Children.Add(CreateBorderSample("Flat", BorderRelief.Flat));
+        borders.Children.Add(CreateBorderSample("Raised", BorderRelief.Raised));
+        borders.Children.Add(CreateBorderSample("Sunken", BorderRelief.Sunken));
+
+        var shadows = new Wrap { Spacing = 1, LineSpacing = 1 };
+        shadows.Children.Add(CreateShadowSample("Composite", ShadowMode.Composite));
+        shadows.Children.Add(CreateShadowSample("Block glyph", ShadowMode.BlockGlyph));
+        shadows.Children.Add(CreateShadowSample("Fractional block", ShadowMode.FractionalBlock));
+
+        var elementStates = CreateElementStates();
 
         return new DocPage(
             Title,
-            "<info>Styling</info> uses concrete terminal colors, semantic theme values, complete appearance composites, and deterministic state sets.",
+            "<info>Styling</info> combines concrete terminal colors with theme-resolved semantic colors and complete Face, Border, and Shadow values.",
             new DocSection(
                 "🎨",
                 "Color values",
-                "Color represents terminal-default, 24-bit RGB, or transparent composition. ControlColor can instead retain a semantic SemanticColor until resolution.",
+                "Concrete Color values stay literal; semantic values follow the active application Theme without per-control resolution code.",
                 new DocExample(
-                    "Every Color representation",
-                    "RGB values stay fixed across themes; transparent preserves the destination background.",
-                    colorKinds,
-                    "control.Face = new Face(SemanticColor.ControlText, SemanticColor.Control, SemanticDecoration.NormalText, Underline.None, Color.Default);")),
+                    "Concrete Color representations",
+                    "Terminal default, 24-bit RGB, and transparent composition remain distinct across theme changes.",
+                    concreteColors),
+                new DocExample(
+                    "Complete semantic palette",
+                    "Every SemanticColor value is enumerated directly. Change the Showcase theme to resolve the same retained swatches through another palette.",
+                    semanticColors,
+                    "foreach (var color in Enum.GetValues<SemanticColor>())\n    swatches.Children.Add(CreateSwatch(color));")),
             new DocSection(
                 "🎭",
-                "Visual states",
-                "PointerOver, FocusWithin, Focused, Current, Selected, Checked, Indeterminate, Pressed, and Disabled overlays apply in a stable order after the normal appearance.",
+                "Element states",
+                "Normal, focus, press, selection, and disabled appearance comes from each real control's public state and routed input.",
                 new DocExample(
-                    "Complete state vocabulary",
-                    "Move pointer and focus, press the button, enter the focus-within group, inspect the current menu item, and compare checked, indeterminate, and disabled faces.",
-                    stateVocabulary,
-                    "button.Style = ButtonStyle.Filled;")),
+                    "Live element states",
+                    "Click Focus target, hold Press target, or choose a list row. The specimens use their ordinary focus, pointer, selection, and availability state machines.",
+                    elementStates,
+                    "selectedList.SelectionChanged += OnSelectionChanged;\ndisabled.IsEnabled = false;")),
             new DocSection(
                 "🧩",
-                "Control defaults",
-                "The Control role supplies passive defaults; interactive controls opt into Input or a specialized role for pointer, focus, press, and selection cues. Complete local composites remain explicit overrides.",
+                "Appearance channels",
+                "Face owns foreground, background, attributes, underline, and underline color. Border and Shadow add intrinsic chrome around the same retained control.",
                 new DocExample(
-                    "Zero-configuration controls",
-                    "Button, TextInput, ComboBox, and CheckBox remain readable through normal and interactive states without local colors.",
-                    defaultControls)),
-            new DocSection(
-                "📚",
-                "Theme catalog",
-                "ThemeCatalog exposes stable metadata before loading one immutable application theme snapshot.",
+                    "Bounded Face channels",
+                    "Each specimen changes one visible responsibility while the active Theme resolves its semantic channels.",
+                    faceChannels),
                 new DocExample(
-                    "Attribution and scheme metadata",
-                    "The bundled Turbo Vision entry is sourced from the original BIOS palette. Select it from the Showcase theme picker to apply its blue desktop, gray surfaces, cyan selection, green press feedback, black shadows, and relief borders to every pane.",
-                    catalog,
-                    "application.Theme = ThemeCatalog.Load(\"turbo-vision\");")),
-            new DocSection(
-                "🛠️",
-                "Custom controls",
-                "Third-party controls inherit the passive Control role, can opt into an interactive or specialized protected semantic role, and can inspect ActualFace, ActualBorder, and ActualShadow.",
+                    "Flat, raised, and sunken borders",
+                    "Relief changes which theme-authored highlight and shade colors paint each one-cell edge; the glyph geometry stays fixed.",
+                    borders),
                 new DocExample(
-                    "ShowcasePanel label placement",
-                    "All four LabelPlacement values update two retained custom controls without a private style system.",
-                    new DocColumn(
-                        panel,
-                        new DocRow(left, right, above, below),
-                        placementPreview))));
+                    "Composite, block-glyph, and fractional shadows",
+                    "The three modes preserve content, replace footprint cells, or use half-row block geometry respectively.",
+                    shadows)));
     }
 
-    private static DocRow CreateColorSample(string caption, Color background) => new DocRow(
-        new Dock
-        {
-            Width = Length.Cells(8),
-            Height = Length.Cells(2),
-            Face = new Face(
-                SemanticColor.ControlText,
-                background,
-                SemanticDecoration.NormalText,
-                Underline.None,
-                Color.Default),
-            Border = new Border(
-                BorderSide.All,
-                BorderGlyphStyle.Light,
-                SemanticColor.ControlBorder,
-                Color.Transparent,
-                SemanticDecoration.Border)
-        },
-        new Text(caption));
-
-    private static DocColumn CreateVisualStates()
+    private static DocRow CreateColorSample(string caption, Color background)
     {
-        var pointerButton = new Button { Text = "Pointer, focus, and press", UseMnemonic = false };
-
-        var focusInput = new TextInput { Width = Length.Cells(24), Placeholder = "Focus within" };
-        var focusGroup = new GroupBox
+        var sample = new DocRow(
+            CreateSwatch(background),
+            new Text(caption))
         {
-            HeaderText = "FocusWithin",
-            UseMnemonic = false,
-            Content = focusInput
+            Width = Length.Cells(22),
+            Spacing = 1
         };
 
-        var item = new MenuItem { Text = "Current and selected item", UseMnemonic = false };
-        var menu = new Menu { Orientation = Orientation.Vertical };
-        menu.Items.Add(item);
-        menu.SelectedIndex = 0;
+        return sample;
+    }
 
-        var checkedState = new CheckBox
+    private static DocRow CreateSemanticColorSample(SemanticColor color)
+    {
+        var sample = new DocRow(
+            CreateSwatch(color),
+            new Text(color.ToString()))
         {
-            Text = "Checked",
-            IsChecked = true,
-            UseMnemonic = false
+            Width = Length.Cells(24),
+            Spacing = 1
         };
-        var indeterminateState = new CheckBox
+
+        return sample;
+    }
+
+    private static Dock CreateSwatch(ControlColor background) => new()
+    {
+        Width = Length.Cells(3),
+        Height = Length.Cells(1),
+        Face = new Face(
+            SemanticColor.ControlText,
+            background,
+            SemanticDecoration.NormalText,
+            Underline.None,
+            Color.Default)
+    };
+
+    private static Dock CreateFaceSample(string caption, Face face) => new()
+    {
+        Width = Length.Cells(24),
+        Height = Length.Cells(3),
+        Face = face,
+        Padding = new Thickness(1, 0),
+        Children = { new Text(caption) }
+    };
+
+    private static Dock CreateBorderSample(string caption, BorderRelief relief) => new()
+    {
+        Width = Length.Cells(18),
+        Height = Length.Cells(3),
+        Border = new Border(
+            BorderSide.All,
+            BorderGlyphStyle.Light,
+            SemanticColor.ControlBorder,
+            relief,
+            Color.Transparent,
+            SemanticDecoration.Border),
+        Padding = new Thickness(1, 0),
+        Children = { new Text(caption) }
+    };
+
+    private static Dock CreateShadowSample(string caption, ShadowMode mode) => new()
+    {
+        Width = Length.Cells(20),
+        Height = Length.Cells(3),
+        Margin = new Thickness(1),
+        Border = new Border(
+            BorderSide.All,
+            BorderGlyphStyle.Rounded,
+            SemanticColor.ControlBorder,
+            Color.Transparent,
+            SemanticDecoration.Border),
+        Shadow = new Shadow(
+            true,
+            mode,
+            new Point(1, 1),
+            new Rune('▓'),
+            SemanticColor.ControlShadow,
+            Color.Transparent,
+            SemanticDecoration.Shadow),
+        Padding = new Thickness(1, 0),
+        Children = { new Text(caption) }
+    };
+
+    private static Wrap CreateElementStates()
+    {
+        var normal = new Button { Text = "Normal", UseMnemonic = false };
+        var focusTarget = new Button { Text = "Focus target", UseMnemonic = false };
+        var pressTarget = new Button { Text = "Press target", UseMnemonic = false };
+        var selectedList = new ListView
         {
-            Text = "Indeterminate",
-            ThreeState = true,
-            IsChecked = null,
-            UseMnemonic = false
+            Width = Length.Cells(20),
+            Height = Length.Cells(2),
+            Items = new object?[] { "Selected row", "Other row" }
         };
-        var disabledState = new Button
+        var disabled = new Button
         {
             Text = "Disabled",
             IsEnabled = false,
             UseMnemonic = false
         };
 
-        return new DocColumn(pointerButton, focusGroup, menu, checkedState, indeterminateState, disabledState);
+        var states = new Wrap
+        {
+            Width = Length.Percent(100),
+            Spacing = 2,
+            LineSpacing = 1
+        };
+        states.Children.Add(normal);
+        states.Children.Add(focusTarget);
+        states.Children.Add(pressTarget);
+        states.Children.Add(selectedList);
+        states.Children.Add(disabled);
+        return states;
     }
-
 }

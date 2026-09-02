@@ -198,7 +198,7 @@ const sessionHeight = 50;
 const main = async () => {
     const requested = new Set(process.argv.slice(2));
     const root = path.resolve(import.meta.dirname, "..");
-    const output = path.join(root, "docs", "images", "controls");
+    const output = path.join(root, "docs", "images");
     const session = `sharpvision-controls-${process.pid}`;
     const temporary = mkdtempSync(path.join(tmpdir(), "sharpvision-controls-"));
 
@@ -274,7 +274,7 @@ const main = async () => {
         ],
         { stdio: "inherit" },
     );
-    await mkdir(output, { recursive: true });
+    await mkdir(path.join(output, "controls"), { recursive: true });
     tmux(
         "new-session",
         "-d",
@@ -476,6 +476,11 @@ const main = async () => {
                 const region = selectCaptureRegion(rect, state, baseline, frame);
 
                 const html = path.join(temporary, `${slug}.html`);
+                const imageDirectory = path.join(
+                    output,
+                    entry.imageDirectory ?? "controls",
+                );
+                await mkdir(imageDirectory, { recursive: true });
                 await writeFile(
                     html,
                     renderHtml(crop(frame, region), { padding: 8 }),
@@ -490,7 +495,7 @@ const main = async () => {
                         "50,50",
                         "--full-page",
                         pathToFileURL(html).href,
-                        path.join(output, name),
+                        path.join(imageDirectory, name),
                     ],
                     { stdio: "pipe" },
                 );
