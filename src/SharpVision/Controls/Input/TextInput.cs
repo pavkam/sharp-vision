@@ -142,6 +142,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
             if (SetProperty(ref field, value, impact))
             {
                 ArrangeChrome();
+                EnsureCaretVisible(_editorBounds);
             }
         }
     }
@@ -160,6 +161,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
             if (SetProperty(ref field, value, impact))
             {
                 ArrangeChrome();
+                EnsureCaretVisible(_editorBounds);
             }
         }
     }
@@ -542,6 +544,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
             if (SetProperty(ref field, value, InvalidationImpact.Arrange))
             {
                 ArrangeChrome();
+                EnsureCaretVisible(_editorBounds);
             }
         }
     } = ScrollBars.Both;
@@ -560,6 +563,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
             if (SetProperty(ref field, value, InvalidationImpact.Arrange))
             {
                 ArrangeChrome();
+                EnsureCaretVisible(_editorBounds);
             }
         }
     } = ShowScrollBars.WhenNeeded;

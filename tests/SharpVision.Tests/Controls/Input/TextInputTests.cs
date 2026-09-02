@@ -1704,6 +1704,78 @@ public sealed class TextInputTests
         FrameOracle.Get(frame, new Point(3, 0)).ShouldBe("t");
     }
 
+    /// <summary>Regression test: shrinking <see cref="TextInput.StartAffix"/> frees editor width,
+    /// which under <see cref="TextInput.WordWrap"/> reflows content into fewer visual lines and
+    /// lowers the valid vertical scroll maximum. <c>ArrangeChrome</c> feeds the new maximum into the
+    /// scrollbar controller's <c>Synchronize</c> call, but that call suppresses its own change
+    /// feedback - so nothing else writes the clamped value back to <see
+    /// cref="TextInput.VerticalOffset"/> unless the affix setter also calls
+    /// <c>EnsureCaretVisible</c> afterward, the same pairing every other viewport-shrinking path in
+    /// this file already uses. Without that call, VerticalOffset is asserted here immediately after
+    /// the setter returns - not after a subsequent layout pass - so a fix that only re-clamps on the
+    /// next arrange cannot pass it.</summary>
+    [Fact]
+    public void StartAffix_WhenShrunkUnderWordWrap_ReclampsVerticalOffsetImmediately()
+    {
+        // Arrange: a 2-cell-wide start affix (plus the 1-cell theme gap) reserves 3 of 6 editor
+        // columns, leaving a 3-cell wrap width - "x" * 12 wraps into exactly 4 rows against a
+        // 3-row viewport, for a vertical maximum of 1.
+        var control = new TextInput
+        {
+            Width = Length.Cells(6),
+            Height = Length.Cells(3),
+            WordWrap = true,
+            ShowScrollBars = ShowScrollBars.Never,
+            StartAffix = new Affix("世"),
+            Text = new string('x', 12)
+        };
+        control.SetTheme(TestThemes.BorderlessInput);
+        new LayoutEngine().Layout(control, new Size(6, 3));
+
+        Route(control, Wheel(wheelX: 0, wheelY: -100), Events.Pointer);
+        control.VerticalOffset.ShouldBe(1);
+
+        // Act: clearing the affix frees 3 columns, widening the wrap from 3 to 6 cells - the same
+        // 12 "x" characters now wrap into exactly 2 rows, dropping the maximum to 0.
+        control.StartAffix = null;
+
+        // Assert
+        control.VerticalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Regression test: shrinking <see cref="TextInput.EndAffix"/> frees editor width,
+    /// which lowers the valid horizontal scroll maximum for unwrapped content the same way <see
+    /// cref="StartAffix_WhenShrunkUnderWordWrap_ReclampsVerticalOffsetImmediately"/> does for the
+    /// vertical axis. Asserted immediately after the setter returns, with no intervening layout
+    /// pass.</summary>
+    [Fact]
+    public void EndAffix_WhenShrunk_ReclampsHorizontalOffsetImmediately()
+    {
+        // Arrange: a 2-cell-wide end affix (plus the 1-cell theme gap) reserves 3 of 6 editor
+        // columns, leaving a 3-cell viewport against the 10-character single-line "abcdefghij" - a
+        // horizontal maximum of 10 - 3 + 1 = 8.
+        var control = new TextInput
+        {
+            Width = Length.Cells(6),
+            Height = Length.Cells(1),
+            ShowScrollBars = ShowScrollBars.Never,
+            EndAffix = new Affix("世"),
+            Text = "abcdefghij"
+        };
+        control.SetTheme(TestThemes.BorderlessInput);
+        new LayoutEngine().Layout(control, new Size(6, 1));
+
+        Route(control, Wheel(wheelX: 100, wheelY: 0), Events.Pointer);
+        control.HorizontalOffset.ShouldBe(8);
+
+        // Act: clearing the affix frees 3 columns, widening the viewport to 6 cells - the maximum
+        // drops to 10 - 6 + 1 = 5.
+        control.EndAffix = null;
+
+        // Assert
+        control.HorizontalOffset.ShouldBe(5);
+    }
+
     /// <summary>Verifies overflowing multiline input exposes a configured canonical vertical scrollbar.</summary>
     [Fact]
     public void ScrollBars_WhenMultilineContentOverflows_ExposesCanonicalVerticalRail()
