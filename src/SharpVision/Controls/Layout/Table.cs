@@ -1501,6 +1501,22 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             }
         }
 
+        // The press itself already moved keyboard focus to the deepest focusable control under
+        // the pointer, which for a TextInput cell is the editor (or one of its own parts) - and a
+        // focused editor accepts typed text directly, silently bypassing the edit transaction that
+        // CommitEdit, CancelEdit, and Escape's restore-original-text are built around. Only
+        // BeginEdit may hand focus to an editor, so a press that did not open an edit hands focus
+        // back to the table.
+        if (_edit is null && row.Cells[column] is TextInput { ContainsFocus: true })
+        {
+            _ = Focus();
+
+            if (!IsPointerTargetAvailable(row, column, dispatcher))
+            {
+                return;
+            }
+        }
+
         RowInvoked?.Invoke(this, new TableRowInvokedEventArgs(row, Rows.IndexOf(row), ActivationCause.Pointer));
     }
 
