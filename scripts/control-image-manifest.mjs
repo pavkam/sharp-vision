@@ -53,7 +53,11 @@ export const controls = [
                 name: "centered",
                 example: "Open centered",
                 popup: true,
-                actions: [{ click: "Open centered" }],
+                actions: [
+                    { click: "Open centered" },
+                    { type: "s" },
+                    { key: "Home" },
+                ],
             },
             {
                 name: "top-centered",
