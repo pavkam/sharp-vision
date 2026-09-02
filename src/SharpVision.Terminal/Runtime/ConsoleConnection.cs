@@ -345,8 +345,17 @@ public sealed class ConsoleConnection: IAsyncDisposable
     {
         if (Interlocked.Exchange(ref _disposed, 1) == 0)
         {
-            _restore.Dispose();
-            DisposalCallback?.Invoke();
+            try
+            {
+                _restore.Dispose();
+            }
+            finally
+            {
+                // The host-open gate must release even when restoring the terminal mode fails,
+                // or a single failed restore permanently strands every later Open() call behind
+                // a gate nothing can ever clear.
+                DisposalCallback?.Invoke();
+            }
         }
 
         return ValueTask.CompletedTask;

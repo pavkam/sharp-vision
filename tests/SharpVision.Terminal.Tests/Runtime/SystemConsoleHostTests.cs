@@ -74,6 +74,44 @@ public sealed class SystemConsoleHostTests
         platformOpenCount.ShouldBe(2);
     }
 
+    /// <summary>Verifies a failed terminal-mode restore still releases the guard, so one failed
+    /// disposal cannot permanently strand every later <see cref="SystemConsoleHost.Open"/> call
+    /// behind a gate nothing can ever clear.</summary>
+    [Fact]
+    public async Task Open_WhenTheFirstConnectionsRestoreThrows_StillAllowsASubsequentOpenAsync()
+    {
+        var platformOpenCount = 0;
+        var host = new SystemConsoleHost(
+            isInteractive: static () => true,
+            openPlatform: _ =>
+            {
+                platformOpenCount++;
+
+                // Only the first connection's restore fails; the second must be free to dispose
+                // cleanly so this test isolates the gate-release behavior under test.
+                return new ConsoleConnection(
+                    new FakeTransport(), new FakeResizeSource(), new TrackingRestore(throwOnDispose: platformOpenCount == 1));
+            });
+
+        var first = host.Open(new ConsoleHostOptions());
+        var threw = false;
+
+        try
+        {
+            await first.DisposeAsync();
+        }
+        catch (IOException)
+        {
+            threw = true;
+        }
+
+        threw.ShouldBeTrue();
+
+        await using var second = host.Open(new ConsoleHostOptions());
+
+        platformOpenCount.ShouldBe(2);
+    }
+
     /// <summary>Verifies the ordinary single-open happy path is unaffected by the guard: opening
     /// once still reaches the platform boundary and returns its connection.</summary>
     [Fact]
