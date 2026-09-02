@@ -284,8 +284,12 @@ public static class Layout
                     ellipsis: false,
                     destination,
                     ref count);
-                lineStart = breakEnd;
-                position = breakEnd;
+
+                // Whitespace that overflowed past the chosen break belongs to the break itself:
+                // it is consumed here rather than carried over, so a wrapped line never opens
+                // with a stray indent. Whitespace that fit stays in the emitted slice above.
+                lineStart = SkipBreakWhitespace(value, breakEnd);
+                position = lineStart;
             }
             else if (position > lineStart)
             {
@@ -298,7 +302,13 @@ public static class Layout
                     ellipsis: false,
                     destination,
                     ref count);
-                lineStart = position;
+
+                // A word that fills the line exactly is followed by whitespace that no longer
+                // fits; that whitespace is the break, for the same reason as above.
+                lineStart = wordBoundaries && IsWhitespace(cluster)
+                    ? SkipBreakWhitespace(value, position)
+                    : position;
+                position = lineStart;
             }
             else
             {
@@ -343,6 +353,27 @@ public static class Layout
     {
         var status = Rune.DecodeFromUtf16(value, out var rune, out _);
         return status == OperationStatus.Done && Rune.IsWhiteSpace(rune);
+    }
+
+    /// <summary>Advances past every whitespace cluster starting at a soft-wrap break so the run is
+    /// consumed by the break instead of opening the next line. The skipped clusters belong to no
+    /// emitted slice, exactly like a logical line delimiter.</summary>
+    [Pure]
+    private static int SkipBreakWhitespace(ReadOnlySpan<char> value, int position)
+    {
+        while (position < value.Length)
+        {
+            var grapheme = Next(value[position..]);
+
+            if (!IsWhitespace(value.Slice(position, grapheme.Length)))
+            {
+                break;
+            }
+
+            position += grapheme.Length;
+        }
+
+        return position;
     }
 
     [Pure]
