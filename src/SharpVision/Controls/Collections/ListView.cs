@@ -1072,7 +1072,12 @@ public sealed class ListView: ItemsControl
 
         if (target != current)
         {
-            VerticalOffset = target;
+            // Saturating rather than assigning VerticalOffset directly: the arithmetic target is
+            // computed from the extent alone, but the host only accepts an offset inside its own
+            // scrollable range, which is zero whenever ScrollBars excludes the vertical axis. A
+            // direct assignment threw ArgumentOutOfRangeException out of an End or PageDown key
+            // on such a list; clamping leaves the row unreachable, which Realize then reports.
+            _ = _stack.ScrollBy(0, target - current, ScrollCause.Programmatic);
         }
     }
 
@@ -1776,7 +1781,14 @@ public sealed class ListView: ItemsControl
             return false;
         }
 
-        Realize(index).ActivateFromOwner(cause, key, modifiers);
+        var realized = Realize(index);
+
+        if (realized is null)
+        {
+            return false;
+        }
+
+        realized.ActivateFromOwner(cause, key, modifiers);
         return true;
     }
 
@@ -2263,7 +2275,9 @@ public sealed class ListView: ItemsControl
     }
 
     /// <summary>Ensures a logical index is realized, scrolling it into view first if necessary.</summary>
-    private ListItem Realize(int index)
+    /// <returns>The realized row, or null when the index lies outside the realizable window and
+    /// the composed viewport cannot scroll to reveal it.</returns>
+    private ListItem? Realize(int index)
     {
         Debug.Assert(index >= 0 && index < _items.Count, "Realize requires a valid item index.");
         var existing = ItemAt(index);
@@ -2276,9 +2290,12 @@ public sealed class ListView: ItemsControl
         Debug.Assert(IsVirtualized, "Every valid index is already realized in eager mode.");
         ScrollIndexIntoView(index, ResolvedRowHeight);
         Rewindow();
-        var realized = ItemAt(index);
-        Debug.Assert(realized is not null, "Rewindow realizes any index the viewport now reveals.");
-        return realized;
+
+        // A windowed list whose vertical axis is not scrollable (ScrollBars without Vertical)
+        // clamps the offset above to zero, so a row beyond the overscan window never enters the
+        // realized set. Reporting null lets navigation and activation leave such a key unhandled
+        // instead of dereferencing a wrapper that was never created.
+        return ItemAt(index);
     }
 
     [Pure]
