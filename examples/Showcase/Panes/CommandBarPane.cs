@@ -94,7 +94,7 @@ internal sealed class CommandBarPane: CompositeControlBase
         itemBar.Items.Add(archive);
         itemBar.ItemInvoked += (_, eventArgs) =>
             itemOwnerLog.Content = $"CommandBar.ItemInvoked: {Plain(eventArgs.Item)} ({eventArgs.Cause})";
-        var invokeDeploy = new Button { Text = "Invoke &Deploy" };
+        var invokeDeploy = new Button { Text = "&Invoke Deploy" };
         invokeDeploy.Click += (_, _) => deploy.PerformInvoke();
         var toggleDeploy = new Button { Text = "Toggle Deploy availabilit&y" };
         toggleDeploy.Click += (_, _) =>
@@ -132,7 +132,7 @@ internal sealed class CommandBarPane: CompositeControlBase
                 $"CommandBarSeparator.PropertyChanged: {eventArgs.PropertyName} · " +
                 $"{separator.Visibility} · glyph {separator.ActualStyle.Glyph.Value}";
         var compile = new CommandBarItem { Text = "&Compile" };
-        var separatorPublish = new CommandBarItem { Text = "&Publish" };
+        var separatorPublish = new CommandBarItem { Text = "P&ublish" };
         compile.Invoked += (_, eventArgs) =>
             neighborLog.Content = $"Neighbor item event: Compile ({eventArgs.Cause})";
         separatorPublish.Invoked += (_, eventArgs) =>

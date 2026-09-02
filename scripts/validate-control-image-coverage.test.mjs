@@ -13,6 +13,37 @@ import {
   validateControlImageCoverage,
 } from "./validate-control-image-coverage.mjs";
 
+function plainCaption(caption) {
+  return caption.replaceAll("&&", "\0").replaceAll("&", "").replaceAll("\0", "&");
+}
+
+function accessKey(caption) {
+  return /(?<!&)&(?!&)(?<key>.)/u
+    .exec(caption)
+    ?.groups?.key.toLocaleLowerCase("en-US") ?? null;
+}
+
+function enabledPaneAccessKeys(source, unavailableCaptions) {
+  const captions = [
+    ...source.matchAll(/\bCreateItem\(\s*"(?<caption>[^"\r\n]*)"/gu),
+    ...source.matchAll(/\bText\s*=\s*"(?<caption>[^"\r\n]*)"/gu),
+    ...source.matchAll(/\?\s*"[^"\r\n]*"\s*:\s*"(?<caption>[^"\r\n]*)"/gu),
+  ]
+    .map((match) => match.groups?.caption)
+    .filter((caption) => caption !== undefined)
+    .filter((caption) => !unavailableCaptions.has(plainCaption(caption)));
+
+  return captions
+    .map((caption) => ({ caption: plainCaption(caption), key: accessKey(caption) }))
+    .filter(({ key }) => key !== null);
+}
+
+function duplicateAccessKeys(entries) {
+  const keys = entries.map(({ key }) => key);
+
+  return [...new Set(keys.filter((key, index) => keys.indexOf(key) !== index))].sort();
+}
+
 test("toKebabCase_WhenNameIsCompoundPascalCase_InsertsHyphensAndLowercases", () => {
   assert.equal(toKebabCase("HorizontalBarChart"), "horizontal-bar-chart");
   assert.equal(toKebabCase("MenuItem"), "menu-item");
@@ -127,6 +158,70 @@ test("repositoryGallery_WhenScanned_HasThePrimaryPageCatalog", async () => {
   assert.ok(pages.includes("MessageBox"));
   assert.ok(pages.includes("OpenFilePicker"));
   assert.ok(pages.includes("SaveFilePicker"));
+});
+
+test("focusedOwnerPanes_WhenEnabledCaptionsDeclareAccessKeys_KeepThemPageWideUnique", async () => {
+  const root = join(import.meta.dirname, "..");
+  const cases = [
+    {
+      file: "BreadcrumbPane.cs",
+      unavailable: new Set(["Archive", "Hidden cache", "Collapsed branch"]),
+    },
+    {
+      file: "CommandBarPane.cs",
+      unavailable: new Set(["Share", "Archive"]),
+    },
+  ];
+  const duplicates = {};
+  const inventories = [];
+
+  for (const { file, unavailable } of cases) {
+    const source = await readFile(
+      join(root, "examples", "Showcase", "Panes", file),
+      "utf8",
+    );
+    const entries = enabledPaneAccessKeys(source, unavailable);
+
+    duplicates[file] = duplicateAccessKeys(entries);
+    inventories.push(
+      `${file}: ${entries.map(({ caption, key }) => `${key}:${caption}`).join(", ")}`,
+    );
+  }
+
+  assert.deepEqual(
+    duplicates,
+    { "BreadcrumbPane.cs": [], "CommandBarPane.cs": [] },
+    inventories.join("\n"),
+  );
+});
+
+test("WrapPane_WhenVerticalLaneShortens_FitsFourColumnsWithBreathingRoom", async () => {
+  const root = join(import.meta.dirname, "..");
+  const source = await readFile(
+    join(root, "examples", "Showcase", "Panes", "WrapPane.cs"),
+    "utf8",
+  );
+  const verticalBlock = source.match(
+    /var vertical = new Wrap(?<body>[\s\S]*?)var verticalStatus/u,
+  )?.groups?.body;
+
+  assert.notEqual(verticalBlock, undefined);
+  const laneWidth = Number(
+    /Width = Length\.Cells\((?<value>\d+)\)/u.exec(verticalBlock)?.groups?.value,
+  );
+  const lineSpacing = Number(
+    /LineSpacing = (?<value>\d+)/u.exec(verticalBlock)?.groups?.value,
+  );
+  const cardWidths = [...verticalBlock.matchAll(/Card\("[^"]+", [^,]+, (?<value>\d+)\)/gu)]
+    .map((match) => Number(match.groups?.value));
+  const consumedWidth = cardWidths.reduce((sum, width) => sum + width, 0) +
+    Math.max(0, cardWidths.length - 1) * lineSpacing;
+
+  assert.equal(cardWidths.length, 4);
+  assert.ok(
+    consumedWidth <= laneWidth - 2,
+    `vertical columns consume ${consumedWidth} cells inside a ${laneWidth}-cell lane`,
+  );
 });
 
 /**

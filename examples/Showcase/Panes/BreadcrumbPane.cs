@@ -80,11 +80,11 @@ internal sealed class BreadcrumbPane: CompositeControlBase
         var currentLog = new Text("Breadcrumb.CurrentChanged: waiting") { Overflow = Overflow.Wrap };
         var commandLog = new Text("ICommand: waiting") { Overflow = Overflow.Wrap };
         var availabilityLog = new Text("Design availability: enabled") { Overflow = Overflow.Wrap };
-        var itemHome = new BreadcrumbItem { Text = "&Start" };
+        var itemHome = new BreadcrumbItem { Text = "St&art" };
         var itemArchive = new BreadcrumbItem { Text = "&Archive", IsEnabled = false };
         var itemDesign = new BreadcrumbItem
         {
-            Text = "界 &Design 🚀",
+            Text = "界 Des&ign 🚀",
             Style = BreadcrumbItemStyle.Default with
             {
                 Face = BreadcrumbItemStyle.Default.Face with
@@ -107,7 +107,7 @@ internal sealed class BreadcrumbPane: CompositeControlBase
         itemPath.CurrentChanged += (_, eventArgs) =>
             currentLog.Content =
                 $"Breadcrumb.CurrentChanged: {Plain(eventArgs.PreviousItem)} → {Plain(eventArgs.CurrentItem)}";
-        var invokeDesign = new Button { Text = "Invoke &Design" };
+        var invokeDesign = new Button { Text = "Invo&ke Design" };
         invokeDesign.Click += (_, _) => itemDesign.PerformInvoke();
         var toggleDesign = new Button { Text = "Toggle Design availabilit&y" };
         toggleDesign.Click += (_, _) =>

@@ -46,10 +46,10 @@ internal sealed class WrapPane: CompositeControlBase
             Spacing = 1,
             LineSpacing = 2
         };
-        vertical.Children.Add(Card("One", BorderGlyphStyle.Light, 10));
-        vertical.Children.Add(Card("Two", BorderGlyphStyle.Heavy, 10));
-        vertical.Children.Add(Card("Three", BorderGlyphStyle.Paired, 10));
-        vertical.Children.Add(Card("Four", BorderGlyphStyle.Rounded, 10));
+        vertical.Children.Add(Card("One", BorderGlyphStyle.Light, 9));
+        vertical.Children.Add(Card("Two", BorderGlyphStyle.Heavy, 9));
+        vertical.Children.Add(Card("Three", BorderGlyphStyle.Paired, 9));
+        vertical.Children.Add(Card("Four", BorderGlyphStyle.Rounded, 9));
         var verticalStatus = new Text(
             "Height: 8 cells\nSource order: One → Two → Three → Four")
         {
