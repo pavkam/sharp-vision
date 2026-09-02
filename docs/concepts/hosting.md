@@ -336,11 +336,14 @@ surface for low-level callers. It uses `Profile` first, otherwise wraps
 historical conservative detection plus explicit cell-mouse semantics in a
 built-in ANSI profile. Interactive hosting uses the resolved-profile overload
 above; the parameterless compatibility path never replaces native preflight.
-`ConsoleApplicationBuilder.WithoutNegotiation()` clears `Negotiation` and - only
-if no explicit profile or capabilities was already set - selects an explicit
-built-in ANSI profile around `Capabilities.Conservative`. That opt-in helper is
-distinct from the default native path and cannot weaken an unsuitable database
-description.
+`ConsoleApplicationBuilder.WithoutNegotiation()` clears `Negotiation` and sets
+`ConsoleRunOptions.NegotiationDisabled`; it no longer touches `Profile` or
+`Capabilities`. `ToTerminalOptions()` gates its negotiation resolution on that
+flag together with `Profile` and `Capabilities` both being null, so disabling
+negotiation no longer pins a profile or bypasses discovery: native
+terminal-description preflight still runs, and a later `UseNegotiation(...)`
+call still applies (it clears the flag). That opt-in helper is distinct from the
+default native path and cannot weaken an unsuitable database description.
 
 ### Terminal-description preflight
 
