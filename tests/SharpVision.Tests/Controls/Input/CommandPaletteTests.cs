@@ -586,6 +586,71 @@ public sealed class CommandPaletteTests
         palette.IsOpen.ShouldBeFalse();
     }
 
+    /// <summary>Verifies Tab closes the open result popup instead of leaving it open behind
+    /// focus that has already moved on, matching ComboBox and DateInput/DateTimeInput.</summary>
+    [Fact]
+    public async Task Dispatch_WhenTabPressedWithResultsOpen_ClosesPopupAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var palette = new CommandPalette
+            {
+                IsOpen = true,
+                Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["First", "Second"])
+            };
+            var outside = new ProbeControl { IsFocusable = true };
+            root.Children.Add(palette);
+            root.Children.Add(outside);
+            new LayoutEngine().Layout(root, new Size(20, 10));
+            root.Attach(dispatcher);
+            using FocusManager focus = new(root);
+            var editor = OwnedTree.Find<TextInput>(palette).ShouldNotBeNull();
+            focus.Focus(editor).ShouldBeTrue();
+            palette.IsOpen.ShouldBeTrue();
+
+            _ = Router.Route(editor, Events.Key, Key(Code.Tab, KeyAction.Press));
+
+            palette.IsOpen.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Tab does not consume the key while closing the popup, leaving the
+    /// traversal command for the router to apply, exactly as ComboBox and
+    /// DateInput/DateTimeInput leave it.</summary>
+    [Fact]
+    public async Task Dispatch_WhenTabPressedWithResultsOpen_DoesNotConsumeTraversalAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var palette = new CommandPalette
+            {
+                IsOpen = true,
+                Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["First", "Second"])
+            };
+            var outside = new ProbeControl { IsFocusable = true };
+            root.Children.Add(palette);
+            root.Children.Add(outside);
+            new LayoutEngine().Layout(root, new Size(20, 10));
+            root.Attach(dispatcher);
+            using FocusManager focus = new(root);
+            var editor = OwnedTree.Find<TextInput>(palette).ShouldNotBeNull();
+            focus.Focus(editor).ShouldBeTrue();
+            palette.IsOpen.ShouldBeTrue();
+
+            var result = Router.Route(editor, Events.Key, Key(Code.Tab, KeyAction.Press));
+
+            result.Command.ShouldBe(PostRouteCommand.TabNext);
+            result.Anchor.ShouldBeSameAs(editor);
+            focus.Focused.ShouldBeSameAs(editor);
+        }, TestContext.Current.CancellationToken);
+    }
+
     private static KeyEventArgs Key(
         Code code,
         KeyAction action,

@@ -549,6 +549,14 @@ public sealed class CommandPalette: CompositeControlBase
             return true;
         }
 
+        if (eventArgs.IsInitialKeyDown &&
+            stroke.Code == Code.Tab &&
+            KeyboardModifierPolicy.IsTabTraversalEligible(stroke.Modifiers))
+        {
+            _popupCoordinator.SetOpen(false);
+            return false;
+        }
+
         if (eventArgs.IsInitialKeyDown && stroke.Code == Code.Enter)
         {
             if (IsResolving)
