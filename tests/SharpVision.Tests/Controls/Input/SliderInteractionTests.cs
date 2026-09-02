@@ -300,10 +300,11 @@ public sealed class SliderInteractionTests
         surface.ShouldRender("◆────");
     }
 
-    /// <summary>Verifies a one-cell rail renders only the thumb, and a click on it selects Minimum since
-    /// a single cell cannot map any other value.</summary>
+    /// <summary>Verifies a one-cell rail renders only the thumb, and a click on it keeps the current
+    /// value: a single cell has no travel, so it can only ever map Minimum, and collapsing the value
+    /// there would be a change the pointer never asked for.</summary>
     [Fact]
-    public async Task Pointer_WhenRailIsOneCell_ClickSelectsMinimumAsync()
+    public async Task Pointer_WhenRailIsOneCell_ClickKeepsValueAsync()
     {
         // Arrange
         var slider = new Slider
@@ -326,8 +327,9 @@ public sealed class SliderInteractionTests
         await surface.Pointer.ClickAsync(slider);
 
         // Assert
-        slider.Value.ShouldBe(0);
-        changes.ShouldBe([(50, 0)]);
+        slider.Value.ShouldBe(50);
+        changes.ShouldBeEmpty();
+        surface.ShouldHaveFocus(slider);
         surface.ShouldRender("◆");
     }
 

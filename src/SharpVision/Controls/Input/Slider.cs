@@ -339,11 +339,13 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
                 // Map against the live rail, never a snapshot taken at press time: a resize while
                 // the drag is in flight would otherwise convert the pointer's position through a
                 // stale rail length and leave the thumb far from the pointer until the drag ends.
-                // An empty rail mid-drag commits nothing rather than snapping to Minimum.
+                // A rail without travel mid-drag - empty, or a single cell whose only mappable
+                // value is Minimum - commits nothing rather than collapsing the live value on the
+                // first held move; the ScrollBar thumb drag applies the same no-travel rule.
                 var dragBounds = ContentBounds;
                 var dragLength = AxisLength(dragBounds);
 
-                if (dragLength > 0)
+                if (HasTravel(dragLength))
                 {
                     _ = Commit(ValueAt(dragCells, dragBounds, dragLength));
                 }
@@ -376,17 +378,25 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
             return;
         }
 
-        _ = Commit(ValueAt(cells, bounds, length));
+        // A press on a rail without travel still focuses, handles, and captures like any other,
+        // but names no value: a one-cell rail can only ever map Minimum, and collapsing the
+        // current value there would be a change the pointer never asked for.
+        if (HasTravel(length))
+        {
+            _ = Commit(ValueAt(cells, bounds, length));
+        }
+
         eventArgs.IsHandled = true;
         _ = _drag.TryStart(cells);
     }
 
+    /// <summary>Reports whether a rail of <paramref name="length"/> cells can map more than one
+    /// value, so that a pointer offset along it can name a value other than Minimum.</summary>
+    private bool HasTravel(int length) => length > 1 && Minimum != Maximum;
+
     private int ValueAt(Point point, Rect bounds, int length)
     {
-        if (length <= 1 || Minimum == Maximum)
-        {
-            return Minimum;
-        }
+        Debug.Assert(HasTravel(length), "Callers skip the commit on a rail without travel.");
 
         var physical = Orientation == Orientation.Horizontal
             ? point.X - bounds.X
