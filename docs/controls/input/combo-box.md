@@ -224,8 +224,11 @@ unhandled without changing the provisional current row.
 
 Printable Unicode scalars provide basic case-insensitive type-to-select. The
 search starts after the current item, wraps around once, and falls back to the
-latest character when a longer prefix has no match. Closing the popup clears the
-prefix so a later popup session starts fresh. Type-ahead follows the shared
+latest character when a longer prefix has no match. While the popup is open,
+type-ahead runs before Space's field press activation, so Space selects an item
+whose text starts with a space instead of closing the popup. Closing the popup
+clears the prefix so a later popup session starts fresh. Type-ahead follows the
+shared
 [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy):
 Shift and lock state may accompany text, while Control, Alt, Super, Hyper, and
 Meta chords remain unhandled.
