@@ -929,16 +929,10 @@ public sealed class FocusManager: IDisposable
             return;
         }
 
-        foreach (var subscriber in handlers.GetInvocationList())
-        {
-            if (changingPublicationVersion != ChangingPublicationVersion)
-            {
-                break;
-            }
-
-            var handler = (EventHandler<FocusChangingEventArgs>) subscriber;
-            handler(this, eventArgs);
-        }
+        EventPublication.Publish<EventHandler<FocusChangingEventArgs>>(
+            handlers,
+            () => changingPublicationVersion == ChangingPublicationVersion,
+            handler => handler(this, eventArgs));
     }
 
     private void RaisePerSubscriber<TEventArgs>(
@@ -951,15 +945,10 @@ public sealed class FocusManager: IDisposable
             return;
         }
 
-        foreach (var subscriber in handlers.GetInvocationList())
-        {
-            if (!isStillValid())
-            {
-                break;
-            }
-
-            ((EventHandler<TEventArgs>) subscriber)(this, eventArgs);
-        }
+        EventPublication.Publish<EventHandler<TEventArgs>>(
+            handlers,
+            isStillValid,
+            handler => handler(this, eventArgs));
     }
 
     private void PublishEligibilityNotifications()

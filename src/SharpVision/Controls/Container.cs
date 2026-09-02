@@ -1091,16 +1091,10 @@ public abstract class Container: ControlBase
             return;
         }
 
-        foreach (var subscriber in handlers.GetInvocationList())
-        {
-            if (_scrollTransitionVersion != transitionVersion)
-            {
-                break;
-            }
-
-            var handler = (EventHandler<ScrollChangedEventArgs>) subscriber;
-            handler(this, eventArgs);
-        }
+        EventPublication.Publish<EventHandler<ScrollChangedEventArgs>>(
+            handlers,
+            () => _scrollTransitionVersion == transitionVersion,
+            handler => handler(this, eventArgs));
     }
 
     [Pure]

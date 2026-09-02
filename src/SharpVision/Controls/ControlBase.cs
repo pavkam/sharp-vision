@@ -2270,15 +2270,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
         var eventArgs = new PropertyChangedEventArgs(propertyName);
 
-        foreach (var subscriber in handlers.GetInvocationList())
-        {
-            if (_synchronizedPropertyVersions[propertyName] != version)
-            {
-                break;
-            }
-
-            ((PropertyChangedEventHandler) subscriber)(this, eventArgs);
-        }
+        EventPublication.Publish<PropertyChangedEventHandler>(
+            handlers,
+            () => _synchronizedPropertyVersions[propertyName] == version,
+            handler => handler(this, eventArgs));
     }
 
     /// <summary>Commits an ownership edge without invoking user callbacks.</summary>
@@ -6435,16 +6430,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             return;
         }
 
-        foreach (var subscriber in handlers.GetInvocationList())
-        {
-            if (TextSelectionTransitionVersion != transitionVersion)
-            {
-                break;
-            }
-
-            var handler = (EventHandler<TextSelectionChangedEventArgs>) subscriber;
-            handler(this, eventArgs);
-        }
+        EventPublication.Publish<EventHandler<TextSelectionChangedEventArgs>>(
+            handlers,
+            () => TextSelectionTransitionVersion == transitionVersion,
+            handler => handler(this, eventArgs));
     }
 
     /// <summary>Invokes a component's own compatibility selection-changed event without redelivering
@@ -6462,15 +6451,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             return;
         }
 
-        foreach (var subscriber in handlers.GetInvocationList())
-        {
-            if (TextSelectionTransitionVersion != transitionVersion)
-            {
-                break;
-            }
-
-            ((EventHandler) subscriber)(sender, EventArgs.Empty);
-        }
+        EventPublication.Publish<EventHandler>(
+            handlers,
+            () => TextSelectionTransitionVersion == transitionVersion,
+            handler => handler(sender, EventArgs.Empty));
     }
 
     /// <summary>Invokes a component's own compatibility selection-changed event without redelivering
@@ -6491,15 +6475,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             return;
         }
 
-        foreach (var subscriber in handlers.GetInvocationList())
-        {
-            if (TextSelectionTransitionVersion != transitionVersion)
-            {
-                break;
-            }
-
-            ((EventHandler<TEventArgs>) subscriber)(sender, eventArgs);
-        }
+        EventPublication.Publish<EventHandler<TEventArgs>>(
+            handlers,
+            () => TextSelectionTransitionVersion == transitionVersion,
+            handler => handler(sender, eventArgs));
     }
 
     /// <summary>Publishes component compatibility state after base selection commits.</summary>

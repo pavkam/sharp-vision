@@ -1063,16 +1063,10 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
 
             if (handlers is not null)
             {
-                foreach (var subscriber in handlers.GetInvocationList())
-                {
-                    if (changing.Cancel || IsDisposed || _editVersion != observedVersion)
-                    {
-                        break;
-                    }
-
-                    var handler = (EventHandler<TextChangingEventArgs>) subscriber;
-                    handler(this, changing);
-                }
+                EventPublication.Publish<EventHandler<TextChangingEventArgs>>(
+                    handlers,
+                    () => !changing.Cancel && !IsDisposed && _editVersion == observedVersion,
+                    handler => handler(this, changing));
             }
 
             if (changing.Cancel || IsDisposed || _editVersion != observedVersion)

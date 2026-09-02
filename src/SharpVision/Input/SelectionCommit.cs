@@ -4,6 +4,7 @@
 namespace SharpVision.Input;
 
 using System.ComponentModel;
+using System.Runtime.ExceptionServices;
 
 using JetBrains.Annotations;
 
@@ -96,8 +97,13 @@ internal static class SelectionCommit<TKey>
         {
             var changingArgs = createChangingArgs(added, removed);
 
+            // This loop cannot delegate to the shared EventPublication helper: the staleness check
+            // reads selectionVersion by reference so it observes a reentrant subscriber's own commit,
+            // and a byref parameter cannot be captured by the closure that helper requires.
             if (changingEvent is not null)
             {
+                ExceptionDispatchInfo? failure = null;
+
                 foreach (var subscriber in changingEvent.GetInvocationList())
                 {
                     if (version != selectionVersion)
@@ -105,8 +111,17 @@ internal static class SelectionCommit<TKey>
                         break;
                     }
 
-                    ((EventHandler<TChangingArgs>) subscriber)(sender, changingArgs);
+                    try
+                    {
+                        ((EventHandler<TChangingArgs>) subscriber)(sender, changingArgs);
+                    }
+                    catch (Exception exception)
+                    {
+                        failure ??= ExceptionDispatchInfo.Capture(exception);
+                    }
                 }
+
+                failure?.Throw();
             }
 
             if (changingArgs.Cancel ||

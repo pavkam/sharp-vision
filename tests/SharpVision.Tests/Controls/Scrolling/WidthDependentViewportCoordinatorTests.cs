@@ -72,6 +72,37 @@ public sealed class WidthDependentViewportCoordinatorTests
         projectionWidth.ShouldBe(viewport.Viewport.Width);
     }
 
+    /// <summary>Verifies a ScrollChanged subscriber that throws does not prevent delivery to later
+    /// subscribers, and that the original exception is what ultimately propagates.</summary>
+    [Fact]
+    public void ScrollChanged_WhenSubscriberThrows_StillNotifiesLaterSubscribersAndRethrows()
+    {
+        // Arrange
+        var projection = new ProbeControl(new Size(20, 20));
+        var viewport = CreateViewport(projection);
+        var coordinator = new WidthDependentViewportCoordinator(
+            viewport,
+            viewport,
+            projection,
+            static () => false,
+            static () => null,
+            static _ => { });
+        coordinator.CaptureMeasureConstraint(new Constraint(10, 5));
+        coordinator.Arrange(new Rect(0, 0, 10, 5), () => Layout(viewport));
+        var expected = new InvalidOperationException("first subscriber failed");
+        var secondRan = false;
+        coordinator.ScrollChanged += (_, _) => throw expected;
+        coordinator.ScrollChanged += (_, _) => secondRan = true;
+
+        // Act
+        var exception = Should.Throw<InvalidOperationException>(
+            () => viewport.ScrollBy(0, 1, ScrollCause.Keyboard));
+
+        // Assert
+        exception.ShouldBeSameAs(expected);
+        secondRan.ShouldBeTrue();
+    }
+
     private static Stack CreateViewport(ControlBase projection) => new()
     {
         AutoScroll = true,

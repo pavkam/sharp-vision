@@ -497,6 +497,25 @@ public sealed class TabControlTests
         tabs.SelectedIndex.ShouldBe(0);
     }
 
+    /// <summary>Verifies a CloseRequested subscriber that throws does not prevent delivery to later
+    /// subscribers, and that the original exception is what ultimately propagates.</summary>
+    [Fact]
+    public void Close_WhenSubscriberThrows_StillNotifiesLaterSubscribersAndRethrows()
+    {
+        var item = Create("First", "One");
+        item.IsClosable = true;
+        var tabs = Create(item);
+        var expected = new InvalidOperationException("first subscriber failed");
+        var secondRan = false;
+        tabs.CloseRequested += (_, _) => throw expected;
+        tabs.CloseRequested += (_, _) => secondRan = true;
+
+        var exception = Should.Throw<InvalidOperationException>(() => tabs.RequestClose(item));
+
+        exception.ShouldBeSameAs(expected);
+        secondRan.ShouldBeTrue();
+    }
+
     /// <summary>Verifies non-closeable pages reject close requests without raising the event.</summary>
     [Fact]
     public void Close_WhenPageIsNotClosable_DoesNothing()

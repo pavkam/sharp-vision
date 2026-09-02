@@ -784,18 +784,12 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             return;
         }
 
-        foreach (var subscriber in handlers.GetInvocationList())
-        {
-            if (eventArgs.Cancel ||
-                closeRequestVersion != _closeRequestVersion ||
-                IndexOfItemControl(eventArgs.Item) < 0)
-            {
-                break;
-            }
-
-            var handler = (EventHandler<TabCloseRequestedEventArgs>) subscriber;
-            handler(this, eventArgs);
-        }
+        EventPublication.Publish<EventHandler<TabCloseRequestedEventArgs>>(
+            handlers,
+            () => !eventArgs.Cancel &&
+                closeRequestVersion == _closeRequestVersion &&
+                IndexOfItemControl(eventArgs.Item) >= 0,
+            handler => handler(this, eventArgs));
     }
 
     internal void ClearItems() => ClearItems(disposing: false);
