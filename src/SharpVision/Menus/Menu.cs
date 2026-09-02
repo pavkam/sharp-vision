@@ -86,9 +86,21 @@ public sealed class Menu: ItemsControl
                 {
                     _stack.Orientation = Orientation;
                     UpdateItemSizing();
+                    RefreshSubmenuPlacements();
                 });
         }
     } = Orientation.Horizontal;
+
+    private void RefreshSubmenuPlacements()
+    {
+        for (var index = 0; index < ItemControlCount; index++)
+        {
+            if (ItemAt(index) is MenuItem item)
+            {
+                item.RefreshSubmenuPlacement();
+            }
+        }
+    }
 
     /// <summary>Gets or sets non-negative cells between participating items.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
