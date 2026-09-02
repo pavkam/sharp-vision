@@ -16,7 +16,7 @@ public sealed record MenuSeparatorStyle: ControlStyle
     /// <summary>Gets the primary menu-separator style definition. Falls back to
     /// <see cref="ControlStyle"/>'s "control" role section; the divider glyph is
     /// code-owned.</summary>
-    internal static StyleDefinition<MenuSeparatorStyle> Definition { get; } = StyleDefinitions.ControlWithThemeOwnedStateDefaults(
+    internal static StyleDefinition<MenuSeparatorStyle> Definition { get; } = StyleDefinitions.BarControlWithThemeOwnedStateDefaults(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,
         static (previous, _, current, _) =>

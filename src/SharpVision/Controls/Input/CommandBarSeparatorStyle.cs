@@ -11,7 +11,7 @@ using System.Diagnostics.CodeAnalysis;
 public sealed record CommandBarSeparatorStyle: ControlStyle
 {
     /// <summary>Gets the separator style definition with a one-hop ControlStyle fallback.</summary>
-    internal static StyleDefinition<CommandBarSeparatorStyle> Definition { get; } = StyleDefinitions.ControlWithThemeOwnedStateDefaults(
+    internal static StyleDefinition<CommandBarSeparatorStyle> Definition { get; } = StyleDefinitions.BarControlWithThemeOwnedStateDefaults(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,
         static (previous, _, current, _) =>

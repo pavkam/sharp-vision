@@ -36,7 +36,7 @@ public sealed class RadioButtonSurfaceTests
         wide.Width.ShouldBe(2);
         surface.Cell(new Point(5, 2)).Continuation.ShouldBeTrue();
         surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(
-            TerminalPalette.Project(ThemeColorHelper.InactiveBorder(ThemeCatalog.Dark), ColorDepth.Basic16));
+            TerminalPalette.Project(ThemeColorHelper.DisabledForeground(ThemeCatalog.Dark), ColorDepth.Basic16));
     }
 
     /// <summary>Verifies parenthesized marks show exact unchecked and checked terminal rows.</summary>

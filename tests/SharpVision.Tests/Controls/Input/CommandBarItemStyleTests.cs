@@ -71,8 +71,8 @@ public sealed class CommandBarItemStyleTests
         item.ActualStyle.ShouldBe(local);
     }
 
-    /// <summary>Verifies Bar supplies the resting and hovered plane without erasing inherited
-    /// hover foreground, focus, selection, disabled, or complete local-style precedence.</summary>
+    /// <summary>Verifies Bar supplies the resting, hovered, and disabled plane without erasing
+    /// inherited state foregrounds, active backgrounds, or complete local-style precedence.</summary>
     [Fact]
     public void ResolveAppearance_WhenBarAndStatesAreAuthored_PreservesStateAndLocalPrecedence()
     {
@@ -84,9 +84,15 @@ public sealed class CommandBarItemStyleTests
 
         var normal = item.ResolveAppearance(theme);
         var hovered = item.ResolveAppearance(theme, VisualState.IsPointerOver);
+        var selectedHovered = item.ResolveAppearance(
+            theme,
+            VisualState.IsPointerOver | VisualState.Selected);
         var focused = item.ResolveAppearance(theme, VisualState.Focused);
         var selected = item.ResolveAppearance(theme, VisualState.Selected);
         var disabled = item.ResolveAppearance(theme, VisualState.Disabled);
+        var selectedDisabled = item.ResolveAppearance(
+            theme,
+            VisualState.Selected | VisualState.Disabled);
 
         normal.Face.Background.Literal.ShouldBe(theme.ResolveColor(SemanticColor.Bar));
         hovered.Face.Background.ShouldBe(normal.Face.Background);
@@ -95,8 +101,12 @@ public sealed class CommandBarItemStyleTests
         focused.Face.Foreground.Literal.ShouldBe(theme.ResolveColor(SemanticColor.FocusedText));
         focused.Face.Attributes.Literal.ShouldBe(TerminalAttributes.Bold);
         selected.Face.Background.Literal.ShouldBe(theme.ResolveColor(SemanticColor.SelectedControl));
+        selectedHovered.Face.Foreground.ShouldBe(selected.Face.Foreground);
+        selectedHovered.Face.Background.ShouldBe(selected.Face.Background);
         disabled.Face.Foreground.Literal.ShouldBe(theme.ResolveColor(SemanticColor.DisabledText));
-        disabled.Face.Background.Literal.ShouldBe(theme.ResolveColor(SemanticColor.DisabledControl));
+        disabled.Face.Background.ShouldBe(normal.Face.Background);
+        selectedDisabled.Face.Foreground.ShouldBe(disabled.Face.Foreground);
+        selectedDisabled.Face.Background.ShouldBe(normal.Face.Background);
 
         var localBackground = Color.Rgb(120, 30, 60);
         item.Style = CommandBarItemStyle.Default with

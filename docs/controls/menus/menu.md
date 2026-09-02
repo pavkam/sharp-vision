@@ -98,10 +98,12 @@ the command.
 
 The menu, its normal item and separator faces, and unoccupied host cells use the
 theme's `SemanticColor.Bar` background. Explicitly authored focus, selection,
-press, and disabled faces overlay that normal plane, while a complete local item
-style remains authoritative. A submenu Popup starts a new inherited-selection
-boundary: selecting the owning heading does not select the submenu surface or
-all of its rows; the submenu's own `SelectedIndex` controls its one active row.
+checked, and press faces may overlay that normal plane. Disablement changes
+foreground and other authored state members while restoring the Bar background.
+A complete local item style bypasses those theme overlays and remains
+authoritative. A submenu Popup starts a new inherited-selection boundary:
+selecting the owning heading does not select the submenu surface or all of its
+rows; the submenu's own `SelectedIndex` controls its one active row.
 
 Selection callbacks may synchronously mutate or detach the menu. A pending
 submenu transition retains the selected item's identity and continues only if

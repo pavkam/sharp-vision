@@ -22,7 +22,7 @@ public sealed record StatusBarItemStyle: ControlStyle
     /// <summary>Gets the primary status-bar-entry style definition. Falls back to
     /// <see cref="ControlStyle"/>'s "control" role section; both separator glyphs are code-owned,
     /// shared by every item.</summary>
-    internal static StyleDefinition<StatusBarItemStyle> Definition { get; } = StyleDefinitions.ControlWithThemeOwnedStateDefaults(
+    internal static StyleDefinition<StatusBarItemStyle> Definition { get; } = StyleDefinitions.BarControlWithThemeOwnedStateDefaults(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,
         static (previous, _, current, _) =>

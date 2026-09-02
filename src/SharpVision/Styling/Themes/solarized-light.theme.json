@@ -54,7 +54,7 @@
     "selectedControl": "base1",
     "selectedText": "base03",
     "disabledControl": "base2",
-    "disabledText": "base1",
+    "disabledText": "base00",
     "disabledBorder": "base1",
     "accent": "blue",
     "muted": "base1",

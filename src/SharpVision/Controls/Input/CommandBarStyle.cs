@@ -8,14 +8,14 @@ using System.Diagnostics.CodeAnalysis;
 /// <summary>Defines one complete immutable command-bar presentation.</summary>
 /// <remarks>
 /// This leaf style declares no theme section. It resolves passive appearance through
-/// <see cref="ControlStyle"/> and keeps padding, overflow glyph, and overflow color code-owned
-/// unless a caller assigns a complete local <see cref="CommandBar.Style"/>.
+/// <see cref="ControlStyle"/> and keeps padding, overflow glyph, and normal overflow color
+/// code-owned unless a caller assigns a complete local <see cref="CommandBar.Style"/>.
 /// </remarks>
 [PublicAPI]
 public sealed record CommandBarStyle: ControlStyle
 {
     /// <summary>Gets the command-bar style definition with a one-hop ControlStyle fallback.</summary>
-    internal static StyleDefinition<CommandBarStyle> Definition { get; } = StyleDefinitions.ControlWithThemeOwnedStateDefaults(
+    internal static StyleDefinition<CommandBarStyle> Definition { get; } = StyleDefinitions.BarControlWithThemeOwnedStateDefaults(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,
         static (previous, _, current, _) =>
@@ -44,7 +44,7 @@ public sealed record CommandBarStyle: ControlStyle
     /// <param name="shadow">The complete normal shadow.</param>
     /// <param name="padding">The non-negative content padding in terminal cells.</param>
     /// <param name="overflowGlyph">The printable one-cell overflow glyph and fallback.</param>
-    /// <param name="overflowColor">The non-transparent overflow-glyph foreground.</param>
+    /// <param name="overflowColor">The non-transparent normal overflow-glyph foreground.</param>
     /// <exception cref="ArgumentException">
     /// <paramref name="overflowGlyph"/> contains a control or non-one-cell glyph, or
     /// <paramref name="overflowColor"/> is transparent.
@@ -76,7 +76,8 @@ public sealed record CommandBarStyle: ControlStyle
         init => field = new ControlGlyph(value.Value, value.Fallback);
     }
 
-    /// <summary>Gets the overflow trigger foreground.</summary>
+    /// <summary>Gets the normal overflow-trigger foreground. Theme-owned non-normal states use
+    /// their resolved foreground; a complete local style remains authoritative in every state.</summary>
     /// <exception cref="ArgumentException">The replacement color is transparent.</exception>
     public required ControlColor OverflowColor
     {

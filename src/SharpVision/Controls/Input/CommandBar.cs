@@ -51,7 +51,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         _host = new CommandBarHost(this);
         InitializeItemsHost(_host);
         _propertyOverrides = new RetainedPropertyOverrideService(this, ItemControlsSlot);
-        _style = InitializeStyle(CommandBarStyle.Definition);
+        _style = InitializeStyle(CommandBarStyle.Definition, OnStyleChanged);
         Items = new CommandBarEntryCollection(this);
 
         _overflowButton = new CommandBarOverflowButton(this);
@@ -628,6 +628,13 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
     /// <param name="color">The validated style color.</param>
     /// <returns>The literal terminal color.</returns>
     internal Color ResolveOverflowColor(ControlColor color) => ResolveColor(color);
+
+    private void OnStyleChanged(CommandBarStyle previous, CommandBarStyle current)
+    {
+        _ = previous;
+        _ = current;
+        _overflowButton.Invalidate(Invalidation.Render);
+    }
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)

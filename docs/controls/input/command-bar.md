@@ -55,7 +55,10 @@ value is published.
 
 `CommandBarStyle` is a complete immutable style record. It adds `Padding`, a
 printable one-cell `OverflowGlyph` with portable fallback, and non-transparent
-`OverflowColor`. Clearing local `Style` resumes the theme or code-owned
+`OverflowColor`. A theme-owned overflow trigger uses that color in Normal and
+its resolved foreground in every non-normal state (`SemanticColor.DisabledText`
+by default when disabled). A complete local style remains authoritative,
+including its `OverflowColor`; clearing it resumes the theme or code-owned
 fallback.
 
 ### CommandBarEntryCollection
@@ -179,12 +182,15 @@ and passive divider glyph fallback belongs to
 [`CommandBarSeparator`](command-bar-separator.md#appearance-and-unicode). The
 bar, normal primary entries, overflow trigger, separators, gaps, and unused
 cells use `SemanticColor.Bar`. Physical hover retains that continuous background
-while changing the active foreground; authored focus, selection, press, and
-disabled states and complete local styles retain precedence.
+while changing the active foreground. Disablement restores Bar while retaining
+every other theme-authored state member. A complete local style bypasses those
+theme overlays and wins unchanged in every state.
 
 ## Example
 
 ![The CommandBar control with source-order overflow in the live showcase](../../images/controls/command-bar.png)
+
+![A disabled CommandBar retaining its Bar background while its foreground changes](../../images/controls/command-bar-disabled.png)
 
 ![The CommandBar private overflow menu opened in the live showcase](../../images/controls/command-bar-open.png)
 
@@ -205,6 +211,8 @@ commands.Items.Add(open);
 commands.Items.Add(new CommandBarSeparator());
 commands.Items.Add(publish);
 commands.ItemInvoked += (_, eventArgs) => Log(eventArgs.Item, eventArgs.Cause);
+var toggle = new Button { Text = "Toggle bar" };
+toggle.Click += (_, _) => commands.IsEnabled = !commands.IsEnabled;
 ```
 
 ## Expected behavior

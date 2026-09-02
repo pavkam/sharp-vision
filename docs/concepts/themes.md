@@ -70,12 +70,17 @@ the typed public lookup.
 palette tier that retains at least 4.5:1 contrast with `controlText`,
 `activeText`, and `hotkey` at truecolor and xterm-256 depth, and stays distinct
 from ordinary planes and the active, selected, pressed, and disabled fills used
-around it. Physical hover retains the Bar background while inheriting active
-foreground and decoration; authored focus, selection, press, and disabled faces
-and complete local styles continue to win over the normal Bar value. Every
-bundled `selectedControl` pairing likewise retains at least 4.5:1 contrast with
-`selectedText` and `hotkey` at truecolor and xterm-256 depth so a selected bar
-row does not make either its caption or mnemonic disappear.
+around it. Physical hover omits only its `Face.Background`, while disablement
+restores the Bar background; every other authored state member still applies.
+Focus, selection, checked, and press may replace the Bar background while
+active. A complete local style bypasses these theme overlays and remains
+authoritative in every state. Each bundled `disabledText` remains different from
+`controlText` and retains at least 3:1 contrast with both Bar and
+`disabledControl` at truecolor and xterm-256 depth, keeping unavailable entries
+subdued but legible. Every bundled `selectedControl` pairing likewise retains at
+least 4.5:1 contrast with `selectedText` and `hotkey` at truecolor and xterm-256
+depth so a selected bar row does not make either its caption or mnemonic
+disappear.
 
 `reliefHighlight` and `reliefShade` model one light source above and to the left
 of the surface: `BorderRelief.Raised` paints the top and left edges with

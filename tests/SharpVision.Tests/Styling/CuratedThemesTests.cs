@@ -66,6 +66,37 @@ public sealed class CuratedThemesTests
         }
     }
 
+    /// <summary>Verifies every curated theme resolves the deliberately selected disabled ink that
+    /// remains subdued and legible on its raised-navigation plane.</summary>
+    [Fact]
+    public void EveryTheme_WhenDisabledTextColorResolves_UsesCuratedBarLegibleValue()
+    {
+        var expected = new Dictionary<string, Color>(StringComparer.Ordinal)
+        {
+            ["catppuccin-latte"] = Color.FromHex("#65687f"),
+            ["catppuccin-mocha"] = Color.FromHex("#7f849c"),
+            ["default-dark"] = Color.FromHex("#b9b9b9"),
+            ["default-light"] = Color.FromHex("#333333"),
+            ["dracula"] = Color.FromHex("#b9c0d1"),
+            ["gruvbox-dark"] = Color.FromHex("#c5b597"),
+            ["gruvbox-light"] = Color.FromHex("#6a6157"),
+            ["monokai"] = Color.FromHex("#cecdc3"),
+            ["nord"] = Color.FromHex("#aeb5c3"),
+            ["one-dark"] = Color.FromHex("#7f8693"),
+            ["solarized-dark"] = Color.FromHex("#76888c"),
+            ["solarized-light"] = Color.FromHex("#657b83"),
+            ["tokyo-night-day"] = Color.FromHex("#7664ae"),
+            ["tokyo-night-storm"] = Color.FromHex("#7881ac"),
+            ["tokyo-night"] = Color.FromHex("#6b749f"),
+            ["turbo-vision"] = Color.FromHex("#494949")
+        };
+
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            ThemeCatalog.Load(slug).ResolveColor(SemanticColor.DisabledText).ShouldBe(expected[slug], slug);
+        }
+    }
+
     /// <summary>Verifies each raised-navigation plane remains visibly distinct from ordinary
     /// application, window, input-surface, and control backgrounds.</summary>
     [Fact]
@@ -168,13 +199,64 @@ public sealed class CuratedThemesTests
         failures.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies disabled text remains visibly subdued on Bar and readable on both Bar and
+    /// the ordinary disabled-control plane at either curated RGB presentation depth.</summary>
+    [Fact]
+    public void EveryTheme_WhenDisabledTextResolves_RemainsDistinctAndReadableAtTrueColorAndIndexed256Depth()
+    {
+        const double minimumContrastRatio = 3;
+        var depths = new[] { ColorDepth.TrueColor, ColorDepth.Indexed256 };
+        var backgrounds = new[]
+        {
+            (SemanticColor.Bar, "Bar"),
+            (SemanticColor.DisabledControl, "DisabledControl")
+        };
+        var failures = new List<string>();
+
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+
+            foreach (var depth in depths)
+            {
+                var bar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), depth);
+                var disabled = TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), depth);
+                var enabled = TerminalPalette.Project(theme.ResolveColor(SemanticColor.ControlText), depth);
+
+                foreach (var (backgroundColor, backgroundName) in backgrounds)
+                {
+                    var background = TerminalPalette.Project(theme.ResolveColor(backgroundColor), depth);
+                    var ratio = ContrastRatio(disabled, background);
+
+                    if (ratio < minimumContrastRatio)
+                    {
+                        failures.Add(
+                            $"{slug} DisabledText on {backgroundName} at {depth} has {ratio:F2}:1 contrast");
+                    }
+                }
+
+                if (disabled == enabled)
+                {
+                    failures.Add($"{slug} DisabledText matches ControlText on Bar at {depth}");
+                }
+
+                if (ContrastRatio(disabled, bar) >= ContrastRatio(enabled, bar))
+                {
+                    failures.Add($"{slug} DisabledText is not subdued from ControlText on Bar at {depth}");
+                }
+            }
+        }
+
+        failures.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies every curated theme's six well-known role sections ("control"/"input"/
     /// "container"/"window"/"popup"/"tooltip") round-trip through the real reflective engine: each
     /// role's resolved Normal face differs from that role's bare code-owned default, proving the
     /// theme's own "styles.&lt;role&gt;.normal" JSON was actually read and applied rather than
     /// silently ignored (the exact class of bug an earlier root-cause fix addressed, and that this
     /// follow-up investigation continues to guard). Unlike <see cref="EveryCuratedThemeExceptTheDefaults_AuthorsButtonAndResolvesEveryGlyphFamilyStyle"/>,
-    /// this covers ALL 15 themes including the two zero-config defaults, since every curated theme
+    /// this covers all 16 themes including the two zero-config defaults, since every curated theme
     /// (including "default-dark"/"default-light") authors all six well-known roles - only the eight
     /// LEAF registrable sections are deliberately left unauthored for the two defaults.</summary>
     [Fact]

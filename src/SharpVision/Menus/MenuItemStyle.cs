@@ -20,7 +20,7 @@ public sealed record MenuItemStyle: ControlStyle
     /// <summary>Gets the primary menu-item style definition. Falls back through
     /// <see cref="Theme.GetInteractiveControlStyleSet"/>; all four check and radio markers are
     /// code-owned from <see cref="ControlGlyphs.Selection"/>.</summary>
-    internal static StyleDefinition<MenuItemStyle> Definition { get; } = StyleDefinitions.ControlWithThemeOwnedStateDefaults(
+    internal static StyleDefinition<MenuItemStyle> Definition { get; } = StyleDefinitions.BarControlWithThemeOwnedStateDefaults(
         static theme => theme.GetInteractiveControlStyleSet(),
         Complete,
         static (previous, _, current, _) =>

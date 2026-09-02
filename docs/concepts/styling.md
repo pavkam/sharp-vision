@@ -227,9 +227,11 @@ Bar surfaces use `SemanticColor.Bar` for their complete normal face rather than
 borrowing `Control` or `Surface` by accident. Menus, command bars, status bars,
 their ordinary items and separators, and otherwise unoccupied cells therefore
 form one continuous theme-authored plane. This rebase keeps the fallback's
-foreground, hotkey decoration, border, shadow, and explicitly authored focus,
-selection, press, and disabled contributions; a caller's complete local style
-still wins in every state.
+foreground, hotkey decoration, border, shadow, and explicitly authored state
+contributions. Physical hover omits only its `Face.Background`; disablement
+restores the Bar background. Every other theme-authored state member still
+applies, while a caller's complete local style bypasses those theme overlays and
+wins unchanged in every state.
 
 The [Control page](../controls/control.md#intrinsic-appearance) defines the
 public properties, layout effects, and rendering order. The

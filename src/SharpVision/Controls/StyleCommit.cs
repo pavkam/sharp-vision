@@ -20,7 +20,8 @@ internal sealed class StyleCommit<TStyle>
         InvalidationImpact impact,
         ResolvedAppearance previousAppearance,
         ResolvedAppearance currentAppearance,
-        bool ambientFaceChanged)
+        bool ambientFaceChanged,
+        bool localOwnershipChanged)
     {
         Slot = slot;
         Value = value;
@@ -30,6 +31,7 @@ internal sealed class StyleCommit<TStyle>
         PreviousAppearance = previousAppearance;
         CurrentAppearance = currentAppearance;
         AmbientFaceChanged = ambientFaceChanged;
+        LocalOwnershipChanged = localOwnershipChanged;
     }
 
     /// <summary>Gets the slot whose local value changes.</summary>
@@ -56,8 +58,15 @@ internal sealed class StyleCommit<TStyle>
     /// <summary>Gets whether descendants inherit a changed ambient face.</summary>
     internal bool AmbientFaceChanged { get; }
 
+    /// <summary>Gets whether the nullable local-style owner changed without necessarily changing
+    /// the complete resolved style value.</summary>
+    internal bool LocalOwnershipChanged { get; }
+
     /// <summary>Gets whether the complete resolved style changed.</summary>
     internal bool ResolvedStyleChanged => !PreviousStyle.Equals(CurrentStyle);
+
+    /// <summary>Gets whether dependents must observe a changed resolved value or ownership policy.</summary>
+    internal bool RequiresChangedCallback => ResolvedStyleChanged || LocalOwnershipChanged;
 
     /// <summary>Gets or sets the slot version assigned when all preflight succeeds.</summary>
     internal long SlotVersion { get; set; }

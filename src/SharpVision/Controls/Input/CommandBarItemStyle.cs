@@ -15,7 +15,7 @@ public sealed record CommandBarItemStyle: InputStyle
 {
     /// <summary>Gets the command-item style definition with a one-hop InputStyle fallback.</summary>
     internal static StyleDefinition<CommandBarItemStyle> Definition { get; } =
-        StyleDefinitions.ControlWithThemeOwnedStateDefaults(
+        StyleDefinitions.BarControlWithThemeOwnedStateDefaults(
             static theme => theme.GetStyleSet(InputStyle.Default),
             Complete,
             static (previous, _, current, _) =>

@@ -122,11 +122,11 @@ behavior.
 The inherited `Face` remains theme-owned: Bar supplies the normal background,
 the shared control appearance supplies foreground and state overlays, and
 retained text follows ambient inheritance. Physical hover keeps the continuous
-Bar background while applying the hovered foreground and decorations; authored
-focus, selection, press, disabled, and complete local-style backgrounds remain
-authoritative. `StatusBarItem` uses the same Bar normal background while
-preserving disabled appearance and a complete local item style. Assign a
-complete local `Face` only for a deliberate product-specific treatment.
+Bar background while applying the hovered foreground and decorations.
+Disablement restores Bar while every other theme-authored state member applies.
+A complete local style bypasses those theme overlays and wins unchanged in every
+state. `StatusBarItem` follows the same rule. Assign a complete local `Face`
+only for a deliberate product-specific treatment.
 
 Applications may change the inherited control appearance, height, padding,
 border, and shadow properties. Multi-line or taller retained content is clipped
@@ -192,6 +192,12 @@ status.Items.Add(new StatusBarItem
     Alignment = StatusBarItemAlignment.Right,
     Content = new CheckBox { Text = "Autosave" }
 });
+status.Items.Add(new StatusBarItem
+{
+    Alignment = StatusBarItemAlignment.Right,
+    IsEnabled = false,
+    Content = new Text("RO")
+});
 
 Dock.SetSide(status, DockSide.Bottom);
 ```
@@ -213,9 +219,9 @@ Dock.SetSide(status, DockSide.Bottom);
   still observing pointer events, and interactive retained content keeps its own
   input and focus behavior.
 - The showcase includes ordinary document status, right-aligned mode and
-  position parts, a playing activity spinner, a live pointer-coordinate item,
-  and a retained CheckBox inside a full editor workspace. Its surface tests show
-  that a CheckBox needs no local appearance configuration, that the theme
-  preserves contrast through the normal, hover, focus, checked, and disabled
-  states, and that transient activity copy preserves the adjacent branch
-  geometry.
+  position parts, a disabled read-only indicator, a playing activity spinner, a
+  live pointer-coordinate item, and a retained CheckBox inside a full editor
+  workspace. Its surface tests show that a CheckBox needs no local appearance
+  configuration, that the theme preserves contrast through the normal, hover,
+  focus, checked, and disabled states, and that transient activity copy
+  preserves the adjacent branch geometry.

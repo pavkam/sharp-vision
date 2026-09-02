@@ -6,8 +6,8 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves command-bar layout, rendering, focus, input, and popup behavior on a mounted surface.</summary>
 public sealed class CommandBarSurfaceTests
 {
-    /// <summary>Verifies the semantic bar plane fills command faces and unused cells while disabled,
-    /// selected, and complete local styles retain precedence.</summary>
+    /// <summary>Verifies the semantic bar plane fills command faces and unused cells while disabled
+    /// foregrounds, selected backgrounds, and complete local styles retain precedence.</summary>
     [Fact]
     public async Task BarAppearance_WhenThemeAndLocalStyleVary_PreservesTheRequiredPrecedenceAsync()
     {
@@ -47,8 +47,7 @@ public sealed class CommandBarSurfaceTests
         surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
         surface.Cell(new Point(normal.Bounds.Right, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
         surface.Cell(new Point(bar.Bounds.Right - 1, 0)).Style.Background.ShouldBe(expectedBar);
-        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldBe(
-            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledControl), colorDepth));
+        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
         surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Foreground.ShouldBe(
             TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), colorDepth));
         surface.Cell(new Point(local.Bounds.X, local.Bounds.Y)).Style.Background.ShouldBe(
@@ -59,6 +58,12 @@ public sealed class CommandBarSurfaceTests
 
         surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(
             TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
+
+        await surface.UpdateAsync(() => bar.IsEnabled = false, "disable the bar while an item is selected");
+
+        surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), colorDepth));
     }
 
     /// <summary>Verifies the ordinary row renders each semantic command once with an independently normalized separator.</summary>
@@ -112,11 +117,15 @@ public sealed class CommandBarSurfaceTests
         ReadRow(surface, menu.Bounds.Y + 1, 12).ShouldContain("Print");
     }
 
-    /// <summary>Verifies physical hover keeps the private overflow trigger on the continuous Bar plane.</summary>
+    /// <summary>Verifies physical hover keeps the private overflow trigger on the continuous Bar
+    /// plane while applying the theme-authored active foreground.</summary>
     [Fact]
-    public async Task Pointer_WhenMovedOverOverflowTrigger_PreservesBarPlaneAsync()
+    public async Task Pointer_WhenMovedOverOverflowTrigger_ChangesOnlyThemeOwnedForegroundAsync()
     {
         // Arrange
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            bar: "#345678",
+            inputStates: """, "pointerOver": { "face": { "foreground":"warning", "background":"activeControl" } }"""));
         var bar = CreateBar(out _, out _, out _);
         var colorDepth = ColorDepth.TrueColor;
         var options = TerminalOptions.Minimal with
@@ -130,15 +139,204 @@ public sealed class CommandBarSurfaceTests
             TestContext.Current.CancellationToken);
         var trigger = OwnedTree.Find<CommandBarOverflowButton>(bar).ShouldNotBeNull();
         var expectedBar = TerminalPalette.Project(
-            bar.Theme.ShouldNotBeNull().ResolveColor(SemanticColor.Bar),
+            theme.ResolveColor(SemanticColor.Bar),
             colorDepth);
 
         // Act
+        await surface.UpdateAsync(() => surface.Application.Theme = theme, "apply the trigger-state theme");
         await surface.Pointer.MoveToAsync(trigger);
 
         // Assert
         trigger.IsPointerOver.ShouldBeTrue();
         surface.Cell(new Point(trigger.Bounds.X, trigger.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(trigger.Bounds.X, trigger.Bounds.Y)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Warning), colorDepth));
+    }
+
+    /// <summary>Verifies changing only the overflow trigger's presentation owner repaints its
+    /// active foreground even when the complete local style is value-equal to the resolved theme style.</summary>
+    [Fact]
+    public async Task Style_WhenEqualLocalOwnershipChanges_RepaintsActiveOverflowForegroundAsync()
+    {
+        // Arrange
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            bar: "#345678",
+            inputStates: """, "pointerOver": { "face": { "foreground":"warning", "background":"activeControl" } }"""));
+        var bar = CreateBar(out _, out _, out _);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(12, 2),
+            options,
+            TestContext.Current.CancellationToken);
+        var trigger = OwnedTree.Find<CommandBarOverflowButton>(bar).ShouldNotBeNull();
+        var position = new Point(trigger.Bounds.X, trigger.Bounds.Y);
+        await surface.UpdateAsync(() => surface.Application.Theme = theme, "apply the trigger-state theme");
+        await surface.Pointer.MoveToAsync(trigger);
+        var resolvedThemeStyle = bar.ActualStyle;
+
+        // Act
+        await surface.UpdateAsync(
+            () => bar.Style = resolvedThemeStyle,
+            "assign a value-equal complete local style while the trigger is active");
+
+        // Assert
+        surface.Cell(position).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.ControlText), colorDepth));
+
+        await surface.UpdateAsync(() => bar.Style = null, "return equal presentation to theme ownership");
+
+        surface.Cell(position).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Warning), colorDepth));
+    }
+
+    /// <summary>Verifies a bound style ownership transition reaches the overflow trigger even when
+    /// the forwarded complete local style is value-equal to the target's resolved theme style.</summary>
+    [Fact]
+    public async Task BindStyle_WhenEqualLocalOwnershipChanges_RepaintsActiveOverflowForegroundAsync()
+    {
+        // Arrange
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            bar: "#345678",
+            inputStates: """, "pointerOver": { "face": { "foreground":"warning", "background":"activeControl" } }"""));
+        var probe = new CommandBarStyleBindingProbe();
+        var bar = probe.Target;
+        bar.Items.Add(new CommandBarItem { Text = "&Open" });
+        bar.Items.Add(new CommandBarSeparator());
+        bar.Items.Add(new CommandBarItem { Text = "&Save" });
+        bar.Items.Add(new CommandBarItem { Text = "&Print" });
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(12, 2),
+            options,
+            TestContext.Current.CancellationToken);
+        var trigger = OwnedTree.Find<CommandBarOverflowButton>(bar).ShouldNotBeNull();
+        var position = new Point(trigger.Bounds.X, trigger.Bounds.Y);
+        await surface.UpdateAsync(() => surface.Application.Theme = theme, "apply the trigger-state theme");
+        await surface.Pointer.MoveToAsync(trigger);
+        var resolvedThemeStyle = probe.ActualStyle;
+
+        // Act
+        await surface.UpdateAsync(
+            () => probe.Style = resolvedThemeStyle,
+            "forward a value-equal complete local style while the trigger is active");
+
+        // Assert
+        surface.Cell(position).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.ControlText), colorDepth));
+
+        await surface.UpdateAsync(() => probe.Style = null, "return the bound presentation to theme ownership");
+
+        surface.Cell(position).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Warning), colorDepth));
+    }
+
+    /// <summary>Verifies keyboard selection and a held press apply the corresponding complete
+    /// theme-owned state appearances.</summary>
+    [Fact]
+    public async Task Keyboard_WhenOverflowTriggerIsSelectedAndPressed_AppliesThemeOwnedStateForegroundsAsync()
+    {
+        // Arrange
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            bar: "#345678",
+            inputStates: """
+                , "selected": { "face": { "foreground":"success", "background":"selectedControl" } }
+                , "pressed": { "face": { "foreground":"error", "background":"pressedControl" } }
+                """));
+        var bar = CreateBar(out _, out _, out _);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(12, 2),
+            options,
+            TestContext.Current.CancellationToken);
+        var trigger = OwnedTree.Find<CommandBarOverflowButton>(bar).ShouldNotBeNull();
+        var position = new Point(trigger.Bounds.X, trigger.Bounds.Y);
+
+        // Act
+        await surface.UpdateAsync(() =>
+        {
+            surface.Application.Theme = theme;
+            bar.SetCapabilities(TestCapabilities.WithKeyReleases);
+        }, "apply state colors and enable key-release reporting");
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.End);
+
+        // Assert
+        surface.Cell(position).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
+        surface.Cell(position).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Success), colorDepth));
+
+        await surface.Keyboard.PressCharacterAsync(new Rune(' '));
+
+        trigger.IsPressed.ShouldBeTrue();
+        surface.Cell(position).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.PressedControl), colorDepth));
+        surface.Cell(position).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Error), colorDepth));
+    }
+
+    /// <summary>Verifies a disabled overflow trigger keeps the Bar plane, uses the theme's disabled
+    /// foreground, and still respects a complete local overflow color.</summary>
+    [Fact]
+    public async Task IsEnabled_WhenOverflowingBarIsDisabled_ChangesOnlyThemeOwnedTriggerForegroundAsync()
+    {
+        // Arrange
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            bar: "#345678",
+            inputStates: """, "disabled": { "face": { "foreground":"warning", "background":"disabledControl" } }"""));
+        var bar = CreateBar(out _, out _, out _);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(12, 2),
+            options,
+            TestContext.Current.CancellationToken);
+        var trigger = OwnedTree.Find<CommandBarOverflowButton>(bar).ShouldNotBeNull();
+
+        // Act
+        await surface.UpdateAsync(() =>
+        {
+            surface.Application.Theme = theme;
+            bar.IsEnabled = false;
+        }, "apply the theme and disable the overflowing command bar");
+
+        // Assert
+        var position = new Point(trigger.Bounds.X, trigger.Bounds.Y);
+        surface.Cell(position).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth));
+        surface.Cell(position).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Warning), colorDepth));
+
+        await surface.UpdateAsync(
+            () => bar.Style = bar.ActualStyle with { OverflowColor = SemanticColor.Error },
+            "assign a complete local overflow color");
+
+        surface.Cell(position).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Error), colorDepth));
+
+        await surface.UpdateAsync(() => bar.Style = null, "return overflow presentation to the theme");
+
+        surface.Cell(position).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Warning), colorDepth));
     }
 
     /// <summary>Verifies a CommandBar overflow below its trigger remains a fully framed menu surface.</summary>

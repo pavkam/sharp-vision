@@ -7,7 +7,7 @@ namespace SharpVision.Tests.Controls.Display;
 public sealed class StatusBarSurfaceTests
 {
     /// <summary>Verifies the semantic bar plane fills status faces and unused cells while disabled
-    /// and complete local item styles retain precedence.</summary>
+    /// foregrounds and complete local item styles retain precedence.</summary>
     [Fact]
     public async Task BarAppearance_WhenThemeAndLocalStyleVary_PreservesTheRequiredPrecedenceAsync()
     {
@@ -44,12 +44,15 @@ public sealed class StatusBarSurfaceTests
         surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
         surface.Cell(new Point(normal.Bounds.Right, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
         surface.Cell(new Point(bar.Bounds.Right - 1, 0)).Style.Background.ShouldBe(expectedBar);
-        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldBe(
-            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledControl), colorDepth));
+        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
         surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Foreground.ShouldBe(
             TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), colorDepth));
         surface.Cell(new Point(local.Bounds.X, local.Bounds.Y)).Style.Background.ShouldBe(
             TerminalPalette.Project(localBackground, colorDepth));
+
+        await surface.UpdateAsync(() => bar.IsEnabled = false, "disable the whole StatusBar");
+
+        surface.Cell(new Point(bar.Bounds.Right - 1, 0)).Style.Background.ShouldBe(expectedBar);
     }
 
     /// <summary>Verifies exact edge layout while the bar and item remain passive focus exclusions.</summary>

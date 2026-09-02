@@ -6,8 +6,8 @@ namespace SharpVision.Tests.Menus;
 /// <summary>Proves menu entries and navigation through mounted terminal surfaces.</summary>
 public sealed class MenuSurfaceTests
 {
-    /// <summary>Verifies the semantic bar plane fills normal entries and unused cells while state
-    /// colors and a complete local item style remain authoritative.</summary>
+    /// <summary>Verifies the semantic bar plane fills normal and disabled entries plus unused cells
+    /// while state foregrounds, selected backgrounds, and a complete local item style remain authoritative.</summary>
     [Fact]
     public async Task BarAppearance_WhenThemeAndLocalStyleVary_PreservesTheRequiredPrecedenceAsync()
     {
@@ -44,13 +44,10 @@ public sealed class MenuSurfaceTests
         await surface.UpdateAsync(() => surface.Application.Theme = theme, "apply semantic bar theme");
 
         var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth);
-        var expectedDisabled = TerminalPalette.Project(
-            theme.ResolveColor(SemanticColor.DisabledControl),
-            colorDepth);
         surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
         surface.Cell(new Point(menu.Bounds.X, normal.Bounds.Bottom)).Style.Background.ShouldBe(expectedBar);
         surface.Cell(new Point(menu.Bounds.Right - 1, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
-        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldBe(expectedDisabled);
+        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
         surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Foreground.ShouldBe(
             TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), colorDepth));
         surface.Cell(new Point(local.Bounds.X, local.Bounds.Y)).Style.Background.ShouldBe(

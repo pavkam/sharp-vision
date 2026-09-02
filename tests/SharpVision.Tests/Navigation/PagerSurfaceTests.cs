@@ -301,9 +301,9 @@ public sealed class PagerSurfaceTests
         ordinaryCell.Style.Foreground.ShouldBe(Color.FromHex("#ffffff"));
         currentCell.Style.Foreground.ShouldBe(Color.FromHex("#00ffff"));
         omissionCell.Style.Foreground.ShouldBe(Color.FromHex("#7f7f7f"));
-        // The mounted terminal's Basic16 profile projects both Dark's steel-gray omission and
-        // slate-gray disabled role to the same ANSI bright-black entry.
-        disabledCell.Style.Foreground.ShouldBe(Color.FromHex("#7f7f7f"));
+        disabledCell.Style.Foreground.ShouldBe(TerminalPalette.Project(
+            ThemeCatalog.Dark.ResolveColor(SemanticColor.DisabledText),
+            ColorDepth.Basic16));
     }
 
     /// <summary>Verifies finite retention keeps the current number before endpoint and nearest-window candidates.</summary>

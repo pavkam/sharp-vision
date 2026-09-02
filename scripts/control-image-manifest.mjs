@@ -64,6 +64,11 @@ export const controls = [
                 popup: true,
                 actions: [{ click: " …" }],
             },
+            {
+                name: "disabled",
+                example: "Narrow bar",
+                actions: [{ key: "Escape" }, { click: "Disable bar" }],
+            },
         ],
     },
     {

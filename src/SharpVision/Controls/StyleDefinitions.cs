@@ -47,11 +47,34 @@ public static class StyleDefinitions
         where TFallback : ControlStyle
         => CreateControl(fallbackTo, complete, compare, preserveCompleteLocalAppearance: true);
 
+    /// <summary>Creates a primary control-style definition for a leaf rendered on a continuous Bar
+    /// plane. Physical hover omits only <c>Face.Background</c>; disabled restores Bar. Both retain
+    /// every other authored Face, Border, and Shadow contribution.</summary>
+    /// <typeparam name="TStyle">The immutable complete style value.</typeparam>
+    /// <typeparam name="TFallback">The declared fallback style type.</typeparam>
+    /// <param name="fallbackTo">Resolves the fallback type's complete per-state set for one Theme.</param>
+    /// <param name="complete">Completes one fallback-contributed style into this control's style.</param>
+    /// <param name="compare">Returns the earliest phase affected by resolved members.</param>
+    /// <returns>An immutable primary-style definition for a Bar surface.</returns>
+    internal static StyleDefinition<TStyle> BarControlWithThemeOwnedStateDefaults<TStyle, TFallback>(
+        Func<Theme, StyleStates<TFallback>> fallbackTo,
+        Func<TFallback, VisualState, Theme, TStyle> complete,
+        Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compare)
+        where TStyle : ControlStyle
+        where TFallback : ControlStyle =>
+        CreateControl(
+            fallbackTo,
+            complete,
+            compare,
+            preserveCompleteLocalAppearance: true,
+            BarAppearance.Rebase);
+
     private static StyleDefinition<TStyle> CreateControl<TStyle, TFallback>(
         Func<Theme, StyleStates<TFallback>> fallbackTo,
         Func<TFallback, VisualState, Theme, TStyle> complete,
         Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compare,
-        bool preserveCompleteLocalAppearance)
+        bool preserveCompleteLocalAppearance,
+        Func<AppearanceStates, AppearanceStates>? transformAppearance = null)
         where TStyle : ControlStyle
         where TFallback : ControlStyle
     {
@@ -65,7 +88,8 @@ public static class StyleDefinitions
 
         return new StyleDefinition<TStyle>(
             (local, theme) => local ?? ResolveNormal(theme ?? ThemeCatalog.Dark, ResolveFallback, Complete),
-            (style, theme) => (theme ?? ThemeCatalog.Dark).BuildFallbackAwareStates(style, ResolveFallback, Complete),
+            (style, theme) => TransformAppearance(
+                (theme ?? ThemeCatalog.Dark).BuildFallbackAwareStates(style, ResolveFallback, Complete)),
             (previous, previousTheme, current, currentTheme) => MaximumImpact(
                 compare(previous, previousTheme, current, currentTheme),
                 GetInheritedImpact(previous, previousTheme, current, currentTheme)),
@@ -73,10 +97,14 @@ public static class StyleDefinitions
                 ? static (style, _) => new AppearanceStates(
                     new ControlAppearance(style.Face, style.Border, style.Shadow))
                 : (style, theme) =>
-                    (theme ?? ThemeCatalog.Dark).BuildCodeOwnedStates(
-                        style,
-                        ResolveFallback(Theme.Unthemed).Normal,
-                        Complete));
+                    TransformAppearance(
+                        (theme ?? ThemeCatalog.Dark).BuildCodeOwnedStates(
+                            style,
+                            ResolveFallback(Theme.Unthemed).Normal,
+                            Complete)));
+
+        AppearanceStates TransformAppearance(AppearanceStates appearance) =>
+            transformAppearance?.Invoke(appearance) ?? appearance;
     }
 
     // Used to also overlay this key's own "normal" JSON on top of the completed fallback. A leaf

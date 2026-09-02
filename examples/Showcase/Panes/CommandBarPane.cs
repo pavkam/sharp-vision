@@ -49,11 +49,18 @@ internal sealed class CommandBarPane: CompositeControlBase
 
         var narrower = new Button { Text = "&Narrow bar" };
         var wider = new Button { Text = "&Widen bar" };
+        var toggleBar = new Button { Text = "Disable b&ar" };
         narrower.Click += (_, _) => Resize(-6);
         wider.Click += (_, _) => Resize(6);
+        toggleBar.Click += (_, _) =>
+        {
+            bar.IsEnabled = !bar.IsEnabled;
+            toggleBar.Text = bar.IsEnabled ? "Disable b&ar" : "Enable ba&r";
+        };
         var specimen = new DocColumn(
             bar,
             new DocRow(narrower, wider),
+            toggleBar,
             widthLog,
             sourceLog,
             ownerLog,
@@ -166,13 +173,15 @@ internal sealed class CommandBarPane: CompositeControlBase
                 "Resize the bounded bar to watch its longest fitting source prefix stay primary. The ellipsis opens framed private MenuItem projections; disabled Share remains visible but unavailable.",
                 new DocExample(
                     "Resizable command bar",
-                    "Use Narrow bar and Widen bar, activate a caption, or open overflow. Separate logs prove the CommandBarItem, owner event, and ICommand all retain the original semantic source.",
+                    "Resize or disable the bar, activate a caption, or open overflow. Disabled rows and the overflow trigger keep the shared Bar fill while their ink changes. Separate logs prove the CommandBarItem, owner event, and ICommand retain the original semantic source.",
                     specimen,
                     "var commands = new CommandBar { Width = Length.Cells(30) };\n" +
                     "commands.Items.Add(new CommandBarItem { Text = \"&Open\" });\n" +
                     "commands.Items.Add(new CommandBarSeparator());\n" +
                     "commands.Items.Add(new CommandBarItem { Text = \"&Publish\" });\n" +
-                    "commands.ItemInvoked += (_, e) => Run(e.Item);")),
+                    "commands.ItemInvoked += (_, e) => Run(e.Item);\n" +
+                    "var toggle = new Button { Text = \"Toggle bar\" };\n" +
+                    "toggle.Click += (_, _) => commands.IsEnabled = !commands.IsEnabled;")),
             new DocSection(
                 "🧩",
                 "Owned entry roles",

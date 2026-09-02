@@ -69,10 +69,12 @@ internal sealed class StatusBarWorkspace: CompositeControlBase
             "42:8",
             StatusBarItemAlignment.Right,
             StatusBarSeparatorGlyphs.Bullet));
-        Bar.Items.Add(Item(
-            "LF",
+        var readOnly = Item(
+            "RO",
             StatusBarItemAlignment.Right,
-            StatusBarSeparatorGlyphs.Diamond));
+            StatusBarSeparatorGlyphs.Diamond);
+        readOnly.IsEnabled = false;
+        Bar.Items.Add(readOnly);
 
         var header = new Dock
         {

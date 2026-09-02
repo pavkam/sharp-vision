@@ -55,7 +55,9 @@ public sealed class TextSurfaceTests
             TestContext.Current.CancellationToken);
 
         // Assert
-        var disabled = ThemeColorHelper.Disabled(ThemeCatalog.Dark);
+        var disabled = TerminalPalette.Project(
+            ThemeColorHelper.DisabledForeground(ThemeCatalog.Dark),
+            ColorDepth.Basic16);
         var mnemonic = surface.Cell(default);
         mnemonic.Text.ShouldBe("S");
         mnemonic.Style.Foreground.ShouldBe(disabled);

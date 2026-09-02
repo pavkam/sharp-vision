@@ -100,8 +100,10 @@ only way to move them.
 
 The normal `MenuItem` and `MenuSeparator` faces use `SemanticColor.Bar` so rows
 and gaps remain one continuous menu plane. The interactive fallback's focused,
-selected, pressed, and disabled contributions still overlay that normal face; a
-complete local `Style` replaces the theme-owned appearance in every state.
+selected, checked, and pressed contributions may overlay that normal face.
+Disabled state contributions restore Bar while retaining every other authored
+member. A complete local `Style` bypasses those theme overlays and replaces the
+theme-owned appearance unchanged in every state.
 
 > [!NOTE]
 >

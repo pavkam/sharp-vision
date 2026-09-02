@@ -4350,7 +4350,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <summary>Initializes the single primary complete-style slot owned by this control.</summary>
     /// <typeparam name="TStyle">The small immutable complete style value.</typeparam>
     /// <param name="definition">The immutable primary-style policy.</param>
-    /// <param name="changed">An optional callback after a changed resolved style commits.</param>
+    /// <param name="changed">An optional callback after a changed resolved style or local ownership commits.</param>
     /// <returns>The initialized slot used by the public Style and ActualStyle properties.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="definition"/> is null.</exception>
     /// <exception cref="InvalidOperationException">A primary slot was already initialized, or
@@ -4393,7 +4393,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <typeparam name="TStyle">The small immutable complete style value.</typeparam>
     /// <param name="definition">The immutable fallback and comparison policy.</param>
     /// <param name="propertyName">The conventional local property name ending in Style.</param>
-    /// <param name="changed">An optional callback after a changed resolved style commits.</param>
+    /// <param name="changed">An optional callback after a changed resolved style or local ownership commits.</param>
     /// <returns>The initialized secondary slot.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="definition"/> or <paramref name="propertyName"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="propertyName"/> is empty, Style, or does not end in Style.</exception>
@@ -4634,7 +4634,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             impact,
             previousAppearance,
             currentAppearance,
-            ambientFaceChanged);
+            ambientFaceChanged,
+            (slot.LocalValue is null) != (value is null));
     }
 
     private void ApplyStyleCommit<TStyle>(StyleCommit<TStyle> commit)
@@ -4678,28 +4679,31 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(slot.PropertyName)),
             ref failure);
 
-        if (!IsCurrentStyleCommit(commit) || !commit.ResolvedStyleChanged)
-        {
-            return;
-        }
-
-        ExceptionAggregation.Capture(
-            () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(slot.ActualPropertyName)),
-            ref failure);
-
         if (!IsCurrentStyleCommit(commit))
         {
             return;
         }
 
-        if (slot.OwnsAppearance)
+        if (commit.ResolvedStyleChanged)
         {
             ExceptionAggregation.Capture(
-                () => PublishAppearanceChanges(commit.PreviousAppearance, commit.CurrentAppearance),
+                () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(slot.ActualPropertyName)),
                 ref failure);
+
+            if (!IsCurrentStyleCommit(commit))
+            {
+                return;
+            }
+
+            if (slot.OwnsAppearance)
+            {
+                ExceptionAggregation.Capture(
+                    () => PublishAppearanceChanges(commit.PreviousAppearance, commit.CurrentAppearance),
+                    ref failure);
+            }
         }
 
-        if (IsCurrentStyleCommit(commit))
+        if (IsCurrentStyleCommit(commit) && commit.RequiresChangedCallback)
         {
             ExceptionAggregation.Capture(
                 () => slot.PublishChanged(commit.PreviousStyle, commit.CurrentStyle),
