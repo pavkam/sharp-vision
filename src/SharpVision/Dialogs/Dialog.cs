@@ -27,17 +27,17 @@ public abstract class Dialog<TResult>: Window
     private readonly Lock _completionGate = new();
 
     private TaskCompletionSource<TResult>? _completion;
-    private Dispatcher? _abandonedCompletionDispatcher;
     private PresentationHost? _host;
     private CancellationTokenRegistration _externalCancellation;
     private bool _completed;
     private bool _completesWithCancellation;
-    private bool _finishAcceptedCompletionAfterDetach;
-    private bool _hasFinishedAcceptedCompletion;
+    private bool _hasClaimedAcceptedCompletion;
+    private bool _hasDetachedCompletionOwner;
+    private bool _hasScheduledDetachedCompletion;
     private bool _hasPendingResult;
     private bool _isFinishingCompletion;
-    private bool _isDetachmentPending;
     private bool _closingRequestObserved;
+    private bool _requiresDetachedCompletionFallback;
     private bool _scheduledInvoked;
     private long _selectedResultVersion;
     private CancellationToken _pendingCancellationToken;
@@ -341,14 +341,9 @@ public abstract class Dialog<TResult>: Window
 
     private void FinishAcceptedCompletion()
     {
-        lock (_completionGate)
+        if (!TryClaimAcceptedCompletion())
         {
-            if (_hasFinishedAcceptedCompletion)
-            {
-                return;
-            }
-
-            _hasFinishedAcceptedCompletion = true;
+            return;
         }
 
         ExceptionDispatchInfo? failure = null;
@@ -365,33 +360,115 @@ public abstract class Dialog<TResult>: Window
         }
 
         SettleCompletion();
+        ReleaseDetachedCompletionOwnership();
         failure?.Throw();
+    }
+
+    private void FinishDetachedAcceptedCompletion()
+    {
+        if (!TryClaimAcceptedCompletion())
+        {
+            return;
+        }
+
+        ExceptionDispatchInfo? failure = null;
+
+        if (!IsDisposed)
+        {
+            CaptureFailure(Dispose, ref failure);
+        }
+
+        SettleCompletion();
+        ReleaseDetachedCompletionOwnership();
+        failure?.Throw();
+    }
+
+    private bool TryClaimAcceptedCompletion()
+    {
+        lock (_completionGate)
+        {
+            if (_hasClaimedAcceptedCompletion)
+            {
+                return false;
+            }
+
+            _hasClaimedAcceptedCompletion = true;
+            _requiresDetachedCompletionFallback = false;
+            return true;
+        }
+    }
+
+    private void ReleaseDetachedCompletionOwnership()
+    {
+        lock (_completionGate)
+        {
+            _hasDetachedCompletionOwner = false;
+            _hasScheduledDetachedCompletion = false;
+            _requiresDetachedCompletionFallback = false;
+        }
+    }
+
+    private bool TryOwnDetachedCompletion()
+    {
+        lock (_completionGate)
+        {
+            if (_completion is null ||
+                !_completed ||
+                _hasClaimedAcceptedCompletion ||
+                _hasDetachedCompletionOwner)
+            {
+                return false;
+            }
+
+            _hasDetachedCompletionOwner = true;
+            return true;
+        }
+    }
+
+    private bool RequiresDetachedCompletionFallback()
+    {
+        lock (_completionGate)
+        {
+            return _hasDetachedCompletionOwner &&
+                !_hasClaimedAcceptedCompletion &&
+                _requiresDetachedCompletionFallback;
+        }
     }
 
     private void AbandonAcceptedCompletion(Dispatcher dispatcher)
     {
-        bool finishDetached;
+        bool finishAttached;
+        bool scheduleDetached;
 
         lock (_completionGate)
         {
-            if (_hasFinishedAcceptedCompletion)
+            if (_hasClaimedAcceptedCompletion)
             {
                 return;
             }
 
-            if (_isDetachmentPending)
-            {
-                _finishAcceptedCompletionAfterDetach = true;
-                _abandonedCompletionDispatcher = dispatcher;
-                return;
-            }
+            scheduleDetached = _hasDetachedCompletionOwner || Dispatcher is null;
+            finishAttached = dispatcher.CheckAccess();
 
-            finishDetached = Dispatcher is null;
+            if (scheduleDetached)
+            {
+                _hasDetachedCompletionOwner = true;
+            }
+            else if (!finishAttached)
+            {
+                _requiresDetachedCompletionFallback = true;
+            }
         }
 
-        if (finishDetached)
+        if (scheduleDetached)
         {
             ScheduleAcceptedCompletionAfterDetach(dispatcher);
+            return;
+        }
+
+        if (!finishAttached)
+        {
+            SettleCompletion();
             return;
         }
 
@@ -626,45 +703,30 @@ public abstract class Dialog<TResult>: Window
     protected override void OnUnavailable(ReleaseReason reason)
     {
         var dispatcher = Dispatcher;
+        var ownsDetachedCompletion = false;
+        var scheduleCompletion = false;
 
-        if (reason == ReleaseReason.Detached)
+        // Reserve terminal cleanup before observers can trigger dispatcher shutdown. The accepted
+        // dispatcher callback stays primary; the pool owner activates only after rejection or
+        // cancellation, and Dispose's lifecycle gate then waits for the actual detach commit.
+        if (reason == ReleaseReason.Detached && !_isFinishingCompletion && dispatcher is not null)
         {
-            lock (_completionGate)
-            {
-                _isDetachmentPending = true;
-            }
-        }
-
-        if (reason == ReleaseReason.Detached &&
-            !_isFinishingCompletion &&
-            dispatcher is not null &&
-            TryBeginResult(_cancelledResult))
-        {
-            _ = ScheduleCompletion(dispatcher);
+            scheduleCompletion = TryBeginResult(_cancelledResult);
+            ownsDetachedCompletion = TryOwnDetachedCompletion();
         }
 
         ExceptionDispatchInfo? failure = null;
-        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
-        Dispatcher? abandonedCompletionDispatcher = null;
 
-        if (reason == ReleaseReason.Detached)
+        if (scheduleCompletion)
         {
-            lock (_completionGate)
-            {
-                abandonedCompletionDispatcher = _finishAcceptedCompletionAfterDetach
-                    ? _abandonedCompletionDispatcher
-                    : null;
-                _finishAcceptedCompletionAfterDetach = false;
-                _abandonedCompletionDispatcher = null;
-                _isDetachmentPending = false;
-            }
+            CaptureFailure(() => _ = ScheduleCompletion(dispatcher!), ref failure);
         }
 
-        if (abandonedCompletionDispatcher is not null)
+        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
+
+        if (ownsDetachedCompletion && RequiresDetachedCompletionFallback())
         {
-            CaptureFailure(
-                () => ScheduleAcceptedCompletionAfterDetach(abandonedCompletionDispatcher),
-                ref failure);
+            CaptureFailure(() => ScheduleAcceptedCompletionAfterDetach(dispatcher!), ref failure);
         }
 
         failure?.Throw();
@@ -705,16 +767,30 @@ public abstract class Dialog<TResult>: Window
     #region Dispatcher scheduling
 
     // Same-thread disposal before OnUnavailable returns would reenter the ownership publication
-    // that is still unwinding. A pool turn enters afterward or waits on its lifecycle gate, at
-    // which point this dialog is detached and its terminal cleanup is thread-safe.
-    private void ScheduleAcceptedCompletionAfterDetach(Dispatcher dispatcher) =>
+    // that is still unwinding. The pool turn's first lifecycle mutation is Dispose, whose terminal
+    // publication gate waits until that transaction commits Parent and Dispatcher detachment.
+    private void ScheduleAcceptedCompletionAfterDetach(Dispatcher dispatcher)
+    {
+        lock (_completionGate)
+        {
+            if (_hasClaimedAcceptedCompletion || _hasScheduledDetachedCompletion)
+            {
+                return;
+            }
+
+            _hasDetachedCompletionOwner = true;
+            _hasScheduledDetachedCompletion = true;
+            _requiresDetachedCompletionFallback = false;
+        }
+
         _ = Task.Run(() => FinishAbandonedCompletion(dispatcher));
+    }
 
     private void FinishAbandonedCompletion(Dispatcher dispatcher)
     {
         try
         {
-            FinishAcceptedCompletion();
+            FinishDetachedAcceptedCompletion();
         }
         catch (Exception exception)
         {
@@ -756,8 +832,16 @@ public abstract class Dialog<TResult>: Window
         }
         catch (InvalidOperationException)
         {
-            // A full bounded queue will eventually reach Idle on this dispatcher;
-            // the one-shot handler performs cleanup without a retry loop.
+            lock (_completionGate)
+            {
+                if (!_scheduledInvoked && ReferenceEquals(_scheduledDispatcher, dispatcher))
+                {
+                    _requiresDetachedCompletionFallback = true;
+                }
+            }
+
+            // Idle remains the attached-dialog owner. If direct detachment makes dispatcher
+            // progress unavailable, its durable owner consumes this marker on one pool turn.
             return true;
         }
     }
@@ -786,6 +870,7 @@ public abstract class Dialog<TResult>: Window
             idle = _scheduledIdle;
             _scheduledDispatcher = null;
             _scheduledIdle = null;
+            _requiresDetachedCompletionFallback = false;
         }
 
         if (dispatcher is not null && idle is not null)
@@ -800,7 +885,9 @@ public abstract class Dialog<TResult>: Window
     {
         Dispatcher? dispatcher;
         EventHandler? idle;
+        bool completionClaimed;
         bool finishAcceptedCompletion;
+        bool scheduleDetachedCompletion;
 
         lock (_completionGate)
         {
@@ -814,23 +901,27 @@ public abstract class Dialog<TResult>: Window
             idle = _scheduledIdle;
             _scheduledDispatcher = null;
             _scheduledIdle = null;
-            finishAcceptedCompletion =
-                _isDetachmentPending ||
-                Dispatcher is null ||
-                (dispatcher is not null && dispatcher.CheckAccess());
-
-            if (!finishAcceptedCompletion && dispatcher is not null)
-            {
-                // Off-dispatcher shutdown cannot mutate an attached tree. Retain cleanup authority
-                // so a later detach finishes disposal, while the selected result may settle now.
-                _finishAcceptedCompletionAfterDetach = true;
-                _abandonedCompletionDispatcher = dispatcher;
-            }
+            completionClaimed = _hasClaimedAcceptedCompletion;
+            _requiresDetachedCompletionFallback = !completionClaimed;
+            scheduleDetachedCompletion = !completionClaimed && _hasDetachedCompletionOwner;
+            finishAcceptedCompletion = !completionClaimed && !scheduleDetachedCompletion &&
+                (Dispatcher is null || (dispatcher is not null && dispatcher.CheckAccess()));
         }
 
         if (dispatcher is not null && idle is not null)
         {
             dispatcher.Idle -= idle;
+        }
+
+        if (completionClaimed)
+        {
+            return;
+        }
+
+        if (scheduleDetachedCompletion && dispatcher is not null)
+        {
+            ScheduleAcceptedCompletionAfterDetach(dispatcher);
+            return;
         }
 
         if (finishAcceptedCompletion && dispatcher is not null)

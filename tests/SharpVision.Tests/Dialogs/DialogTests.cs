@@ -1034,6 +1034,145 @@ public sealed class DialogTests
         }
     }
 
+    /// <summary>Verifies a full completion queue cannot strand an accepted dialog when direct
+    /// detachment and dispatcher shutdown happen before either scheduling path can run.</summary>
+    [Fact]
+    public async Task PresentAsync_WhenCompletionQueueIsFullAndDialogDetachesBeforeShutdown_SettlesAndDisposesAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            clock,
+            TestContext.Current.CancellationToken);
+        Task<bool>? pending = null;
+        TestDialog? dialog = null;
+
+        try
+        {
+            await surface.UpdateAsync(
+                () =>
+                {
+                    dialog = new TestDialog { FadeOutDuration = TimeSpan.FromSeconds(10) };
+                    pending = dialog.Present(opener, initialFocus: null, CancellationToken.None);
+                },
+                "present dialog before full-queue detachment");
+
+            await surface.Application.Dispatcher.InvokeAsync(
+                () =>
+                {
+                    for (var index = 0; index < 4096; index++)
+                    {
+                        surface.Application.Dispatcher.Post(static () => { });
+                    }
+
+                    dialog!.Accept(true).ShouldBeTrue();
+                    dialog.HasPendingCompletionSchedule.ShouldBeTrue();
+                    ((Overlay) dialog.Parent!).Children.Remove(dialog).ShouldBeTrue();
+                    _ = surface.Application.Dispatcher.DisposeAsync().AsTask();
+                },
+                TestContext.Current.CancellationToken);
+
+            (await pending!.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).ShouldBeTrue();
+            dialog!.IsDisposed.ShouldBeTrue();
+            dialog.Parent.ShouldBeNull();
+        }
+        finally
+        {
+            try
+            {
+                await surface.DisposeAsync();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+    }
+
+    /// <summary>Verifies queued-completion cancellation after unavailability but before the
+    /// ownership commit cannot settle ahead of, or lose disposal of, the detached dialog.</summary>
+    [Fact]
+    public async Task PresentAsync_WhenQueuedCompletionIsCancelledBetweenUnavailableAndDetachCommit_SettlesAfterDisposalAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            clock,
+            TestContext.Current.CancellationToken);
+        var mutationPaused = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releaseMutation = new ManualResetEventSlim();
+        Task<bool>? pending = null;
+        TestDialog? dialog = null;
+        Overlay? presentation = null;
+        Task? detach = null;
+        Task? shutdown = null;
+
+        try
+        {
+            await surface.UpdateAsync(
+                () =>
+                {
+                    dialog = new TestDialog { FadeOutDuration = TimeSpan.FromSeconds(10) };
+                    pending = dialog.Present(opener, initialFocus: null, CancellationToken.None);
+                },
+                "present dialog before paused detachment");
+            presentation = dialog!.Parent.ShouldBeOfType<Overlay>();
+            var pauseCount = 0;
+            presentation.OwnedControls.StructuralMutationPaused = () =>
+            {
+                if (Interlocked.Exchange(ref pauseCount, 1) != 0)
+                {
+                    return;
+                }
+
+                _ = mutationPaused.TrySetResult();
+                releaseMutation.Wait();
+            };
+
+            detach = surface.Application.Dispatcher.InvokeAsync(
+                () =>
+                {
+                    dialog!.Accept(true).ShouldBeTrue();
+                    presentation.Children.Remove(dialog).ShouldBeTrue();
+                },
+                TestContext.Current.CancellationToken).AsTask();
+            await mutationPaused.Task.WaitAsync(TestContext.Current.CancellationToken);
+            dialog.Parent.ShouldBeSameAs(presentation);
+            dialog.Dispatcher.ShouldBeSameAs(surface.Application.Dispatcher);
+
+            shutdown = surface.Application.Dispatcher.DisposeAsync().AsTask();
+            var completedBeforeDetachCommit = pending!.IsCompleted;
+            releaseMutation.Set();
+
+            await detach.WaitAsync(TestContext.Current.CancellationToken);
+            await shutdown.WaitAsync(TestContext.Current.CancellationToken);
+            completedBeforeDetachCommit.ShouldBeFalse();
+            (await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).ShouldBeTrue();
+            dialog!.IsDisposed.ShouldBeTrue();
+            dialog.Parent.ShouldBeNull();
+        }
+        finally
+        {
+            releaseMutation.Set();
+
+            _ = presentation?.OwnedControls.StructuralMutationPaused = null;
+
+            try
+            {
+                await surface.DisposeAsync();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+    }
+
     /// <summary>Verifies a dialog presented through the ControlBase-based overload sets completion state
     /// correctly, so Escape completes it with the cancelled result instead of silently bubbling as
     /// modeless input would.</summary>
