@@ -218,17 +218,7 @@ internal static class FigletRenderer
             // later-typed side. Preferring "right" unconditionally - as a direction-blind
             // implementation would - silently flips which original character wins a collision
             // under right-to-left rendering.
-            if (left == hardBlank)
-            {
-                return right;
-            }
-
-            if (right == hardBlank)
-            {
-                return left;
-            }
-
-            return rightToLeft ? left : right;
+            return left == hardBlank ? right : right == hardBlank || rightToLeft ? left : right;
         }
 
         if ((rules & FigletLayout.Equal) != 0 && left == right && left != hardBlank)
