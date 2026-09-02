@@ -249,9 +249,44 @@ longer touch any control.
 Loading-state publication is a transaction boundary. A start observer that
 throws releases the unstarted request and restores `IsLoading`; an observer that
 detaches, closes, or disposes the dialog stops the start before filesystem work.
-Success and recoverable-failure completions release their request before
-publishing `IsLoading = false`, then revalidate the dialog before status, focus,
-or retained-child work continues.
+Success and recoverable-failure completions publish `IsLoading = false` first
+and revalidate the dialog before status, focus, or retained-child work
+continues; each completion releases its request only after that work finishes.
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant FileDialogBase
+    participant Observer as IsLoading subscriber
+    participant FileSystem
+
+    Caller->>FileDialogBase: BeginLoad(directory) [attach, navigate, or filter/hidden change]
+    FileDialogBase->>FileDialogBase: lease = _loadOperation.Begin() (cancels any prior lease)
+    FileDialogBase->>FileDialogBase: SetLoading(true)
+    FileDialogBase->>Observer: IsLoading changed
+    alt Observer throws
+        Observer-->>FileDialogBase: exception
+        FileDialogBase->>FileDialogBase: Abort the unstarted lease, restore IsLoading, rethrow
+    else Observer detaches, closes, or disposes the dialog
+        Note over FileDialogBase: Revalidation fails before status or filesystem work starts
+    else Observer does nothing blocking
+        FileDialogBase->>FileDialogBase: SetStatus(LoadingText) (revalidate)
+        FileDialogBase->>FileSystem: GetEntriesAsync(directory, filter, showHidden, token)
+        FileSystem-->>FileDialogBase: entries, or a recoverable I/O exception, or cancellation
+        alt Success
+            FileDialogBase->>FileDialogBase: Commit entries, CurrentDirectory, path input, up-button, OnLoadCommitted (revalidate after each)
+            FileDialogBase->>FileDialogBase: SetLoading(false) (revalidate)
+            FileDialogBase->>FileDialogBase: Publish count status, CurrentDirectory change, restore pending focus (revalidate after each)
+            FileDialogBase->>FileDialogBase: _loadOperation.TryComplete(lease) — release the request last
+        else Recoverable failure
+            FileDialogBase->>FileDialogBase: SetLoading(false) (revalidate)
+            FileDialogBase->>FileDialogBase: Publish error status
+            FileDialogBase->>FileDialogBase: _loadOperation.TryComplete(lease) — release the request last
+        else Cancelled (superseded by a newer BeginLoad)
+            Note over FileDialogBase: Silently dropped — the lease was already replaced
+        end
+    end
+```
 
 Every committed snapshot is ordered directories first, then by name using
 case-insensitive ordinal comparison with an ordinal tie-breaker. The dialog
