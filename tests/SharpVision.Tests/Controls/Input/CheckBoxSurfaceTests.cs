@@ -285,10 +285,18 @@ public sealed class CheckBoxSurfaceTests
     public async Task Render_WhenCheckBoxSharesOversizedHorizontalRow_CentersDesiredMarkByDefaultAsync()
     {
         // Arrange
-        var checkBox = new CheckBox { Text = "Go", Width = Length.Cells(12) };
+        var parentBackground = ReferenceColors.Get(1);
+        var checkBoxBackground = ReferenceColors.Get(4);
+        var checkBox = new CheckBox
+        {
+            Text = "Go",
+            Width = Length.Cells(12),
+            Face = AppearanceTestValues.Face(background: checkBoxBackground)
+        };
         var row = new Stack
         {
             Orientation = Orientation.Horizontal,
+            Face = AppearanceTestValues.Face(background: parentBackground),
             Children = { checkBox }
         };
 
@@ -304,6 +312,9 @@ public sealed class CheckBoxSurfaceTests
         surface.Cell(new Point(0, 2)).Text.ShouldBe("[");
         surface.Cell(new Point(4, 2)).Text.ShouldBe("G");
         surface.Cell(new Point(0, 4)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(parentBackground);
+        surface.Cell(new Point(0, 2)).Style.Background.ShouldBe(checkBoxBackground);
+        surface.Cell(new Point(0, 4)).Style.Background.ShouldBe(parentBackground);
     }
 
     /// <summary>Verifies a CheckBox can explicitly stretch its mark face across an oversized horizontal row.</summary>
@@ -311,15 +322,19 @@ public sealed class CheckBoxSurfaceTests
     public async Task Render_WhenCheckBoxSharesOversizedHorizontalRowAndStretchIsSelected_FillsRowAsync()
     {
         // Arrange
+        var parentBackground = ReferenceColors.Get(1);
+        var checkBoxBackground = ReferenceColors.Get(4);
         var checkBox = new CheckBox
         {
             Text = "Go",
             Width = Length.Cells(12),
-            VerticalAlignment = VerticalAlignment.Stretch
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Face = AppearanceTestValues.Face(background: checkBoxBackground)
         };
         var row = new Stack
         {
             Orientation = Orientation.Horizontal,
+            Face = AppearanceTestValues.Face(background: parentBackground),
             Children = { checkBox }
         };
 
@@ -333,6 +348,8 @@ public sealed class CheckBoxSurfaceTests
         checkBox.Bounds.ShouldBe(new Rect(0, 0, 12, 5));
         surface.Cell(new Point(0, 0)).Text.ShouldBe("[");
         surface.Cell(new Point(0, 4)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(checkBoxBackground);
+        surface.Cell(new Point(0, 4)).Style.Background.ShouldBe(checkBoxBackground);
     }
 
     /// <summary>Verifies tiny bounds clip the mark without emitting content outside the control.</summary>

@@ -468,10 +468,21 @@ public sealed class ButtonSurfaceTests
     public async Task Render_WhenButtonSharesOversizedHorizontalRow_CentersDesiredChromeByDefaultAsync()
     {
         // Arrange
-        var button = new Button { Text = "Go", Width = Length.Cells(12) };
+        var parentBackground = ReferenceColors.Get(1);
+        var buttonBackground = ReferenceColors.Get(4);
+        var button = new Button
+        {
+            Text = "Go",
+            Width = Length.Cells(12),
+            Style = ButtonStyle.Standard with
+            {
+                Face = AppearanceTestValues.Face(background: buttonBackground)
+            }
+        };
         var row = new Stack
         {
             Orientation = Orientation.Horizontal,
+            Face = AppearanceTestValues.Face(background: parentBackground),
             Children = { button }
         };
 
@@ -488,6 +499,9 @@ public sealed class ButtonSurfaceTests
         surface.Cell(new Point(5, 2)).Text.ShouldBe("G");
         surface.Cell(new Point(0, 3)).Text.ShouldBe("┗");
         surface.Cell(new Point(0, 4)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(parentBackground);
+        surface.Cell(new Point(1, 2)).Style.Background.ShouldBe(buttonBackground);
+        surface.Cell(new Point(0, 4)).Style.Background.ShouldBe(parentBackground);
     }
 
     /// <summary>Verifies a Button can explicitly stretch its chrome across an oversized horizontal row.</summary>
@@ -495,15 +509,22 @@ public sealed class ButtonSurfaceTests
     public async Task Render_WhenButtonSharesOversizedHorizontalRowAndStretchIsSelected_FillsRowAsync()
     {
         // Arrange
+        var parentBackground = ReferenceColors.Get(1);
+        var buttonBackground = ReferenceColors.Get(4);
         var button = new Button
         {
             Text = "Go",
             Width = Length.Cells(12),
-            VerticalAlignment = VerticalAlignment.Stretch
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Style = ButtonStyle.Standard with
+            {
+                Face = AppearanceTestValues.Face(background: buttonBackground)
+            }
         };
         var row = new Stack
         {
             Orientation = Orientation.Horizontal,
+            Face = AppearanceTestValues.Face(background: parentBackground),
             Children = { button }
         };
 
@@ -517,6 +538,8 @@ public sealed class ButtonSurfaceTests
         button.Bounds.ShouldBe(new Rect(0, 0, 12, 5));
         surface.Cell(new Point(0, 0)).Text.ShouldBe("┏");
         surface.Cell(new Point(0, 4)).Text.ShouldBe("┗");
+        surface.Cell(new Point(1, 1)).Style.Background.ShouldBe(buttonBackground);
+        surface.Cell(new Point(1, 3)).Style.Background.ShouldBe(buttonBackground);
     }
 
     /// <summary>Verifies a held filled Button removes depth without translating its opaque face.</summary>

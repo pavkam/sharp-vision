@@ -297,10 +297,18 @@ public sealed class RadioButtonSurfaceTests
     public async Task Render_WhenRadioButtonSharesOversizedHorizontalRow_CentersDesiredMarkByDefaultAsync()
     {
         // Arrange
-        var radio = new RadioButton { Text = "Go", Width = Length.Cells(12) };
+        var parentBackground = ReferenceColors.Get(1);
+        var radioBackground = ReferenceColors.Get(4);
+        var radio = new RadioButton
+        {
+            Text = "Go",
+            Width = Length.Cells(12),
+            Face = AppearanceTestValues.Face(background: radioBackground)
+        };
         var row = new Stack
         {
             Orientation = Orientation.Horizontal,
+            Face = AppearanceTestValues.Face(background: parentBackground),
             Children = { radio }
         };
 
@@ -316,6 +324,9 @@ public sealed class RadioButtonSurfaceTests
         surface.Cell(new Point(0, 2)).Text.ShouldBe("(");
         surface.Cell(new Point(4, 2)).Text.ShouldBe("G");
         surface.Cell(new Point(0, 4)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(parentBackground);
+        surface.Cell(new Point(0, 2)).Style.Background.ShouldBe(radioBackground);
+        surface.Cell(new Point(0, 4)).Style.Background.ShouldBe(parentBackground);
     }
 
     /// <summary>Verifies a RadioButton can explicitly stretch its mark face across an oversized horizontal row.</summary>
@@ -323,15 +334,19 @@ public sealed class RadioButtonSurfaceTests
     public async Task Render_WhenRadioButtonSharesOversizedHorizontalRowAndStretchIsSelected_FillsRowAsync()
     {
         // Arrange
+        var parentBackground = ReferenceColors.Get(1);
+        var radioBackground = ReferenceColors.Get(4);
         var radio = new RadioButton
         {
             Text = "Go",
             Width = Length.Cells(12),
-            VerticalAlignment = VerticalAlignment.Stretch
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Face = AppearanceTestValues.Face(background: radioBackground)
         };
         var row = new Stack
         {
             Orientation = Orientation.Horizontal,
+            Face = AppearanceTestValues.Face(background: parentBackground),
             Children = { radio }
         };
 
@@ -345,6 +360,8 @@ public sealed class RadioButtonSurfaceTests
         radio.Bounds.ShouldBe(new Rect(0, 0, 12, 5));
         surface.Cell(new Point(0, 0)).Text.ShouldBe("(");
         surface.Cell(new Point(0, 4)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(radioBackground);
+        surface.Cell(new Point(0, 4)).Style.Background.ShouldBe(radioBackground);
     }
 
     /// <summary>Verifies both affixes reserve their own cell column, the start affix drawn before
