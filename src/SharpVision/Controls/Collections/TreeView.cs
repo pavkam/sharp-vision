@@ -983,6 +983,14 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
             _ = ApplyInputSelection(item, modifiers);
         }
 
+        // A SelectionChanging or SelectionChanged subscriber reached above may dispose this tree
+        // synchronously; the retained items container is disposed with it, so revealing the row
+        // afterward would throw ObjectDisposedException out of the key handler.
+        if (IsDisposed)
+        {
+            return;
+        }
+
         _ = _itemsStack.BringIntoView(current);
     }
 
