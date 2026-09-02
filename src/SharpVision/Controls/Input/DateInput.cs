@@ -513,16 +513,11 @@ public sealed class DateInput: InputBase
     private int? ResolveStepDelta(KeyEventArgs eventArgs) =>
         TryGetStepDelta(eventArgs, out var delta) ? delta : null;
 
-    private bool ClearValueCommand()
-    {
-        if (!AllowNull)
-        {
-            return false;
-        }
-
-        Value = null;
-        return true;
-    }
+    // Reports whether the clear actually changed the value, like the sibling fields do: Delete on
+    // an already-empty field is then consumed only through the recognized-without-change policy
+    // (which needs an editable segment to recognize it), never by claiming a transition that did
+    // not happen.
+    private bool ClearValueCommand() => AllowNull && _state.SetValue(null);
 
     private bool? HandlePopupCommand(KeyEventArgs eventArgs)
     {

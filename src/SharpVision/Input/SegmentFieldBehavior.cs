@@ -327,8 +327,15 @@ internal sealed class SegmentFieldBehavior
                 changed = recognized && MoveToEdge(first: false);
                 break;
             case Code.Delete:
-                recognized = HasEditableSegments;
-                changed = recognized && options.ClearValue();
+                // Delete is a whole-value clearing command, not a segment edit: it stays
+                // available under a layout with no editable segments at all (a literal-only
+                // Format such as "'choose date'"), where it must still clear the value. It is
+                // recognized - consumed even without an observable change, subject to the
+                // owner's policy - whenever editable segments exist, matching Backspace and
+                // the navigation arms, so an already-empty field does not leak the key to
+                // ancestors.
+                changed = options.ClearValue();
+                recognized = changed || HasEditableSegments;
                 break;
             case Code.Backspace:
                 recognized = HasEditableSegments;
