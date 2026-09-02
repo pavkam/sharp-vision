@@ -274,7 +274,7 @@ sequenceDiagram
         FileDialogBase->>FileSystem: GetEntriesAsync(directory, filter, showHidden, token)
         FileSystem-->>FileDialogBase: entries, or a recoverable I/O exception, or cancellation
         alt Success
-            FileDialogBase->>FileDialogBase: Commit entries, CurrentDirectory, path input, up-button, OnLoadCommitted (revalidate after each)
+            FileDialogBase->>FileDialogBase: Commit entries, CurrentDirectory, path input, up-button, OnLoadCommitted (revalidate once, before the group)
             FileDialogBase->>FileDialogBase: SetLoading(false) (revalidate)
             FileDialogBase->>FileDialogBase: Publish count status, CurrentDirectory change, restore pending focus (revalidate after each)
             FileDialogBase->>FileDialogBase: _loadOperation.TryComplete(lease) — release the request last
