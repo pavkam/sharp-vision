@@ -77,10 +77,11 @@ the Theme-owned presentation.
 
 A primary press focuses the control, then — provided no focus callback detached,
 hid, disabled, or disposed the slider — selects the nearest mapped value and
-takes pointer capture. Captured movement keeps selecting against the geometry
-captured at press time. Release, leave, focus transfer, terminal focus loss,
-disabling, hiding, detachment, or disposal ends the drag without committing
-another value.
+takes pointer capture. Captured movement keeps selecting against the rail's live
+geometry, so a resize while a drag is in flight keeps the thumb under the
+pointer instead of mapping it through a stale rail length. Release, leave, focus
+transfer, terminal focus loss, disabling, hiding, detachment, or disposal ends
+the drag without committing another value.
 
 Left/Right operate a horizontal slider and Down/Up a vertical one: the
 decreasing key subtracts `SmallChange` and the increasing key adds it. Page Down

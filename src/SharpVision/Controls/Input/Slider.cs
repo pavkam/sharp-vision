@@ -14,8 +14,6 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
     private int _value;
     private readonly CallbackTransitionStream _valueTransitions = new();
     private readonly DragBehavior _drag;
-    private Rect _dragBounds;
-    private int _dragLength;
     private readonly StyleSlot<SliderStyle> _style;
 
     /// <summary>Initializes a horizontal focusable range from zero through one hundred.</summary>
@@ -196,29 +194,14 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
     }
 
     /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-        ResetDragState();
-    }
-
-    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        ResetDragState();
 
         if (reason == ReleaseReason.Disposed)
         {
             ValueChanged = null;
         }
-    }
-
-    /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
-        base.OnLostPointerCapture(reason);
-        ResetDragState();
     }
 
     /// <inheritdoc/>
@@ -350,11 +333,20 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
             if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
             {
                 _drag.Cancel(releaseCapture: true);
-                ResetDragState();
             }
             else if (pointer.Cells is { } dragCells)
             {
-                _ = Commit(ValueAt(dragCells, _dragBounds, _dragLength));
+                // Map against the live rail, never a snapshot taken at press time: a resize while
+                // the drag is in flight would otherwise convert the pointer's position through a
+                // stale rail length and leave the thumb far from the pointer until the drag ends.
+                // An empty rail mid-drag commits nothing rather than snapping to Minimum.
+                var dragBounds = ContentBounds;
+                var dragLength = AxisLength(dragBounds);
+
+                if (dragLength > 0)
+                {
+                    _ = Commit(ValueAt(dragCells, dragBounds, dragLength));
+                }
             }
 
             return;
@@ -386,12 +378,7 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
 
         _ = Commit(ValueAt(cells, bounds, length));
         eventArgs.IsHandled = true;
-
-        if (_drag.TryStart(cells))
-        {
-            _dragBounds = bounds;
-            _dragLength = length;
-        }
+        _ = _drag.TryStart(cells);
     }
 
     private int ValueAt(Point point, Rect bounds, int length)
@@ -410,12 +397,6 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
         var positions = length - 1L;
         var offset = RangeValidation.RoundHalfUp(logical * span, positions);
         return Math.Clamp(Minimum + offset, Minimum, Maximum);
-    }
-
-    private void ResetDragState()
-    {
-        _dragBounds = default;
-        _dragLength = 0;
     }
 
     private int PositionFor(int value, int length)
