@@ -37,6 +37,21 @@ internal sealed class ContextMenuPane: CompositeControlBase
             Height = Length.Cells(3),
             ContextMenu = customMenu
         };
+        ShowcasePaneHelpers.Place(target, 2, 2);
+        ShowcasePaneHelpers.Place(status, 2, 10);
+        var customStage = new Overlay
+        {
+            Width = Length.Cells(34),
+            Height = Length.Cells(12),
+            ClipToBounds = true,
+            Children =
+            {
+                ShowcasePaneHelpers.ApplicationSurface(
+                    "Workspace\n\n\n\n\n\n\n\n\nContext menu closed."),
+                target,
+                status
+            }
+        };
 
         var textInput = new TextInput
         {
@@ -89,7 +104,7 @@ internal sealed class ContextMenuPane: CompositeControlBase
                 new DocExample(
                     "Right-click target",
                     "Right-click the button to see the context menu. <reverse>Escape</reverse> or clicking outside dismisses it.",
-                    new DocColumn(target, status),
+                    customStage,
                     "menu.FadeInDuration = TimeSpan.FromMilliseconds(120);\nmenu.FadeOutDuration = TimeSpan.FromMilliseconds(160);")),
             new DocSection(
                 "📋",

@@ -175,7 +175,15 @@ export const controls = [
             },
         ],
     },
-    { doc: "controls/menus/context-menu", page: "ContextMenu" },
+    {
+        doc: "controls/menus/context-menu",
+        page: "ContextMenu",
+        states: [
+            {
+                actions: [{ secondaryClick: "Right-click me" }],
+            },
+        ],
+    },
     {
         doc: "controls/navigation/breadcrumb",
         page: "Breadcrumb",
@@ -240,7 +248,11 @@ export const controls = [
     { doc: "controls/display/spinner", page: "Spinner", animated: true },
     { doc: "controls/display/status-bar", page: "StatusBar", animated: true },
     { doc: "controls/display/text", page: "Text" },
-    { doc: "controls/popups/popup", page: "Popup" },
+    {
+        doc: "controls/popups/popup",
+        page: "Popup",
+        states: [{ actions: [{ click: "Actions" }] }],
+    },
     { doc: "controls/popups/flyout", page: "Flyout" },
     { doc: "controls/popups/tooltip", page: "Tooltip" },
     {

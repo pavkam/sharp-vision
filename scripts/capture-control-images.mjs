@@ -429,6 +429,14 @@ const main = async () => {
                         );
                         sendSgr(0, target.column + 1, target.row, "M");
                         sendSgr(0, target.column + 1, target.row, "m");
+                    } else if (action.secondaryClick !== undefined) {
+                        const target = findTarget(
+                            capture(),
+                            rect,
+                            action.secondaryClick,
+                        );
+                        sendSgr(2, target.column + 1, target.row, "M");
+                        sendSgr(2, target.column + 1, target.row, "m");
                     } else if (action.press !== undefined) {
                         const target = findTarget(
                             capture(),

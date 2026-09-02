@@ -207,6 +207,24 @@ test("manifest_WhenDialogsAreCaptured_MapsEachDialogDocToItsPrimaryPage", () => 
     }
 });
 
+test("manifest_WhenContainedPopupSurfacesAreCaptured_ShowsTheOpenSurfaceInItsExample", () => {
+    const contextMenu = controls.find(
+        ({ doc }) => doc === "controls/menus/context-menu",
+    );
+    const popup = controls.find(({ doc }) => doc === "controls/popups/popup");
+
+    assert.deepEqual(contextMenu.states, [
+        {
+            actions: [{ secondaryClick: "Right-click me" }],
+        },
+    ]);
+    assert.deepEqual(popup.states, [
+        {
+            actions: [{ click: "Actions" }],
+        },
+    ]);
+});
+
 test("manifest_WhenFocusedExamplesMutate_CapturesBothWrapAxesAndWindowDefault", () => {
     const wrap = controls.find(({ doc }) => doc === "controls/layout/wrap");
     const window = controls.find(({ doc }) => doc === "controls/windows/window");
