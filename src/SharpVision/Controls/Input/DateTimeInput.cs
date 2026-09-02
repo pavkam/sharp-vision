@@ -759,11 +759,45 @@ public sealed class DateTimeInput: InputBase
         : DateOnly.MaxValue;
 
     [Pure]
-    private static DateTime CombineCalendarDate(DateOnly date, DateTime? current)
+    private DateTime CombineCalendarDate(DateOnly date, DateTime? current)
     {
         var timePart = current?.TimeOfDay ?? TimeSpan.Zero;
         var kind = current?.Kind ?? DateTimeKind.Unspecified;
-        return date.ToDateTime(TimeOnly.FromTimeSpan(timePart), kind);
+        var naive = date.ToDateTime(TimeOnly.FromTimeSpan(timePart), kind);
+
+        // The day-granularity Calendar projects Minimum/Maximum onto whole days
+        // (ResolveCalendarMinimum/ResolveCalendarMaximum), so a boundary day renders as a fully
+        // selectable cell even when only part of it actually falls in range - the rest of the
+        // day sits below Minimum's time-of-day or above Maximum's. Combining that day with the
+        // preserved, untouched current time-of-day can therefore land outside [Minimum, Maximum]
+        // even though the user only manipulated the date through the popup click. Rather than
+        // let that fall through to Clamp - which repairs by substituting the whole boundary
+        // instant, silently rewriting the time the user never touched - prefer nudging the date
+        // itself to the nearest adjacent day that admits the original time-of-day, keeping the
+        // axis the user actually chose authoritative. This can only be reached at the boundary
+        // day itself: every other selectable day lies strictly between Minimum's and Maximum's
+        // dates, so any time-of-day on it is already in range. Clamp remains the fallback for a
+        // window so narrow that even the adjacent day does not help.
+        if (naive < Minimum && date == DateOnly.FromDateTime(Minimum) && date < DateOnly.MaxValue)
+        {
+            var advanced = date.AddDays(1).ToDateTime(TimeOnly.FromTimeSpan(timePart), kind);
+
+            if (advanced >= Minimum && advanced <= Maximum)
+            {
+                return advanced;
+            }
+        }
+        else if (naive > Maximum && date == DateOnly.FromDateTime(Maximum) && date > DateOnly.MinValue)
+        {
+            var retreated = date.AddDays(-1).ToDateTime(TimeOnly.FromTimeSpan(timePart), kind);
+
+            if (retreated >= Minimum && retreated <= Maximum)
+            {
+                return retreated;
+            }
+        }
+
+        return naive;
     }
 
     #endregion

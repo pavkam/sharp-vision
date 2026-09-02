@@ -691,6 +691,84 @@ public sealed class DateTimeInputTests
         control.Value.Value.Kind.ShouldBe(DateTimeKind.Utc);
     }
 
+    /// <summary>Verifies clicking the Minimum boundary day in the popup, when the preserved
+    /// time-of-day would undershoot Minimum's time-of-day on that day, advances the accepted date
+    /// forward one day instead of silently rewriting the untouched time to Minimum's.</summary>
+    [Fact]
+    public void Popup_WhenBoundaryDayUndershootsMinimumTime_AdvancesDatePreservesTime()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Minimum = new DateTime(2024, 6, 10, 14, 0, 0),
+            Maximum = new DateTime(2024, 6, 20, 23, 59, 59),
+            Value = new DateTime(2024, 6, 15, 9, 0, 0),
+            IsOpen = true
+        };
+
+        // Act: move the active date from June 15 to the Minimum boundary day, June 10.
+        for (var i = 0; i < 5; i++)
+        {
+            _ = Router.Route(control, Events.Key, Key(Code.Left));
+        }
+
+        _ = Router.Route(control, Events.Key, Key(Code.Enter));
+
+        // Assert: the naive combine (June 10 at 09:00) undershoots Minimum's 14:00, so the date
+        // moves forward to June 11 rather than the time jumping to Minimum's 14:00.
+        control.Value.ShouldBe(new DateTime(2024, 6, 11, 9, 0, 0));
+    }
+
+    /// <summary>Verifies clicking the Maximum boundary day in the popup, when the preserved
+    /// time-of-day would overshoot Maximum's time-of-day on that day, retreats the accepted date
+    /// back one day instead of silently rewriting the untouched time to Maximum's.</summary>
+    [Fact]
+    public void Popup_WhenBoundaryDayOvershootsMaximumTime_RetreatsDatePreservesTime()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Minimum = new DateTime(2024, 6, 10, 0, 0, 0),
+            Maximum = new DateTime(2024, 6, 20, 10, 0, 0),
+            Value = new DateTime(2024, 6, 15, 14, 0, 0),
+            IsOpen = true
+        };
+
+        // Act: move the active date from June 15 to the Maximum boundary day, June 20.
+        for (var i = 0; i < 5; i++)
+        {
+            _ = Router.Route(control, Events.Key, Key(Code.Right));
+        }
+
+        _ = Router.Route(control, Events.Key, Key(Code.Enter));
+
+        // Assert: the naive combine (June 20 at 14:00) overshoots Maximum's 10:00, so the date
+        // moves back to June 19 rather than the time jumping to Maximum's 10:00.
+        control.Value.ShouldBe(new DateTime(2024, 6, 19, 14, 0, 0));
+    }
+
+    /// <summary>Verifies clicking a day that is not a Minimum/Maximum boundary combines with the
+    /// preserved time-of-day unadjusted, even though it is close to a boundary.</summary>
+    [Fact]
+    public void Popup_WhenSelectedDayIsNotABoundary_CombinesWithoutAdjustment()
+    {
+        // Arrange
+        using var control = new DateTimeInput
+        {
+            Minimum = new DateTime(2024, 6, 10, 14, 0, 0),
+            Maximum = new DateTime(2024, 6, 20, 23, 59, 59),
+            Value = new DateTime(2024, 6, 15, 9, 0, 0),
+            IsOpen = true
+        };
+
+        // Act: move the active date one day forward, to June 16 - not a boundary day.
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Enter));
+
+        // Assert: the naive combine is already in range, so it is returned unadjusted.
+        control.Value.ShouldBe(new DateTime(2024, 6, 16, 9, 0, 0));
+    }
+
     #endregion
 
     #region Culture

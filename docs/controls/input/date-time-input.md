@@ -131,6 +131,22 @@ date, preserves the time and `DateTimeKind`, and closes the popup. Repeated
 Alt+Down is consumed by the already-open session without reopening or moving the
 Calendar.
 
+The Calendar operates at day granularity, so its `Minimum`/`Maximum` bounds are
+the date portions of `Minimum`/`Maximum`, and the `Minimum` or `Maximum`
+boundary day itself can therefore render as a fully selectable cell even when
+only part of that day actually falls within range. Accepting that boundary day
+combines it with the preserved time as usual whenever the result stays within
+`[Minimum, Maximum]`. When it would not - the preserved time falls before
+`Minimum`'s time on the `Minimum` day, or after `Maximum`'s time on the
+`Maximum` day - the accepted date shifts by one day toward the valid range
+instead, keeping the preserved time intact, provided that shifted combination is
+itself within `[Minimum, Maximum]`. No other selectable day needs this
+adjustment, because every other day lies strictly inside `[Minimum, Maximum]`
+regardless of time of day. If `Minimum` and `Maximum` are less than a day apart,
+the one-day shift can itself fall outside the range - in that narrow case the
+preserved time is not kept; the combined value falls back to the same
+boundary-clamping behavior as direct `Value`/`Minimum`/`Maximum` assignment.
+
 The navigation and acceptance keys use the
 [shared focus-independent delegation rule](../../concepts/input-routing.md#popup-navigation-delegation),
 so owner focus and Calendar focus produce one movement or acceptance. Escape,
