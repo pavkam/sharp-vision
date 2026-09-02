@@ -443,6 +443,7 @@ namespace SharpVision.Controls
         protected virtual SharpVision.Text.SelectableTextSnapshot GetTextSelectionProjection() { }
         protected virtual SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
         protected virtual int HitTestTextSelectionCore(SharpVision.Terminal.Geometry.Point cells) { }
+        protected virtual int HitTestTextSelectionGlyphCore(SharpVision.Terminal.Geometry.Point cells) { }
         protected void InitializeAppearanceOverlay(SharpVision.Styling.AppearanceStatesOverlay overlay) { }
         protected SharpVision.Controls.StyleSlot<TStyle> InitializePartStyle<TStyle>(SharpVision.Controls.StyleDefinition<TStyle> definition, string propertyName, System.Action<TStyle, TStyle>? changed = null)
             where TStyle : SharpVision.Styling.ControlStyle { }
@@ -1920,6 +1921,7 @@ namespace SharpVision.Controls.Input
         protected override SharpVision.Terminal.Geometry.Rect GetTextSelectionAdornmentBounds(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override string GetTextSelectionCopyText() { }
         protected override int HitTestTextSelectionCore(SharpVision.Terminal.Geometry.Point cells) { }
+        protected override int HitTestTextSelectionGlyphCore(SharpVision.Terminal.Geometry.Point cells) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override int MoveTextSelectionCaret(SharpVision.Terminal.Input.Code code, bool extend, bool word) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }

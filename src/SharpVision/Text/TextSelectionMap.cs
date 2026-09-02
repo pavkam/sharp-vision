@@ -453,17 +453,33 @@ internal sealed class TextSelectionMap
     /// </remarks>
     internal int HitTest(Point point) => HitTest(point, out _);
 
+    /// <summary>Resolves one content-relative cell to the start of the glyph occupying it, falling
+    /// back to the nearest endpoint exactly like <see cref="HitTest(Point)"/> when no glyph does.</summary>
+    /// <param name="point">The content-relative cell coordinate.</param>
+    /// <returns>A grapheme-aligned UTF-16 endpoint in <see cref="Text"/>.</returns>
+    /// <remarks>
+    /// A single click places a caret, so <see cref="HitTest(Point)"/> resolves each cell of a wide
+    /// glyph to its nearer boundary. A word or line selection instead addresses the glyph under
+    /// the pointer as a whole - selecting by the nearer boundary would pick the right-hand
+    /// neighbour whenever a multi-click lands on the trailing cell of a wide glyph, which the
+    /// caret rule alone cannot distinguish from a click just past it.
+    /// </remarks>
+    internal int HitTestGlyph(Point point) => HitTest(point, out _, snapToGlyphStart: true);
+
     /// <summary>Resolves one cell while reporting the bounded number of row-index entries inspected.</summary>
     /// <param name="point">The content-relative cell coordinate.</param>
     /// <param name="inspectedEntries">
     /// Receives the number of binary-index entries and final glyph candidates examined.
+    /// </param>
+    /// <param name="snapToGlyphStart">
+    /// Whether a cell inside a glyph resolves to that glyph's start rather than its nearer boundary.
     /// </param>
     /// <returns>A grapheme-aligned UTF-16 endpoint in <see cref="Text"/>.</returns>
     /// <remarks>
     /// This internal seam proves that long non-overlapping rows remain logarithmic without relying
     /// on wall-clock timing. It does not expose production selection state or private storage.
     /// </remarks>
-    internal int HitTest(Point point, out int inspectedEntries)
+    internal int HitTest(Point point, out int inspectedEntries, bool snapToGlyphStart = false)
     {
         inspectedEntries = 0;
 
@@ -528,7 +544,7 @@ internal sealed class TextSelectionMap
             inspectedEntries++;
             var glyph = _glyphs[indexes[prefixMaxRightIndexes[low]]];
             var relative = (long) point.X - glyph.Bounds.X;
-            return relative * 2 < glyph.Bounds.Width
+            return snapToGlyphStart || relative * 2 < glyph.Bounds.Width
                 ? glyph.Range.Start
                 : glyph.Range.End;
         }

@@ -134,8 +134,13 @@ internal sealed class TextSelectionGesture
         {
             if (pointer.Cells is { } releasedCells)
             {
+                // A word or line command addresses the glyph under the pointer as a whole; only
+                // the single-click caret placement resolves a wide glyph's cells to the nearer
+                // boundary, which on its trailing cell would otherwise select the neighbour.
                 _owner.CommitTextSelectionClick(
-                    _owner.HitTestTextSelection(releasedCells),
+                    _clickCount >= 2
+                        ? _owner.HitTestTextSelectionGlyph(releasedCells)
+                        : _owner.HitTestTextSelection(releasedCells),
                     _clickCount);
                 _owner.CompleteTextSelectionClick(
                     _originalSource,

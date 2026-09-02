@@ -5990,6 +5990,22 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <summary>Gets whether this control currently owns keyboard focus.</summary>
     public bool IsFocused { get; private set; }
 
+    /// <summary>Gets the reason the most recent direct focus gain was requested with, committed by
+    /// the owning <see cref="FocusManager"/> immediately before <see cref="OnFocusChanged"/> runs
+    /// for that gain.</summary>
+    /// <remarks>
+    /// A component focus hook uses this to tell a primary pointer press apart from keyboard,
+    /// programmatic, or restored focus. A press focuses its target before the press itself is
+    /// routed, so a hook that scrolls the previously committed caret into view on every gain
+    /// would move the viewport out from under the very cell the user is pressing, and the
+    /// subsequent hit test would land on whatever scrolled underneath it instead.
+    /// </remarks>
+    internal FocusReason FocusGainReason { get; private set; }
+
+    /// <summary>Records the reason for an imminent direct focus gain.</summary>
+    /// <param name="reason">The defined reason the focus manager is committing.</param>
+    internal void CommitFocusGainReason(FocusReason reason) => FocusGainReason = reason;
+
     /// <summary>Gets whether the pointer is over this control or one of its descendants.</summary>
     public bool IsPointerOver { get; private set; }
 
@@ -6746,14 +6762,26 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <returns>A grapheme-aligned UTF-16 endpoint.</returns>
     internal int HitTestTextSelection(Point cells) => HitTestTextSelectionCore(cells);
 
+    /// <summary>Resolves one screen cell to the start of the semantic glyph occupying it, for the
+    /// word and line commands of a multi-click.</summary>
+    /// <param name="cells">The screen-cell pointer coordinate.</param>
+    /// <returns>A grapheme-aligned UTF-16 endpoint.</returns>
+    internal int HitTestTextSelectionGlyph(Point cells) => HitTestTextSelectionGlyphCore(cells);
+
     /// <summary>Resolves one screen cell against a component's authoritative semantic projection.</summary>
-    protected virtual int HitTestTextSelectionCore(Point cells)
-    {
-        var local = new Point(
-            cells.X.SaturatingSubtract(Bounds.X),
-            cells.Y.SaturatingSubtract(Bounds.Y));
-        return GetTextSelectionMap().HitTest(local);
-    }
+    protected virtual int HitTestTextSelectionCore(Point cells) =>
+        GetTextSelectionMap().HitTest(ToTextSelectionProjectionCell(cells));
+
+    /// <summary>Resolves one screen cell to the start of the projected glyph occupying it, or to
+    /// the nearest endpoint when none does. A component whose projection scrolls or insets must
+    /// translate <paramref name="cells"/> here exactly as it does in
+    /// <see cref="HitTestTextSelectionCore"/>.</summary>
+    protected virtual int HitTestTextSelectionGlyphCore(Point cells) =>
+        GetTextSelectionMap().HitTestGlyph(ToTextSelectionProjectionCell(cells));
+
+    private Point ToTextSelectionProjectionCell(Point cells) => new(
+        cells.X.SaturatingSubtract(Bounds.X),
+        cells.Y.SaturatingSubtract(Bounds.Y));
 
     /// <summary>Maps one semantic glyph from projection coordinates into final screen cells.</summary>
     protected virtual Rect GetTextSelectionAdornmentBounds(Rect bounds) => new(
